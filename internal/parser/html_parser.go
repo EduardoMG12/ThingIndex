@@ -27,7 +27,20 @@ func (h *HTMLParser) ExtractLinks(content io.Reader) (map[string]string, error) 
 		href, exists := s.Attr("href")
 		if exists {
 			text := strings.TrimSpace(s.Text())
-			links[href] = text
+			
+			// Capture title attribute
+			if title, ok := s.Attr("title"); ok && title != "" {
+				text = text + " " + strings.TrimSpace(title)
+			}
+
+			// Capture alt text of nested images
+			s.Find("img").Each(func(j int, img *goquery.Selection) {
+				if alt, ok := img.Attr("alt"); ok && alt != "" {
+					text = text + " " + strings.TrimSpace(alt)
+				}
+			})
+
+			links[href] = strings.TrimSpace(text)
 		}
 	})
 

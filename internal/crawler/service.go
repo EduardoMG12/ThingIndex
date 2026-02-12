@@ -170,28 +170,24 @@ func (c *CrawlerService) handleHTML(u, parent string, content []byte) {
 	for link, text := range linksMap {
 		absLink := resolveRelURL(u, link)
 		lowerText := strings.ToLower(text)
+		lowerLink := strings.ToLower(absLink)
 		
 		shouldVisit := false
 		
 		// PDF Check
-		if strings.HasSuffix(strings.ToLower(absLink), ".pdf") {
-			// Download ANY PDF if we are in a relevant section, OR just check text?
-			// User said: "dentro dos pdfs teram links de referencia... links de outros pdfs que tambem deveram ser baixados"
-			// and "baixar os pdfs fazendo a recurção do Código de Trânsito Brasileiro e o Código de Defesa do Consumidor"
-			
-			// We will download PDFs that look like they are THE codes or related to them.
-			// But simple strategy: If we are deep enough, download PDFs.
-			// For now, let's download all PDFs encountered during navigation.
+		if strings.HasSuffix(lowerLink, ".pdf") {
 			shouldVisit = true
-		} else {
-			// HTML Navigation
+		} else if strings.HasSuffix(lowerLink, ".htm") || strings.HasSuffix(lowerLink, ".html") || !strings.Contains(filepath.Base(lowerLink), ".") {
+			// HTML Navigation Navigation
 			if strings.Contains(lowerText, "legislação") || 
 			   strings.Contains(lowerText, "legislacao") ||
 			   strings.Contains(lowerText, "códigos") ||
 			   strings.Contains(lowerText, "codigos") ||
 			   strings.Contains(lowerText, "trânsito") ||
+			   strings.Contains(lowerText, "transito") ||
 			   strings.Contains(lowerText, "consumidor") {
 				shouldVisit = true
+				log.Printf("Found relevant HTML link: %s (Text: %s)", absLink, text)
 			}
 		}
 
