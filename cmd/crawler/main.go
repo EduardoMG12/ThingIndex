@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -29,6 +30,12 @@ func main() {
 		timeout = 10 * time.Second
 	}
 
+	maxDepthStr := os.Getenv("CRAWLER_MAX_DEPTH")
+	maxDepth, err := strconv.Atoi(maxDepthStr)
+	if err != nil {
+		maxDepth = 3 // Default depth
+	}
+
 	storageType := os.Getenv("STORAGE_TYPE")
 	if storageType == "" {
 		storageType = "local"
@@ -53,7 +60,7 @@ func main() {
 	}
 
 	// Initialize Crawler
-	c := crawler.NewCrawlerService(f, pdfP, htmlP, s)
+	c := crawler.NewCrawlerService(f, pdfP, htmlP, s, maxDepth)
 
 	// Start Crawling
 	log.Printf("Starting crawler at %s", startURL)

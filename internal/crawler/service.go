@@ -19,6 +19,7 @@ import (
 type CrawlTask struct {
 	URL    string
 	Parent string
+	Depth  int
 }
 
 type HTMLParser interface {
@@ -33,24 +34,25 @@ type CrawlerService struct {
 	visited    sync.Map
 	queue      chan CrawlTask
 	wg         sync.WaitGroup
+	maxDepth   int
 }
 
-func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlParser HTMLParser, storage domain.Storage) *CrawlerService {
+func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlParser HTMLParser, storage domain.Storage, maxDepth int) *CrawlerService {
 	return &CrawlerService{
 		fetcher:    fetcher,
 		pdfParser:  pdfParser,
 		htmlParser: htmlParser,
 		storage:    storage,
 		queue:      make(chan CrawlTask, 1000), // Larger buffer
+		maxDepth:   maxDepth,
 	}
 }
 
 func (c *CrawlerService) Crawl(startURL string) error {
-	c.queue <- CrawlTask{URL: startURL, Parent: ""}
+	c.queue <- CrawlTask{URL: startURL, Parent: "", Depth: 0}
 	c.wg.Add(1)
 
 	// Start distinct workers to handle concurrency better
-	// For now, single worker loop is fine but we can spawn more
 	go c.worker()
 	
 	c.wg.Wait()
@@ -66,11 +68,19 @@ func (c *CrawlerService) worker() {
 
 func (c *CrawlerService) processTask(task CrawlTask) {
 	u := task.URL
-	if _, loaded := c.visited.LoadOrStore(u, true); loaded {
+	
+	// Normalize URL for visited check
+	normalizedURL := strings.ToLower(strings.TrimRight(u, "/"))
+	if _, loaded := c.visited.LoadOrStore(normalizedURL, true); loaded {
 		return 
 	}
 	
-	log.Printf("Visiting: %s", u)
+	if task.Depth > c.maxDepth {
+		log.Printf("Max depth reached, skipping: %s", u)
+		return
+	}
+
+	log.Printf("[Depth %d] Visiting: %s", task.Depth, u)
 
 	// Fetch without consuming body yet
 	// We need to check Content-Type. 
@@ -100,13 +110,13 @@ func (c *CrawlerService) processTask(task CrawlTask) {
 	isPDF := strings.HasSuffix(lowerURL, ".pdf") || bytes.HasPrefix(content, []byte("%PDF-"))
 
 	if isPDF {
-		c.handlePDF(u, task.Parent, content)
+		c.handlePDF(u, task.Parent, content, task.Depth)
 	} else {
-		c.handleHTML(u, task.Parent, content)
+		c.handleHTML(u, task.Parent, content, task.Depth)
 	}
 }
 
-func (c *CrawlerService) handlePDF(u, parent string, content []byte) {
+func (c *CrawlerService) handlePDF(u, parent string, content []byte, depth int) {
 	// Generate filenames
 	pdfFilename := c.generateFilename(u, ".pdf")
 	jsonFilename := strings.TrimSuffix(pdfFilename, ".pdf") + ".json"
@@ -141,17 +151,18 @@ func (c *CrawlerService) handlePDF(u, parent string, content []byte) {
 	for _, link := range links {
 		absLink := resolveRelURL(u, link)
 		if strings.HasSuffix(strings.ToLower(absLink), ".pdf") {
-			if _, visited := c.visited.Load(absLink); !visited {
+			norm := strings.ToLower(strings.TrimRight(absLink, "/"))
+			if _, visited := c.visited.Load(norm); !visited {
 				c.wg.Add(1)
-				go func(l string, p string) {
-					c.queue <- CrawlTask{URL: l, Parent: p}
-				}(absLink, u)
+				go func(l string, p string, d int) {
+					c.queue <- CrawlTask{URL: l, Parent: p, Depth: d}
+				}(absLink, u, depth+1)
 			}
 		}
 	}
 }
 
-func (c *CrawlerService) handleHTML(u, parent string, content []byte) {
+func (c *CrawlerService) handleHTML(u, parent string, content []byte, depth int) {
 	linksMap, err := c.htmlParser.ExtractLinks(bytes.NewReader(content))
 	if err != nil {
 		log.Printf("Error parsing HTML %s: %v", u, err)
@@ -192,11 +203,12 @@ func (c *CrawlerService) handleHTML(u, parent string, content []byte) {
 		}
 
 		if shouldVisit {
-			if _, visited := c.visited.Load(absLink); !visited {
+			norm := strings.ToLower(strings.TrimRight(absLink, "/"))
+			if _, visited := c.visited.Load(norm); !visited {
 				c.wg.Add(1)
-				go func(l string, p string) {
-					c.queue <- CrawlTask{URL: l, Parent: p}
-				}(absLink, u)
+				go func(l string, p string, d int) {
+					c.queue <- CrawlTask{URL: l, Parent: p, Depth: d}
+				}(absLink, u, depth+1)
 			}
 		}
 	}
