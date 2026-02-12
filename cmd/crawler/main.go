@@ -41,7 +41,8 @@ func main() {
 
 	// Initialize components
 	f := fetcher.NewHTTPFetcher(timeout, 3) 
-	p := parser.NewPDFParser()
+	pdfP := parser.NewPDFParser()
+	htmlP := parser.NewHTMLParser()
 	
 	s, err := storage.NewStorage(storage.Config{
 		Type:     storageType,
@@ -52,7 +53,7 @@ func main() {
 	}
 
 	// Initialize Crawler
-	c := crawler.NewCrawlerService(f, p, s)
+	c := crawler.NewCrawlerService(f, pdfP, htmlP, s)
 
 	// Start Crawling
 	log.Printf("Starting crawler at %s", startURL)
