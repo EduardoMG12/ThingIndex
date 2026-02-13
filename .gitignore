@@ -1,4 +1,6 @@
 # Binaries
+parser
+**/parser
 main
 **/main
 *.exe
@@ -13,11 +15,15 @@ main
 
 # Environment
 .env
-**/ .env
+**/.env
 
 # Data and Outputs
 output_pdfs/
 **/output_pdfs/
+raw_data/
+**/raw_data/
+parsed_data/
+**/parsed_data/
 storage/
 **/storage/
 
