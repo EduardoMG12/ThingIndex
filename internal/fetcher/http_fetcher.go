@@ -1,6 +1,7 @@
 package fetcher
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
@@ -19,6 +20,9 @@ func NewHTTPFetcher(timeout time.Duration, retries int) domain.Fetcher {
 	return &HTTPFetcher{
 		client: &http.Client{
 			Timeout: timeout,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
 		},
 		retries: retries,
 	}
