@@ -47,23 +47,20 @@ func main() {
 		localDir = "./output_pdfs"
 	}
 
-	keywordsStr := os.Getenv("CRAWLER_KEYWORDS")
-	var keywords []string
-	if keywordsStr != "" {
-		parts := strings.Split(keywordsStr, ",")
+	ignoreKeywordsStr := os.Getenv("CRAWLER_IGNORE_KEYWORDS")
+	var ignoreKeywords []string
+	if ignoreKeywordsStr != "" {
+		parts := strings.Split(ignoreKeywordsStr, ",")
 		for _, p := range parts {
 			trimmed := strings.TrimSpace(p)
 			if trimmed != "" {
-				keywords = append(keywords, trimmed)
+				ignoreKeywords = append(ignoreKeywords, trimmed)
 			}
 		}
 	} else {
-		// Default keywords if none provided
-		keywords = []string{
-			"legislação", "legislacao", "códigos", "codigos", "trânsito", "transito", "consumidor",
-			"lei", "decreto", "compilado", "vigência", "vigencia", "publicação", "publicacao",
-			"constituição", "constituicao", "ato", "resolução", "resolucao",
-			"/ccivil_03/", "lei", "lcp", "del", "mpv", "dec",
+		// Default ignore keywords (noise)
+		ignoreKeywords = []string{
+			"clic-clac", "pesquisar", "revogado", "vetado", "clicclac",
 		}
 	}
 
@@ -83,7 +80,7 @@ func main() {
 	}
 
 	// Initialize Crawler
-	c := crawler.NewCrawlerService(f, pdfP, htmlP, s, maxDepth, keywords, filterName)
+	c := crawler.NewCrawlerService(f, pdfP, htmlP, s, maxDepth, ignoreKeywords, filterName)
 
 	// Start Crawling
 	log.Printf("Starting crawler at %s", startURL)
