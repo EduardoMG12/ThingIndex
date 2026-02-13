@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -33,7 +34,7 @@ func main() {
 	maxDepthStr := os.Getenv("CRAWLER_MAX_DEPTH")
 	maxDepth, err := strconv.Atoi(maxDepthStr)
 	if err != nil {
-		maxDepth = 3 // Default depth
+		maxDepth = 20 // Higher default depth
 	}
 
 	storageType := os.Getenv("STORAGE_TYPE")
@@ -45,6 +46,28 @@ func main() {
 	if localDir == "" {
 		localDir = "./output_pdfs"
 	}
+
+	keywordsStr := os.Getenv("CRAWLER_KEYWORDS")
+	var keywords []string
+	if keywordsStr != "" {
+		parts := strings.Split(keywordsStr, ",")
+		for _, p := range parts {
+			trimmed := strings.TrimSpace(p)
+			if trimmed != "" {
+				keywords = append(keywords, trimmed)
+			}
+		}
+	} else {
+		// Default keywords if none provided
+		keywords = []string{
+			"legislação", "legislacao", "códigos", "codigos", "trânsito", "transito", "consumidor",
+			"lei", "decreto", "compilado", "vigência", "vigencia", "publicação", "publicacao",
+			"constituição", "constituicao", "ato", "resolução", "resolucao",
+			"/ccivil_03/", "lei", "lcp", "del", "mpv", "dec",
+		}
+	}
+
+	filterName := os.Getenv("CRAWLER_FILTER_NAME")
 
 	// Initialize components
 	f := fetcher.NewHTTPFetcher(timeout, 3) 
@@ -60,7 +83,7 @@ func main() {
 	}
 
 	// Initialize Crawler
-	c := crawler.NewCrawlerService(f, pdfP, htmlP, s, maxDepth)
+	c := crawler.NewCrawlerService(f, pdfP, htmlP, s, maxDepth, keywords, filterName)
 
 	// Start Crawling
 	log.Printf("Starting crawler at %s", startURL)
