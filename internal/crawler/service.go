@@ -18,9 +18,10 @@ import (
 )
 
 type CrawlTask struct {
-	URL    string
-	Parent string
-	Depth  int
+	URL         string
+	Parent      string
+	Description string
+	Depth       int
 }
 
 type HTMLParser interface {
@@ -68,7 +69,7 @@ func (c *CrawlerService) Crawl(startURL string) error {
 		go c.worker()
 	}
 
-	c.enqueueTask(startURL, "", 0)
+	c.enqueueTask(startURL, "", "", 0)
 	
 	c.wg.Wait()
 	close(c.queue)
@@ -124,7 +125,7 @@ func (c *CrawlerService) processTask(task CrawlTask) {
 				content, err = io.ReadAll(f)
 				if err == nil {
 					atomic.AddInt64(&c.statsSkipped, 1)
-					c.handlePDF(u, task.Parent, content, task.Depth)
+					c.handlePDF(u, task.Parent, task.Description, content, task.Depth)
 					return
 				}
 			}
@@ -156,13 +157,13 @@ func (c *CrawlerService) processTask(task CrawlTask) {
 	isPDF = strings.HasSuffix(lowerURL, ".pdf") || bytes.HasPrefix(content, []byte("%PDF-"))
 
 	if isPDF {
-		c.handlePDF(u, task.Parent, content, task.Depth)
+		c.handlePDF(u, task.Parent, task.Description, content, task.Depth)
 	} else {
 		c.handleHTML(u, task.Parent, content, task.Depth)
 	}
 }
 
-func (c *CrawlerService) handlePDF(u, parent string, content []byte, depth int) {
+func (c *CrawlerService) handlePDF(u, parent, description string, content []byte, depth int) {
 	// Generate filenames
 	pdfFilename := c.generateFilename(u, ".pdf")
 	jsonFilename := strings.TrimSuffix(pdfFilename, ".pdf") + ".json"
@@ -187,6 +188,7 @@ func (c *CrawlerService) handlePDF(u, parent string, content []byte, depth int) 
 		URL:            u,
 		LocalPath:      localPath,
 		ParentURL:      parent,
+		Description:    description,
 		ExtractedLinks: links,
 	}
 	
@@ -207,7 +209,7 @@ func (c *CrawlerService) handlePDF(u, parent string, content []byte, depth int) 
 		// For PDF links, we use the link itself as text heuristic if needed, 
 		// but usually we just check keywords in URL if it's not a direct PDF.
 		if c.shouldVisit(absLink, "") {
-			c.enqueueTask(absLink, u, depth+1)
+			c.enqueueTask(absLink, u, "", depth+1)
 		}
 	}
 }
@@ -228,7 +230,7 @@ func (c *CrawlerService) handleHTML(u, parent string, content []byte, depth int)
 		}
 
 		if c.shouldVisit(absLink, text) {
-			c.enqueueTask(absLink, u, depth+1)
+			c.enqueueTask(absLink, u, text, depth+1)
 		}
 	}
 }
@@ -269,7 +271,7 @@ func (c *CrawlerService) shouldVisit(absLink, text string) bool {
 	return false
 }
 
-func (c *CrawlerService) enqueueTask(u, parent string, depth int) {
+func (c *CrawlerService) enqueueTask(u, parent, description string, depth int) {
 	// Filter out non-http links
 	if !strings.HasPrefix(u, "http") {
 		return
@@ -287,7 +289,7 @@ func (c *CrawlerService) enqueueTask(u, parent string, depth int) {
 		log.Printf("Enqueuing [Depth %d]: %s", depth, u)
 		// Use a goroutine to avoid blocking the worker if the queue is full
 		go func() {
-			c.queue <- CrawlTask{URL: u, Parent: parent, Depth: depth}
+			c.queue <- CrawlTask{URL: u, Parent: parent, Description: description, Depth: depth}
 		}()
 	}
 }

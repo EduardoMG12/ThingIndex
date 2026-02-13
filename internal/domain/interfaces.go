@@ -5,8 +5,9 @@ import "io"
 // PDFMetadata represents the metadata of a crawled PDF.
 type PDFMetadata struct {
 	URL          string   `json:"url"`
-	LocalPath    string   `json:"local_path"`
-	ParentURL    string   `json:"parent_url,omitempty"` // URL of the PDF where this link was found
+	LocalPath      string   `json:"local_path"`
+	ParentURL      string   `json:"parent_url,omitempty"` // URL of the PDF where this link was found
+	Description    string   `json:"description,omitempty"` // Text of the link that led to this PDF
 	ExtractedLinks []string `json:"extracted_links,omitempty"`
 }
 
