@@ -2,7 +2,9 @@ package parser
 
 import (
 	"io"
+	"log"
 	"regexp"
+	"strings"
 
 	"github.com/ledongthuc/pdf"
 	"github.com/user/legisgraph-crawler/internal/domain"
@@ -23,14 +25,16 @@ func (p *PDFParser) ExtractLinks(content io.ReaderAt, size int64) ([]string, err
 	var links []string
 	seen := make(map[string]bool)
 
-	urlRegex := regexp.MustCompile(`https?://[^\s)"]+`)
+	urlRegex := regexp.MustCompile(`https?://[^\s)\]">]+`)
 
 	defer func() {
 		if r := recover(); r != nil {
+			log.Printf("Recovered from panic in PDF parser: %v", r)
 		}
 	}()
 
 	numPages := r.NumPage()
+	fullText := ""
 	for pageIndex := 1; pageIndex <= numPages; pageIndex++ {
 		page := r.Page(pageIndex)
 		if page.V.IsNull() {
@@ -41,13 +45,20 @@ func (p *PDFParser) ExtractLinks(content io.ReaderAt, size int64) ([]string, err
 		if err != nil {
 			continue
 		}
+		fullText += text
+	}
 
-		matches := urlRegex.FindAllString(text, -1)
-		for _, match := range matches {
-			if !seen[match] {
-				links = append(links, match)
-				seen[match] = true
-			}
+	// Fallback/Safety: If text is empty, we can try to extract from raw content
+	// but ExtractLinks already has the content as ReaderAt.
+	// For now, let's just use the fullText gathered.
+	
+	matches := urlRegex.FindAllString(fullText, -1)
+	for _, match := range matches {
+		// Clean up trailing punctuation often caught by regex
+		match = strings.TrimRight(match, ".,;:")
+		if !seen[match] {
+			links = append(links, match)
+			seen[match] = true
 		}
 	}
 
