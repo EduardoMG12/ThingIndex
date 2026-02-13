@@ -1,4 +1,27 @@
-docker-compose.yml
+# Binaries
+main
+**/main
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# IDEs
+.idea/
+.vscode/
+
+# Environment
 .env
+**/ .env
+
+# Data and Outputs
+output_pdfs/
+**/output_pdfs/
+storage/
+**/storage/
+
+# Logs
+*.log
+
 comandos_neo4j.md
-output_pdfs/*
