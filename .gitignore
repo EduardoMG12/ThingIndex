@@ -1,8 +1,6 @@
-# Binaries
-parser
-**/parser
-main
-**/main
+# Binaries (only at module root, not cmd/ directories)
+/legal-parser/parser
+/crawler/main
 *.exe
 *.exe~
 *.dll
