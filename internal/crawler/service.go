@@ -2,6 +2,7 @@ package crawler
 
 import (
 	"bytes"
+	"crypto/sha1"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,7 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
+	"sync/atomic"
 
 	"github.com/user/legisgraph-crawler/internal/domain"
 )
@@ -35,27 +36,51 @@ type CrawlerService struct {
 	queue      chan CrawlTask
 	wg         sync.WaitGroup
 	maxDepth   int
+
+	// Configuration
+	keywords     []string
+	outputSubdir string
+
+	// Statistics
+	statsProcessed int64
+	statsFetched   int64
+	statsSaved     int64
+	statsSkipped   int64
 }
 
-func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlParser HTMLParser, storage domain.Storage, maxDepth int) *CrawlerService {
+func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlParser HTMLParser, storage domain.Storage, maxDepth int, keywords []string, outputSubdir string) *CrawlerService {
 	return &CrawlerService{
-		fetcher:    fetcher,
-		pdfParser:  pdfParser,
-		htmlParser: htmlParser,
-		storage:    storage,
-		queue:      make(chan CrawlTask, 1000), // Larger buffer
-		maxDepth:   maxDepth,
+		fetcher:      fetcher,
+		pdfParser:    pdfParser,
+		htmlParser:   htmlParser,
+		storage:      storage,
+		queue:        make(chan CrawlTask, 1000), // Larger buffer
+		maxDepth:     maxDepth,
+		keywords:     keywords,
+		outputSubdir: outputSubdir,
 	}
 }
 
 func (c *CrawlerService) Crawl(startURL string) error {
-	c.queue <- CrawlTask{URL: startURL, Parent: "", Depth: 0}
-	c.wg.Add(1)
+	// Start workers
+	numWorkers := 10
+	for i := 0; i < numWorkers; i++ {
+		go c.worker()
+	}
 
-	// Start distinct workers to handle concurrency better
-	go c.worker()
+	c.enqueueTask(startURL, "", 0)
 	
 	c.wg.Wait()
+	close(c.queue)
+
+	log.Printf("------------------------------------------")
+	log.Printf("CRAWLING SUMMARY:")
+	log.Printf("- Tasks processed:     %d", atomic.LoadInt64(&c.statsProcessed))
+	log.Printf("- Pages/Files fetched: %d", atomic.LoadInt64(&c.statsFetched))
+	log.Printf("- New files saved:     %d", atomic.LoadInt64(&c.statsSaved))
+	log.Printf("- Files skipped:       %d", atomic.LoadInt64(&c.statsSkipped))
+	log.Printf("------------------------------------------")
+
 	return nil
 }
 
@@ -69,45 +94,66 @@ func (c *CrawlerService) worker() {
 func (c *CrawlerService) processTask(task CrawlTask) {
 	u := task.URL
 	
-	// Normalize URL for visited check
-	normalizedURL := strings.ToLower(strings.TrimRight(u, "/"))
-	if _, loaded := c.visited.LoadOrStore(normalizedURL, true); loaded {
-		return 
-	}
-	
 	if task.Depth > c.maxDepth {
 		log.Printf("Max depth reached, skipping: %s", u)
 		return
 	}
 
-	log.Printf("[Depth %d] Visiting: %s", task.Depth, u)
+	// Filter out non-http links (like the file:/// links found on Planalto)
+	if !strings.HasPrefix(u, "http") {
+		return
+	}
 
-	// Fetch without consuming body yet
-	// We need to check Content-Type. 
-	// The current Fetcher returns ReadCloser directly. 
-	// We should probably peek or trust the extension/server.
-	// For this implementation, we will ReadAll and determine type.
-	
-	body, err := c.fetcher.Fetch(u)
+	log.Printf("[Depth %d] Visiting: %s", task.Depth, u)
+	atomic.AddInt64(&c.statsProcessed, 1)
+
+	// Check if file already exists before downloading
+	lowerURL := strings.ToLower(u)
+	isPDF := strings.HasSuffix(lowerURL, ".pdf")
+	var content []byte
+	var body io.ReadCloser
+	var err error
+
+	if isPDF {
+		filename := c.generateFilename(u, ".pdf")
+		if c.storage.Exists(filename) {
+			log.Printf("File exists locally, reading for links: %s", filename)
+			f, err := c.storage.Read(filename)
+			if err == nil {
+				defer f.Close()
+				content, err = io.ReadAll(f)
+				if err == nil {
+					atomic.AddInt64(&c.statsSkipped, 1)
+					c.handlePDF(u, task.Parent, content, task.Depth)
+					return
+				}
+			}
+			log.Printf("Error reading local file %s, will re-download: %v", filename, err)
+		}
+	}
+
+	body, err = c.fetcher.Fetch(u)
 	if err != nil {
 		log.Printf("Error fetching %s: %v", u, err)
 		return
 	}
 	defer body.Close()
 
-	content, err := io.ReadAll(body)
+	content, err = io.ReadAll(body)
 	if err != nil {
 		log.Printf("Error reading body of %s: %v", u, err)
 		return
 	}
+	
+	atomic.AddInt64(&c.statsFetched, 1)
 	
 	// Determine type
 	// 1. Check extension
 	// 2. Ideally check Content-Type header (but fetcher hides it currently)
 	// We'll rely on extension + simple detection for now.
 	
-	lowerURL := strings.ToLower(u)
-	isPDF := strings.HasSuffix(lowerURL, ".pdf") || bytes.HasPrefix(content, []byte("%PDF-"))
+	lowerURL = strings.ToLower(u)
+	isPDF = strings.HasSuffix(lowerURL, ".pdf") || bytes.HasPrefix(content, []byte("%PDF-"))
 
 	if isPDF {
 		c.handlePDF(u, task.Parent, content, task.Depth)
@@ -125,6 +171,8 @@ func (c *CrawlerService) handlePDF(u, parent string, content []byte, depth int) 
 	localPath, err := c.storage.Save(pdfFilename, bytes.NewReader(content))
 	if err != nil {
 		log.Printf("Error saving PDF %s: %v", u, err)
+	} else {
+		atomic.AddInt64(&c.statsSaved, 1)
 	}
 
 	// Extract Links
@@ -147,17 +195,19 @@ func (c *CrawlerService) handlePDF(u, parent string, content []byte, depth int) 
 		c.storage.Save(jsonFilename, bytes.NewReader(metaBytes))
 	}
 
-	// Enqueue new PDF links found in PDF (recursive)
+	log.Printf("Found %d potential links in PDF: %s", len(links), u)
+
+	// Enqueue new links found in PDF (recursive)
 	for _, link := range links {
 		absLink := resolveRelURL(u, link)
-		if strings.HasSuffix(strings.ToLower(absLink), ".pdf") {
-			norm := strings.ToLower(strings.TrimRight(absLink, "/"))
-			if _, visited := c.visited.Load(norm); !visited {
-				c.wg.Add(1)
-				go func(l string, p string, d int) {
-					c.queue <- CrawlTask{URL: l, Parent: p, Depth: d}
-				}(absLink, u, depth+1)
-			}
+		if absLink == "" {
+			continue
+		}
+		
+		// For PDF links, we use the link itself as text heuristic if needed, 
+		// but usually we just check keywords in URL if it's not a direct PDF.
+		if c.shouldVisit(absLink, "") {
+			c.enqueueTask(absLink, u, depth+1)
 		}
 	}
 }
@@ -169,48 +219,76 @@ func (c *CrawlerService) handleHTML(u, parent string, content []byte, depth int)
 		return
 	}
 
-	// Filter Logic for Gov.br / Receita Federal
-	// Path: Legislação -> Códigos -> CTB | CDC
-	
-	// Heuristics:
-	// 1. Follow "Legislação"
-	// 2. Follow "Códigos"
-	// 3. Follow "Código de Trânsito" or "Código de Defesa do Consumidor"
-	// 4. Download PDFs found in step 3
+	log.Printf("Found %d potential links in HTML: %s", len(linksMap), u)
 	
 	for link, text := range linksMap {
 		absLink := resolveRelURL(u, link)
-		lowerText := strings.ToLower(text)
-		lowerLink := strings.ToLower(absLink)
-		
-		shouldVisit := false
-		
-		// PDF Check
-		if strings.HasSuffix(lowerLink, ".pdf") {
-			shouldVisit = true
-		} else if strings.HasSuffix(lowerLink, ".htm") || strings.HasSuffix(lowerLink, ".html") || !strings.Contains(filepath.Base(lowerLink), ".") {
-			// HTML Navigation Navigation
-			if strings.Contains(lowerText, "legislação") || 
-			   strings.Contains(lowerText, "legislacao") ||
-			   strings.Contains(lowerText, "códigos") ||
-			   strings.Contains(lowerText, "codigos") ||
-			   strings.Contains(lowerText, "trânsito") ||
-			   strings.Contains(lowerText, "transito") ||
-			   strings.Contains(lowerText, "consumidor") {
-				shouldVisit = true
-				log.Printf("Found relevant HTML link: %s (Text: %s)", absLink, text)
-			}
+		if absLink == "" {
+			continue
 		}
 
-		if shouldVisit {
-			norm := strings.ToLower(strings.TrimRight(absLink, "/"))
-			if _, visited := c.visited.Load(norm); !visited {
-				c.wg.Add(1)
-				go func(l string, p string, d int) {
-					c.queue <- CrawlTask{URL: l, Parent: p, Depth: d}
-				}(absLink, u, depth+1)
-			}
+		if c.shouldVisit(absLink, text) {
+			c.enqueueTask(absLink, u, depth+1)
 		}
+	}
+}
+
+func (c *CrawlerService) shouldVisit(absLink, text string) bool {
+	lowerText := strings.ToLower(text)
+	lowerLink := strings.ToLower(absLink)
+
+	// Direct PDF check
+	if strings.HasSuffix(lowerLink, ".pdf") {
+		return true
+	}
+
+	// Navigation filtering (only HTML or URLs without extension)
+	isHTML := strings.HasSuffix(lowerLink, ".htm") || 
+			  strings.HasSuffix(lowerLink, ".html") || 
+			  !strings.Contains(filepath.Base(lowerLink), ".")
+
+	if !isHTML {
+		return false
+	}
+
+	// Permissive check for Planalto law patterns (e.g., L1234.htm)
+	if strings.Contains(lowerLink, "planalto.gov.br") {
+		base := filepath.Base(lowerLink)
+		// Match L1234, D1234, LCP123 etc
+		if strings.HasPrefix(base, "l") || strings.HasPrefix(base, "d") || strings.HasPrefix(base, "mpv") {
+			return true
+		}
+	}
+
+	for _, kw := range c.keywords {
+		if strings.Contains(lowerText, kw) || strings.Contains(lowerLink, kw) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (c *CrawlerService) enqueueTask(u, parent string, depth int) {
+	// Filter out non-http links
+	if !strings.HasPrefix(u, "http") {
+		return
+	}
+
+	// Check depth limit before enqueuing to avoid marking as visited prematurely
+	if depth > c.maxDepth {
+		return
+	}
+
+	// Normalize URL for visited check
+	normalizedURL := strings.ToLower(strings.TrimRight(u, "/"))
+	if _, loaded := c.visited.LoadOrStore(normalizedURL, true); !loaded {
+		c.wg.Add(1)
+		log.Printf("Enqueuing [Depth %d]: %s", depth, u)
+		// Use a goroutine to avoid blocking the worker if the queue is full
+		go func() {
+			c.queue <- CrawlTask{URL: u, Parent: parent, Depth: depth}
+		}()
 	}
 }
 
@@ -228,20 +306,29 @@ func resolveRelURL(baseURL, href string) string {
 
 func (c *CrawlerService) generateFilename(u string, ext string) string {
 	parsed, _ := url.Parse(u)
-	filename := filepath.Base(parsed.Path)
-	if filename == "" || filename == "." || filename == "/" {
-		filename = "index"
+	base := filepath.Base(parsed.Path)
+	if base == "" || base == "." || base == "/" {
+		base = "index"
 	}
 	
-	// Sanitize
-	filename = strings.ReplaceAll(filename, "/", "_")
+	// Create deterministic hash of the URL
+	h := sha1.New()
+	h.Write([]byte(u))
+	hash := fmt.Sprintf("%x", h.Sum(nil))
+	
+	// Sanitize base name
+	base = strings.ReplaceAll(base, "/", "_")
 	
 	// Ensure extension
-	if !strings.HasSuffix(filename, ext) {
-		filename += ext
+	if !strings.HasSuffix(base, ext) {
+		base += ext
 	}
 	
-	return fmt.Sprintf("%d_%s", time.Now().UnixNano(), filename)
+	filename := fmt.Sprintf("%s_%s", hash[:10], base)
+	if c.outputSubdir != "" {
+		return filepath.Join(c.outputSubdir, filename)
+	}
+	return filename
 }
 
 // Ensure http import is used or removed (it was unused in previous code but might be useful now)
