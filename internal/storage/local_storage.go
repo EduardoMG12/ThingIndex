@@ -59,6 +59,11 @@ func (s *LocalStorage) Save(filename string, content io.Reader) (string, error) 
 	return fullPath, nil
 }
 
+func (s *LocalStorage) Read(filename string) (io.ReadCloser, error) {
+	fullPath := filepath.Join(s.baseDir, filename)
+	return os.Open(fullPath)
+}
+
 func (s *LocalStorage) Exists(filename string) bool {
 	fullPath := filepath.Join(s.baseDir, filename)
 	_, err := os.Stat(fullPath)

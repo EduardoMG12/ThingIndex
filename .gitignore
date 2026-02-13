@@ -1,3 +1,4 @@
 docker-compose.yml
 .env
 comandos_neo4j.md
+output_pdfs/*

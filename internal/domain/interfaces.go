@@ -24,6 +24,7 @@ type Parser interface {
 type Storage interface {
 	Save(filename string, content io.Reader) (string, error)
 	Exists(filename string) bool
+	Read(filename string) (io.ReadCloser, error)
 }
 
 // Crawler defines the main crawling logic.
