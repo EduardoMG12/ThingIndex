@@ -22,8 +22,8 @@ raw_data/
 **/raw_data/
 parsed_data/
 **/parsed_data/
-storage/
-**/storage/
+/storage/
+
 
 # Logs
 *.log
