@@ -18,14 +18,16 @@ import (
 )
 
 type CrawlTask struct {
-	URL         string
-	Parent      string
-	Description string
-	Depth       int
+	URL           string
+	Parent        string
+	ParentContext domain.LinkContext
+	Description   string
+	Depth         int
 }
 
 type HTMLParser interface {
 	ExtractLinks(content io.Reader) (map[string]string, error)
+	ExtractLinksWithContext(content io.Reader) ([]domain.EnrichedLink, error)
 }
 
 type CrawlerService struct {
@@ -69,7 +71,7 @@ func (c *CrawlerService) Crawl(startURL string) error {
 		go c.worker()
 	}
 
-	c.enqueueTask(startURL, "", "", 0)
+	c.enqueueTask(startURL, "", domain.LinkContext{}, "", 0)
 	
 	c.wg.Wait()
 	close(c.queue)
@@ -124,14 +126,14 @@ func (c *CrawlerService) processTask(task CrawlTask) {
 			log.Printf("File exists locally, reading for links: %s", filename)
 			f, err := c.storage.Read(filename)
 			if err == nil {
-				defer f.Close()
-				content, err = io.ReadAll(f)
-				if err == nil {
-					atomic.AddInt64(&c.statsSkipped, 1)
-					c.handlePDF(u, task.Parent, task.Description, content, task.Depth)
-					return
+					defer f.Close()
+					content, err = io.ReadAll(f)
+					if err == nil {
+						atomic.AddInt64(&c.statsSkipped, 1)
+						c.handlePDF(u, task.Parent, task.ParentContext, task.Description, content, task.Depth)
+						return
+					}
 				}
-			}
 			log.Printf("Error reading local file %s, will re-download: %v", filename, err)
 		}
 	}
@@ -162,13 +164,13 @@ func (c *CrawlerService) processTask(task CrawlTask) {
 	isPDF = strings.HasSuffix(urlPath, ".pdf") || strings.Contains(lowerURL, "ext=.pdf") || bytes.HasPrefix(content, []byte("%PDF-"))
 
 	if isPDF {
-		c.handlePDF(u, task.Parent, task.Description, content, task.Depth)
+		c.handlePDF(u, task.Parent, task.ParentContext, task.Description, content, task.Depth)
 	} else {
-		c.handleHTML(u, task.Parent, task.Description, content, task.Depth)
+		c.handleHTML(u, task.Parent, task.ParentContext, task.Description, content, task.Depth)
 	}
 }
 
-func (c *CrawlerService) handlePDF(u, parent, description string, content []byte, depth int) {
+func (c *CrawlerService) handlePDF(u, parent string, parentContext domain.LinkContext, description string, content []byte, depth int) {
 	// Generate filenames
 	pdfFilename := c.generateFilename(u, ".pdf")
 	jsonFilename := strings.TrimSuffix(pdfFilename, ".pdf") + ".json"
@@ -194,6 +196,7 @@ func (c *CrawlerService) handlePDF(u, parent, description string, content []byte
 		LocalPath:      localPath,
 		ParentURL:      parent,
 		Description:    description,
+		ParentContext:  parentContext,
 		ExtractedLinks: links,
 	}
 	
@@ -214,12 +217,13 @@ func (c *CrawlerService) handlePDF(u, parent, description string, content []byte
 		// For PDF links, we use the link itself as text heuristic if needed, 
 		// but usually we just check keywords in URL if it's not a direct PDF.
 		if c.shouldVisit(absLink, "") {
-			c.enqueueTask(absLink, u, "", depth+1)
+			// PDFs don't provide structural context for links yet
+			c.enqueueTask(absLink, u, domain.LinkContext{}, "", depth+1)
 		}
 	}
 }
 
-func (c *CrawlerService) handleHTML(u, parent, description string, content []byte, depth int) {
+func (c *CrawlerService) handleHTML(u, parent string, parentContext domain.LinkContext, description string, content []byte, depth int) {
 	// Generate filenames
 	htmlFilename := c.generateFilename(u, ".htm")
 	jsonFilename := strings.TrimSuffix(htmlFilename, ".htm") + ".json"
@@ -232,14 +236,22 @@ func (c *CrawlerService) handleHTML(u, parent, description string, content []byt
 		atomic.AddInt64(&c.statsSaved, 1)
 	}
 
+	// Extract flat links (for backward compat and shouldVisit filtering)
 	linksMap, err := c.htmlParser.ExtractLinks(bytes.NewReader(content))
 	if err != nil {
 		log.Printf("Error parsing HTML %s: %v", u, err)
 		return
 	}
 
-	log.Printf("Found %d potential links in HTML: %s", len(linksMap), u)
-	
+	// Extract enriched links with hierarchical context
+	enrichedLinks, err := c.htmlParser.ExtractLinksWithContext(bytes.NewReader(content))
+	if err != nil {
+		log.Printf("Error extracting links with context from %s: %v", u, err)
+		// Non-fatal: continue with flat links only
+	}
+
+	log.Printf("Found %d potential links in HTML (%d with context): %s", len(linksMap), len(enrichedLinks), u)
+
 	var links []string
 	for link, text := range linksMap {
 		absLink := resolveRelURL(u, link)
@@ -249,8 +261,29 @@ func (c *CrawlerService) handleHTML(u, parent, description string, content []byt
 		links = append(links, absLink)
 
 		if c.shouldVisit(absLink, text) {
-			c.enqueueTask(absLink, u, text, depth+1)
+			// Find context for this link if available
+			var ctx domain.LinkContext
+			for _, el := range enrichedLinks {
+				// Simple matching by URL; ideally enrichedLinks would be the source of truth
+				// but we're keeping backward compat logic here for now
+				if strings.Contains(el.URL, link) || el.URL == absLink {
+					ctx = el.Context
+					break
+				}
+			}
+			c.enqueueTask(absLink, u, ctx, text, depth+1)
 		}
+	}
+
+	// Resolve relative URLs in enriched links
+	var resolvedEnriched []domain.EnrichedLink
+	for _, el := range enrichedLinks {
+		absURL := resolveRelURL(u, el.URL)
+		if absURL == "" {
+			continue
+		}
+		el.URL = absURL
+		resolvedEnriched = append(resolvedEnriched, el)
 	}
 
 	// Save Metadata
@@ -259,9 +292,11 @@ func (c *CrawlerService) handleHTML(u, parent, description string, content []byt
 		LocalPath:      localPath,
 		ParentURL:      parent,
 		Description:    description,
+		ParentContext:  parentContext,
 		ExtractedLinks: links,
+		LinksContext:   resolvedEnriched,
 	}
-	
+
 	metaBytes, err := json.MarshalIndent(metadata, "", "  ")
 	if err == nil {
 		c.storage.Save(jsonFilename, bytes.NewReader(metaBytes))
@@ -316,7 +351,7 @@ func (c *CrawlerService) shouldVisit(absLink, text string) bool {
 	return true
 }
 
-func (c *CrawlerService) enqueueTask(u, parent, description string, depth int) {
+func (c *CrawlerService) enqueueTask(u, parent string, parentContext domain.LinkContext, description string, depth int) {
 	// Filter out non-http links
 	if !strings.HasPrefix(u, "http") {
 		return
@@ -338,7 +373,7 @@ func (c *CrawlerService) enqueueTask(u, parent, description string, depth int) {
 		c.wg.Add(1)
 		log.Printf("Enqueuing [Depth %d]: %s", depth, uWithoutFragment)
 		// Send the cleaned URL to the queue to save space and avoid duplicate fetches
-		c.queue <- CrawlTask{URL: uWithoutFragment, Parent: parent, Description: description, Depth: depth}
+		c.queue <- CrawlTask{URL: uWithoutFragment, Parent: parent, ParentContext: parentContext, Description: description, Depth: depth}
 	}
 }
 

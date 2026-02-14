@@ -25,30 +25,56 @@ type RawDocument struct {
 	MetadataFile string // Path/key to the .json file
 }
 
+// LinkContext represents the hierarchical position inside a legal document
+// where a link was found (e.g., Art. 5, § 2, Inciso III, Alínea b).
+type LinkContext struct {
+	Artigo    string `json:"artigo,omitempty"`
+	Paragrafo string `json:"paragrafo,omitempty"`
+	Inciso    string `json:"inciso,omitempty"`
+	Alinea    string `json:"alinea,omitempty"`
+}
+
+// EnrichedLink holds a discovered link plus its structural origin context.
+type EnrichedLink struct {
+	URL     string      `json:"url"`
+	Text    string      `json:"text,omitempty"`
+	Context LinkContext `json:"context"`
+}
+
 // CrawlerMetadata mirrors the JSON metadata written by the crawler.
 type CrawlerMetadata struct {
-	URL            string   `json:"url"`
-	LocalPath      string   `json:"local_path"`
-	ParentURL      string   `json:"parent_url,omitempty"`
-	Description    string   `json:"description,omitempty"`
-	ExtractedLinks []string `json:"extracted_links,omitempty"`
+	URL            string         `json:"url"`
+	LocalPath      string         `json:"local_path"`
+	ParentURL      string         `json:"parent_url,omitempty"`
+	Description    string         `json:"description,omitempty"`
+	ParentContext  LinkContext    `json:"parent_context,omitempty"`
+	ExtractedLinks []string       `json:"extracted_links,omitempty"`
+	LinksContext   []EnrichedLink `json:"links_context,omitempty"`
 }
 
 // --- Parsed Output Types ---
 
+// Reference represents a cross-reference to another legal document,
+// enriched with the hierarchical context of where the reference appears.
+type Reference struct {
+	ID      string       `json:"id"`
+	Context *LinkContext `json:"context,omitempty"`
+}
+
 // LegalDocument is the final structured representation of a law.
 type LegalDocument struct {
-	ID          string    `json:"id"`
-	Tipo        string    `json:"tipo"`
-	Esfera      string    `json:"esfera"`
-	Numero      string    `json:"numero"`
-	Ano         string    `json:"ano"`
-	Titulo      string    `json:"titulo"`
-	Ementa      string    `json:"ementa"`
-	URLOrigem   string    `json:"url_origem"`
-	URLPai      string    `json:"url_pai,omitempty"`
-	Artigos     []Article `json:"artigos,omitempty"`
-	Referencias []string  `json:"referencias,omitempty"`
+	ID          string      `json:"id"`
+	Tipo        string      `json:"tipo"`
+	Esfera      string      `json:"esfera"`
+	Numero      string      `json:"numero"`
+	Ano         string      `json:"ano"`
+	Titulo      string      `json:"titulo"`
+	Ementa        string      `json:"ementa"`
+	URLOrigem     string      `json:"url_origem"`
+	URLPai        string      `json:"url_pai,omitempty"`
+	URLPaiContext *LinkContext `json:"url_pai_context,omitempty"`
+	Artigos       []Article   `json:"artigos,omitempty"`
+	Referencias   []Reference `json:"referencias,omitempty"`
 }
 
 // Article represents an article within a law.
