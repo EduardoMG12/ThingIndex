@@ -39,6 +39,10 @@ func (c *Neo4jClient) EnsureConstraints(ctx context.Context) error {
 		queries := []string{
 			"CREATE CONSTRAINT IF NOT EXISTS FOR (l:Lei) REQUIRE l.id IS UNIQUE",
 			"CREATE INDEX IF NOT EXISTS FOR (l:Lei) ON (l.numero)",
+			"CREATE CONSTRAINT IF NOT EXISTS FOR (a:Artigo) REQUIRE a.id IS UNIQUE",
+			"CREATE CONSTRAINT IF NOT EXISTS FOR (p:Paragrafo) REQUIRE p.id IS UNIQUE",
+			"CREATE CONSTRAINT IF NOT EXISTS FOR (i:Inciso) REQUIRE i.id IS UNIQUE",
+			"CREATE CONSTRAINT IF NOT EXISTS FOR (al:Alinea) REQUIRE al.id IS UNIQUE",
 		}
 
 		for _, q := range queries {
@@ -196,4 +200,32 @@ func processIncisos(ctx context.Context, tx neo4j.ManagedTransaction, parentID s
 		}
 	}
 	return nil
+}
+
+// LinkArticleToLaw creates a CITATION relationship between an Article and a referenced Law.
+// It uses MERGE on the target Law, creating a "shell" node if it doesn't exist yet.
+func (c *Neo4jClient) LinkArticleToLaw(ctx context.Context, articleID string, targetLawType, targetLawNum string) error {
+	session := c.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close(ctx)
+
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		query := `
+			MATCH (a:Artigo {id: $articleID})
+			MERGE (target:Lei {numero: $targetNum})
+			ON CREATE SET target.tipo = $targetType, target.esfera = 'federal', target.status = 'unknown'
+			MERGE (a)-[:CITA]->(target)
+		`
+		params := map[string]any{
+			"articleID":  articleID,
+			"targetNum":  targetLawNum,
+			"targetType": targetLawType,
+		}
+
+		if _, err := tx.Run(ctx, query, params); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	})
+
+	return err
 }

@@ -61,6 +61,22 @@ func main() {
 		RETURN l.numero as Lei, a.numero as Art, p.numero as Par, i.numero as Inc, al.numero as Ali
 		LIMIT 5
 	`)
+	// 5. Sample Cross-References (Law -> Article -> Cites -> Law)
+	printHeader("Sample Cross-References (Citations)")
+	runQuery(ctx, session, `
+		MATCH (l1:Lei)-[:CONTEM]->(a:Artigo)-[:CITA]->(l2:Lei)
+		RETURN l1.numero as Lei_Origem, a.numero as Artigo, l2.numero as Lei_Citada
+		LIMIT 10
+	`)
+
+	// 6. Check for "Ghost" Nodes (Created by MERGE but not fully populated yet)
+	printHeader("Ghost Nodes (Laws referenced but not yet ingested)")
+	runQuery(ctx, session, `
+		MATCH (l:Lei)
+		WHERE l.titulo IS NULL AND l.status = 'unknown'
+		RETURN l.numero as Lei_Fantasma, count(l)
+		LIMIT 10
+	`)
 }
 
 func printHeader(title string) {
