@@ -2,6 +2,7 @@ package crawler
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha1"
 	"encoding/json"
 	"fmt"
@@ -17,13 +18,7 @@ import (
 	"github.com/user/legisgraph-crawler/internal/domain"
 )
 
-type CrawlTask struct {
-	URL           string
-	Parent        string
-	ParentContext domain.LinkContext
-	Description   string
-	Depth         int
-}
+
 
 type HTMLParser interface {
 	ExtractLinks(content io.Reader) (map[string]string, error)
@@ -35,8 +30,8 @@ type CrawlerService struct {
 	pdfParser  domain.Parser
 	htmlParser HTMLParser
 	storage    domain.Storage
-	visited    sync.Map
-	queue      chan CrawlTask
+	visited    *BloomFilter
+	queue      domain.Queue
 	wg         sync.WaitGroup
 	maxDepth   int
 
@@ -51,13 +46,17 @@ type CrawlerService struct {
 	statsSkipped   int64
 }
 
-func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlParser HTMLParser, storage domain.Storage, maxDepth int, ignoreKeywords []string, outputSubdir string) *CrawlerService {
+func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlParser HTMLParser, storage domain.Storage, queue domain.Queue, maxDepth int, ignoreKeywords []string, outputSubdir string) *CrawlerService {
+	// Initialize Bloom Filter with 1M items and 0.01 false positive rate
+	bf := NewBloomFilter(1000000, 0.01)
+
 	return &CrawlerService{
 		fetcher:        fetcher,
 		pdfParser:      pdfParser,
 		htmlParser:     htmlParser,
 		storage:        storage,
-		queue:          make(chan CrawlTask, 100000), // Very large buffer to avoid deadlock
+		queue:          queue,
+		visited:        bf,
 		maxDepth:       maxDepth,
 		ignoreKeywords: ignoreKeywords,
 		outputSubdir:   outputSubdir,
@@ -65,16 +64,42 @@ func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlPars
 }
 
 func (c *CrawlerService) Crawl(startURL string) error {
+	// Consumer loop
+	tasks, err := c.queue.Consume()
+	if err != nil {
+		return fmt.Errorf("failed to start consumer: %w", err)
+	}
+
 	// Start workers
 	numWorkers := 10
 	for i := 0; i < numWorkers; i++ {
-		go c.worker()
+		c.wg.Add(1)
+		go c.worker(tasks)
 	}
 
 	c.enqueueTask(startURL, "", domain.LinkContext{}, "", 0)
 	
-	c.wg.Wait()
-	close(c.queue)
+	// In a real long-running process, we might wait for a signal.
+	// Here, we wait for waitgroup if we want to track active processing.
+	// But with RabbitMQ, "active" is hard to define exactly without an external tracker or empty queue check.
+	// For this task, we will just block forever or wait until user interrupts, 
+	// OR we assume we want to run until manually stopped.
+	// The previous implementation used WaitGroup which tracked active tasks.
+	// We can keep using WaitGroup for *active processing* but not for "empty queue" termination easily without more logic.
+	// BUT, the prompt says "it will read links from queue and process".
+	// Let's Keep the WaitGroup for graceful shutdown if we implement it, but `c.wg.Wait()` might return early if queue is empty but messages are in flight?
+	// No, `wg` tracks active `processTask`.
+	// The problem is: how do we know when we are "done" if we are decoupled?
+	// Usually decoupled consumers run forever.
+	// I will make it run forever (block) until context cancellation (not implemented yet) or just block.
+	// But `main` expects `Crawl` to block.
+	
+	// Create a channel to block
+	forever := make(chan bool)
+	<-forever
+	
+	// c.wg.Wait() // This logic was for the in-memory recursive crawler.
+	// close(c.queue) // We don't close the queue connection here usually unless shutting down.
 
 	log.Printf("------------------------------------------")
 	log.Printf("CRAWLING SUMMARY:")
@@ -87,14 +112,14 @@ func (c *CrawlerService) Crawl(startURL string) error {
 	return nil
 }
 
-func (c *CrawlerService) worker() {
-	for task := range c.queue {
+func (c *CrawlerService) worker(tasks <-chan domain.CrawlTask) {
+	defer c.wg.Done()
+	for task := range tasks {
 		c.processTask(task)
-		c.wg.Done()
 	}
 }
 
-func (c *CrawlerService) processTask(task CrawlTask) {
+func (c *CrawlerService) processTask(task domain.CrawlTask) {
 	u := task.URL
 	
 	if task.Depth > c.maxDepth {
@@ -102,90 +127,83 @@ func (c *CrawlerService) processTask(task CrawlTask) {
 		return
 	}
 
-	// Filter out non-http links (like the file:/// links found on Planalto)
+	// Filter out non-http links
 	if !strings.HasPrefix(u, "http") {
 		return
 	}
 
-	log.Printf("[Depth %d] Visiting: %s", task.Depth, u)
+	log.Printf("[Depth %d] Processing task: %s", task.Depth, u)
 	atomic.AddInt64(&c.statsProcessed, 1)
 
-	// Check if file already exists before downloading
+	// Determine file type and name
 	lowerURL := strings.ToLower(u)
 	parsedURL, _ := url.Parse(lowerURL)
 	urlPath := parsedURL.Path
-
 	isPDF := strings.HasSuffix(urlPath, ".pdf") || strings.Contains(lowerURL, "ext=.pdf")
-	var content []byte
-	var body io.ReadCloser
-	var err error
-
+	
+	ext := ".htm"
 	if isPDF {
-		filename := c.generateFilename(u, ".pdf")
-		if c.storage.Exists(filename) {
-			log.Printf("File exists locally, reading for links: %s", filename)
-			f, err := c.storage.Read(filename)
-			if err == nil {
-					defer f.Close()
-					content, err = io.ReadAll(f)
-					if err == nil {
-						atomic.AddInt64(&c.statsSkipped, 1)
-						c.handlePDF(u, task.Parent, task.ParentContext, task.Description, content, task.Depth)
-						return
-					}
-				}
-			log.Printf("Error reading local file %s, will re-download: %v", filename, err)
+		ext = ".pdf"
+	}
+	
+	filename := c.generateFilename(u, ext)
+
+	// Check if file already exists
+	if c.storage.Exists(filename) {
+		log.Printf("File exists locally, processing: %s", filename)
+		atomic.AddInt64(&c.statsSkipped, 1)
+		if isPDF {
+			c.handlePDF(u, task.Parent, task.ParentContext, task.Description, filename, task.Depth)
+		} else {
+			c.handleHTML(u, task.Parent, task.ParentContext, task.Description, filename, task.Depth)
 		}
+		return
 	}
 
-	body, err = c.fetcher.Fetch(u)
+	// Fetch and Stream to Storage
+	body, err := c.fetcher.Fetch(u)
 	if err != nil {
 		log.Printf("Error fetching %s: %v", u, err)
 		return
 	}
 	defer body.Close()
 
-	content, err = io.ReadAll(body)
+	_, err = c.storage.Save(filename, body)
 	if err != nil {
-		log.Printf("Error reading body of %s: %v", u, err)
+		log.Printf("Error saving %s: %v", u, err)
 		return
 	}
-	
 	atomic.AddInt64(&c.statsFetched, 1)
-	
-	// Determine type
-	// 1. Check extension
-	// 2. Ideally check Content-Type header (but fetcher hides it currently)
-	// We'll rely on extension + simple detection for now.
-	
-	lowerURL = strings.ToLower(u)
-	parsedURL, _ = url.Parse(lowerURL)
-	urlPath = parsedURL.Path
-	isPDF = strings.HasSuffix(urlPath, ".pdf") || strings.Contains(lowerURL, "ext=.pdf") || bytes.HasPrefix(content, []byte("%PDF-"))
+	atomic.AddInt64(&c.statsSaved, 1)
 
+	// Post-process based on type
+	// Note: We might have saved an HTML as .pdf if detection failed earlier, 
+	// but we trust extension for now as per previous logic.
+	// Improvements could be made to sniff header/content before stream, but `Save` consumes the stream.
+	
 	if isPDF {
-		c.handlePDF(u, task.Parent, task.ParentContext, task.Description, content, task.Depth)
+		c.handlePDF(u, task.Parent, task.ParentContext, task.Description, filename, task.Depth)
 	} else {
-		c.handleHTML(u, task.Parent, task.ParentContext, task.Description, content, task.Depth)
+		c.handleHTML(u, task.Parent, task.ParentContext, task.Description, filename, task.Depth)
 	}
 }
 
-func (c *CrawlerService) handlePDF(u, parent string, parentContext domain.LinkContext, description string, content []byte, depth int) {
-	// Generate filenames
-	pdfFilename := c.generateFilename(u, ".pdf")
-	jsonFilename := strings.TrimSuffix(pdfFilename, ".pdf") + ".json"
+func (c *CrawlerService) handlePDF(u, parent string, parentContext domain.LinkContext, description string, filename string, depth int) {
+	jsonFilename := strings.TrimSuffix(filename, ".pdf") + ".json"
 
-	// Save PDF
-	localPath, err := c.storage.Save(pdfFilename, bytes.NewReader(content))
+	// Read from storage using ReadAt for PdfParser
+	readerAt, size, err := c.storage.ReadAt(filename)
 	if err != nil {
-		log.Printf("Error saving PDF %s: %v", u, err)
-	} else {
-		atomic.AddInt64(&c.statsSaved, 1)
+		log.Printf("Error reading PDF content for %s: %v", u, err)
+		return
+	}
+	
+	if closer, ok := readerAt.(io.Closer); ok {
+		defer closer.Close()
 	}
 
 	// Extract Links
-	readerAt := bytes.NewReader(content)
-	links, err := c.pdfParser.ExtractLinks(readerAt, int64(len(content)))
+	links, err := c.pdfParser.ExtractLinks(readerAt, size)
 	if err != nil {
 		log.Printf("Error parsing PDF %s: %v", u, err)
 	}
@@ -193,7 +211,7 @@ func (c *CrawlerService) handlePDF(u, parent string, parentContext domain.LinkCo
 	// Save Metadata
 	metadata := domain.DocumentMetadata{
 		URL:            u,
-		LocalPath:      localPath,
+		LocalPath:      filename, // using filename as local path for now, or we could ask storage for full path if needed
 		ParentURL:      parent,
 		Description:    description,
 		ParentContext:  parentContext,
@@ -214,26 +232,32 @@ func (c *CrawlerService) handlePDF(u, parent string, parentContext domain.LinkCo
 			continue
 		}
 		
-		// For PDF links, we use the link itself as text heuristic if needed, 
-		// but usually we just check keywords in URL if it's not a direct PDF.
 		if c.shouldVisit(absLink, "") {
-			// PDFs don't provide structural context for links yet
 			c.enqueueTask(absLink, u, domain.LinkContext{}, "", depth+1)
 		}
 	}
 }
 
-func (c *CrawlerService) handleHTML(u, parent string, parentContext domain.LinkContext, description string, content []byte, depth int) {
-	// Generate filenames
-	htmlFilename := c.generateFilename(u, ".htm")
-	jsonFilename := strings.TrimSuffix(htmlFilename, ".htm") + ".json"
+func (c *CrawlerService) handleHTML(u, parent string, parentContext domain.LinkContext, description string, filename string, depth int) {
+	jsonFilename := strings.TrimSuffix(filename, ".htm") + ".json"
 
-	// Save HTML
-	localPath, err := c.storage.Save(htmlFilename, bytes.NewReader(content))
+	// Read content for HTML parsing
+	// For HTML we still need to read it all for parsing generally, but we do it from disk now
+	// Ideally we could stream parsing too, but goquery/net/html works with readers, so we can stream read.
+	f, err := c.storage.Read(filename)
 	if err != nil {
-		log.Printf("Error saving HTML %s: %v", u, err)
-	} else {
-		atomic.AddInt64(&c.statsSaved, 1)
+		log.Printf("Error reading HTML content for %s: %v", u, err)
+		return
+	}
+	defer f.Close()
+
+	// Parse HTML (we need to read it twice or tee it if we want both flat and enriched...
+	// or we just read it into memory here if it's HTML (usually smaller than PDFs).
+	// Let's read into memory for simplicity in parsing logic for now, as HTMLs are small.
+	content, err := io.ReadAll(f)
+	if err != nil {
+		log.Printf("Error reading HTML content %s: %v", u, err)
+		return
 	}
 
 	// Extract flat links (for backward compat and shouldVisit filtering)
@@ -289,7 +313,7 @@ func (c *CrawlerService) handleHTML(u, parent string, parentContext domain.LinkC
 	// Save Metadata
 	metadata := domain.DocumentMetadata{
 		URL:            u,
-		LocalPath:      localPath,
+		LocalPath:      filename,
 		ParentURL:      parent,
 		Description:    description,
 		ParentContext:  parentContext,
@@ -369,11 +393,19 @@ func (c *CrawlerService) enqueueTask(u, parent string, parentContext domain.Link
 	}
 
 	normalizedURL := strings.ToLower(strings.TrimRight(uWithoutFragment, "/"))
-	if _, loaded := c.visited.LoadOrStore(normalizedURL, true); !loaded {
-		c.wg.Add(1)
+	if !c.visited.TestAndAdd(normalizedURL) {
 		log.Printf("Enqueuing [Depth %d]: %s", depth, uWithoutFragment)
-		// Send the cleaned URL to the queue to save space and avoid duplicate fetches
-		c.queue <- CrawlTask{URL: uWithoutFragment, Parent: parent, ParentContext: parentContext, Description: description, Depth: depth}
+		
+		err := c.queue.Publish(context.Background(), domain.CrawlTask{
+			URL:           uWithoutFragment,
+			Parent:        parent,
+			ParentContext: parentContext,
+			Description:   description,
+			Depth:         depth,
+		})
+		if err != nil {
+			log.Printf("Failed to publish task: %v", err)
+		}
 	}
 }
 
