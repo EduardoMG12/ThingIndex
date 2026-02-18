@@ -67,5 +67,6 @@ type CrawlTask struct {
 type Queue interface {
 	Publish(ctx context.Context, task CrawlTask) error
 	Consume() (<-chan CrawlTask, error)
+	Purge() error
 	Close()
 }
