@@ -69,3 +69,17 @@ func (s *LocalStorage) Exists(filename string) bool {
 	_, err := os.Stat(fullPath)
 	return !os.IsNotExist(err)
 }
+
+func (s *LocalStorage) ReadAt(filename string) (io.ReaderAt, int64, error) {
+	fullPath := filepath.Join(s.baseDir, filename)
+	f, err := os.Open(fullPath)
+	if err != nil {
+		return nil, 0, err
+	}
+	info, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return nil, 0, err
+	}
+	return f, info.Size(), nil
+}

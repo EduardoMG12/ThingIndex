@@ -1,6 +1,9 @@
 package domain
 
-import "io"
+import (
+	"context"
+	"io"
+)
 
 // LinkContext represents the hierarchical position inside a legal document
 // where a link was found (e.g., Art. 5, § 2, Inciso III, Alínea b).
@@ -45,9 +48,24 @@ type Storage interface {
 	Save(filename string, content io.Reader) (string, error)
 	Exists(filename string) bool
 	Read(filename string) (io.ReadCloser, error)
+	ReadAt(filename string) (io.ReaderAt, int64, error)
 }
 
 // Crawler defines the main crawling logic.
 type Crawler interface {
 	Crawl(startURL string) error
+}
+
+type CrawlTask struct {
+	URL           string        `json:"url"`
+	Parent        string        `json:"parent"`
+	ParentContext LinkContext   `json:"parent_context"`
+	Description   string        `json:"description"`
+	Depth         int           `json:"depth"`
+}
+
+type Queue interface {
+	Publish(ctx context.Context, task CrawlTask) error
+	Consume() (<-chan CrawlTask, error)
+	Close()
 }
