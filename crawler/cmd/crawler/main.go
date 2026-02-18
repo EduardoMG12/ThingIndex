@@ -11,6 +11,7 @@ import (
 	"github.com/user/legisgraph-crawler/internal/crawler"
 	"github.com/user/legisgraph-crawler/internal/fetcher"
 	"github.com/user/legisgraph-crawler/internal/parser"
+	"github.com/user/legisgraph-crawler/internal/queue"
 	"github.com/user/legisgraph-crawler/internal/storage"
 )
 
@@ -66,6 +67,16 @@ func main() {
 
 	filterName := os.Getenv("CRAWLER_FILTER_NAME")
 
+	rabbitURL := os.Getenv("RABBITMQ_URL")
+	if rabbitURL == "" {
+		rabbitURL = "amqp://guest:guest@localhost:5672/"
+	}
+	
+	queueName := os.Getenv("RABBITMQ_QUEUE")
+	if queueName == "" {
+		queueName = "crawler_tasks"
+	}
+
 	// Initialize components
 	f := fetcher.NewHTTPFetcher(timeout, 3) 
 	pdfP := parser.NewPDFParser()
@@ -79,8 +90,18 @@ func main() {
 		log.Fatalf("Failed to initialize storage: %v", err)
 	}
 
+	// Initialize Queue
+	q, err := queue.NewRabbitMQClient(rabbitURL, queueName)
+	if err != nil {
+		log.Fatalf("Failed to initialize queue: %v", err)
+	}
+	if err := q.Connect(); err != nil {
+		log.Fatalf("Failed to connect to queue: %v", err)
+	}
+	defer q.Close()
+
 	// Initialize Crawler
-	c := crawler.NewCrawlerService(f, pdfP, htmlP, s, maxDepth, ignoreKeywords, filterName)
+	c := crawler.NewCrawlerService(f, pdfP, htmlP, s, q, maxDepth, ignoreKeywords, filterName)
 
 	// Start Crawling
 	log.Printf("Starting crawler at %s", startURL)

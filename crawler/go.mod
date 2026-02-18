@@ -7,6 +7,7 @@ require github.com/ledongthuc/pdf v0.0.0-20250511090121-5959a4027728
 require (
 	github.com/PuerkitoBio/goquery v1.11.0
 	github.com/joho/godotenv v1.5.1
+	github.com/rabbitmq/amqp091-go v1.10.0
 )
 
 require (
