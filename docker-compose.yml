@@ -9,3 +9,13 @@ services:
     environment:
       - NEO4J_AUTH=neo4j/minhasenha123
       - NEO4J_PLUGINS=["apoc", "graph-data-science"]
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: tcc-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
