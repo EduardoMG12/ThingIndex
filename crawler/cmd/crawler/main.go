@@ -21,11 +21,6 @@ func main() {
 		log.Println("No .env file found, using defaults or system env vars")
 	}
 
-	startURL := os.Getenv("CRAWLER_START_URL")
-	if startURL == "" {
-		log.Fatal("CRAWLER_START_URL is required")
-	}
-
 	timeoutStr := os.Getenv("CRAWLER_TIMEOUT")
 	timeout, err := time.ParseDuration(timeoutStr)
 	if err != nil {
@@ -104,8 +99,8 @@ func main() {
 	c := crawler.NewCrawlerService(f, pdfP, htmlP, s, q, maxDepth, ignoreKeywords, filterName)
 
 	// Start Crawling
-	log.Printf("Starting crawler at %s", startURL)
-	if err := c.Crawl(startURL); err != nil {
+	log.Printf("Starting crawler, reading from queue...")
+	if err := c.Crawl(); err != nil {
 		log.Fatalf("Crawler failed: %v", err)
 	}
 	log.Println("Crawling finished successfully.")

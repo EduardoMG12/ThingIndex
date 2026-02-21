@@ -63,7 +63,7 @@ func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlPars
 	}
 }
 
-func (c *CrawlerService) Crawl(startURL string) error {
+func (c *CrawlerService) Crawl() error {
 	// Consumer loop
 	tasks, err := c.queue.Consume()
 	if err != nil {
@@ -76,8 +76,6 @@ func (c *CrawlerService) Crawl(startURL string) error {
 		c.wg.Add(1)
 		go c.worker(tasks)
 	}
-
-	c.enqueueTask(startURL, "", domain.LinkContext{}, "", 0)
 	
 	// In a real long-running process, we might wait for a signal.
 	// Here, we wait for waitgroup if we want to track active processing.
