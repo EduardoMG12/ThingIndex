@@ -38,17 +38,48 @@ For each document, the crawler saves:
 }
 ```
 
+## 🐇 Queue & Triggering (RabbitMQ)
+
+The Crawler operates purely as a background worker (consumer) using **RabbitMQ**. It listens to the `crawler_tasks` queue. 
+
+To start crawling a website, you must publish a JSON payload to the queue matching the `CrawlTask` structure.
+
+**Example Payload to start crawling:**
+```json
+{
+  "url": "http://www.planalto.gov.br/ccivil_03/leis/2003/L10.741.htm",
+  "parent": "",
+  "description": "Start URL",
+  "depth": 0
+}
+```
+
+### 🧹 The `__PURGE__` Command
+If you need to stop the crawler, wipe the current queue, and clean the internal memory cache (Bloom Filter) without restarting the container, you can send a magic payload with the URL set to `__PURGE__`:
+```json
+{
+  "url": "__PURGE__",
+  "parent": "",
+  "description": "",
+  "depth": 0
+}
+```
+The crawler will immediately purge all pending messages in RabbitMQ and reset its state.
+
 ## 🛠️ Setup & Run
 
-1. **Install Dependencies**:
+1. **Start dependencies** (RabbitMQ and Neo4j) via the root `docker-compose.yml`:
    ```bash
    go mod download
    ```
 
-2. **Configure**:
-   Copy `.env.example` to `.env` (optional, uses defaults if missing).
+   Configured either by the `.env` file at the root of the project or Docker parameters.
 
 3. **Run**:
+   ```bash
+   docker compose up crawler -d
+   ```
+   Or locally (ensuring RabbitMQ is running): 
    ```bash
    go run cmd/crawler/main.go
    ```
