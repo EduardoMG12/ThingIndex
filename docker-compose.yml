@@ -6,9 +6,8 @@ services:
     ports:
       - "7474:7474" 
       - "7687:7687"
-    environment:
-      - NEO4J_AUTH=neo4j/minhasenha123
-      - NEO4J_PLUGINS=["apoc", "graph-data-science"]
+    env_file:
+      - .env
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -16,6 +15,18 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
-    environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
+    env_file:
+      - .env
+
+  crawler:
+    build:
+      context: ./crawler
+      dockerfile: Dockerfile
+    container_name: tcc-crawler
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
+    env_file:
+      - .env
+    volumes:
+      - ./crawler/output_pdfs:/app/output_pdfs

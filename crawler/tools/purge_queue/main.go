@@ -9,8 +9,15 @@ import (
 )
 
 func main() {
-	if err := godotenv.Load("../../.env"); err != nil {
-		log.Println("No .env file found, using defaults")
+	log.Println("Starting queue purge tool...")
+
+	// Assuming running from project root
+	if err := godotenv.Load(".env"); err != nil {
+		log.Println("No .env file found in current directory, looking in parent...")
+		// Fallback for running from subdirectory
+		if err := godotenv.Load("../../.env"); err != nil {
+			log.Println("No .env file found, using defaults")
+		}
 	}
 
 	rabbitURL := os.Getenv("RABBITMQ_URL")
