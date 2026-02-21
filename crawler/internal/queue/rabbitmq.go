@@ -96,62 +96,48 @@ func (r *RabbitMQClient) Publish(ctx context.Context, task domain.CrawlTask) err
 	return nil
 }
 
-func (r *RabbitMQClient) Consume() (<-chan domain.CrawlTask, error) {
+func (r *RabbitMQClient) Consume() (<-chan domain.TaskDelivery, error) {
 	msgs, err := r.channel.Consume(
-		r.qName, // queue
-		"",      // consumer
-		false,   // auto-ack (we will manually ack)
-		false,   // exclusive
-		false,   // no-local
-		false,   // no-wait
-		nil,     // args
+		r.qName,
+		"",
+		false,
+		false,
+		false,
+		false,
+		nil,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to register a consumer: %w", err)
 	}
 
-	taskChan := make(chan domain.CrawlTask)
+	deliveryChan := make(chan domain.TaskDelivery)
 
 	go func() {
-		defer close(taskChan)
+		defer close(deliveryChan)
 		for d := range msgs {
 			var task domain.CrawlTask
 			if err := json.Unmarshal(d.Body, &task); err != nil {
 				log.Printf("Error unmarshalling task: %v", err)
-				d.Nack(false, false) // discard invalid message
+				d.Nack(false, false)
 				continue
 			}
+
+			// Capture the current delivery instance
+			currentDelivery := d
 			
-			// We need a way to ack the message after processing. 
-			// For simplicity in this decoupling phase, we will attach a callback 
-			// or handle acking within the loop if possible, but the channel returns clean objects.
-			// Ideally, domain.CrawlTask should not have Ack methods. 
-			// So we might need to wrap it or handle acking differently.
-			// BUT, for now, let's keep it simple: Auto-Ack = false requires explicit ack.
-			// Since our interface returns `<-chan domain.CrawlTask`, the caller doesn't have access to `d`.
-			// This is a leaky abstraction if we don't handle it.
-			
-			// FIXME: This is a simplification. In a robust system, we'd return a wrapper object with Ack().
-			// For this specific request "decouple... process links... internal processing stops", 
-			// let's assume successful processing if no panic, OR better, change the interface 
-			// to return a wrapper.
-			
-			// However, to strictly follow "decouple... receive link... process... put in rabbitmq",
-			// I will return the task and Ack immediately here for NOW, 
-			// knowing that if the process crashes, the message is lost.
-			// To fix this without changing all interfaces immediately: 
-			// We will just Log and Ack. 
-			// Ideally we should refactor domain.CrawlTask or add a AckCallback.
-			
-			// Let's rely on auto-ack = true for now to simplify strictly for the prompt's request of decoupling,
-			// OR restart with auto-ack=false and ack here.
-			
-			taskChan <- task
-			d.Ack(false)
+			deliveryChan <- domain.TaskDelivery{
+				Task: task,
+				Ack: func() {
+					currentDelivery.Ack(false)
+				},
+				Nack: func(requeue bool) {
+					currentDelivery.Nack(false, requeue)
+				},
+			}
 		}
 	}()
 
-	return taskChan, nil
+	return deliveryChan, nil
 }
 
 func (r *RabbitMQClient) Purge() error {

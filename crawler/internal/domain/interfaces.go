@@ -64,9 +64,15 @@ type CrawlTask struct {
 	Depth         int           `json:"depth"`
 }
 
+type TaskDelivery struct {
+	Task CrawlTask
+	Ack  func()
+	Nack func(requeue bool)
+}
+
 type Queue interface {
 	Publish(ctx context.Context, task CrawlTask) error
-	Consume() (<-chan CrawlTask, error)
+	Consume() (<-chan TaskDelivery, error)
 	Purge() error
 	Close()
 }
