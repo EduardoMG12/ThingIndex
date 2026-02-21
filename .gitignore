@@ -1,6 +1,9 @@
 # Binaries (only at module root, not cmd/ directories)
 /legal-parser/parser
 /crawler/main
+/crawler/crawler
+/crawler/crawler_bin
+/crawler/purge_queue
 *.exe
 *.exe~
 *.dll
