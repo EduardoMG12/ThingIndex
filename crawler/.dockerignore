@@ -1,0 +1,32 @@
+# Binaries
+crawler_app
+main
+crawler_bin
+purge_queue
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Data and Outputs
+output_pdfs/
+raw_data/
+parsed_data/
+storage/
+
+# Environment files
+.env
+.env.*
+
+# IDEs and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Go mod cache (if any local vendor)
+vendor/

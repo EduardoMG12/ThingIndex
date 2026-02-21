@@ -14,7 +14,6 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
 
 COPY --from=builder /app/crawler_app .
-COPY .env .env
 
 RUN mkdir -p /app/output_pdfs
 
