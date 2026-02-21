@@ -30,3 +30,16 @@ services:
       - .env
     volumes:
       - ./crawler/output_pdfs:/app/output_pdfs
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: tcc-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    depends_on:
+      - rabbitmq
+    env_file:
+      - .env
