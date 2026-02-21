@@ -35,7 +35,7 @@ type DocumentMetadata struct {
 
 // Fetcher defines the interface for fetching content from a URL.
 type Fetcher interface {
-	Fetch(url string) (io.ReadCloser, error)
+	Fetch(ctx context.Context, url string) (io.ReadCloser, error)
 }
 
 // Parser defines the interface for extracting links from a PDF.
@@ -62,6 +62,8 @@ type CrawlTask struct {
 	ParentContext LinkContext   `json:"parent_context"`
 	Description   string        `json:"description"`
 	Depth         int           `json:"depth"`
+	MaxDepth      int           `json:"max_depth"`
+	DirName       string        `json:"dir_name"`
 }
 
 type TaskDelivery struct {
