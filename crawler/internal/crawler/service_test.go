@@ -137,6 +137,7 @@ func TestGenerateFilename(t *testing.T) {
 		name         string
 		url          string
 		ext          string
+		dirName      string
 		outputSubdir string
 		wantContains string
 	}{
@@ -144,6 +145,7 @@ func TestGenerateFilename(t *testing.T) {
 			name:         "PDF filename contains extension",
 			url:          "https://example.com/documents/law-123.pdf",
 			ext:          ".pdf",
+			dirName:      "",
 			outputSubdir: "",
 			wantContains: ".pdf",
 		},
@@ -151,6 +153,7 @@ func TestGenerateFilename(t *testing.T) {
 			name:         "HTML filename contains extension",
 			url:          "https://example.com/page",
 			ext:          ".htm",
+			dirName:      "",
 			outputSubdir: "",
 			wantContains: ".htm",
 		},
@@ -158,6 +161,7 @@ func TestGenerateFilename(t *testing.T) {
 			name:         "Output subdir is prepended",
 			url:          "https://example.com/doc.pdf",
 			ext:          ".pdf",
+			dirName:      "",
 			outputSubdir: "laws",
 			wantContains: "laws/",
 		},
@@ -165,6 +169,7 @@ func TestGenerateFilename(t *testing.T) {
 			name:         "Same URL always generates same filename",
 			url:          "https://example.com/stable.pdf",
 			ext:          ".pdf",
+			dirName:      "",
 			outputSubdir: "",
 			wantContains: ".pdf",
 		},
@@ -175,7 +180,7 @@ func TestGenerateFilename(t *testing.T) {
 			svc := &CrawlerService{
 				outputSubdir: tt.outputSubdir,
 			}
-			result := svc.generateFilename(tt.url, tt.ext)
+			result := svc.generateFilename(tt.url, tt.ext, tt.dirName)
 			if result == "" {
 				t.Error("generateFilename returned empty string")
 			}
@@ -188,8 +193,8 @@ func TestGenerateFilename(t *testing.T) {
 	// Determinism test: same input = same output
 	t.Run("Deterministic output", func(t *testing.T) {
 		svc := &CrawlerService{}
-		a := svc.generateFilename("https://example.com/test.pdf", ".pdf")
-		b := svc.generateFilename("https://example.com/test.pdf", ".pdf")
+		a := svc.generateFilename("https://example.com/test.pdf", ".pdf", "")
+		b := svc.generateFilename("https://example.com/test.pdf", ".pdf", "")
 		if a != b {
 			t.Errorf("generateFilename is not deterministic: %q != %q", a, b)
 		}
@@ -198,8 +203,8 @@ func TestGenerateFilename(t *testing.T) {
 	// Different URLs = different filenames
 	t.Run("Different URLs produce different filenames", func(t *testing.T) {
 		svc := &CrawlerService{}
-		a := svc.generateFilename("https://example.com/doc1.pdf", ".pdf")
-		b := svc.generateFilename("https://example.com/doc2.pdf", ".pdf")
+		a := svc.generateFilename("https://example.com/doc1.pdf", ".pdf", "")
+		b := svc.generateFilename("https://example.com/doc2.pdf", ".pdf", "")
 		if a == b {
 			t.Errorf("Different URLs produced same filename: %q", a)
 		}
