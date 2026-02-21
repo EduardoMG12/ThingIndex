@@ -71,23 +71,68 @@ func (fs *FileSystemSource) ListDocuments() ([]domain.RawDocument, error) {
 
 // GetContent reads the raw HTML bytes for a document.
 func (fs *FileSystemSource) GetContent(id string) ([]byte, error) {
-	// Try common extensions
+	// Note: this assumes flat directory. If files are in subdirectories,
+	// ListDocuments already resolves ContentFile.
+	// But the domain interface passes only `id`.
+	// Let's search the base directory again, or rely on a cached map if we want to optimize.
+	// For now, let's walk here again or better yet: maintain a map if initialized!
+	// Realistically, to fix the bug without changing the port interface:
+	
+	// Fast path - flat directory
 	for _, ext := range []string{".htm", ".html"} {
 		path := filepath.Join(fs.baseDir, id+ext)
-		data, err := os.ReadFile(path)
-		if err == nil {
+		if data, err := os.ReadFile(path); err == nil {
 			return data, nil
 		}
 	}
+
+	// Slow path - deep directory search
+	var foundPath string
+	filepath.Walk(fs.baseDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+		if strings.HasPrefix(info.Name(), id+".htm") {
+			foundPath = path
+			return filepath.SkipAll
+		}
+		return nil
+	})
+
+	if foundPath != "" {
+		return os.ReadFile(foundPath)
+	}
+
 	return nil, fmt.Errorf("content file not found for id: %s", id)
 }
 
 // GetMetadata reads and parses the crawler metadata JSON.
 func (fs *FileSystemSource) GetMetadata(id string) (*domain.CrawlerMetadata, error) {
+	// Fast path
 	path := filepath.Join(fs.baseDir, id+".json")
 	data, err := os.ReadFile(path)
+	
 	if err != nil {
-		return nil, fmt.Errorf("metadata file not found for id %s: %w", id, err)
+		// Slow path
+		var foundPath string
+		filepath.Walk(fs.baseDir, func(p string, info os.FileInfo, err error) error {
+			if err != nil || info.IsDir() {
+				return nil
+			}
+			if info.Name() == id+".json" {
+				foundPath = p
+				return filepath.SkipAll
+			}
+			return nil
+		})
+
+		if foundPath == "" {
+			return nil, fmt.Errorf("metadata file not found for id %s: %w", id, err)
+		}
+		data, err = os.ReadFile(foundPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read found metadata file: %w", err)
+		}
 	}
 
 	var meta domain.CrawlerMetadata
