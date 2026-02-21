@@ -1,0 +1,13 @@
+# Ignorar diretório contendo arquivos processados
+parsed_data/
+
+# Ignorar o executável local (se houver)
+bin/
+legal-parser
+raw_data
+
+# Arquivo temporário ou logs
+*.log
+
+# O diretório raiz de go modules
+vendor/

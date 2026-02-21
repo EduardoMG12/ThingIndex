@@ -43,3 +43,15 @@ services:
       - rabbitmq
     env_file:
       - .env
+
+  legal-parser:
+    build:
+      context: ./legal-parser
+      dockerfile: Dockerfile
+    container_name: tcc-legal-parser
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./crawler/output_pdfs:/app/raw_data
+      - ./legal-parser/parsed_data:/app/parsed_data
