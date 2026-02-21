@@ -48,14 +48,15 @@ func (r *RabbitMQClient) Connect() error {
 		return fmt.Errorf("failed to open a channel: %w", err)
 	}
 
-	// Declare queue to ensure it exists
+	// Declare queue to ensure it exists with priority argument
+	args := amqp.Table{"x-max-priority": int32(10)}
 	r.queue, err = r.channel.QueueDeclare(
 		r.qName, // name
 		true,    // durable
 		false,   // delete when unused
 		false,   // exclusive
 		false,   // no-wait
-		nil,     // arguments
+		args,    // arguments
 	)
 	if err != nil {
 		return fmt.Errorf("failed to declare a queue: %w", err)
@@ -86,9 +87,10 @@ func (r *RabbitMQClient) Publish(ctx context.Context, task domain.CrawlTask) err
 		false,   // mandatory
 		false,   // immediate
 		amqp.Publishing{
-			ContentType: "application/json",
-			Body:        body,
-			DeliveryMode: amqp.Persistent, 
+			ContentType:  "application/json",
+			Body:         body,
+			DeliveryMode: amqp.Persistent,
+			Priority:     0,
 		})
 	if err != nil {
 		return fmt.Errorf("failed to publish a message: %w", err)
