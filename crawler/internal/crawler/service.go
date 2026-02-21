@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -77,27 +76,11 @@ func (c *CrawlerService) Crawl() error {
 		go c.worker(tasks)
 	}
 	
-	// In a real long-running process, we might wait for a signal.
-	// Here, we wait for waitgroup if we want to track active processing.
-	// But with RabbitMQ, "active" is hard to define exactly without an external tracker or empty queue check.
-	// For this task, we will just block forever or wait until user interrupts, 
-	// OR we assume we want to run until manually stopped.
-	// The previous implementation used WaitGroup which tracked active tasks.
-	// We can keep using WaitGroup for *active processing* but not for "empty queue" termination easily without more logic.
-	// BUT, the prompt says "it will read links from queue and process".
-	// Let's Keep the WaitGroup for graceful shutdown if we implement it, but `c.wg.Wait()` might return early if queue is empty but messages are in flight?
-	// No, `wg` tracks active `processTask`.
-	// The problem is: how do we know when we are "done" if we are decoupled?
-	// Usually decoupled consumers run forever.
-	// I will make it run forever (block) until context cancellation (not implemented yet) or just block.
-	// But `main` expects `Crawl` to block.
-	
 	// Create a channel to block
 	forever := make(chan bool)
 	<-forever
 	
-	// c.wg.Wait() // This logic was for the in-memory recursive crawler.
-	// close(c.queue) // We don't close the queue connection here usually unless shutting down.
+
 
 	log.Printf("------------------------------------------")
 	log.Printf("CRAWLING SUMMARY:")
@@ -110,23 +93,41 @@ func (c *CrawlerService) Crawl() error {
 	return nil
 }
 
-func (c *CrawlerService) worker(tasks <-chan domain.CrawlTask) {
+func (c *CrawlerService) worker(deliveries <-chan domain.TaskDelivery) {
 	defer c.wg.Done()
-	for task := range tasks {
-		c.processTask(task)
+	for delivery := range deliveries {
+		c.processTask(delivery)
 	}
 }
 
-func (c *CrawlerService) processTask(task domain.CrawlTask) {
+func (c *CrawlerService) processTask(delivery domain.TaskDelivery) {
+	task := delivery.Task
 	u := task.URL
 	
+	// Check for special commands
+	if u == "__PURGE__" {
+		log.Println("Received PURGE command via queue. Purging all messages...")
+		if err := c.queue.Purge(); err != nil {
+			log.Printf("Failed to purge queue: %v", err)
+		} else {
+			log.Println("Queue successfully purged.")
+			// Reset the bloom filter
+			c.visited = NewBloomFilter(1000000, 0.01)
+			log.Println("Internal visited cache reset.")
+		}
+		delivery.Ack()
+		return
+	}
+
 	if task.Depth > c.maxDepth {
 		log.Printf("Max depth reached, skipping: %s", u)
+		delivery.Ack()
 		return
 	}
 
 	// Filter out non-http links
 	if !strings.HasPrefix(u, "http") {
+		delivery.Ack()
 		return
 	}
 
@@ -155,6 +156,7 @@ func (c *CrawlerService) processTask(task domain.CrawlTask) {
 		} else {
 			c.handleHTML(u, task.Parent, task.ParentContext, task.Description, filename, task.Depth)
 		}
+		delivery.Ack()
 		return
 	}
 
@@ -162,6 +164,7 @@ func (c *CrawlerService) processTask(task domain.CrawlTask) {
 	body, err := c.fetcher.Fetch(u)
 	if err != nil {
 		log.Printf("Error fetching %s: %v", u, err)
+		delivery.Nack(true) // Requeue on fetch error
 		return
 	}
 	defer body.Close()
@@ -169,21 +172,20 @@ func (c *CrawlerService) processTask(task domain.CrawlTask) {
 	_, err = c.storage.Save(filename, body)
 	if err != nil {
 		log.Printf("Error saving %s: %v", u, err)
+		delivery.Nack(true) // Requeue on save error
 		return
 	}
 	atomic.AddInt64(&c.statsFetched, 1)
 	atomic.AddInt64(&c.statsSaved, 1)
 
 	// Post-process based on type
-	// Note: We might have saved an HTML as .pdf if detection failed earlier, 
-	// but we trust extension for now as per previous logic.
-	// Improvements could be made to sniff header/content before stream, but `Save` consumes the stream.
-	
 	if isPDF {
 		c.handlePDF(u, task.Parent, task.ParentContext, task.Description, filename, task.Depth)
 	} else {
 		c.handleHTML(u, task.Parent, task.ParentContext, task.Description, filename, task.Depth)
 	}
+
+	delivery.Ack() // Successfully processed
 }
 
 func (c *CrawlerService) handlePDF(u, parent string, parentContext domain.LinkContext, description string, filename string, depth int) {
@@ -239,9 +241,6 @@ func (c *CrawlerService) handlePDF(u, parent string, parentContext domain.LinkCo
 func (c *CrawlerService) handleHTML(u, parent string, parentContext domain.LinkContext, description string, filename string, depth int) {
 	jsonFilename := strings.TrimSuffix(filename, ".htm") + ".json"
 
-	// Read content for HTML parsing
-	// For HTML we still need to read it all for parsing generally, but we do it from disk now
-	// Ideally we could stream parsing too, but goquery/net/html works with readers, so we can stream read.
 	f, err := c.storage.Read(filename)
 	if err != nil {
 		log.Printf("Error reading HTML content for %s: %v", u, err)
@@ -249,9 +248,7 @@ func (c *CrawlerService) handleHTML(u, parent string, parentContext domain.LinkC
 	}
 	defer f.Close()
 
-	// Parse HTML (we need to read it twice or tee it if we want both flat and enriched...
-	// or we just read it into memory here if it's HTML (usually smaller than PDFs).
-	// Let's read into memory for simplicity in parsing logic for now, as HTMLs are small.
+	// Parse HTML content into memory
 	content, err := io.ReadAll(f)
 	if err != nil {
 		log.Printf("Error reading HTML content %s: %v", u, err)
@@ -445,9 +442,3 @@ func (c *CrawlerService) generateFilename(u string, ext string) string {
 	}
 	return filename
 }
-
-// Ensure http import is used or removed (it was unused in previous code but might be useful now)
-// We didn't use net/http directly here yet, removing to avoid unused error.
-var _ = http.Client{}
-
-
