@@ -10,17 +10,21 @@ import (
 )
 
 type Config struct {
-	Type     string
-	LocalDir string
-	// Add other config fields for S3/GCS here
+	Type           string
+	LocalDir       string
+	MinioEndpoint  string
+	MinioAccessKey string
+	MinioSecretKey string
+	MinioUseSSL    bool
+	BucketName     string
 }
 
 func NewStorage(cfg Config) (domain.Storage, error) {
 	switch cfg.Type {
 	case "local":
 		return NewLocalStorage(cfg.LocalDir), nil
-	case "s3":
-		return nil, fmt.Errorf("s3 storage not implemented yet")
+	case "minio", "s3":
+		return NewMinioStorage(cfg.MinioEndpoint, cfg.MinioAccessKey, cfg.MinioSecretKey, cfg.MinioUseSSL, cfg.BucketName)
 	case "gcs":
 		return nil, fmt.Errorf("gcs storage not implemented yet")
 	default:

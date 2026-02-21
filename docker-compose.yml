@@ -18,6 +18,19 @@ services:
     env_file:
       - .env
 
+  minio:
+    image: minio/minio
+    container_name: tcc-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+
   crawler:
     build:
       context: ./crawler
@@ -26,10 +39,16 @@ services:
     restart: unless-stopped
     depends_on:
       - rabbitmq
+      - minio
     env_file:
       - .env
-    volumes:
-      - ./crawler/output_pdfs:/app/output_pdfs
+    environment:
+      STORAGE_TYPE: "minio"
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+      MINIO_ENDPOINT: "minio:9000"
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_USE_SSL: "false"
 
   api:
     build:
@@ -55,3 +74,6 @@ services:
     volumes:
       - ./crawler/output_pdfs:/app/raw_data
       - ./legal-parser/parsed_data:/app/parsed_data
+
+volumes:
+  minio_data:

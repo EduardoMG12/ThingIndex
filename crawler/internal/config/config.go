@@ -19,6 +19,10 @@ type AppConfig struct {
 	FilterName     string
 	RabbitURL      string
 	QueueName      string
+	MinioEndpoint  string
+	MinioAccessKey string
+	MinioSecretKey string
+	MinioUseSSL    bool
 }
 
 func LoadConfig() AppConfig {
@@ -86,5 +90,9 @@ func LoadConfig() AppConfig {
 		FilterName:     filterName,
 		RabbitURL:      rabbitURL,
 		QueueName:      queueName,
+		MinioEndpoint:  os.Getenv("MINIO_ENDPOINT"),
+		MinioAccessKey: os.Getenv("MINIO_ACCESS_KEY"),
+		MinioSecretKey: os.Getenv("MINIO_SECRET_KEY"),
+		MinioUseSSL:    os.Getenv("MINIO_USE_SSL") == "true",
 	}
 }
