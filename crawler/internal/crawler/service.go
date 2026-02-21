@@ -10,9 +10,12 @@ import (
 	"log"
 	"net/url"
 	"path/filepath"
+	"runtime"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/user/legisgraph-crawler/internal/domain"
 )
@@ -43,13 +46,18 @@ type CrawlerService struct {
 	statsFetched   int64
 	statsSaved     int64
 	statsSkipped   int64
+
+	// State
+	isPurging      atomic.Bool
+	ctx            context.Context
+	cancelFunc     context.CancelFunc
 }
 
 func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlParser HTMLParser, storage domain.Storage, queue domain.Queue, maxDepth int, ignoreKeywords []string, outputSubdir string) *CrawlerService {
 	// Initialize Bloom Filter with 1M items and 0.01 false positive rate
 	bf := NewBloomFilter(1000000, 0.01)
 
-	return &CrawlerService{
+	c := &CrawlerService{
 		fetcher:        fetcher,
 		pdfParser:      pdfParser,
 		htmlParser:     htmlParser,
@@ -60,6 +68,12 @@ func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlPars
 		ignoreKeywords: ignoreKeywords,
 		outputSubdir:   outputSubdir,
 	}
+	
+	ctx, cancel := context.WithCancel(context.Background())
+	c.ctx = ctx
+	c.cancelFunc = cancel
+	
+	return c
 }
 
 func (c *CrawlerService) Crawl() error {
@@ -76,10 +90,20 @@ func (c *CrawlerService) Crawl() error {
 		go c.worker(tasks)
 	}
 	
+	// Periodic RAM cleanup to ensure memory is returned to OS after bursts
+	go func() {
+		// Run every minute
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			runtime.GC()
+			debug.FreeOSMemory()
+		}
+	}()
+
 	// Create a channel to block
 	forever := make(chan bool)
 	<-forever
-	
 
 
 	log.Printf("------------------------------------------")
@@ -107,6 +131,10 @@ func (c *CrawlerService) processTask(delivery domain.TaskDelivery) {
 	// Check for special commands
 	if u == "__PURGE__" {
 		log.Println("Received PURGE command via queue. Purging all messages...")
+		
+		// Set purge flag to true so currently executing workers drop their tasks
+		c.isPurging.Store(true)
+
 		if err := c.queue.Purge(); err != nil {
 			log.Printf("Failed to purge queue: %v", err)
 		} else {
@@ -115,12 +143,44 @@ func (c *CrawlerService) processTask(delivery domain.TaskDelivery) {
 			c.visited = NewBloomFilter(1000000, 0.01)
 			log.Println("Internal visited cache reset.")
 		}
+		
+		// Cancel any running requests
+		c.cancelFunc()
+		// Initialize a fresh context for new tasks
+		c.ctx, c.cancelFunc = context.WithCancel(context.Background())
+		
+		// The workers need a fraction of a second to read isPurging.Load == true
+		// before we reset it. 100ms is more than enough for Go scheduler.
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			c.isPurging.Store(false)
+			
+			// Force Garbage Collection to return memory to OS
+			log.Println("Forcing garbage collection to free RAM...")
+			runtime.GC()
+			debug.FreeOSMemory()
+			log.Println("RAM freed successfully.")
+		}()
+		
 		delivery.Ack()
 		return
 	}
 
-	if task.Depth > c.maxDepth {
-		log.Printf("Max depth reached, skipping: %s", u)
+	// Wait out processing if we are actively purging to drain current tasks
+	if c.isPurging.Load() {
+		log.Printf("Dropping task %s (purge in progress)", u)
+		delivery.Nack(false) // don't requeue
+		return
+	}
+
+	// Determine the effective max depth for this task
+	effectiveMaxDepth := c.maxDepth
+	if task.MaxDepth > 0 {
+		effectiveMaxDepth = task.MaxDepth
+	}
+
+	if task.Depth > effectiveMaxDepth {
+		log.Printf("Max depth reached (%d > %d), skipping: %s", task.Depth, effectiveMaxDepth, u)
 		delivery.Ack()
 		return
 	}
@@ -145,26 +205,34 @@ func (c *CrawlerService) processTask(delivery domain.TaskDelivery) {
 		ext = ".pdf"
 	}
 	
-	filename := c.generateFilename(u, ext)
+	filename := c.generateFilename(u, ext, task.DirName)
 
 	// Check if file already exists
 	if c.storage.Exists(filename) {
 		log.Printf("File exists locally, processing: %s", filename)
 		atomic.AddInt64(&c.statsSkipped, 1)
 		if isPDF {
-			c.handlePDF(u, task.Parent, task.ParentContext, task.Description, filename, task.Depth)
+			c.handlePDF(u, task.Parent, task.ParentContext, task.Description, task.DirName, filename, task.Depth, task.MaxDepth)
 		} else {
-			c.handleHTML(u, task.Parent, task.ParentContext, task.Description, filename, task.Depth)
+			c.handleHTML(u, task.Parent, task.ParentContext, task.Description, task.DirName, filename, task.Depth, task.MaxDepth)
 		}
 		delivery.Ack()
 		return
 	}
 
 	// Fetch and Stream to Storage
-	body, err := c.fetcher.Fetch(u)
+	fetchCtx, fetchCancel := context.WithTimeout(c.ctx, 2*time.Minute)
+	defer fetchCancel()
+	
+	body, err := c.fetcher.Fetch(fetchCtx, u)
 	if err != nil {
 		log.Printf("Error fetching %s: %v", u, err)
-		delivery.Nack(true) // Requeue on fetch error
+		
+		if c.isPurging.Load() {
+			delivery.Nack(false) // Drop it if we are purging
+		} else {
+			delivery.Nack(true) // Requeue on fetch error
+		}
 		return
 	}
 	defer body.Close()
@@ -172,7 +240,11 @@ func (c *CrawlerService) processTask(delivery domain.TaskDelivery) {
 	_, err = c.storage.Save(filename, body)
 	if err != nil {
 		log.Printf("Error saving %s: %v", u, err)
-		delivery.Nack(true) // Requeue on save error
+		if c.isPurging.Load() {
+			delivery.Nack(false) // Drop it if we are purging
+		} else {
+			delivery.Nack(true) // Requeue on fetch error
+		}
 		return
 	}
 	atomic.AddInt64(&c.statsFetched, 1)
@@ -180,15 +252,15 @@ func (c *CrawlerService) processTask(delivery domain.TaskDelivery) {
 
 	// Post-process based on type
 	if isPDF {
-		c.handlePDF(u, task.Parent, task.ParentContext, task.Description, filename, task.Depth)
+		c.handlePDF(u, task.Parent, task.ParentContext, task.Description, task.DirName, filename, task.Depth, task.MaxDepth)
 	} else {
-		c.handleHTML(u, task.Parent, task.ParentContext, task.Description, filename, task.Depth)
+		c.handleHTML(u, task.Parent, task.ParentContext, task.Description, task.DirName, filename, task.Depth, task.MaxDepth)
 	}
 
 	delivery.Ack() // Successfully processed
 }
 
-func (c *CrawlerService) handlePDF(u, parent string, parentContext domain.LinkContext, description string, filename string, depth int) {
+func (c *CrawlerService) handlePDF(u, parent string, parentContext domain.LinkContext, description string, dirName string, filename string, depth int, maxDepth int) {
 	jsonFilename := strings.TrimSuffix(filename, ".pdf") + ".json"
 
 	// Read from storage using ReadAt for PdfParser
@@ -233,12 +305,12 @@ func (c *CrawlerService) handlePDF(u, parent string, parentContext domain.LinkCo
 		}
 		
 		if c.shouldVisit(absLink, "") {
-			c.enqueueTask(absLink, u, domain.LinkContext{}, "", depth+1)
+			c.enqueueTask(absLink, u, domain.LinkContext{}, "", dirName, depth+1, maxDepth)
 		}
 	}
 }
 
-func (c *CrawlerService) handleHTML(u, parent string, parentContext domain.LinkContext, description string, filename string, depth int) {
+func (c *CrawlerService) handleHTML(u, parent string, parentContext domain.LinkContext, description string, dirName string, filename string, depth int, maxDepth int) {
 	jsonFilename := strings.TrimSuffix(filename, ".htm") + ".json"
 
 	f, err := c.storage.Read(filename)
@@ -290,7 +362,7 @@ func (c *CrawlerService) handleHTML(u, parent string, parentContext domain.LinkC
 					break
 				}
 			}
-			c.enqueueTask(absLink, u, ctx, text, depth+1)
+			c.enqueueTask(absLink, u, ctx, text, dirName, depth+1, maxDepth)
 		}
 	}
 
@@ -370,14 +442,20 @@ func (c *CrawlerService) shouldVisit(absLink, text string) bool {
 	return true
 }
 
-func (c *CrawlerService) enqueueTask(u, parent string, parentContext domain.LinkContext, description string, depth int) {
+func (c *CrawlerService) enqueueTask(u, parent string, parentContext domain.LinkContext, description string, dirName string, depth int, maxDepth int) {
 	// Filter out non-http links
 	if !strings.HasPrefix(u, "http") {
 		return
 	}
 
+	// Determine effective max depth
+	effectiveMaxDepth := c.maxDepth
+	if maxDepth > 0 {
+		effectiveMaxDepth = maxDepth
+	}
+
 	// Check depth limit before enqueuing to avoid marking as visited prematurely
-	if depth > c.maxDepth {
+	if depth > effectiveMaxDepth {
 		return
 	}
 
@@ -397,6 +475,8 @@ func (c *CrawlerService) enqueueTask(u, parent string, parentContext domain.Link
 			ParentContext: parentContext,
 			Description:   description,
 			Depth:         depth,
+			MaxDepth:      maxDepth,
+			DirName:       dirName,
 		})
 		if err != nil {
 			log.Printf("Failed to publish task: %v", err)
@@ -416,7 +496,7 @@ func resolveRelURL(baseURL, href string) string {
 	return base.ResolveReference(u).String()
 }
 
-func (c *CrawlerService) generateFilename(u string, ext string) string {
+func (c *CrawlerService) generateFilename(u string, ext string, dirName string) string {
 	parsed, _ := url.Parse(u)
 	base := filepath.Base(parsed.Path)
 	if base == "" || base == "." || base == "/" {
@@ -437,6 +517,12 @@ func (c *CrawlerService) generateFilename(u string, ext string) string {
 	}
 	
 	filename := fmt.Sprintf("%s_%s", hash[:10], base)
+	
+	// Prepend dynamic folder from RabbitMQ task payload
+	if dirName != "" {
+		filename = filepath.Join(dirName, filename)
+	}
+	
 	if c.outputSubdir != "" {
 		return filepath.Join(c.outputSubdir, filename)
 	}
