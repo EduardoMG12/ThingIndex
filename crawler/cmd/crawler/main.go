@@ -48,7 +48,7 @@ func main() {
 	defer q.Close()
 
 	// Initialize Crawler
-	c := crawler.NewCrawlerService(f, pdfP, htmlP, s, q, cfg.MaxDepth, cfg.IgnoreKeywords, cfg.FilterName, bucketName)
+	c := crawler.NewCrawlerService(f, pdfP, htmlP, s, q, cfg.MaxDepth, cfg.IgnoreKeywords, cfg.FilterName, bucketName, cfg.BackpressureLimit)
 
 	// Start Crawling
 	log.Printf("Starting crawler, reading from queue...")

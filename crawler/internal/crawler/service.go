@@ -49,13 +49,15 @@ type CrawlerService struct {
 	statsSkipped   int64
 
 	// State
-	isPurging      atomic.Bool
-	activeWorkers  atomic.Int32
-	ctx            context.Context
-	cancelFunc     context.CancelFunc
+	isPurging         atomic.Bool
+	isPaused          atomic.Bool
+	activeWorkers     atomic.Int32
+	backpressureLimit int
+	ctx               context.Context
+	cancelFunc        context.CancelFunc
 }
 
-func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlParser HTMLParser, storage domain.Storage, queue domain.Queue, maxDepth int, ignoreKeywords []string, outputSubdir string, bucketName string) *CrawlerService {
+func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlParser HTMLParser, storage domain.Storage, queue domain.Queue, maxDepth int, ignoreKeywords []string, outputSubdir string, bucketName string, backpressureLimit int) *CrawlerService {
 	// Initialize Bloom Filter with 1M items and 0.01 false positive rate
 	bf := NewBloomFilter(1000000, 0.01)
 
@@ -69,7 +71,8 @@ func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlPars
 		maxDepth:       maxDepth,
 		ignoreKeywords: ignoreKeywords,
 		outputSubdir:   outputSubdir,
-		bucketName:     bucketName,
+		bucketName:        bucketName,
+		backpressureLimit: backpressureLimit,
 	}
 	
 	ctx, cancel := context.WithCancel(context.Background())
@@ -93,6 +96,9 @@ func (c *CrawlerService) Crawl() error {
 		go c.worker(i, tasks)
 	}
 	
+	// Start backpressure monitor
+	go c.monitorQueues()
+
 	// Periodic RAM cleanup to ensure memory is returned to OS after bursts
 	go func() {
 		// Run every minute
@@ -118,9 +124,48 @@ func (c *CrawlerService) worker(id int, deliveries <-chan domain.TaskDelivery) {
 	defer c.wg.Done()
 	log.Printf("[Worker %d] Started and waiting for tasks...", id)
 	for delivery := range deliveries {
+		// Backpressure: if paused, wait until resumed
+		for c.isPaused.Load() {
+			time.Sleep(1 * time.Second)
+		}
+
 		c.processTask(id, delivery)
 	}
 	log.Printf("[Worker %d] Stopped.", id)
+}
+
+func (c *CrawlerService) monitorQueues() {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-c.ctx.Done():
+			return
+		case <-ticker.C:
+			// Check crawler_tasks (main queue)
+			count, err := c.queue.GetMessageCount()
+			if err != nil {
+				log.Printf("[Backpressure] Error checking crawler_tasks queue: %v", err)
+				continue
+			}
+
+			if !c.isPaused.Load() && count > c.backpressureLimit {
+				log.Printf("[Backpressure] Queue size %d exceeded limit %d. Pausing crawler...", count, c.backpressureLimit)
+				c.isPaused.Store(true)
+			} else if c.isPaused.Load() {
+				// Check downstream queues
+				rawCount, _ := c.queue.GetQueueMessages("raw_documents")
+				parsedCount, _ := c.queue.GetQueueMessages("parsed_documents")
+
+				// If downstream is cleared, resume
+				if rawCount < 10 && parsedCount < 10 {
+					log.Printf("[Backpressure] Downstream cleared (raw=%d, parsed=%d). Resuming crawler...", rawCount, parsedCount)
+					c.isPaused.Store(false)
+				}
+			}
+		}
+	}
 }
 
 func (c *CrawlerService) processTask(workerID int, delivery domain.TaskDelivery) {

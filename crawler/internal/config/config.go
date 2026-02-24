@@ -21,8 +21,9 @@ type AppConfig struct {
 	QueueName      string
 	MinioEndpoint  string
 	MinioAccessKey string
-	MinioSecretKey string
-	MinioUseSSL    bool
+	MinioSecretKey    string
+	MinioUseSSL       bool
+	BackpressureLimit int
 }
 
 func LoadConfig() AppConfig {
@@ -74,18 +75,25 @@ func LoadConfig() AppConfig {
 	rabbitURL := os.Getenv("RABBITMQ_URL")
 	queueName := os.Getenv("RABBITMQ_QUEUE")
 
+	backpressureLimitStr := os.Getenv("CRAWLER_BACKPRESSURE_LIMIT")
+	backpressureLimit, err := strconv.Atoi(backpressureLimitStr)
+	if err != nil {
+		backpressureLimit = 10000
+	}
+
 	return AppConfig{
-		Timeout:        timeout,
-		MaxDepth:       maxDepth,
-		StorageType:    storageType,
-		LocalDir:       localDir,
-		IgnoreKeywords: ignoreKeywords,
-		FilterName:     filterName,
-		RabbitURL:      rabbitURL,
-		QueueName:      queueName,
-		MinioEndpoint:  os.Getenv("MINIO_ENDPOINT"),
-		MinioAccessKey: os.Getenv("MINIO_ACCESS_KEY"),
-		MinioSecretKey: os.Getenv("MINIO_SECRET_KEY"),
-		MinioUseSSL:    os.Getenv("MINIO_USE_SSL") == "true",
+		Timeout:           timeout,
+		MaxDepth:          maxDepth,
+		StorageType:       storageType,
+		LocalDir:          localDir,
+		IgnoreKeywords:    ignoreKeywords,
+		FilterName:        filterName,
+		RabbitURL:         rabbitURL,
+		QueueName:         queueName,
+		MinioEndpoint:     os.Getenv("MINIO_ENDPOINT"),
+		MinioAccessKey:    os.Getenv("MINIO_ACCESS_KEY"),
+		MinioSecretKey:    os.Getenv("MINIO_SECRET_KEY"),
+		MinioUseSSL:       os.Getenv("MINIO_USE_SSL") == "true",
+		BackpressureLimit: backpressureLimit,
 	}
 }

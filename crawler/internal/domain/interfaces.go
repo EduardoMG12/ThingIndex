@@ -76,6 +76,7 @@ type Queue interface {
 	Publish(ctx context.Context, task CrawlTask) error
 	Consume() (<-chan TaskDelivery, error)
 	GetMessageCount() (int, error)
+	GetQueueMessages(queueName string) (int, error)
 	PublishToQueue(ctx context.Context, queueName string, body []byte) error
 	Purge() error
 	Close()

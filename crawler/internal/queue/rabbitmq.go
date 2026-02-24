@@ -182,11 +182,16 @@ func (r *RabbitMQClient) PublishToQueue(ctx context.Context, queueName string, b
 		})
 }
 
-// GetMessageCount returns the number of messages sitting in the queue
+// GetMessageCount returns the number of messages sitting in the main queue
 func (r *RabbitMQClient) GetMessageCount() (int, error) {
+	return r.GetQueueMessages(r.qName)
+}
+
+// GetQueueMessages returns the number of messages sitting in any specified queue
+func (r *RabbitMQClient) GetQueueMessages(queueName string) (int, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	q, err := r.channel.QueueInspect(r.qName)
+	q, err := r.channel.QueueInspect(queueName)
 	if err != nil {
 		return 0, err
 	}
