@@ -24,10 +24,20 @@ func NewFileSystemSource(baseDir string) *FileSystemSource {
 // ListDocuments scans the base directory for paired .htm + .json files.
 // Files are paired by their hash prefix (e.g., "292ac8fd96_name.htm" + "292ac8fd96_name.json").
 func (fs *FileSystemSource) ListDocuments() ([]domain.RawDocument, error) {
+	return fs.listDocumentsFromPath(fs.baseDir)
+}
+
+// ListDocumentsInDir scans a specific subdirectory inside the base directory for paired files.
+func (fs *FileSystemSource) ListDocumentsInDir(dirName string) ([]domain.RawDocument, error) {
+	targetPath := filepath.Join(fs.baseDir, dirName)
+	return fs.listDocumentsFromPath(targetPath)
+}
+
+func (fs *FileSystemSource) listDocumentsFromPath(targetPath string) ([]domain.RawDocument, error) {
 	htmFiles := map[string]string{} // hash -> full path
 	jsonFiles := map[string]string{}
 
-	err := filepath.Walk(fs.baseDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(targetPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -49,7 +59,7 @@ func (fs *FileSystemSource) ListDocuments() ([]domain.RawDocument, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to walk directory %s: %w", fs.baseDir, err)
+		return nil, fmt.Errorf("failed to walk directory %s: %w", targetPath, err)
 	}
 
 	var docs []domain.RawDocument

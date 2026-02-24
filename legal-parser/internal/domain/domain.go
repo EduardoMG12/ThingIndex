@@ -5,6 +5,8 @@ package domain
 type SourceProvider interface {
 	// ListDocuments returns all available raw documents from the source.
 	ListDocuments() ([]RawDocument, error)
+	// ListDocumentsInDir returns all available raw documents from a specific subdirectory.
+	ListDocumentsInDir(dirName string) ([]RawDocument, error)
 	// GetContent returns the raw HTML/PDF bytes for a document by its ID.
 	GetContent(id string) ([]byte, error)
 	// GetMetadata returns the crawler metadata JSON for a document by its ID.

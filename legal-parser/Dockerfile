@@ -23,4 +23,3 @@ COPY --from=builder /app/bin/legal-parser .
 # Create directories for volumes
 # Run the binary
 ENTRYPOINT ["/app/legal-parser"]
-CMD ["-input", "/app/raw_data", "-output", "/app/parsed_data"]

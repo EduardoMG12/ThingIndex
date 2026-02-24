@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/user/legisgraph/legal-parser/internal/domain"
 )
@@ -56,6 +58,117 @@ func (ps *ParserService) ProcessAll() error {
 	log.Printf("- Processed:        %d", processed)
 	log.Printf("- Skipped (no ID):  %d", skipped)
 	log.Printf("- Failed:           %d", failed)
+	log.Printf("------------------------------------------")
+
+	return nil
+}
+
+// ProcessSingleDocument parses a single document from raw content and metadata.
+// Returns the canonical ID and the serialized JSON, or an error.
+func (ps *ParserService) ProcessSingleDocument(content []byte, meta *domain.CrawlerMetadata) (string, []byte, error) {
+	doc, err := CleanHTML(content)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to clean HTML: %w", err)
+	}
+
+	title := ExtractTitle(doc)
+	ementa := ExtractEmenta(doc)
+	if title == "" {
+		return "", nil, fmt.Errorf("could not extract title from document")
+	}
+
+	identity, err := ExtractIdentityFromTitle(title)
+	if err != nil {
+		return "", nil, err
+	}
+
+	canonicalID := GenerateCanonicalID(identity.Tipo, "federal", identity.Numero, identity.Ano)
+	if canonicalID == "" {
+		return "", nil, fmt.Errorf("could not extract identity from title: %q", title)
+	}
+
+	articles := ExtractStructure(doc)
+	fullText := doc.Find("body").Text()
+	refIDs := ExtractReferences(fullText)
+	references := buildEnrichedReferences(refIDs, meta.LinksContext)
+
+	legalDoc := domain.LegalDocument{
+		ID:          canonicalID,
+		Tipo:        identity.Tipo,
+		Esfera:      "federal",
+		Numero:      identity.Numero,
+		Ano:         identity.Ano,
+		Titulo:      title,
+		Ementa:      ementa,
+		URLOrigem:   meta.URL,
+		URLPai:      meta.ParentURL,
+		Artigos:     articles,
+		Referencias: references,
+	}
+
+	if meta.ParentContext.Artigo != "" || meta.ParentContext.Paragrafo != "" ||
+		meta.ParentContext.Inciso != "" || meta.ParentContext.Alinea != "" {
+		legalDoc.URLPaiContext = &meta.ParentContext
+	}
+
+	jsonData, err := json.MarshalIndent(legalDoc, "", "  ")
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to serialize document: %w", err)
+	}
+
+	log.Printf("[OK] → %s (%d artigos, %d refs)", canonicalID, len(articles), len(references))
+	return canonicalID, jsonData, nil
+}
+
+// ProcessDirectory processes all documents from a specific subdirectory concurrently.
+func (ps *ParserService) ProcessDirectory(dirName string) error {
+	docs, err := ps.source.ListDocumentsInDir(dirName)
+	if err != nil {
+		return fmt.Errorf("failed to list documents in directory %s: %w", dirName, err)
+	}
+
+	log.Printf("Found %d documents to process in directory '%s'", len(docs), dirName)
+
+	var processed, skipped, failed int64
+	numWorkers := 5
+
+	// Fan-out: create a channel of work items
+	jobs := make(chan domain.RawDocument, len(docs))
+	for _, doc := range docs {
+		jobs <- doc
+	}
+	close(jobs)
+
+	// Fan-in: process concurrently
+	var wg sync.WaitGroup
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for rawDoc := range jobs {
+				err := ps.processDocument(rawDoc)
+				if err != nil {
+					log.Printf("[SKIP] %s: %v", rawDoc.ID, err)
+					if strings.Contains(err.Error(), "could not extract identity") {
+						atomic.AddInt64(&skipped, 1)
+					} else {
+						atomic.AddInt64(&failed, 1)
+					}
+					continue
+				}
+				atomic.AddInt64(&processed, 1)
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	log.Printf("------------------------------------------")
+	log.Printf("PARSING SUMMARY (dir: %s):", dirName)
+	log.Printf("- Total documents:  %d", len(docs))
+	log.Printf("- Processed:        %d", atomic.LoadInt64(&processed))
+	log.Printf("- Skipped (no ID):  %d", atomic.LoadInt64(&skipped))
+	log.Printf("- Failed:           %d", atomic.LoadInt64(&failed))
 	log.Printf("------------------------------------------")
 
 	return nil
