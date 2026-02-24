@@ -44,7 +44,7 @@ services:
       - .env
     environment:
       STORAGE_TYPE: "minio"
-      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+      RABBITMQ_URL: ${RABBITMQ_URL}
       MINIO_ENDPOINT: "minio:9000"
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
@@ -69,11 +69,43 @@ services:
       dockerfile: Dockerfile
     container_name: tcc-legal-parser
     restart: unless-stopped
+    depends_on:
+      - rabbitmq
+      - minio
     env_file:
       - .env
+    environment:
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      PARSER_INPUT_QUEUE: "raw_documents"
+      PARSER_OUTPUT_QUEUE: "parsed_documents"
+      MINIO_ENDPOINT: "minio:9000"
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_USE_SSL: "false"
     volumes:
-      - ./crawler/output_pdfs:/app/raw_data
       - ./legal-parser/parsed_data:/app/parsed_data
+
+  populator:
+    build:
+      context: ./populator
+      dockerfile: Dockerfile
+    container_name: tcc-populator
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
+      - minio
+      - neo4j
+    env_file:
+      - .env
+    environment:
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      POPULATOR_QUEUE: "parsed_documents"
+      NEO4J_URI: ${NEO4J_URI}
+      NEO4J_AUTH: ${NEO4J_AUTH}
+      MINIO_ENDPOINT: "minio:9000"
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_USE_SSL: "false"
 
 volumes:
   minio_data:

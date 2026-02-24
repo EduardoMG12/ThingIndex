@@ -72,14 +72,7 @@ func LoadConfig() AppConfig {
 	filterName := os.Getenv("CRAWLER_FILTER_NAME")
 
 	rabbitURL := os.Getenv("RABBITMQ_URL")
-	if rabbitURL == "" {
-		rabbitURL = "amqp://guest:guest@localhost:5672/"
-	}
-
 	queueName := os.Getenv("RABBITMQ_QUEUE")
-	if queueName == "" {
-		queueName = "crawler_tasks"
-	}
 
 	return AppConfig{
 		Timeout:        timeout,

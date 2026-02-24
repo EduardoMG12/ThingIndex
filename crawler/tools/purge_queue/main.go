@@ -21,13 +21,10 @@ func main() {
 	}
 
 	rabbitURL := os.Getenv("RABBITMQ_URL")
-	if rabbitURL == "" {
-		rabbitURL = "amqp://guest:guest@localhost:5672/"
-	}
-
 	queueName := os.Getenv("RABBITMQ_QUEUE")
-	if queueName == "" {
-		queueName = "crawler_tasks"
+
+	if rabbitURL == "" || queueName == "" {
+		log.Fatalf("Critical environment variables missing (RABBITMQ_URL or RABBITMQ_QUEUE)")
 	}
 
 	q, err := queue.NewRabbitMQClient(rabbitURL, queueName)
