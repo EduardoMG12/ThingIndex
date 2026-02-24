@@ -8,6 +8,9 @@ services:
       - "7687:7687"
     env_file:
       - .env
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -17,6 +20,8 @@ services:
       - "15672:15672"
     env_file:
       - .env
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
 
   minio:
     image: minio/minio
@@ -109,3 +114,6 @@ services:
 
 volumes:
   minio_data:
+  neo4j_data:
+  neo4j_logs:
+  rabbitmq_data:
