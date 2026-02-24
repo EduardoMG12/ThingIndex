@@ -40,6 +40,7 @@ type CrawlerService struct {
 	// Configuration
 	ignoreKeywords []string
 	outputSubdir   string
+	bucketName     string
 
 	// Statistics
 	statsProcessed int64
@@ -49,11 +50,12 @@ type CrawlerService struct {
 
 	// State
 	isPurging      atomic.Bool
+	activeWorkers  atomic.Int32
 	ctx            context.Context
 	cancelFunc     context.CancelFunc
 }
 
-func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlParser HTMLParser, storage domain.Storage, queue domain.Queue, maxDepth int, ignoreKeywords []string, outputSubdir string) *CrawlerService {
+func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlParser HTMLParser, storage domain.Storage, queue domain.Queue, maxDepth int, ignoreKeywords []string, outputSubdir string, bucketName string) *CrawlerService {
 	// Initialize Bloom Filter with 1M items and 0.01 false positive rate
 	bf := NewBloomFilter(1000000, 0.01)
 
@@ -67,6 +69,7 @@ func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlPars
 		maxDepth:       maxDepth,
 		ignoreKeywords: ignoreKeywords,
 		outputSubdir:   outputSubdir,
+		bucketName:     bucketName,
 	}
 	
 	ctx, cancel := context.WithCancel(context.Background())
@@ -87,7 +90,7 @@ func (c *CrawlerService) Crawl() error {
 	numWorkers := 10
 	for i := 0; i < numWorkers; i++ {
 		c.wg.Add(1)
-		go c.worker(tasks)
+		go c.worker(i, tasks)
 	}
 	
 	// Periodic RAM cleanup to ensure memory is returned to OS after bursts
@@ -107,33 +110,41 @@ func (c *CrawlerService) Crawl() error {
 
 
 	log.Printf("------------------------------------------")
-	log.Printf("CRAWLING SUMMARY:")
-	log.Printf("- Tasks processed:     %d", atomic.LoadInt64(&c.statsProcessed))
-	log.Printf("- Pages/Files fetched: %d", atomic.LoadInt64(&c.statsFetched))
-	log.Printf("- New files saved:     %d", atomic.LoadInt64(&c.statsSaved))
-	log.Printf("- Files skipped:       %d", atomic.LoadInt64(&c.statsSkipped))
-	log.Printf("------------------------------------------")
 
 	return nil
 }
 
-func (c *CrawlerService) worker(deliveries <-chan domain.TaskDelivery) {
+func (c *CrawlerService) worker(id int, deliveries <-chan domain.TaskDelivery) {
 	defer c.wg.Done()
+	log.Printf("[Worker %d] Started and waiting for tasks...", id)
 	for delivery := range deliveries {
-		c.processTask(delivery)
+		c.processTask(id, delivery)
 	}
+	log.Printf("[Worker %d] Stopped.", id)
 }
 
-func (c *CrawlerService) processTask(delivery domain.TaskDelivery) {
+func (c *CrawlerService) processTask(workerID int, delivery domain.TaskDelivery) {
 	task := delivery.Task
 	u := task.URL
 	
+	log.Printf("[Worker %d] Processing: %s (Depth %d)", workerID, u, task.Depth)
+	
+	// Increase active workers count
+	c.activeWorkers.Add(1)
+	defer c.activeWorkers.Add(-1)
+
 	// Check for special commands
 	if u == "__PURGE__" {
 		log.Println("Received PURGE command via queue. Purging all messages...")
 		
 		// Set purge flag to true so currently executing workers drop their tasks
 		c.isPurging.Store(true)
+
+		// Cancel any running requests immediately
+		c.cancelFunc()
+		
+		// Give workers a moment to see the cancel before purging the queue
+		time.Sleep(100 * time.Millisecond)
 
 		if err := c.queue.Purge(); err != nil {
 			log.Printf("Failed to purge queue: %v", err)
@@ -144,15 +155,13 @@ func (c *CrawlerService) processTask(delivery domain.TaskDelivery) {
 			log.Println("Internal visited cache reset.")
 		}
 		
-		// Cancel any running requests
-		c.cancelFunc()
 		// Initialize a fresh context for new tasks
 		c.ctx, c.cancelFunc = context.WithCancel(context.Background())
 		
-		// The workers need a fraction of a second to read isPurging.Load == true
-		// before we reset it. 100ms is more than enough for Go scheduler.
+		// Keep isPurging=true for a while to allow the internal RabbitMQ buffer (100 msgs) 
+		// to be drained and dropped by workers.
 		go func() {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(5 * time.Second)
 			c.isPurging.Store(false)
 			
 			// Force Garbage Collection to return memory to OS
@@ -180,7 +189,7 @@ func (c *CrawlerService) processTask(delivery domain.TaskDelivery) {
 	}
 
 	if task.Depth > effectiveMaxDepth {
-		log.Printf("Max depth reached (%d > %d), skipping: %s", task.Depth, effectiveMaxDepth, u)
+		log.Printf("[Worker %d] Max depth reached (%d > %d), skipping: %s", workerID, task.Depth, effectiveMaxDepth, u)
 		delivery.Ack()
 		return
 	}
@@ -191,7 +200,7 @@ func (c *CrawlerService) processTask(delivery domain.TaskDelivery) {
 		return
 	}
 
-	log.Printf("[Depth %d] Processing task: %s", task.Depth, u)
+	log.Printf("[Worker %d][Depth %d] Processing task: %s", workerID, task.Depth, u)
 	atomic.AddInt64(&c.statsProcessed, 1)
 
 	// Determine file type and name
@@ -209,13 +218,15 @@ func (c *CrawlerService) processTask(delivery domain.TaskDelivery) {
 
 	// Check if file already exists
 	if c.storage.Exists(filename) {
-		log.Printf("File exists locally, processing: %s", filename)
+		log.Printf("[Worker %d] File exists locally, processing: %s", workerID, filename)
 		atomic.AddInt64(&c.statsSkipped, 1)
 		if isPDF {
 			c.handlePDF(u, task.Parent, task.ParentContext, task.Description, task.DirName, filename, task.Depth, task.MaxDepth)
 		} else {
 			c.handleHTML(u, task.Parent, task.ParentContext, task.Description, task.DirName, filename, task.Depth, task.MaxDepth)
 		}
+		// Stream per-file notification to parser
+		c.publishToParser(filename, task.DirName)
 		delivery.Ack()
 		return
 	}
@@ -224,26 +235,35 @@ func (c *CrawlerService) processTask(delivery domain.TaskDelivery) {
 	fetchCtx, fetchCancel := context.WithTimeout(c.ctx, 2*time.Minute)
 	defer fetchCancel()
 	
+	log.Printf("[Worker %d] Fetching: %s", workerID, u)
 	body, err := c.fetcher.Fetch(fetchCtx, u)
 	if err != nil {
-		log.Printf("Error fetching %s: %v", u, err)
+		log.Printf("[Worker %d] Error fetching %s: %v", workerID, u, err)
 		
 		if c.isPurging.Load() {
 			delivery.Nack(false) // Drop it if we are purging
+			return
+		}
+		
+		// If it's a permanent error (like 404 Not Found or DNS resolution failure), don't requeue it.
+		if strings.Contains(err.Error(), "permanent") {
+			log.Printf("[Worker %d] Discarding permanent error for %s", workerID, u)
+			delivery.Ack()
 		} else {
-			delivery.Nack(true) // Requeue on fetch error
+			delivery.Nack(true) // Requeue on transient fetch error
 		}
 		return
 	}
 	defer body.Close()
 
+	log.Printf("[Worker %d] Saving to storage: %s", workerID, filename)
 	_, err = c.storage.Save(filename, body)
 	if err != nil {
-		log.Printf("Error saving %s: %v", u, err)
+		log.Printf("[Worker %d] Error saving %s: %v", workerID, u, err)
 		if c.isPurging.Load() {
 			delivery.Nack(false) // Drop it if we are purging
 		} else {
-			delivery.Nack(true) // Requeue on fetch error
+			delivery.Nack(true) // Requeue on save error
 		}
 		return
 	}
@@ -256,6 +276,9 @@ func (c *CrawlerService) processTask(delivery domain.TaskDelivery) {
 	} else {
 		c.handleHTML(u, task.Parent, task.ParentContext, task.Description, task.DirName, filename, task.Depth, task.MaxDepth)
 	}
+
+	// Stream per-file notification to parser
+	c.publishToParser(filename, task.DirName)
 
 	delivery.Ack() // Successfully processed
 }
@@ -508,8 +531,19 @@ func (c *CrawlerService) generateFilename(u string, ext string, dirName string) 
 	h.Write([]byte(u))
 	hash := fmt.Sprintf("%x", h.Sum(nil))
 	
-	// Sanitize base name
-	base = strings.ReplaceAll(base, "/", "_")
+	// Sanitize base name - strictly keep only ASCII letters, numbers, dash, underscore, dot
+	// MinIO crashes on ISO-8859-1 url decoded characters (e.g., constituiao.htm)
+	var safeBuilder strings.Builder
+	for _, r := range base {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' || r == '.' {
+			safeBuilder.WriteRune(r)
+		}
+	}
+	base = safeBuilder.String()
+	
+	if base == "" || base == ext {
+		base = "document"
+	}
 	
 	// Ensure extension
 	if !strings.HasSuffix(base, ext) {
@@ -527,4 +561,32 @@ func (c *CrawlerService) generateFilename(u string, ext string, dirName string) 
 		return filepath.Join(c.outputSubdir, filename)
 	}
 	return filename
+}
+
+// publishToParser sends a per-file notification to the raw_documents queue
+// so the parser can process it immediately without waiting for the whole crawl to finish.
+func (c *CrawlerService) publishToParser(contentKey string, topic string) {
+	// Derive metadata key from content key (same name, .json extension)
+	metadataKey := contentKey
+	for _, ext := range []string{".htm", ".html", ".pdf"} {
+		if strings.HasSuffix(metadataKey, ext) {
+			metadataKey = strings.TrimSuffix(metadataKey, ext) + ".json"
+			break
+		}
+	}
+
+	payload := map[string]string{
+		"content_key":  contentKey,
+		"metadata_key": metadataKey,
+		"bucket":       c.bucketName,
+		"topic":        topic,
+	}
+	payloadBytes, _ := json.Marshal(payload)
+
+	err := c.queue.PublishToQueue(context.Background(), "raw_documents", payloadBytes)
+	if err != nil {
+		log.Printf("Failed to publish to raw_documents: %v", err)
+	} else {
+		log.Printf("Published to raw_documents: %s (topic=%s)", contentKey, topic)
+	}
 }
