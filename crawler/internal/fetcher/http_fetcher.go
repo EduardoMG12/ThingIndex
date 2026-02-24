@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/user/legisgraph-crawler/internal/domain"
@@ -28,6 +29,14 @@ func NewHTTPFetcher(timeout time.Duration, retries int) domain.Fetcher {
 		retries: retries,
 	}
 }
+
+// ErrPermanent indicates an error that should not be retried (e.g., 404 Not Found)
+type ErrPermanent struct {
+	StatusCode int
+	Message    string
+}
+
+func (e *ErrPermanent) Error() string { return e.Message }
 
 func (f *HTTPFetcher) Fetch(ctx context.Context, url string) (io.ReadCloser, error) {
 	var lastErr error
@@ -51,12 +60,32 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, url string) (io.ReadCloser, err
 			if ctx.Err() != nil {
 				return nil, ctx.Err()
 			}
+			
+			// Treat "no such host" (DNS resolution failure) or connection refused as permanent errors
+			// so we don't stall the pipeline retrying dead domains.
+			errStr := err.Error()
+			if strings.Contains(errStr, "no such host") || strings.Contains(errStr, "connection refused") || strings.Contains(errStr, "dial tcp") {
+				return nil, &ErrPermanent{
+					StatusCode: 0,
+					Message:    fmt.Sprintf("permanent network error for url: %s (%v)", url, err),
+				}
+			}
+			
 			lastErr = err
 		} else {
 			if resp.StatusCode == http.StatusOK {
 				return resp.Body, nil
 			}
 			resp.Body.Close()
+			
+			// If it's a permanent error (4xx client error), return immediately without retrying
+			if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != 429 {
+				return nil, &ErrPermanent{
+					StatusCode: resp.StatusCode,
+					Message:    fmt.Sprintf("permanent error (status %d) for url: %s", resp.StatusCode, url),
+				}
+			}
+			
 			lastErr = fmt.Errorf("status code %d", resp.StatusCode)
 		}
 		

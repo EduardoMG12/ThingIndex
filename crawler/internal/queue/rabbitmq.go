@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -17,6 +18,7 @@ type RabbitMQClient struct {
 	queue   amqp.Queue
 	url     string
 	qName   string
+	mu      sync.Mutex // protects channel publishing
 }
 
 func NewRabbitMQClient(url, qName string) (*RabbitMQClient, error) {
@@ -59,7 +61,20 @@ func (r *RabbitMQClient) Connect() error {
 		args,    // arguments
 	)
 	if err != nil {
-		return fmt.Errorf("failed to declare a queue: %w", err)
+		return fmt.Errorf("failed to declare main queue: %w", err)
+	}
+
+	// Also proactively declare the queue we publish to, so publishers never block waiting
+	_, err = r.channel.QueueDeclare(
+		"raw_documents",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to declare raw_documents queue: %w", err)
 	}
 	
 	// Set QoS to ensure fair dispatch
@@ -76,6 +91,9 @@ func (r *RabbitMQClient) Connect() error {
 }
 
 func (r *RabbitMQClient) Publish(ctx context.Context, task domain.CrawlTask) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	body, err := json.Marshal(task)
 	if err != nil {
 		return fmt.Errorf("failed to marshal task: %w", err)
@@ -112,7 +130,8 @@ func (r *RabbitMQClient) Consume() (<-chan domain.TaskDelivery, error) {
 		return nil, fmt.Errorf("failed to register a consumer: %w", err)
 	}
 
-	deliveryChan := make(chan domain.TaskDelivery)
+	// buffered channel to avoid blocking the main RabbitMQ consumer loop
+	deliveryChan := make(chan domain.TaskDelivery, 100)
 
 	go func() {
 		defer close(deliveryChan)
@@ -130,9 +149,13 @@ func (r *RabbitMQClient) Consume() (<-chan domain.TaskDelivery, error) {
 			deliveryChan <- domain.TaskDelivery{
 				Task: task,
 				Ack: func() {
+					r.mu.Lock()
+					defer r.mu.Unlock()
 					currentDelivery.Ack(false)
 				},
 				Nack: func(requeue bool) {
+					r.mu.Lock()
+					defer r.mu.Unlock()
 					currentDelivery.Nack(false, requeue)
 				},
 			}
@@ -142,7 +165,37 @@ func (r *RabbitMQClient) Consume() (<-chan domain.TaskDelivery, error) {
 	return deliveryChan, nil
 }
 
+// PublishToQueue sends a raw byte payload to a specific queue
+func (r *RabbitMQClient) PublishToQueue(ctx context.Context, queueName string, body []byte) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	return r.channel.PublishWithContext(ctx,
+		"",        // exchange
+		queueName, // routing key
+		false,     // mandatory
+		false,     // immediate
+		amqp.Publishing{
+			ContentType:  "application/json",
+			Body:         body,
+			DeliveryMode: amqp.Persistent,
+		})
+}
+
+// GetMessageCount returns the number of messages sitting in the queue
+func (r *RabbitMQClient) GetMessageCount() (int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	q, err := r.channel.QueueInspect(r.qName)
+	if err != nil {
+		return 0, err
+	}
+	return q.Messages, nil
+}
+
 func (r *RabbitMQClient) Purge() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	_, err := r.channel.QueuePurge(r.qName, false)
 	if err != nil {
 		return fmt.Errorf("failed to purge queue: %w", err)
