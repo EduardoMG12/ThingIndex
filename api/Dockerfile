@@ -1,4 +1,7 @@
-FROM python:3.11-slim
+FROM python:3.11-alpine
+
+# Install build dependencies for PDM and potentially other native extensions
+RUN apk add --no-cache gcc musl-dev libffi-dev
 
 WORKDIR /app
 

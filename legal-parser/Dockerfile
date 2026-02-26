@@ -1,4 +1,4 @@
-FROM golang:1.25 AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -13,13 +13,12 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o /app/bin/legal-parser ./cmd/parser
 
 # Final lightweight image
-FROM gcr.io/distroless/static-debian12
+FROM alpine:latest
 
 WORKDIR /app
 
 # Copy the compiled binary from the builder stage
 COPY --from=builder /app/bin/legal-parser .
 
-# Create directories for volumes
 # Run the binary
 ENTRYPOINT ["/app/legal-parser"]
