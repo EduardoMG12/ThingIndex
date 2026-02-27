@@ -10,6 +10,7 @@ import (
 	"github.com/user/legisgraph-crawler/internal/parser"
 	"github.com/user/legisgraph-crawler/internal/queue"
 	"github.com/user/legisgraph-crawler/internal/storage"
+	"github.com/user/legisgraph/telemetry"
 )
 
 func main() {
@@ -47,8 +48,12 @@ func main() {
 	}
 	defer q.Close()
 
+	// Initialize Telemetry Emitter
+	te := telemetry.NewEmitter(cfg.RabbitURL, cfg.TelemetryExchange, "crawler")
+	defer te.Close()
+
 	// Initialize Crawler
-	c := crawler.NewCrawlerService(f, pdfP, htmlP, s, q, cfg.MaxDepth, cfg.IgnoreKeywords, cfg.FilterName, bucketName, cfg.BackpressureLimit)
+	c := crawler.NewCrawlerService(f, pdfP, htmlP, s, q, cfg.MaxDepth, cfg.IgnoreKeywords, cfg.FilterName, bucketName, cfg.BackpressureLimit, te)
 
 	// Start Crawling
 	log.Printf("Starting crawler, reading from queue...")
@@ -57,3 +62,4 @@ func main() {
 	}
 	log.Println("Crawling finished successfully.")
 }
+

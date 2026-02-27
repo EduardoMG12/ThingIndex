@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/user/legisgraph-crawler/internal/domain"
+	"github.com/user/legisgraph/telemetry"
 )
 
 
@@ -34,6 +35,7 @@ type CrawlerService struct {
 	storage    domain.Storage
 	visited    *BloomFilter
 	queue      domain.Queue
+	telemetry  *telemetry.Emitter
 	wg         sync.WaitGroup
 	maxDepth   int
 
@@ -57,7 +59,7 @@ type CrawlerService struct {
 	cancelFunc        context.CancelFunc
 }
 
-func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlParser HTMLParser, storage domain.Storage, queue domain.Queue, maxDepth int, ignoreKeywords []string, outputSubdir string, bucketName string, backpressureLimit int) *CrawlerService {
+func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlParser HTMLParser, storage domain.Storage, queue domain.Queue, maxDepth int, ignoreKeywords []string, outputSubdir string, bucketName string, backpressureLimit int, te *telemetry.Emitter) *CrawlerService {
 	// Initialize Bloom Filter with 1M items and 0.01 false positive rate
 	bf := NewBloomFilter(1000000, 0.01)
 
@@ -68,6 +70,7 @@ func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlPars
 		storage:        storage,
 		queue:          queue,
 		visited:        bf,
+		telemetry:      te,
 		maxDepth:       maxDepth,
 		ignoreKeywords: ignoreKeywords,
 		outputSubdir:   outputSubdir,
@@ -173,6 +176,7 @@ func (c *CrawlerService) processTask(workerID int, delivery domain.TaskDelivery)
 	u := task.URL
 	
 	log.Printf("[Worker %d] Processing: %s (Depth %d)", workerID, u, task.Depth)
+	c.telemetry.Emit("fila_crawler", "info", fmt.Sprintf("[Worker %d] Recebendo task: %s (depth %d)", workerID, u, task.Depth), map[string]int{"current_depth": task.Depth})
 	
 	// Increase active workers count
 	c.activeWorkers.Add(1)
@@ -281,6 +285,7 @@ func (c *CrawlerService) processTask(workerID int, delivery domain.TaskDelivery)
 	defer fetchCancel()
 	
 	log.Printf("[Worker %d] Fetching: %s", workerID, u)
+	c.telemetry.Emit("download_arquivo", "info", fmt.Sprintf("[Worker %d] Baixando: %s", workerID, u), nil)
 	body, err := c.fetcher.Fetch(fetchCtx, u)
 	if err != nil {
 		log.Printf("[Worker %d] Error fetching %s: %v", workerID, u, err)
@@ -302,9 +307,11 @@ func (c *CrawlerService) processTask(workerID int, delivery domain.TaskDelivery)
 	defer body.Close()
 
 	log.Printf("[Worker %d] Saving to storage: %s", workerID, filename)
+	c.telemetry.Emit("upload_minio_raw", "info", fmt.Sprintf("[Worker %d] Salvando no MinIO: %s", workerID, filename), nil)
 	_, err = c.storage.Save(filename, body)
 	if err != nil {
 		log.Printf("[Worker %d] Error saving %s: %v", workerID, u, err)
+		c.telemetry.Emit("upload_minio_raw", "error", fmt.Sprintf("[Worker %d] Erro ao salvar: %s", workerID, err.Error()), nil)
 		if c.isPurging.Load() {
 			delivery.Nack(false) // Drop it if we are purging
 		} else {
@@ -314,6 +321,8 @@ func (c *CrawlerService) processTask(workerID int, delivery domain.TaskDelivery)
 	}
 	atomic.AddInt64(&c.statsFetched, 1)
 	atomic.AddInt64(&c.statsSaved, 1)
+	savedCount := atomic.LoadInt64(&c.statsSaved)
+	c.telemetry.Emit("upload_minio_raw", "success", fmt.Sprintf("[Worker %d] Arquivo salvo: %s", workerID, filename), map[string]int{"minio_files": int(savedCount)})
 
 	// Post-process based on type
 	if isPDF {
@@ -410,6 +419,7 @@ func (c *CrawlerService) handleHTML(u, parent string, parentContext domain.LinkC
 	}
 
 	log.Printf("Found %d potential links in HTML (%d with context): %s", len(linksMap), len(enrichedLinks), u)
+	c.telemetry.Emit("extracao_links", "info", fmt.Sprintf("Extraídos %d links de %s", len(linksMap), u), nil)
 
 	var links []string
 	for link, text := range linksMap {
@@ -633,5 +643,6 @@ func (c *CrawlerService) publishToParser(contentKey string, topic string) {
 		log.Printf("Failed to publish to raw_documents: %v", err)
 	} else {
 		log.Printf("Published to raw_documents: %s (topic=%s)", contentKey, topic)
+		c.telemetry.Emit("fila_parser", "info", fmt.Sprintf("Enfileirando para parsing: %s", contentKey), nil)
 	}
 }

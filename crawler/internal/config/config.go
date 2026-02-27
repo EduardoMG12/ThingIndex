@@ -22,8 +22,9 @@ type AppConfig struct {
 	MinioEndpoint  string
 	MinioAccessKey string
 	MinioSecretKey    string
-	MinioUseSSL       bool
-	BackpressureLimit int
+	MinioUseSSL        bool
+	BackpressureLimit  int
+	TelemetryExchange  string
 }
 
 func LoadConfig() AppConfig {
@@ -95,5 +96,13 @@ func LoadConfig() AppConfig {
 		MinioSecretKey:    os.Getenv("MINIO_SECRET_KEY"),
 		MinioUseSSL:       os.Getenv("MINIO_USE_SSL") == "true",
 		BackpressureLimit: backpressureLimit,
+		TelemetryExchange: getEnvDefault("TELEMETRY_EXCHANGE", "pipeline_telemetry"),
 	}
+}
+
+func getEnvDefault(key, fallback string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return fallback
 }

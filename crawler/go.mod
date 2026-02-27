@@ -4,6 +4,10 @@ go 1.25.6
 
 require github.com/ledongthuc/pdf v0.0.0-20250511090121-5959a4027728
 
+require github.com/user/legisgraph/telemetry v0.0.0
+
+replace github.com/user/legisgraph/telemetry => ../telemetry
+
 require (
 	github.com/PuerkitoBio/goquery v1.11.0
 	github.com/joho/godotenv v1.5.1

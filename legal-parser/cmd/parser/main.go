@@ -10,6 +10,7 @@ import (
 	inputMinio "github.com/user/legisgraph/legal-parser/internal/adapters/input/minio"
 	"github.com/user/legisgraph/legal-parser/internal/queue"
 	"github.com/user/legisgraph/legal-parser/internal/service"
+	"github.com/user/legisgraph/telemetry"
 )
 
 // RawDocumentTask is the per-file message from the crawler
@@ -31,10 +32,15 @@ func main() {
 	minioAccessKey := os.Getenv("MINIO_ACCESS_KEY")
 	minioSecretKey := os.Getenv("MINIO_SECRET_KEY")
 	minioUseSSL := strings.ToLower(os.Getenv("MINIO_USE_SSL")) == "true"
+	telemetryExchange := getEnv("TELEMETRY_EXCHANGE", "pipeline_telemetry")
 
 	if rabbitmqURL == "" || minioEndpoint == "" || minioAccessKey == "" || minioSecretKey == "" {
 		log.Fatalf("Critical environment variables missing (RABBITMQ_URL, MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY)")
 	}
+
+	// --- Telemetry ---
+	te := telemetry.NewEmitter(rabbitmqURL, telemetryExchange, "parser")
+	defer te.Close()
 
 	// --- RabbitMQ ---
 	q := queue.NewRabbitMQClient(rabbitmqURL, inputQueue)
@@ -60,6 +66,7 @@ func main() {
 		}
 
 		log.Printf("Received: content=%s topic=%s bucket=%s", task.ContentKey, task.Topic, task.Bucket)
+		te.Emit("leitura_minio", "info", fmt.Sprintf("Recebendo documento: %s", task.ContentKey), nil)
 
 		// Skip non-HTML files (PDFs don't have parseable legal text structure)
 		lower := strings.ToLower(task.ContentKey)
@@ -78,9 +85,11 @@ func main() {
 		}
 
 		// --- Read content and metadata from MinIO ---
+		te.Emit("leitura_minio", "info", fmt.Sprintf("Lendo conteúdo do MinIO: %s", task.ContentKey), nil)
 		content, err := source.GetContentByKey(task.ContentKey)
 		if err != nil {
 			log.Printf("Failed to read content '%s': %v", task.ContentKey, err)
+			te.Emit("leitura_minio", "error", fmt.Sprintf("Erro ao ler conteúdo: %s", task.ContentKey), nil)
 			msg.Nack(false, false)
 			continue
 		}
@@ -93,21 +102,26 @@ func main() {
 		}
 
 		// --- Parse the document ---
+		te.Emit("processamento_regex", "info", fmt.Sprintf("Processando documento: %s", task.ContentKey), nil)
 		parser := service.NewParserService(nil, nil) // source/output not needed for ProcessSingleDocument
 		canonicalID, jsonData, err := parser.ProcessSingleDocument(content, meta)
 		if err != nil {
 			log.Printf("[SKIP] %s: %v", task.ContentKey, err)
+			te.Emit("processamento_regex", "warning", fmt.Sprintf("Documento ignorado: %s (%v)", task.ContentKey, err), nil)
 			msg.Ack(false) // don't requeue parse failures
 			continue
 		}
 
 		// --- Save parsed JSON to MinIO under parsed/<topic>/ prefix ---
 		parsedKey := fmt.Sprintf("parsed/%s/%s.json", task.Topic, canonicalID)
+		te.Emit("upload_json_parsed", "info", fmt.Sprintf("Salvando JSON processado: %s", parsedKey), nil)
 		if err := source.SaveParsed(parsedKey, jsonData); err != nil {
 			log.Printf("Failed to save parsed document '%s': %v", parsedKey, err)
+			te.Emit("upload_json_parsed", "error", fmt.Sprintf("Erro ao salvar: %s", parsedKey), nil)
 			msg.Nack(false, true) // requeue
 			continue
 		}
+		te.Emit("upload_json_parsed", "success", fmt.Sprintf("JSON salvo: %s", canonicalID), nil)
 
 		// --- Publish to parsed_documents queue for the populator ---
 		outPayload := map[string]string{
@@ -123,6 +137,7 @@ func main() {
 			// Don't fail the message — the parsed file is saved
 		} else {
 			log.Printf("Published to %s: %s (topic=%s)", outputQueue, canonicalID, task.Topic)
+			te.Emit("fila_populate_neo4j", "info", fmt.Sprintf("Enfileirando para Neo4j: %s", canonicalID), nil)
 		}
 
 		msg.Ack(false)
@@ -135,3 +150,4 @@ func getEnv(key, fallback string) string {
 	}
 	return fallback
 }
+

@@ -2,6 +2,10 @@ module github.com/user/legisgraph/populator
 
 go 1.25.6
 
+require github.com/user/legisgraph/telemetry v0.0.0
+
+replace github.com/user/legisgraph/telemetry => ../telemetry
+
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect

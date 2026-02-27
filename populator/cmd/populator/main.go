@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/user/legisgraph/populator/internal/graph"
 	"github.com/user/legisgraph/populator/internal/queue"
+	"github.com/user/legisgraph/telemetry"
 )
 
 // ParsedDocumentTask is the message from the parser
@@ -36,10 +38,15 @@ func main() {
 	minioAccessKey := os.Getenv("MINIO_ACCESS_KEY")
 	minioSecretKey := os.Getenv("MINIO_SECRET_KEY")
 	minioUseSSL := strings.ToLower(os.Getenv("MINIO_USE_SSL")) == "true"
+	telemetryExchange := getEnv("TELEMETRY_EXCHANGE", "pipeline_telemetry")
 
 	if rabbitmqURL == "" || neo4jURI == "" || neo4jPass == "" || minioEndpoint == "" || minioAccessKey == "" || minioSecretKey == "" {
 		log.Fatalf("Critical environment variables missing (RABBITMQ_URL, NEO4J_URI, NEO4J_PASS, MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY)")
 	}
+
+	// --- Telemetry ---
+	te := telemetry.NewEmitter(rabbitmqURL, telemetryExchange, "populator")
+	defer te.Close()
 
 	// --- Neo4j ---
 	neo4jClient, err := graph.NewNeo4jClient(neo4jURI, neo4jUser, neo4jPass, neo4jDB)
@@ -71,6 +78,8 @@ func main() {
 
 	log.Printf("Waiting for parsed documents on queue '%s'...", queueName)
 
+	nodesCreated := 0
+
 	// --- Consumer loop ---
 	for msg := range msgs {
 		var task ParsedDocumentTask
@@ -81,6 +90,7 @@ func main() {
 		}
 
 		log.Printf("Received: %s (topic=%s)", task.CanonicalID, task.Topic)
+		te.Emit("criar_nos_relacoes", "info", fmt.Sprintf("Recebendo documento: %s (topic=%s)", task.CanonicalID, task.Topic), nil)
 
 		// Read parsed JSON from MinIO
 		obj, err := minioClient.GetObject(context.Background(), task.Bucket, task.ParsedKey, minio.GetObjectOptions{})
@@ -109,11 +119,14 @@ func main() {
 		ctx := context.Background()
 
 		// Upsert the document node with topic label
+		te.Emit("criar_nos_relacoes", "info", fmt.Sprintf("Criando nós no Neo4j: %s", doc.ID), nil)
 		if err := neo4jClient.UpsertDocument(ctx, &doc, task.Topic); err != nil {
 			log.Printf("Failed to upsert document '%s': %v", doc.ID, err)
+			te.Emit("criar_nos_relacoes", "error", fmt.Sprintf("Erro ao criar nó: %s", doc.ID), nil)
 			msg.Nack(false, true)
 			continue
 		}
+		nodesCreated++
 
 		// Create reference relationships
 		if err := neo4jClient.CreateReferences(ctx, doc.ID, doc.Referencias); err != nil {
@@ -122,6 +135,7 @@ func main() {
 		}
 
 		log.Printf("[OK] Populated: %s (topic=%s, refs=%d)", doc.ID, task.Topic, len(doc.Referencias))
+		te.Emit("criar_nos_relacoes", "success", fmt.Sprintf("Nó criado: %s (%d refs)", doc.ID, len(doc.Referencias)), map[string]int{"neo4j_nodes": nodesCreated})
 		msg.Ack(false)
 	}
 }
@@ -156,3 +170,4 @@ func init() {
 		}
 	}
 }
+

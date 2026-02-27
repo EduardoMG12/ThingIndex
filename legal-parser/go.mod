@@ -2,6 +2,10 @@ module github.com/user/legisgraph/legal-parser
 
 go 1.25.6
 
+require github.com/user/legisgraph/telemetry v0.0.0
+
+replace github.com/user/legisgraph/telemetry => ../telemetry
+
 require (
 	github.com/PuerkitoBio/goquery v1.11.0
 	golang.org/x/net v0.50.0
