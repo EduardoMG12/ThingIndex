@@ -48,7 +48,7 @@ export const GROUP_COLORS: Record<string, string> = {
   "Worker Neo4j": "hsl(320, 60%, 55%)",
 };
 
-export type ActiveStages = Set<string>;
+export type ActiveStages = Map<string, number>;
 
 export function usePipelineSimulation() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -58,7 +58,7 @@ export function usePipelineSimulation() {
     neo4jNodes: 0,
     currentDepth: 0,
   });
-  const [activeStages, setActiveStages] = useState<ActiveStages>(new Set());
+  const [activeStages, setActiveStages] = useState<ActiveStages>(new Map());
   const [simRunning, setSimRunning] = useState(false);
   const [simDone, setSimDone] = useState(false);
 
@@ -91,7 +91,7 @@ export function usePipelineSimulation() {
     setSimDone(false);
     setLogs([]);
     setMetrics({ queueMessages: 0, minioFiles: 0, neo4jNodes: 0, currentDepth: 0 });
-    setActiveStages(new Set());
+    setActiveStages(new Map());
     clearTimeouts();
 
     startTime.current = Date.now();
@@ -103,11 +103,18 @@ export function usePipelineSimulation() {
       timeoutIds.current.push(setTimeout(fn, delay));
     };
 
-    const activate = (stage: string) => setActiveStages((p) => new Set(p).add(stage));
+    const activate = (stage: string) =>
+      setActiveStages((p) => {
+        const next = new Map(p);
+        next.set(stage, (next.get(stage) ?? 0) + 1);
+        return next;
+      });
     const deactivate = (stage: string) =>
       setActiveStages((p) => {
-        const next = new Set(p);
-        next.delete(stage);
+        const next = new Map(p);
+        const count = (next.get(stage) ?? 1) - 1;
+        if (count <= 0) next.delete(stage);
+        else next.set(stage, count);
         return next;
       });
 
@@ -306,7 +313,7 @@ export function usePipelineSimulation() {
     scheduleAbsolute(finishTime, () => {
       setSimRunning(false);
       setSimDone(true);
-      setActiveStages(new Set()); // Clear all glowing states
+      setActiveStages(new Map()); // Clear all glowing states
       addLog("api_call", "Simulação de carga concluída. Sistema estabilizado.", "success");
       // Force queue to 0
       updateMetrics(() => ({ queueMessages: 0 })); 

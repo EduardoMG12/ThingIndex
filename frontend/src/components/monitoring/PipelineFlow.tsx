@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { ArrowDown, Wifi, WifiOff } from "lucide-react";
 import {
@@ -21,24 +21,29 @@ type Props = {
     onStartSimulation: () => void;
 };
 
-function ActiveDot({ color, size = 10 }: { color: string; size?: number; }) {
+function CountBadge({ count, color }: { count: number; color: string; }) {
     return (
-        <motion.span
-            className="absolute -right-1 -top-1 rounded-full"
-            style={{ width: size, height: size, backgroundColor: color }}
-            animate={{
-                scale: [1, 1.5, 1],
-                opacity: [1, 0.6, 1],
-            }}
-            transition={{ duration: 0.6, repeat: Infinity, ease: "easeInOut" }}
-        />
+        <AnimatePresence>
+            {count > 0 && (
+                <motion.span
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                    className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full text-[10px] font-bold leading-none shadow-md"
+                    style={{ backgroundColor: color, color: "hsl(var(--background))" }}
+                >
+                    {count}
+                </motion.span>
+            )}
+        </AnimatePresence>
     );
 }
 
 function GroupActivityIndicator({ group, activeStages }: { group: string; activeStages: ActiveStages; }) {
     const stages = STAGES.filter((s) => s.group === group);
-    const isActive = stages.some((s) => activeStages.has(s.id));
-    if (!isActive) return null;
+    const totalCount = stages.reduce((sum, s) => sum + (activeStages.get(s.id) ?? 0), 0);
+    if (totalCount === 0) return null;
 
     return (
         <motion.span
@@ -87,7 +92,8 @@ export default function PipelineFlow({ activeStages, simRunning, simDone, isReal
                             </p>
                             <div className="flex flex-wrap items-center gap-3">
                                 {stages.map((stage, idx) => {
-                                    const isActive = activeStages.has(stage.id);
+                                    const count = activeStages.get(stage.id) ?? 0;
+                                    const isActive = count > 0;
                                     return (
                                         <div key={stage.id} className="flex items-center gap-3">
                                             <motion.div
@@ -110,7 +116,7 @@ export default function PipelineFlow({ activeStages, simRunning, simDone, isReal
                                                 }
                                                 transition={isActive ? { duration: 0.8, repeat: Infinity } : { duration: 0.3 }}
                                             >
-                                                {isActive && <ActiveDot color={groupColor} />}
+                                                <CountBadge count={count} color={groupColor} />
                                                 {stage.label}
                                             </motion.div>
                                             {idx < stages.length - 1 && (
