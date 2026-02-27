@@ -7,9 +7,10 @@ as they arrive from the pipeline workers via RabbitMQ.
 
 import logging
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 
-from src.services.telemetry_consumer import telemetry_consumer
+from src.core.protocols import TelemetryGateway
+from src.api.dependencies import get_telemetry_consumer
 
 logger = logging.getLogger("Monitoring")
 
@@ -17,22 +18,15 @@ monitoring_router = APIRouter(prefix="/api/v1/monitoring", tags=["Monitoring"])
 
 
 @monitoring_router.websocket("/stream")
-async def telemetry_stream(ws: WebSocket) -> None:
+async def telemetry_stream(
+    ws: WebSocket, 
+    consumer: TelemetryGateway = Depends(get_telemetry_consumer)
+) -> None:
     """
     WebSocket endpoint that streams real-time telemetry events.
-
-    Each message is a JSON object:
-    {
-      "worker": "crawler" | "parser" | "populator",
-      "stage": "<stage_id>",
-      "event_type": "info" | "warning" | "error" | "success",
-      "message": "...",
-      "timestamp": "2026-02-27T11:16:28-03:00",
-      "metadata": { "queue_messages": 42, ... }
-    }
     """
     await ws.accept()
-    telemetry_consumer.register(ws)
+    consumer.register(ws)
     logger.info("Client connected to telemetry stream")
 
     try:
@@ -44,4 +38,4 @@ async def telemetry_stream(ws: WebSocket) -> None:
     except WebSocketDisconnect:
         logger.info("Client disconnected from telemetry stream")
     finally:
-        telemetry_consumer.unregister(ws)
+        consumer.unregister(ws)
