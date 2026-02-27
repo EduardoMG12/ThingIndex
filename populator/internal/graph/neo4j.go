@@ -82,12 +82,7 @@ func (c *Neo4jClient) UpsertDocument(ctx context.Context, doc *LegalDocument, to
 	// MERGE the root Origin node (the sun center)
 	// MERGE the central Topic node
 	// Connect Topic to Origin
-	query := `
-		MERGE (o:Origem {name: "Brasil"})
-		MERGE (t:Topic {name: $topic})
-		MERGE (t)-[:PERTENCE]->(o)
-	`
-	_, err := session.Run(ctx, query, map[string]any{"topic": topic})
+	_, err := session.Run(ctx, QueryCreateTopic, map[string]any{"topic": topic})
 	if err != nil {
 		return err
 	}
@@ -121,39 +116,11 @@ func (c *Neo4jClient) UpsertDocument(ctx context.Context, doc *LegalDocument, to
 
 	if parentID != "" {
 		// Link to parent
-		cypher = fmt.Sprintf(`
-			MERGE (d:LegalDocument:%s:%s {id: $id})
-			MERGE (p:LegalDocument {id: $parent_id})
-			MERGE (d)-[:CONTIDO_EM]->(p)
-			SET d.tipo      = $tipo,
-			    d.esfera    = $esfera,
-			    d.numero    = $numero,
-			    d.ano       = $ano,
-			    d.titulo    = $titulo,
-			    d.ementa    = $ementa,
-			    d.url_origem = $url_origem,
-			    d.url_pai   = $url_pai,
-			    d.artigos   = $artigos,
-			    d.topic     = $topic
-		`, label, subLabel)
+		cypher = fmt.Sprintf(QueryCreateDocLinkedToParent, label, subLabel)
 		params["parent_id"] = parentID
 	} else {
 		// Link to Topic (Root document of a law/code)
-		cypher = fmt.Sprintf(`
-			MERGE (t:Topic {name: $topic})
-			MERGE (d:LegalDocument:%s:%s {id: $id})
-			MERGE (d)-[:PERTENCE]->(t)
-			SET d.tipo      = $tipo,
-			    d.esfera    = $esfera,
-			    d.numero    = $numero,
-			    d.ano       = $ano,
-			    d.titulo    = $titulo,
-			    d.ementa    = $ementa,
-			    d.url_origem = $url_origem,
-			    d.url_pai   = $url_pai,
-			    d.artigos   = $artigos,
-			    d.topic     = $topic
-		`, label, subLabel)
+		cypher = fmt.Sprintf(QueryCreateDocLinkedToTopic, label, subLabel)
 	}
 
 	_, err = session.Run(ctx, cypher, params)
@@ -171,18 +138,7 @@ func (c *Neo4jClient) CreateReferences(ctx context.Context, docID string, refs [
 
 	for _, ref := range refs {
 		// MERGE the target node (it may not exist yet — placeholder)
-		// MERGE the target node (it may not exist yet — placeholder)
 		// We add :Documento as a fallback sub-label so it gets a distinct color even before it's fully parsed
-		query := `
-			MATCH (source:LegalDocument {id: $source_id})
-			MERGE (target:LegalDocument:Documento {id: $target_id})
-			MERGE (source)-[r:REFERENCIA]->(target)
-			SET r.artigo    = $artigo,
-			    r.paragrafo = $paragrafo,
-			    r.inciso    = $inciso,
-			    r.alinea    = $alinea
-		`
-
 		artigo, paragrafo, inciso, alinea := "", "", "", ""
 		if ref.Context != nil {
 			artigo = ref.Context.Artigo
@@ -191,7 +147,7 @@ func (c *Neo4jClient) CreateReferences(ctx context.Context, docID string, refs [
 			alinea = ref.Context.Alinea
 		}
 
-		_, err := session.Run(ctx, query, map[string]any{
+		_, err := session.Run(ctx, QueryCreateReference, map[string]any{
 			"source_id": docID,
 			"target_id": ref.ID,
 			"artigo":    artigo,

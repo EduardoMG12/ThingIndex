@@ -36,16 +36,7 @@ func (c *Neo4jClient) EnsureConstraints(ctx context.Context) error {
 	defer session.Close(ctx)
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		queries := []string{
-			"CREATE CONSTRAINT IF NOT EXISTS FOR (l:Lei) REQUIRE l.id IS UNIQUE",
-			"CREATE INDEX IF NOT EXISTS FOR (l:Lei) ON (l.numero)",
-			"CREATE CONSTRAINT IF NOT EXISTS FOR (a:Artigo) REQUIRE a.id IS UNIQUE",
-			"CREATE CONSTRAINT IF NOT EXISTS FOR (p:Paragrafo) REQUIRE p.id IS UNIQUE",
-			"CREATE CONSTRAINT IF NOT EXISTS FOR (i:Inciso) REQUIRE i.id IS UNIQUE",
-			"CREATE CONSTRAINT IF NOT EXISTS FOR (al:Alinea) REQUIRE al.id IS UNIQUE",
-		}
-
-		for _, q := range queries {
+		for _, q := range QueryEnsureConstraints {
 			if _, err := tx.Run(ctx, q, nil); err != nil {
 				return nil, err
 			}
@@ -63,17 +54,6 @@ func (c *Neo4jClient) SaveLaw(ctx context.Context, law model.Law) error {
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		// 1. Create Law Node
-		queryLaw := `
-			MERGE (l:Lei {id: $id})
-			SET l.tipo = $tipo,
-				l.esfera = $esfera,
-				l.numero = $numero,
-				l.ano = $ano,
-				l.titulo = $titulo,
-				l.ementa = $ementa,
-				l.url_origem = $url_origem,
-				l.url_pai = $url_pai
-		`
 		paramsLaw := map[string]any{
 			"id":         law.ID,
 			"tipo":       law.Tipo,
@@ -85,7 +65,7 @@ func (c *Neo4jClient) SaveLaw(ctx context.Context, law model.Law) error {
 			"url_origem": law.URLOrigem,
 			"url_pai":    law.URLPai,
 		}
-		if _, err := tx.Run(ctx, queryLaw, paramsLaw); err != nil {
+		if _, err := tx.Run(ctx, QueryCreateLaw, paramsLaw); err != nil {
 			return nil, fmt.Errorf("failed to create Law node: %w", err)
 		}
 
@@ -93,14 +73,6 @@ func (c *Neo4jClient) SaveLaw(ctx context.Context, law model.Law) error {
 		for _, art := range law.Artigos {
 			// Article ID: lawID + "_art_" + numero
 			artID := fmt.Sprintf("%s_art_%s", law.ID, art.Numero)
-			queryArt := `
-				MATCH (l:Lei {id: $lawID})
-				MERGE (a:Artigo {id: $id})
-				SET a.numero = $numero,
-					a.caput = $caput,
-					a.status = $status
-				MERGE (l)-[:CONTEM]->(a)
-			`
 			paramsArt := map[string]any{
 				"lawID":  law.ID,
 				"id":     artID,
@@ -108,21 +80,13 @@ func (c *Neo4jClient) SaveLaw(ctx context.Context, law model.Law) error {
 				"caput":  art.Caput,
 				"status": art.Status,
 			}
-			if _, err := tx.Run(ctx, queryArt, paramsArt); err != nil {
+			if _, err := tx.Run(ctx, QueryCreateArticle, paramsArt); err != nil {
 				return nil, fmt.Errorf("failed to create Article %s: %w", art.Numero, err)
 			}
 
 			// 2a. Process Paragraphs
 			for _, par := range art.Paragrafos {
 				parID := fmt.Sprintf("%s_par_%s", artID, par.Numero)
-				queryPar := `
-					MATCH (a:Artigo {id: $artID})
-					MERGE (p:Paragrafo {id: $id})
-					SET p.numero = $numero,
-						p.texto = $texto,
-						p.status = $status
-					MERGE (a)-[:CONTEM]->(p)
-				`
 				paramsPar := map[string]any{
 					"artID":  artID,
 					"id":     parID,
@@ -130,7 +94,7 @@ func (c *Neo4jClient) SaveLaw(ctx context.Context, law model.Law) error {
 					"texto":  par.Texto,
 					"status": par.Status,
 				}
-				if _, err := tx.Run(ctx, queryPar, paramsPar); err != nil {
+				if _, err := tx.Run(ctx, QueryCreateParagraph, paramsPar); err != nil {
 					return nil, fmt.Errorf("failed to create Paragraph %s: %w", par.Numero, err)
 				}
 
@@ -156,14 +120,7 @@ func (c *Neo4jClient) SaveLaw(ctx context.Context, law model.Law) error {
 func processIncisos(ctx context.Context, tx neo4j.ManagedTransaction, parentID string, parentLabel string, incisos []model.Inciso) error {
 	for _, inc := range incisos {
 		incID := fmt.Sprintf("%s_inc_%s", parentID, inc.Numero)
-		queryInc := fmt.Sprintf(`
-			MATCH (p:%s {id: $parentID})
-			MERGE (i:Inciso {id: $id})
-			SET i.numero = $numero,
-				i.texto = $texto,
-				i.status = $status
-			MERGE (p)-[:CONTEM]->(i)
-		`, parentLabel)
+		queryInc := fmt.Sprintf(QueryCreateInciso, parentLabel)
 
 		paramsInc := map[string]any{
 			"parentID": parentID,
@@ -179,14 +136,6 @@ func processIncisos(ctx context.Context, tx neo4j.ManagedTransaction, parentID s
 		// Process Alineas using a similar helper or inline
 		for _, alinea := range inc.Alineas {
 			alineaID := fmt.Sprintf("%s_ali_%s", incID, alinea.Numero)
-			queryAli := `
-				MATCH (i:Inciso {id: $incID})
-				MERGE (al:Alinea {id: $id})
-				SET al.numero = $numero,
-					al.texto = $texto,
-					al.status = $status
-				MERGE (i)-[:CONTEM]->(al)
-			`
 			paramsAli := map[string]any{
 				"incID":  incID,
 				"id":     alineaID,
@@ -194,7 +143,7 @@ func processIncisos(ctx context.Context, tx neo4j.ManagedTransaction, parentID s
 				"texto":  alinea.Texto,
 				"status": alinea.Status,
 			}
-			if _, err := tx.Run(ctx, queryAli, paramsAli); err != nil {
+			if _, err := tx.Run(ctx, QueryCreateAlinea, paramsAli); err != nil {
 				return fmt.Errorf("failed to create Alinea %s: %w", alinea.Numero, err)
 			}
 		}
@@ -209,19 +158,13 @@ func (c *Neo4jClient) LinkArticleToLaw(ctx context.Context, articleID string, ta
 	defer session.Close(ctx)
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		query := `
-			MATCH (a:Artigo {id: $articleID})
-			MERGE (target:Lei {numero: $targetNum})
-			ON CREATE SET target.tipo = $targetType, target.esfera = 'federal', target.status = 'unknown'
-			MERGE (a)-[:CITA]->(target)
-		`
 		params := map[string]any{
 			"articleID":  articleID,
 			"targetNum":  targetLawNum,
 			"targetType": targetLawType,
 		}
 
-		if _, err := tx.Run(ctx, query, params); err != nil {
+		if _, err := tx.Run(ctx, QueryLinkArticleToLaw, params); err != nil {
 			return nil, err
 		}
 		return nil, nil

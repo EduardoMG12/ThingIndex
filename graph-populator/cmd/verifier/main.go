@@ -9,6 +9,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
+	"github.com/user/legisgraph/graph-populator/internal/db"
 )
 
 func main() {
@@ -41,42 +42,27 @@ func main() {
 
 	// 1. Count Nodes by Label
 	printHeader("Node Counts")
-	runQuery(ctx, session, "MATCH (n) RETURN head(labels(n)) as Label, count(n) as Count ORDER BY Count DESC")
+	runQuery(ctx, session, db.QueryCountNodesByLabel)
 
 	// 2. Count Relationships
 	printHeader("Relationship Counts")
-	runQuery(ctx, session, "MATCH ()-[r]->() RETURN type(r) as Type, count(r) as Count ORDER BY Count DESC")
+	runQuery(ctx, session, db.QueryCountRelationshipsByType)
 
 	// 3. Sample Hierarchy (Law -> Articles)
 	printHeader("Sample Hierarchy (Top 5 Laws by Article Count)")
-	runQuery(ctx, session, `
-		MATCH (l:Lei)-[:CONTEM]->(a:Artigo)
-		RETURN l.numero as Lei, count(a) as Artigos
-		ORDER BY Artigos DESC LIMIT 5
-	`)
+	runQuery(ctx, session, db.QuerySampleHierarchy)
+
 	// 4. Sample Deepest Path (Law -> Article -> Paragraph -> Inciso -> Alinea)
 	printHeader("Sample Deepest Path (Full Hierarchy)")
-	runQuery(ctx, session, `
-		MATCH (l:Lei)-[:CONTEM]->(a:Artigo)-[:CONTEM]->(p:Paragrafo)-[:CONTEM]->(i:Inciso)-[:CONTEM]->(al:Alinea)
-		RETURN l.numero as Lei, a.numero as Art, p.numero as Par, i.numero as Inc, al.numero as Ali
-		LIMIT 5
-	`)
+	runQuery(ctx, session, db.QuerySampleDeepestPath)
+
 	// 5. Sample Cross-References (Law -> Article -> Cites -> Law)
 	printHeader("Sample Cross-References (Citations)")
-	runQuery(ctx, session, `
-		MATCH (l1:Lei)-[:CONTEM]->(a:Artigo)-[:CITA]->(l2:Lei)
-		RETURN l1.numero as Lei_Origem, a.numero as Artigo, l2.numero as Lei_Citada
-		LIMIT 10
-	`)
+	runQuery(ctx, session, db.QuerySampleCrossReferences)
 
 	// 6. Check for "Ghost" Nodes (Created by MERGE but not fully populated yet)
 	printHeader("Ghost Nodes (Laws referenced but not yet ingested)")
-	runQuery(ctx, session, `
-		MATCH (l:Lei)
-		WHERE l.titulo IS NULL AND l.status = 'unknown'
-		RETURN l.numero as Lei_Fantasma, count(l)
-		LIMIT 10
-	`)
+	runQuery(ctx, session, db.QueryGhostNodes)
 }
 
 func printHeader(title string) {
