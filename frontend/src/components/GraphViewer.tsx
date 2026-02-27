@@ -33,11 +33,24 @@ type Props = {
 };
 
 const COLORS = [
-    "hsl(40, 90%, 55%)",
-    "hsl(200, 70%, 55%)",
-    "hsl(150, 60%, 50%)",
-    "hsl(320, 60%, 55%)",
-    "hsl(15, 80%, 55%)",
+    "hsl(45, 100%, 50%)",   // 0: Origem (Gold)
+    "hsl(210, 100%, 60%)",  // 1: Topic (Blue)
+    "hsl(180, 100%, 45%)",  // 2: Lei / Documento (Cyan)
+    "hsl(145, 80%, 45%)",   // 3: Artigo (Green)
+    "hsl(270, 70%, 60%)",   // 4: Parágrafo (Purple)
+    "hsl(330, 80%, 60%)",   // 5: Inciso (Pink)
+    "hsl(30, 90%, 55%)",    // 6: Alínea (Orange)
+    "hsl(0, 0%, 50%)",      // 7: Outros (Gray)
+];
+
+const LEGEND_ITEMS = [
+    { label: "Origem", color: COLORS[0] },
+    { label: "Tópico", color: COLORS[1] },
+    { label: "Documento/Lei", color: COLORS[2] },
+    { label: "Artigo", color: COLORS[3] },
+    { label: "Parágrafo", color: COLORS[4] },
+    { label: "Inciso", color: COLORS[5] },
+    { label: "Alínea", color: COLORS[6] },
 ];
 
 export default function GraphViewer({
@@ -164,7 +177,7 @@ export default function GraphViewer({
                         height={dimensions.height}
                         backgroundColor="transparent"
                         nodeRelSize={6}
-                        nodeColor={(node: any) => COLORS[node.group % COLORS.length]}
+                        nodeColor={(node: any) => COLORS[node.group] || COLORS[COLORS.length - 1]}
                         nodeLabel={(node: any) => node.label}
                         linkColor={() => "hsl(220, 15%, 25%)"}
                         linkWidth={1.5}
@@ -189,14 +202,14 @@ export default function GraphViewer({
                 <span className="text-[11px] text-muted-foreground">
                     Exibindo {nodes.length} de {totalNodes || nodes.length} nós estruturados · {links.length} conexões
                 </span>
-                <div className="flex gap-3">
-                    {["Documento", "Seção", "Artigo", "Conceito"].map((label, i) => (
-                        <span key={label} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <div className="flex flex-wrap justify-end gap-x-4 gap-y-1 max-w-[70%]">
+                    {LEGEND_ITEMS.map((item) => (
+                        <span key={item.label} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                             <span
                                 className="inline-block h-2 w-2 rounded-full"
-                                style={{ backgroundColor: COLORS[i] }}
+                                style={{ backgroundColor: item.color }}
                             />
-                            {label}
+                            {item.label}
                         </span>
                     ))}
                 </div>

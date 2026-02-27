@@ -36,7 +36,7 @@ export default function Home() {
   React.useEffect(() => {
     async function loadGraphData() {
       setIsLoadingGraph(true);
-      const data = await fetchGraphData(graphContext, 500);
+      const data = await fetchGraphData(graphContext, 3000);
       setGraphData(data);
       setIsLoadingGraph(false);
     }
