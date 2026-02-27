@@ -1,6 +1,7 @@
 import logging
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 from src.core.lifespan import lifespan
 from src.api.routes import router as operations_router
 from src.api.docs import docs_router

@@ -1,7 +1,13 @@
 import logging
 from neo4j import AsyncGraphDatabase
 from src.core.config import settings
-from src.repositories.neo4j_queries import GET_TOPICS_QUERY, GET_VISUALIZE_GRAPH_QUERY
+from src.repositories.neo4j_queries import (
+    GET_TOPICS_QUERY, 
+    GET_VISUALIZE_GRAPH_QUERY,
+    GET_VISUALIZE_CONTEXT_QUERY,
+    GET_TOTAL_NODES_ALL,
+    GET_TOTAL_NODES_CONTEXT
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,22 +50,38 @@ class Neo4jClient:
             records = await result.data()
             return [record["topic"] for record in records]
 
-    async def get_visualize_graph(self, limit: int = 500):
-        """Get nodes and links formatted for the frontend GraphViewer."""
-        query = GET_VISUALIZE_GRAPH_QUERY.format(limit=limit)
-        
+    async def get_visualize_graph(self, limit: int = 500, context: str = "all"):
+        """Get nodes and links formatted for the frontend GraphViewer, optionally filtered by context."""
         if not self.driver:
-            return {"nodes": [], "links": []}
+            return {"nodes": [], "links": [], "totalNodes": 0}
             
         async with self.driver.session() as session:
-            result = await session.run(query)
-            record = await result.single()
-            if record:
+            # 1. Determine which queries to use and get total count
+            if context and context.lower() != "all":
+                count_query = GET_TOTAL_NODES_CONTEXT
+                viz_query = GET_VISUALIZE_CONTEXT_QUERY.format(limit=limit)
+                params = {"context": context}
+            else:
+                count_query = GET_TOTAL_NODES_ALL
+                viz_query = GET_VISUALIZE_GRAPH_QUERY.format(limit=limit)
+                params = {}
+                
+            # Fetch total count
+            count_result = await session.run(count_query, params)
+            count_record = await count_result.single()
+            total_nodes = count_record["total"] if count_record else 0
+            
+            # Fetch graph data
+            viz_result = await session.run(viz_query, params)
+            viz_record = await viz_result.single()
+            
+            if viz_record:
                 return {
-                    "nodes": record["nodes"],
-                    "links": record["links"]
+                    "nodes": viz_record["nodes"],
+                    "links": viz_record["links"],
+                    "totalNodes": total_nodes
                 }
-            return {"nodes": [], "links": []}
+            return {"nodes": [], "links": [], "totalNodes": total_nodes}
 
 # Singleton instance
 neo4j_client = Neo4jClient()
