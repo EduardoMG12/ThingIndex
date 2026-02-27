@@ -1,51 +1,55 @@
 "use client";
 
-import * as React from "react";
-import { SendHorizontal, Loader2 } from "lucide-react";
-import { Card, CardHeader, CardContent } from "@/components/ui/Card";
+import { useState } from "react";
+import { Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Textarea } from "@/components/ui/Textarea";
 
-interface PromptPanelProps {
+type Props = {
     onSubmit: (prompt: string) => void;
-    isLoading: boolean;
-}
+    isLoading?: boolean;
+};
 
-export default function PromptPanel({ onSubmit, isLoading }: PromptPanelProps) {
-    const [prompt, setPrompt] = React.useState("");
+export default function PromptPanel({ onSubmit, isLoading }: Props) {
+    const [prompt, setPrompt] = useState("");
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = () => {
         if (!prompt.trim() || isLoading) return;
-        onSubmit(prompt);
+        onSubmit(prompt.trim());
         setPrompt("");
     };
 
     return (
-        <Card glow>
-            <CardHeader>
-                <h3 className="text-lg font-semibold">Análise Legislativa</h3>
-            </CardHeader>
-            <CardContent>
-                <form onSubmit={handleSubmit} className="flex gap-2">
-                    <textarea
-                        className="flex-1 bg-secondary/30 border border-border rounded-md p-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none min-h-[80px]"
-                        placeholder="Descreva o caso ou solicite uma análise dos documentos..."
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                    />
-                    <Button
-                        type="submit"
-                        className="self-end h-10"
-                        disabled={!prompt.trim() || isLoading}
-                    >
-                        {isLoading ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                            <SendHorizontal className="w-5 h-5" />
-                        )}
-                    </Button>
-                </form>
-            </CardContent>
-        </Card>
+        <div className="surface-card rounded-lg p-5">
+            <div className="mb-4 flex items-center gap-2">
+                <Send className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold">Prompt</h3>
+            </div>
+
+            <Textarea
+                placeholder="Escreva seu prompt aqui... Ex: Analise os artigos sobre responsabilidade civil no CDC"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                className="min-h-[120px] resize-none bg-background text-sm"
+                onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                        e.preventDefault();
+                        handleSubmit();
+                    }
+                }}
+            />
+
+            <div className="mt-3 flex items-center justify-between">
+                <span className="text-[11px] text-muted-foreground">⌘/Ctrl + Enter para enviar</span>
+                <Button onClick={handleSubmit} disabled={isLoading || !prompt.trim()} className="gap-2">
+                    {isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                        <Send className="h-4 w-4" />
+                    )}
+                    Enviar
+                </Button>
+            </div>
+        </div>
     );
 }

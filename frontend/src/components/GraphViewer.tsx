@@ -1,82 +1,157 @@
 "use client";
 
-import * as React from "react";
-import { Expand, Share2, Layers } from "lucide-react";
-import { Card, CardHeader, CardContent } from "@/components/ui/Card";
+import { useRef, useEffect, useState, useCallback, useMemo } from "react";
+import dynamic from "next/dynamic";
+import { GitBranch, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
-interface Node {
+// Dynamic import for client-side only rendering of ForceGraph2D
+const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
+    ssr: false,
+    loading: () => <div className="h-[350px] flex items-center justify-center">Carregando visualização...</div>
+});
+
+type GraphNode = {
     id: string;
     label: string;
     group: number;
-}
+};
 
-interface Link {
+type GraphLink = {
     source: string;
     target: string;
-}
+    label?: string;
+};
 
-interface GraphViewerProps {
-    nodes: Node[];
-    links: Link[];
-}
+type Props = {
+    nodes: GraphNode[];
+    links: GraphLink[];
+};
 
-export default function GraphViewer({ nodes, links }: GraphViewerProps) {
+const COLORS = [
+    "hsl(40, 90%, 55%)",
+    "hsl(200, 70%, 55%)",
+    "hsl(150, 60%, 50%)",
+    "hsl(320, 60%, 55%)",
+    "hsl(15, 80%, 55%)",
+];
+
+export default function GraphViewer({ nodes, links }: Props) {
+    const fgRef = useRef<any>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [dimensions, setDimensions] = useState({ width: 600, height: 400 });
+
+    const updateDimensions = useCallback(() => {
+        if (containerRef.current) {
+            const rect = containerRef.current.getBoundingClientRect();
+            setDimensions({ width: rect.width, height: Math.max(rect.height, 350) });
+        }
+    }, []);
+
+    useEffect(() => {
+        updateDimensions();
+        window.addEventListener("resize", updateDimensions);
+        return () => window.removeEventListener("resize", updateDimensions);
+    }, [updateDimensions]);
+
+    const graphData = useMemo(() => ({
+        nodes: nodes.map((n) => ({ ...n, name: n.label })),
+        links: links.map((l) => ({ ...l })),
+    }), [nodes, links]);
+
     return (
-        <Card className="h-full flex flex-col relative overflow-hidden group">
-            <CardHeader className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-card/80 to-transparent flex flex-row items-center justify-between">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <Layers className="w-5 h-5 text-primary" />
-                    Visualização de Grafo
-                </h3>
-                <div className="flex gap-2">
-                    <Button variant="secondary" size="sm" className="bg-card/50 backdrop-blur-sm">
-                        <Share2 className="w-4 h-4" />
+        <div className="surface-card rounded-lg p-5 flex flex-col h-full">
+            <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <GitBranch className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-semibold">Banco de Grafos</h3>
+                </div>
+                <div className="flex gap-1">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => fgRef.current?.zoomToFit(400)}
+                    >
+                        <Maximize2 className="h-4 w-4" />
                     </Button>
-                    <Button variant="secondary" size="sm" className="bg-card/50 backdrop-blur-sm">
-                        <Expand className="w-4 h-4" />
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                            const z = fgRef.current?.zoom();
+                            fgRef.current?.zoom(z * 1.3, 300);
+                        }}
+                    >
+                        <ZoomIn className="h-4 w-4" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                            const z = fgRef.current?.zoom();
+                            fgRef.current?.zoom(z * 0.7, 300);
+                        }}
+                    >
+                        <ZoomOut className="h-4 w-4" />
                     </Button>
                 </div>
-            </CardHeader>
+            </div>
 
-            <CardContent className="flex-1 p-0 flex items-center justify-center bg-[#0a0c10] min-h-[600px] relative">
-                {/* Placeholder for actual graph visualization (D3/Sigma/React-Force-Graph) */}
-                <div className="absolute inset-0 opacity-20 pointer-events-none overflow-hidden">
-                    {/* Simple visual background representation of a graph */}
-                    <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-                        <defs>
-                            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5" strokeOpacity="0.1" />
-                            </pattern>
-                        </defs>
-                        <rect width="100%" height="100%" fill="url(#grid)" />
-                    </svg>
-                </div>
+            <div
+                ref={containerRef}
+                className="graph-container relative flex-1 min-h-[350px] overflow-hidden rounded-lg border border-border bg-[#0a0c10]"
+            >
+                {nodes.length === 0 ? (
+                    <div className="flex h-full items-center justify-center">
+                        <p className="text-sm text-muted-foreground">
+                            Nenhum grafo disponível. Envie um prompt para gerar.
+                        </p>
+                    </div>
+                ) : (
+                    <ForceGraph2D
+                        ref={fgRef}
+                        graphData={graphData}
+                        width={dimensions.width}
+                        height={dimensions.height}
+                        backgroundColor="transparent"
+                        nodeRelSize={6}
+                        nodeColor={(node: any) => COLORS[node.group % COLORS.length]}
+                        nodeLabel={(node: any) => node.label}
+                        linkColor={() => "hsl(220, 15%, 25%)"}
+                        linkWidth={1.5}
+                        nodeCanvasObjectMode={() => "after"}
+                        nodeCanvasObject={(node: any, ctx, globalScale) => {
+                            const label = node.label;
+                            const fontSize = 11 / globalScale;
+                            ctx.font = `${fontSize}px Space Grotesk`;
+                            ctx.textAlign = "center";
+                            ctx.textBaseline = "middle";
+                            ctx.fillStyle = "hsl(45, 20%, 90%)";
+                            ctx.fillText(label, node.x, node.y + 10);
+                        }}
+                    />
+                )}
+            </div>
 
-                <div className="text-center space-y-4 max-w-xs z-10">
-                    <div className="inline-block p-4 rounded-full bg-primary/10 border border-primary/20 animate-pulse">
-                        <Layers className="w-12 h-12 text-primary" />
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                        Renderizando grafo de conhecimento com {nodes.length} nós e {links.length} conexões...
-                    </p>
+            <div className="mt-3 flex items-center justify-between">
+                <span className="text-[11px] text-muted-foreground">
+                    {nodes.length} nós · {links.length} conexões
+                </span>
+                <div className="flex gap-3">
+                    {["Documento", "Seção", "Artigo", "Conceito"].map((label, i) => (
+                        <span key={label} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                            <span
+                                className="inline-block h-2 w-2 rounded-full"
+                                style={{ backgroundColor: COLORS[i] }}
+                            />
+                            {label}
+                        </span>
+                    ))}
                 </div>
-
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-4 p-2 rounded-full bg-card/50 backdrop-blur-md border border-border">
-                    <div className="flex items-center gap-2 px-3">
-                        <div className="w-3 h-3 rounded-full bg-primary" />
-                        <span className="text-xs">Documentos</span>
-                    </div>
-                    <div className="flex items-center gap-2 px-3 border-l border-border">
-                        <div className="w-3 h-3 rounded-full bg-blue-500" />
-                        <span className="text-xs">Artigos</span>
-                    </div>
-                    <div className="flex items-center gap-2 px-3 border-l border-border">
-                        <div className="w-3 h-3 rounded-full bg-green-500" />
-                        <span className="text-xs">Tópicos</span>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     );
 }

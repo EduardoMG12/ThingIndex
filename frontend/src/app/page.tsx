@@ -37,9 +37,9 @@ const DEMO_LINKS = [
 ];
 
 const fadeUp = {
-  initial: { opacity: 0, y: 20 },
+  initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.5 }
+  transition: { duration: 0.4 }
 };
 
 export default function Home() {
@@ -77,36 +77,35 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Header />
 
-      <main className="container py-8 flex-1 flex flex-col">
-        <motion.div {...fadeUp}>
-          <h1 className="text-3xl font-bold tracking-tight">
-            <span className="text-gradient-gold">Workspace</span>
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
-            Bem-vindo ao LegisGraph. Adicione URLs de referência para construir seu grafo de conhecimento legal
-            e interaja com a inteligência artificial para extrair insights precisos.
-          </p>
-        </motion.div>
+      <main className="container py-8 flex-1 flex flex-col lg:flex-row gap-6">
+        <div className="flex flex-col gap-6 w-full lg:w-[450px] shrink-0">
+          <motion.div {...fadeUp}>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Workspace <span className="text-gradient-gold">GraphRAG</span>
+            </h1>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Construa seu grafo de conhecimento legal e extraia insights com IA.
+            </p>
+          </motion.div>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-2 flex-1 items-start">
           <motion.div
             {...fadeUp}
-            transition={{ delay: 0.1, duration: 0.5 }}
+            transition={{ delay: 0.1 }}
             className="flex flex-col gap-6"
           >
             <UrlPanel urls={urls} onAdd={handleAddUrl} onRemove={handleRemoveUrl} />
             <PromptPanel onSubmit={handlePromptSubmit} isLoading={isLoading} />
             <ResponsePanel messages={messages} />
           </motion.div>
-
-          <motion.div
-            {...fadeUp}
-            transition={{ delay: 0.2, duration: 0.5 }}
-            className="h-full sticky top-24"
-          >
-            <GraphViewer nodes={DEMO_NODES} links={DEMO_LINKS} />
-          </motion.div>
         </div>
+
+        <motion.div
+          {...fadeUp}
+          transition={{ delay: 0.2 }}
+          className="flex-1 min-h-[500px] lg:min-h-0 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)]"
+        >
+          <GraphViewer nodes={DEMO_NODES} links={DEMO_LINKS} />
+        </motion.div>
       </main>
     </div>
   );
