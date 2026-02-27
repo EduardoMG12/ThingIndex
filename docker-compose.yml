@@ -72,6 +72,8 @@ services:
       - .env
     environment:
       TELEMETRY_EXCHANGE: ${TELEMETRY_EXCHANGE:-pipeline_telemetry}
+      NEO4J_URI: ${NEO4J_URI}
+      NEO4J_AUTH: ${NEO4J_AUTH}
 
   legal-parser:
     build:

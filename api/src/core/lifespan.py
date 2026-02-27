@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from src.services.telemetry_consumer import telemetry_consumer
+from src.services.neo4j_client import neo4j_client
 
 logger = logging.getLogger("CrawlerAPI")
 
@@ -23,10 +24,14 @@ async def lifespan(app: FastAPI):
 
     # Start the telemetry consumer (connects to RabbitMQ and listens for events)
     await telemetry_consumer.start()
+
+    # Connect to Neo4j database
+    await neo4j_client.connect()
     
     yield
 
     # Shutdown
     await telemetry_consumer.stop()
+    await neo4j_client.close()
     logger.info("API is shutting down...")
 
