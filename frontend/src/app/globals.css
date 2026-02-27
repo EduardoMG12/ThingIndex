@@ -1,78 +1,40 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
-@theme {
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
-
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
-
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
-
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
-
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
-
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
-
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground));
-
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
-
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
-}
-
-:root {
-  --background: 220 20% 7%;
-  --foreground: 45 20% 90%;
-
-  --card: 220 18% 10%;
-  --card-foreground: 45 20% 90%;
-
-  --popover: 220 18% 10%;
-  --popover-foreground: 45 20% 90%;
-
-  --primary: 40 90% 55%;
-  --primary-foreground: 220 20% 7%;
-
-  --secondary: 220 15% 15%;
-  --secondary-foreground: 45 15% 75%;
-
-  --muted: 220 15% 13%;
-  --muted-foreground: 220 10% 50%;
-
-  --accent: 40 70% 45%;
-  --accent-foreground: 220 20% 7%;
-
-  --destructive: 0 70% 50%;
-  --destructive-foreground: 0 0% 98%;
-
-  --border: 220 15% 18%;
-  --input: 220 15% 18%;
-  --ring: 40 90% 55%;
-
-  --radius: 0.75rem;
-
-  /* Custom tokens */
-  --gradient-gold: linear-gradient(135deg, hsl(40 90% 55%), hsl(30 85% 45%));
-  --shadow-gold: 0 0 30px -10px hsl(40 90% 55% / 0.3);
-  --shadow-card: 0 4px 24px -4px hsl(0 0% 0% / 0.4);
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @layer base {
+  :root {
+    --background: 220 20% 7%;
+    --foreground: 45 20% 90%;
+
+    --card: 220 18% 10%;
+    --card-foreground: 45 20% 90%;
+
+    --primary: 40 90% 55%;
+    --primary-foreground: 220 20% 7%;
+
+    --secondary: 220 15% 15%;
+    --secondary-foreground: 45 15% 75%;
+
+    --muted: 220 15% 13%;
+    --muted-foreground: 220 10% 50%;
+
+    --accent: 40 70% 45%;
+    --accent-foreground: 220 20% 7%;
+
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 40 90% 55%;
+
+    --radius: 0.75rem;
+
+    --gradient-gold: linear-gradient(135deg, hsl(40 90% 55%), hsl(30 85% 45%));
+    --shadow-gold: 0 0 30px -10px hsl(40 90% 55% / 0.3);
+    --shadow-card: 0 4px 24px -4px hsl(0 0% 0% / 0.4);
+  }
+
   * {
     @apply border-border;
   }
@@ -106,22 +68,21 @@
     box-shadow: var(--shadow-card);
     border-radius: var(--radius);
   }
-}
 
-/* Scrollbar customizations */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: hsl(var(--border));
-  border-radius: 10px;
-}
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 10px;
+  }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground));
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
 }
