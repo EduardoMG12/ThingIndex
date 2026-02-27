@@ -1,15 +1,19 @@
 FROM golang:1.25-alpine AS builder
 
-WORKDIR /app
+WORKDIR /build
 
-# Copy go.mod and go.sum first to leverage Docker cache
-COPY go.mod go.sum ./
+# Copy the shared telemetry module first
+COPY telemetry/ ./telemetry/
+
+# Copy the populator module
+COPY populator/go.mod populator/go.sum ./populator/
+WORKDIR /build/populator
 RUN go mod download
 
-# Copy the rest of the source code
-COPY . .
+WORKDIR /build
+COPY populator/ ./populator/
 
-# Build the binary
+WORKDIR /build/populator
 RUN CGO_ENABLED=0 GOOS=linux go build -o /app/bin/populator ./cmd/populator
 
 # Final lightweight image

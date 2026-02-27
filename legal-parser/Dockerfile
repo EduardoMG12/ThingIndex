@@ -1,15 +1,19 @@
 FROM golang:1.25-alpine AS builder
 
-WORKDIR /app
+WORKDIR /build
 
-# Copy go.mod and go.sum first to leverage Docker cache
-COPY go.mod go.sum ./
+# Copy the shared telemetry module first
+COPY telemetry/ ./telemetry/
+
+# Copy the legal-parser module
+COPY legal-parser/go.mod legal-parser/go.sum ./legal-parser/
+WORKDIR /build/legal-parser
 RUN go mod download
 
-# Copy the rest of the source code
-COPY . .
+WORKDIR /build
+COPY legal-parser/ ./legal-parser/
 
-# Build the binary
+WORKDIR /build/legal-parser
 RUN CGO_ENABLED=0 GOOS=linux go build -o /app/bin/legal-parser ./cmd/parser
 
 # Final lightweight image

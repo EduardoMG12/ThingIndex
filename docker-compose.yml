@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   neo4j:
     image: neo4j:latest
@@ -41,8 +40,8 @@ services:
 
   crawler:
     build:
-      context: ./crawler
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: crawler/Dockerfile
     container_name: tcc-crawler
     restart: unless-stopped
     depends_on:
@@ -57,6 +56,7 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_USE_SSL: "false"
+      TELEMETRY_EXCHANGE: ${TELEMETRY_EXCHANGE:-pipeline_telemetry}
 
   api:
     build:
@@ -70,11 +70,13 @@ services:
       - rabbitmq
     env_file:
       - .env
+    environment:
+      TELEMETRY_EXCHANGE: ${TELEMETRY_EXCHANGE:-pipeline_telemetry}
 
   legal-parser:
     build:
-      context: ./legal-parser
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: legal-parser/Dockerfile
     container_name: tcc-legal-parser
     restart: unless-stopped
     depends_on:
@@ -90,13 +92,14 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_USE_SSL: "false"
+      TELEMETRY_EXCHANGE: ${TELEMETRY_EXCHANGE:-pipeline_telemetry}
     volumes:
       - ./legal-parser/parsed_data:/app/parsed_data
 
   populator:
     build:
-      context: ./populator
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: populator/Dockerfile
     container_name: tcc-populator
     restart: unless-stopped
     depends_on:
@@ -114,6 +117,7 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_USE_SSL: "false"
+      TELEMETRY_EXCHANGE: ${TELEMETRY_EXCHANGE:-pipeline_telemetry}
 
   frontend:
     build:
@@ -127,7 +131,7 @@ services:
       - api
     volumes:
       - ./frontend:/app
-      - /app/node_modules
+      - frontend_node_modules:/app/node_modules
       - /app/.next
     env_file:
       - .env
@@ -139,3 +143,4 @@ volumes:
   neo4j_data:
   neo4j_logs:
   rabbitmq_data:
+  frontend_node_modules:

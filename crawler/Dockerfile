@@ -1,11 +1,19 @@
 FROM golang:alpine AS builder
 
-WORKDIR /app
+WORKDIR /build
 
-COPY go.mod go.sum ./
+# Copy the shared telemetry module first
+COPY telemetry/ ./telemetry/
+
+# Copy the crawler module
+COPY crawler/go.mod crawler/go.sum ./crawler/
+WORKDIR /build/crawler
 RUN go mod download
 
-COPY . .
+WORKDIR /build
+COPY crawler/ ./crawler/
+
+WORKDIR /build/crawler
 RUN CGO_ENABLED=0 GOOS=linux go build -o /app/crawler_app ./cmd/crawler
 
 FROM alpine:latest

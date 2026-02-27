@@ -1,0 +1,27 @@
+# ===== Large data directories =====
+legal-parser/raw_data
+legal-parser/parsed_data
+crawler/output_pdfs
+
+# ===== Frontend (not needed for Go worker builds) =====
+frontend/node_modules
+frontend/.next
+
+# ===== Build artifacts and caches =====
+**/.git
+**/*.exe
+**/__pycache__
+
+# ===== IDE / OS =====
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+
+# ===== Docs and assets not needed in builds =====
+assets
+*.md
+!**/README.md
+.env.example
+.gitignore
