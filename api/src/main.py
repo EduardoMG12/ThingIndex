@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from src.core.lifespan import lifespan
+from src.core.exceptions import setup_exception_handlers
 from src.api.routes import router as operations_router
 from src.api.docs import docs_router
 from src.api.monitoring import monitoring_router
@@ -17,6 +18,8 @@ app = FastAPI(
     docs_url=None,
     lifespan=lifespan
 )
+
+setup_exception_handlers(app)
 
 app.include_router(operations_router)
 app.include_router(docs_router)
