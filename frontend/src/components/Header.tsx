@@ -19,7 +19,7 @@ export default function Header() {
         <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
             <div className="container flex h-16 items-center justify-between">
                 <Link href="/" className="flex items-center gap-2.5">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary shadow-gold">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary shadow-gold">
                         <Network className="h-5 w-5 text-primary-foreground" />
                     </div>
                     <span className="text-lg font-bold text-gradient-gold">GraphRAG</span>
