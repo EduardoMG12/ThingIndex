@@ -27,7 +27,7 @@ export default function EventConsole({ logs, isRealTime }: { logs: LogEntry[]; i
     }, [logs]);
 
     return (
-        <motion.div {...fadeUp} transition={{ delay: 0.3, duration: 0.5 }} className="surface-card flex flex-col rounded-lg">
+        <motion.div {...fadeUp} transition={{ delay: 0.3, duration: 0.5 }} className="surface-card flex h-[538px] flex-col rounded-lg">
             <div className="flex items-center gap-2 border-b border-border px-4 py-3">
                 <Terminal className="h-4 w-4 text-primary" />
                 <h3 className="text-sm font-semibold">Console de Eventos</h3>
