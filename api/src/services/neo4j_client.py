@@ -16,22 +16,32 @@ class Neo4jClient:
         self.driver = None
 
     async def connect(self):
-        """Initialize the async Neo4j driver."""
+        """Initialize the async Neo4j driver with retries."""
+        import asyncio
         if not self.driver:
-            try:
-                # NEO4J_AUTH is usually format "user/password"
-                if "/" in settings.neo4j_auth:
-                    user, password = settings.neo4j_auth.split("/", 1)
-                    auth = (user, password)
-                else:
-                    auth = None
+            for attempt in range(5):
+                try:
+                    if "/" in settings.neo4j_auth:
+                        user, password = settings.neo4j_auth.split("/", 1)
+                        auth = (user, password)
+                    else:
+                        auth = None
 
-                self.driver = AsyncGraphDatabase.driver(settings.neo4j_uri, auth=auth)
-                await self.driver.verify_connectivity()
-                logger.info("Connected to Neo4j.")
-            except Exception as e:
-                logger.error(f"Failed to connect to Neo4j: {e}")
-                self.driver = None
+                    self.driver = AsyncGraphDatabase.driver(settings.neo4j_uri, auth=auth)
+                    await self.driver.verify_connectivity()
+                    logger.info("Connected to Neo4j.")
+                    return
+                except Exception as e:
+                    logger.warning(f"Neo4j connection attempt {attempt + 1}/5 failed: {e}")
+                    self.driver = None
+                    await asyncio.sleep(2)
+            logger.error("Failed to connect to Neo4j after 5 attempts.")
+
+    async def _ensure_connected(self):
+        """Lazy logic to ensure driver is active before session use."""
+        if not self.driver:
+            await self.connect()
+        return self.driver is not None
 
     async def close(self):
         """Close the async Neo4j driver."""
@@ -42,7 +52,7 @@ class Neo4jClient:
 
     async def get_topics(self):
         """Get the sibling topics connected to the origin."""
-        if not self.driver:
+        if not await self._ensure_connected():
             return []
             
         async with self.driver.session() as session:
@@ -52,7 +62,7 @@ class Neo4jClient:
 
     async def get_visualize_graph(self, limit: int = 500, context: str = "all"):
         """Get nodes and links formatted for the frontend GraphViewer, optionally filtered by context."""
-        if not self.driver:
+        if not await self._ensure_connected():
             return {"nodes": [], "links": [], "totalNodes": 0}
             
         async with self.driver.session() as session:

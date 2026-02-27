@@ -19,8 +19,11 @@ WITH n, r, m,
      CASE 
        WHEN 'Origem' IN labels(n) OR 'Origem' IN labels(m) THEN 0
        WHEN 'Topic' IN labels(n) OR 'Topic' IN labels(m) THEN 1
-       WHEN 'Lei' IN labels(n) OR 'LEI' IN labels(n) OR 'Lei' IN labels(m) OR 'LEI' IN labels(m) THEN 2
-       ELSE 3
+       WHEN ('Lei' IN labels(n) OR 'LEI' IN labels(n) OR 'Lei' IN labels(m) OR 'LEI' IN labels(m)) THEN 2
+       WHEN 'Artigo' IN labels(n) OR 'Artigo' IN labels(m) THEN 3
+       WHEN 'Paragrafo' IN labels(n) OR 'Paragrafo' IN labels(m) THEN 4
+       WHEN 'Inciso' IN labels(n) OR 'Inciso' IN labels(m) THEN 5
+       ELSE 6
      END as priority
 ORDER BY priority ASC
 LIMIT {limit}
@@ -31,7 +34,17 @@ WITH collect(distinct n) + collect(distinct m) as all_nodes, collect(r) as all_r
 RETURN 
     [node IN all_nodes | {{
         id: toString(elementId(node)), 
-        label: COALESCE(node.name, node.id, split(labels(node)[0], ':')[0]), 
+        label: CASE
+                  WHEN node.numero IS NOT NULL THEN
+                    CASE 
+                      WHEN 'Artigo' IN labels(node) THEN "Art. " + node.numero
+                      WHEN 'Paragrafo' IN labels(node) THEN "§ " + node.numero
+                      WHEN 'Inciso' IN labels(node) THEN "Inc. " + node.numero
+                      WHEN 'Alinea' IN labels(node) THEN "Al. " + node.numero
+                      ELSE node.numero
+                    END
+                  ELSE COALESCE(node.name, node.id, split(labels(node)[0], ':')[0])
+               END,
         group: CASE 
                  WHEN 'Origem' IN labels(node) THEN 0
                  WHEN 'Topic' IN labels(node) THEN 1
@@ -76,8 +89,11 @@ WITH n, r, m,
      CASE 
        WHEN 'Origem' IN labels(n) OR 'Origem' IN labels(m) THEN 0
        WHEN 'Topic' IN labels(n) OR 'Topic' IN labels(m) THEN 1
-       WHEN 'Lei' IN labels(n) OR 'LEI' IN labels(n) OR 'Lei' IN labels(m) OR 'LEI' IN labels(m) THEN 2
-       ELSE 3
+       WHEN ('Lei' IN labels(n) OR 'LEI' IN labels(n) OR 'Lei' IN labels(m) OR 'LEI' IN labels(m)) THEN 2
+       WHEN 'Artigo' IN labels(n) OR 'Artigo' IN labels(m) THEN 3
+       WHEN 'Paragrafo' IN labels(n) OR 'Paragrafo' IN labels(m) THEN 4
+       WHEN 'Inciso' IN labels(n) OR 'Inciso' IN labels(m) THEN 5
+       ELSE 6
      END as priority
 ORDER BY priority ASC
 LIMIT {limit}
@@ -87,7 +103,17 @@ WITH collect(distinct n) + collect(distinct m) as all_nodes, collect(r) as all_r
 RETURN 
     [node IN all_nodes | {{
         id: toString(elementId(node)), 
-        label: COALESCE(node.name, node.id, split(labels(node)[0], ':')[0]), 
+        label: CASE
+                  WHEN node.numero IS NOT NULL THEN
+                    CASE 
+                      WHEN 'Artigo' IN labels(node) THEN "Art. " + node.numero
+                      WHEN 'Paragrafo' IN labels(node) THEN "§ " + node.numero
+                      WHEN 'Inciso' IN labels(node) THEN "Inc. " + node.numero
+                      WHEN 'Alinea' IN labels(node) THEN "Al. " + node.numero
+                      ELSE node.numero
+                    END
+                  ELSE COALESCE(node.name, node.id, split(labels(node)[0], ':')[0])
+               END,
         group: CASE 
                  WHEN 'Origem' IN labels(node) THEN 0
                  WHEN 'Topic' IN labels(node) THEN 1

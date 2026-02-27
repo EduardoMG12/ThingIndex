@@ -33,7 +33,7 @@ async def get_topics():
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/visualize", response_model=GraphVisualizeResponse, summary="Get graph data for visualization")
-async def get_visualize_graph(limit: int = 3000, context: str = "all"):
+async def get_visualize_graph(limit: int = 500, context: str = "all"):
     """
     Returns nodes and links formatted for the react-force-graph-2d frontend component.
     Limits the number of relationships returned to avoid overloading the browser.

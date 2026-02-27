@@ -15,6 +15,9 @@ type GraphNode = {
     id: string;
     label: string;
     group: number;
+    x?: number;
+    y?: number;
+    val?: number;
 };
 
 type GraphLink = {
@@ -33,24 +36,14 @@ type Props = {
 };
 
 const COLORS = [
-    "hsl(45, 100%, 50%)",   // 0: Origem (Gold)
-    "hsl(210, 100%, 60%)",  // 1: Topic (Blue)
-    "hsl(180, 100%, 45%)",  // 2: Lei / Documento (Cyan)
-    "hsl(145, 80%, 45%)",   // 3: Artigo (Green)
-    "hsl(270, 70%, 60%)",   // 4: Parágrafo (Purple)
-    "hsl(330, 80%, 60%)",   // 5: Inciso (Pink)
-    "hsl(30, 90%, 55%)",    // 6: Alínea (Orange)
-    "hsl(0, 0%, 50%)",      // 7: Outros (Gray)
-];
-
-const LEGEND_ITEMS = [
-    { label: "Origem", color: COLORS[0] },
-    { label: "Tópico", color: COLORS[1] },
-    { label: "Documento/Lei", color: COLORS[2] },
-    { label: "Artigo", color: COLORS[3] },
-    { label: "Parágrafo", color: COLORS[4] },
-    { label: "Inciso", color: COLORS[5] },
-    { label: "Alínea", color: COLORS[6] },
+    "hsl(40, 90%, 55%)",  // 0: Origem (Gold)
+    "hsl(200, 70%, 55%)", // 1: Topic (Blue)
+    "hsl(280, 60%, 55%)", // 2: Document (Purple)
+    "hsl(150, 60%, 50%)", // 3: Artigo (Green)
+    "hsl(320, 60%, 55%)", // 4: Paragrafo (Pink)
+    "hsl(15, 80%, 55%)",  // 5: Inciso (Orange)
+    "hsl(180, 70%, 45%)", // 6: Alinea (Teal)
+    "hsl(0, 0%, 60%)",    // 7: Others
 ];
 
 export default function GraphViewer({
@@ -64,6 +57,15 @@ export default function GraphViewer({
     const fgRef = useRef<any>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [dimensions, setDimensions] = useState({ width: 600, height: 400 });
+
+    // 🔄 RE-MOUNT STRATEGY: 
+    // We force a complete component recreation on navigation or meaningful data changes.
+    // This solves the 'clumped nodes' and 'frozen simulation' bugs by discarding 
+    // the old engine state entirely.
+    const graphKey = useMemo(() =>
+        `graph-${nodes.length}-${links.length}-${currentContext}`,
+        [nodes.length, links.length, currentContext]
+    );
 
     const updateDimensions = useCallback(() => {
         if (containerRef.current) {
@@ -79,22 +81,57 @@ export default function GraphViewer({
     }, [updateDimensions]);
 
     const graphData = useMemo(() => ({
-        nodes: nodes.map((n) => ({ ...n, name: n.label })),
+        nodes: nodes.map((n) => {
+            // Define absolute values for our manual radius calculation
+            let val = 3;
+            if (n.group === 0) val = 30;
+            if (n.group === 1) val = 18;
+            if (n.group === 2) val = 10;
+            return { ...n, name: n.label, val };
+        }),
         links: links.map((l) => ({ ...l })),
     }), [nodes, links]);
 
-    // Customize the d3-force physics engine to make the layout less cluttered
+    // ⚡ PHYSICS INITIALIZATION: 
+    // This runs once per remount. We use imperative calls to D3 for maximum stability.
     useEffect(() => {
         const fg = fgRef.current;
         if (fg) {
-            // Increase repulsion significantly to spread nodes out
-            fg.d3Force('charge').strength(-500);
-            // Give links a bit more distance
-            fg.d3Force('link').distance(100);
-            // Reheat the simulation to smoothly animate to the new physics state
+            // 1. Setup Forces: Stronger repulsion to prevent 'too close' nodes
+            fg.d3Force('charge').strength(-4500);
+            fg.d3Force('link').distance(400);
+
+            // Add Collision force to prevent any node from overlapping
+            // Radius matches the manual scale of 1.8 (radius ~ 25px max)
+            fg.d3Force('collide', (window as any).d3?.forceCollide(25));
+
+            // 2. High energy start (Warm-up phase)
+            // We use the underlying d3 object if available for deep control
+            const d3Sim = fg.d3AlphaTarget ? fg : null; // Guard against SSR/Ref timing
+
+            if (fg.d3AlphaTarget) fg.d3AlphaTarget(0.4);
             fg.d3ReheatSimulation();
+
+            // 3. Gradual settle and Fit-to-view (Tight zoom)
+            const settleTimer = setTimeout(() => {
+                if (fgRef.current) {
+                    if (fgRef.current.d3AlphaTarget) fgRef.current.d3AlphaTarget(0);
+                    // Minimal padding (20) for maximum zoom depth
+                    fgRef.current.zoomToFit(1000, 20);
+                }
+            }, 1200);
+
+            // 4. Emergency initial fit
+            const initialFit = setTimeout(() => {
+                if (fgRef.current) fgRef.current.zoomToFit(200, 100);
+            }, 250);
+
+            return () => {
+                clearTimeout(settleTimer);
+                clearTimeout(initialFit);
+            };
         }
-    }, [graphData]);
+    }, [graphKey]);
 
     return (
         <div className="surface-card rounded-lg p-5 flex flex-col h-full">
@@ -171,27 +208,63 @@ export default function GraphViewer({
                     </div>
                 ) : (
                     <ForceGraph2D
+                        key={graphKey}
                         ref={fgRef}
                         graphData={graphData}
                         width={dimensions.width}
                         height={dimensions.height}
                         backgroundColor="transparent"
-                        nodeRelSize={6}
-                        nodeColor={(node: any) => COLORS[node.group] || COLORS[COLORS.length - 1]}
+                        d3VelocityDecay={0.4}
+                        nodeRelSize={1}
+                        nodeColor={(node: any) => COLORS[node.group % COLORS.length]}
                         nodeLabel={(node: any) => node.label}
-                        linkColor={() => "hsl(220, 15%, 25%)"}
-                        linkWidth={1.5}
-                        nodeCanvasObjectMode={() => "after"}
+                        linkColor={() => "rgba(255, 255, 255, 0.1)"}
+                        linkWidth={0.8}
+                        nodeCanvasObjectMode={() => "replace"}
                         nodeCanvasObject={(node: any, ctx, globalScale) => {
-                            // Only render text labels when zoomed in enough to prevent clutter
-                            if (globalScale >= 1.2) {
-                                const label = node.label;
-                                const fontSize = 11 / globalScale;
-                                ctx.font = `${fontSize}px Space Grotesk`;
+                            const label = node.label;
+                            const isCore = node.group === 0 || node.group === 1;
+
+                            // 📐 ABSOLUTE SIZING: Scale adjusted to 1.8 equivalent
+                            const val = node.val || 1;
+                            const radius = Math.sqrt(val) * 3.0;
+                            const color = COLORS[node.group % COLORS.length];
+
+                            // 1. Draw Node Circle
+                            ctx.beginPath();
+                            ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
+                            ctx.fillStyle = color;
+                            ctx.fill();
+
+                            // 2. Glow effect for important nodes
+                            if (isCore || node.group === 2) {
+                                ctx.save();
+                                ctx.beginPath();
+                                ctx.arc(node.x, node.y, radius * 1.6, 0, 2 * Math.PI, false);
+                                ctx.shadowBlur = isCore ? 15 : 8;
+                                ctx.shadowColor = color;
+                                ctx.fillStyle = "rgba(0, 0, 0, 0)";
+                                ctx.fill();
+                                ctx.restore();
+                            }
+
+                            // 3. Render Labels
+                            if (globalScale >= 3 || (isCore && globalScale >= 0.2)) {
+                                const fontSize = isCore ? (13 / globalScale) : (10 / globalScale);
+                                ctx.font = `${isCore ? '600' : '400'} ${fontSize}px "Inter", system-ui, sans-serif`;
                                 ctx.textAlign = "center";
-                                ctx.textBaseline = "middle";
-                                ctx.fillStyle = "hsl(45, 20%, 90%)";
-                                ctx.fillText(label, node.x, node.y + 10);
+                                ctx.textBaseline = "top";
+
+                                // High contrast halo
+                                ctx.strokeStyle = "rgba(0,0,0,1)";
+                                ctx.lineWidth = 3 / globalScale;
+                                ctx.lineJoin = "round";
+
+                                const yOffset = radius + (4 / globalScale);
+
+                                ctx.strokeText(label, node.x, node.y + yOffset);
+                                ctx.fillStyle = isCore ? color : "rgba(255,255,255,0.98)";
+                                ctx.fillText(label, node.x, node.y + yOffset);
                             }
                         }}
                     />
@@ -202,14 +275,22 @@ export default function GraphViewer({
                 <span className="text-[11px] text-muted-foreground">
                     Exibindo {nodes.length} de {totalNodes || nodes.length} nós estruturados · {links.length} conexões
                 </span>
-                <div className="flex flex-wrap justify-end gap-x-4 gap-y-1 max-w-[70%]">
-                    {LEGEND_ITEMS.map((item) => (
-                        <span key={item.label} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <div className="flex flex-wrap gap-x-3 gap-y-1 justify-end max-w-[80%]">
+                    {[
+                        { name: "Brasil", group: 0 },
+                        { name: "Tópico", group: 1 },
+                        { name: "Doc", group: 2 },
+                        { name: "Art.", group: 3 },
+                        { name: "§", group: 4 },
+                        { name: "Inc.", group: 5 },
+                        { name: "Al.", group: 6 }
+                    ].map((item) => (
+                        <span key={item.name} className="flex items-center gap-1.5 text-[10px] text-muted-foreground whitespace-nowrap">
                             <span
-                                className="inline-block h-2 w-2 rounded-full"
-                                style={{ backgroundColor: item.color }}
+                                className="inline-block h-1.5 w-1.5 rounded-full"
+                                style={{ backgroundColor: COLORS[item.group] }}
                             />
-                            {item.label}
+                            {item.name}
                         </span>
                     ))}
                 </div>
