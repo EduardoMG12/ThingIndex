@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse
 from src.core.lifespan import lifespan
 from src.api.routes import router as operations_router
 from src.api.docs import docs_router
+from src.api.monitoring import monitoring_router
 
 logging.basicConfig(level=logging.INFO)
 
@@ -17,7 +18,9 @@ app = FastAPI(
 
 app.include_router(operations_router)
 app.include_router(docs_router)
+app.include_router(monitoring_router)
 
 @app.get("/", include_in_schema=False)
 async def root():
     return HTMLResponse('<h1>Crawler API</h1><p>Visit <a href="/scalar">/scalar</a> for documentation.</p>')
+
