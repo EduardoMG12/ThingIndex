@@ -12,7 +12,7 @@ export default function Header() {
     const links = [
         { href: "/", label: "Workspace", icon: Sparkles },
         { href: "/monitoring", label: "Monitoramento", icon: Network },
-        { href: "/docs", label: "Documentação", icon: FileText },
+        { href: "/documentacao", label: "Documentação", icon: FileText },
     ];
 
     return (
