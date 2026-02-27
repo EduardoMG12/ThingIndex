@@ -22,8 +22,8 @@ export default function PromptPanel({ onSubmit, isLoading }: Props) {
     return (
         <div className="surface-card rounded-lg p-5">
             <div className="mb-4 flex items-center gap-2">
-                <Send className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold">Prompt</h3>
+                <Send className="h-4 w-4 text-primary" aria-hidden="true" />
+                <h3 className="text-sm font-semibold" id="prompt-heading">Prompt</h3>
             </div>
 
             <Textarea
@@ -31,6 +31,7 @@ export default function PromptPanel({ onSubmit, isLoading }: Props) {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 className="min-h-[120px] resize-none bg-background text-sm"
+                aria-label="Prompt para consulta ao grafo de conhecimento"
                 onKeyDown={(e) => {
                     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                         e.preventDefault();
@@ -43,9 +44,9 @@ export default function PromptPanel({ onSubmit, isLoading }: Props) {
                 <span className="text-[11px] text-muted-foreground">⌘/Ctrl + Enter para enviar</span>
                 <Button onClick={handleSubmit} disabled={isLoading || !prompt.trim()} className="gap-2">
                     {isLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                     ) : (
-                        <Send className="h-4 w-4" />
+                        <Send className="h-4 w-4" aria-hidden="true" />
                     )}
                     Enviar
                 </Button>

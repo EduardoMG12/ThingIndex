@@ -33,8 +33,8 @@ export default function UrlPanel({ urls, onAdd, onRemove }: Props) {
     return (
         <div className="surface-card rounded-lg p-5">
             <div className="mb-4 flex items-center gap-2">
-                <Link2 className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold">URLs de Referência</h3>
+                <Link2 className="h-4 w-4 text-primary" aria-hidden="true" />
+                <h3 className="text-sm font-semibold" id="url-panel-heading">URLs de Referência</h3>
             </div>
 
             <p className="mb-4 text-xs text-muted-foreground">
@@ -48,9 +48,10 @@ export default function UrlPanel({ urls, onAdd, onRemove }: Props) {
                     onChange={(e) => setUrl(e.target.value)}
                     className="flex-1 bg-background text-sm"
                     onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+                    aria-label="URL de referência para crawling"
                 />
                 <div className="flex items-center gap-1.5 rounded-md border border-border bg-background px-3">
-                    <Layers className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Layers className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
                     <input
                         type="number"
                         min={1}
@@ -58,10 +59,11 @@ export default function UrlPanel({ urls, onAdd, onRemove }: Props) {
                         value={depth}
                         onChange={(e) => setDepth(Number(e.target.value))}
                         className="w-10 bg-transparent text-center text-sm text-foreground outline-none"
+                        aria-label="Profundidade de crawling"
                     />
                 </div>
                 <Button size="sm" onClick={handleAdd} className="gap-1.5">
-                    <Plus className="h-3.5 w-3.5" />
+                    <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                     Adicionar
                 </Button>
             </div>
@@ -87,8 +89,9 @@ export default function UrlPanel({ urls, onAdd, onRemove }: Props) {
                             <button
                                 onClick={() => onRemove(entry.id)}
                                 className="ml-2 shrink-0 text-muted-foreground transition-colors hover:text-destructive"
+                                aria-label={`Remover URL ${entry.url}`}
                             >
-                                <Trash2 className="h-3.5 w-3.5" />
+                                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                             </button>
                         </motion.div>
                     ))}

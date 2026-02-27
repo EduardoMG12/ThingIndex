@@ -63,7 +63,7 @@ export default function GraphViewer({ nodes, links }: Props) {
         <div className="surface-card rounded-lg p-5 flex flex-col h-full">
             <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <GitBranch className="h-4 w-4 text-primary" />
+                    <GitBranch className="h-4 w-4 text-primary" aria-hidden="true" />
                     <h3 className="text-sm font-semibold">Banco de Grafos</h3>
                 </div>
                 <div className="flex gap-1">
@@ -72,8 +72,9 @@ export default function GraphViewer({ nodes, links }: Props) {
                         size="sm"
                         className="h-8 w-8 p-0"
                         onClick={() => fgRef.current?.zoomToFit(400)}
+                        aria-label="Ajustar zoom ao conteúdo"
                     >
-                        <Maximize2 className="h-4 w-4" />
+                        <Maximize2 className="h-4 w-4" aria-hidden="true" />
                     </Button>
                     <Button
                         variant="ghost"
@@ -83,8 +84,9 @@ export default function GraphViewer({ nodes, links }: Props) {
                             const z = fgRef.current?.zoom();
                             fgRef.current?.zoom(z * 1.3, 300);
                         }}
+                        aria-label="Aumentar zoom"
                     >
-                        <ZoomIn className="h-4 w-4" />
+                        <ZoomIn className="h-4 w-4" aria-hidden="true" />
                     </Button>
                     <Button
                         variant="ghost"
@@ -94,8 +96,9 @@ export default function GraphViewer({ nodes, links }: Props) {
                             const z = fgRef.current?.zoom();
                             fgRef.current?.zoom(z * 0.7, 300);
                         }}
+                        aria-label="Diminuir zoom"
                     >
-                        <ZoomOut className="h-4 w-4" />
+                        <ZoomOut className="h-4 w-4" aria-hidden="true" />
                     </Button>
                 </div>
             </div>
@@ -103,6 +106,8 @@ export default function GraphViewer({ nodes, links }: Props) {
             <div
                 ref={containerRef}
                 className="graph-container relative flex-1 min-h-[350px] overflow-hidden rounded-lg border border-border bg-[#0a0c10]"
+                role="img"
+                aria-label={`Grafo interativo com ${nodes.length} nós e ${links.length} conexões`}
             >
                 {nodes.length === 0 ? (
                     <div className="flex h-full items-center justify-center">
