@@ -29,7 +29,7 @@ const TABS: { id: ViewTab; label: string; icon: typeof LayoutDashboard; }[] = [
 ];
 
 export default function MonitoringPage() {
-    const [isRealTime, setIsRealTime] = useState(false);
+    const [isRealTime, setIsRealTime] = useState(true);
     const [activeTab, setActiveTab] = useState<ViewTab>("pipeline");
 
     // Simulation hook (always ready, only active when toggled)

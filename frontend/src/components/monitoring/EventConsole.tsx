@@ -22,10 +22,6 @@ function getLogColor(log: LogEntry): string {
 export default function EventConsole({ logs, isRealTime }: { logs: LogEntry[]; isRealTime: boolean; }) {
     const logEndRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        logEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [logs]);
-
     return (
         <motion.div {...fadeUp} transition={{ delay: 0.3, duration: 0.5 }} className="surface-card flex h-[538px] flex-col rounded-lg" role="log" aria-label="Console de eventos do pipeline" aria-live="polite">
             <div className="flex items-center gap-2 border-b border-border px-4 py-3">
