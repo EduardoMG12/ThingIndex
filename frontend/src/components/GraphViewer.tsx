@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
-import { GitBranch, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { GitBranch, ZoomIn, ZoomOut, Maximize2, Filter } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 // Dynamic import for client-side only rendering of ForceGraph2D
@@ -26,6 +26,10 @@ type GraphLink = {
 type Props = {
     nodes: GraphNode[];
     links: GraphLink[];
+    totalNodes?: number;
+    currentContext?: string;
+    onContextChange?: (context: string) => void;
+    availableTopics?: string[];
 };
 
 const COLORS = [
@@ -36,7 +40,14 @@ const COLORS = [
     "hsl(15, 80%, 55%)",
 ];
 
-export default function GraphViewer({ nodes, links }: Props) {
+export default function GraphViewer({
+    nodes,
+    links,
+    totalNodes = 0,
+    currentContext = "all",
+    onContextChange,
+    availableTopics = []
+}: Props) {
     const fgRef = useRef<any>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [dimensions, setDimensions] = useState({ width: 600, height: 400 });
@@ -59,12 +70,42 @@ export default function GraphViewer({ nodes, links }: Props) {
         links: links.map((l) => ({ ...l })),
     }), [nodes, links]);
 
+    // Customize the d3-force physics engine to make the layout less cluttered
+    useEffect(() => {
+        const fg = fgRef.current;
+        if (fg) {
+            // Increase repulsion significantly to spread nodes out
+            fg.d3Force('charge').strength(-500);
+            // Give links a bit more distance
+            fg.d3Force('link').distance(100);
+            // Reheat the simulation to smoothly animate to the new physics state
+            fg.d3ReheatSimulation();
+        }
+    }, [graphData]);
+
     return (
         <div className="surface-card rounded-lg p-5 flex flex-col h-full">
             <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <GitBranch className="h-4 w-4 text-primary" aria-hidden="true" />
                     <h3 className="text-sm font-semibold">Banco de Grafos</h3>
+
+                    {availableTopics.length > 0 && onContextChange && (
+                        <div className="ml-4 flex items-center gap-2 border-l border-border pl-4">
+                            <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                            <select
+                                className="h-7 cursor-pointer rounded-md border border-input bg-background px-2 py-0 text-xs font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                value={currentContext}
+                                onChange={(e) => onContextChange(e.target.value)}
+                                aria-label="Filtrar contexto do grafo"
+                            >
+                                <option value="all">Visão Geral Completa</option>
+                                {availableTopics.map(topic => (
+                                    <option key={topic} value={topic}>{topic}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
                 </div>
                 <div className="flex gap-1">
                     <Button
@@ -129,13 +170,16 @@ export default function GraphViewer({ nodes, links }: Props) {
                         linkWidth={1.5}
                         nodeCanvasObjectMode={() => "after"}
                         nodeCanvasObject={(node: any, ctx, globalScale) => {
-                            const label = node.label;
-                            const fontSize = 11 / globalScale;
-                            ctx.font = `${fontSize}px Space Grotesk`;
-                            ctx.textAlign = "center";
-                            ctx.textBaseline = "middle";
-                            ctx.fillStyle = "hsl(45, 20%, 90%)";
-                            ctx.fillText(label, node.x, node.y + 10);
+                            // Only render text labels when zoomed in enough to prevent clutter
+                            if (globalScale >= 1.2) {
+                                const label = node.label;
+                                const fontSize = 11 / globalScale;
+                                ctx.font = `${fontSize}px Space Grotesk`;
+                                ctx.textAlign = "center";
+                                ctx.textBaseline = "middle";
+                                ctx.fillStyle = "hsl(45, 20%, 90%)";
+                                ctx.fillText(label, node.x, node.y + 10);
+                            }
                         }}
                     />
                 )}
@@ -143,7 +187,7 @@ export default function GraphViewer({ nodes, links }: Props) {
 
             <div className="mt-3 flex items-center justify-between">
                 <span className="text-[11px] text-muted-foreground">
-                    {nodes.length} nós · {links.length} conexões
+                    Exibindo {nodes.length} de {totalNodes || nodes.length} nós estruturados · {links.length} conexões
                 </span>
                 <div className="flex gap-3">
                     {["Documento", "Seção", "Artigo", "Conceito"].map((label, i) => (

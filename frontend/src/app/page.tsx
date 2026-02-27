@@ -7,6 +7,7 @@ import UrlPanel, { type UrlEntry } from "@/components/UrlPanel";
 import PromptPanel from "@/components/PromptPanel";
 import GraphViewer from "@/components/GraphViewer";
 import ResponsePanel, { type Message } from "@/components/ResponsePanel";
+import { fetchGraphTopics, fetchGraphData } from "./actions";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -18,25 +19,29 @@ export default function Home() {
   const [urls, setUrls] = React.useState<UrlEntry[]>([]);
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
-  const [graphData, setGraphData] = React.useState<{ nodes: any[]; links: any[]; }>({ nodes: [], links: [] });
+  const [graphData, setGraphData] = React.useState<{ nodes: any[]; links: any[]; totalNodes: number; }>({ nodes: [], links: [], totalNodes: 0 });
   const [isLoadingGraph, setIsLoadingGraph] = React.useState(true);
+  const [graphContext, setGraphContext] = React.useState<string>("all");
+  const [availableTopics, setAvailableTopics] = React.useState<string[]>([]);
+
+  // Fetch topics once on mount
+  React.useEffect(() => {
+    async function loadTopics() {
+      const topics = await fetchGraphTopics();
+      setAvailableTopics(topics);
+    }
+    loadTopics();
+  }, []);
 
   React.useEffect(() => {
-    async function fetchGraph() {
-      try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/graph/visualize`);
-        if (res.ok) {
-          const data = await res.json();
-          setGraphData(data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch graph data:", err);
-      } finally {
-        setIsLoadingGraph(false);
-      }
+    async function loadGraphData() {
+      setIsLoadingGraph(true);
+      const data = await fetchGraphData(graphContext, 500);
+      setGraphData(data);
+      setIsLoadingGraph(false);
     }
-    fetchGraph();
-  }, []);
+    loadGraphData();
+  }, [graphContext]);
 
   const handleAddUrl = React.useCallback((url: string, depth: number) => {
     setUrls((prev) => [...prev, { id: Math.random().toString(36).substr(2, 9), url, depth }]);
@@ -119,7 +124,14 @@ export default function Home() {
                   <p className="text-sm">Nenhum dado encontrado no Neo4j.</p>
                 </div>
               ) : (
-                <GraphViewer nodes={graphData.nodes} links={graphData.links} />
+                <GraphViewer
+                  nodes={graphData.nodes}
+                  links={graphData.links}
+                  totalNodes={graphData.totalNodes}
+                  currentContext={graphContext}
+                  onContextChange={setGraphContext}
+                  availableTopics={availableTopics}
+                />
               )}
             </div>
           </motion.div>
