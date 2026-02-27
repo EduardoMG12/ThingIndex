@@ -8,34 +8,6 @@ import PromptPanel from "@/components/PromptPanel";
 import GraphViewer from "@/components/GraphViewer";
 import ResponsePanel, { type Message } from "@/components/ResponsePanel";
 
-// Demo graph data
-const DEMO_NODES = [
-  { id: "1", label: "CDC", group: 0 },
-  { id: "2", label: "Cap. I", group: 1 },
-  { id: "3", label: "Cap. II", group: 1 },
-  { id: "4", label: "Art. 6°", group: 2 },
-  { id: "5", label: "Art. 12", group: 2 },
-  { id: "6", label: "Art. 14", group: 2 },
-  { id: "7", label: "Resp. Civil", group: 3 },
-  { id: "8", label: "Direito Info", group: 3 },
-  { id: "9", label: "Cap. III", group: 1 },
-  { id: "10", label: "Art. 18", group: 2 },
-];
-
-const DEMO_LINKS = [
-  { source: "1", target: "2" },
-  { source: "1", target: "3" },
-  { source: "1", target: "9" },
-  { source: "2", target: "4" },
-  { source: "3", target: "5" },
-  { source: "3", target: "6" },
-  { source: "5", target: "7" },
-  { source: "6", target: "7" },
-  { source: "4", target: "8" },
-  { source: "9", target: "10" },
-  { source: "10", target: "7" },
-];
-
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
@@ -46,6 +18,25 @@ export default function Home() {
   const [urls, setUrls] = React.useState<UrlEntry[]>([]);
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [graphData, setGraphData] = React.useState<{ nodes: any[]; links: any[]; }>({ nodes: [], links: [] });
+  const [isLoadingGraph, setIsLoadingGraph] = React.useState(true);
+
+  React.useEffect(() => {
+    async function fetchGraph() {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/graph/visualize`);
+        if (res.ok) {
+          const data = await res.json();
+          setGraphData(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch graph data:", err);
+      } finally {
+        setIsLoadingGraph(false);
+      }
+    }
+    fetchGraph();
+  }, []);
 
   const handleAddUrl = React.useCallback((url: string, depth: number) => {
     setUrls((prev) => [...prev, { id: Math.random().toString(36).substr(2, 9), url, depth }]);
@@ -106,7 +97,32 @@ export default function Home() {
           role="region"
           aria-label="Visualização do grafo de conhecimento"
         >
-          <GraphViewer nodes={DEMO_NODES} links={DEMO_LINKS} />
+          {/* Right Column: Visualization */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="surface-card flex min-h-[500px] flex-col overflow-hidden rounded-xl lg:col-span-8 lg:min-h-0"
+            role="region"
+            aria-label="Visualização do grafo de conhecimento"
+          >
+            <div className="flex-1 relative">
+              {isLoadingGraph ? (
+                <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    <p className="text-sm font-medium">Carregando grafo de conhecimento...</p>
+                  </div>
+                </div>
+              ) : graphData.nodes.length === 0 ? (
+                <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+                  <p className="text-sm">Nenhum dado encontrado no Neo4j.</p>
+                </div>
+              ) : (
+                <GraphViewer nodes={graphData.nodes} links={graphData.links} />
+              )}
+            </div>
+          </motion.div>
         </motion.div>
       </main>
     </div>
