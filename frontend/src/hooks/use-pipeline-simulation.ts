@@ -62,13 +62,18 @@ export function usePipelineSimulation() {
   const [simRunning, setSimRunning] = useState(false);
   const [simDone, setSimDone] = useState(false);
 
+  // Use refs to hold mutable timeout references
   const timeoutIds = useRef<NodeJS.Timeout[]>([]);
+  // Store a monotonic clock reference to align scheduled events
+  const startTime = useRef<number>(0);
 
   const addLog = useCallback((stage: string, message: string, type: LogEntry["type"] = "info") => {
-    setLogs((prev) => [
-      ...prev,
-      { id: Math.random().toString(36).substring(7), ts: new Date(), stage, message, type },
-    ]);
+    setLogs((prev) => {
+      const newLog = { id: Math.random().toString(36).substring(7), ts: new Date(), stage, message, type };
+      // Keep only last 100 logs to prevent memory leak and lag during mass concurrency
+      const nextLogs = [newLog, ...prev];
+      return nextLogs.slice(0, 100); 
+    });
   }, []);
 
   const clearTimeouts = useCallback(() => {
@@ -89,10 +94,13 @@ export function usePipelineSimulation() {
     setActiveStages(new Set());
     clearTimeouts();
 
-    let time = 0;
-    const schedule = (delay: number, fn: () => void) => {
-      time += delay;
-      timeoutIds.current.push(setTimeout(fn, time));
+    startTime.current = Date.now();
+    
+    // Helper to schedule a function at an *absolute* offset from when simulation started
+    const scheduleAbsolute = (offsetMs: number, fn: () => void) => {
+      const msSinceStart = Date.now() - startTime.current;
+      const delay = Math.max(0, offsetMs - msSinceStart);
+      timeoutIds.current.push(setTimeout(fn, delay));
     };
 
     const activate = (stage: string) => setActiveStages((p) => new Set(p).add(stage));
@@ -103,85 +111,207 @@ export function usePipelineSimulation() {
         return next;
       });
 
-    // Entrada Phase
-    schedule(500, () => {
+    // Helper to update metrics functionally
+    const updateMetrics = (updater: (prev: Metrics) => Partial<Metrics>) => {
+      setMetrics((prev) => ({ ...prev, ...updater(prev) }));
+    };
+
+    // --- Mocks: Simulating processing of one unit of work through the pipeline ---
+    
+    // Simulate Crawler Worker processing a given URL ID at a specific start time
+    const simulateCrawlerTask = (taskId: string, absoluteStartMs: number, processingSpeed: number) => {
+      const t1 = absoluteStartMs;
+      const t2 = t1 + 300 * processingSpeed;
+      const t3 = t2 + 200 * processingSpeed;
+      const t4 = t3 + 300 * processingSpeed;
+
+      scheduleAbsolute(t1, () => {
+        activate("download_arquivo");
+        updateMetrics((m) => ({ queueMessages: Math.max(0, m.queueMessages - 1) }));
+        addLog("download_arquivo", `[${taskId}] Baixando página HTML alvo`);
+      });
+
+      scheduleAbsolute(t2, () => {
+        deactivate("download_arquivo");
+        activate("upload_minio_raw");
+        addLog("upload_minio_raw", `[${taskId}] Salvando arquivo original no MinIO`);
+        updateMetrics((m) => ({ minioFiles: m.minioFiles + 1 }));
+      });
+
+      scheduleAbsolute(t3, () => {
+        deactivate("upload_minio_raw");
+        activate("extracao_links");
+        addLog("extracao_links", `[${taskId}] Extraindo links internos (depth+1)`);
+      });
+
+      scheduleAbsolute(t4, () => {
+        deactivate("extracao_links");
+        activate("fila_parser");
+        addLog("fila_parser", `[${taskId}] Enfileirando HTML para parsing`);
+        updateMetrics((m) => ({ queueMessages: m.queueMessages + 1 }));
+        
+        // As soon as crawler finishes, parser picks it up almost immediately
+        setTimeout(() => deactivate("fila_parser"), 400); 
+        simulateParserTask(taskId, t4 + 200, processingSpeed);
+      });
+    };
+
+    // Simulate Parser Worker
+    const simulateParserTask = (taskId: string, absoluteStartMs: number, processingSpeed: number) => {
+      const t1 = absoluteStartMs;
+      const t2 = t1 + 250 * processingSpeed;
+      const t3 = t2 + 400 * processingSpeed;
+      const t4 = t3 + 200 * processingSpeed;
+
+      scheduleAbsolute(t1, () => {
+        activate("leitura_minio");
+        updateMetrics((m) => ({ queueMessages: Math.max(0, m.queueMessages - 1) }));
+        addLog("leitura_minio", `[${taskId}] Lendo arquivo Raw do MinIO`);
+      });
+
+      scheduleAbsolute(t2, () => {
+        deactivate("leitura_minio");
+        activate("processamento_regex");
+        addLog("processamento_regex", `[${taskId}] Aplicando regex para estruturação`);
+      });
+
+      scheduleAbsolute(t3, () => {
+        deactivate("processamento_regex");
+        activate("upload_json_parsed");
+        addLog("upload_json_parsed", `[${taskId}] Salvando payload processado (JSON)`);
+        updateMetrics((m) => ({ minioFiles: m.minioFiles + 1 }));
+      });
+
+      scheduleAbsolute(t4, () => {
+        deactivate("upload_json_parsed");
+        activate("fila_populate_neo4j");
+        addLog("fila_populate_neo4j", `[${taskId}] Enfileirando JSON para Neo4j`);
+        updateMetrics((m) => ({ queueMessages: m.queueMessages + 1 }));
+
+        setTimeout(() => deactivate("fila_populate_neo4j"), 400);
+        simulateNeo4jTask(taskId, t4 + 200, processingSpeed);
+      });
+    };
+
+    // Simulate Neo4j Worker
+    const simulateNeo4jTask = (taskId: string, absoluteStartMs: number, processingSpeed: number) => {
+      const t1 = absoluteStartMs;
+      const duration = 500 * processingSpeed;
+
+      scheduleAbsolute(t1, () => {
+        activate("criar_nos_relacoes");
+        updateMetrics((m) => ({ queueMessages: Math.max(0, m.queueMessages - 1) }));
+        addLog("criar_nos_relacoes", `[${taskId}] Criando Nós e Relações no Grafo`);
+      });
+
+      // Neo4j Node creation is "bulk" fast
+      for (let i = 1; i <= 5; i++) {
+        scheduleAbsolute(t1 + (duration / 5) * i, () => {
+           updateMetrics((m) => ({ neo4jNodes: m.neo4jNodes + Math.floor(Math.random() * 15) + 5 }));
+        });
+      }
+
+      scheduleAbsolute(t1 + duration, () => {
+        deactivate("criar_nos_relacoes");
+      });
+    };
+
+
+    // ----------------------------------------------------
+    // PHASE 1: Warmup (Slow, didactic initial request)
+    // ----------------------------------------------------
+    let currentMs = 500;
+    
+    scheduleAbsolute(currentMs, () => {
       activate("api_call");
-      addLog("api_call", "Recebendo requisição da API para iniciar pipeline");
-      setMetrics((m) => ({ ...m, currentDepth: 1 }));
+      addLog("api_call", "Recebendo requisição da API (Seed URL)");
+      updateMetrics(() => ({ currentDepth: 1 }));
     });
-    schedule(800, () => {
+    
+    currentMs += 800;
+    scheduleAbsolute(currentMs, () => {
       deactivate("api_call");
       activate("fila_crawler");
-      addLog("fila_crawler", "Enfileirando job para o Crawler");
-      setMetrics((m) => ({ ...m, queueMessages: 1 }));
+      addLog("fila_crawler", "Enfileirando Seed Job para o Crawler");
+      updateMetrics((m) => ({ queueMessages: m.queueMessages + 1 }));
     });
 
-    // Worker Crawler Phase
-    schedule(1000, () => {
-      deactivate("fila_crawler");
-      activate("download_arquivo");
-      setMetrics((m) => ({ ...m, queueMessages: 0 }));
-      addLog("download_arquivo", "Baixando página HTML alvo");
+    currentMs += 600;
+    scheduleAbsolute(currentMs, () => {
+       deactivate("fila_crawler");
     });
-    schedule(1200, () => {
-      deactivate("download_arquivo");
-      activate("upload_minio_raw");
-      addLog("upload_minio_raw", "Salvando arquivo original no MinIO (Raw)");
-      setMetrics((m) => ({ ...m, minioFiles: 1 }));
-    });
-    schedule(800, () => {
-      deactivate("upload_minio_raw");
-      activate("extracao_links");
-      addLog("extracao_links", "Extraindo links internos para proxima depth");
-    });
-    schedule(900, () => {
-      deactivate("extracao_links");
-      activate("fila_parser");
-      addLog("fila_parser", "Enfileirando documento para parsing subsequente");
-      setMetrics((m) => ({ ...m, queueMessages: 1 }));
+    
+    // Run the first task very slowly (speed multiplier 2.5)
+    simulateCrawlerTask("Seed", currentMs, 2.5);
+
+    // ----------------------------------------------------
+    // PHASE 2: Explosion of Concurrency (Cascade Effect)
+    // ----------------------------------------------------
+    // The seed task will finish its crawler phase around currentMs + (1000 * 2.5) = currentMs + 2500.
+    // Let's start the cascade right around when it extracts links.
+    
+    const cascadeStartMs = currentMs + 2200; 
+
+    scheduleAbsolute(cascadeStartMs, () => {
+      updateMetrics(() => ({ currentDepth: 2 }));
+      addLog("api_call", "Profundidade 2 alcançada: Descobertos múltiplos links! Iniciando processamento em lote.", "warning");
     });
 
-    // Worker Parser Phase
-    schedule(1000, () => {
-      deactivate("fila_parser");
-      activate("leitura_minio");
-      setMetrics((m) => ({ ...m, queueMessages: 0 }));
-      addLog("leitura_minio", "Lendo arquivo Raw do MinIO");
-    });
-    schedule(1100, () => {
-      deactivate("leitura_minio");
-      activate("processamento_regex");
-      addLog("processamento_regex", "Aplicando regex para limpeza e estruturação do texto");
-    });
-    schedule(1200, () => {
-      deactivate("processamento_regex");
-      activate("upload_json_parsed");
-      addLog("upload_json_parsed", "Salvando payload processado (JSON) no MinIO");
-      setMetrics((m) => ({ ...m, minioFiles: 2 }));
-    });
-    schedule(800, () => {
-      deactivate("upload_json_parsed");
-      activate("fila_populate_neo4j");
-      addLog("fila_populate_neo4j", "Enfileirando JSON para população no Grafo");
-      setMetrics((m) => ({ ...m, queueMessages: 1 }));
+    // We'll spawn 15 concurrent tasks rapidly
+    // As Depth increases, processing speed factor gets smaller (faster execution)
+    for (let i = 0; i < 15; i++) {
+        const spawnDelay = i * 200 + (Math.random() * 150); // Spread them out slightly
+        const taskSpeed = 0.6 + (Math.random() * 0.4); // Faster than seed: 0.6 to 1.0 multiplier
+
+        scheduleAbsolute(cascadeStartMs + spawnDelay, () => {
+             // Fake the queue jumping up quickly for each discovered link
+             activate("fila_crawler");
+             updateMetrics((m) => ({ queueMessages: m.queueMessages + 1 }));
+             
+             // Deactivate shortly after just to flash the UI indicator
+             setTimeout(() => deactivate("fila_crawler"), 300);
+             
+             simulateCrawlerTask(`Link-${i+1}`, Date.now() - startTime.current + 300, taskSpeed);
+        });
+    }
+
+    // Phase 3: Even more explosion
+    const cascadeStartMs2 = cascadeStartMs + 3000;
+    scheduleAbsolute(cascadeStartMs2, () => {
+      updateMetrics(() => ({ currentDepth: 3 }));
+      addLog("api_call", "Profundidade 3! Carga exponencial acionada...", "warning");
     });
 
-    // Worker Neo4j Phase
-    schedule(1000, () => {
-      deactivate("fila_populate_neo4j");
-      activate("criar_nos_relacoes");
-      setMetrics((m) => ({ ...m, queueMessages: 0 }));
-      addLog("criar_nos_relacoes", "Criando Nós e Relações baseadas no documento Parsed");
-      setMetrics((m) => ({ ...m, neo4jNodes: 243 }));
-    });
+    for (let i = 0; i < 20; i++) {
+        const spawnDelay = i * 100 + (Math.random() * 100); 
+        const taskSpeed = 0.3 + (Math.random() * 0.3); // Super fast
 
-    // Finish
-    schedule(1500, () => {
-      deactivate("criar_nos_relacoes");
-      addLog("criar_nos_relacoes", "Pipeline concluído com sucesso", "success");
+        scheduleAbsolute(cascadeStartMs2 + spawnDelay, () => {
+             activate("fila_crawler");
+             updateMetrics((m) => ({ queueMessages: m.queueMessages + 1 }));
+             setTimeout(() => deactivate("fila_crawler"), 200);
+             simulateCrawlerTask(`SubL-${i+1}`, Date.now() - startTime.current + 200, taskSpeed);
+        });
+    }
+
+    // ----------------------------------------------------
+    // Finish Simulation
+    // ----------------------------------------------------
+    // 20 tasks * 100ms = 2000ms spread. The last task starts around cascadeStartMs2 + 2000.
+    // It takes some time to flow through (around 1500ms max with 0.3 speed).
+    // Let's cap the simulation at 12 seconds total.
+    
+    const finishTime = cascadeStartMs2 + 6000; 
+
+    scheduleAbsolute(finishTime, () => {
       setSimRunning(false);
       setSimDone(true);
+      setActiveStages(new Set()); // Clear all glowing states
+      addLog("api_call", "Simulação de carga concluída. Sistema estabilizado.", "success");
+      // Force queue to 0
+      updateMetrics(() => ({ queueMessages: 0 })); 
     });
+
   }, [addLog, clearTimeouts, simRunning]);
 
   return {
