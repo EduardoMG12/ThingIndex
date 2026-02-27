@@ -11,11 +11,10 @@ export const metadata: Metadata = {
 export default function DocumentationPage() {
     return (
         <div className="min-h-screen bg-background">
-            {/* Header importado e renderizado diretamente (se for client component, funcionará normalmente dentro do layout do server) */}
             <Header />
-
-            {/* Client Component Isolado apenas para interatividade e animações */}
-            <DocumentationContent />
+            <main id="main-content">
+                <DocumentationContent />
+            </main>
         </div>
     );
 }

@@ -77,7 +77,7 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Header />
 
-      <main className="container py-8 flex-1 flex flex-col lg:flex-row gap-6">
+      <main id="main-content" className="container py-8 flex-1 flex flex-col lg:flex-row gap-6">
         <div className="flex flex-col gap-6 w-full lg:w-[450px] shrink-0">
           <motion.div {...fadeUp}>
             <h1 className="text-2xl font-bold tracking-tight">
@@ -103,6 +103,8 @@ export default function Home() {
           {...fadeUp}
           transition={{ delay: 0.2 }}
           className="flex-1 min-h-[500px] lg:min-h-0 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)]"
+          role="region"
+          aria-label="Visualização do grafo de conhecimento"
         >
           <GraphViewer nodes={DEMO_NODES} links={DEMO_LINKS} />
         </motion.div>

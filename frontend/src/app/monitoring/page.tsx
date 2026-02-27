@@ -38,7 +38,7 @@ export default function MonitoringPage() {
     return (
         <div className="min-h-screen bg-background">
             <Header />
-            <main className="container py-8">
+            <main id="main-content" className="container py-8">
                 {/* Title row */}
                 <motion.div {...fadeUp} transition={{ duration: 0.5 }} className="flex flex-wrap items-center justify-between gap-4">
                     <div>
@@ -51,13 +51,17 @@ export default function MonitoringPage() {
                     </div>
 
                     {/* Toggle + Status */}
-                    <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-2.5">
+                    <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-2.5" role="group" aria-label="Alternar modo de monitoramento">
                         <span className={`flex items-center gap-1.5 text-sm font-medium ${!isRealTime ? "text-primary" : "text-muted-foreground"}`}>
-                            <WifiOff className="h-3.5 w-3.5" /> Simulação
+                            <WifiOff className="h-3.5 w-3.5" aria-hidden="true" /> Simulação
                         </span>
-                        <Switch checked={isRealTime} onCheckedChange={setIsRealTime} />
+                        <Switch
+                            checked={isRealTime}
+                            onCheckedChange={setIsRealTime}
+                            aria-label="Alternar entre simulação e tempo real"
+                        />
                         <span className={`flex items-center gap-1.5 text-sm font-medium ${isRealTime ? "text-primary" : "text-muted-foreground"}`}>
-                            <Wifi className="h-3.5 w-3.5" /> Tempo Real
+                            <Wifi className="h-3.5 w-3.5" aria-hidden="true" /> Tempo Real
                         </span>
                         {isRealTime && (
                             <span className={`ml-2 flex items-center gap-1.5 text-xs ${statusInfo.color}`}>
@@ -69,7 +73,9 @@ export default function MonitoringPage() {
                 </motion.div>
 
                 {/* Metrics */}
-                <MetricCards metrics={metrics} activeStages={activeStages} />
+                <div aria-live="polite" aria-atomic="true">
+                    <MetricCards metrics={metrics} activeStages={activeStages} />
+                </div>
 
                 {/* Pipeline + Console */}
                 <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_380px]">
