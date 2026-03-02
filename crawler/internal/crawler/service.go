@@ -55,11 +55,12 @@ type CrawlerService struct {
 	isPaused          atomic.Bool
 	activeWorkers     atomic.Int32
 	backpressureLimit int
+	concurrency       int
 	ctx               context.Context
 	cancelFunc        context.CancelFunc
 }
 
-func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlParser HTMLParser, storage domain.Storage, queue domain.Queue, maxDepth int, ignoreKeywords []string, outputSubdir string, bucketName string, backpressureLimit int, te *telemetry.Emitter) *CrawlerService {
+func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlParser HTMLParser, storage domain.Storage, queue domain.Queue, maxDepth int, ignoreKeywords []string, outputSubdir string, bucketName string, backpressureLimit int, concurrency int, te *telemetry.Emitter) *CrawlerService {
 	// Initialize Bloom Filter with 1M items and 0.01 false positive rate
 	bf := NewBloomFilter(1000000, 0.01)
 
@@ -76,6 +77,7 @@ func NewCrawlerService(fetcher domain.Fetcher, pdfParser domain.Parser, htmlPars
 		outputSubdir:   outputSubdir,
 		bucketName:        bucketName,
 		backpressureLimit: backpressureLimit,
+		concurrency:       concurrency,
 	}
 	
 	ctx, cancel := context.WithCancel(context.Background())
@@ -93,7 +95,7 @@ func (c *CrawlerService) Crawl() error {
 	}
 
 	// Start workers
-	numWorkers := 10
+	numWorkers := c.concurrency
 	for i := 0; i < numWorkers; i++ {
 		c.wg.Add(1)
 		go c.worker(i, tasks)
@@ -162,7 +164,7 @@ func (c *CrawlerService) monitorQueues() {
 				parsedCount, _ := c.queue.GetQueueMessages("parsed_documents")
 
 				// If downstream is cleared, resume
-				if rawCount < 10 && parsedCount < 10 {
+				if rawCount < 2 && parsedCount < 2 {
 					log.Printf("[Backpressure] Downstream cleared (raw=%d, parsed=%d). Resuming crawler...", rawCount, parsedCount)
 					c.isPaused.Store(false)
 				}

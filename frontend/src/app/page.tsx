@@ -7,7 +7,7 @@ import UrlPanel, { type UrlEntry } from "@/components/UrlPanel";
 import PromptPanel from "@/components/PromptPanel";
 import GraphViewer from "@/components/GraphViewer";
 import ResponsePanel, { type Message } from "@/components/ResponsePanel";
-import { fetchGraphTopics, fetchGraphData } from "./actions";
+import { fetchGraphTopics, fetchGraphData, startCrawl, purgeCrawler } from "./actions";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -19,6 +19,8 @@ export default function Home() {
   const [urls, setUrls] = React.useState<UrlEntry[]>([]);
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [isCrawling, setIsCrawling] = React.useState(false);
+  const [hasCrawled, setHasCrawled] = React.useState(false);
   const [graphData, setGraphData] = React.useState<{ nodes: any[]; links: any[]; totalNodes: number; }>({ nodes: [], links: [], totalNodes: 0 });
   const [isLoadingGraph, setIsLoadingGraph] = React.useState(true);
   const [graphContext, setGraphContext] = React.useState<string>("all");
@@ -43,12 +45,44 @@ export default function Home() {
     loadGraphData();
   }, [graphContext]);
 
-  const handleAddUrl = React.useCallback((url: string, depth: number) => {
-    setUrls((prev) => [...prev, { id: Math.random().toString(36).substr(2, 9), url, depth }]);
+  const handleAddUrl = React.useCallback(async (url: string, dirName: string, depth: number) => {
+    const id = Math.random().toString(36).substr(2, 9);
+
+    // Add to UI immediately with "crawling" status
+    setUrls((prev) => [...prev, { id, url, dirName, depth, status: "crawling" }]);
+    setIsCrawling(true);
+    setHasCrawled(true);
+
+    // Call the server action
+    const result = await startCrawl(url, dirName, depth);
+
+    // Update status based on result
+    setUrls((prev) =>
+      prev.map((u) =>
+        u.id === id
+          ? {
+            ...u,
+            status: result.status === "success" ? "success" : "error",
+            message: result.message,
+          }
+          : u
+      )
+    );
+    setIsCrawling(false);
   }, []);
 
   const handleRemoveUrl = React.useCallback((id: string) => {
     setUrls((prev) => prev.filter((u) => u.id !== id));
+  }, []);
+
+  const handlePurge = React.useCallback(async () => {
+    await purgeCrawler();
+    setUrls((prev) =>
+      prev.map((u) =>
+        u.status === "crawling" ? { ...u, status: "error", message: "Crawler parado pelo usuário" } : u
+      )
+    );
+    setIsCrawling(false);
   }, []);
 
   const handlePromptSubmit = React.useCallback((prompt: string) => {
@@ -89,7 +123,14 @@ export default function Home() {
             transition={{ delay: 0.1 }}
             className="flex flex-col gap-6"
           >
-            <UrlPanel urls={urls} onAdd={handleAddUrl} onRemove={handleRemoveUrl} />
+            <UrlPanel
+              urls={urls}
+              onAdd={handleAddUrl}
+              onRemove={handleRemoveUrl}
+              onPurge={handlePurge}
+              isCrawling={isCrawling}
+              hasCrawled={hasCrawled}
+            />
             <PromptPanel onSubmit={handlePromptSubmit} isLoading={isLoading} />
             <ResponsePanel messages={messages} />
           </motion.div>

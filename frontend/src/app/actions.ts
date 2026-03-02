@@ -46,3 +46,42 @@ export async function fetchGraphData(context: string = "all", limit: number = 30
     return { nodes: [], links: [], totalNodes: 0 };
   }
 }
+
+export async function startCrawl(url: string, dirName: string, depth: number) {
+  try {
+    const baseUrl = process.env.API_INTERNAL_URL?.replace("/api/v1", "") || "http://api:8000";
+    const res = await fetch(`${baseUrl}/crawl`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url, dir_name: dirName, depth }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null);
+      throw new Error(errorData?.detail || res.statusText);
+    }
+
+    return await res.json();
+  } catch (error) {
+    console.error("Error starting crawl:", error);
+    return { status: "error", message: String(error) };
+  }
+}
+
+export async function purgeCrawler() {
+  try {
+    const baseUrl = process.env.API_INTERNAL_URL?.replace("/api/v1", "") || "http://api:8000";
+    const res = await fetch(`${baseUrl}/purge`, {
+      method: "POST",
+    });
+
+    if (!res.ok) {
+      throw new Error(res.statusText);
+    }
+
+    return await res.json();
+  } catch (error) {
+    console.error("Error purging crawler:", error);
+    return { status: "error", message: String(error) };
+  }
+}

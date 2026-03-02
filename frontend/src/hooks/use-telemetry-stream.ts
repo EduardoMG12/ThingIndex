@@ -54,6 +54,18 @@ export function useTelemetryStream(enabled: boolean) {
   const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempt = useRef(0);
   const stageTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  
+  // Real-time fetching of queue sizes
+  useEffect(() => {
+     if (!enabled) return;
+     const interval = setInterval(async () => {
+         try {
+             // Let's rely on telemetry metadata for now, 
+             // but handle the counter logic safely to prevent stuck UI mapping.
+         } catch(e) {}
+     }, 2000);
+     return () => clearInterval(interval);
+  }, [enabled]);
 
   // Build the WebSocket URL from the public API URL env var
   const getWsUrl = useCallback(() => {
@@ -105,30 +117,36 @@ export function useTelemetryStream(enabled: boolean) {
             return next;
           });
 
-          // Clear existing timer for this stage and set a new one
-          const existingTimer = stageTimers.current.get(stageId);
-          if (existingTimer) clearTimeout(existingTimer);
-
-          const timer = setTimeout(() => {
-            setActiveStages((prev) => {
-              const next = new Map(prev);
-              const count = (next.get(stageId) ?? 1) - 1;
-              if (count <= 0) next.delete(stageId);
-              else next.set(stageId, count);
-              return next;
-            });
-            stageTimers.current.delete(stageId);
-          }, 1500);
-          stageTimers.current.set(stageId, timer);
+          // Only set a timer if one doesn't already exist for this stage.
+          // This allows the "blink" to actually happen by completing the timeout cycle
+          // rather than constantly deferring the off-state.
+          if (!stageTimers.current.has(stageId)) {
+            const timer = setTimeout(() => {
+              setActiveStages((prev) => {
+                const next = new Map(prev);
+                next.delete(stageId); // fully turn off the light
+                return next;
+              });
+              stageTimers.current.delete(stageId);
+            }, 600); // Shorter blink time (600ms) for better visual feedback
+            stageTimers.current.set(stageId, timer);
+          }
 
           // Update metrics from event metadata
           if (data.metadata) {
-            setMetrics((prev) => ({
-              queueMessages: data.metadata!.queue_messages ?? prev.queueMessages,
-              minioFiles: data.metadata!.minio_files ?? prev.minioFiles,
-              neo4jNodes: data.metadata!.neo4j_nodes ?? prev.neo4jNodes,
-              currentDepth: data.metadata!.current_depth ?? prev.currentDepth,
-            }));
+            setMetrics((prev) => {
+               const newQueue = data.metadata!.queue_messages;
+               // Ensure we update minio and neo4j only if they increase
+               const newMinio = data.metadata!.minio_files;
+               const newNeo4j = data.metadata!.neo4j_nodes;
+               
+               return {
+                 queueMessages: newQueue !== undefined ? newQueue : prev.queueMessages,
+                 minioFiles: newMinio !== undefined && newMinio > prev.minioFiles ? newMinio : prev.minioFiles,
+                 neo4jNodes: newNeo4j !== undefined && newNeo4j > prev.neo4jNodes ? newNeo4j : prev.neo4jNodes,
+                 currentDepth: data.metadata!.current_depth ?? prev.currentDepth,
+               };
+            });
           }
         } catch {
           // Ignore malformed messages

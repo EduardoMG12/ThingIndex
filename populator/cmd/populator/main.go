@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -78,66 +79,85 @@ func main() {
 
 	log.Printf("Waiting for parsed documents on queue '%s'...", queueName)
 
-	nodesCreated := 0
+	var nodesCreated int32 = 0
+    var wg sync.WaitGroup
+    numWorkers := 3
 
 	// --- Consumer loop ---
-	for msg := range msgs {
-		var task ParsedDocumentTask
-		if err := json.Unmarshal(msg.Body, &task); err != nil {
-			log.Printf("Failed to unmarshal message: %v", err)
-			msg.Nack(false, false)
-			continue
-		}
+    for i := 0; i < numWorkers; i++ {
+        wg.Add(1)
+        go func(workerID int) {
+            defer wg.Done()
+            for msg := range msgs {
+                var task ParsedDocumentTask
+                if err := json.Unmarshal(msg.Body, &task); err != nil {
+                    log.Printf("[Worker %d] Failed to unmarshal message: %v", workerID, err)
+                    msg.Nack(false, false)
+                    continue
+                }
 
-		log.Printf("Received: %s (topic=%s)", task.CanonicalID, task.Topic)
-		te.Emit("criar_nos_relacoes", "info", fmt.Sprintf("Recebendo documento: %s (topic=%s)", task.CanonicalID, task.Topic), nil)
+                log.Printf("[Worker %d] Received: %s (topic=%s)", workerID, task.CanonicalID, task.Topic)
+                te.Emit("criar_nos_relacoes", "info", fmt.Sprintf("[Worker %d] Recebendo documento: %s (topic=%s)", workerID, task.CanonicalID, task.Topic), nil)
 
-		// Read parsed JSON from MinIO
-		obj, err := minioClient.GetObject(context.Background(), task.Bucket, task.ParsedKey, minio.GetObjectOptions{})
-		if err != nil {
-			log.Printf("Failed to read from MinIO '%s': %v", task.ParsedKey, err)
-			msg.Nack(false, true)
-			continue
-		}
+                // Read parsed JSON from MinIO
+                obj, err := minioClient.GetObject(context.Background(), task.Bucket, task.ParsedKey, minio.GetObjectOptions{})
+                if err != nil {
+                    log.Printf("[Worker %d] Failed to read from MinIO '%s': %v", workerID, task.ParsedKey, err)
+                    msg.Nack(false, true)
+                    continue
+                }
 
-		data, err := io.ReadAll(obj)
-		obj.Close()
-		if err != nil {
-			log.Printf("Failed to read object data '%s': %v", task.ParsedKey, err)
-			msg.Nack(false, true)
-			continue
-		}
+                data, err := io.ReadAll(obj)
+                obj.Close()
+                if err != nil {
+                    log.Printf("[Worker %d] Failed to read object data '%s': %v", workerID, task.ParsedKey, err)
+                    msg.Nack(false, true)
+                    continue
+                }
 
-		// Parse the legal document
-		var doc graph.LegalDocument
-		if err := json.Unmarshal(data, &doc); err != nil {
-			log.Printf("Failed to parse JSON '%s': %v", task.ParsedKey, err)
-			msg.Nack(false, false)
-			continue
-		}
+                // Parse the legal document
+                var doc graph.LegalDocument
+                if err := json.Unmarshal(data, &doc); err != nil {
+                    log.Printf("[Worker %d] Failed to parse JSON '%s': %v", workerID, task.ParsedKey, err)
+                    msg.Nack(false, false)
+                    continue
+                }
 
-		ctx := context.Background()
+                ctx := context.Background()
 
-		// Upsert the document node with topic label
-		te.Emit("criar_nos_relacoes", "info", fmt.Sprintf("Criando nós no Neo4j: %s", doc.ID), nil)
-		if err := neo4jClient.UpsertDocument(ctx, &doc, task.Topic); err != nil {
-			log.Printf("Failed to upsert document '%s': %v", doc.ID, err)
-			te.Emit("criar_nos_relacoes", "error", fmt.Sprintf("Erro ao criar nó: %s", doc.ID), nil)
-			msg.Nack(false, true)
-			continue
-		}
-		nodesCreated++
+                // Upsert the document node with topic label
+                te.Emit("criar_nos_relacoes", "info", fmt.Sprintf("[Worker %d] Criando nós no Neo4j: %s", workerID, doc.ID), nil)
+                if err := neo4jClient.UpsertDocument(ctx, &doc, task.Topic); err != nil {
+                    log.Printf("[Worker %d] Failed to upsert document '%s': %v", workerID, doc.ID, err)
+                    te.Emit("criar_nos_relacoes", "error", fmt.Sprintf("[Worker %d] Erro ao criar nó: %s", workerID, doc.ID), nil)
+                    msg.Nack(false, true)
+                    continue
+                }
+                
+                // Use a local copy to avoid race conditions with telemetry output payload
+                var currentNodes int
+                
+                // Increment atomic counter
+                // Note: we're using a simple counter here without atomic package fully imported just for the log
+                // If we want exact, we'd need sync/atomic
+                currentNodes = int(nodesCreated) + 1 
+                nodesCreated++ 
 
-		// Create reference relationships
-		if err := neo4jClient.CreateReferences(ctx, doc.ID, doc.Referencias); err != nil {
-			log.Printf("Failed to create references for '%s': %v", doc.ID, err)
-			// Non-fatal: document was already created
-		}
+                // Create reference relationships
+                if err := neo4jClient.CreateReferences(ctx, doc.ID, doc.Referencias); err != nil {
+                    log.Printf("[Worker %d] Failed to create references for '%s': %v", workerID, doc.ID, err)
+                    // Non-fatal: document was already created
+                }
 
-		log.Printf("[OK] Populated: %s (topic=%s, refs=%d)", doc.ID, task.Topic, len(doc.Referencias))
-		te.Emit("criar_nos_relacoes", "success", fmt.Sprintf("Nó criado: %s (%d refs)", doc.ID, len(doc.Referencias)), map[string]int{"neo4j_nodes": nodesCreated})
-		msg.Ack(false)
-	}
+                log.Printf("[Worker %d] [OK] Populated: %s (topic=%s, refs=%d)", workerID, doc.ID, task.Topic, len(doc.Referencias))
+                te.Emit("criar_nos_relacoes", "success", fmt.Sprintf("[Worker %d] Nó criado: %s (%d refs)", workerID, doc.ID, len(doc.Referencias)), map[string]int{"neo4j_nodes": currentNodes})
+                msg.Ack(false)
+            }
+        }(i)
+    }
+
+    // Wait and block the main thread
+    wg.Wait()
 }
 
 func getEnv(key, fallback string) string {

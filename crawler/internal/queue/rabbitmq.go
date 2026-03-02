@@ -79,7 +79,7 @@ func (r *RabbitMQClient) Connect() error {
 	
 	// Set QoS to ensure fair dispatch
 	err = r.channel.Qos(
-		10,   // prefetch count
+		3,   // prefetch count
 		0,    // prefetch size
 		false, // global
 	)
@@ -131,7 +131,7 @@ func (r *RabbitMQClient) Consume() (<-chan domain.TaskDelivery, error) {
 	}
 
 	// buffered channel to avoid blocking the main RabbitMQ consumer loop
-	deliveryChan := make(chan domain.TaskDelivery, 100)
+	deliveryChan := make(chan domain.TaskDelivery, 10)
 
 	go func() {
 		defer close(deliveryChan)
