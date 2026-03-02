@@ -24,6 +24,11 @@ services:
       - .env
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
 
   minio:
     image: minio/minio
@@ -57,6 +62,11 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_USE_SSL: "false"
       TELEMETRY_EXCHANGE: ${TELEMETRY_EXCHANGE:-pipeline_telemetry}
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
 
   api:
     build:
@@ -95,6 +105,11 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_USE_SSL: "false"
       TELEMETRY_EXCHANGE: ${TELEMETRY_EXCHANGE:-pipeline_telemetry}
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
     volumes:
       - ./legal-parser/parsed_data:/app/parsed_data
 
@@ -120,6 +135,11 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_USE_SSL: "false"
       TELEMETRY_EXCHANGE: ${TELEMETRY_EXCHANGE:-pipeline_telemetry}
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
 
   frontend:
     build:

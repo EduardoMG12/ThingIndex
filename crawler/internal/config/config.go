@@ -24,6 +24,7 @@ type AppConfig struct {
 	MinioSecretKey    string
 	MinioUseSSL        bool
 	BackpressureLimit  int
+	Concurrency        int
 	TelemetryExchange  string
 }
 
@@ -79,7 +80,13 @@ func LoadConfig() AppConfig {
 	backpressureLimitStr := os.Getenv("CRAWLER_BACKPRESSURE_LIMIT")
 	backpressureLimit, err := strconv.Atoi(backpressureLimitStr)
 	if err != nil {
-		backpressureLimit = 10000
+		backpressureLimit = 500
+	}
+
+	concurrencyStr := os.Getenv("CRAWLER_CONCURRENCY")
+	concurrency, err := strconv.Atoi(concurrencyStr)
+	if err != nil {
+		concurrency = 3
 	}
 
 	return AppConfig{
@@ -96,6 +103,7 @@ func LoadConfig() AppConfig {
 		MinioSecretKey:    os.Getenv("MINIO_SECRET_KEY"),
 		MinioUseSSL:       os.Getenv("MINIO_USE_SSL") == "true",
 		BackpressureLimit: backpressureLimit,
+		Concurrency:       concurrency,
 		TelemetryExchange: getEnvDefault("TELEMETRY_EXCHANGE", "pipeline_telemetry"),
 	}
 }
