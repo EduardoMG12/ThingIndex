@@ -131,3 +131,55 @@ RETURN
         label: type(rel)
     }}] as links
 """
+
+# ---------- LAW SEARCH (for AI Assistant) ----------
+
+# Search for nodes by fuzzy matching on name, topic, or numero.
+# Returns the full tree: the matched node + ancestors (up to Origin) + descendants (down to Alinea).
+# $terms is a list of search strings passed from the LLM's identification step.
+SEARCH_LAW_TREE_QUERY = """
+UNWIND $terms AS term
+OPTIONAL MATCH (n)
+WHERE (n.name IS NOT NULL AND toLower(n.name) CONTAINS toLower(term))
+   OR (n.numero IS NOT NULL AND toLower(n.numero) CONTAINS toLower(term))
+   OR (n.topic IS NOT NULL AND toLower(n.topic) CONTAINS toLower(term))
+WITH collect(DISTINCT n) AS matched
+
+// Expand downward from matched nodes (children, grandchildren, etc.)
+UNWIND matched AS m
+OPTIONAL MATCH path_down = (m)-[*0..4]->(descendant)
+WITH matched, collect(DISTINCT descendant) AS descendants
+
+// Expand upward from matched nodes (parents, grandparents to Origin)
+UNWIND matched AS m
+OPTIONAL MATCH path_up = (m)<-[*0..4]-(ancestor)
+WITH matched, descendants, collect(DISTINCT ancestor) AS ancestors
+
+// Merge all nodes
+WITH matched + descendants + ancestors AS all_raw
+UNWIND all_raw AS node
+WITH DISTINCT node
+WHERE node IS NOT NULL
+
+// Collect relationships between the gathered nodes
+WITH collect(node) AS nodes
+UNWIND nodes AS a
+UNWIND nodes AS b
+OPTIONAL MATCH (a)-[r]->(b)
+WITH nodes, collect(r) AS rels
+
+RETURN
+    [node IN nodes | {
+        id: toString(elementId(node)),
+        labels: labels(node),
+        name: COALESCE(node.name, ""),
+        numero: COALESCE(node.numero, ""),
+        conteudo: COALESCE(node.conteudo, node.texto, node.ementa, ""),
+        topic: COALESCE(node.topic, "")
+    }] AS nodes,
+    [rel IN rels WHERE rel IS NOT NULL | {
+        source: toString(elementId(startNode(rel))),
+        target: toString(elementId(endNode(rel))),
+        type: type(rel)
+    }] AS relationships
+"""

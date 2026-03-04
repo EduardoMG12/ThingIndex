@@ -8,6 +8,7 @@ from src.api.routes import router as operations_router
 from src.api.docs import docs_router
 from src.api.monitoring import monitoring_router
 from src.api.graph import router as graph_router
+from src.api.assistant import router as assistant_router
 
 logging.basicConfig(level=logging.INFO)
 
@@ -25,6 +26,7 @@ app.include_router(operations_router)
 app.include_router(docs_router)
 app.include_router(monitoring_router)
 app.include_router(graph_router, prefix="/api")
+app.include_router(assistant_router, prefix="/api")
 
 @app.get("/", include_in_schema=False)
 async def root():
