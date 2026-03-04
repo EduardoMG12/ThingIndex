@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from src.services.telemetry_consumer import telemetry_consumer
-from src.services.neo4j_client import neo4j_client
+from src.services.neo4j_connection import neo4j_connection
 
 logger = logging.getLogger("CrawlerAPI")
 
@@ -16,7 +16,6 @@ async def lifespan(app: FastAPI):
     logger.info("Available Routes:")
     for route in app.routes:
         if hasattr(route, "methods"):
-            # Exclude default internal endpoints if desired, but let's show all
             methods = ", ".join(route.methods)
             logger.info(f"  {methods: <7} -> {route.path}")
     logger.info("=========================================")
@@ -26,12 +25,11 @@ async def lifespan(app: FastAPI):
     await telemetry_consumer.start()
 
     # Connect to Neo4j database
-    await neo4j_client.connect()
+    await neo4j_connection.connect()
     
     yield
 
     # Shutdown
     await telemetry_consumer.stop()
-    await neo4j_client.close()
+    await neo4j_connection.close()
     logger.info("API is shutting down...")
-
