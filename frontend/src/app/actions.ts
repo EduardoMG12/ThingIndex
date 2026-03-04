@@ -85,3 +85,53 @@ export async function purgeCrawler() {
     return { status: "error", message: String(error) };
   }
 }
+
+export type AssistantResponse = {
+  answer: string;
+  law_identification: {
+    law_name: string;
+    article_number: string;
+    search_terms: string[];
+  };
+  sources: Array<{
+    label: string;
+    type: string;
+    content: string | null;
+  }>;
+  graph_context_found: boolean;
+};
+
+export async function askLegalQuestion(
+  message: string,
+  aiModel: string,
+  apiToken: string,
+): Promise<AssistantResponse> {
+  try {
+    const baseUrl = process.env.API_INTERNAL_URL || "http://api:8000/api/v1";
+    const res = await fetch(`${baseUrl}/assistant/ask`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message,
+        ai_model: aiModel,
+        api_token: apiToken,
+      }),
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null);
+      throw new Error(errorData?.message || res.statusText);
+    }
+
+    return await res.json();
+  } catch (error) {
+    console.error("Error asking legal question:", error);
+    return {
+      answer: `Erro ao consultar o assistente: ${String(error)}`,
+      law_identification: { law_name: "", article_number: "", search_terms: [] },
+      sources: [],
+      graph_context_found: false,
+    };
+  }
+}

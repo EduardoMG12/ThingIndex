@@ -7,7 +7,7 @@ import UrlPanel, { type UrlEntry } from "@/components/UrlPanel";
 import PromptPanel from "@/components/PromptPanel";
 import GraphViewer from "@/components/GraphViewer";
 import ResponsePanel, { type Message } from "@/components/ResponsePanel";
-import { fetchGraphTopics, fetchGraphData, startCrawl, purgeCrawler } from "./actions";
+import { fetchGraphTopics, fetchGraphData, startCrawl, purgeCrawler, askLegalQuestion } from "./actions";
 
 const fadeUp = {
   initial: { opacity: 0, y: 12 },
@@ -25,6 +25,8 @@ export default function Home() {
   const [isLoadingGraph, setIsLoadingGraph] = React.useState(true);
   const [graphContext, setGraphContext] = React.useState<string>("all");
   const [availableTopics, setAvailableTopics] = React.useState<string[]>([]);
+  const [aiModel, setAiModel] = React.useState("gemini");
+  const [apiToken, setApiToken] = React.useState("");
 
   // Fetch topics once on mount
   React.useEffect(() => {
@@ -85,23 +87,31 @@ export default function Home() {
     setIsCrawling(false);
   }, []);
 
-  const handlePromptSubmit = React.useCallback((prompt: string) => {
+  const handlePromptSubmit = React.useCallback(async (prompt: string) => {
     setMessages((prev) => [...prev, { role: "user", content: prompt }]);
     setIsLoading(true);
 
-    // Simulate response
-    setTimeout(() => {
+    try {
+      const result = await askLegalQuestion(prompt, aiModel, apiToken);
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content:
-            "Análise realizada com base nos documentos indexados. Foram encontrados 3 artigos relevantes sobre o tema solicitado no Código de Defesa do Consumidor. Os artigos 12, 14 e 18 tratam diretamente da responsabilidade civil do fornecedor.",
+          content: result.answer,
         },
       ]);
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: `Erro ao consultar o assistente: ${String(error)}`,
+        },
+      ]);
+    } finally {
       setIsLoading(false);
-    }, 1500);
-  }, []);
+    }
+  }, [aiModel, apiToken]);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -131,7 +141,14 @@ export default function Home() {
               isCrawling={isCrawling}
               hasCrawled={hasCrawled}
             />
-            <PromptPanel onSubmit={handlePromptSubmit} isLoading={isLoading} />
+            <PromptPanel
+              onSubmit={handlePromptSubmit}
+              isLoading={isLoading}
+              aiModel={aiModel}
+              onAiModelChange={setAiModel}
+              apiToken={apiToken}
+              onApiTokenChange={setApiToken}
+            />
             <ResponsePanel messages={messages} />
           </motion.div>
         </div>
