@@ -1,19 +1,4 @@
 services:
-  neo4j:
-    image: neo4j:latest
-    container_name: tcc-graph-db
-    ports:
-      - "7474:7474" 
-      - "7687:7687"
-    # env_file:
-    #   - .env
-    environment:
-      - NEO4J_AUTH=${NEO4J_AUTH}
-      - NEO4J_PLUGINS=${NEO4J_PLUGINS}
-    volumes:
-      - neo4j_data:/data
-      - neo4j_logs:/logs
-
   rabbitmq:
     image: rabbitmq:3-management
     container_name: tcc-rabbitmq
@@ -43,31 +28,6 @@ services:
     volumes:
       - minio_data:/data
 
-  crawler:
-    build:
-      context: .
-      dockerfile: crawler/Dockerfile
-    container_name: tcc-crawler
-    restart: unless-stopped
-    depends_on:
-      - rabbitmq
-      - minio
-    env_file:
-      - .env
-    environment:
-      STORAGE_TYPE: "minio"
-      RABBITMQ_URL: ${RABBITMQ_URL}
-      MINIO_ENDPOINT: "minio:9000"
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_USE_SSL: "false"
-      TELEMETRY_EXCHANGE: ${TELEMETRY_EXCHANGE:-pipeline_telemetry}
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-
   api:
     build:
       context: ./api
@@ -84,62 +44,6 @@ services:
       TELEMETRY_EXCHANGE: ${TELEMETRY_EXCHANGE:-pipeline_telemetry}
       NEO4J_URI: ${NEO4J_URI}
       NEO4J_AUTH: ${NEO4J_AUTH}
-
-  legal-parser:
-    build:
-      context: .
-      dockerfile: legal-parser/Dockerfile
-    container_name: tcc-legal-parser
-    restart: unless-stopped
-    depends_on:
-      - rabbitmq
-      - minio
-    env_file:
-      - .env
-    environment:
-      RABBITMQ_URL: ${RABBITMQ_URL}
-      PARSER_INPUT_QUEUE: "raw_documents"
-      PARSER_OUTPUT_QUEUE: "parsed_documents"
-      MINIO_ENDPOINT: "minio:9000"
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_USE_SSL: "false"
-      TELEMETRY_EXCHANGE: ${TELEMETRY_EXCHANGE:-pipeline_telemetry}
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-    volumes:
-      - ./legal-parser/parsed_data:/app/parsed_data
-
-  populator:
-    build:
-      context: .
-      dockerfile: populator/Dockerfile
-    container_name: tcc-populator
-    restart: unless-stopped
-    depends_on:
-      - rabbitmq
-      - minio
-      - neo4j
-    env_file:
-      - .env
-    environment:
-      RABBITMQ_URL: ${RABBITMQ_URL}
-      POPULATOR_QUEUE: "parsed_documents"
-      NEO4J_URI: ${NEO4J_URI}
-      NEO4J_AUTH: ${NEO4J_AUTH}
-      MINIO_ENDPOINT: "minio:9000"
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_USE_SSL: "false"
-      TELEMETRY_EXCHANGE: ${TELEMETRY_EXCHANGE:-pipeline_telemetry}
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
 
   frontend:
     build:
@@ -160,9 +64,20 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
 volumes:
   minio_data:
-  neo4j_data:
-  neo4j_logs:
   rabbitmq_data:
   frontend_node_modules:
+  pgdata:
