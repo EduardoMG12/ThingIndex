@@ -28,7 +28,7 @@ func main() {
 
 	router := gin.Default()
 	
-	api.SetupRoutes(router)
+	api.SetupRoutes(router, database, config.AppConfig)
 
 	if err := router.Run(":" + config.AppConfig.Port); err != nil {
 		log.Fatalf("Error starting server: %v", err)

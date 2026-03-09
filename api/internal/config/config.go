@@ -15,6 +15,12 @@ type Config struct {
 	DBPassword  string
 	DBName      string
 	OpenAIKey   string
+	JWTSecret   string
+	SMTPHost    string
+	SMTPPort    string
+	SMTPUser    string
+	SMTPPass    string
+	SMTPFrom    string
 }
 
 var AppConfig *Config
@@ -34,6 +40,12 @@ func Load() {
 		DBPassword: getEnv("DB_PASSWORD", "postgres"),
 		DBName:     getEnv("DB_NAME", "thingindex"),
 		OpenAIKey:  getEnv("OPENAI_API_KEY", ""),
+		JWTSecret:  getEnv("JWT_SECRET", "supersecret"),
+		SMTPHost:   getEnv("SMTP_HOST", "localhost"),
+		SMTPPort:   getEnv("SMTP_PORT", "1025"),
+		SMTPUser:   getEnv("SMTP_USER", ""),
+		SMTPPass:   getEnv("SMTP_PASS", ""),
+		SMTPFrom:   getEnv("SMTP_FROM", "no-reply@thingindex.com"),
 	}
 }
 
