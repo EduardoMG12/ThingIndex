@@ -10,7 +10,7 @@ export default function Header() {
     const pathname = usePathname();
 
     const links = [
-        { href: "/", label: "Workspace", icon: Sparkles },
+        { href: "/dashboard", label: "Workspace", icon: Sparkles },
         { href: "/monitoring", label: "Monitoramento", icon: Network },
         { href: "/documentacao", label: "Documentação", icon: FileText },
     ];
