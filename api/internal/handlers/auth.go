@@ -21,6 +21,17 @@ type RegisterRequest struct {
 	Password string `json:"password" binding:"required,min=6"`
 }
 
+// Register godoc
+// @Summary      Register a new user
+// @Description  Create a new user account and return a JWT token
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      RegisterRequest  true  "Registration Info"
+// @Success      201      {object}  map[string]string "Success token"
+// @Failure      400      {object}  map[string]string "Invalid input"
+// @Failure      500      {object}  map[string]string "Internal error"
+// @Router       /auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -42,6 +53,17 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+// Login godoc
+// @Summary      Login user
+// @Description  Authenticate user with email and password and return a JWT token
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      LoginRequest  true  "Login Credentials"
+// @Success      200      {object}  map[string]string "Success token"
+// @Failure      400      {object}  map[string]string "Invalid input"
+// @Failure      401      {object}  map[string]string "Invalid credentials"
+// @Router       /auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -62,6 +84,17 @@ type ForgotPasswordRequest struct {
 	Email string `json:"email" binding:"required,email"`
 }
 
+// ForgotPassword godoc
+// @Summary      Forgot password
+// @Description  Send a reset password link to the user's email
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      ForgotPasswordRequest  true  "User Email"
+// @Success      200      {object}  map[string]string "Success message"
+// @Failure      400      {object}  map[string]string "Invalid input"
+// @Failure      500      {object}  map[string]string "Internal error"
+// @Router       /auth/forgot-password [post]
 func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 	var req ForgotPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -82,6 +115,16 @@ type ResetPasswordRequest struct {
 	NewPassword string `json:"new_password" binding:"required,min=6"`
 }
 
+// ResetPassword godoc
+// @Summary      Reset password
+// @Description  Reset the user's password using a reset token
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      ResetPasswordRequest  true  "Reset Info"
+// @Success      200      {object}  map[string]string "Success message"
+// @Failure      400      {object}  map[string]string "Invalid/Expired token"
+// @Router       /auth/reset-password [post]
 func (h *AuthHandler) ResetPassword(c *gin.Context) {
 	var req ResetPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
