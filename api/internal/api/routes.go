@@ -8,7 +8,11 @@ import (
 	"thing-index/internal/repository"
 	"thing-index/internal/usecase"
 
+	_ "thing-index/docs"
+
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/gorm"
 )
 
@@ -17,6 +21,28 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	smtpMailer := mailer.NewSMTPMailer(cfg)
 	authUseCase := usecase.NewAuthUseCase(authRepo, smtpMailer, cfg)
 	authHandler := handlers.NewAuthHandler(authUseCase)
+
+	// Scalar API Documentation
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	router.GET("/docs", func(c *gin.Context) {
+		html := `
+		<!doctype html>
+		<html>
+		  <head>
+		    <title>Thing-Index API Reference</title>
+		    <meta charset="utf-8" />
+		    <meta name="viewport" content="width=device-width, initial-scale=1" />
+		    <style>
+		      body { margin: 0; }
+		    </style>
+		  </head>
+		  <body>
+		    <script id="api-reference" data-url="/swagger/doc.json"></script>
+		    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+		  </body>
+		</html>`
+		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
+	})
 
 	v1 := router.Group("/api/v1")
 	{
