@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/components/auth/actions";
+import { Logo } from "@/components/ui/Logo";
 
 interface AppShellProps {
     children: React.ReactNode;
@@ -25,11 +26,9 @@ const AppShell = ({ children }: AppShellProps) => {
         <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
             <aside className="w-64 border-r border-border bg-card flex flex-col shrink-0">
                 <div className="p-6 border-b border-border flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                        <Database className="h-5 w-5 text-primary-foreground" />
-                    </div>
+                    <Logo className="text-primary" size={32} />
                     <div>
-                        <h2 className="text-sm font-bold tracking-tight">LegisGraph</h2>
+                        <h2 className="text-sm font-bold tracking-tight">thing<span className="text-primary">index</span></h2>
                         <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">v0.1.0</p>
                     </div>
                 </div>

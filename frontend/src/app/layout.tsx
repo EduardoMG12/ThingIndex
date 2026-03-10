@@ -1,6 +1,12 @@
 import type { Metadata, Viewport } from "next";
+import { Inter, Outfit } from "next/font/google";
 import { Toaster } from "sonner";
+import { cn } from '@/lib/utils';
+import { SplashScreen } from '@/components/ui/SplashScreen';
 import "./globals.css";
+
+const inter = Inter({ subsets: ["latin"] });
+const outfit = Outfit({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
@@ -54,7 +60,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className="antialiased">
+      <body className={cn(inter.className, outfit.className, "antialiased min-h-screen bg-background")}>
+        <SplashScreen />
         <Toaster
           position="top-right"
           toastOptions={{

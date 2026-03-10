@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { login } from "./actions";
+import { Logo } from "@/components/ui/Logo";
 
 export const LoginForm = () => {
     const [showPassword, setShowPassword] = useState(false);
@@ -41,12 +42,12 @@ export const LoginForm = () => {
             {/* Brand */}
             <div className="mb-10 text-center">
                 <motion.div
-                    className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10"
+                    className="mx-auto mb-4 flex items-center justify-center"
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.1, duration: 0.5 }}
                 >
-                    <LogIn className="h-6 w-6 text-primary" />
+                    <Logo className="text-primary" size={48} />
                 </motion.div>
                 <h1 className="font-display text-xl font-bold tracking-tight">
                     thing<span className="text-primary">index</span>
