@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"thing-index/internal/api/middleware"
 	"thing-index/internal/config"
 	"thing-index/internal/handlers"
 	"thing-index/internal/mailer"
@@ -19,6 +20,9 @@ import (
 )
 
 func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
+	// Global Middlewares
+	router.Use(middleware.I18nMiddleware())
+
 	// CORS Middleware
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
@@ -58,7 +62,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	v1 := router.Group("/api/v1")
 	{
 		v1.GET("/health", func(c *gin.Context) {
-			response.Success(c, http.StatusOK, "API Thing-Index no ar! 🚀", nil)
+			response.Success(c, http.StatusOK, "success", "API Thing-Index no ar! 🚀", nil)
 		})
 
 		// Auth Routes
