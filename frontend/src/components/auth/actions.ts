@@ -20,13 +20,21 @@ export async function login(formData: FormData) {
       body: JSON.stringify({ email, password }),
     });
 
+    const result = await res.json().catch(() => ({ message: "Erro ao processar resposta" }));
+
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ error: "Erro ao fazer login" }));
-      return { error: errorData.error || "Credenciais inválidas" };
+      const errorMsg = result.errors && Array.isArray(result.errors) 
+        ? result.errors.join(", ") 
+        : (result.message || "Credenciais inválidas");
+      return { error: errorMsg };
     }
 
-    const { token } = await res.json();
+    const token = result.data?.token;
     
+    if (!token) {
+      return { error: "Token não recebido do servidor" };
+    }
+
     // Configura o cookie com o token JWT
     (await cookies()).set("token", token, {
       httpOnly: true,
@@ -59,12 +67,20 @@ export async function register(formData: FormData) {
       body: JSON.stringify({ name, email, password }),
     });
 
+    const result = await res.json().catch(() => ({ message: "Erro ao processar resposta" }));
+
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ error: "Erro ao registrar usuário" }));
-      return { error: errorData.error || "Erro ao criar conta" };
+      const errorMsg = result.errors && Array.isArray(result.errors) 
+        ? result.errors.join(", ") 
+        : (result.message || "Erro ao criar conta");
+      return { error: errorMsg };
     }
 
-    const { token } = await res.json();
+    const token = result.data?.token;
+
+    if (!token) {
+      return { error: "Token não recebido do servidor" };
+    }
 
     // Configura o cookie com o token JWT
     (await cookies()).set("token", token, {

@@ -5,6 +5,7 @@ import (
 	"thing-index/internal/config"
 	"thing-index/internal/handlers"
 	"thing-index/internal/mailer"
+	"thing-index/internal/pkg/response"
 	"thing-index/internal/repository"
 	"thing-index/internal/usecase"
 
@@ -57,7 +58,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	v1 := router.Group("/api/v1")
 	{
 		v1.GET("/health", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"status": "API Thing-Index no ar! 🚀"})
+			response.Success(c, http.StatusOK, "API Thing-Index no ar! 🚀", nil)
 		})
 
 		// Auth Routes
