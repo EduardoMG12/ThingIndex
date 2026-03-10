@@ -10,7 +10,7 @@ export async function login(formData: FormData) {
   const password = formData.get("password");
 
   if (!email || !password) {
-    throw new Error("Email e senha são obrigatórios");
+    return { error: "Email e senha são obrigatórios" };
   }
 
   try {
@@ -22,7 +22,7 @@ export async function login(formData: FormData) {
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({ error: "Erro ao fazer login" }));
-      throw new Error(errorData.error || "Erro desconhecido");
+      return { error: errorData.error || "Credenciais inválidas" };
     }
 
     const { token } = await res.json();
@@ -35,11 +35,9 @@ export async function login(formData: FormData) {
       maxAge: 60 * 60 * 24, // 1 dia
       path: "/",
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Login error:", error);
-    // Em um cenário real com form data action, você retornaria um estado de erro.
-    // Para simplificar, vamos apenas dar o redirect se o login falhar ou tratar no client.
-    throw error;
+    return { error: "Erro de conexão com o servidor" };
   }
 
   redirect("/dashboard");
@@ -51,7 +49,7 @@ export async function register(formData: FormData) {
   const password = formData.get("password");
 
   if (!name || !email || !password) {
-    throw new Error("Todos os campos são obrigatórios");
+    return { error: "Todos os campos são obrigatórios" };
   }
 
   try {
@@ -63,7 +61,7 @@ export async function register(formData: FormData) {
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({ error: "Erro ao registrar usuário" }));
-      throw new Error(errorData.error || "Erro desconhecido");
+      return { error: errorData.error || "Erro ao criar conta" };
     }
 
     const { token } = await res.json();
@@ -76,9 +74,9 @@ export async function register(formData: FormData) {
       maxAge: 60 * 60 * 24, // 1 dia
       path: "/",
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Registration error:", error);
-    throw error;
+    return { error: "Erro de conexão com o servidor" };
   }
 
   redirect("/dashboard");

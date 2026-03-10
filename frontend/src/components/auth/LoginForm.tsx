@@ -7,6 +7,7 @@ import { LogIn, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
+import { toast } from "sonner";
 import { login } from "./actions";
 
 export const LoginForm = () => {
@@ -14,7 +15,15 @@ export const LoginForm = () => {
     const [isLoading, setIsLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
         setIsLoading(true);
+        const formData = new FormData(e.currentTarget);
+        const res = await login(formData);
+
+        if (res?.error) {
+            toast.error(res.error);
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -44,7 +53,7 @@ export const LoginForm = () => {
 
             {/* Card */}
             <div className="rounded-xl border border-border bg-secondary/20 p-6 backdrop-blur-sm">
-                <form action={login} onSubmit={() => setIsLoading(true)} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-1.5">
                         <Label htmlFor="email" className="text-[11px] uppercase tracking-wider text-muted-foreground">Email</Label>
                         <Input

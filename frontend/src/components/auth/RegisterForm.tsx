@@ -7,11 +7,24 @@ import { UserPlus, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
+import { toast } from "sonner";
 import { register } from "./actions";
 
 export const RegisterForm = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setIsLoading(true);
+        const formData = new FormData(e.currentTarget);
+        const res = await register(formData);
+
+        if (res?.error) {
+            toast.error(res.error);
+            setIsLoading(false);
+        }
+    };
 
     return (
         <motion.div
@@ -38,7 +51,7 @@ export const RegisterForm = () => {
             </div>
 
             <div className="rounded-xl border border-border bg-secondary/20 p-6 backdrop-blur-sm">
-                <form action={register} onSubmit={() => setIsLoading(true)} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-1.5">
                         <Label htmlFor="name" className="text-[11px] uppercase tracking-wider text-muted-foreground">Nome</Label>
                         <Input
