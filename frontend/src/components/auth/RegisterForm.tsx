@@ -24,7 +24,9 @@ export const RegisterForm = () => {
         if (res?.error) {
             const type = (res.type as "error" | "success" | "warning" | "info") || "error";
             toast[type](res.error, {
-                description: res.errors?.join(", ")
+                description: res.errors && res.errors.length > 0
+                    ? res.errors.join(", ")
+                    : "Verifique os dados informados e tente novamente."
             });
         }
     };
@@ -54,7 +56,7 @@ export const RegisterForm = () => {
             </div>
 
             <div className="rounded-xl border border-border bg-secondary/20 p-6 backdrop-blur-sm">
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                     <div className="space-y-1.5">
                         <Label htmlFor="name" className="text-[11px] uppercase tracking-wider text-muted-foreground">Nome</Label>
                         <Input
@@ -128,6 +130,6 @@ export const RegisterForm = () => {
             <p className="mt-8 text-center font-mono text-[9px] text-muted-foreground/40">
                 thingindex v0.1.0 · encrypted · sao paulo
             </p>
-        </motion.div>
+        </motion.div >
     );
 };

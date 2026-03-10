@@ -1,4 +1,5 @@
 import { RegisterForm } from "@/components/auth/RegisterForm";
+import { AnimatedBackground } from "@/components/ui/AnimatedBackground";
 
 export const metadata = {
     title: "Criar Conta | ThingIndex",
@@ -7,7 +8,8 @@ export const metadata = {
 
 export default function RegisterPage() {
     return (
-        <div className="relative flex min-h-screen items-center justify-center bg-background bg-dots p-4">
+        <div className="relative flex min-h-screen items-center justify-center p-4 overflow-hidden">
+            <AnimatedBackground />
             <RegisterForm />
         </div>
     );

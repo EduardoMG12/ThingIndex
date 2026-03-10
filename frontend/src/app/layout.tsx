@@ -59,12 +59,14 @@ export default function RootLayout({
           position="top-right"
           toastOptions={{
             classNames: {
-              toast: 'backdrop-blur-2xl backdrop-saturate-150 border-white/10 bg-black/40 shadow-2xl rounded-xl p-4',
-              error: 'border-red-500/30 text-red-200 !bg-red-500/10',
-              success: 'border-emerald-500/30 text-emerald-200 !bg-emerald-500/10',
-              warning: 'border-amber-500/30 text-amber-200 !bg-amber-500/10',
-              info: 'border-blue-500/30 text-blue-200 !bg-blue-500/10',
-              default: 'border-white/10 text-zinc-200 !bg-white/5',
+              toast: 'group backdrop-blur-3xl backdrop-saturate-200 border-white/20 bg-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.6)] rounded-2xl p-6 min-w-[440px] transition-all duration-300',
+              error: '!border-red-500/60 !text-white !bg-red-500/20 shadow-[0_0_40px_-10px_rgba(239,68,68,0.6)]',
+              success: '!border-emerald-500/40 !text-white !bg-emerald-500/20 shadow-[0_0_40px_-10px_rgba(16,185,129,0.4)]',
+              warning: '!border-amber-500/40 !text-white !bg-amber-500/20 shadow-[0_0_40px_-10px_rgba(245,158,11,0.4)]',
+              info: '!border-blue-500/40 !text-white !bg-blue-500/20 shadow-[0_0_40px_-10px_rgba(59,130,246,0.4)]',
+              default: 'border-white/10 !text-white !bg-white/5',
+              title: 'text-xl font-bold',
+              description: 'text-base font-normal !text-zinc-200 mt-1',
             },
           }}
         />

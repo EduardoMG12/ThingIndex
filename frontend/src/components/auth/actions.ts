@@ -10,7 +10,7 @@ export async function login(formData: FormData) {
   const password = formData.get("password");
 
   if (!email || !password) {
-    return { error: "Email e senha são obrigatórios" };
+    return { error: "Email e senha são obrigatórios", type: "error" };
   }
 
   try {
@@ -47,7 +47,7 @@ export async function login(formData: FormData) {
     });
   } catch (error: any) {
     console.error("Login error:", error);
-    return { error: "Erro de conexão com o servidor" };
+    return { error: "Erro de conexão com o servidor", type: "error" };
   }
 
   redirect("/dashboard");
@@ -59,7 +59,7 @@ export async function register(formData: FormData) {
   const password = formData.get("password");
 
   if (!name || !email || !password) {
-    return { error: "Todos os campos são obrigatórios" };
+    return { error: "Todos os campos são obrigatórios", type: "error" };
   }
 
   try {
@@ -96,7 +96,7 @@ export async function register(formData: FormData) {
     });
   } catch (error: any) {
     console.error("Registration error:", error);
-    return { error: "Erro de conexão com o servidor" };
+    return { error: "Erro de conexão com o servidor", type: "error" };
   }
 
   redirect("/dashboard");

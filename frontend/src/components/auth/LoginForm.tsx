@@ -24,7 +24,9 @@ export const LoginForm = () => {
         if (res?.error) {
             const type = (res.type as "error" | "success" | "warning" | "info") || "error";
             toast[type](res.error, {
-                description: res.errors?.join(", ")
+                description: res.errors && res.errors.length > 0
+                    ? res.errors.join(", ")
+                    : "Verifique suas credenciais e tente novamente."
             });
         }
     };
@@ -56,7 +58,7 @@ export const LoginForm = () => {
 
             {/* Card */}
             <div className="rounded-xl border border-border bg-secondary/20 p-6 backdrop-blur-sm">
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                     <div className="space-y-1.5">
                         <Label htmlFor="email" className="text-[11px] uppercase tracking-wider text-muted-foreground">Email</Label>
                         <Input
