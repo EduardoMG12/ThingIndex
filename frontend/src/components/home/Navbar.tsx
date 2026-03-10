@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { LogIn, UserPlus } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 
 export const Navbar = () => {
     return (

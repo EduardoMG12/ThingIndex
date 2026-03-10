@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 interface ButtonProps extends HTMLMotionProps<"button"> {
     variant?: "primary" | "secondary" | "ghost" | "outline";
-    size?: "sm" | "md" | "lg";
+    size?: "sm" | "md" | "lg" | "icon";
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -22,6 +22,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             sm: "px-3 py-1.5 text-xs",
             md: "px-4 py-2 text-sm",
             lg: "px-6 py-3 text-base",
+            icon: "h-8 w-8",
         };
 
         return (

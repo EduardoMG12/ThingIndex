@@ -23,10 +23,12 @@ export async function login(formData: FormData) {
     const result = await res.json().catch(() => ({ message: "Erro ao processar resposta" }));
 
     if (!res.ok) {
-      const errorMsg = result.errors && Array.isArray(result.errors) 
-        ? result.errors.join(", ") 
-        : (result.message || "Credenciais inválidas");
-      return { error: errorMsg };
+      return { 
+        error: result.message || "Credenciais inválidas",
+        type: result.type || "error",
+        status: res.status,
+        errors: result.errors
+      };
     }
 
     const token = result.data?.token;
@@ -70,10 +72,12 @@ export async function register(formData: FormData) {
     const result = await res.json().catch(() => ({ message: "Erro ao processar resposta" }));
 
     if (!res.ok) {
-      const errorMsg = result.errors && Array.isArray(result.errors) 
-        ? result.errors.join(", ") 
-        : (result.message || "Erro ao criar conta");
-      return { error: errorMsg };
+      return { 
+        error: result.message || "Erro ao criar conta",
+        type: result.type || "error",
+        status: res.status,
+        errors: result.errors
+      };
     }
 
     const token = result.data?.token;
@@ -96,4 +100,9 @@ export async function register(formData: FormData) {
   }
 
   redirect("/dashboard");
+}
+
+export async function logout() {
+  (await cookies()).delete("token");
+  redirect("/");
 }

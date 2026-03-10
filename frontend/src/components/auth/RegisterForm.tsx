@@ -4,9 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { UserPlus, Eye, EyeOff } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Label } from "@/components/ui/Label";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { register } from "./actions";
 
@@ -19,10 +19,13 @@ export const RegisterForm = () => {
         setIsLoading(true);
         const formData = new FormData(e.currentTarget);
         const res = await register(formData);
+        setIsLoading(false);
 
         if (res?.error) {
-            toast.error(res.error);
-            setIsLoading(false);
+            const type = (res.type as "error" | "success" | "warning" | "info") || "error";
+            toast[type](res.error, {
+                description: res.errors?.join(", ")
+            });
         }
     };
 

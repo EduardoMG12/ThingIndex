@@ -59,12 +59,12 @@ export default function RootLayout({
           position="top-right"
           toastOptions={{
             classNames: {
-              toast: 'backdrop-blur-xl backdrop-filter border',
-              error: 'bg-red-950/40 border-red-500/20 text-red-200',
-              success: 'bg-emerald-950/40 border-emerald-500/20 text-emerald-200',
-              warning: 'bg-amber-950/40 border-amber-500/20 text-amber-200',
-              info: 'bg-blue-950/40 border-blue-500/20 text-blue-200',
-              default: 'bg-zinc-950/40 border-white/10 text-zinc-200',
+              toast: 'backdrop-blur-2xl backdrop-saturate-150 border-white/10 bg-black/40 shadow-2xl rounded-xl p-4',
+              error: 'border-red-500/30 text-red-200 !bg-red-500/10',
+              success: 'border-emerald-500/30 text-emerald-200 !bg-emerald-500/10',
+              warning: 'border-amber-500/30 text-amber-200 !bg-amber-500/10',
+              info: 'border-blue-500/30 text-blue-200 !bg-blue-500/10',
+              default: 'border-white/10 text-zinc-200 !bg-white/5',
             },
           }}
         />
