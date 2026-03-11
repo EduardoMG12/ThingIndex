@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { LogOut, User, Settings, LayoutDashboard, Database, HelpCircle } from "lucide-react";
+import { LogOut, User, Settings, LayoutDashboard, Database, HelpCircle, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,7 @@ const AppShell = ({ children }: AppShellProps) => {
     const navItems = [
         { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
         { label: "Documentos", icon: Database, href: "/documents" },
+        { label: "Documentação", icon: BookOpen, href: "/documentation" },
         { label: "Configurações", icon: Settings, href: "/settings" },
     ];
 
