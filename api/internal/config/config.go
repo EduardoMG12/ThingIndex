@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -34,6 +35,7 @@ type Config struct {
 
 	SMTPHost         string
 	SMTPPort         string
+	SMTPSecurityMode string
 	SMTPUser         string
 	SMTPPass         string
 	SMTPFrom         string
@@ -61,6 +63,9 @@ const (
 	defaultDevelopmentMinioKey = "thingindex-local-access-key"
 	defaultDevelopmentMinioSec = "thingindex-local-secret-key"
 	multipartFormSlackBytes    = int64(1 << 20)
+	smtpSecurityNone           = "none"
+	smtpSecurityStartTLS       = "starttls"
+	smtpSecurityTLS            = "tls"
 )
 
 func Load() {
@@ -93,6 +98,7 @@ func Load() {
 		AuthRateLimitWindow:          getEnvDurationSeconds("AUTH_RATE_LIMIT_WINDOW_SECONDS", 60),
 		SMTPHost:                     getEnv("SMTP_HOST", "localhost"),
 		SMTPPort:                     getEnv("SMTP_PORT", "1025"),
+		SMTPSecurityMode:             getEnv("SMTP_SECURITY_MODE", defaultSMTPSecurityMode(environment)),
 		SMTPUser:                     getEnv("SMTP_USER", ""),
 		SMTPPass:                     getEnv("SMTP_PASS", ""),
 		SMTPFrom:                     getEnv("SMTP_FROM", "no-reply@thingindex.com"),
@@ -187,6 +193,9 @@ func (c *Config) Validate() error {
 	if strings.TrimSpace(c.ResetPasswordURL) == "" {
 		missing = append(missing, "RESET_PASSWORD_URL")
 	}
+	if strings.TrimSpace(c.SMTPSecurityMode) == "" {
+		missing = append(missing, "SMTP_SECURITY_MODE")
+	}
 	if len(c.CorsAllowedOrigins()) == 0 {
 		missing = append(missing, "CORS_ALLOWED_ORIGINS")
 	}
@@ -209,12 +218,24 @@ func (c *Config) Validate() error {
 	if c.ServerReadTimeout <= 0 || c.ServerWriteTimeout <= 0 || c.ServerIdleTimeout <= 0 {
 		return errors.New("server timeout values must be greater than zero")
 	}
+	if err := c.validateResetPasswordURL(); err != nil {
+		return err
+	}
+	if err := c.validateSMTPSecurityMode(); err != nil {
+		return err
+	}
+	if (strings.TrimSpace(c.SMTPUser) == "") != (strings.TrimSpace(c.SMTPPass) == "") {
+		return errors.New("SMTP_USER and SMTP_PASS must be provided together")
+	}
 
 	if c.IsDevelopment() {
 		return nil
 	}
 
 	var insecure []string
+	if c.AllowPrivateStorageEndpoints {
+		insecure = append(insecure, "ALLOW_PRIVATE_STORAGE_ENDPOINTS")
+	}
 	if c.JWTSecret == defaultDevelopmentJWT {
 		insecure = append(insecure, "JWT_SECRET")
 	}
@@ -229,6 +250,12 @@ func (c *Config) Validate() error {
 	}
 	if strings.EqualFold(c.DBSSLMode, "disable") {
 		insecure = append(insecure, "DB_SSLMODE")
+	}
+	if c.NormalizedSMTPSecurityMode() == smtpSecurityNone {
+		insecure = append(insecure, "SMTP_SECURITY_MODE")
+	}
+	if resetURL, err := c.ResetPasswordURLParsed(); err != nil || !strings.EqualFold(resetURL.Scheme, "https") {
+		insecure = append(insecure, "RESET_PASSWORD_URL")
 	}
 	if len(insecure) > 0 {
 		return fmt.Errorf("insecure production configuration: %s", strings.Join(insecure, ", "))
@@ -274,12 +301,44 @@ func (c *Config) UploadRequestLimitBytes() int64 {
 	return c.MaxUploadSizeBytes + multipartFormSlackBytes
 }
 
+func (c *Config) NormalizedSMTPSecurityMode() string {
+	if c == nil {
+		return smtpSecurityNone
+	}
+
+	return strings.ToLower(strings.TrimSpace(c.SMTPSecurityMode))
+}
+
+func (c *Config) ResetPasswordURLParsed() (*url.URL, error) {
+	if c == nil {
+		return nil, errors.New("config is not loaded")
+	}
+
+	parsed, err := url.Parse(strings.TrimSpace(c.ResetPasswordURL))
+	if err != nil {
+		return nil, err
+	}
+	if parsed.Scheme == "" || parsed.Host == "" {
+		return nil, errors.New("RESET_PASSWORD_URL must include scheme and host")
+	}
+
+	return parsed, nil
+}
+
 func defaultValueForEnvironment(environment, developmentValue string) string {
 	if isDevelopmentEnvironment(environment) {
 		return developmentValue
 	}
 
 	return ""
+}
+
+func defaultSMTPSecurityMode(environment string) string {
+	if isDevelopmentEnvironment(environment) {
+		return smtpSecurityNone
+	}
+
+	return smtpSecurityStartTLS
 }
 
 func normalizeEnvironment(value string) string {
@@ -308,6 +367,23 @@ func containsWildcardOrigin(origins []string) bool {
 	}
 
 	return false
+}
+
+func (c *Config) validateResetPasswordURL() error {
+	if _, err := c.ResetPasswordURLParsed(); err != nil {
+		return fmt.Errorf("invalid RESET_PASSWORD_URL: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Config) validateSMTPSecurityMode() error {
+	switch c.NormalizedSMTPSecurityMode() {
+	case smtpSecurityNone, smtpSecurityStartTLS, smtpSecurityTLS:
+		return nil
+	default:
+		return errors.New("SMTP_SECURITY_MODE must be one of: none, starttls, tls")
+	}
 }
 
 func parseCSV(value string) []string {
