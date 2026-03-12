@@ -32,6 +32,14 @@ func (r *gormProviderRepository) GetConfig(ctx context.Context, userID uint, pro
 	return &config, nil
 }
 
+func (r *gormProviderRepository) GetConfigByFamily(ctx context.Context, userID uint, family string) (*models.UserProviderConfig, error) {
+	var config models.UserProviderConfig
+	if err := r.db.WithContext(ctx).Where("user_id = ? AND family = ? AND is_enabled = ?", userID, family, true).First(&config).Error; err != nil {
+		return nil, err
+	}
+	return &config, nil
+}
+
 func (r *gormProviderRepository) ListConfigs(ctx context.Context, userID uint) ([]models.UserProviderConfig, error) {
 	var configs []models.UserProviderConfig
 	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&configs).Error; err != nil {

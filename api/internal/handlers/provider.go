@@ -18,6 +18,7 @@ func NewProviderHandler(useCase domain.ProviderUseCase) *ProviderHandler {
 }
 
 type saveCredentialsRequest struct {
+	Family       string            `json:"family" binding:"required"`
 	ProviderType string            `json:"provider_type" binding:"required"`
 	Credentials  map[string]string `json:"credentials" binding:"required"`
 }
@@ -32,7 +33,7 @@ func (h *ProviderHandler) SaveCredentials(c *gin.Context) {
 		return
 	}
 
-	if err := h.useCase.SaveCredentials(c.Request.Context(), userID, req.ProviderType, req.Credentials); err != nil {
+	if err := h.useCase.SaveCredentials(c.Request.Context(), userID, req.Family, req.ProviderType, req.Credentials); err != nil {
 		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
 		return
 	}

@@ -21,10 +21,8 @@ import (
 )
 
 func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
-	// Global Middlewares
 	router.Use(middleware.I18nMiddleware())
 
-	// CORS Middleware
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -50,14 +48,15 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	smtpMailer := mailer.NewSMTPMailer(cfg)
 
 	authUseCase := usecase.NewAuthUseCase(authRepo, smtpMailer, cfg)
-	docUseCase := usecase.NewDocumentUseCase(docRepo, minioStorage)
 
 	authHandler := handlers.NewAuthHandler(authUseCase)
-	docHandler := handlers.NewDocumentHandler(docUseCase)
 
 	providerRepo := repository.NewGormProviderRepository(db)
 	providerUseCase := usecase.NewProviderUseCase(providerRepo, cfg)
 	providerHandler := handlers.NewProviderHandler(providerUseCase)
+
+	docUseCase := usecase.NewDocumentUseCase(docRepo, minioStorage, providerUseCase)
+	docHandler := handlers.NewDocumentHandler(docUseCase)
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.GET("/docs", func(c *gin.Context) {
@@ -94,7 +93,6 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 			auth.POST("/reset-password", authHandler.ResetPassword)
 		}
 
-		// User/Provider Routes
 		user := v1.Group("/user")
 		user.Use(middleware.AuthMiddleware(cfg))
 		{

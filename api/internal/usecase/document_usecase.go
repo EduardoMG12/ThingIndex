@@ -8,20 +8,23 @@ import (
 
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
+	"thing-index/internal/pkg/provider"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type documentUseCase struct {
-	repo    domain.DocumentRepository
-	storage domain.StorageService
+	repo         domain.DocumentRepository
+	storage      domain.StorageService
+	providerUC   domain.ProviderUseCase
 }
 
-func NewDocumentUseCase(repo domain.DocumentRepository, storage domain.StorageService) domain.DocumentUseCase {
+func NewDocumentUseCase(repo domain.DocumentRepository, storage domain.StorageService, providerUC domain.ProviderUseCase) domain.DocumentUseCase {
 	return &documentUseCase{
-		repo:    repo,
-		storage: storage,
+		repo:       repo,
+		storage:    storage,
+		providerUC: providerUC,
 	}
 }
 
@@ -44,7 +47,16 @@ func (u *documentUseCase) UploadDocument(ctx context.Context, userID uint, title
 
 	objectName := fmt.Sprintf("%d_%s%s", time.Now().Unix(), uuid.New().String()[:8], extractExtension(contentType))
 
-	fileURL, err := u.storage.UploadFile(ctx, file, size, contentType, objectName)
+	storageClient := u.storage
+	pType, creds, err := u.providerUC.GetFamilyCredentials(ctx, userID, domain.FamilyStorage)
+	if err == nil && pType != "" {
+		userSafeStorage, factorErr := provider.NewStorageProvider(pType, creds)
+		if factorErr == nil {
+			storageClient = userSafeStorage
+		}
+	}
+
+	fileURL, err := storageClient.UploadFile(ctx, file, size, contentType, objectName)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", domain.ErrUploadFailed, err)
 	}
