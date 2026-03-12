@@ -96,21 +96,27 @@ func (u *documentUseCase) UpdateCategory(ctx context.Context, userID, categoryID
 	return category, nil
 }
 
-func (u *documentUseCase) UploadDocument(ctx context.Context, userID uint, title string, file io.Reader, size int64, contentType, categoryName, categoryDescription string) (*models.Document, error) {
+func (u *documentUseCase) UploadDocument(ctx context.Context, userID uint, title string, file io.Reader, size int64, contentType, categoryName, categoryDescription, collection string) (*models.Document, error) {
 	categoryName = normalizeCategoryName(categoryName)
-	category, err := u.repo.GetCategoryByName(ctx, categoryName, userID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			category = &models.DocumentCategory{
-				UserID:      userID,
-				Name:        categoryName,
-				Description: strings.TrimSpace(categoryDescription),
-			}
-			if err := u.repo.CreateCategory(ctx, category); err != nil {
-				return nil, fmt.Errorf("%w: %v", domain.ErrCategoryCreate, err)
+	var category *models.DocumentCategory
+
+	if categoryName != "" {
+		existingCategory, err := u.repo.GetCategoryByName(ctx, categoryName, userID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				category = &models.DocumentCategory{
+					UserID:      userID,
+					Name:        categoryName,
+					Description: strings.TrimSpace(categoryDescription),
+				}
+				if err := u.repo.CreateCategory(ctx, category); err != nil {
+					return nil, fmt.Errorf("%w: %v", domain.ErrCategoryCreate, err)
+				}
+			} else {
+				return nil, fmt.Errorf("%w: %v", domain.ErrCategoryFind, err)
 			}
 		} else {
-			return nil, fmt.Errorf("%w: %v", domain.ErrCategoryFind, err)
+			category = existingCategory
 		}
 	}
 
@@ -137,14 +143,18 @@ func (u *documentUseCase) UploadDocument(ctx context.Context, userID uint, title
 		Size:       size,
 		MimeType:   contentType,
 		Status:     "PENDING",
-		CategoryID: category.ID,
+		Collection: strings.TrimSpace(collection),
+	}
+
+	if category != nil {
+		doc.CategoryID = &category.ID
 	}
 
 	if err := u.repo.CreateDocument(ctx, doc); err != nil {
 		return nil, fmt.Errorf("%w: %v", domain.ErrInternal, err)
 	}
 
-	doc.Category = *category
+	doc.Category = category
 
 	return doc, nil
 }
@@ -161,16 +171,26 @@ func (u *documentUseCase) ListDocumentsByCategory(ctx context.Context, categoryI
 	return u.repo.GetDocumentsByCategoryID(ctx, categoryID, userID)
 }
 
+func (u *documentUseCase) ListCollections(ctx context.Context, userID uint) ([]string, error) {
+	return u.repo.ListCollections(ctx, userID)
+}
+
 func extractExtension(contentType string) string {
 	switch contentType {
 	case "application/pdf":
 		return ".pdf"
+	case "text/html":
+		return ".html"
 	case "text/plain":
 		return ".txt"
 	case "application/msword":
 		return ".doc"
 	case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
 		return ".docx"
+	case "application/vnd.ms-excel":
+		return ".xls"
+	case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+		return ".xlsx"
 	default:
 		return ".bin"
 	}

@@ -69,3 +69,17 @@ func (r *GormDocumentRepository) GetDocumentsByCategoryID(ctx context.Context, c
 	}
 	return docs, nil
 }
+
+func (r *GormDocumentRepository) ListCollections(ctx context.Context, userID uint) ([]string, error) {
+	var collections []string
+	if err := r.db.WithContext(ctx).
+		Model(&models.Document{}).
+		Where("user_id = ? AND TRIM(collection) <> ''", userID).
+		Distinct().
+		Order("collection ASC").
+		Pluck("collection", &collections).Error; err != nil {
+		return nil, err
+	}
+
+	return collections, nil
+}

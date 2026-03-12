@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"thing-index/internal/domain"
 	"thing-index/internal/dto"
@@ -26,15 +27,12 @@ func (h *DocumentHandler) Upload(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
 	title := c.PostForm("title")
-	categoryName := c.PostForm("category")
-	var categoryDesc string
-
-	if categoryName == "" {
-		categoryName = i18n.T(lang, "doc.default_category_name")
-		categoryDesc = i18n.T(lang, "doc.default_category_description")
-	} else {
+	categoryName := strings.TrimSpace(c.PostForm("category"))
+	categoryDesc := ""
+	if categoryName != "" {
 		categoryDesc = i18n.T(lang, "doc.auto_category_desc")
 	}
+	collectionName := strings.TrimSpace(c.PostForm("collection"))
 
 	if title == "" {
 		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_title"), nil)
@@ -63,6 +61,7 @@ func (h *DocumentHandler) Upload(c *gin.Context) {
 		fileHeader.Header.Get("Content-Type"),
 		categoryName,
 		categoryDesc,
+		collectionName,
 	)
 
 	if err != nil {
@@ -82,6 +81,19 @@ func (h *DocumentHandler) Upload(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusCreated, "success", i18n.T(lang, "doc.success_upload"), doc)
+}
+
+func (h *DocumentHandler) ListCollections(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	collections, err := h.useCase.ListCollections(c.Request.Context(), userID)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", "Collections retrieved successfully", collections)
 }
 
 func (h *DocumentHandler) ListCategories(c *gin.Context) {
