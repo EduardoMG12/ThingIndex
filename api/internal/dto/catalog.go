@@ -1,0 +1,295 @@
+package dto
+
+import (
+	"time"
+
+	"thing-index/internal/domain"
+	"thing-index/internal/models"
+)
+
+type CreateCollectionRequest struct {
+	Name     string         `json:"name" binding:"required,min=1,max=255"`
+	Category *string        `json:"category" binding:"omitempty,max=255"`
+	Metadata map[string]any `json:"metadata"`
+}
+
+type ParagraphNodeInput struct {
+	SequenceOrder int            `json:"sequence_order" binding:"required,gte=0"`
+	PageNumber    *int           `json:"page_number,omitempty" binding:"omitempty,gte=1"`
+	Content       string         `json:"content" binding:"required"`
+	Metadata      map[string]any `json:"metadata"`
+}
+
+type StoreParagraphNodesRequest struct {
+	Nodes []ParagraphNodeInput `json:"nodes" binding:"required"`
+}
+
+type TableSectionInput struct {
+	SequenceOrder int            `json:"sequence_order" binding:"required,gte=0"`
+	Title         string         `json:"title" binding:"omitempty,max=255"`
+	Headers       []string       `json:"headers"`
+	Rows          [][]string     `json:"rows"`
+	Metadata      map[string]any `json:"metadata"`
+}
+
+type StoreTableSectionsRequest struct {
+	Sections []TableSectionInput `json:"sections" binding:"required"`
+}
+
+type MetadataPairInput struct {
+	SequenceOrder int    `json:"sequence_order" binding:"required,gte=0"`
+	Key           string `json:"key" binding:"required,max=255"`
+	Value         string `json:"value" binding:"required"`
+}
+
+type StoreMetadataPairsRequest struct {
+	Pairs []MetadataPairInput `json:"pairs" binding:"required"`
+}
+
+type CategoryResponse struct {
+	ID          uint      `json:"id"`
+	UserID      uint      `json:"user_id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type CollectionResponse struct {
+	ID            uint              `json:"id"`
+	UserID        uint              `json:"user_id,omitempty"`
+	Name          string            `json:"name"`
+	CategoryID    *uint             `json:"category_id,omitempty"`
+	Category      *CategoryResponse `json:"category,omitempty"`
+	DocumentCount int64             `json:"document_count"`
+	Metadata      map[string]any    `json:"metadata"`
+	CreatedAt     time.Time         `json:"created_at"`
+	UpdatedAt     time.Time         `json:"updated_at"`
+}
+
+type DocumentResponse struct {
+	ID           uint                `json:"id"`
+	UserID       uint                `json:"user_id"`
+	Title        string              `json:"title"`
+	FileURL      string              `json:"file_url"`
+	FilePath     string              `json:"file_path"`
+	Size         int64               `json:"size"`
+	MimeType     string              `json:"mime_type"`
+	Status       string              `json:"status"`
+	CollectionID *uint               `json:"collection_id,omitempty"`
+	Collection   *CollectionResponse `json:"collection,omitempty"`
+	CategoryID   *uint               `json:"category_id,omitempty"`
+	Category     *CategoryResponse   `json:"category,omitempty"`
+	CreatedAt    time.Time           `json:"created_at"`
+	UpdatedAt    time.Time           `json:"updated_at"`
+}
+
+type ParagraphNodeResponse struct {
+	ID            uint           `json:"id"`
+	DocumentID    uint           `json:"document_id"`
+	SequenceOrder int            `json:"sequence_order"`
+	PageNumber    *int           `json:"page_number,omitempty"`
+	Content       string         `json:"content"`
+	Metadata      map[string]any `json:"metadata"`
+}
+
+type TableSectionResponse struct {
+	ID            uint           `json:"id"`
+	DocumentID    uint           `json:"document_id"`
+	SequenceOrder int            `json:"sequence_order"`
+	Title         string         `json:"title,omitempty"`
+	Headers       []string       `json:"headers"`
+	Rows          [][]string     `json:"rows"`
+	Metadata      map[string]any `json:"metadata"`
+}
+
+type MetadataPairResponse struct {
+	ID            uint   `json:"id"`
+	DocumentID    uint   `json:"document_id"`
+	SequenceOrder int    `json:"sequence_order"`
+	Key           string `json:"key"`
+	Value         string `json:"value"`
+}
+
+type CollectionContextResponse struct {
+	Collection     *CollectionResponse     `json:"collection"`
+	Documents      []DocumentResponse      `json:"documents"`
+	ParagraphNodes []ParagraphNodeResponse `json:"paragraph_nodes"`
+	TableSections  []TableSectionResponse  `json:"table_sections"`
+	MetadataPairs  []MetadataPairResponse  `json:"metadata_pairs"`
+}
+
+func ToCategoryResponse(category *models.DocumentCategory) *CategoryResponse {
+	if category == nil {
+		return nil
+	}
+
+	return &CategoryResponse{
+		ID:          category.ID,
+		UserID:      category.UserID,
+		Name:        category.Name,
+		Description: category.Description,
+		CreatedAt:   category.CreatedAt,
+		UpdatedAt:   category.UpdatedAt,
+	}
+}
+
+func ToCollectionResponse(collection *models.Collection) *CollectionResponse {
+	if collection == nil {
+		return nil
+	}
+
+	metadata := collection.Metadata
+	if metadata == nil {
+		metadata = map[string]any{}
+	}
+
+	return &CollectionResponse{
+		ID:            collection.ID,
+		UserID:        collection.UserID,
+		Name:          collection.Name,
+		CategoryID:    collection.CategoryID,
+		Category:      ToCategoryResponse(collection.Category),
+		DocumentCount: collection.DocumentCount,
+		Metadata:      metadata,
+		CreatedAt:     collection.CreatedAt,
+		UpdatedAt:     collection.UpdatedAt,
+	}
+}
+
+func ToCategoriesResponse(categories []models.DocumentCategory) []CategoryResponse {
+	items := make([]CategoryResponse, 0, len(categories))
+	for i := range categories {
+		if item := ToCategoryResponse(&categories[i]); item != nil {
+			items = append(items, *item)
+		}
+	}
+	return items
+}
+
+func ToCollectionsResponse(collections []models.Collection) []CollectionResponse {
+	items := make([]CollectionResponse, 0, len(collections))
+	for i := range collections {
+		if item := ToCollectionResponse(&collections[i]); item != nil {
+			items = append(items, *item)
+		}
+	}
+	return items
+}
+
+func ToDocumentResponse(doc *models.Document) *DocumentResponse {
+	if doc == nil {
+		return nil
+	}
+
+	var category *models.DocumentCategory
+	var categoryID *uint
+	if doc.CollectionRef != nil {
+		category = doc.CollectionRef.Category
+		categoryID = doc.CollectionRef.CategoryID
+	}
+
+	return &DocumentResponse{
+		ID:           doc.ID,
+		UserID:       doc.UserID,
+		Title:        doc.Title,
+		FileURL:      doc.FileURL,
+		FilePath:     doc.FileURL,
+		Size:         doc.Size,
+		MimeType:     doc.MimeType,
+		Status:       doc.Status,
+		CollectionID: doc.CollectionID,
+		Collection:   ToCollectionResponse(doc.CollectionRef),
+		CategoryID:   categoryID,
+		Category:     ToCategoryResponse(category),
+		CreatedAt:    doc.CreatedAt,
+		UpdatedAt:    doc.UpdatedAt,
+	}
+}
+
+func ToDocumentsResponse(docs []models.Document) []DocumentResponse {
+	items := make([]DocumentResponse, 0, len(docs))
+	for i := range docs {
+		if item := ToDocumentResponse(&docs[i]); item != nil {
+			items = append(items, *item)
+		}
+	}
+	return items
+}
+
+func ToParagraphNodeResponses(nodes []models.ParagraphNode) []ParagraphNodeResponse {
+	items := make([]ParagraphNodeResponse, 0, len(nodes))
+	for _, node := range nodes {
+		metadata := node.Metadata
+		if metadata == nil {
+			metadata = map[string]any{}
+		}
+
+		items = append(items, ParagraphNodeResponse{
+			ID:            node.ID,
+			DocumentID:    node.DocumentID,
+			SequenceOrder: node.SequenceOrder,
+			PageNumber:    node.PageNumber,
+			Content:       node.Content,
+			Metadata:      metadata,
+		})
+	}
+	return items
+}
+
+func ToTableSectionResponses(sections []models.TableSection) []TableSectionResponse {
+	items := make([]TableSectionResponse, 0, len(sections))
+	for _, section := range sections {
+		headers := section.Headers
+		if headers == nil {
+			headers = []string{}
+		}
+		rows := section.Rows
+		if rows == nil {
+			rows = [][]string{}
+		}
+		metadata := section.Metadata
+		if metadata == nil {
+			metadata = map[string]any{}
+		}
+
+		items = append(items, TableSectionResponse{
+			ID:            section.ID,
+			DocumentID:    section.DocumentID,
+			SequenceOrder: section.SequenceOrder,
+			Title:         section.Title,
+			Headers:       headers,
+			Rows:          rows,
+			Metadata:      metadata,
+		})
+	}
+	return items
+}
+
+func ToMetadataPairResponses(pairs []models.MetadataPair) []MetadataPairResponse {
+	items := make([]MetadataPairResponse, 0, len(pairs))
+	for _, pair := range pairs {
+		items = append(items, MetadataPairResponse{
+			ID:            pair.ID,
+			DocumentID:    pair.DocumentID,
+			SequenceOrder: pair.SequenceOrder,
+			Key:           pair.Key,
+			Value:         pair.Value,
+		})
+	}
+	return items
+}
+
+func ToCollectionContextResponse(ctx *domain.CollectionContext) *CollectionContextResponse {
+	if ctx == nil {
+		return nil
+	}
+
+	return &CollectionContextResponse{
+		Collection:     ToCollectionResponse(ctx.Collection),
+		Documents:      ToDocumentsResponse(ctx.Documents),
+		ParagraphNodes: ToParagraphNodeResponses(ctx.ParagraphNodes),
+		TableSections:  ToTableSectionResponses(ctx.TableSections),
+		MetadataPairs:  ToMetadataPairResponses(ctx.MetadataPairs),
+	}
+}

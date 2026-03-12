@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,51 +17,197 @@ import (
 	"gorm.io/gorm"
 )
 
-type documentUseCase struct {
-	repo       domain.DocumentRepository
-	storage    domain.StorageService
-	providerUC domain.ProviderUseCase
+type documentCatalogUseCase struct {
+	categoryRepo          domain.CategoryCatalogRepository
+	collectionRepo        domain.CollectionRepository
+	documentRepo          domain.CatalogDocumentRepository
+	structuredDataRepo    domain.StructuredDataRepository
+	collectionContextRepo domain.CollectionContextRepository
+	storage               domain.StorageService
+	providerUC            domain.ProviderUseCase
 }
 
-func NewDocumentUseCase(repo domain.DocumentRepository, storage domain.StorageService, providerUC domain.ProviderUseCase) domain.DocumentUseCase {
-	return &documentUseCase{
-		repo:       repo,
-		storage:    storage,
-		providerUC: providerUC,
+func NewDocumentUseCase(
+	categoryRepo domain.CategoryCatalogRepository,
+	collectionRepo domain.CollectionRepository,
+	documentRepo domain.CatalogDocumentRepository,
+	structuredDataRepo domain.StructuredDataRepository,
+	collectionContextRepo domain.CollectionContextRepository,
+	storage domain.StorageService,
+	providerUC domain.ProviderUseCase,
+) domain.DocumentCatalogUseCase {
+	return &documentCatalogUseCase{
+		categoryRepo:          categoryRepo,
+		collectionRepo:        collectionRepo,
+		documentRepo:          documentRepo,
+		structuredDataRepo:    structuredDataRepo,
+		collectionContextRepo: collectionContextRepo,
+		storage:               storage,
+		providerUC:            providerUC,
 	}
 }
 
-func normalizeCategoryName(name string) string {
+func normalizeDisplayName(name string) string {
 	return strings.TrimSpace(name)
 }
 
-func (u *documentUseCase) CreateCategory(ctx context.Context, userID uint, name, description string) (*models.DocumentCategory, error) {
-	normalizedName := normalizeCategoryName(name)
-	if normalizedName == "" {
-		return nil, domain.ErrCategoryRequired
+func normalizeLookupKey(name string) string {
+	return strings.ToLower(strings.TrimSpace(name))
+}
+
+func cloneMetadata(metadata map[string]any) map[string]any {
+	if len(metadata) == 0 {
+		return map[string]any{}
 	}
 
-	if _, err := u.repo.GetCategoryByName(ctx, normalizedName, userID); err == nil {
-		return nil, domain.ErrCategoryDuplicate
-	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+	cloned := make(map[string]any, len(metadata))
+	for key, value := range metadata {
+		cloned[key] = value
+	}
+
+	return cloned
+}
+
+func (u *documentCatalogUseCase) ensureCategory(ctx context.Context, userID uint, name, description string) (*models.DocumentCategory, error) {
+	displayName := normalizeDisplayName(name)
+	if displayName == "" {
+		return nil, nil
+	}
+
+	normalizedName := normalizeLookupKey(displayName)
+	category, err := u.categoryRepo.GetCategoryByNormalizedName(ctx, normalizedName, userID)
+	if err == nil {
+		return category, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, fmt.Errorf("%w: %v", domain.ErrCategoryFind, err)
 	}
 
-	category := &models.DocumentCategory{
-		UserID:      userID,
-		Name:        normalizedName,
-		Description: strings.TrimSpace(description),
+	category = &models.DocumentCategory{
+		UserID:         userID,
+		Name:           displayName,
+		NormalizedName: normalizedName,
+		Description:    strings.TrimSpace(description),
 	}
 
-	if err := u.repo.CreateCategory(ctx, category); err != nil {
+	if err := u.categoryRepo.CreateCategory(ctx, category); err != nil {
 		return nil, fmt.Errorf("%w: %v", domain.ErrCategoryCreate, err)
 	}
 
 	return category, nil
 }
 
-func (u *documentUseCase) UpdateCategory(ctx context.Context, userID, categoryID uint, name, description *string) (*models.DocumentCategory, error) {
-	category, err := u.repo.GetCategoryByID(ctx, categoryID, userID)
+func (u *documentCatalogUseCase) resolveCollection(ctx context.Context, userID uint, identifier string) (*models.Collection, error) {
+	trimmedIdentifier := strings.TrimSpace(identifier)
+	if trimmedIdentifier == "" {
+		return nil, domain.ErrCollectionRequired
+	}
+
+	if parsedID, err := strconv.ParseUint(trimmedIdentifier, 10, 32); err == nil {
+		collection, findErr := u.collectionRepo.GetCollectionByID(ctx, uint(parsedID), userID)
+		if findErr == nil {
+			return collection, nil
+		}
+		if findErr != nil && !errors.Is(findErr, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, findErr)
+		}
+	}
+
+	collection, err := u.collectionRepo.GetCollectionByNormalizedName(ctx, normalizeLookupKey(trimmedIdentifier), userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrCollectionNotFound
+		}
+		return nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+	}
+
+	return collection, nil
+}
+
+func (u *documentCatalogUseCase) ensureCollectionForUpload(ctx context.Context, userID uint, name string, category *models.DocumentCategory) (*models.Collection, error) {
+	displayName := normalizeDisplayName(name)
+	if displayName == "" {
+		return nil, domain.ErrCollectionRequired
+	}
+
+	normalizedName := normalizeLookupKey(displayName)
+	collection, err := u.collectionRepo.GetCollectionByNormalizedName(ctx, normalizedName, userID)
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+		}
+
+		collection = &models.Collection{
+			UserID:         userID,
+			Name:           displayName,
+			NormalizedName: normalizedName,
+			Metadata:       map[string]any{},
+		}
+		if category != nil {
+			collection.CategoryID = &category.ID
+			collection.Category = category
+		}
+
+		if err := u.collectionRepo.CreateCollection(ctx, collection); err != nil {
+			return nil, fmt.Errorf("%w: %v", domain.ErrCollectionCreate, err)
+		}
+
+		return collection, nil
+	}
+
+	if category == nil {
+		return collection, nil
+	}
+
+	if collection.CategoryID == nil {
+		collection.CategoryID = &category.ID
+		collection.Category = category
+		if err := u.collectionRepo.UpdateCollection(ctx, collection); err != nil {
+			return nil, fmt.Errorf("%w: %v", domain.ErrCategoryUpdate, err)
+		}
+		return collection, nil
+	}
+
+	if *collection.CategoryID != category.ID {
+		return nil, domain.ErrCollectionCategoryConflict
+	}
+
+	if collection.Category == nil {
+		collection.Category = category
+	}
+
+	return collection, nil
+}
+
+func (u *documentCatalogUseCase) CreateCategory(ctx context.Context, userID uint, name, description string) (*models.DocumentCategory, error) {
+	displayName := normalizeDisplayName(name)
+	if displayName == "" {
+		return nil, domain.ErrCategoryRequired
+	}
+
+	normalizedName := normalizeLookupKey(displayName)
+	if _, err := u.categoryRepo.GetCategoryByNormalizedName(ctx, normalizedName, userID); err == nil {
+		return nil, domain.ErrCategoryDuplicate
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, fmt.Errorf("%w: %v", domain.ErrCategoryFind, err)
+	}
+
+	category := &models.DocumentCategory{
+		UserID:         userID,
+		Name:           displayName,
+		NormalizedName: normalizedName,
+		Description:    strings.TrimSpace(description),
+	}
+
+	if err := u.categoryRepo.CreateCategory(ctx, category); err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrCategoryCreate, err)
+	}
+
+	return category, nil
+}
+
+func (u *documentCatalogUseCase) UpdateCategory(ctx context.Context, userID, categoryID uint, name, description *string) (*models.DocumentCategory, error) {
+	category, err := u.categoryRepo.GetCategoryByID(ctx, categoryID, userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrCategoryNotFound
@@ -69,12 +216,13 @@ func (u *documentUseCase) UpdateCategory(ctx context.Context, userID, categoryID
 	}
 
 	if name != nil {
-		normalizedName := normalizeCategoryName(*name)
-		if normalizedName == "" {
+		displayName := normalizeDisplayName(*name)
+		if displayName == "" {
 			return nil, domain.ErrCategoryRequired
 		}
 
-		existing, err := u.repo.GetCategoryByName(ctx, normalizedName, userID)
+		normalizedName := normalizeLookupKey(displayName)
+		existing, err := u.categoryRepo.GetCategoryByNormalizedName(ctx, normalizedName, userID)
 		if err == nil && existing.ID != category.ID {
 			return nil, domain.ErrCategoryDuplicate
 		}
@@ -82,101 +230,138 @@ func (u *documentUseCase) UpdateCategory(ctx context.Context, userID, categoryID
 			return nil, fmt.Errorf("%w: %v", domain.ErrCategoryFind, err)
 		}
 
-		category.Name = normalizedName
+		category.Name = displayName
+		category.NormalizedName = normalizedName
 	}
 
 	if description != nil {
 		category.Description = strings.TrimSpace(*description)
 	}
 
-	if err := u.repo.UpdateCategory(ctx, category); err != nil {
+	if err := u.categoryRepo.UpdateCategory(ctx, category); err != nil {
 		return nil, fmt.Errorf("%w: %v", domain.ErrCategoryUpdate, err)
 	}
 
 	return category, nil
 }
 
-func (u *documentUseCase) UpdateCollectionCategory(ctx context.Context, userID uint, collection string, categoryName *string, categoryDescription string) (int64, *models.DocumentCategory, error) {
-	normalizedCollection := strings.TrimSpace(collection)
-	if normalizedCollection == "" {
-		return 0, nil, domain.ErrCollectionRequired
+func (u *documentCatalogUseCase) CreateCollection(ctx context.Context, userID uint, name string, categoryName *string, metadata map[string]any) (*models.Collection, error) {
+	displayName := normalizeDisplayName(name)
+	if displayName == "" {
+		return nil, domain.ErrCollectionRequired
+	}
+
+	normalizedName := normalizeLookupKey(displayName)
+	if _, err := u.collectionRepo.GetCollectionByNormalizedName(ctx, normalizedName, userID); err == nil {
+		return nil, domain.ErrCollectionDuplicate
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+	}
+
+	var category *models.DocumentCategory
+	var err error
+	if categoryName != nil {
+		category, err = u.ensureCategory(ctx, userID, *categoryName, "")
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	collection := &models.Collection{
+		UserID:         userID,
+		Name:           displayName,
+		NormalizedName: normalizedName,
+		Metadata:       cloneMetadata(metadata),
+	}
+	if category != nil {
+		collection.CategoryID = &category.ID
+		collection.Category = category
+	}
+
+	if err := u.collectionRepo.CreateCollection(ctx, collection); err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrCollectionCreate, err)
+	}
+
+	return collection, nil
+}
+
+func (u *documentCatalogUseCase) GetCollection(ctx context.Context, userID, collectionID uint) (*models.Collection, error) {
+	collection, err := u.collectionRepo.GetCollectionByID(ctx, collectionID, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrCollectionNotFound
+		}
+		return nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+	}
+
+	count, err := u.collectionRepo.CountDocuments(ctx, userID, collection.ID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+	}
+	collection.DocumentCount = count
+
+	return collection, nil
+}
+
+func (u *documentCatalogUseCase) UpdateCollectionCategory(ctx context.Context, userID uint, collectionIdentifier string, categoryName *string, categoryDescription string) (int64, *models.Collection, error) {
+	collection, err := u.resolveCollection(ctx, userID, collectionIdentifier)
+	if err != nil {
+		return 0, nil, err
 	}
 
 	var category *models.DocumentCategory
 	if categoryName != nil {
-		normalizedCategoryName := normalizeCategoryName(*categoryName)
-
-		if normalizedCategoryName != "" {
-			existingCategory, err := u.repo.GetCategoryByName(ctx, normalizedCategoryName, userID)
-			if err != nil {
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					category = &models.DocumentCategory{
-						UserID:      userID,
-						Name:        normalizedCategoryName,
-						Description: strings.TrimSpace(categoryDescription),
-					}
-					if err := u.repo.CreateCategory(ctx, category); err != nil {
-						return 0, nil, fmt.Errorf("%w: %v", domain.ErrCategoryCreate, err)
-					}
-				} else {
-					return 0, nil, fmt.Errorf("%w: %v", domain.ErrCategoryFind, err)
-				}
-			} else {
-				category = existingCategory
-			}
+		category, err = u.ensureCategory(ctx, userID, *categoryName, categoryDescription)
+		if err != nil {
+			return 0, nil, err
 		}
 	}
 
-	var categoryID *uint
+	collection.CategoryID = nil
+	collection.Category = nil
 	if category != nil {
-		categoryID = &category.ID
+		collection.CategoryID = &category.ID
+		collection.Category = category
 	}
 
-	rowsAffected, err := u.repo.UpdateDocumentsCategoryByCollection(ctx, userID, normalizedCollection, categoryID)
-	if err != nil {
+	if err := u.collectionRepo.UpdateCollection(ctx, collection); err != nil {
 		return 0, nil, fmt.Errorf("%w: %v", domain.ErrCategoryUpdate, err)
 	}
-	if rowsAffected == 0 {
-		return 0, nil, domain.ErrCollectionNotFound
-	}
 
-	return rowsAffected, category, nil
+	count, err := u.collectionRepo.CountDocuments(ctx, userID, collection.ID)
+	if err != nil {
+		return 0, nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+	}
+	collection.DocumentCount = count
+
+	return count, collection, nil
 }
 
-func (u *documentUseCase) UploadDocument(ctx context.Context, userID uint, title string, file io.Reader, size int64, contentType, categoryName, categoryDescription, collection string) (*models.Document, error) {
-	normalizedCollection := strings.TrimSpace(collection)
-	if normalizedCollection == "" {
+func (u *documentCatalogUseCase) UploadDocument(ctx context.Context, userID uint, title string, file io.Reader, size int64, contentType, categoryName, categoryDescription, collection string) (*models.Document, error) {
+	if strings.TrimSpace(title) == "" {
+		return nil, domain.ErrTitleRequired
+	}
+
+	collectionName := normalizeDisplayName(collection)
+	if collectionName == "" {
 		return nil, domain.ErrCollectionRequired
 	}
 
-	categoryName = normalizeCategoryName(categoryName)
-	var category *models.DocumentCategory
+	category, err := u.ensureCategory(ctx, userID, categoryName, categoryDescription)
+	if err != nil {
+		return nil, err
+	}
 
-	if categoryName != "" {
-		existingCategory, err := u.repo.GetCategoryByName(ctx, categoryName, userID)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				category = &models.DocumentCategory{
-					UserID:      userID,
-					Name:        categoryName,
-					Description: strings.TrimSpace(categoryDescription),
-				}
-				if err := u.repo.CreateCategory(ctx, category); err != nil {
-					return nil, fmt.Errorf("%w: %v", domain.ErrCategoryCreate, err)
-				}
-			} else {
-				return nil, fmt.Errorf("%w: %v", domain.ErrCategoryFind, err)
-			}
-		} else {
-			category = existingCategory
-		}
+	collectionRef, err := u.ensureCollectionForUpload(ctx, userID, collectionName, category)
+	if err != nil {
+		return nil, err
 	}
 
 	objectName := fmt.Sprintf("%d_%s%s", time.Now().Unix(), uuid.New().String()[:8], extractExtension(contentType))
 
 	storageClient := u.storage
-	pType, creds, err := u.providerUC.GetFamilyCredentials(ctx, userID, domain.FamilyStorage)
-	if err == nil && pType != "" {
+	pType, creds, providerErr := u.providerUC.GetFamilyCredentials(ctx, userID, domain.FamilyStorage)
+	if providerErr == nil && pType != "" {
 		userSafeStorage, factorErr := provider.NewStorageProvider(pType, creds)
 		if factorErr == nil {
 			storageClient = userSafeStorage
@@ -189,42 +374,117 @@ func (u *documentUseCase) UploadDocument(ctx context.Context, userID uint, title
 	}
 
 	doc := &models.Document{
-		UserID:     userID,
-		Title:      title,
-		FileURL:    fileURL,
-		Size:       size,
-		MimeType:   contentType,
-		Status:     "PENDING",
-		Collection: normalizedCollection,
+		UserID:        userID,
+		Title:         strings.TrimSpace(title),
+		FileURL:       fileURL,
+		Size:          size,
+		MimeType:      contentType,
+		Status:        "PENDING",
+		Collection:    collectionRef.Name,
+		CollectionID:  &collectionRef.ID,
+		CollectionRef: collectionRef,
 	}
-
 	if category != nil {
 		doc.CategoryID = &category.ID
 	}
 
-	if err := u.repo.CreateDocument(ctx, doc); err != nil {
+	if err := u.documentRepo.CreateDocument(ctx, doc); err != nil {
 		return nil, fmt.Errorf("%w: %v", domain.ErrInternal, err)
 	}
-
-	doc.Category = category
 
 	return doc, nil
 }
 
-func (u *documentUseCase) ListCategories(ctx context.Context, userID uint) ([]models.DocumentCategory, error) {
-	return u.repo.GetCategoriesByUserID(ctx, userID)
+func (u *documentCatalogUseCase) ListCategories(ctx context.Context, userID uint) ([]models.DocumentCategory, error) {
+	return u.categoryRepo.ListCategoriesByUserID(ctx, userID)
 }
 
-func (u *documentUseCase) ListDocuments(ctx context.Context, userID uint) ([]models.Document, error) {
-	return u.repo.GetDocumentsByUserID(ctx, userID)
+func (u *documentCatalogUseCase) ListDocuments(ctx context.Context, userID uint) ([]models.Document, error) {
+	return u.documentRepo.GetDocumentsByUserID(ctx, userID)
 }
 
-func (u *documentUseCase) ListDocumentsByCategory(ctx context.Context, categoryID uint, userID uint) ([]models.Document, error) {
-	return u.repo.GetDocumentsByCategoryID(ctx, categoryID, userID)
+func (u *documentCatalogUseCase) GetDocument(ctx context.Context, userID, documentID uint) (*models.Document, error) {
+	doc, err := u.documentRepo.GetDocumentByID(ctx, documentID, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrDocumentNotFound
+		}
+		return nil, fmt.Errorf("%w: %v", domain.ErrInternal, err)
+	}
+
+	return doc, nil
 }
 
-func (u *documentUseCase) ListCollections(ctx context.Context, userID uint) ([]string, error) {
-	return u.repo.ListCollections(ctx, userID)
+func (u *documentCatalogUseCase) ListDocumentsByCategory(ctx context.Context, categoryID uint, userID uint) ([]models.Document, error) {
+	return u.documentRepo.GetDocumentsByCategoryID(ctx, categoryID, userID)
+}
+
+func (u *documentCatalogUseCase) ListCollections(ctx context.Context, userID uint) ([]models.Collection, error) {
+	return u.collectionRepo.ListCollectionsByUserID(ctx, userID)
+}
+
+func (u *documentCatalogUseCase) GetCollectionContext(ctx context.Context, userID, collectionID uint) (*domain.CollectionContext, error) {
+	collectionContext, err := u.collectionContextRepo.GetCollectionContext(ctx, userID, collectionID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrCollectionNotFound
+		}
+		return nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+	}
+
+	return collectionContext, nil
+}
+
+func (u *documentCatalogUseCase) StoreParagraphNodes(ctx context.Context, userID, documentID uint, nodes []models.ParagraphNode) ([]models.ParagraphNode, error) {
+	if _, err := u.GetDocument(ctx, userID, documentID); err != nil {
+		return nil, err
+	}
+
+	for i := range nodes {
+		nodes[i].DocumentID = documentID
+		nodes[i].Metadata = cloneMetadata(nodes[i].Metadata)
+	}
+
+	if err := u.structuredDataRepo.ReplaceParagraphNodes(ctx, documentID, nodes); err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
+	}
+
+	return nodes, nil
+}
+
+func (u *documentCatalogUseCase) StoreTableSections(ctx context.Context, userID, documentID uint, sections []models.TableSection) ([]models.TableSection, error) {
+	if _, err := u.GetDocument(ctx, userID, documentID); err != nil {
+		return nil, err
+	}
+
+	for i := range sections {
+		sections[i].DocumentID = documentID
+		sections[i].Headers = append([]string(nil), sections[i].Headers...)
+		sections[i].Rows = append([][]string(nil), sections[i].Rows...)
+		sections[i].Metadata = cloneMetadata(sections[i].Metadata)
+	}
+
+	if err := u.structuredDataRepo.ReplaceTableSections(ctx, documentID, sections); err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
+	}
+
+	return sections, nil
+}
+
+func (u *documentCatalogUseCase) StoreMetadataPairs(ctx context.Context, userID, documentID uint, pairs []models.MetadataPair) ([]models.MetadataPair, error) {
+	if _, err := u.GetDocument(ctx, userID, documentID); err != nil {
+		return nil, err
+	}
+
+	for i := range pairs {
+		pairs[i].DocumentID = documentID
+	}
+
+	if err := u.structuredDataRepo.ReplaceMetadataPairs(ctx, documentID, pairs); err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
+	}
+
+	return pairs, nil
 }
 
 func extractExtension(contentType string) string {

@@ -28,13 +28,20 @@ func Connect() (*gorm.DB, error) {
 	err = db.AutoMigrate(
 		&models.User{},
 		&models.DocumentCategory{},
+		&models.Collection{},
 		&models.Document{},
+		&models.ParagraphNode{},
+		&models.TableSection{},
+		&models.MetadataPair{},
 		&models.UserProviderConfig{},
 	)
 	if err != nil {
 		log.Printf("Warning: fail to run automatic migrations: %v\n", err)
 	}
 
+	if err := ensureDocumentCatalog(db); err != nil {
+		log.Printf("Warning: fail to backfill document catalog: %v\n", err)
+	}
+
 	return db, nil
 }
-

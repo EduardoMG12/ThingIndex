@@ -8,6 +8,7 @@ import (
 
 	"thing-index/internal/domain"
 	"thing-index/internal/dto"
+	"thing-index/internal/models"
 	"thing-index/internal/pkg/i18n"
 	"thing-index/internal/pkg/response"
 	"thing-index/internal/pkg/validation"
@@ -16,16 +17,17 @@ import (
 )
 
 type DocumentHandler struct {
-	useCase domain.DocumentUseCase
+	useCase domain.DocumentCatalogUseCase
 }
 
-func NewDocumentHandler(useCase domain.DocumentUseCase) *DocumentHandler {
+func NewDocumentHandler(useCase domain.DocumentCatalogUseCase) *DocumentHandler {
 	return &DocumentHandler{useCase: useCase}
 }
 
 func (h *DocumentHandler) Upload(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
+
 	title := c.PostForm("title")
 	categoryName := strings.TrimSpace(c.PostForm("category"))
 	categoryDesc := ""
@@ -33,11 +35,6 @@ func (h *DocumentHandler) Upload(c *gin.Context) {
 		categoryDesc = i18n.T(lang, "doc.auto_category_desc")
 	}
 	collectionName := strings.TrimSpace(c.PostForm("collection"))
-
-	if title == "" {
-		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_title"), nil)
-		return
-	}
 
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
@@ -63,27 +60,49 @@ func (h *DocumentHandler) Upload(c *gin.Context) {
 		categoryDesc,
 		collectionName,
 	)
-
 	if err != nil {
-		errorKey := "doc.error_upload"
-		status := http.StatusInternalServerError
-
-		if errors.Is(err, domain.ErrCollectionRequired) {
-			errorKey = "doc.error_collection_required"
-			status = http.StatusBadRequest
-		} else if errors.Is(err, domain.ErrCategoryCreate) || errors.Is(err, domain.ErrCategoryFind) {
-			errorKey = "doc.error_upload"
-		} else if errors.Is(err, domain.ErrUploadFailed) {
-			errorKey = "doc.error_upload"
-		} else if errors.Is(err, domain.ErrInternal) {
-			errorKey = "error.internal"
+		switch {
+		case errors.Is(err, domain.ErrTitleRequired):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_title"), nil)
+		case errors.Is(err, domain.ErrCollectionRequired):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_collection_required"), nil)
+		case errors.Is(err, domain.ErrCollectionCategoryConflict):
+			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_collection_category_conflict"), nil)
+		case errors.Is(err, domain.ErrUploadFailed):
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "doc.error_upload"), err.Error())
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
 		}
-
-		response.Error(c, status, "error", i18n.T(lang, errorKey), err.Error())
 		return
 	}
 
-	response.Success(c, http.StatusCreated, "success", i18n.T(lang, "doc.success_upload"), doc)
+	response.Success(c, http.StatusCreated, "success", i18n.T(lang, "doc.success_upload"), dto.ToDocumentResponse(doc))
+}
+
+func (h *DocumentHandler) CreateCollection(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	var req dto.CreateCollectionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
+		return
+	}
+
+	collection, err := h.useCase.CreateCollection(c.Request.Context(), userID, req.Name, req.Category, req.Metadata)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrCollectionRequired):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_collection_required"), nil)
+		case errors.Is(err, domain.ErrCollectionDuplicate):
+			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_collection_duplicate"), nil)
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+		}
+		return
+	}
+
+	response.Success(c, http.StatusCreated, "success", i18n.T(lang, "doc.success_collection_create"), dto.ToCollectionResponse(collection))
 }
 
 func (h *DocumentHandler) ListCollections(c *gin.Context) {
@@ -96,7 +115,53 @@ func (h *DocumentHandler) ListCollections(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, http.StatusOK, "success", "Collections retrieved successfully", collections)
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_collections_list"), dto.ToCollectionsResponse(collections))
+}
+
+func (h *DocumentHandler) GetCollection(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	collectionID, ok := parseUintParam(c, "id", i18n.T(lang, "error.invalid_collection_id"))
+	if !ok {
+		return
+	}
+
+	collection, err := h.useCase.GetCollection(c.Request.Context(), userID, collectionID)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrCollectionNotFound):
+			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_collection_not_found"), nil)
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+		}
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_collection_get"), dto.ToCollectionResponse(collection))
+}
+
+func (h *DocumentHandler) GetCollectionContext(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	collectionID, ok := parseUintParam(c, "id", i18n.T(lang, "error.invalid_collection_id"))
+	if !ok {
+		return
+	}
+
+	collectionContext, err := h.useCase.GetCollectionContext(c.Request.Context(), userID, collectionID)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrCollectionNotFound):
+			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_collection_not_found"), nil)
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+		}
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_collection_context_get"), dto.ToCollectionContextResponse(collectionContext))
 }
 
 func (h *DocumentHandler) ListCategories(c *gin.Context) {
@@ -109,7 +174,7 @@ func (h *DocumentHandler) ListCategories(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, http.StatusOK, "success", "Categories retrieved successfully", categories)
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_categories_list"), dto.ToCategoriesResponse(categories))
 }
 
 func (h *DocumentHandler) CreateCategory(c *gin.Context) {
@@ -127,27 +192,23 @@ func (h *DocumentHandler) CreateCategory(c *gin.Context) {
 		switch {
 		case errors.Is(err, domain.ErrCategoryRequired):
 			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_category_required"), nil)
-			return
 		case errors.Is(err, domain.ErrCategoryDuplicate):
 			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_category_duplicate"), nil)
-			return
 		default:
 			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
-			return
 		}
+		return
 	}
 
-	response.Success(c, http.StatusCreated, "success", i18n.T(lang, "doc.success_category_create"), category)
+	response.Success(c, http.StatusCreated, "success", i18n.T(lang, "doc.success_category_create"), dto.ToCategoryResponse(category))
 }
 
 func (h *DocumentHandler) UpdateCategory(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
-	categoryIDStr := c.Param("id")
 
-	categoryID, err := strconv.ParseUint(categoryIDStr, 10, 32)
-	if err != nil {
-		response.Error(c, http.StatusBadRequest, "error", "Invalid category ID", nil)
+	categoryID, ok := parseUintParam(c, "id", i18n.T(lang, "error.invalid_category_id"))
+	if !ok {
 		return
 	}
 
@@ -162,31 +223,28 @@ func (h *DocumentHandler) UpdateCategory(c *gin.Context) {
 		return
 	}
 
-	category, err := h.useCase.UpdateCategory(c.Request.Context(), userID, uint(categoryID), req.Name, req.Description)
+	category, err := h.useCase.UpdateCategory(c.Request.Context(), userID, categoryID, req.Name, req.Description)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrCategoryNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_category_not_found"), nil)
-			return
 		case errors.Is(err, domain.ErrCategoryRequired):
 			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_category_required"), nil)
-			return
 		case errors.Is(err, domain.ErrCategoryDuplicate):
 			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_category_duplicate"), nil)
-			return
 		default:
 			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
-			return
 		}
+		return
 	}
 
-	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_category_update"), category)
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_category_update"), dto.ToCategoryResponse(category))
 }
 
 func (h *DocumentHandler) UpdateCollectionCategory(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
-	collection := c.Param("collection")
+	collectionIdentifier := c.Param("collection")
 
 	var req dto.UpdateCollectionCategoryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -194,10 +252,10 @@ func (h *DocumentHandler) UpdateCollectionCategory(c *gin.Context) {
 		return
 	}
 
-	rowsAffected, category, err := h.useCase.UpdateCollectionCategory(
+	count, collection, err := h.useCase.UpdateCollectionCategory(
 		c.Request.Context(),
 		userID,
-		collection,
+		collectionIdentifier,
 		req.Category,
 		i18n.T(lang, "doc.auto_category_desc"),
 	)
@@ -205,20 +263,17 @@ func (h *DocumentHandler) UpdateCollectionCategory(c *gin.Context) {
 		switch {
 		case errors.Is(err, domain.ErrCollectionRequired):
 			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_collection_required"), nil)
-			return
 		case errors.Is(err, domain.ErrCollectionNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_collection_not_found"), nil)
-			return
 		default:
 			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
-			return
 		}
+		return
 	}
 
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_collection_category_update"), gin.H{
-		"collection":        strings.TrimSpace(collection),
-		"category":          category,
-		"updated_documents": rowsAffected,
+		"collection":        dto.ToCollectionResponse(collection),
+		"updated_documents": count,
 	})
 }
 
@@ -232,25 +287,174 @@ func (h *DocumentHandler) ListDocuments(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, http.StatusOK, "success", "Documents retrieved successfully", docs)
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_documents_list"), dto.ToDocumentsResponse(docs))
+}
+
+func (h *DocumentHandler) GetDocument(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	documentID, ok := parseUintParam(c, "id", i18n.T(lang, "error.invalid_document_id"))
+	if !ok {
+		return
+	}
+
+	doc, err := h.useCase.GetDocument(c.Request.Context(), userID, documentID)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrDocumentNotFound):
+			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+		}
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_document_get"), dto.ToDocumentResponse(doc))
 }
 
 func (h *DocumentHandler) ListDocumentsByCategory(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
-	categoryIDStr := c.Param("id")
 
-	categoryID, err := strconv.ParseUint(categoryIDStr, 10, 32)
-	if err != nil {
-		response.Error(c, http.StatusBadRequest, "error", "Invalid category ID", nil)
+	categoryID, ok := parseUintParam(c, "id", i18n.T(lang, "error.invalid_category_id"))
+	if !ok {
 		return
 	}
 
-	docs, err := h.useCase.ListDocumentsByCategory(c.Request.Context(), uint(categoryID), userID)
+	docs, err := h.useCase.ListDocumentsByCategory(c.Request.Context(), categoryID, userID)
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
 		return
 	}
 
-	response.Success(c, http.StatusOK, "success", "Documents retrieved successfully", docs)
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_documents_list"), dto.ToDocumentsResponse(docs))
+}
+
+func (h *DocumentHandler) StoreParagraphNodes(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	documentID, ok := parseUintParam(c, "id", i18n.T(lang, "error.invalid_document_id"))
+	if !ok {
+		return
+	}
+
+	var req dto.StoreParagraphNodesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
+		return
+	}
+
+	nodes := make([]models.ParagraphNode, 0, len(req.Nodes))
+	for _, item := range req.Nodes {
+		nodes = append(nodes, models.ParagraphNode{
+			SequenceOrder: item.SequenceOrder,
+			PageNumber:    item.PageNumber,
+			Content:       strings.TrimSpace(item.Content),
+			Metadata:      item.Metadata,
+		})
+	}
+
+	stored, err := h.useCase.StoreParagraphNodes(c.Request.Context(), userID, documentID, nodes)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrDocumentNotFound):
+			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+		}
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_paragraph_nodes_store"), dto.ToParagraphNodeResponses(stored))
+}
+
+func (h *DocumentHandler) StoreTableSections(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	documentID, ok := parseUintParam(c, "id", i18n.T(lang, "error.invalid_document_id"))
+	if !ok {
+		return
+	}
+
+	var req dto.StoreTableSectionsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
+		return
+	}
+
+	sections := make([]models.TableSection, 0, len(req.Sections))
+	for _, item := range req.Sections {
+		sections = append(sections, models.TableSection{
+			SequenceOrder: item.SequenceOrder,
+			Title:         strings.TrimSpace(item.Title),
+			Headers:       item.Headers,
+			Rows:          item.Rows,
+			Metadata:      item.Metadata,
+		})
+	}
+
+	stored, err := h.useCase.StoreTableSections(c.Request.Context(), userID, documentID, sections)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrDocumentNotFound):
+			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+		}
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_table_sections_store"), dto.ToTableSectionResponses(stored))
+}
+
+func (h *DocumentHandler) StoreMetadataPairs(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	documentID, ok := parseUintParam(c, "id", i18n.T(lang, "error.invalid_document_id"))
+	if !ok {
+		return
+	}
+
+	var req dto.StoreMetadataPairsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
+		return
+	}
+
+	pairs := make([]models.MetadataPair, 0, len(req.Pairs))
+	for _, item := range req.Pairs {
+		pairs = append(pairs, models.MetadataPair{
+			SequenceOrder: item.SequenceOrder,
+			Key:           strings.TrimSpace(item.Key),
+			Value:         strings.TrimSpace(item.Value),
+		})
+	}
+
+	stored, err := h.useCase.StoreMetadataPairs(c.Request.Context(), userID, documentID, pairs)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrDocumentNotFound):
+			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+		}
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_metadata_pairs_store"), dto.ToMetadataPairResponses(stored))
+}
+
+func parseUintParam(c *gin.Context, paramName string, invalidMessage string) (uint, bool) {
+	value := c.Param(paramName)
+	parsed, err := strconv.ParseUint(value, 10, 32)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "error", invalidMessage, nil)
+		return 0, false
+	}
+
+	return uint(parsed), true
 }

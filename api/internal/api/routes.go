@@ -43,7 +43,11 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	}
 
 	authRepo := repository.NewGormAuthRepository(db)
-	docRepo := repository.NewGormDocumentRepository(db)
+	categoryRepo := repository.NewGormCategoryRepository(db)
+	collectionRepo := repository.NewGormCollectionRepository(db)
+	documentRepo := repository.NewGormCatalogDocumentRepository(db)
+	structuredDataRepo := repository.NewGormStructuredDataRepository(db)
+	collectionContextRepo := repository.NewGormCollectionContextRepository(db)
 
 	smtpMailer := mailer.NewSMTPMailer(cfg)
 
@@ -55,7 +59,15 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	providerUseCase := usecase.NewProviderUseCase(providerRepo, cfg)
 	providerHandler := handlers.NewProviderHandler(providerUseCase)
 
-	docUseCase := usecase.NewDocumentUseCase(docRepo, minioStorage, providerUseCase)
+	docUseCase := usecase.NewDocumentUseCase(
+		categoryRepo,
+		collectionRepo,
+		documentRepo,
+		structuredDataRepo,
+		collectionContextRepo,
+		minioStorage,
+		providerUseCase,
+	)
 	docHandler := handlers.NewDocumentHandler(docUseCase)
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -104,13 +116,20 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 		documents.Use(middleware.AuthMiddleware(cfg))
 		{
 			documents.POST("/upload", docHandler.Upload)
+			documents.POST("/collections", docHandler.CreateCollection)
+			documents.GET("/collections", docHandler.ListCollections)
+			documents.GET("/collections/:id/context", docHandler.GetCollectionContext)
+			documents.GET("/collections/:id", docHandler.GetCollection)
+			documents.PATCH("/collections/:collection/category", docHandler.UpdateCollectionCategory)
 			documents.POST("/categories", docHandler.CreateCategory)
 			documents.GET("/categories", docHandler.ListCategories)
-			documents.GET("/collections", docHandler.ListCollections)
-			documents.PATCH("/collections/:collection/category", docHandler.UpdateCollectionCategory)
 			documents.PATCH("/categories/:id", docHandler.UpdateCategory)
-			documents.GET("/", docHandler.ListDocuments)
 			documents.GET("/category/:id", docHandler.ListDocumentsByCategory)
+			documents.POST("/:id/paragraph-nodes", docHandler.StoreParagraphNodes)
+			documents.POST("/:id/table-sections", docHandler.StoreTableSections)
+			documents.POST("/:id/metadata-pairs", docHandler.StoreMetadataPairs)
+			documents.GET("/:id", docHandler.GetDocument)
+			documents.GET("/", docHandler.ListDocuments)
 		}
 	}
 }
