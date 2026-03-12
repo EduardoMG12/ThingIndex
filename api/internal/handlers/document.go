@@ -17,17 +17,22 @@ import (
 )
 
 type DocumentHandler struct {
-	useCase domain.DocumentCatalogUseCase
+	useCase            domain.DocumentCatalogUseCase
+	maxUploadBodyBytes int64
 }
 
-func NewDocumentHandler(useCase domain.DocumentCatalogUseCase) *DocumentHandler {
-	return &DocumentHandler{useCase: useCase}
+func NewDocumentHandler(useCase domain.DocumentCatalogUseCase, maxUploadBodyBytes int64) *DocumentHandler {
+	return &DocumentHandler{
+		useCase:            useCase,
+		maxUploadBodyBytes: maxUploadBodyBytes,
+	}
 }
 
 func (h *DocumentHandler) Upload(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
 
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, h.maxUploadBodyBytes)
 	title := c.PostForm("title")
 	categoryName := strings.TrimSpace(c.PostForm("category"))
 	categoryDesc := ""
@@ -38,6 +43,10 @@ func (h *DocumentHandler) Upload(c *gin.Context) {
 
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
+		if isUploadTooLargeError(err) {
+			response.Error(c, http.StatusRequestEntityTooLarge, "error", i18n.T(lang, "doc.error_file_too_large"), nil)
+			return
+		}
 		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_file"), nil)
 		return
 	}
@@ -467,4 +476,14 @@ func parseUintParam(c *gin.Context, paramName string, invalidMessage string) (ui
 
 func (h *DocumentHandler) respondInternalError(c *gin.Context, lang string) {
 	response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
+}
+
+func isUploadTooLargeError(err error) bool {
+	var maxBytesErr *http.MaxBytesError
+	if errors.As(err, &maxBytesErr) {
+		return true
+	}
+
+	errMessage := strings.ToLower(err.Error())
+	return strings.Contains(errMessage, "request body too large") || strings.Contains(errMessage, "multipart: message too large")
 }

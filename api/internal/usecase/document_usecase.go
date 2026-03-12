@@ -21,8 +21,6 @@ import (
 	"gorm.io/gorm"
 )
 
-const maxUploadSizeBytes int64 = 20 * 1024 * 1024
-
 var allowedUploadMimeTypes = map[string]struct{}{
 	"application/pdf": {},
 	"text/html":       {},
@@ -37,6 +35,7 @@ type documentCatalogUseCase struct {
 	collectionContextRepo domain.CollectionContextRepository
 	storage               domain.StorageService
 	providerUC            domain.ProviderUseCase
+	maxUploadSizeBytes    int64
 }
 
 func NewDocumentUseCase(
@@ -47,6 +46,7 @@ func NewDocumentUseCase(
 	collectionContextRepo domain.CollectionContextRepository,
 	storage domain.StorageService,
 	providerUC domain.ProviderUseCase,
+	maxUploadSizeBytes int64,
 ) domain.DocumentCatalogUseCase {
 	return &documentCatalogUseCase{
 		categoryRepo:          categoryRepo,
@@ -56,6 +56,7 @@ func NewDocumentUseCase(
 		collectionContextRepo: collectionContextRepo,
 		storage:               storage,
 		providerUC:            providerUC,
+		maxUploadSizeBytes:    maxUploadSizeBytes,
 	}
 }
 
@@ -356,7 +357,7 @@ func (u *documentCatalogUseCase) UploadDocument(ctx context.Context, userID uint
 	if size <= 0 {
 		return nil, domain.ErrFileRequired
 	}
-	if size > maxUploadSizeBytes {
+	if size > u.maxUploadSizeBytes {
 		return nil, domain.ErrFileTooLarge
 	}
 

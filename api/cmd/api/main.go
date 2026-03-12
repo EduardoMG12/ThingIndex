@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 
@@ -49,7 +50,15 @@ func main() {
 		log.Fatalf("Failed to setup routes: %v", err)
 	}
 
-	if err := router.Run(":" + config.AppConfig.Port); err != nil {
+	server := &http.Server{
+		Addr:         ":" + config.AppConfig.Port,
+		Handler:      router,
+		ReadTimeout:  config.AppConfig.ServerReadTimeout,
+		WriteTimeout: config.AppConfig.ServerWriteTimeout,
+		IdleTimeout:  config.AppConfig.ServerIdleTimeout,
+	}
+
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Error starting server: %v", err)
 	}
 }

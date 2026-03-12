@@ -22,6 +22,10 @@ import (
 )
 
 func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
+	if err := router.SetTrustedProxies(cfg.TrustedProxyList()); err != nil {
+		return fmt.Errorf("failed to configure trusted proxies: %w", err)
+	}
+	router.MaxMultipartMemory = cfg.MaxUploadSizeBytes
 	router.Use(middleware.I18nMiddleware())
 
 	router.Use(cors.New(cors.Config{
@@ -68,8 +72,9 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		collectionContextRepo,
 		minioStorage,
 		providerUseCase,
+		cfg.MaxUploadSizeBytes,
 	)
-	docHandler := handlers.NewDocumentHandler(docUseCase)
+	docHandler := handlers.NewDocumentHandler(docUseCase, cfg.UploadRequestLimitBytes())
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.GET("/docs", func(c *gin.Context) {
@@ -99,6 +104,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		})
 
 		auth := v1.Group("/auth")
+		auth.Use(middleware.RateLimitMiddleware(cfg.AuthRateLimitRequests, cfg.AuthRateLimitWindow))
 		{
 			auth.POST("/register", authHandler.Register)
 			auth.POST("/login", authHandler.Login)
