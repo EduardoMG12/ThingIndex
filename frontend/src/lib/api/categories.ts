@@ -3,6 +3,7 @@ import {
     type ApiErrorResponse,
     type ApiSuccessResponse,
 } from "@/lib/api/types";
+import { fetchWithAuthRedirect } from "@/lib/api/fetch-with-auth-redirect";
 
 export type Category = {
     id: number;
@@ -14,7 +15,7 @@ export type Category = {
 };
 
 export async function fetchCategories(signal?: AbortSignal): Promise<Category[]> {
-    const response = await fetch("/api/categories", {
+    const response = await fetchWithAuthRedirect("/api/categories", {
         method: "GET",
         cache: "no-store",
         signal,
@@ -34,7 +35,7 @@ export async function fetchCategories(signal?: AbortSignal): Promise<Category[]>
 }
 
 export async function createCategory(name: string): Promise<Category> {
-    const response = await fetch("/api/categories", {
+    const response = await fetchWithAuthRedirect("/api/categories", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -62,7 +63,7 @@ export async function updateCategory(
         description?: string;
     }
 ): Promise<Category> {
-    const response = await fetch(`/api/categories/${id}`, {
+    const response = await fetchWithAuthRedirect(`/api/categories/${id}`, {
         method: "PATCH",
         headers: {
             "Content-Type": "application/json",

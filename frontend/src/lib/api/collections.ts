@@ -7,9 +7,10 @@ import {
     normalizeCollectionSummaries,
     type CollectionSummary,
 } from "@/lib/api/contracts/document-context";
+import { fetchWithAuthRedirect } from "@/lib/api/fetch-with-auth-redirect";
 
 export async function fetchCollections(signal?: AbortSignal): Promise<CollectionSummary[]> {
-    const response = await fetch("/api/collections", {
+    const response = await fetchWithAuthRedirect("/api/collections", {
         method: "GET",
         cache: "no-store",
         signal,

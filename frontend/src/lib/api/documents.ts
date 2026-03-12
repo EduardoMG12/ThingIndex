@@ -9,6 +9,7 @@ import {
     normalizeCollectionSummary,
     type CollectionSummary,
 } from "@/lib/api/contracts/document-context";
+import { fetchWithAuthRedirect } from "@/lib/api/fetch-with-auth-redirect";
 
 type DocumentApiRecord = {
     id: number;
@@ -85,7 +86,7 @@ export async function uploadDocument(input: {
         formData.append("collection", collection);
     }
 
-    const response = await fetch("/api/documents/upload", {
+    const response = await fetchWithAuthRedirect("/api/documents/upload", {
         method: "POST",
         body: formData,
     });
