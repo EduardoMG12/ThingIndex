@@ -3,11 +3,28 @@ package usecase
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"thing-index/internal/config"
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
 	"thing-index/internal/pkg/crypto"
 )
+
+var supportedProvidersByFamily = map[string]map[string]struct{}{
+	domain.FamilyStorage: {
+		domain.ProviderMinio:      {},
+		domain.ProviderAWSS3:      {},
+		domain.ProviderGCPStorage: {},
+		domain.ProviderCloudflare: {},
+	},
+	domain.FamilyLLM: {
+		domain.ProviderOpenAI:   {},
+		domain.ProviderGemini:   {},
+		domain.ProviderDeepSeek: {},
+		domain.ProviderGrok:     {},
+		domain.ProviderClaude:   {},
+	},
+}
 
 type providerUseCase struct {
 	repo domain.ProviderRepository
@@ -22,11 +39,20 @@ func NewProviderUseCase(repo domain.ProviderRepository, cfg *config.Config) doma
 }
 
 func (u *providerUseCase) SaveCredentials(ctx context.Context, userID uint, family, providerType string, credentials map[string]string) error {
+	normalizedFamily, normalizedProviderType, err := normalizeProviderSelection(family, providerType)
+	if err != nil {
+		return err
+	}
+
+	if err := validateCredentials(credentials); err != nil {
+		return err
+	}
+
 	jsonData, err := json.Marshal(credentials)
 	if err != nil {
 		return err
 	}
-	// 2. Encrypt the JSON data using the MasterEncryptionKey and UserID (Salting)
+
 	encrypted, err := crypto.Encrypt(string(jsonData), u.cfg.MasterEncryptionKey, userID)
 	if err != nil {
 		return err
@@ -34,8 +60,8 @@ func (u *providerUseCase) SaveCredentials(ctx context.Context, userID uint, fami
 
 	config := &models.UserProviderConfig{
 		UserID:        userID,
-		Family:        family,
-		ProviderType:  providerType,
+		Family:        normalizedFamily,
+		ProviderType:  normalizedProviderType,
 		EncryptedData: encrypted,
 		IsEnabled:     true,
 	}
@@ -44,7 +70,7 @@ func (u *providerUseCase) SaveCredentials(ctx context.Context, userID uint, fami
 }
 
 func (u *providerUseCase) GetDecryptedCredentials(ctx context.Context, userID uint, providerType string) (map[string]string, error) {
-	config, err := u.repo.GetConfig(ctx, userID, providerType)
+	config, err := u.repo.GetConfig(ctx, userID, strings.ToUpper(strings.TrimSpace(providerType)))
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +78,8 @@ func (u *providerUseCase) GetDecryptedCredentials(ctx context.Context, userID ui
 }
 
 func (u *providerUseCase) GetFamilyCredentials(ctx context.Context, userID uint, family string) (string, map[string]string, error) {
-	config, err := u.repo.GetConfigByFamily(ctx, userID, family)
+	normalizedFamily := strings.ToUpper(strings.TrimSpace(family))
+	config, err := u.repo.GetConfigByFamily(ctx, userID, normalizedFamily)
 	if err != nil {
 		return "", nil, err
 	}
@@ -79,4 +106,33 @@ func (u *providerUseCase) decryptConfig(config *models.UserProviderConfig, userI
 
 func (u *providerUseCase) ListUserProviders(ctx context.Context, userID uint) ([]models.UserProviderConfig, error) {
 	return u.repo.ListConfigs(ctx, userID)
+}
+
+func normalizeProviderSelection(family, providerType string) (string, string, error) {
+	normalizedFamily := strings.ToUpper(strings.TrimSpace(family))
+	allowedProviders, ok := supportedProvidersByFamily[normalizedFamily]
+	if !ok {
+		return "", "", domain.ErrProviderFamilyInvalid
+	}
+
+	normalizedProviderType := strings.ToUpper(strings.TrimSpace(providerType))
+	if _, ok := allowedProviders[normalizedProviderType]; !ok {
+		return "", "", domain.ErrProviderTypeInvalid
+	}
+
+	return normalizedFamily, normalizedProviderType, nil
+}
+
+func validateCredentials(credentials map[string]string) error {
+	if len(credentials) == 0 {
+		return domain.ErrProviderCredentialsInvalid
+	}
+
+	for key, value := range credentials {
+		if strings.TrimSpace(key) == "" || strings.TrimSpace(value) == "" {
+			return domain.ErrProviderCredentialsInvalid
+		}
+	}
+
+	return nil
 }

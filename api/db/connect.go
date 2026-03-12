@@ -42,6 +42,9 @@ func Connect() (*gorm.DB, error) {
 	if err := ensureDocumentCatalog(db); err != nil {
 		return nil, fmt.Errorf("fail to backfill document catalog: %w", err)
 	}
+	if err := ensureProviderSchema(db); err != nil {
+		return nil, fmt.Errorf("fail to ensure provider schema: %w", err)
+	}
 
 	return db, nil
 }

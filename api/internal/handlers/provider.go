@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"thing-index/internal/domain"
+	"thing-index/internal/dto"
 	"thing-index/internal/pkg/i18n"
 	"thing-index/internal/pkg/response"
+	"thing-index/internal/pkg/validation"
 
 	"github.com/gin-gonic/gin"
 )
@@ -29,16 +32,25 @@ func (h *ProviderHandler) SaveCredentials(c *gin.Context) {
 
 	var req saveCredentialsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), err.Error())
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
 		return
 	}
 
 	if err := h.useCase.SaveCredentials(c.Request.Context(), userID, req.Family, req.ProviderType, req.Credentials); err != nil {
-		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+		switch {
+		case errors.Is(err, domain.ErrProviderFamilyInvalid):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_family"), nil)
+		case errors.Is(err, domain.ErrProviderTypeInvalid):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_type"), nil)
+		case errors.Is(err, domain.ErrProviderCredentialsInvalid):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_credentials"), nil)
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
+		}
 		return
 	}
 
-	response.Success(c, http.StatusOK, "success", "Credentials saved successfully", nil)
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "provider.success_save"), nil)
 }
 
 func (h *ProviderHandler) ListProviders(c *gin.Context) {
@@ -47,9 +59,9 @@ func (h *ProviderHandler) ListProviders(c *gin.Context) {
 
 	providers, err := h.useCase.ListUserProviders(c.Request.Context(), userID)
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
 		return
 	}
 
-	response.Success(c, http.StatusOK, "success", "Providers retrieved successfully", providers)
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "provider.success_list"), dto.ToProviderConfigResponses(providers))
 }
