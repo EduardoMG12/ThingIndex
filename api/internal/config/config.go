@@ -11,14 +11,15 @@ import (
 )
 
 type Config struct {
-	Environment string
-	Port        string
-	DBHost      string
-	DBPort      string
-	DBUser      string
-	DBPassword  string
-	DBName      string
-	DBSSLMode   string
+	Environment        string
+	Port               string
+	DBHost             string
+	DBPort             string
+	DBUser             string
+	DBPassword         string
+	DBName             string
+	DBSSLMode          string
+	CORSAllowedOrigins string
 
 	JWTSecret string
 
@@ -71,6 +72,7 @@ func Load() {
 		DBPassword:          getEnv("DB_PASSWORD", "postgres"),
 		DBName:              getEnv("DB_NAME", "thingindex"),
 		DBSSLMode:           getEnv("DB_SSLMODE", defaultDBSSLMode),
+		CORSAllowedOrigins:  getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"),
 		OpenAIKey:           getEnv("OPENAI_API_KEY", ""),
 		JWTSecret:           getEnv("JWT_SECRET", defaultValueForEnvironment(environment, defaultDevelopmentJWT)),
 		SMTPHost:            getEnv("SMTP_HOST", "localhost"),
@@ -119,9 +121,15 @@ func (c *Config) Validate() error {
 	if strings.TrimSpace(c.ResetPasswordURL) == "" {
 		missing = append(missing, "RESET_PASSWORD_URL")
 	}
+	if len(c.CorsAllowedOrigins()) == 0 {
+		missing = append(missing, "CORS_ALLOWED_ORIGINS")
+	}
 
 	if len(missing) > 0 {
 		return fmt.Errorf("missing required configuration: %s", strings.Join(missing, ", "))
+	}
+	if containsWildcardOrigin(c.CorsAllowedOrigins()) {
+		return errors.New("CORS_ALLOWED_ORIGINS cannot contain '*' when credentials are enabled")
 	}
 
 	if c.IsDevelopment() {
@@ -144,7 +152,6 @@ func (c *Config) Validate() error {
 	if strings.EqualFold(c.DBSSLMode, "disable") {
 		insecure = append(insecure, "DB_SSLMODE")
 	}
-
 	if len(insecure) > 0 {
 		return fmt.Errorf("insecure production configuration: %s", strings.Join(insecure, ", "))
 	}
@@ -158,6 +165,23 @@ func (c *Config) IsDevelopment() bool {
 	}
 
 	return isDevelopmentEnvironment(c.Environment)
+}
+
+func (c *Config) CorsAllowedOrigins() []string {
+	if c == nil {
+		return nil
+	}
+
+	parts := strings.Split(c.CORSAllowedOrigins, ",")
+	origins := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			origins = append(origins, trimmed)
+		}
+	}
+
+	return origins
 }
 
 func defaultValueForEnvironment(environment, developmentValue string) string {
@@ -184,4 +208,14 @@ func isDevelopmentEnvironment(environment string) bool {
 	default:
 		return false
 	}
+}
+
+func containsWildcardOrigin(origins []string) bool {
+	for _, origin := range origins {
+		if origin == "*" {
+			return true
+		}
+	}
+
+	return false
 }
