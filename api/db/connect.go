@@ -25,7 +25,11 @@ func Connect() (*gorm.DB, error) {
 		return nil, fmt.Errorf("fail to connect to database: %w", err)
 	}
 
-	err = db.AutoMigrate(&models.User{})
+	err = db.AutoMigrate(
+		&models.User{},
+		&models.DocumentCategory{},
+		&models.Document{},
+	)
 	if err != nil {
 		log.Printf("Warning: fail to run automatic migrations: %v\n", err)
 	}

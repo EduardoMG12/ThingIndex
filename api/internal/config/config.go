@@ -21,6 +21,13 @@ type Config struct {
 	SMTPUser    string
 	SMTPPass    string
 	SMTPFrom    string
+
+	// Storage config
+	MinioEndpoint  string
+	MinioAccessKey string
+	MinioSecretKey string
+	MinioUseSSL    string
+	MinioBucketName string
 }
 
 var AppConfig *Config
@@ -46,6 +53,11 @@ func Load() {
 		SMTPUser:   getEnv("SMTP_USER", ""),
 		SMTPPass:   getEnv("SMTP_PASS", ""),
 		SMTPFrom:   getEnv("SMTP_FROM", "no-reply@thingindex.com"),
+		MinioEndpoint:   getEnv("MINIO_ENDPOINT", "localhost:9000"),
+		MinioAccessKey:  getEnv("MINIO_ACCESS_KEY", "minioadmin"),
+		MinioSecretKey:  getEnv("MINIO_SECRET_KEY", "minioadmin"),
+		MinioUseSSL:     getEnv("MINIO_USE_SSL", "false"),
+		MinioBucketName: getEnv("MINIO_BUCKET_NAME", "thingindex-docs"),
 	}
 }
 

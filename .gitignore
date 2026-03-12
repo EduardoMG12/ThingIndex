@@ -4,6 +4,7 @@
 /crawler/crawler
 /crawler/crawler_bin
 /crawler/purge_queue
+/api/api
 *.exe
 *.exe~
 *.dll

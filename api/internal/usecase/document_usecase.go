@@ -1,0 +1,82 @@
+package usecase
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"time"
+
+	"thing-index/internal/domain"
+	"thing-index/internal/models"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+type documentUseCase struct {
+	repo    domain.DocumentRepository
+	storage domain.StorageService
+}
+
+func NewDocumentUseCase(repo domain.DocumentRepository, storage domain.StorageService) domain.DocumentUseCase {
+	return &documentUseCase{
+		repo:    repo,
+		storage: storage,
+	}
+}
+
+func (u *documentUseCase) UploadDocument(ctx context.Context, title string, file io.Reader, size int64, contentType, categoryName, categoryDescription string) (*models.Document, error) {
+	category, err := u.repo.GetCategoryByName(ctx, categoryName)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			category = &models.DocumentCategory{
+				Name:        categoryName,
+				Description: categoryDescription,
+			}
+			if err := u.repo.CreateCategory(ctx, category); err != nil {
+				return nil, fmt.Errorf("%w: %v", domain.ErrCategoryCreate, err)
+			}
+		} else {
+			return nil, fmt.Errorf("%w: %v", domain.ErrCategoryFind, err)
+		}
+	}
+
+	objectName := fmt.Sprintf("%d_%s%s", time.Now().Unix(), uuid.New().String()[:8], extractExtension(contentType))
+
+	fileURL, err := u.storage.UploadFile(ctx, file, size, contentType, objectName)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrUploadFailed, err)
+	}
+
+	doc := &models.Document{
+		Title:      title,
+		FileURL:    fileURL,
+		Size:       size,
+		MimeType:   contentType,
+		Status:     "PENDING",
+		CategoryID: category.ID,
+	}
+
+	if err := u.repo.CreateDocument(ctx, doc); err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrInternal, err)
+	}
+
+	doc.Category = *category
+
+	return doc, nil
+}
+
+func extractExtension(contentType string) string {
+	switch contentType {
+	case "application/pdf":
+		return ".pdf"
+	case "text/plain":
+		return ".txt"
+	case "application/msword":
+		return ".doc"
+	case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+		return ".docx"
+	default:
+		return ".bin"
+	}
+}
