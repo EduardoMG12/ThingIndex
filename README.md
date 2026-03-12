@@ -3,122 +3,686 @@
 </div>
 
 <div align="center">
-  <h1>ThingIndex: Knowledge Graph for Brazilian Legislation</h1>
-  <p><b>Course / Curso:</b> Sistemas de Informação</p>
-  <p><b>Author / Autor:</b> Charles Eduardo Mello Guimarães</p>
-  <p><b>Trabalho de Conclusão de Curso (TCC)</b></p>
+  <h1>ThingIndex</h1>
+  <p><strong>Relational document intelligence platform for contextual organization, structured extraction, and recoverable knowledge.</strong></p>
+  <p>Trabalho de Conclusao de Curso (TCC) - Sistemas de Informacao - IFPR Campus Palmas</p>
+  <p>Autor: Charles Eduardo Mello Guimaraes</p>
 </div>
 
-<br />
+<div align="center">
+  <img src="https://img.shields.io/badge/Go-1.25%2B-00ADD8?logo=go&logoColor=white" alt="Go badge" />
+  <img src="https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white" alt="Next.js badge" />
+  <img src="https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white" alt="PostgreSQL badge" />
+  <img src="https://img.shields.io/badge/MinIO-S3%20Compatible-C72E49" alt="MinIO badge" />
+  <img src="https://img.shields.io/badge/Architecture-Relational%20Context-2F855A" alt="Architecture badge" />
+  <img src="https://img.shields.io/badge/Status-Research%20Prototype-orange" alt="Status badge" />
+</div>
 
-<details>
-<summary>🇺🇸 <b>English Version / Versão em Inglês</b></summary>
+## English Summary
 
-## 🎯 Abstract
-The **ThingIndex** project aims to build a structured knowledge graph of Brazilian federal legislation (Planalto.gov.br). The central objective is to create a rich, graph-based data structure to enhance **Retrieval-Augmented Generation (RAG)** systems, overcoming the limitations of traditional vector-based search in legal contexts.
+ThingIndex is an academic and engineering project focused on document ingestion, categorization, structured extraction, and context reconstruction over a **pure relational architecture**. The current backend does **not** depend on RAG, vector databases, or graph databases to organize context. Instead, it uses PostgreSQL, hierarchical joins, and typed structured-data tables to keep documents, collections, categories, and extracted content connected in a traceable and performant way.
 
-## 🏛️ Architecture
-The system is composed of modular components designed for scalability, precision, and privacy:
+Although the broader research line still explores GraphRAG and legal knowledge systems, the code currently available in this repository is centered on a **document catalog with relational context recovery**, JWT authentication, i18n, secure provider credential storage, MinIO-compatible object storage, and a Next.js interface.
+
+## Sumario
+
+- [1. Visao Geral](#1-visao-geral)
+- [2. Escopo Atual](#2-escopo-atual)
+- [3. Problema e Motivacao](#3-problema-e-motivacao)
+- [4. Arquitetura](#4-arquitetura)
+- [5. Modelo Relacional de Contexto](#5-modelo-relacional-de-contexto)
+- [6. Funcionalidades Implementadas](#6-funcionalidades-implementadas)
+- [7. Estrutura do Monorepo](#7-estrutura-do-monorepo)
+- [8. Stack Tecnologica](#8-stack-tecnologica)
+- [9. Como Executar com Docker Compose](#9-como-executar-com-docker-compose)
+- [10. Como Executar Manualmente](#10-como-executar-manualmente)
+- [11. Variaveis de Ambiente](#11-variaveis-de-ambiente)
+- [12. Visao Geral da API](#12-visao-geral-da-api)
+- [13. Fluxo de Uso Recomendado](#13-fluxo-de-uso-recomendado)
+- [14. Seguranca e Boas Praticas](#14-seguranca-e-boas-praticas)
+- [15. Qualidade de Engenharia](#15-qualidade-de-engenharia)
+- [16. Contexto Academico do TCC](#16-contexto-academico-do-tcc)
+- [17. Limitacoes Atuais](#17-limitacoes-atuais)
+- [18. Roadmap](#18-roadmap)
+- [19. Contribuicao](#19-contribuicao)
+- [20. Licenca](#20-licenca)
+
+## 1. Visao Geral
+
+O **ThingIndex** e uma plataforma para ingestao e organizacao de documentos com foco em:
+
+- catalogacao por usuario;
+- agrupamento logico por `collections`;
+- categorizacao opcional por `categories`;
+- armazenamento de arquivos em object storage compativel com S3;
+- persistencia de estruturas extraidas em tabelas relacionais tipadas;
+- reconstrucao de contexto com joins previsiveis e agregacao linear;
+- camada HTTP com autenticacao, i18n e respostas padronizadas.
+
+O projeto nasceu em contexto academico, mas foi estruturado com preocupacoes reais de engenharia: separacao de responsabilidades, criptografia de credenciais, fail-fast de configuracao, scoping por usuario, sanitizacao de erros, validacao de upload, e mitigacoes de abuso e SSRF.
+
+## 2. Escopo Atual
+
+### O que o projeto e hoje
+
+- Uma aplicacao full-stack com backend em Go e frontend em Next.js.
+- Um catalogo relacional de documentos com `categories`, `collections`, `documents`, `paragraph_nodes`, `table_sections` e `metadata_pairs`.
+- Um backend que reconstrui contexto de uma collection por consultas hierarquicas ao PostgreSQL.
+- Um painel web para autenticacao, upload e navegacao do catalogo.
+- Uma base pronta para evoluir para pipelines de processamento documental e assistentes baseados em IA.
+
+### O que o projeto nao e hoje
+
+- Nao e um sistema de GraphRAG em execucao.
+- Nao depende de banco de grafos para recuperar contexto.
+- Nao possui pipeline de workers/document parsing automatizado finalizado dentro deste backend.
+- Nao possui chat juridico/QA com LLM em producao.
+- Nao implementa multiplos storages de forma concreta hoje: o provider de storage efetivamente suportado no runtime atual e **MinIO/S3-compatible**.
+
+### Importante para quem vier de documentacao antiga
+
+Partes do material de pesquisa do repositorio ainda discutem Neo4j, GraphRAG e comparacoes com abordagens vetoriais. Isso faz parte da **linha de pesquisa e do roadmap**, mas **na implementacao atual do backend o contexto e reconstruido estritamente por banco relacional**.
+
+## 3. Problema e Motivacao
+
+Sistemas documentais costumam falhar em um dos dois extremos:
+
+- armazenam arquivos sem preservar bem o contexto entre eles;
+- ou terceirizam quase toda a inteligencia de recuperacao para embeddings, grafos ou pipelines externos.
+
+O ThingIndex parte de uma premissa diferente:
+
+> Se a estrutura semantica minima estiver bem modelada no banco relacional, entao grande parte da organizacao, rastreabilidade e recuperacao de contexto pode ser feita com SQL, chaves estrangeiras, ordenacao explicita e agregacao linear no backend.
+
+Essa decisao traz vantagens importantes:
+
+- rastreabilidade deterministica;
+- menor acoplamento com componentes experimentais;
+- facilidade de auditoria;
+- previsibilidade de custo e operacao;
+- clareza arquitetural para fins academicos e manutencao futura.
+
+## 4. Arquitetura
 
 ```mermaid
-graph TD
-    API[Go API - Gin] -->|Metadata| DB[(PostgreSQL)]
-    API -->|Object Storage| MINIO[(MinIO / S3 Adapter)]
-    API -->|Auth| JWT[JWT Security]
-    API -->|i18n| I18N[Multi-language Messages]
-    API -->|BYOK| BYOK[Bring Your Own Key]
-    BYOK -->|Encryption| AES[AES-256-GCM + User Salt]
-    
-    subgraph Core Features
-    API
-    DB
-    MINIO
-    BYOK
-    end
-    
-    C[Crawler Go] -.->|Future Ingestion| API
+flowchart TD
+    UI[Next.js Frontend] -->|HTTP JSON / multipart| API[Go API - Gin]
+    API -->|ORM + SQL| PG[(PostgreSQL)]
+    API -->|Object Storage| MINIO[(MinIO / S3-compatible)]
+    API -->|Password reset email| SMTP[SMTP]
+
+    API --> AUTH[JWT + Bcrypt]
+    API --> I18N[i18n PT/EN]
+    API --> SEC[Credential Encryption]
+    API --> RATE[Rate Limiting]
+    API --> VALID[Validation + Safe Error Handling]
+
+    PG --> CAT[categories]
+    PG --> COL[collections]
+    PG --> DOC[documents]
+    PG --> PAR[paragraph_nodes]
+    PG --> TAB[table_sections]
+    PG --> META[metadata_pairs]
+
+    RABBIT[(RabbitMQ)] -.reserved for roadmap.- API
 ```
 
-## 🧩 Components
+### Principios arquiteturais adotados
 
-1.  **[API (Go / Gin)](./api)**:
-    *   **Architecture**: Clean Architecture with decoupled layers (Domain, UseCase, Repository, Handler).
-    *   **Storage**: Implements the **Adapter Pattern** for object storage. Currently supports **MinIO**, but ready for AWS S3, GCP, or Cloudflare R2.
-    *   **Internationalization (i18n)**: Full support for translated error and success messages (PT/EN).
-    *   **Security**: JWT-based authentication with user-scoped data isolation.
+- **Camadas desacopladas**: `handlers -> usecases -> repositories -> models`.
+- **Dominio como fronteira**: erros de negocio e contratos vivem em `api/internal/domain`.
+- **Repositorio para persistencia**: regras de consulta e joins nao ficam espalhadas em handlers.
+- **Borda HTTP fina**: validacao, auth, i18n e serializacao ficam nos handlers; regra de negocio fica no use case.
+- **Relational first**: o contexto do dominio e preservado por FK, `sequence_order` e consultas hierarquicas.
+- **Agregacao O(n)**: o backend evita `N+1` e monta resposta percorrendo o conjunto retornado uma unica vez por tabela.
 
-2.  **[BYOK & Security](./api/internal/pkg/crypto/aes.go)**:
-    *   **Bring Your Own Key (BYOK)**: Users can provide their own credentials for storage (S3, Cloudflare) and AI (OpenAI, Gemini, DeepSeek, Grok, Claude).
-    *   **AES-256-GCM + Salting**: Credentials are encrypted at rest. We use a Master Key combined with a unique `UserID` salt (via HMAC-SHA256) to derive a unique encryption key for each user.
-    *   **Priority Fallback**: The system automatically prioritizes user-provided infrastructure. If no user key is found, it falls back to the system's default environment variables.
-
-2.  **[Document Management](./api/internal/handlers/document.go)**:
-    *   Handles `multipart/form-data` uploads.
-    *   Automatic and manual categorization.
-    *   Metadata tracking (size, type, status) ready for graph mapping.
-
-3.  **[Crawler (Go)](./crawler)**:
-    *   Responsible for traversing the Planalto.gov.br portal.
-    *   Captures the delicate hierarchical context of hyperlinks.
-    *   Archives raw content with comprehensive metadata.
-
-## 🚀 Key Contributions
-- **Decoupled Object Storage**: Swap storage providers without touching business logic.
-- **Privacy-First**: Rigorous UserID scoping for all legal documents and categories.
-- **Graph-Ready**: Models architected to be transformed into Neo4j nodes (`Law`, `Article`) and relationships (`:CONTEM`).
-</details>
-
-<details>
-<summary>🇧🇷 <b>Portuguese Version / Versão em Português</b></summary>
-
-## 🎯 Resumo
-O projeto **ThingIndex** tem como objetivo construir um grafo de conhecimento estruturado da legislação federal brasileira (Planalto.gov.br). O central da ideia é criar uma estrutura de dados baseada em grafos rica, aprimorando sistemas de **RAG (Retrieval-Augmented Generation)** e superando as limitações da busca vetorial tradicional em contextos jurídicos precisos.
-
-## 🏛️ Arquitetura
-O sistema é composto de módulos independentes projetados para escala, precisão e privacidade:
+## 5. Modelo Relacional de Contexto
 
 ```mermaid
-graph TD
-    API[Go API - Gin] -->|Metadados| DB[(PostgreSQL)]
-    API -->|Object Storage| MINIO[(MinIO / S3 Adapter)]
-    API -->|Auth| JWT[Segurança JWT]
-    API -->|i18n| I18N[Mensagens Multi-idioma]
-    API -->|BYOK| BYOK[Bring Your Own Key]
-    BYOK -->|Criptografia| AES[AES-256-GCM + User Salt]
-    
-    subgraph Core Features
-    API
-    DB
-    MINIO
-    BYOK
-    end
+erDiagram
+    USER ||--o{ DOCUMENT_CATEGORY : owns
+    USER ||--o{ COLLECTION : owns
+    USER ||--o{ DOCUMENT : owns
+    USER ||--o{ USER_PROVIDER_CONFIG : owns
+
+    DOCUMENT_CATEGORY ||--o{ COLLECTION : groups
+    COLLECTION ||--o{ DOCUMENT : contains
+    DOCUMENT ||--o{ PARAGRAPH_NODE : extracts
+    DOCUMENT ||--o{ TABLE_SECTION : extracts
+    DOCUMENT ||--o{ METADATA_PAIR : extracts
 ```
 
-## 🧩 Componentes e Ferramentas
+### Entidades principais
 
-1.  **[API (Go / Gin)](./api)**:
-    *   **Arquitetura**: Clean Architecture com camadas desacopladas (Domínio, UseCase, Repositório, Handler).
-    *   **Storage**: Implementa o **Adapter Pattern** para armazenamento de objetos. Suporta **MinIO**, AWS S3, GCP e Cloudflare R2.
-    *   **Internacionalização (i18n)**: Suporte total para mensagens de erro e sucesso traduzidas (PT/EN).
-    *   **Segurança**: Autenticação via JWT com isolamento de dados por usuário.
+| Entidade | Papel |
+| --- | --- |
+| `document_categories` | Filtro macro opcional de navegacao por usuario |
+| `collections` | Vinculo logico entre varios documentos que pertencem ao mesmo contexto |
+| `documents` | Arquivos brutos e seus metadados de armazenamento |
+| `paragraph_nodes` | Paragrafos ou blocos textuais ordenados por `sequence_order` |
+| `table_sections` | Tabelas estruturadas ordenadas e rastreaveis |
+| `metadata_pairs` | Metadados tipados em pares chave/valor por documento |
 
-2.  **[BYOK & Segurança](./api/internal/pkg/crypto/aes.go)**:
-    *   **Bring Your Own Key (BYOK)**: Usuários podem fornecer suas próprias chaves de Storage e de Modelos de Linguagem (OpenAI, Gemini, DeepSeek, Grok, Claude).
-    *   **AES-256-GCM + Salting**: Criptografia de ponta com derivação de chave única por usuário via HMAC-SHA256, garantindo isolamento total.
-    *   **Priority Fallback**: O sistema prioriza infraestrutura do usuário, usando as ENVs do servidor apenas como fallback.
+### Regras importantes do modelo
 
-2.  **[Gestão de Documentos](./api/internal/handlers/document.go)**:
-    *   Upload via `multipart/form-data`.
-    *   Categorização automática e manual.
-    *   Rastreamento de metadados prontos para o mapeamento em grafos.
+- Todo `document` precisa pertencer a uma `collection`.
+- Uma `collection` pode ou nao pertencer a uma `category`.
+- A ordem do conteudo e explicita no banco via `sequence_order`.
+- O backend pode reconstruir o contexto completo de uma collection em numero constante de queries.
 
-3.  **[Crawler (Golang)](./crawler)**:
-    *   Navegação inteligente pelo portal Planalto.gov.br.
-    *   Controle de contexto: sabe exatamente de qual Artigo/Parágrafo um link foi originado.
+### Estrategia de recuperacao
 
-## 🚀 Principais Contribuições
-- **Storage Desacoplado**: Troque o provedor de nuvem sem alterar uma linha de lógica de negócio.
-- **Privacidade**: Scoping rigoroso por `UserID` para todos os documentos e categorias.
-- **Pronto para Grafos**: Modelos pensados para serem transformados em Nós (`Lei`, `Artigo`) e relacionamentos no Neo4j.
-</details>
+Para obter o contexto consolidado de uma collection, o backend:
 
+1. carrega a collection pelo `id` e `user_id`;
+2. busca todos os documentos daquela collection;
+3. extrai os `document_ids`;
+4. busca `paragraph_nodes`, `table_sections` e `metadata_pairs` por lote;
+5. agrega os resultados em memoria por `document_id`.
+
+Essa abordagem evita consultas por documento e mantem a montagem da resposta em **tempo linear sobre o numero de linhas retornadas**.
+
+## 6. Funcionalidades Implementadas
+
+### Backend
+
+- Cadastro, login e reset de senha com JWT.
+- Upload de documentos com validacao de tamanho e MIME.
+- CRUD parcial de categorias e collections.
+- Persistencia de documentos com vinculacao obrigatoria a `collection`.
+- Persistencia de estruturas extraidas em tabelas tipadas.
+- Recuperacao de contexto consolidado de uma collection.
+- Internacionalizacao de mensagens HTTP em portugues e ingles.
+- Criptografia de credenciais de providers por usuario.
+- Provider de storage customizado com resolucao segura de endpoint.
+
+### Frontend
+
+- Landing page institucional.
+- Dashboard para autenticacao e operacao do catalogo.
+- Documentacao visual da proposta e da arquitetura.
+
+### Infraestrutura local
+
+- PostgreSQL para persistencia transacional.
+- MinIO para object storage.
+- Docker Compose para reproducao do ambiente.
+- RabbitMQ presente no compose como infraestrutura de roadmap, mas nao acoplado ao fluxo principal atual.
+
+## 7. Estrutura do Monorepo
+
+```text
+.
+|-- api/
+|   |-- cmd/api/                 # ponto de entrada da API
+|   |-- db/                      # conexao, bootstrap e introspecao de schema
+|   |-- internal/
+|   |   |-- api/                 # roteamento e middlewares
+|   |   |-- config/              # carregamento e validacao de envs
+|   |   |-- domain/              # contratos e erros de negocio
+|   |   |-- dto/                 # requests e responses
+|   |   |-- handlers/            # camada HTTP
+|   |   |-- mailer/              # envio de email
+|   |   |-- models/              # modelos GORM
+|   |   |-- pkg/                 # crypto, netsec, storage, provider, i18n
+|   |   |-- repository/          # persistencia
+|   |   |-- usecase/             # regra de negocio
+|   |-- docs/                    # swagger gerado
+|-- frontend/
+|   |-- src/app/                 # rotas Next.js
+|   |-- src/components/          # UI
+|   |-- architecture/            # documentos de arquitetura e modelagem
+|-- docs/
+|   |-- roadmap/                 # caminhos de evolucao academica
+|-- docker-compose.yml
+|-- .env.example
+```
+
+## 8. Stack Tecnologica
+
+| Camada | Tecnologia | Papel no projeto |
+| --- | --- | --- |
+| Backend | Go 1.25 + Gin | API HTTP, auth, upload, catalogo documental |
+| Persistencia | PostgreSQL 16 | Modelo relacional e recuperacao de contexto |
+| ORM | GORM | Mapeamento e queries |
+| Storage | MinIO | Armazenamento de arquivos |
+| Frontend | Next.js 16 + React 19 | Interface web |
+| Validacao | go-playground/validator | Validacao de payload |
+| Auth | JWT + bcrypt | Sessao stateless e hash de senha |
+| i18n | dicionario interno PT/EN | Mensagens da borda HTTP |
+| Docs | Swagger + Scalar | Referencia de API |
+| Containers | Docker Compose | Ambiente local reproduzivel |
+
+## 9. Como Executar com Docker Compose
+
+### Pre-requisitos
+
+- Docker
+- Docker Compose v2
+
+### Passo a passo
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+### Endpoints locais
+
+| Servico | URL |
+| --- | --- |
+| Frontend | `http://localhost:3000` |
+| API | `http://localhost:8000` |
+| API docs | `http://localhost:8000/docs` |
+| Swagger JSON | `http://localhost:8000/swagger/doc.json` |
+| MinIO API | `http://localhost:9000` |
+| MinIO Console | `http://localhost:9001` |
+| PostgreSQL | `localhost:5433` |
+| RabbitMQ Management | `http://localhost:15672` |
+
+### Observacoes importantes
+
+- O `docker-compose.yml` sobe RabbitMQ, mas o fluxo principal da API atual nao depende dele.
+- O fluxo de `forgot-password` exige um servidor SMTP acessivel. O compose atual nao sobe Mailpit/Mailhog por padrao.
+- O frontend consome a API por `NEXT_PUBLIC_API_URL`.
+
+## 10. Como Executar Manualmente
+
+### Opcao A: subir apenas a infraestrutura com Docker e rodar app localmente
+
+```bash
+cp .env.example .env
+docker compose up -d db minio
+```
+
+Depois, em terminais separados:
+
+```bash
+cd api
+go run ./cmd/api
+```
+
+```bash
+cd frontend
+pnpm install
+pnpm dev
+```
+
+### Ajustes necessarios para execucao manual no host
+
+Se voce rodar a API fora do container, normalmente vai querer ajustar no `.env`:
+
+```bash
+PORT=8000
+DB_HOST=localhost
+DB_PORT=5433
+MINIO_ENDPOINT=localhost:9000
+API_INTERNAL_URL=http://localhost:8000/api/v1
+NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+```
+
+### Pre-requisitos para execucao manual
+
+- Go `1.25+`
+- Node.js `20+`
+- `pnpm`
+- PostgreSQL
+- MinIO ou outro endpoint MinIO/S3-compatible
+
+## 11. Variaveis de Ambiente
+
+O arquivo `.env.example` foi pensado para **desenvolvimento local**. Em producao, a API faz validacoes adicionais e rejeita configuracoes inseguras.
+
+### Variaveis principais
+
+| Variavel | Exemplo local | Descricao |
+| --- | --- | --- |
+| `APP_ENV` | `development` | Ambiente de execucao |
+| `PORT` | `8080` | Porta HTTP da API |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Origins permitidas |
+| `DB_HOST` | `localhost` ou `db` | Host do PostgreSQL |
+| `DB_PORT` | `5433` ou `5432` | Porta do PostgreSQL |
+| `DB_USER` | `postgres` | Usuario da API no banco |
+| `DB_PASSWORD` | `postgres` | Senha da API no banco |
+| `DB_NAME` | `thingindex` | Nome do banco |
+| `DB_SSLMODE` | `disable` | SSL mode do driver Postgres |
+| `JWT_SECRET` | valor local forte | Chave de assinatura JWT |
+| `MASTER_ENCRYPTION_KEY` | valor local forte | Chave mestre para criptografia de credenciais |
+| `MINIO_ENDPOINT` | `minio:9000` ou `localhost:9000` | Endpoint do storage |
+| `MINIO_ACCESS_KEY` | `thingindex-local-access-key` | Access key do storage padrao |
+| `MINIO_SECRET_KEY` | `thingindex-local-secret-key` | Secret key do storage padrao |
+| `MINIO_USE_SSL` | `false` | HTTPS no storage padrao |
+| `MINIO_BUCKET_NAME` | `thingindex-docs` | Bucket utilizado pela aplicacao |
+| `MAX_UPLOAD_SIZE_BYTES` | `20971520` | Limite maximo de upload |
+| `RESET_PASSWORD_URL` | `http://localhost:3000/reset-password` | URL base usada no email de reset |
+| `SMTP_SECURITY_MODE` | `none` em dev | `none`, `starttls` ou `tls` |
+| `SMTP_HOST` | `localhost` | Host do SMTP |
+| `SMTP_PORT` | `1025` | Porta do SMTP |
+| `SMTP_USER` | vazio | Usuario SMTP |
+| `SMTP_PASS` | vazio | Senha SMTP |
+| `SMTP_FROM` | `no-reply@thingindex.com` | Remetente padrao |
+| `AUTH_RATE_LIMIT_REQUESTS` | `10` | Limite de requests de auth por janela |
+| `AUTH_RATE_LIMIT_WINDOW_SECONDS` | `60` | Janela do rate limit |
+| `ALLOW_PRIVATE_STORAGE_ENDPOINTS` | `false` | Override de desenvolvimento para endpoints privados |
+
+### Variaveis de frontend
+
+| Variavel | Exemplo | Descricao |
+| --- | --- | --- |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8000/api/v1` | URL publica consumida pelo navegador |
+| `API_INTERNAL_URL` | `http://api:8080/api/v1` | URL interna para ambiente conteinerizado |
+
+### Variaveis de compose
+
+| Variavel | Uso |
+| --- | --- |
+| `POSTGRES_USER` | Usuario do container Postgres |
+| `POSTGRES_PASSWORD` | Senha do container Postgres |
+| `POSTGRES_DB` | Banco inicial do container |
+| `RABBITMQ_DEFAULT_USER` | Usuario do RabbitMQ |
+| `RABBITMQ_DEFAULT_PASS` | Senha do RabbitMQ |
+
+## 12. Visao Geral da API
+
+### Envelope de resposta
+
+Todas as respostas seguem, em geral, o formato:
+
+```json
+{
+  "status": 200,
+  "type": "success",
+  "message": "Documents retrieved successfully",
+  "data": {}
+}
+```
+
+Erros de validacao retornam `errors` com mensagens sanitizadas e localizadas.
+
+### Rotas publicas
+
+| Metodo | Rota | Descricao |
+| --- | --- | --- |
+| `GET` | `/api/v1/health` | Health check simples |
+| `POST` | `/api/v1/auth/register` | Cadastro de usuario |
+| `POST` | `/api/v1/auth/login` | Login e emissao de JWT |
+| `POST` | `/api/v1/auth/forgot-password` | Solicita reset de senha |
+| `POST` | `/api/v1/auth/reset-password` | Conclui reset de senha |
+
+### Rotas autenticadas de provider
+
+| Metodo | Rota | Descricao |
+| --- | --- | --- |
+| `POST` | `/api/v1/user/providers` | Salva credenciais por usuario |
+| `GET` | `/api/v1/user/providers` | Lista configuracoes de provider do usuario |
+
+### Rotas autenticadas de documentos
+
+| Metodo | Rota | Descricao |
+| --- | --- | --- |
+| `POST` | `/api/v1/documents/upload` | Upload de arquivo com `multipart/form-data` |
+| `GET` | `/api/v1/documents/` | Lista documentos do usuario |
+| `GET` | `/api/v1/documents/:id` | Busca documento por ID |
+| `GET` | `/api/v1/documents/category/:id` | Lista documentos por categoria |
+| `POST` | `/api/v1/documents/categories` | Cria categoria |
+| `GET` | `/api/v1/documents/categories` | Lista categorias |
+| `PATCH` | `/api/v1/documents/categories/:id` | Atualiza categoria |
+| `POST` | `/api/v1/documents/collections` | Cria collection |
+| `GET` | `/api/v1/documents/collections` | Lista collections |
+| `GET` | `/api/v1/documents/collections/:id` | Busca collection |
+| `GET` | `/api/v1/documents/collections/:id/context` | Recupera contexto consolidado da collection |
+| `PATCH` | `/api/v1/documents/collections/:collection/category` | Atualiza categoria da collection |
+| `POST` | `/api/v1/documents/:id/paragraph-nodes` | Persiste paragrafos estruturados |
+| `POST` | `/api/v1/documents/:id/table-sections` | Persiste tabelas estruturadas |
+| `POST` | `/api/v1/documents/:id/metadata-pairs` | Persiste pares chave/valor |
+
+### Upload
+
+Campos aceitos em `multipart/form-data`:
+
+| Campo | Obrigatorio | Observacao |
+| --- | --- | --- |
+| `title` | sim | Titulo do documento |
+| `file` | sim | Arquivo bruto |
+| `collection` | sim | Collection obrigatoria |
+| `category` | nao | Categoria opcional |
+
+Tipos de arquivo aceitos hoje:
+
+- `application/pdf`
+- `text/html`
+- `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+
+Limite padrao de upload:
+
+- `20 MB`
+
+### Documentacao interativa
+
+- Scalar UI: `http://localhost:8000/docs`
+- Swagger JSON: `http://localhost:8000/swagger/doc.json`
+
+## 13. Fluxo de Uso Recomendado
+
+### 1. Registrar usuario
+
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Charles",
+    "email": "charles@example.com",
+    "password": "123456"
+  }'
+```
+
+### 2. Fazer login
+
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "charles@example.com",
+    "password": "123456"
+  }'
+```
+
+Guarde o token retornado:
+
+```bash
+export TOKEN="seu-jwt-aqui"
+```
+
+### 3. Criar uma collection
+
+```bash
+curl -X POST http://localhost:8000/api/v1/documents/collections \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Caso Silva vs Estado",
+    "category": "Processos",
+    "metadata": {
+      "origin": "manual",
+      "area": "juridico"
+    }
+  }'
+```
+
+### 4. Enviar um documento
+
+```bash
+curl -X POST http://localhost:8000/api/v1/documents/upload \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "title=Peticao Inicial" \
+  -F "collection=Caso Silva vs Estado" \
+  -F "category=Processos" \
+  -F "file=@./exemplos/peticao.pdf"
+```
+
+### 5. Persistir dados estruturados do documento
+
+```bash
+curl -X POST http://localhost:8000/api/v1/documents/1/paragraph-nodes \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nodes": [
+      {
+        "sequence_order": 0,
+        "page_number": 1,
+        "content": "Conteudo do primeiro paragrafo",
+        "metadata": {
+          "source": "ocr"
+        }
+      }
+    ]
+  }'
+```
+
+### 6. Recuperar o contexto consolidado da collection
+
+```bash
+curl -X GET http://localhost:8000/api/v1/documents/collections/1/context \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## 14. Seguranca e Boas Praticas
+
+### Ja implementado
+
+- **JWT assinado** para autenticacao stateless.
+- **bcrypt** para hash de senhas.
+- **Tokens de reset hashados** no banco.
+- **Criptografia AES-GCM** para credenciais de provider, com chave derivada por usuario.
+- **Rate limit** nas rotas de autenticacao.
+- **CORS configuravel** sem wildcard com credenciais.
+- **Sanitizacao de erros** para nao vazar detalhes internos nas respostas.
+- **Validacao de uploads** com limite de corpo e checagem de MIME.
+- **Mitigacao de SSRF** para storage customizado.
+- **Bloqueio de endpoints privados** por padrao para providers de storage.
+- **Resolucao segura de hostname** no dial do storage para evitar bypass por DNS rebinding.
+- **Validacoes de configuracao insegura** fora de ambiente de desenvolvimento.
+
+### Decisoes de seguranca relevantes
+
+- O projeto aceita `Accept-Language` e localiza mensagens na borda HTTP.
+- O backend falha cedo se a configuracao essencial estiver invalida.
+- As credenciais de provider nao sao devolvidas nas respostas da API.
+- Em ambientes nao-dev, `RESET_PASSWORD_URL` precisa ser seguro e o transporte SMTP nao pode ficar em modo inseguro.
+
+### Observacao de escopo
+
+O projeto ainda esta em fase de desenvolvimento local. Isso significa que algumas decisoes de infraestrutura continuam orientadas a produtividade de dev, nao a hardening completo de producao distribuida.
+
+## 15. Qualidade de Engenharia
+
+### Convencoes adotadas
+
+- handlers finos;
+- use cases com regra de negocio;
+- repositorios focados em persistencia;
+- DTOs separados de models;
+- mensagens i18n por chave;
+- validacao centralizada;
+- erro de dominio sem vazamento de detalhe interno.
+
+### Comandos uteis
+
+Backend:
+
+```bash
+cd api
+go test ./...
+go vet ./...
+```
+
+Frontend:
+
+```bash
+cd frontend
+pnpm lint
+```
+
+### Observacao honesta
+
+O projeto ja possui validacao estrutural, testes unitarios pontuais e verificacoes de compilacao, mas **a cobertura automatizada ainda e limitada**. Para uma etapa seguinte de maturacao open source, vale ampliar testes de integracao e testes de contrato da API.
+
+## 16. Contexto Academico do TCC
+
+Este repositorio representa uma etapa importante do TCC por alguns motivos:
+
+- transforma uma ideia de organizacao documental em uma arquitetura executavel;
+- demonstra uma alternativa relacional para preservacao de contexto;
+- explicita trade-offs entre simplicidade operacional e flexibilidade futura;
+- prepara terreno para comparacoes mais avancadas com pipelines baseados em grafos, embeddings e assistentes.
+
+Em outras palavras, o valor academico aqui nao esta apenas no produto final, mas tambem na **decisao arquitetural defendida**:
+
+> contexto pode ser preservado e reconstituido por modelagem relacional rigorosa, sem depender obrigatoriamente de RAG ou bancos de grafos desde o primeiro momento.
+
+Os materiais em `docs/` e `frontend/architecture/` registram essa evolucao e tambem apontam caminhos futuros de pesquisa.
+
+## 17. Limitacoes Atuais
+
+- Apenas MinIO/S3-compatible esta implementado de fato como storage provider.
+- O modulo de LLM/provider ainda nao esta integrado a um fluxo de assistente em runtime.
+- O frontend `frontend/README.md` ainda esta com o texto padrao do Next.js.
+- RabbitMQ esta no compose, mas nao participa do caminho principal atual.
+- Nao ha arquivo `LICENSE` publicado ainda.
+- Algumas docs antigas do repositorio ainda refletem a fase de pesquisa em grafos e precisam ser lidas com contexto.
+
+## 18. Roadmap
+
+### Curto prazo
+
+- ampliar testes automatizados do backend;
+- alinhar toda a documentacao secundaria do monorepo;
+- adicionar fixtures de exemplo para fluxo completo de upload e contexto;
+- melhorar o dashboard documental.
+
+### Medio prazo
+
+- pipeline assincro de parsing e extracao;
+- workers dedicados;
+- suporte real a mais providers de storage;
+- observabilidade e telemetria.
+
+### Longo prazo / pesquisa
+
+- comparacoes com GraphRAG e RAG vetorial;
+- assistente juridico/documental com rastreabilidade;
+- benchmark de recuperacao e citacao;
+- integracao com camadas de analise semantica mais avancadas.
+
+## 19. Contribuicao
+
+Contribuicoes sao bem-vindas, especialmente em:
+
+- melhoria da documentacao;
+- testes automatizados;
+- observabilidade e DX;
+- tratamento de documentos e extracao estruturada;
+- refinamento do frontend;
+- consolidacao do fluxo de pesquisa do TCC.
+
+### Sugestao de fluxo
+
+1. abra uma issue descrevendo problema ou proposta;
+2. alinhe escopo antes de grandes refatoracoes;
+3. envie PRs pequenos, com motivacao tecnica clara;
+4. evite misturar mudancas de arquitetura, estilo e feature no mesmo PR.
+
+## 20. Licenca
+
+No momento, o repositorio **ainda nao possui um arquivo `LICENSE` publicado**.
+
+Isso significa que o codigo esta disponivel para estudo e avaliacao academica, mas **o regime formal de uso, redistribuicao e contribuicao ainda precisa ser definido** antes de uma abertura publica plena como projeto open source.
+
+---
+
+Se voce chegou ate aqui para avaliar o projeto como TCC, a recomendacao e observar tres aspectos em conjunto:
+
+- a clareza da modelagem relacional;
+- a preocupacao com seguranca e separacao de responsabilidades;
+- a honestidade entre o que ja esta implementado e o que ainda pertence ao roadmap.
