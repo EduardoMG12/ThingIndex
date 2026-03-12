@@ -3,19 +3,21 @@ package usecase
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"strings"
 	"thing-index/internal/config"
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
 	"thing-index/internal/pkg/crypto"
+	"thing-index/internal/pkg/provider"
+
+	"gorm.io/gorm"
 )
 
 var supportedProvidersByFamily = map[string]map[string]struct{}{
 	domain.FamilyStorage: {
-		domain.ProviderMinio:      {},
-		domain.ProviderAWSS3:      {},
-		domain.ProviderGCPStorage: {},
-		domain.ProviderCloudflare: {},
+		domain.ProviderMinio: {},
 	},
 	domain.FamilyLLM: {
 		domain.ProviderOpenAI:   {},
@@ -31,7 +33,7 @@ type providerUseCase struct {
 	cfg  *config.Config
 }
 
-func NewProviderUseCase(repo domain.ProviderRepository, cfg *config.Config) domain.ProviderUseCase {
+func NewProviderUseCase(repo domain.ProviderRepository, cfg *config.Config) domain.ProviderService {
 	return &providerUseCase{
 		repo: repo,
 		cfg:  cfg,
@@ -44,7 +46,7 @@ func (u *providerUseCase) SaveCredentials(ctx context.Context, userID uint, fami
 		return err
 	}
 
-	if err := validateCredentials(credentials); err != nil {
+	if err := validateCredentials(normalizedFamily, normalizedProviderType, credentials); err != nil {
 		return err
 	}
 
@@ -77,19 +79,6 @@ func (u *providerUseCase) GetDecryptedCredentials(ctx context.Context, userID ui
 	return u.decryptConfig(config, userID)
 }
 
-func (u *providerUseCase) GetFamilyCredentials(ctx context.Context, userID uint, family string) (string, map[string]string, error) {
-	normalizedFamily := strings.ToUpper(strings.TrimSpace(family))
-	config, err := u.repo.GetConfigByFamily(ctx, userID, normalizedFamily)
-	if err != nil {
-		return "", nil, err
-	}
-	creds, err := u.decryptConfig(config, userID)
-	if err != nil {
-		return "", nil, err
-	}
-	return config.ProviderType, creds, nil
-}
-
 func (u *providerUseCase) decryptConfig(config *models.UserProviderConfig, userID uint) (map[string]string, error) {
 	decrypted, err := crypto.Decrypt(config.EncryptedData, u.cfg.MasterEncryptionKey, userID)
 	if err != nil {
@@ -108,6 +97,28 @@ func (u *providerUseCase) ListUserProviders(ctx context.Context, userID uint) ([
 	return u.repo.ListConfigs(ctx, userID)
 }
 
+func (u *providerUseCase) ResolveStorage(ctx context.Context, userID uint) (domain.StorageService, error) {
+	config, err := u.repo.GetConfigByFamily(ctx, userID, domain.FamilyStorage)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrStorageProviderNotConfigured
+		}
+		return nil, fmt.Errorf("%w: %v", domain.ErrStorageProviderUnavailable, err)
+	}
+
+	creds, err := u.decryptConfig(config, userID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrStorageProviderUnavailable, err)
+	}
+
+	storageService, err := provider.NewStorageProvider(config.ProviderType, creds)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrStorageProviderUnavailable, err)
+	}
+
+	return storageService, nil
+}
+
 func normalizeProviderSelection(family, providerType string) (string, string, error) {
 	normalizedFamily := strings.ToUpper(strings.TrimSpace(family))
 	allowedProviders, ok := supportedProvidersByFamily[normalizedFamily]
@@ -123,13 +134,28 @@ func normalizeProviderSelection(family, providerType string) (string, string, er
 	return normalizedFamily, normalizedProviderType, nil
 }
 
-func validateCredentials(credentials map[string]string) error {
+func validateCredentials(family, providerType string, credentials map[string]string) error {
 	if len(credentials) == 0 {
 		return domain.ErrProviderCredentialsInvalid
 	}
 
 	for key, value := range credentials {
 		if strings.TrimSpace(key) == "" || strings.TrimSpace(value) == "" {
+			return domain.ErrProviderCredentialsInvalid
+		}
+	}
+
+	switch family {
+	case domain.FamilyStorage:
+		if providerType == domain.ProviderMinio {
+			for _, requiredKey := range []string{"endpoint", "access_key", "secret_key", "bucket_name"} {
+				if strings.TrimSpace(credentials[requiredKey]) == "" {
+					return domain.ErrProviderCredentialsInvalid
+				}
+			}
+		}
+	case domain.FamilyLLM:
+		if strings.TrimSpace(credentials["api_key"]) == "" {
 			return domain.ErrProviderCredentialsInvalid
 		}
 	}

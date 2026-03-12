@@ -18,10 +18,23 @@ func NewGormProviderRepository(db *gorm.DB) domain.ProviderRepository {
 }
 
 func (r *gormProviderRepository) SaveConfig(ctx context.Context, config *models.UserProviderConfig) error {
-	return r.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "user_id"}, {Name: "provider_type"}},
-		DoUpdates: clause.AssignmentColumns([]string{"encrypted_data", "is_enabled", "updated_at"}),
-	}).Create(config).Error
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.UserProviderConfig{}).
+			Where("user_id = ? AND family = ? AND provider_type <> ?", config.UserID, config.Family, config.ProviderType).
+			Update("is_enabled", false).Error; err != nil {
+			return err
+		}
+
+		return tx.Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "user_id"}, {Name: "provider_type"}},
+			DoUpdates: clause.AssignmentColumns([]string{
+				"family",
+				"encrypted_data",
+				"is_enabled",
+				"updated_at",
+			}),
+		}).Create(config).Error
+	})
 }
 
 func (r *gormProviderRepository) GetConfig(ctx context.Context, userID uint, providerType string) (*models.UserProviderConfig, error) {
@@ -34,7 +47,10 @@ func (r *gormProviderRepository) GetConfig(ctx context.Context, userID uint, pro
 
 func (r *gormProviderRepository) GetConfigByFamily(ctx context.Context, userID uint, family string) (*models.UserProviderConfig, error) {
 	var config models.UserProviderConfig
-	if err := r.db.WithContext(ctx).Where("user_id = ? AND family = ? AND is_enabled = ?", userID, family, true).First(&config).Error; err != nil {
+	if err := r.db.WithContext(ctx).
+		Where("user_id = ? AND family = ? AND is_enabled = ?", userID, family, true).
+		Order("updated_at DESC, id DESC").
+		First(&config).Error; err != nil {
 		return nil, err
 	}
 	return &config, nil

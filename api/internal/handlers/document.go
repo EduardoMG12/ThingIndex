@@ -83,6 +83,8 @@ func (h *DocumentHandler) Upload(c *gin.Context) {
 			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_collection_required"), nil)
 		case errors.Is(err, domain.ErrCollectionCategoryConflict):
 			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_collection_category_conflict"), nil)
+		case errors.Is(err, domain.ErrStorageProviderUnavailable):
+			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_storage_provider"), nil)
 		case errors.Is(err, domain.ErrUploadFailed):
 			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "doc.error_upload"), nil)
 		default:

@@ -15,7 +15,6 @@ import (
 
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
-	"thing-index/internal/pkg/provider"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -34,7 +33,7 @@ type documentCatalogUseCase struct {
 	structuredDataRepo    domain.StructuredDataRepository
 	collectionContextRepo domain.CollectionContextRepository
 	storage               domain.StorageService
-	providerUC            domain.ProviderUseCase
+	storageResolver       domain.UserStorageResolver
 	maxUploadSizeBytes    int64
 }
 
@@ -45,7 +44,7 @@ func NewDocumentUseCase(
 	structuredDataRepo domain.StructuredDataRepository,
 	collectionContextRepo domain.CollectionContextRepository,
 	storage domain.StorageService,
-	providerUC domain.ProviderUseCase,
+	storageResolver domain.UserStorageResolver,
 	maxUploadSizeBytes int64,
 ) domain.DocumentCatalogUseCase {
 	return &documentCatalogUseCase{
@@ -55,7 +54,7 @@ func NewDocumentUseCase(
 		structuredDataRepo:    structuredDataRepo,
 		collectionContextRepo: collectionContextRepo,
 		storage:               storage,
-		providerUC:            providerUC,
+		storageResolver:       storageResolver,
 		maxUploadSizeBytes:    maxUploadSizeBytes,
 	}
 }
@@ -384,12 +383,14 @@ func (u *documentCatalogUseCase) UploadDocument(ctx context.Context, userID uint
 	objectName := fmt.Sprintf("%d_%s%s", time.Now().Unix(), uuid.New().String()[:8], extractExtension(resolvedContentType))
 
 	storageClient := u.storage
-	pType, creds, providerErr := u.providerUC.GetFamilyCredentials(ctx, userID, domain.FamilyStorage)
-	if providerErr == nil && pType != "" {
-		userSafeStorage, factorErr := provider.NewStorageProvider(pType, creds)
-		if factorErr == nil {
-			storageClient = userSafeStorage
-		}
+	userStorage, providerErr := u.storageResolver.ResolveStorage(ctx, userID)
+	switch {
+	case providerErr == nil:
+		storageClient = userStorage
+	case errors.Is(providerErr, domain.ErrStorageProviderNotConfigured):
+		// Use the application storage only when the user has not configured a custom storage backend.
+	default:
+		return nil, providerErr
 	}
 
 	fileURL, err := storageClient.UploadFile(ctx, validatedReader, size, resolvedContentType, objectName)

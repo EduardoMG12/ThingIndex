@@ -17,8 +17,8 @@ const (
 	ProviderCloudflare = "CLOUDFLARE_R2"
 
 	// LLM Providers
-	ProviderOpenAI  = "OPENAI"
-	ProviderGemini  = "GOOGLE_GEMINI"
+	ProviderOpenAI   = "OPENAI"
+	ProviderGemini   = "GOOGLE_GEMINI"
 	ProviderDeepSeek = "DEEP_SEEK"
 	ProviderGrok     = "GROK"
 	ProviderClaude   = "CLAUDE"
@@ -35,8 +35,12 @@ type ProviderRepository interface {
 type ProviderUseCase interface {
 	SaveCredentials(ctx context.Context, userID uint, family, providerType string, credentials map[string]string) error
 	GetDecryptedCredentials(ctx context.Context, userID uint, providerType string) (map[string]string, error)
-	GetFamilyCredentials(ctx context.Context, userID uint, family string) (provider string, credentials map[string]string, err error)
 	ListUserProviders(ctx context.Context, userID uint) ([]models.UserProviderConfig, error)
+}
+
+type ProviderService interface {
+	ProviderUseCase
+	UserStorageResolver
 }
 
 type LLMService interface {
