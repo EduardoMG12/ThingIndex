@@ -14,20 +14,24 @@ type Config struct {
 	DBUser      string
 	DBPassword  string
 	DBName      string
-	OpenAIKey   string
+	
 	JWTSecret   string
+	
+	OpenAIKey   string
+	
 	SMTPHost    string
 	SMTPPort    string
 	SMTPUser    string
 	SMTPPass    string
 	SMTPFrom    string
-
+	
 	// Storage config
 	MinioEndpoint  string
 	MinioAccessKey string
 	MinioSecretKey string
 	MinioUseSSL    string
-	MinioBucketName string
+	MinioBucketName     string
+	MasterEncryptionKey string
 }
 
 var AppConfig *Config
@@ -58,6 +62,7 @@ func Load() {
 		MinioSecretKey:  getEnv("MINIO_SECRET_KEY", "minioadmin"),
 		MinioUseSSL:     getEnv("MINIO_USE_SSL", "false"),
 		MinioBucketName: getEnv("MINIO_BUCKET_NAME", "thingindex-docs"),
+		MasterEncryptionKey: getEnv("MASTER_ENCRYPTION_KEY", "0123456789abcdef0123456789abcdef"), // 32 bytes for AES-256
 	}
 }
 

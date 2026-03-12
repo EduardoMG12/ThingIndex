@@ -29,6 +29,7 @@ func Connect() (*gorm.DB, error) {
 		&models.User{},
 		&models.DocumentCategory{},
 		&models.Document{},
+		&models.UserProviderConfig{},
 	)
 	if err != nil {
 		log.Printf("Warning: fail to run automatic migrations: %v\n", err)

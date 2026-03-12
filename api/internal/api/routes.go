@@ -55,6 +55,10 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	authHandler := handlers.NewAuthHandler(authUseCase)
 	docHandler := handlers.NewDocumentHandler(docUseCase)
 
+	providerRepo := repository.NewGormProviderRepository(db)
+	providerUseCase := usecase.NewProviderUseCase(providerRepo, cfg)
+	providerHandler := handlers.NewProviderHandler(providerUseCase)
+
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.GET("/docs", func(c *gin.Context) {
 		html := `
@@ -88,6 +92,14 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 			auth.POST("/login", authHandler.Login)
 			auth.POST("/forgot-password", authHandler.ForgotPassword)
 			auth.POST("/reset-password", authHandler.ResetPassword)
+		}
+
+		// User/Provider Routes
+		user := v1.Group("/user")
+		user.Use(middleware.AuthMiddleware(cfg))
+		{
+			user.POST("/providers", providerHandler.SaveCredentials)
+			user.GET("/providers", providerHandler.ListProviders)
 		}
 
 		documents := v1.Group("/documents")
