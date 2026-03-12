@@ -26,11 +26,14 @@ graph TD
     API -->|Object Storage| MINIO[(MinIO / S3 Adapter)]
     API -->|Auth| JWT[JWT Security]
     API -->|i18n| I18N[Multi-language Messages]
+    API -->|BYOK| BYOK[Bring Your Own Key]
+    BYOK -->|Encryption| AES[AES-256-GCM + User Salt]
     
     subgraph Core Features
     API
     DB
     MINIO
+    BYOK
     end
     
     C[Crawler Go] -.->|Future Ingestion| API
@@ -40,9 +43,14 @@ graph TD
 
 1.  **[API (Go / Gin)](./api)**:
     *   **Architecture**: Clean Architecture with decoupled layers (Domain, UseCase, Repository, Handler).
-    *   **Storage**: Implements the **Adapter Pattern** for object storage. Currently supports **MinIO**, but ready for AWS S3 or GCP Cloud Storage.
+    *   **Storage**: Implements the **Adapter Pattern** for object storage. Currently supports **MinIO**, but ready for AWS S3, GCP, or Cloudflare R2.
     *   **Internationalization (i18n)**: Full support for translated error and success messages (PT/EN).
-    *   **Security**: JWT-based authentication with user-scoped data isolation. Each user manages their own documents and categories.
+    *   **Security**: JWT-based authentication with user-scoped data isolation.
+
+2.  **[BYOK & Security](./api/internal/pkg/crypto/aes.go)**:
+    *   **Bring Your Own Key (BYOK)**: Users can provide their own credentials for storage (S3, Cloudflare) and AI (OpenAI, Gemini, DeepSeek, Grok, Claude).
+    *   **AES-256-GCM + Salting**: Credentials are encrypted at rest. We use a Master Key combined with a unique `UserID` salt (via HMAC-SHA256) to derive a unique encryption key for each user.
+    *   **Priority Fallback**: The system automatically prioritizes user-provided infrastructure. If no user key is found, it falls back to the system's default environment variables.
 
 2.  **[Document Management](./api/internal/handlers/document.go)**:
     *   Handles `multipart/form-data` uploads.
@@ -75,11 +83,14 @@ graph TD
     API -->|Object Storage| MINIO[(MinIO / S3 Adapter)]
     API -->|Auth| JWT[Segurança JWT]
     API -->|i18n| I18N[Mensagens Multi-idioma]
+    API -->|BYOK| BYOK[Bring Your Own Key]
+    BYOK -->|Criptografia| AES[AES-256-GCM + User Salt]
     
     subgraph Core Features
     API
     DB
     MINIO
+    BYOK
     end
 ```
 
@@ -87,9 +98,14 @@ graph TD
 
 1.  **[API (Go / Gin)](./api)**:
     *   **Arquitetura**: Clean Architecture com camadas desacopladas (Domínio, UseCase, Repositório, Handler).
-    *   **Storage**: Implementa o **Adapter Pattern** para armazenamento de objetos. Atualmente utiliza **MinIO**, mas está pronto para AWS S3 ou GCP.
+    *   **Storage**: Implementa o **Adapter Pattern** para armazenamento de objetos. Suporta **MinIO**, AWS S3, GCP e Cloudflare R2.
     *   **Internacionalização (i18n)**: Suporte total para mensagens de erro e sucesso traduzidas (PT/EN).
     *   **Segurança**: Autenticação via JWT com isolamento de dados por usuário.
+
+2.  **[BYOK & Segurança](./api/internal/pkg/crypto/aes.go)**:
+    *   **Bring Your Own Key (BYOK)**: Usuários podem fornecer suas próprias chaves de Storage e de Modelos de Linguagem (OpenAI, Gemini, DeepSeek, Grok, Claude).
+    *   **AES-256-GCM + Salting**: Criptografia de ponta com derivação de chave única por usuário via HMAC-SHA256, garantindo isolamento total.
+    *   **Priority Fallback**: O sistema prioriza infraestrutura do usuário, usando as ENVs do servidor apenas como fallback.
 
 2.  **[Gestão de Documentos](./api/internal/handlers/document.go)**:
     *   Upload via `multipart/form-data`.

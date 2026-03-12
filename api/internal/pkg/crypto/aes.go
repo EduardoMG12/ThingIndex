@@ -3,15 +3,24 @@ package crypto
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 )
 
-// Encrypt encrypts plain text using AES-GCM with the provided master key.
-func Encrypt(plaintext, masterKey string) (string, error) {
-	block, err := aes.NewCipher([]byte(masterKey))
+func DeriveKey(masterKey string, salt string) []byte {
+	h := hmac.New(sha256.New, []byte(masterKey))
+	h.Write([]byte(salt))
+	return h.Sum(nil)
+}
+
+func Encrypt(plaintext, masterKey string, userID uint) (string, error) {
+	key := DeriveKey(masterKey, fmt.Sprintf("user_%d", userID))
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return "", err
 	}
@@ -30,14 +39,14 @@ func Encrypt(plaintext, masterKey string) (string, error) {
 	return base64.StdEncoding.EncodeToString(ciphertext), nil
 }
 
-// Decrypt decrypts base64 encoded cipher text using AES-GCM.
-func Decrypt(cryptoText, masterKey string) (string, error) {
+func Decrypt(cryptoText, masterKey string, userID uint) (string, error) {
 	ciphertext, err := base64.StdEncoding.DecodeString(cryptoText)
 	if err != nil {
 		return "", err
 	}
 
-	block, err := aes.NewCipher([]byte(masterKey))
+	key := DeriveKey(masterKey, fmt.Sprintf("user_%d", userID))
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return "", err
 	}

@@ -26,7 +26,8 @@ func (u *providerUseCase) SaveCredentials(ctx context.Context, userID uint, fami
 	if err != nil {
 		return err
 	}
-	encrypted, err := crypto.Encrypt(string(jsonData), u.cfg.MasterEncryptionKey)
+	// 2. Encrypt the JSON data using the MasterEncryptionKey and UserID (Salting)
+	encrypted, err := crypto.Encrypt(string(jsonData), u.cfg.MasterEncryptionKey, userID)
 	if err != nil {
 		return err
 	}
@@ -47,7 +48,7 @@ func (u *providerUseCase) GetDecryptedCredentials(ctx context.Context, userID ui
 	if err != nil {
 		return nil, err
 	}
-	return u.decryptConfig(config)
+	return u.decryptConfig(config, userID)
 }
 
 func (u *providerUseCase) GetFamilyCredentials(ctx context.Context, userID uint, family string) (string, map[string]string, error) {
@@ -55,15 +56,15 @@ func (u *providerUseCase) GetFamilyCredentials(ctx context.Context, userID uint,
 	if err != nil {
 		return "", nil, err
 	}
-	creds, err := u.decryptConfig(config)
+	creds, err := u.decryptConfig(config, userID)
 	if err != nil {
 		return "", nil, err
 	}
 	return config.ProviderType, creds, nil
 }
 
-func (u *providerUseCase) decryptConfig(config *models.UserProviderConfig) (map[string]string, error) {
-	decrypted, err := crypto.Decrypt(config.EncryptedData, u.cfg.MasterEncryptionKey)
+func (u *providerUseCase) decryptConfig(config *models.UserProviderConfig, userID uint) (map[string]string, error) {
+	decrypted, err := crypto.Decrypt(config.EncryptedData, u.cfg.MasterEncryptionKey, userID)
 	if err != nil {
 		return nil, err
 	}
