@@ -1,5 +1,6 @@
 "use client";
 
+import type { ComponentType } from "react";
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Upload, X, File, FileText, Globe, FileSpreadsheet, FolderOpen, Tag, Hash, ArrowRight } from "lucide-react";
@@ -7,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import CategoryCombobox from "@/components/dashboard/CategoryCombobox";
 
 export type UploadedFile = {
     id: string;
@@ -19,7 +21,7 @@ export type UploadedFile = {
     collection: string;
 };
 
-const FILE_ICONS: Record<string, any> = {
+const FILE_ICONS: Record<string, ComponentType<{ className?: string }>> = {
     "application/pdf": FileText,
     "text/html": Globe,
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": FileSpreadsheet,
@@ -89,10 +91,9 @@ const UploadTab = () => {
                         <Label className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-muted-foreground">
                             <FolderOpen className="h-3 w-3" /> Categoria
                         </Label>
-                        <Input
+                        <CategoryCombobox
                             value={defaultCategory}
-                            onChange={(e) => setDefaultCategory(e.target.value)}
-                            className="h-7 bg-background font-mono text-xs"
+                            onChange={setDefaultCategory}
                         />
                     </div>
                     <div className="space-y-1">
