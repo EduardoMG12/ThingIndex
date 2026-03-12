@@ -17,12 +17,14 @@ type DocumentRepository interface {
 	GetDocumentsByUserID(ctx context.Context, userID uint) ([]models.Document, error)
 	GetDocumentsByCategoryID(ctx context.Context, categoryID uint, userID uint) ([]models.Document, error)
 	ListCollections(ctx context.Context, userID uint) ([]string, error)
+	UpdateDocumentsCategoryByCollection(ctx context.Context, userID uint, collection string, categoryID *uint) (int64, error)
 }
 
 type DocumentUseCase interface {
 	UploadDocument(ctx context.Context, userID uint, title string, file io.Reader, size int64, contentType, categoryName, categoryDescription, collection string) (*models.Document, error)
 	CreateCategory(ctx context.Context, userID uint, name, description string) (*models.DocumentCategory, error)
 	UpdateCategory(ctx context.Context, userID, categoryID uint, name, description *string) (*models.DocumentCategory, error)
+	UpdateCollectionCategory(ctx context.Context, userID uint, collection string, categoryName *string, categoryDescription string) (int64, *models.DocumentCategory, error)
 	ListCategories(ctx context.Context, userID uint) ([]models.DocumentCategory, error)
 	ListDocuments(ctx context.Context, userID uint) ([]models.Document, error)
 	ListDocumentsByCategory(ctx context.Context, categoryID uint, userID uint) ([]models.Document, error)

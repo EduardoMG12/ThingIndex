@@ -107,6 +107,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 			documents.POST("/categories", docHandler.CreateCategory)
 			documents.GET("/categories", docHandler.ListCategories)
 			documents.GET("/collections", docHandler.ListCollections)
+			documents.PATCH("/collections/:collection/category", docHandler.UpdateCollectionCategory)
 			documents.PATCH("/categories/:id", docHandler.UpdateCategory)
 			documents.GET("/", docHandler.ListDocuments)
 			documents.GET("/category/:id", docHandler.ListDocumentsByCategory)

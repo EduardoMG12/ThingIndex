@@ -180,6 +180,45 @@ func (h *DocumentHandler) UpdateCategory(c *gin.Context) {
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_category_update"), category)
 }
 
+func (h *DocumentHandler) UpdateCollectionCategory(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+	collection := c.Param("collection")
+
+	var req dto.UpdateCollectionCategoryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
+		return
+	}
+
+	rowsAffected, category, err := h.useCase.UpdateCollectionCategory(
+		c.Request.Context(),
+		userID,
+		collection,
+		req.Category,
+		i18n.T(lang, "doc.auto_category_desc"),
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrCollectionRequired):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_collection_required"), nil)
+			return
+		case errors.Is(err, domain.ErrCollectionNotFound):
+			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_collection_not_found"), nil)
+			return
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+			return
+		}
+	}
+
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_collection_category_update"), gin.H{
+		"collection":        strings.TrimSpace(collection),
+		"category":          category,
+		"updated_documents": rowsAffected,
+	})
+}
+
 func (h *DocumentHandler) ListDocuments(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")

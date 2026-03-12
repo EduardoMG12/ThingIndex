@@ -83,3 +83,13 @@ func (r *GormDocumentRepository) ListCollections(ctx context.Context, userID uin
 
 	return collections, nil
 }
+
+func (r *GormDocumentRepository) UpdateDocumentsCategoryByCollection(ctx context.Context, userID uint, collection string, categoryID *uint) (int64, error) {
+	normalizedCollection := strings.TrimSpace(strings.ToLower(collection))
+	result := r.db.WithContext(ctx).
+		Model(&models.Document{}).
+		Where("user_id = ? AND LOWER(TRIM(collection)) = ?", userID, normalizedCollection).
+		Update("category_id", categoryID)
+
+	return result.RowsAffected, result.Error
+}

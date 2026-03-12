@@ -96,6 +96,53 @@ func (u *documentUseCase) UpdateCategory(ctx context.Context, userID, categoryID
 	return category, nil
 }
 
+func (u *documentUseCase) UpdateCollectionCategory(ctx context.Context, userID uint, collection string, categoryName *string, categoryDescription string) (int64, *models.DocumentCategory, error) {
+	normalizedCollection := strings.TrimSpace(collection)
+	if normalizedCollection == "" {
+		return 0, nil, domain.ErrCollectionRequired
+	}
+
+	var category *models.DocumentCategory
+	if categoryName != nil {
+		normalizedCategoryName := normalizeCategoryName(*categoryName)
+
+		if normalizedCategoryName != "" {
+			existingCategory, err := u.repo.GetCategoryByName(ctx, normalizedCategoryName, userID)
+			if err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					category = &models.DocumentCategory{
+						UserID:      userID,
+						Name:        normalizedCategoryName,
+						Description: strings.TrimSpace(categoryDescription),
+					}
+					if err := u.repo.CreateCategory(ctx, category); err != nil {
+						return 0, nil, fmt.Errorf("%w: %v", domain.ErrCategoryCreate, err)
+					}
+				} else {
+					return 0, nil, fmt.Errorf("%w: %v", domain.ErrCategoryFind, err)
+				}
+			} else {
+				category = existingCategory
+			}
+		}
+	}
+
+	var categoryID *uint
+	if category != nil {
+		categoryID = &category.ID
+	}
+
+	rowsAffected, err := u.repo.UpdateDocumentsCategoryByCollection(ctx, userID, normalizedCollection, categoryID)
+	if err != nil {
+		return 0, nil, fmt.Errorf("%w: %v", domain.ErrCategoryUpdate, err)
+	}
+	if rowsAffected == 0 {
+		return 0, nil, domain.ErrCollectionNotFound
+	}
+
+	return rowsAffected, category, nil
+}
+
 func (u *documentUseCase) UploadDocument(ctx context.Context, userID uint, title string, file io.Reader, size int64, contentType, categoryName, categoryDescription, collection string) (*models.Document, error) {
 	categoryName = normalizeCategoryName(categoryName)
 	var category *models.DocumentCategory
