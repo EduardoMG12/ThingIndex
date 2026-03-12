@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"thing-index/internal/api/middleware"
 	"thing-index/internal/config"
@@ -20,7 +21,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
+func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 	router.Use(middleware.I18nMiddleware())
 
 	router.Use(cors.New(cors.Config{
@@ -39,7 +40,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 		cfg.MinioUseSSL == "true",
 	)
 	if err != nil {
-		panic("Failed to initialize MinIO Storage: " + err.Error())
+		return fmt.Errorf("failed to initialize minio storage: %w", err)
 	}
 
 	authRepo := repository.NewGormAuthRepository(db)
@@ -132,4 +133,6 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 			documents.GET("/", docHandler.ListDocuments)
 		}
 	}
+
+	return nil
 }

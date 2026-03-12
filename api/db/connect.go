@@ -2,7 +2,6 @@ package db
 
 import (
 	"fmt"
-	"log"
 
 	"thing-index/internal/config"
 	"thing-index/internal/models"
@@ -12,12 +11,13 @@ import (
 )
 
 func Connect() (*gorm.DB, error) {
-	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		config.AppConfig.DBHost,
 		config.AppConfig.DBPort,
 		config.AppConfig.DBUser,
 		config.AppConfig.DBPassword,
 		config.AppConfig.DBName,
+		config.AppConfig.DBSSLMode,
 	)
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
@@ -36,11 +36,11 @@ func Connect() (*gorm.DB, error) {
 		&models.UserProviderConfig{},
 	)
 	if err != nil {
-		log.Printf("Warning: fail to run automatic migrations: %v\n", err)
+		return nil, fmt.Errorf("fail to run automatic migrations: %w", err)
 	}
 
 	if err := ensureDocumentCatalog(db); err != nil {
-		log.Printf("Warning: fail to backfill document catalog: %v\n", err)
+		return nil, fmt.Errorf("fail to backfill document catalog: %w", err)
 	}
 
 	return db, nil

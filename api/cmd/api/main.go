@@ -27,23 +27,27 @@ import (
 
 func main() {
 	config.Load()
+	if err := config.AppConfig.Validate(); err != nil {
+		log.Fatalf("Invalid application configuration: %v", err)
+	}
 
 	log.Println("Starting server on port " + config.AppConfig.Port + "...")
 
 	database, err := db.Connect()
 	if err != nil {
-		log.Printf("Warning: Fail to connect to database, continuing without DB... %v\n", err)
-	} else {
-		log.Println("Connected to PostgreSQL successfully!")
-		sqlDB, err := database.DB()
-		if err == nil {
-			defer sqlDB.Close()
-		}
+		log.Fatalf("Failed to connect to PostgreSQL: %v", err)
+	}
+
+	log.Println("Connected to PostgreSQL successfully!")
+	sqlDB, err := database.DB()
+	if err == nil {
+		defer sqlDB.Close()
 	}
 
 	router := gin.Default()
-	
-	api.SetupRoutes(router, database, config.AppConfig)
+	if err := api.SetupRoutes(router, database, config.AppConfig); err != nil {
+		log.Fatalf("Failed to setup routes: %v", err)
+	}
 
 	if err := router.Run(":" + config.AppConfig.Port); err != nil {
 		log.Fatalf("Error starting server: %v", err)
