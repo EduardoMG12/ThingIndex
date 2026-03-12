@@ -71,7 +71,7 @@ export default function UploadFileList({ files, onRemove, isProcessing }: Upload
                                     <FolderOpen className="h-2.5 w-2.5" /> {file.category || "Sem categoria"}
                                 </span>
                                 <span className="flex items-center gap-1 text-[9px] bg-muted px-2 py-0.5 rounded border border-border text-muted-foreground font-mono">
-                                    <Hash className="h-2.5 w-2.5" /> {file.collection || "Sem collection"}
+                                    <Hash className="h-2.5 w-2.5" /> {file.collection || "Collection obrigatoria"}
                                 </span>
                             </div>
                             {file.error && (

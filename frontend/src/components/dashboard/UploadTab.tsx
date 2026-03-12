@@ -16,8 +16,14 @@ const UploadTab = () => {
     const [defaultCategory, setDefaultCategory] = useState("");
     const [defaultCollection, setDefaultCollection] = useState("");
     const { files, isProcessing, addFiles, removeFile, processQueue } = useDocumentUpload();
+    const hasFilesWithoutCollection = files.some((file) => !file.collection.trim());
 
     const onDrop = (accepted: File[]) => {
+        if (!defaultCollection.trim()) {
+            toast.error("Informe uma collection antes de adicionar arquivos.");
+            return;
+        }
+
         addFiles(accepted, {
             category: defaultCategory,
             collection: defaultCollection,
@@ -35,6 +41,11 @@ const UploadTab = () => {
     });
 
     const handleProcessAll = async () => {
+        if (hasFilesWithoutCollection) {
+            toast.error("Todos os arquivos precisam de uma collection antes do envio.");
+            return;
+        }
+
         await processQueue({
             onFileError: (file, error) => {
                 toast.error(`${file.name}: ${error.message}`);
@@ -55,10 +66,10 @@ const UploadTab = () => {
                     </div>
                     <div className="space-y-1">
                         <Label className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-muted-foreground">
-                            <Tag className="h-3 w-3" /> Collection
+                            <Tag className="h-3 w-3" /> Collection *
                         </Label>
                         <CollectionCombobox value={defaultCollection} onChange={setDefaultCollection} />
-                        <p className="text-[10px] text-muted-foreground">Opcional. A collection centraliza o contexto relacional entre arquivos.</p>
+                        <p className="text-[10px] text-muted-foreground">Obrigatoria. A collection centraliza o contexto relacional entre arquivos.</p>
                     </div>
                 </div>
             </div>
@@ -74,7 +85,7 @@ const UploadTab = () => {
                 <UploadFileList files={files} isProcessing={isProcessing} onRemove={removeFile} />
 
                 {files.length > 0 && (
-                    <Button onClick={handleProcessAll} disabled={isProcessing} className="w-full gap-2">
+                    <Button onClick={handleProcessAll} disabled={isProcessing || hasFilesWithoutCollection} className="w-full gap-2">
                         {isProcessing ? (
                             <ArrowRight className="h-4 w-4 animate-pulse" />
                         ) : (
@@ -82,6 +93,11 @@ const UploadTab = () => {
                         )}
                         {isProcessing ? "Enviando arquivos..." : `Enviar ${files.length} documento${files.length > 1 ? "s" : ""}`}
                     </Button>
+                )}
+                {files.length > 0 && hasFilesWithoutCollection && (
+                    <p className="text-[10px] text-destructive">
+                        Defina uma collection para todos os arquivos antes de enviar.
+                    </p>
                 )}
             </div>
         </div>
