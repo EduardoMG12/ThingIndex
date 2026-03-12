@@ -18,49 +18,46 @@
 The **ThingIndex** project aims to build a structured knowledge graph of Brazilian federal legislation (Planalto.gov.br). The central objective is to create a rich, graph-based data structure to enhance **Retrieval-Augmented Generation (RAG)** systems, overcoming the limitations of traditional vector-based search in legal contexts.
 
 ## 🏛️ Architecture
-The system is composed of three modular components designed for scalability and precision:
+The system is composed of modular components designed for scalability, precision, and privacy:
 
 ```mermaid
-graph LR
-    API[FastAPI Gateway] -->|Task Request| Rabbit[RabbitMQ Queue]
-    Rabbit -->|Deliver Task| C[Go Crawler]
-    C -->|Raw HTML/PDF| LP[Legal Parser]
-    LP -->|Structured JSON| GP[Graph Populator]
-    GP -->|Nodes & Edges| DB[(Neo4j Graph)]
+graph TD
+    API[Go API - Gin] -->|Metadata| DB[(PostgreSQL)]
+    API -->|Object Storage| MINIO[(MinIO / S3 Adapter)]
+    API -->|Auth| JWT[JWT Security]
+    API -->|i18n| I18N[Multi-language Messages]
     
-    subgraph Data Flow
+    subgraph Core Features
     API
-    C
-    LP
-    GP
+    DB
+    MINIO
     end
+    
+    C[Crawler Go] -.->|Future Ingestion| API
 ```
 
 ## 🧩 Components
 
-1.  **[API (FastAPI)](./api)**:
-    - Provides a modern REST gateway and interactive Swagger/Scalar docs.
-    - Triggers the crawler asynchronously via messages.
+1.  **[API (Go / Gin)](./api)**:
+    *   **Architecture**: Clean Architecture with decoupled layers (Domain, UseCase, Repository, Handler).
+    *   **Storage**: Implements the **Adapter Pattern** for object storage. Currently supports **MinIO**, but ready for AWS S3 or GCP Cloud Storage.
+    *   **Internationalization (i18n)**: Full support for translated error and success messages (PT/EN).
+    *   **Security**: JWT-based authentication with user-scoped data isolation. Each user manages their own documents and categories.
 
-2.  **[Crawler (Go)](./crawler)**:
-    - Responsible for traversing the Planalto.gov.br portal.
-    - Captures the delicate hierarchical context of hyperlinks (e.g., preserving that a link originates specifically from "Art. 2, § 3").
-    - Archives raw HTML and PDF content with comprehensive metadata.
+2.  **[Document Management](./api/internal/handlers/document.go)**:
+    *   Handles `multipart/form-data` uploads.
+    *   Automatic and manual categorization.
+    *   Metadata tracking (size, type, status) ready for graph mapping.
 
-3.  **[Legal-Parser](./legal-parser)**:
-    - A specialized parser that converts raw legal text into structured JSON objects.
-    - Algorithms designed to extract deep hierarchy (Article, Paragraph, Inciso, Alínea).
-    - Outputs standardized data ready for graph ingestion.
-
-4.  **[Graph-Populator](./graph-populator)**:
-    - The ingestion engine for the Neo4j database.
-    - Models the complex web of Brazilian legislation into nodes (`Law`, `Article`) and relationships (`:CONTEM`).
-    - Ensures data integrity and idempotent execution.
+3.  **[Crawler (Go)](./crawler)**:
+    *   Responsible for traversing the Planalto.gov.br portal.
+    *   Captures the delicate hierarchical context of hyperlinks.
+    *   Archives raw content with comprehensive metadata.
 
 ## 🚀 Key Contributions
-- **Hierarchical Context Tracking**: Solves the "lost context" problem in legal RAG by preserving the exact provenance of every text segment.
-- **Canonical Identification**: Implements a robust ID system (e.g., `lei-federal-8078-1990`) to ensure uniqueness across the graph.
-- **Graph-Native Design**: Architected specifically to leverage the traversal capabilities of Neo4j for complex legal queries.
+- **Decoupled Object Storage**: Swap storage providers without touching business logic.
+- **Privacy-First**: Rigorous UserID scoping for all legal documents and categories.
+- **Graph-Ready**: Models architected to be transformed into Neo4j nodes (`Law`, `Article`) and relationships (`:CONTEM`).
 </details>
 
 <details>
@@ -70,46 +67,42 @@ graph LR
 O projeto **ThingIndex** tem como objetivo construir um grafo de conhecimento estruturado da legislação federal brasileira (Planalto.gov.br). O central da ideia é criar uma estrutura de dados baseada em grafos rica, aprimorando sistemas de **RAG (Retrieval-Augmented Generation)** e superando as limitações da busca vetorial tradicional em contextos jurídicos precisos.
 
 ## 🏛️ Arquitetura
-O sistema é composto de módulos independentes projetados para escala e precisão:
+O sistema é composto de módulos independentes projetados para escala, precisão e privacidade:
 
 ```mermaid
-graph LR
-    API[FastAPI Gateway] -->|Task Request| Rabbit[Fila RabbitMQ]
-    Rabbit -->|Deliver Task| C[Go Crawler]
-    C -->|HTML/PDF Bruto| LP[Legal Parser]
-    LP -->|JSON Estruturado| GP[Graph Populator]
-    GP -->|Nós e Arestas| DB[(Neo4j Grafo)]
+graph TD
+    API[Go API - Gin] -->|Metadados| DB[(PostgreSQL)]
+    API -->|Object Storage| MINIO[(MinIO / S3 Adapter)]
+    API -->|Auth| JWT[Segurança JWT]
+    API -->|i18n| I18N[Mensagens Multi-idioma]
     
-    subgraph Fluxo de Dados
+    subgraph Core Features
     API
-    C
-    LP
-    GP
+    DB
+    MINIO
     end
 ```
 
 ## 🧩 Componentes e Ferramentas
 
-1.  **[API (FastAPI Python)](./api)**:
-    - Um gateway REST moderno fornecendo a documentação interativa (Scalar).
-    - Dispara as tarefas de navegação pela mensageria (RabbitMQ).
+1.  **[API (Go / Gin)](./api)**:
+    *   **Arquitetura**: Clean Architecture com camadas desacopladas (Domínio, UseCase, Repositório, Handler).
+    *   **Storage**: Implementa o **Adapter Pattern** para armazenamento de objetos. Atualmente utiliza **MinIO**, mas está pronto para AWS S3 ou GCP.
+    *   **Internacionalização (i18n)**: Suporte total para mensagens de erro e sucesso traduzidas (PT/EN).
+    *   **Segurança**: Autenticação via JWT com isolamento de dados por usuário.
 
-2.  **[Crawler (Golang)](./crawler)**:
-    - Fica ouvindo na fila as missões de navegação do Planalto.gov.br.
-    - Tem controle rigoroso de contexto: lembra exatamente que um link foi originado do "Art. 2º, § 3º".
-    - Salva HTML/PDF e rastreia os relacionamentos.
+2.  **[Gestão de Documentos](./api/internal/handlers/document.go)**:
+    *   Upload via `multipart/form-data`.
+    *   Categorização automática e manual.
+    *   Rastreamento de metadados prontos para o mapeamento em grafos.
 
-3.  **[Legal-Parser](./legal-parser)**:
-    - Módulo que converte texto legal bruto para objetos JSON bem consolidados.
-    - Possui algoritmos de extração profunda da hierarquia brasileira (Títulos, Capítulos, Seções, Artigos, Parágrafos).
-
-4.  **[Graph-Populator](./graph-populator)**:
-    - O motor de ingestão no banco de dados **Neo4j**.
-    - Transforma as leis estruturadas em Nós (`Lei`, `Artigo`) e relacionamentos de grafos.
+3.  **[Crawler (Golang)](./crawler)**:
+    *   Navegação inteligente pelo portal Planalto.gov.br.
+    *   Controle de contexto: sabe exatamente de qual Artigo/Parágrafo um link foi originado.
 
 ## 🚀 Principais Contribuições
-- **Rastreamento e Árvore de Contexto**: Resolve o problema de fragmentação em RAG injetando de qual Artigo aquele texto derivou.
-- **Identificadores Canônicos Estritos**: Fornece UUIDs contextuais consistentes (Ex: `lei-federal-8078-1990`).
-- **Arquitetura Orientada a Grafos**: Permite a travessia veloz nas malhas da teia jurídica brasileira.
+- **Storage Desacoplado**: Troque o provedor de nuvem sem alterar uma linha de lógica de negócio.
+- **Privacidade**: Scoping rigoroso por `UserID` para todos os documentos e categorias.
+- **Pronto para Grafos**: Modelos pensados para serem transformados em Nós (`Lei`, `Artigo`) e relacionamentos no Neo4j.
 </details>
 
