@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 
-const API_URL = process.env.API_INTERNAL_URL || "http://tcc-api:8000/api/v1";
+const API_URL = process.env.API_INTERNAL_URL || "http://api:8080/api/v1";
 
 export async function login(formData: FormData) {
   const email = formData.get("email");

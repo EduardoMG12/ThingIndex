@@ -20,8 +20,9 @@ function normalizeCategoryName(value: string) {
 export default function CategoryCombobox({ value, onChange, className }: CategoryComboboxProps) {
     const [query, setQuery] = useState(value);
     const [isOpen, setIsOpen] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
     const rootRef = useRef<HTMLDivElement | null>(null);
-    const { categories, isLoading, error, addCategoryOption } = useCategories();
+    const { categories, isLoading, error, createAndStoreCategory } = useCategories();
 
     useEffect(() => {
         setQuery(value);
@@ -72,7 +73,7 @@ export default function CategoryCombobox({ value, onChange, className }: Categor
 
     const canCreate = query.trim().length > 0 && !hasExactMatch;
 
-    const commitCategory = (nextValue: string, isNew = false) => {
+    const commitCategory = (nextValue: string) => {
         const trimmedValue = nextValue.trim();
 
         if (!trimmedValue) {
@@ -82,13 +83,28 @@ export default function CategoryCombobox({ value, onChange, className }: Categor
             return;
         }
 
-        if (isNew) {
-            addCategoryOption(trimmedValue);
-        }
-
         onChange(trimmedValue);
         setQuery(trimmedValue);
         setIsOpen(false);
+    };
+
+    const handleCreateCategory = async () => {
+        const trimmedValue = query.trim();
+
+        if (!trimmedValue || isCreating) {
+            return;
+        }
+
+        try {
+            setIsCreating(true);
+            const category = await createAndStoreCategory(trimmedValue);
+            commitCategory(category.name);
+            toast.success("Categoria criada com sucesso.");
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Nao foi possivel criar a categoria.");
+        } finally {
+            setIsCreating(false);
+        }
     };
 
     return (
@@ -101,7 +117,11 @@ export default function CategoryCombobox({ value, onChange, className }: Categor
                     setIsOpen(true);
                 }}
                 onFocus={() => setIsOpen(true)}
-                onBlur={() => commitCategory(query, canCreate)}
+                onBlur={() => {
+                    if (!canCreate) {
+                        commitCategory(query);
+                    }
+                }}
                 onKeyDown={(event) => {
                     if (event.key === "Enter") {
                         event.preventDefault();
@@ -112,7 +132,7 @@ export default function CategoryCombobox({ value, onChange, className }: Categor
                         }
 
                         if (canCreate) {
-                            commitCategory(query, true);
+                            void handleCreateCategory();
                         }
                     }
 
@@ -127,10 +147,10 @@ export default function CategoryCombobox({ value, onChange, className }: Categor
             {isOpen && (
                 <div className="absolute left-0 right-0 top-[calc(100%+0.35rem)] z-30 overflow-hidden rounded-md border border-border bg-background shadow-xl">
                     <div className="max-h-64 overflow-y-auto p-1">
-                        {isLoading && (
+                        {(isLoading || isCreating) && (
                             <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground">
                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                Carregando categorias...
+                                {isCreating ? "Criando categoria..." : "Carregando categorias..."}
                             </div>
                         )}
 
@@ -157,11 +177,12 @@ export default function CategoryCombobox({ value, onChange, className }: Categor
                         {!isLoading && canCreate && (
                             <button
                                 type="button"
+                                disabled={isCreating}
                                 onMouseDown={(event) => event.preventDefault()}
-                                onClick={() => commitCategory(query, true)}
-                                className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-xs text-primary transition-colors hover:bg-primary/5"
+                                onClick={() => void handleCreateCategory()}
+                                className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-xs text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                                <Plus className="h-3.5 w-3.5" />
+                                {isCreating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
                                 Criar categoria &quot;{query.trim()}&quot;
                             </button>
                         )}
@@ -174,7 +195,7 @@ export default function CategoryCombobox({ value, onChange, className }: Categor
                     </div>
 
                     <div className="border-t border-border bg-muted/20 px-3 py-2 text-[10px] text-muted-foreground">
-                        Categorias novas serao persistidas quando o documento for enviado.
+                        Ao criar, o frontend envia a requisicao imediatamente para o backend.
                     </div>
                 </div>
             )}

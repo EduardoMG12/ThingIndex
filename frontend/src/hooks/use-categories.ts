@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchCategories, type Category } from "@/lib/api/categories";
+import { createCategory, fetchCategories, type Category } from "@/lib/api/categories";
 
 export function useCategories() {
     const [categories, setCategories] = useState<Category[]>([]);
@@ -36,40 +36,32 @@ export function useCategories() {
         return () => controller.abort();
     }, []);
 
-    const addCategoryOption = (name: string) => {
-        const trimmedName = name.trim();
-
-        if (!trimmedName) {
-            return;
-        }
-
+    const mergeCategory = (category: Category) => {
         setCategories((current) => {
             const alreadyExists = current.some(
-                (category) => category.name.trim().toLowerCase() === trimmedName.toLowerCase()
+                (item) => item.name.trim().toLowerCase() === category.name.trim().toLowerCase()
             );
 
             if (alreadyExists) {
-                return current;
+                return current.map((item) =>
+                    item.name.trim().toLowerCase() === category.name.trim().toLowerCase() ? category : item
+                );
             }
 
-            return [
-                {
-                    id: -Date.now(),
-                    user_id: 0,
-                    name: trimmedName,
-                    description: "Categoria criada localmente e persistida no upload.",
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                },
-                ...current,
-            ];
+            return [category, ...current];
         });
+    };
+
+    const createAndStoreCategory = async (name: string) => {
+        const category = await createCategory(name.trim());
+        mergeCategory(category);
+        return category;
     };
 
     return {
         categories,
         isLoading,
         error,
-        addCategoryOption,
+        createAndStoreCategory,
     };
 }
