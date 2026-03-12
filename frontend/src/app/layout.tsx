@@ -10,8 +10,8 @@ const outfit = Outfit({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
-    default: "LegisGraph — Grafo de Conhecimento Jurídico com IA",
-    template: "%s | LegisGraph",
+    default: "ThingIndex — Grafo de Conhecimento Jurídico com IA",
+    template: "%s | ThingIndex",
   },
   description:
     "Plataforma de GraphRAG que constrói automaticamente um grafo de conhecimento jurídico a partir de legislação brasileira, permitindo consultas semânticas com IA.",
@@ -23,10 +23,10 @@ export const metadata: Metadata = {
     "NLP jurídico",
     "Neo4j",
     "direito digital",
-    "LegisGraph",
+    "ThingIndex",
   ],
-  authors: [{ name: "LegisGraph Team" }],
-  creator: "LegisGraph",
+  authors: [{ name: "ThingIndex Team" }],
+  creator: "ThingIndex",
   robots: {
     index: true,
     follow: true,
@@ -34,14 +34,14 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "pt_BR",
-    siteName: "LegisGraph",
-    title: "LegisGraph — Grafo de Conhecimento Jurídico com IA",
+    siteName: "ThingIndex",
+    title: "ThingIndex — Grafo de Conhecimento Jurídico com IA",
     description:
       "Construa grafos de conhecimento a partir de legislação brasileira e extraia insights com inteligência artificial.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "LegisGraph — Grafo de Conhecimento Jurídico com IA",
+    title: "ThingIndex — Grafo de Conhecimento Jurídico com IA",
     description:
       "Construa grafos de conhecimento a partir de legislação brasileira e extraia insights com inteligência artificial.",
   },

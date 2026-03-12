@@ -3,7 +3,7 @@
 </div>
 
 <div align="center">
-  <h1>LegisGraph: Knowledge Graph for Brazilian Legislation</h1>
+  <h1>ThingIndex: Knowledge Graph for Brazilian Legislation</h1>
   <p><b>Course / Curso:</b> Sistemas de Informação</p>
   <p><b>Author / Autor:</b> Charles Eduardo Mello Guimarães</p>
   <p><b>Trabalho de Conclusão de Curso (TCC)</b></p>
@@ -15,7 +15,7 @@
 <summary>🇺🇸 <b>English Version / Versão em Inglês</b></summary>
 
 ## 🎯 Abstract
-The **LegisGraph** project aims to build a structured knowledge graph of Brazilian federal legislation (Planalto.gov.br). The central objective is to create a rich, graph-based data structure to enhance **Retrieval-Augmented Generation (RAG)** systems, overcoming the limitations of traditional vector-based search in legal contexts.
+The **ThingIndex** project aims to build a structured knowledge graph of Brazilian federal legislation (Planalto.gov.br). The central objective is to create a rich, graph-based data structure to enhance **Retrieval-Augmented Generation (RAG)** systems, overcoming the limitations of traditional vector-based search in legal contexts.
 
 ## 🏛️ Architecture
 The system is composed of three modular components designed for scalability and precision:
@@ -67,7 +67,7 @@ graph LR
 <summary>🇧🇷 <b>Portuguese Version / Versão em Português</b></summary>
 
 ## 🎯 Resumo
-O projeto **LegisGraph** tem como objetivo construir um grafo de conhecimento estruturado da legislação federal brasileira (Planalto.gov.br). O central da ideia é criar uma estrutura de dados baseada em grafos rica, aprimorando sistemas de **RAG (Retrieval-Augmented Generation)** e superando as limitações da busca vetorial tradicional em contextos jurídicos precisos.
+O projeto **ThingIndex** tem como objetivo construir um grafo de conhecimento estruturado da legislação federal brasileira (Planalto.gov.br). O central da ideia é criar uma estrutura de dados baseada em grafos rica, aprimorando sistemas de **RAG (Retrieval-Augmented Generation)** e superando as limitações da busca vetorial tradicional em contextos jurídicos precisos.
 
 ## 🏛️ Arquitetura
 O sistema é composto de módulos independentes projetados para escala e precisão:
