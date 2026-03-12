@@ -20,7 +20,7 @@ func Connect() (*gorm.DB, error) {
 		config.AppConfig.DBSSLMode,
 	)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{TranslateError: true})
 	if err != nil {
 		return nil, fmt.Errorf("fail to connect to database: %w", err)
 	}

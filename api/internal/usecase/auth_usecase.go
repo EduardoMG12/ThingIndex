@@ -2,16 +2,27 @@ package usecase
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"errors"
-	"fmt"
+	"strings"
+	"time"
+
 	"thing-index/internal/config"
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
-	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
+
+type authClaims struct {
+	UserID uint `json:"user_id"`
+	jwt.RegisteredClaims
+}
 
 type authUseCase struct {
 	repo   domain.AuthRepository
@@ -34,82 +45,70 @@ func (u *authUseCase) Register(ctx context.Context, name, email, password string
 	}
 
 	user := &models.User{
-		Name:     name,
-		Email:    email,
+		Name:     strings.TrimSpace(name),
+		Email:    normalizeEmail(email),
 		Password: string(hashedPassword),
 	}
 
 	if err := u.repo.CreateUser(ctx, user); err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			return "", domain.ErrUserExists
+		}
 		return "", err
 	}
 
-	// Generate JWT after registration
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": user.ID,
-		"exp":     time.Now().Add(time.Hour * 24).Unix(),
-	})
-
-	tokenString, err := token.SignedString([]byte(u.cfg.JWTSecret))
-	if err != nil {
-		return "", err
-	}
-
-	return tokenString, nil
+	return u.issueToken(user.ID)
 }
 
 func (u *authUseCase) Login(ctx context.Context, email, password string) (string, error) {
-	user, err := u.repo.GetUserByEmail(ctx, email)
+	user, err := u.repo.GetUserByEmail(ctx, normalizeEmail(email))
 	if err != nil {
-		return "", errors.New("invalid credentials")
+		return "", domain.ErrInvalidCredentials
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
-	if err != nil {
-		return "", errors.New("invalid credentials")
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		return "", domain.ErrInvalidCredentials
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": user.ID,
-		"exp":     time.Now().Add(time.Hour * 24).Unix(),
-	})
-
-	tokenString, err := token.SignedString([]byte(u.cfg.JWTSecret))
-	if err != nil {
-		return "", err
-	}
-
-	return tokenString, nil
+	return u.issueToken(user.ID)
 }
 
 func (u *authUseCase) ForgotPassword(ctx context.Context, email string) error {
-	user, err := u.repo.GetUserByEmail(ctx, email)
+	user, err := u.repo.GetUserByEmail(ctx, normalizeEmail(email))
 	if err != nil {
-		// We don't want to reveal if a user exists or not for security
-		return nil
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return err
 	}
 
-	// Simple token generation for demo purposes
-	token := fmt.Sprintf("%d", time.Now().UnixNano())
-	expiresAt := time.Now().Add(time.Hour)
+	rawToken, tokenHash, err := generateResetToken()
+	if err != nil {
+		return err
+	}
 
-	user.ResetToken = token
+	expiresAt := time.Now().Add(time.Hour)
+	user.ResetToken = tokenHash
 	user.ResetTokenExpiresAt = &expiresAt
 
 	if err := u.repo.UpdateUser(ctx, user); err != nil {
 		return err
 	}
 
-	return u.mailer.SendResetPasswordEmail(user.Email, token)
+	return u.mailer.SendResetPasswordEmail(user.Email, rawToken)
 }
 
 func (u *authUseCase) ResetPassword(ctx context.Context, token, newPassword string) error {
-	user, err := u.repo.GetUserByResetToken(ctx, token)
+	user, err := u.repo.GetUserByResetTokenHash(ctx, hashResetToken(token))
 	if err != nil {
-		return errors.New("invalid or expired token")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return domain.ErrResetTokenInvalid
+		}
+		return err
 	}
 
 	if user.ResetTokenExpiresAt == nil || user.ResetTokenExpiresAt.Before(time.Now()) {
-		return errors.New("token expired")
+		return domain.ErrResetTokenExpired
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
@@ -122,4 +121,37 @@ func (u *authUseCase) ResetPassword(ctx context.Context, token, newPassword stri
 	user.ResetTokenExpiresAt = nil
 
 	return u.repo.UpdateUser(ctx, user)
+}
+
+func (u *authUseCase) issueToken(userID uint) (string, error) {
+	now := time.Now()
+	claims := authClaims{
+		UserID: userID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(now),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(u.cfg.JWTSecret))
+}
+
+func normalizeEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
+}
+
+func generateResetToken() (string, string, error) {
+	randomBytes := make([]byte, 32)
+	if _, err := rand.Read(randomBytes); err != nil {
+		return "", "", err
+	}
+
+	rawToken := base64.RawURLEncoding.EncodeToString(randomBytes)
+	return rawToken, hashResetToken(rawToken), nil
+}
+
+func hashResetToken(token string) string {
+	sum := sha256.Sum256([]byte(strings.TrimSpace(token)))
+	return hex.EncodeToString(sum[:])
 }

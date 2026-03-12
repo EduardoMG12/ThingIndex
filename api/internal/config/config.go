@@ -24,11 +24,12 @@ type Config struct {
 
 	OpenAIKey string
 
-	SMTPHost string
-	SMTPPort string
-	SMTPUser string
-	SMTPPass string
-	SMTPFrom string
+	SMTPHost         string
+	SMTPPort         string
+	SMTPUser         string
+	SMTPPass         string
+	SMTPFrom         string
+	ResetPasswordURL string
 
 	// Storage config
 	MinioEndpoint       string
@@ -77,6 +78,7 @@ func Load() {
 		SMTPUser:            getEnv("SMTP_USER", ""),
 		SMTPPass:            getEnv("SMTP_PASS", ""),
 		SMTPFrom:            getEnv("SMTP_FROM", "no-reply@thingindex.com"),
+		ResetPasswordURL:    getEnv("RESET_PASSWORD_URL", "http://localhost:3000/reset-password"),
 		MinioEndpoint:       getEnv("MINIO_ENDPOINT", "localhost:9000"),
 		MinioAccessKey:      getEnv("MINIO_ACCESS_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMinioKey)),
 		MinioSecretKey:      getEnv("MINIO_SECRET_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMinioSec)),
@@ -113,6 +115,9 @@ func (c *Config) Validate() error {
 	}
 	if strings.TrimSpace(c.DBSSLMode) == "" {
 		missing = append(missing, "DB_SSLMODE")
+	}
+	if strings.TrimSpace(c.ResetPasswordURL) == "" {
+		missing = append(missing, "RESET_PASSWORD_URL")
 	}
 
 	if len(missing) > 0 {

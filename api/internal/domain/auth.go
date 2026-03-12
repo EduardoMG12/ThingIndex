@@ -9,7 +9,7 @@ type AuthRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
 	CreateUser(ctx context.Context, user *models.User) error
 	UpdateUser(ctx context.Context, user *models.User) error
-	GetUserByResetToken(ctx context.Context, token string) (*models.User, error)
+	GetUserByResetTokenHash(ctx context.Context, tokenHash string) (*models.User, error)
 }
 
 type Mailer interface {

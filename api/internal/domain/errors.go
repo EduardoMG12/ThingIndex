@@ -3,6 +3,10 @@ package domain
 import "errors"
 
 var (
+	ErrUserExists                 = errors.New("user already exists")
+	ErrInvalidCredentials         = errors.New("invalid credentials")
+	ErrResetTokenInvalid          = errors.New("invalid reset token")
+	ErrResetTokenExpired          = errors.New("reset token expired")
 	ErrTitleRequired              = errors.New("title is required")
 	ErrFileRequired               = errors.New("file is required")
 	ErrCategoryRequired           = errors.New("category is required")

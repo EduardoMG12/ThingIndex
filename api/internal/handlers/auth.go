@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"thing-index/internal/domain"
 	"thing-index/internal/dto"
@@ -31,25 +32,26 @@ func NewAuthHandler(useCase domain.AuthUseCase) *AuthHandler {
 // @Failure      500      {object}  response.Response "Internal error"
 // @Router       /auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
+	lang := c.GetString("language")
+
 	var req dto.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		lang := c.GetString("language")
 		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
 		return
 	}
 
 	token, err := h.useCase.Register(c.Request.Context(), req.Name, req.Email, req.Password)
 	if err != nil {
-		lang := c.GetString("language")
-		msg := i18n.T(lang, "auth.user_exists")
-		if err.Error() != "user already exists" {
-			msg = i18n.T(lang, "error.internal")
+		switch {
+		case errors.Is(err, domain.ErrUserExists):
+			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "auth.user_exists"), nil)
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
 		}
-		response.Error(c, http.StatusInternalServerError, "error", msg, []string{err.Error()})
 		return
 	}
 
-	response.Success(c, http.StatusCreated, "success", i18n.T(c.GetString("language"), "auth.success_register"), gin.H{"token": token})
+	response.Success(c, http.StatusCreated, "success", i18n.T(lang, "auth.success_register"), gin.H{"token": token})
 }
 
 // Login godoc
@@ -64,20 +66,26 @@ func (h *AuthHandler) Register(c *gin.Context) {
 // @Failure      401      {object}  response.Response "Invalid credentials"
 // @Router       /auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
+	lang := c.GetString("language")
+
 	var req dto.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		lang := c.GetString("language")
 		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
 		return
 	}
 
 	token, err := h.useCase.Login(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
-		response.Error(c, http.StatusUnauthorized, "error", i18n.T(c.GetString("language"), "auth.invalid_creds"), []string{err.Error()})
+		switch {
+		case errors.Is(err, domain.ErrInvalidCredentials):
+			response.Error(c, http.StatusUnauthorized, "error", i18n.T(lang, "auth.invalid_creds"), nil)
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
+		}
 		return
 	}
 
-	response.Success(c, http.StatusOK, "success", i18n.T(c.GetString("language"), "auth.success_login"), gin.H{"token": token})
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "auth.success_login"), gin.H{"token": token})
 }
 
 // ForgotPassword godoc
@@ -92,24 +100,20 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // @Failure      500      {object}  response.Response "Internal error"
 // @Router       /auth/forgot-password [post]
 func (h *AuthHandler) ForgotPassword(c *gin.Context) {
+	lang := c.GetString("language")
+
 	var req dto.ForgotPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		lang := c.GetString("language")
 		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
 		return
 	}
 
-	lang := c.GetString("language")
 	if err := h.useCase.ForgotPassword(c.Request.Context(), req.Email); err != nil {
-		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), []string{err.Error()})
+		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
 		return
 	}
 
-	msg := "If the email exists, a reset link will be sent"
-	if lang == "pt_BR" {
-		msg = "Se o e-mail existir, um link de recuperação será enviado"
-	}
-	response.Success(c, http.StatusOK, "info", msg, nil)
+	response.Success(c, http.StatusOK, "info", i18n.T(lang, "auth.success_forgot_password"), nil)
 }
 
 // ResetPassword godoc
@@ -123,21 +127,25 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 // @Failure      400      {object}  response.Response "Invalid/Expired token"
 // @Router       /auth/reset-password [post]
 func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	lang := c.GetString("language")
+
 	var req dto.ResetPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		lang := c.GetString("language")
 		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
 		return
 	}
 
 	if err := h.useCase.ResetPassword(c.Request.Context(), req.Token, req.NewPassword); err != nil {
-		response.Error(c, http.StatusBadRequest, "error", err.Error(), []string{err.Error()})
+		switch {
+		case errors.Is(err, domain.ErrResetTokenInvalid):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "auth.invalid_reset_token"), nil)
+		case errors.Is(err, domain.ErrResetTokenExpired):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "auth.expired_reset_token"), nil)
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
+		}
 		return
 	}
 
-	msg := "Password reset successfully"
-	if c.GetString("language") == "pt_BR" {
-		msg = "Senha redefinida com sucesso"
-	}
-	response.Success(c, http.StatusOK, "success", msg, nil)
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "auth.success_reset_password"), nil)
 }
