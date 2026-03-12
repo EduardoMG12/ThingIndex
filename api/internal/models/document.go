@@ -8,7 +8,8 @@ import (
 
 type DocumentCategory struct {
 	ID          uint           `gorm:"primarykey" json:"id"`
-	Name        string         `gorm:"size:255;unique;not null" json:"name"`
+	UserID      uint           `gorm:"not null" json:"user_id"`
+	Name        string         `gorm:"size:255;uniqueIndex:idx_user_category;not null" json:"name"`
 	Description string         `gorm:"type:text" json:"description"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
@@ -17,6 +18,7 @@ type DocumentCategory struct {
 
 type Document struct {
 	ID         uint           `gorm:"primarykey" json:"id"`
+	UserID     uint           `gorm:"not null" json:"user_id"`
 	Title      string         `gorm:"size:255;not null" json:"title"`
 	FileURL    string         `gorm:"size:512;not null" json:"file_url"`
 	Size       int64          `json:"size"`

@@ -25,11 +25,12 @@ func NewDocumentUseCase(repo domain.DocumentRepository, storage domain.StorageSe
 	}
 }
 
-func (u *documentUseCase) UploadDocument(ctx context.Context, title string, file io.Reader, size int64, contentType, categoryName, categoryDescription string) (*models.Document, error) {
-	category, err := u.repo.GetCategoryByName(ctx, categoryName)
+func (u *documentUseCase) UploadDocument(ctx context.Context, userID uint, title string, file io.Reader, size int64, contentType, categoryName, categoryDescription string) (*models.Document, error) {
+	category, err := u.repo.GetCategoryByName(ctx, categoryName, userID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			category = &models.DocumentCategory{
+				UserID:      userID,
 				Name:        categoryName,
 				Description: categoryDescription,
 			}
@@ -49,6 +50,7 @@ func (u *documentUseCase) UploadDocument(ctx context.Context, title string, file
 	}
 
 	doc := &models.Document{
+		UserID:     userID,
 		Title:      title,
 		FileURL:    fileURL,
 		Size:       size,
@@ -64,6 +66,18 @@ func (u *documentUseCase) UploadDocument(ctx context.Context, title string, file
 	doc.Category = *category
 
 	return doc, nil
+}
+
+func (u *documentUseCase) ListCategories(ctx context.Context, userID uint) ([]models.DocumentCategory, error) {
+	return u.repo.GetCategoriesByUserID(ctx, userID)
+}
+
+func (u *documentUseCase) ListDocuments(ctx context.Context, userID uint) ([]models.Document, error) {
+	return u.repo.GetDocumentsByUserID(ctx, userID)
+}
+
+func (u *documentUseCase) ListDocumentsByCategory(ctx context.Context, categoryID uint, userID uint) ([]models.Document, error) {
+	return u.repo.GetDocumentsByCategoryID(ctx, categoryID, userID)
 }
 
 func extractExtension(contentType string) string {

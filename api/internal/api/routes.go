@@ -33,7 +33,6 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 		AllowCredentials: true,
 	}))
 
-	// --- Storage & Databases ---
 	minioStorage, err := storage.NewMinioStorage(
 		cfg.MinioEndpoint,
 		cfg.MinioAccessKey,
@@ -45,22 +44,17 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 		panic("Failed to initialize MinIO Storage: " + err.Error())
 	}
 
-	// --- Repositories ---
 	authRepo := repository.NewGormAuthRepository(db)
 	docRepo := repository.NewGormDocumentRepository(db)
 
-	// --- Services & Utils ---
 	smtpMailer := mailer.NewSMTPMailer(cfg)
 
-	// --- Use Cases ---
 	authUseCase := usecase.NewAuthUseCase(authRepo, smtpMailer, cfg)
 	docUseCase := usecase.NewDocumentUseCase(docRepo, minioStorage)
 
-	// --- Handlers ---
 	authHandler := handlers.NewAuthHandler(authUseCase)
 	docHandler := handlers.NewDocumentHandler(docUseCase)
 
-	// Scalar API Documentation
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.GET("/docs", func(c *gin.Context) {
 		html := `
@@ -88,7 +82,6 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 			response.Success(c, http.StatusOK, "success", "API Thing-Index no ar! 🚀", nil)
 		})
 
-		// Auth Routes
 		auth := v1.Group("/auth")
 		{
 			auth.POST("/register", authHandler.Register)
@@ -97,11 +90,13 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 			auth.POST("/reset-password", authHandler.ResetPassword)
 		}
 
-		// Document Routes
 		documents := v1.Group("/documents")
+		documents.Use(middleware.AuthMiddleware(cfg))
 		{
-			// TODO: Add middleware to protect this route later
 			documents.POST("/upload", docHandler.Upload)
+			documents.GET("/categories", docHandler.ListCategories)
+			documents.GET("/", docHandler.ListDocuments)
+			documents.GET("/category/:id", docHandler.ListDocumentsByCategory)
 		}
 	}
 }
