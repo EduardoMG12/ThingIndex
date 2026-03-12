@@ -1,4 +1,8 @@
-import type { ApiErrorResponse, ApiSuccessResponse } from "@/lib/api/types";
+import {
+    hasResponseData,
+    type ApiErrorResponse,
+    type ApiSuccessResponse,
+} from "@/lib/api/types";
 import type { Category } from "@/lib/api/categories";
 import {
     getCollectionName,
@@ -92,7 +96,7 @@ export async function uploadDocument(input: {
         throw new Error(payload?.message || "Nao foi possivel enviar o documento.");
     }
 
-    if (!payload || !("data" in payload) || !payload.data) {
+    if (!hasResponseData(payload) || !payload.data) {
         throw new Error("Resposta invalida ao enviar documento.");
     }
 

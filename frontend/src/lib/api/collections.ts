@@ -1,4 +1,8 @@
-import type { ApiErrorResponse, ApiSuccessResponse } from "@/lib/api/types";
+import {
+    hasResponseData,
+    type ApiErrorResponse,
+    type ApiSuccessResponse,
+} from "@/lib/api/types";
 import {
     normalizeCollectionSummaries,
     type CollectionSummary,
@@ -17,5 +21,5 @@ export async function fetchCollections(signal?: AbortSignal): Promise<Collection
         throw new Error(payload?.message || "Nao foi possivel carregar as collections.");
     }
 
-    return normalizeCollectionSummaries(payload?.data);
+    return normalizeCollectionSummaries(hasResponseData(payload) ? payload.data : null);
 }

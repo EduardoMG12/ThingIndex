@@ -11,3 +11,9 @@ export type ApiErrorResponse = {
     message: string;
     errors?: unknown;
 };
+
+export function hasResponseData<T>(
+    payload: ApiSuccessResponse<T> | ApiErrorResponse | null
+): payload is ApiSuccessResponse<T> {
+    return Boolean(payload && "data" in payload);
+}

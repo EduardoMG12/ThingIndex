@@ -1,4 +1,8 @@
-import type { ApiErrorResponse, ApiSuccessResponse } from "@/lib/api/types";
+import {
+    hasResponseData,
+    type ApiErrorResponse,
+    type ApiSuccessResponse,
+} from "@/lib/api/types";
 
 export type Category = {
     id: number;
@@ -22,7 +26,11 @@ export async function fetchCategories(signal?: AbortSignal): Promise<Category[]>
         throw new Error(payload?.message || "Nao foi possivel carregar as categorias.");
     }
 
-    return Array.isArray(payload?.data) ? payload.data : [];
+    if (!hasResponseData(payload) || !Array.isArray(payload.data)) {
+        return [];
+    }
+
+    return payload.data;
 }
 
 export async function createCategory(name: string): Promise<Category> {
@@ -40,7 +48,7 @@ export async function createCategory(name: string): Promise<Category> {
         throw new Error(payload?.message || "Nao foi possivel criar a categoria.");
     }
 
-    if (!payload || !("data" in payload) || !payload.data) {
+    if (!hasResponseData(payload) || !payload.data) {
         throw new Error("Resposta invalida ao criar categoria.");
     }
 
@@ -68,7 +76,7 @@ export async function updateCategory(
         throw new Error(payload?.message || "Nao foi possivel atualizar a categoria.");
     }
 
-    if (!payload || !("data" in payload) || !payload.data) {
+    if (!hasResponseData(payload) || !payload.data) {
         throw new Error("Resposta invalida ao atualizar categoria.");
     }
 
