@@ -10,7 +10,7 @@ type DocumentCategory struct {
 	ID             uint           `gorm:"primarykey" json:"id"`
 	UserID         uint           `gorm:"not null;uniqueIndex:idx_user_category_normalized" json:"user_id"`
 	Name           string         `gorm:"size:255;not null" json:"name"`
-	NormalizedName string         `gorm:"size:255;not null;uniqueIndex:idx_user_category_normalized" json:"-"`
+	NormalizedName string         `gorm:"size:255;uniqueIndex:idx_user_category_normalized" json:"-"`
 	Description    string         `gorm:"type:text" json:"description"`
 	CreatedAt      time.Time      `json:"created_at"`
 	UpdatedAt      time.Time      `json:"updated_at"`
@@ -23,7 +23,7 @@ type Collection struct {
 	CategoryID     *uint             `json:"category_id,omitempty"`
 	Category       *DocumentCategory `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
 	Name           string            `gorm:"size:255;not null" json:"name"`
-	NormalizedName string            `gorm:"size:255;not null;uniqueIndex:idx_user_collection_normalized" json:"-"`
+	NormalizedName string            `gorm:"size:255;uniqueIndex:idx_user_collection_normalized" json:"-"`
 	Metadata       map[string]any    `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
 	CreatedAt      time.Time         `json:"created_at"`
 	UpdatedAt      time.Time         `json:"updated_at"`

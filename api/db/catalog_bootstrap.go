@@ -22,6 +22,10 @@ func ensureDocumentCatalog(db *gorm.DB) error {
 		return err
 	}
 
+	if err := ensureCatalogNormalizedNamesNotNull(db); err != nil {
+		return err
+	}
+
 	if err := backfillDocumentCollections(db); err != nil {
 		return err
 	}
@@ -31,6 +35,14 @@ func ensureDocumentCatalog(db *gorm.DB) error {
 	}
 
 	return nil
+}
+
+func ensureCatalogNormalizedNamesNotNull(db *gorm.DB) error {
+	if err := ensureColumnNotNullWhenBackfilled(db, "document_categories", "normalized_name"); err != nil {
+		return err
+	}
+
+	return ensureColumnNotNullWhenBackfilled(db, "collections", "normalized_name")
 }
 
 func backfillCategoryNormalizedNames(db *gorm.DB) error {
@@ -181,6 +193,27 @@ func ensureDocumentCollectionNotNull(db *gorm.DB) error {
 	}
 
 	return setColumnNotNull(db, "documents", "collection_id")
+}
+
+func ensureColumnNotNullWhenBackfilled(db *gorm.DB, tableName, columnName string) error {
+	isNullable, err := columnIsNullable(db, tableName, columnName)
+	if err != nil {
+		return err
+	}
+	if !isNullable {
+		return nil
+	}
+
+	var pendingNulls int64
+	query := fmt.Sprintf("%s IS NULL OR %s = ''", quoteIdentifier(columnName), quoteIdentifier(columnName))
+	if err := db.Table(tableName).Where(query).Count(&pendingNulls).Error; err != nil {
+		return err
+	}
+	if pendingNulls > 0 {
+		return fmt.Errorf("cannot enforce %s.%s NOT NULL: %d rows still missing values", tableName, columnName, pendingNulls)
+	}
+
+	return setColumnNotNull(db, tableName, columnName)
 }
 
 func collectionCacheKey(userID uint, normalizedName string) string {
