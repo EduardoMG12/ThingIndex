@@ -6,8 +6,10 @@ import (
 	"strconv"
 
 	"thing-index/internal/domain"
+	"thing-index/internal/dto"
 	"thing-index/internal/pkg/i18n"
 	"thing-index/internal/pkg/response"
+	"thing-index/internal/pkg/validation"
 
 	"github.com/gin-gonic/gin"
 )
@@ -62,7 +64,7 @@ func (h *DocumentHandler) Upload(c *gin.Context) {
 		categoryName,
 		categoryDesc,
 	)
-	
+
 	if err != nil {
 		errorKey := "doc.error_upload"
 		status := http.StatusInternalServerError
@@ -93,6 +95,77 @@ func (h *DocumentHandler) ListCategories(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, "success", "Categories retrieved successfully", categories)
+}
+
+func (h *DocumentHandler) CreateCategory(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	var req dto.CreateCategoryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
+		return
+	}
+
+	category, err := h.useCase.CreateCategory(c.Request.Context(), userID, req.Name, req.Description)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrCategoryRequired):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_category_required"), nil)
+			return
+		case errors.Is(err, domain.ErrCategoryDuplicate):
+			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_category_duplicate"), nil)
+			return
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+			return
+		}
+	}
+
+	response.Success(c, http.StatusCreated, "success", i18n.T(lang, "doc.success_category_create"), category)
+}
+
+func (h *DocumentHandler) UpdateCategory(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+	categoryIDStr := c.Param("id")
+
+	categoryID, err := strconv.ParseUint(categoryIDStr, 10, 32)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "error", "Invalid category ID", nil)
+		return
+	}
+
+	var req dto.UpdateCategoryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
+		return
+	}
+
+	if req.Name == nil && req.Description == nil {
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_category_patch_empty"), nil)
+		return
+	}
+
+	category, err := h.useCase.UpdateCategory(c.Request.Context(), userID, uint(categoryID), req.Name, req.Description)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrCategoryNotFound):
+			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_category_not_found"), nil)
+			return
+		case errors.Is(err, domain.ErrCategoryRequired):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_category_required"), nil)
+			return
+		case errors.Is(err, domain.ErrCategoryDuplicate):
+			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_category_duplicate"), nil)
+			return
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+			return
+		}
+	}
+
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_category_update"), category)
 }
 
 func (h *DocumentHandler) ListDocuments(c *gin.Context) {

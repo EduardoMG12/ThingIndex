@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"strings"
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
 
@@ -20,6 +21,10 @@ func (r *GormDocumentRepository) CreateCategory(ctx context.Context, category *m
 	return r.db.WithContext(ctx).Create(category).Error
 }
 
+func (r *GormDocumentRepository) UpdateCategory(ctx context.Context, category *models.DocumentCategory) error {
+	return r.db.WithContext(ctx).Save(category).Error
+}
+
 func (r *GormDocumentRepository) GetCategoryByID(ctx context.Context, id uint, userID uint) (*models.DocumentCategory, error) {
 	var category models.DocumentCategory
 	if err := r.db.WithContext(ctx).Where("id = ? AND user_id = ?", id, userID).First(&category).Error; err != nil {
@@ -30,7 +35,8 @@ func (r *GormDocumentRepository) GetCategoryByID(ctx context.Context, id uint, u
 
 func (r *GormDocumentRepository) GetCategoryByName(ctx context.Context, name string, userID uint) (*models.DocumentCategory, error) {
 	var category models.DocumentCategory
-	if err := r.db.WithContext(ctx).Where("name = ? AND user_id = ?", name, userID).First(&category).Error; err != nil {
+	normalizedName := strings.TrimSpace(strings.ToLower(name))
+	if err := r.db.WithContext(ctx).Where("LOWER(TRIM(name)) = ? AND user_id = ?", normalizedName, userID).First(&category).Error; err != nil {
 		return nil, err
 	}
 	return &category, nil

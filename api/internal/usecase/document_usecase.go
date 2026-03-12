@@ -2,8 +2,10 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"thing-index/internal/domain"
@@ -15,9 +17,9 @@ import (
 )
 
 type documentUseCase struct {
-	repo         domain.DocumentRepository
-	storage      domain.StorageService
-	providerUC   domain.ProviderUseCase
+	repo       domain.DocumentRepository
+	storage    domain.StorageService
+	providerUC domain.ProviderUseCase
 }
 
 func NewDocumentUseCase(repo domain.DocumentRepository, storage domain.StorageService, providerUC domain.ProviderUseCase) domain.DocumentUseCase {
@@ -28,14 +30,81 @@ func NewDocumentUseCase(repo domain.DocumentRepository, storage domain.StorageSe
 	}
 }
 
+func normalizeCategoryName(name string) string {
+	return strings.TrimSpace(name)
+}
+
+func (u *documentUseCase) CreateCategory(ctx context.Context, userID uint, name, description string) (*models.DocumentCategory, error) {
+	normalizedName := normalizeCategoryName(name)
+	if normalizedName == "" {
+		return nil, domain.ErrCategoryRequired
+	}
+
+	if _, err := u.repo.GetCategoryByName(ctx, normalizedName, userID); err == nil {
+		return nil, domain.ErrCategoryDuplicate
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, fmt.Errorf("%w: %v", domain.ErrCategoryFind, err)
+	}
+
+	category := &models.DocumentCategory{
+		UserID:      userID,
+		Name:        normalizedName,
+		Description: strings.TrimSpace(description),
+	}
+
+	if err := u.repo.CreateCategory(ctx, category); err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrCategoryCreate, err)
+	}
+
+	return category, nil
+}
+
+func (u *documentUseCase) UpdateCategory(ctx context.Context, userID, categoryID uint, name, description *string) (*models.DocumentCategory, error) {
+	category, err := u.repo.GetCategoryByID(ctx, categoryID, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrCategoryNotFound
+		}
+		return nil, fmt.Errorf("%w: %v", domain.ErrCategoryFind, err)
+	}
+
+	if name != nil {
+		normalizedName := normalizeCategoryName(*name)
+		if normalizedName == "" {
+			return nil, domain.ErrCategoryRequired
+		}
+
+		existing, err := u.repo.GetCategoryByName(ctx, normalizedName, userID)
+		if err == nil && existing.ID != category.ID {
+			return nil, domain.ErrCategoryDuplicate
+		}
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("%w: %v", domain.ErrCategoryFind, err)
+		}
+
+		category.Name = normalizedName
+	}
+
+	if description != nil {
+		category.Description = strings.TrimSpace(*description)
+	}
+
+	if err := u.repo.UpdateCategory(ctx, category); err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrCategoryUpdate, err)
+	}
+
+	return category, nil
+}
+
 func (u *documentUseCase) UploadDocument(ctx context.Context, userID uint, title string, file io.Reader, size int64, contentType, categoryName, categoryDescription string) (*models.Document, error) {
+	categoryName = normalizeCategoryName(categoryName)
 	category, err := u.repo.GetCategoryByName(ctx, categoryName, userID)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			category = &models.DocumentCategory{
 				UserID:      userID,
 				Name:        categoryName,
-				Description: categoryDescription,
+				Description: strings.TrimSpace(categoryDescription),
 			}
 			if err := u.repo.CreateCategory(ctx, category); err != nil {
 				return nil, fmt.Errorf("%w: %v", domain.ErrCategoryCreate, err)
