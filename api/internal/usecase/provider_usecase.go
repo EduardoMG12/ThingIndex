@@ -10,6 +10,7 @@ import (
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
 	"thing-index/internal/pkg/crypto"
+	"thing-index/internal/pkg/netsec"
 	"thing-index/internal/pkg/provider"
 
 	"gorm.io/gorm"
@@ -29,14 +30,16 @@ var supportedProvidersByFamily = map[string]map[string]struct{}{
 }
 
 type providerUseCase struct {
-	repo domain.ProviderRepository
-	cfg  *config.Config
+	repo              domain.ProviderRepository
+	cfg               *config.Config
+	endpointValidator *netsec.StorageEndpointValidator
 }
 
 func NewProviderUseCase(repo domain.ProviderRepository, cfg *config.Config) domain.ProviderService {
 	return &providerUseCase{
-		repo: repo,
-		cfg:  cfg,
+		repo:              repo,
+		cfg:               cfg,
+		endpointValidator: netsec.NewStorageEndpointValidator(cfg.AllowPrivateStorageEndpoints),
 	}
 }
 
@@ -46,7 +49,7 @@ func (u *providerUseCase) SaveCredentials(ctx context.Context, userID uint, fami
 		return err
 	}
 
-	if err := validateCredentials(normalizedFamily, normalizedProviderType, credentials); err != nil {
+	if err := u.validateCredentials(ctx, normalizedFamily, normalizedProviderType, credentials); err != nil {
 		return err
 	}
 
@@ -110,6 +113,9 @@ func (u *providerUseCase) ResolveStorage(ctx context.Context, userID uint) (doma
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", domain.ErrStorageProviderUnavailable, err)
 	}
+	if err := u.validateCredentials(ctx, config.Family, config.ProviderType, creds); err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrStorageProviderUnavailable, err)
+	}
 
 	storageService, err := provider.NewStorageProvider(config.ProviderType, creds)
 	if err != nil {
@@ -134,7 +140,7 @@ func normalizeProviderSelection(family, providerType string) (string, string, er
 	return normalizedFamily, normalizedProviderType, nil
 }
 
-func validateCredentials(family, providerType string, credentials map[string]string) error {
+func (u *providerUseCase) validateCredentials(ctx context.Context, family, providerType string, credentials map[string]string) error {
 	if len(credentials) == 0 {
 		return domain.ErrProviderCredentialsInvalid
 	}
@@ -152,6 +158,9 @@ func validateCredentials(family, providerType string, credentials map[string]str
 				if strings.TrimSpace(credentials[requiredKey]) == "" {
 					return domain.ErrProviderCredentialsInvalid
 				}
+			}
+			if err := u.endpointValidator.Validate(ctx, credentials["endpoint"]); err != nil {
+				return domain.ErrProviderCredentialsInvalid
 			}
 		}
 	case domain.FamilyLLM:

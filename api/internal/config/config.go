@@ -28,8 +28,9 @@ type Config struct {
 
 	OpenAIKey string
 
-	AuthRateLimitRequests int
-	AuthRateLimitWindow   time.Duration
+	AllowPrivateStorageEndpoints bool
+	AuthRateLimitRequests        int
+	AuthRateLimitWindow          time.Duration
 
 	SMTPHost         string
 	SMTPPort         string
@@ -75,36 +76,37 @@ func Load() {
 	}
 
 	AppConfig = &Config{
-		Environment:           environment,
-		Port:                  getEnv("PORT", "8000"),
-		TrustedProxies:        getEnv("TRUSTED_PROXIES", ""),
-		DBHost:                getEnv("DB_HOST", "localhost"),
-		DBPort:                getEnv("DB_PORT", "5432"),
-		DBUser:                getEnv("DB_USER", "postgres"),
-		DBPassword:            getEnv("DB_PASSWORD", "postgres"),
-		DBName:                getEnv("DB_NAME", "thingindex"),
-		DBSSLMode:             getEnv("DB_SSLMODE", defaultDBSSLMode),
-		CORSAllowedOrigins:    getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"),
-		OpenAIKey:             getEnv("OPENAI_API_KEY", ""),
-		JWTSecret:             getEnv("JWT_SECRET", defaultValueForEnvironment(environment, defaultDevelopmentJWT)),
-		AuthRateLimitRequests: getEnvInt("AUTH_RATE_LIMIT_REQUESTS", 10),
-		AuthRateLimitWindow:   getEnvDurationSeconds("AUTH_RATE_LIMIT_WINDOW_SECONDS", 60),
-		SMTPHost:              getEnv("SMTP_HOST", "localhost"),
-		SMTPPort:              getEnv("SMTP_PORT", "1025"),
-		SMTPUser:              getEnv("SMTP_USER", ""),
-		SMTPPass:              getEnv("SMTP_PASS", ""),
-		SMTPFrom:              getEnv("SMTP_FROM", "no-reply@thingindex.com"),
-		ResetPasswordURL:      getEnv("RESET_PASSWORD_URL", "http://localhost:3000/reset-password"),
-		MinioEndpoint:         getEnv("MINIO_ENDPOINT", "localhost:9000"),
-		MinioAccessKey:        getEnv("MINIO_ACCESS_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMinioKey)),
-		MinioSecretKey:        getEnv("MINIO_SECRET_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMinioSec)),
-		MinioUseSSL:           getEnv("MINIO_USE_SSL", "false"),
-		MinioBucketName:       getEnv("MINIO_BUCKET_NAME", "thingindex-docs"),
-		MaxUploadSizeBytes:    getEnvInt64("MAX_UPLOAD_SIZE_BYTES", 20*1024*1024),
-		MasterEncryptionKey:   getEnv("MASTER_ENCRYPTION_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMaster)),
-		ServerReadTimeout:     getEnvDurationSeconds("SERVER_READ_TIMEOUT_SECONDS", 15),
-		ServerWriteTimeout:    getEnvDurationSeconds("SERVER_WRITE_TIMEOUT_SECONDS", 30),
-		ServerIdleTimeout:     getEnvDurationSeconds("SERVER_IDLE_TIMEOUT_SECONDS", 60),
+		Environment:                  environment,
+		Port:                         getEnv("PORT", "8000"),
+		TrustedProxies:               getEnv("TRUSTED_PROXIES", ""),
+		DBHost:                       getEnv("DB_HOST", "localhost"),
+		DBPort:                       getEnv("DB_PORT", "5432"),
+		DBUser:                       getEnv("DB_USER", "postgres"),
+		DBPassword:                   getEnv("DB_PASSWORD", "postgres"),
+		DBName:                       getEnv("DB_NAME", "thingindex"),
+		DBSSLMode:                    getEnv("DB_SSLMODE", defaultDBSSLMode),
+		CORSAllowedOrigins:           getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"),
+		OpenAIKey:                    getEnv("OPENAI_API_KEY", ""),
+		AllowPrivateStorageEndpoints: getEnvBool("ALLOW_PRIVATE_STORAGE_ENDPOINTS", false),
+		JWTSecret:                    getEnv("JWT_SECRET", defaultValueForEnvironment(environment, defaultDevelopmentJWT)),
+		AuthRateLimitRequests:        getEnvInt("AUTH_RATE_LIMIT_REQUESTS", 10),
+		AuthRateLimitWindow:          getEnvDurationSeconds("AUTH_RATE_LIMIT_WINDOW_SECONDS", 60),
+		SMTPHost:                     getEnv("SMTP_HOST", "localhost"),
+		SMTPPort:                     getEnv("SMTP_PORT", "1025"),
+		SMTPUser:                     getEnv("SMTP_USER", ""),
+		SMTPPass:                     getEnv("SMTP_PASS", ""),
+		SMTPFrom:                     getEnv("SMTP_FROM", "no-reply@thingindex.com"),
+		ResetPasswordURL:             getEnv("RESET_PASSWORD_URL", "http://localhost:3000/reset-password"),
+		MinioEndpoint:                getEnv("MINIO_ENDPOINT", "localhost:9000"),
+		MinioAccessKey:               getEnv("MINIO_ACCESS_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMinioKey)),
+		MinioSecretKey:               getEnv("MINIO_SECRET_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMinioSec)),
+		MinioUseSSL:                  getEnv("MINIO_USE_SSL", "false"),
+		MinioBucketName:              getEnv("MINIO_BUCKET_NAME", "thingindex-docs"),
+		MaxUploadSizeBytes:           getEnvInt64("MAX_UPLOAD_SIZE_BYTES", 20*1024*1024),
+		MasterEncryptionKey:          getEnv("MASTER_ENCRYPTION_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMaster)),
+		ServerReadTimeout:            getEnvDurationSeconds("SERVER_READ_TIMEOUT_SECONDS", 15),
+		ServerWriteTimeout:           getEnvDurationSeconds("SERVER_WRITE_TIMEOUT_SECONDS", 30),
+		ServerIdleTimeout:            getEnvDurationSeconds("SERVER_IDLE_TIMEOUT_SECONDS", 60),
 	}
 }
 
@@ -145,6 +147,20 @@ func getEnvInt64(key string, fallback int64) int64 {
 
 func getEnvDurationSeconds(key string, fallbackSeconds int) time.Duration {
 	return time.Duration(getEnvInt(key, fallbackSeconds)) * time.Second
+}
+
+func getEnvBool(key string, fallback bool) bool {
+	value, exists := os.LookupEnv(key)
+	if !exists {
+		return fallback
+	}
+
+	parsed, err := strconv.ParseBool(strings.TrimSpace(value))
+	if err != nil {
+		return fallback
+	}
+
+	return parsed
 }
 
 func (c *Config) Validate() error {
