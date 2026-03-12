@@ -2,9 +2,16 @@ package storage
 
 import (
 	"context"
+	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"log"
+	"net"
+	"net/http"
+	"time"
+
+	"thing-index/internal/pkg/netsec"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -16,9 +23,28 @@ type MinioStorage struct {
 }
 
 func NewMinioStorage(endpoint, accessKey, secretKey, bucketName string, useSSL bool) (*MinioStorage, error) {
+	return newMinioStorage(endpoint, accessKey, secretKey, bucketName, useSSL, nil)
+}
+
+func NewValidatedMinioStorage(endpoint, accessKey, secretKey, bucketName string, useSSL bool, endpointValidator *netsec.StorageEndpointValidator) (*MinioStorage, error) {
+	if endpointValidator == nil {
+		return nil, errors.New("storage endpoint validator is required")
+	}
+
+	return newMinioStorage(endpoint, accessKey, secretKey, bucketName, useSSL, endpointValidator)
+}
+
+func newMinioStorage(endpoint, accessKey, secretKey, bucketName string, useSSL bool, endpointValidator *netsec.StorageEndpointValidator) (*MinioStorage, error) {
+	transport, err := minioTransport(endpoint, useSSL, endpointValidator)
+	if err != nil {
+		return nil, err
+	}
+
 	minioClient, err := minio.New(endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
-		Secure: useSSL,
+		Creds:        credentials.NewStaticV4(accessKey, secretKey, ""),
+		Secure:       useSSL,
+		Transport:    transport,
+		BucketLookup: minio.BucketLookupPath,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize MinIO client: %w", err)
@@ -44,8 +70,55 @@ func NewMinioStorage(endpoint, accessKey, secretKey, bucketName string, useSSL b
 	}, nil
 }
 
+func minioTransport(endpoint string, useSSL bool, endpointValidator *netsec.StorageEndpointValidator) (*http.Transport, error) {
+	transport, err := minio.DefaultTransport(useSSL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize MinIO transport: %w", err)
+	}
+
+	if endpointValidator == nil {
+		return transport, nil
+	}
+
+	defaultPort := "80"
+	if useSSL {
+		defaultPort = "443"
+	}
+
+	resolved, err := endpointValidator.Resolve(context.Background(), endpoint, defaultPort)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve storage endpoint: %w", err)
+	}
+
+	dialer := &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+	dialContext, err := endpointValidator.NewDialContext(endpoint, defaultPort, dialer.DialContext)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare storage dialer: %w", err)
+	}
+	transport.DialContext = dialContext
+
+	if useSSL && resolved.ServerName != "" {
+		transport.TLSClientConfig = cloneTLSConfig(transport.TLSClientConfig)
+		transport.TLSClientConfig.ServerName = resolved.ServerName
+	}
+
+	return transport, nil
+}
+
+func cloneTLSConfig(cfg *tls.Config) *tls.Config {
+	if cfg == nil {
+		return &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+	}
+
+	return cfg.Clone()
+}
+
 func (m *MinioStorage) UploadFile(ctx context.Context, file io.Reader, objectSize int64, contentType string, objectName string) (string, error) {
-	
 	info, err := m.client.PutObject(ctx, m.bucketName, objectName, file, objectSize, minio.PutObjectOptions{
 		ContentType: contentType,
 	})

@@ -117,7 +117,9 @@ func (u *providerUseCase) ResolveStorage(ctx context.Context, userID uint) (doma
 		return nil, fmt.Errorf("%w: %v", domain.ErrStorageProviderUnavailable, err)
 	}
 
-	storageService, err := provider.NewStorageProvider(config.ProviderType, creds)
+	storageService, err := provider.NewStorageProvider(config.ProviderType, creds, provider.StorageProviderOptions{
+		EndpointValidator: u.endpointValidator,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", domain.ErrStorageProviderUnavailable, err)
 	}

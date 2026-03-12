@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"thing-index/internal/domain"
+	"thing-index/internal/pkg/netsec"
 	"thing-index/internal/pkg/storage"
 )
 
@@ -18,6 +19,10 @@ type genericLLMClient struct {
 
 func (c *genericLLMClient) Summarize(ctx context.Context, text string) (string, error) {
 	return fmt.Sprintf("[%s - %s] Placeholder summary for: %s", c.provider, c.model, text), nil
+}
+
+type StorageProviderOptions struct {
+	EndpointValidator *netsec.StorageEndpointValidator
 }
 
 func NewLLMProvider(providerType string, credentials map[string]string) (domain.LLMService, error) {
@@ -46,7 +51,7 @@ func NewLLMProvider(providerType string, credentials map[string]string) (domain.
 	}, nil
 }
 
-func NewStorageProvider(providerType string, credentials map[string]string) (domain.StorageService, error) {
+func NewStorageProvider(providerType string, credentials map[string]string, options StorageProviderOptions) (domain.StorageService, error) {
 	normalizedProvider := strings.ToUpper(strings.TrimSpace(providerType))
 
 	switch normalizedProvider {
@@ -61,7 +66,7 @@ func NewStorageProvider(providerType string, credentials map[string]string) (dom
 			return nil, errors.New("missing required minio credentials")
 		}
 
-		return storage.NewMinioStorage(endpoint, accessKey, secretKey, bucketName, useSSL)
+		return storage.NewValidatedMinioStorage(endpoint, accessKey, secretKey, bucketName, useSSL, options.EndpointValidator)
 	default:
 		return nil, fmt.Errorf("storage provider %s is not implemented", normalizedProvider)
 	}

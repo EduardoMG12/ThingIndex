@@ -3,6 +3,7 @@ package netsec
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/url"
 	"strconv"
@@ -28,6 +29,12 @@ var restrictedNetworks = mustParseCIDRs(
 )
 
 type LookupIPFunc func(ctx context.Context, host string) ([]net.IPAddr, error)
+type DialContextFunc func(ctx context.Context, network, address string) (net.Conn, error)
+
+type ResolvedStorageEndpoint struct {
+	DialAddress string
+	ServerName  string
+}
 
 type StorageEndpointValidator struct {
 	allowPrivate bool
@@ -42,74 +49,188 @@ func NewStorageEndpointValidator(allowPrivate bool) *StorageEndpointValidator {
 }
 
 func (v *StorageEndpointValidator) Validate(ctx context.Context, endpoint string) error {
-	host, err := endpointHost(endpoint)
+	_, _, err := v.lookupEndpointAddresses(ctx, endpoint)
+	return err
+}
+
+func (v *StorageEndpointValidator) Resolve(ctx context.Context, endpoint, defaultPort string) (*ResolvedStorageEndpoint, error) {
+	target, addresses, err := v.lookupEndpointAddresses(ctx, endpoint)
 	if err != nil {
-		return errEndpointInvalid
+		return nil, err
 	}
 
-	if v.allowPrivate {
-		return nil
+	port, err := target.portOrDefault(defaultPort)
+	if err != nil {
+		return nil, errEndpointInvalid
 	}
 
-	if ip := net.ParseIP(host); ip != nil {
-		if isRestrictedIP(ip) {
-			return errEndpointRestricted
+	ip := selectDialIP(addresses)
+	if ip == nil {
+		return nil, errEndpointInvalid
+	}
+
+	resolved := &ResolvedStorageEndpoint{
+		DialAddress: net.JoinHostPort(ip.String(), port),
+	}
+	if net.ParseIP(target.host) == nil {
+		resolved.ServerName = target.host
+	}
+
+	return resolved, nil
+}
+
+func (v *StorageEndpointValidator) NewDialContext(endpoint, defaultPort string, baseDialContext DialContextFunc) (DialContextFunc, error) {
+	target, err := parseEndpointTarget(endpoint)
+	if err != nil {
+		return nil, errEndpointInvalid
+	}
+	port, err := target.portOrDefault(defaultPort)
+	if err != nil {
+		return nil, errEndpointInvalid
+	}
+
+	if baseDialContext == nil {
+		return nil, errors.New("base dial context is required")
+	}
+
+	return func(ctx context.Context, network, address string) (net.Conn, error) {
+		if err := target.matchesDialAddress(address, port); err != nil {
+			return nil, err
 		}
-		return nil
-	}
 
-	lookupCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
-
-	addresses, err := v.lookupIP(lookupCtx, host)
-	if err != nil || len(addresses) == 0 {
-		return errEndpointInvalid
-	}
-
-	for _, address := range addresses {
-		if isRestrictedIP(address.IP) {
-			return errEndpointRestricted
+		resolved, err := v.Resolve(ctx, endpoint, port)
+		if err != nil {
+			return nil, err
 		}
+
+		return baseDialContext(ctx, network, resolved.DialAddress)
+	}, nil
+}
+
+type endpointTarget struct {
+	host string
+	port string
+}
+
+func parseEndpointTarget(endpoint string) (endpointTarget, error) {
+	trimmed := strings.TrimSpace(endpoint)
+	if trimmed == "" {
+		return endpointTarget{}, errEndpointInvalid
+	}
+	if strings.Contains(trimmed, "://") {
+		return endpointTarget{}, errEndpointInvalid
+	}
+	if ip := net.ParseIP(trimmed); ip != nil {
+		return endpointTarget{host: ip.String()}, nil
+	}
+
+	parsed, err := url.Parse("//" + trimmed)
+	if err != nil {
+		return endpointTarget{}, errEndpointInvalid
+	}
+	if parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return endpointTarget{}, errEndpointInvalid
+	}
+	if parsed.Path != "" && parsed.Path != "/" {
+		return endpointTarget{}, errEndpointInvalid
+	}
+
+	host := strings.TrimSpace(parsed.Hostname())
+	if host == "" {
+		return endpointTarget{}, errEndpointInvalid
+	}
+
+	port := parsed.Port()
+	if port != "" {
+		if _, err := strconv.ParseUint(port, 10, 16); err != nil {
+			return endpointTarget{}, errEndpointInvalid
+		}
+	}
+
+	return endpointTarget{host: host, port: port}, nil
+}
+
+func (t endpointTarget) portOrDefault(defaultPort string) (string, error) {
+	port := strings.TrimSpace(t.port)
+	if port == "" {
+		port = strings.TrimSpace(defaultPort)
+	}
+	if port == "" {
+		return "", errEndpointInvalid
+	}
+	if _, err := strconv.ParseUint(port, 10, 16); err != nil {
+		return "", errEndpointInvalid
+	}
+
+	return port, nil
+}
+
+func (t endpointTarget) matchesDialAddress(address, defaultPort string) error {
+	host, port, err := net.SplitHostPort(strings.TrimSpace(address))
+	if err != nil {
+		return fmt.Errorf("%w: unexpected storage dial target", errEndpointInvalid)
+	}
+
+	expectedPort, err := t.portOrDefault(defaultPort)
+	if err != nil {
+		return err
+	}
+	if port != expectedPort {
+		return fmt.Errorf("%w: unexpected storage dial target", errEndpointInvalid)
+	}
+
+	if !strings.EqualFold(strings.TrimSpace(host), strings.TrimSpace(t.host)) {
+		return fmt.Errorf("%w: unexpected storage dial target", errEndpointInvalid)
 	}
 
 	return nil
 }
 
-func endpointHost(endpoint string) (string, error) {
-	trimmed := strings.TrimSpace(endpoint)
-	if trimmed == "" {
-		return "", errEndpointInvalid
-	}
-	if strings.Contains(trimmed, "://") {
-		return "", errEndpointInvalid
-	}
-	if ip := net.ParseIP(trimmed); ip != nil {
-		return ip.String(), nil
-	}
-
-	parsed, err := url.Parse("//" + trimmed)
+func (v *StorageEndpointValidator) lookupEndpointAddresses(ctx context.Context, endpoint string) (endpointTarget, []net.IPAddr, error) {
+	target, err := parseEndpointTarget(endpoint)
 	if err != nil {
-		return "", errEndpointInvalid
-	}
-	if parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
-		return "", errEndpointInvalid
-	}
-	if parsed.Path != "" && parsed.Path != "/" {
-		return "", errEndpointInvalid
+		return endpointTarget{}, nil, errEndpointInvalid
 	}
 
-	host := strings.TrimSpace(parsed.Hostname())
-	if host == "" {
-		return "", errEndpointInvalid
+	if ip := net.ParseIP(target.host); ip != nil {
+		if !v.allowPrivate && isRestrictedIP(ip) {
+			return endpointTarget{}, nil, errEndpointRestricted
+		}
+		return target, []net.IPAddr{{IP: ip}}, nil
 	}
 
-	if port := parsed.Port(); port != "" {
-		if _, err := strconv.ParseUint(port, 10, 16); err != nil {
-			return "", errEndpointInvalid
+	lookupCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	addresses, err := v.lookupIP(lookupCtx, target.host)
+	if err != nil || len(addresses) == 0 {
+		return endpointTarget{}, nil, errEndpointInvalid
+	}
+
+	if !v.allowPrivate {
+		for _, address := range addresses {
+			if isRestrictedIP(address.IP) {
+				return endpointTarget{}, nil, errEndpointRestricted
+			}
 		}
 	}
 
-	return host, nil
+	return target, addresses, nil
+}
+
+func selectDialIP(addresses []net.IPAddr) net.IP {
+	for _, address := range addresses {
+		if ip := address.IP.To4(); ip != nil {
+			return ip
+		}
+	}
+	for _, address := range addresses {
+		if address.IP != nil {
+			return address.IP
+		}
+	}
+
+	return nil
 }
 
 func isRestrictedIP(ip net.IP) bool {
