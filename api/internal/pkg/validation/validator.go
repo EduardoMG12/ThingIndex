@@ -1,6 +1,10 @@
 package validation
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -37,6 +41,7 @@ func GetTranslator(lang string) ut.Translator {
 	trans, _ := uni.GetTranslator(lang)
 	return trans
 }
+
 func FormatValidationErrors(c *gin.Context, err error) []string {
 	lang, _ := c.Get("language")
 	language, ok := lang.(string)
@@ -51,26 +56,70 @@ func FormatValidationErrors(c *gin.Context, err error) []string {
 		for _, fe := range validationErrs {
 			errs = append(errs, fe.Translate(trans))
 		}
-	} else {
-		errMsg := err.Error()
-		if strings.Contains(errMsg, "unknown field") {
-			parts := strings.Split(errMsg, "\"")
-			if len(parts) >= 2 {
-				if language == "pt_BR" {
-					errs = append(errs, "O campo '"+parts[1]+"' não é permitido")
-				} else {
-					errs = append(errs, "Field '"+parts[1]+"' is not allowed")
-				}
-			} else {
-				if language == "pt_BR" {
-					errs = append(errs, "Requisição possui campos não permitidos")
-				} else {
-					errs = append(errs, "Request contains forbidden fields")
-				}
+		return errs
+	}
+
+	return []string{safeBindingErrorMessage(language, err)}
+}
+
+func safeBindingErrorMessage(language string, err error) string {
+	var typeErr *json.UnmarshalTypeError
+	if errors.As(err, &typeErr) {
+		fieldName := normalizedFieldName(typeErr.Field)
+		if fieldName != "" {
+			if language == "pt_BR" {
+				return fmt.Sprintf("O campo '%s' possui um tipo de valor inválido", fieldName)
 			}
-		} else {
-			errs = append(errs, errMsg)
+			return fmt.Sprintf("Field '%s' has an invalid value type", fieldName)
 		}
 	}
-	return errs
+
+	if fieldName, ok := extractUnknownFieldName(err); ok {
+		if language == "pt_BR" {
+			return fmt.Sprintf("O campo '%s' não é permitido", fieldName)
+		}
+		return fmt.Sprintf("Field '%s' is not allowed", fieldName)
+	}
+
+	var syntaxErr *json.SyntaxError
+	if errors.As(err, &syntaxErr) || errors.Is(err, io.EOF) {
+		if language == "pt_BR" {
+			return "Corpo da requisição inválido"
+		}
+		return "Invalid request body"
+	}
+
+	if language == "pt_BR" {
+		return "Requisição inválida"
+	}
+	return "Invalid request"
+}
+
+func extractUnknownFieldName(err error) (string, bool) {
+	errMsg := err.Error()
+	if !strings.Contains(errMsg, "unknown field") {
+		return "", false
+	}
+
+	parts := strings.Split(errMsg, "\"")
+	if len(parts) < 2 {
+		return "", false
+	}
+
+	fieldName := normalizedFieldName(parts[1])
+	if fieldName == "" {
+		return "", false
+	}
+
+	return fieldName, true
+}
+
+func normalizedFieldName(field string) string {
+	trimmed := strings.TrimSpace(field)
+	if trimmed == "" {
+		return ""
+	}
+
+	segments := strings.Split(trimmed, ".")
+	return segments[len(segments)-1]
 }
