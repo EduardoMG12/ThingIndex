@@ -5,6 +5,7 @@ import { Check, Hash, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { useCollections } from "@/hooks/use-collections";
+import { getCollectionName } from "@/lib/api/contracts/document-context";
 import { cn } from "@/lib/utils";
 
 type CollectionComboboxProps = {
@@ -53,7 +54,7 @@ export default function CollectionCombobox({ value, onChange, className }: Colle
             return true;
         }
 
-        return normalizeCollection(collection).includes(normalizedQuery);
+        return normalizeCollection(collection.name).includes(normalizedQuery);
     });
 
     const commitCollection = (nextValue: string) => {
@@ -83,7 +84,7 @@ export default function CollectionCombobox({ value, onChange, className }: Colle
                         event.preventDefault();
 
                         if (filteredCollections.length > 0) {
-                            commitCollection(filteredCollections[0]);
+                            commitCollection(getCollectionName(filteredCollections[0]));
                             return;
                         }
 
@@ -109,19 +110,20 @@ export default function CollectionCombobox({ value, onChange, className }: Colle
                         )}
 
                         {!isLoading && filteredCollections.map((collection) => {
-                            const isSelected = normalizeCollection(collection) === normalizeCollection(value);
+                            const collectionName = getCollectionName(collection);
+                            const isSelected = normalizeCollection(collectionName) === normalizeCollection(value);
 
                             return (
                                 <button
-                                    key={collection}
+                                    key={collection.id}
                                     type="button"
                                     onMouseDown={(event) => event.preventDefault()}
-                                    onClick={() => commitCollection(collection)}
+                                    onClick={() => commitCollection(collectionName)}
                                     className="flex w-full items-center justify-between rounded px-3 py-2 text-left text-xs transition-colors hover:bg-muted"
                                 >
                                     <span className="flex items-center gap-2 truncate">
                                         <Hash className="h-3.5 w-3.5 text-muted-foreground" />
-                                        <span className="truncate">{collection}</span>
+                                        <span className="truncate">{collectionName}</span>
                                     </span>
                                     {isSelected && <Check className="h-3.5 w-3.5 text-primary" />}
                                 </button>
@@ -136,7 +138,7 @@ export default function CollectionCombobox({ value, onChange, className }: Colle
                     </div>
 
                     <div className="border-t border-border bg-muted/20 px-3 py-2 text-[10px] text-muted-foreground">
-                        O campo aceita uma collection nova, mas o dropdown mostra as que ja existem.
+                        O campo aceita uma collection nova e o dropdown exibe os agrupamentos relacionais ja catalogados.
                     </div>
                 </div>
             )}

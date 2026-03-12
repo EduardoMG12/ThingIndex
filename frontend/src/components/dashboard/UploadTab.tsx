@@ -147,7 +147,7 @@ const UploadTab = () => {
                             value={defaultCollection}
                             onChange={setDefaultCollection}
                         />
-                        <p className="text-[10px] text-muted-foreground">Opcional. O dropdown lista as collections ja existentes.</p>
+                        <p className="text-[10px] text-muted-foreground">Opcional. A collection centraliza o contexto relacional entre arquivos.</p>
                     </div>
                 </div>
             </div>

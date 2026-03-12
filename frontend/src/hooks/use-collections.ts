@@ -2,9 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { fetchCollections } from "@/lib/api/collections";
+import {
+    getCollectionName,
+    type CollectionSummary,
+} from "@/lib/api/contracts/document-context";
+
+function normalizeCollectionName(value: string) {
+    return value.trim().toLowerCase();
+}
 
 export function useCollections() {
-    const [collections, setCollections] = useState<string[]>([]);
+    const [collections, setCollections] = useState<CollectionSummary[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -36,22 +44,36 @@ export function useCollections() {
         return () => controller.abort();
     }, []);
 
-    const mergeCollection = (collection: string) => {
-        const normalizedCollection = collection.trim();
+    const mergeCollection = (collection: string | CollectionSummary) => {
+        const nextCollection =
+            typeof collection === "string"
+                ? {
+                    id: `draft:${normalizeCollectionName(collection)}`,
+                    name: collection.trim(),
+                    documentCount: 0,
+                    metadata: {},
+                }
+                : collection;
+
+        const normalizedCollection = normalizeCollectionName(getCollectionName(nextCollection));
         if (!normalizedCollection) {
             return;
         }
 
         setCollections((current) => {
             const alreadyExists = current.some(
-                (item) => item.trim().toLowerCase() === normalizedCollection.toLowerCase()
+                (item) => normalizeCollectionName(item.name) === normalizedCollection
             );
 
             if (alreadyExists) {
-                return current;
+                return current.map((item) =>
+                    normalizeCollectionName(item.name) === normalizedCollection ? nextCollection : item
+                );
             }
 
-            return [...current, normalizedCollection].sort((left, right) => left.localeCompare(right, "pt-BR"));
+            return [...current, nextCollection].sort((left, right) =>
+                left.name.localeCompare(right.name, "pt-BR")
+            );
         });
     };
 

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import SourceReference, { type Source } from "@/components/chat/SourceReference";
 import SubQueryProgress, { type SubQuery } from "@/components/chat/SubQueryProgress";
+import { cn } from "@/lib/utils";
 
 type Message = {
     id: string;
@@ -77,9 +78,9 @@ const ChatTab = () => {
                     {messages.length === 0 && (
                         <div className="flex h-96 flex-col items-center justify-center text-center opacity-40">
                             <Sparkles className="mb-4 h-12 w-12 text-primary" />
-                            <h3 className="text-sm font-semibold">Inicie uma Consulta Semântica</h3>
+                            <h3 className="text-sm font-semibold">Inicie uma Consulta Contextual</h3>
                             <p className="mt-2 max-w-xs text-xs leading-relaxed">
-                                Nossa IA irá decompor sua pergunta e buscar nos grafos de conhecimento por respostas precisas.
+                                Nossa IA ira decompor sua pergunta e reconstruir o contexto da collection a partir das tabelas relacionais.
                             </p>
                         </div>
                     )}

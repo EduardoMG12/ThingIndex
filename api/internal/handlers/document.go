@@ -68,7 +68,10 @@ func (h *DocumentHandler) Upload(c *gin.Context) {
 		errorKey := "doc.error_upload"
 		status := http.StatusInternalServerError
 
-		if errors.Is(err, domain.ErrCategoryCreate) || errors.Is(err, domain.ErrCategoryFind) {
+		if errors.Is(err, domain.ErrCollectionRequired) {
+			errorKey = "doc.error_collection_required"
+			status = http.StatusBadRequest
+		} else if errors.Is(err, domain.ErrCategoryCreate) || errors.Is(err, domain.ErrCategoryFind) {
 			errorKey = "doc.error_upload"
 		} else if errors.Is(err, domain.ErrUploadFailed) {
 			errorKey = "doc.error_upload"

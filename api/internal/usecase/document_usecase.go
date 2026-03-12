@@ -144,6 +144,11 @@ func (u *documentUseCase) UpdateCollectionCategory(ctx context.Context, userID u
 }
 
 func (u *documentUseCase) UploadDocument(ctx context.Context, userID uint, title string, file io.Reader, size int64, contentType, categoryName, categoryDescription, collection string) (*models.Document, error) {
+	normalizedCollection := strings.TrimSpace(collection)
+	if normalizedCollection == "" {
+		return nil, domain.ErrCollectionRequired
+	}
+
 	categoryName = normalizeCategoryName(categoryName)
 	var category *models.DocumentCategory
 
@@ -190,7 +195,7 @@ func (u *documentUseCase) UploadDocument(ctx context.Context, userID uint, title
 		Size:       size,
 		MimeType:   contentType,
 		Status:     "PENDING",
-		Collection: strings.TrimSpace(collection),
+		Collection: normalizedCollection,
 	}
 
 	if category != nil {

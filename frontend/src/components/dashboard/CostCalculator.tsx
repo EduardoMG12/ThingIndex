@@ -1,12 +1,11 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Info, HelpCircle, Calculator } from "lucide-react";
+import { HelpCircle, Calculator } from "lucide-react";
 
 interface CostCalculatorProps {
     config: {
         aiProvider: string;
-        vectorStore: string;
+        contextStore: string;
         fileCount: number;
         estimatedTokens: number;
     };
@@ -32,8 +31,8 @@ const CostCalculator = ({ config }: CostCalculatorProps) => {
                         <span className="font-mono text-foreground">{config.aiProvider}</span>
                     </div>
                     <div className="flex justify-between text-[11px]">
-                        <span className="text-muted-foreground">Vector Store</span>
-                        <span className="font-mono text-foreground">{config.vectorStore}</span>
+                        <span className="text-muted-foreground">Context Store</span>
+                        <span className="font-mono text-foreground">{config.contextStore}</span>
                     </div>
                     <div className="flex justify-between text-[11px]">
                         <span className="text-muted-foreground">Arquivos Indexados</span>

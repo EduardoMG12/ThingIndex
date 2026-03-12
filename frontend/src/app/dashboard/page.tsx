@@ -24,14 +24,14 @@ export default function DashboardPage() {
             >
                 <div className="flex items-center gap-2 mb-3">
                     <span className="h-px w-8 bg-primary" />
-                    <span className="text-[10px] uppercase tracking-[0.3em] text-primary font-bold">Intelligent Workspace</span>
+                    <span className="text-[10px] uppercase tracking-[0.3em] text-primary font-bold">Relational Workspace</span>
                 </div>
                 <h1 className="font-display text-4xl font-bold tracking-tight text-foreground">
-                    Legis<span className="text-primary italic">Graph</span> Dashboard
+                    Legis<span className="text-primary italic">Context</span> Dashboard
                 </h1>
                 <p className="mt-4 max-w-2xl text-base text-muted-foreground leading-relaxed">
-                    Centralize sua legislação e documentos jurídicos. Extraia conhecimento estruturado
-                    através do nosso pipeline de <span className="text-foreground font-semibold">Graph-RAG</span> de alta performance.
+                    Centralize sua legislacao e documentos juridicos. Preserve contexto por categoria,
+                    collection e estruturas normalizadas em <span className="text-foreground font-semibold">PostgreSQL</span>.
                 </p>
             </motion.div>
 
@@ -79,7 +79,7 @@ export default function DashboardPage() {
                     <CostCalculator
                         config={{
                             aiProvider: "Vertex AI / Gemini 1.5",
-                            vectorStore: "Neo4j Graph + Qdrant",
+                            contextStore: "PostgreSQL + object storage",
                             fileCount: 3,
                             estimatedTokens: 24500,
                         }}
@@ -108,7 +108,7 @@ export default function DashboardPage() {
                                 </div>
                                 <div>
                                     <h4 className="text-[11px] font-bold uppercase tracking-wider mb-1">Collections</h4>
-                                    <p className="text-[11px] text-muted-foreground leading-relaxed">Agrupamentos lógicos para restringir o contexto da IA.</p>
+                                    <p className="text-[11px] text-muted-foreground leading-relaxed">Agrupamentos logicos que unificam contexto entre varios arquivos.</p>
                                 </div>
                             </div>
 
@@ -117,8 +117,8 @@ export default function DashboardPage() {
                                     <MessageSquare className="h-3 w-3 text-muted-foreground" />
                                 </div>
                                 <div>
-                                    <h4 className="text-[11px] font-bold uppercase tracking-wider mb-1">Rag-Chat</h4>
-                                    <p className="text-[11px] text-muted-foreground leading-relaxed">Use "@collection" no chat para focar a busca.</p>
+                                    <h4 className="text-[11px] font-bold uppercase tracking-wider mb-1">Context Query</h4>
+                                    <p className="text-[11px] text-muted-foreground leading-relaxed">Consulte uma collection e agregue tabelas, paragrafos e metadados no mesmo fluxo.</p>
                                 </div>
                             </div>
                         </div>
