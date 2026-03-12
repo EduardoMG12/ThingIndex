@@ -1,10 +1,14 @@
 package usecase
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"mime"
+	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +20,14 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
+
+const maxUploadSizeBytes int64 = 20 * 1024 * 1024
+
+var allowedUploadMimeTypes = map[string]struct{}{
+	"application/pdf": {},
+	"text/html":       {},
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {},
+}
 
 type documentCatalogUseCase struct {
 	categoryRepo          domain.CategoryCatalogRepository
@@ -341,10 +353,21 @@ func (u *documentCatalogUseCase) UploadDocument(ctx context.Context, userID uint
 	if strings.TrimSpace(title) == "" {
 		return nil, domain.ErrTitleRequired
 	}
+	if size <= 0 {
+		return nil, domain.ErrFileRequired
+	}
+	if size > maxUploadSizeBytes {
+		return nil, domain.ErrFileTooLarge
+	}
 
 	collectionName := normalizeDisplayName(collection)
 	if collectionName == "" {
 		return nil, domain.ErrCollectionRequired
+	}
+
+	validatedReader, resolvedContentType, err := validateUploadStream(file, contentType, title)
+	if err != nil {
+		return nil, err
 	}
 
 	category, err := u.ensureCategory(ctx, userID, categoryName, categoryDescription)
@@ -357,7 +380,7 @@ func (u *documentCatalogUseCase) UploadDocument(ctx context.Context, userID uint
 		return nil, err
 	}
 
-	objectName := fmt.Sprintf("%d_%s%s", time.Now().Unix(), uuid.New().String()[:8], extractExtension(contentType))
+	objectName := fmt.Sprintf("%d_%s%s", time.Now().Unix(), uuid.New().String()[:8], extractExtension(resolvedContentType))
 
 	storageClient := u.storage
 	pType, creds, providerErr := u.providerUC.GetFamilyCredentials(ctx, userID, domain.FamilyStorage)
@@ -368,7 +391,7 @@ func (u *documentCatalogUseCase) UploadDocument(ctx context.Context, userID uint
 		}
 	}
 
-	fileURL, err := storageClient.UploadFile(ctx, file, size, contentType, objectName)
+	fileURL, err := storageClient.UploadFile(ctx, validatedReader, size, resolvedContentType, objectName)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", domain.ErrUploadFailed, err)
 	}
@@ -378,7 +401,7 @@ func (u *documentCatalogUseCase) UploadDocument(ctx context.Context, userID uint
 		Title:         strings.TrimSpace(title),
 		FileURL:       fileURL,
 		Size:          size,
-		MimeType:      contentType,
+		MimeType:      resolvedContentType,
 		Status:        "PENDING",
 		Collection:    collectionRef.Name,
 		CollectionID:  &collectionRef.ID,
@@ -505,5 +528,68 @@ func extractExtension(contentType string) string {
 		return ".xlsx"
 	default:
 		return ".bin"
+	}
+}
+
+func validateUploadStream(file io.Reader, declaredContentType, title string) (io.Reader, string, error) {
+	head := make([]byte, 512)
+	readBytes, readErr := io.ReadFull(file, head)
+	if readErr != nil && !errors.Is(readErr, io.ErrUnexpectedEOF) && !errors.Is(readErr, io.EOF) {
+		return nil, "", fmt.Errorf("%w: %v", domain.ErrUploadFailed, readErr)
+	}
+	if readBytes == 0 {
+		return nil, "", domain.ErrFileRequired
+	}
+
+	sniffedContentType := http.DetectContentType(head[:readBytes])
+	normalizedDeclared := normalizeMediaType(declaredContentType)
+	resolvedContentType := resolveContentType(normalizedDeclared, sniffedContentType, title)
+	if _, ok := allowedUploadMimeTypes[resolvedContentType]; !ok {
+		return nil, "", domain.ErrDocumentInvalidMime
+	}
+
+	return io.MultiReader(bytes.NewReader(head[:readBytes]), file), resolvedContentType, nil
+}
+
+func normalizeMediaType(value string) string {
+	trimmedValue := strings.TrimSpace(value)
+	if trimmedValue == "" {
+		return ""
+	}
+
+	mediaType, _, err := mime.ParseMediaType(trimmedValue)
+	if err != nil {
+		return trimmedValue
+	}
+
+	return mediaType
+}
+
+func resolveContentType(declaredContentType, sniffedContentType, title string) string {
+	fileExtension := strings.ToLower(filepath.Ext(title))
+
+	switch declaredContentType {
+	case "application/pdf":
+		if sniffedContentType == declaredContentType {
+			return declaredContentType
+		}
+	case "text/html":
+		if (strings.HasPrefix(sniffedContentType, "text/html") || strings.HasPrefix(sniffedContentType, "text/plain")) &&
+			(fileExtension == ".html" || fileExtension == ".htm") {
+			return declaredContentType
+		}
+	case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+		if sniffedContentType == "application/zip" && fileExtension == ".xlsx" {
+			return declaredContentType
+		}
+	}
+
+	switch {
+	case strings.HasPrefix(sniffedContentType, "text/html"):
+		return "text/html"
+	case sniffedContentType == "application/pdf":
+		return sniffedContentType
+	default:
+		return declaredContentType
 	}
 }

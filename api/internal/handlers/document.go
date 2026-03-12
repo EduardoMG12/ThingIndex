@@ -38,13 +38,13 @@ func (h *DocumentHandler) Upload(c *gin.Context) {
 
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_file"), err.Error())
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_file"), nil)
 		return
 	}
 
 	file, err := fileHeader.Open()
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+		h.respondInternalError(c, lang)
 		return
 	}
 	defer file.Close()
@@ -64,14 +64,20 @@ func (h *DocumentHandler) Upload(c *gin.Context) {
 		switch {
 		case errors.Is(err, domain.ErrTitleRequired):
 			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_title"), nil)
+		case errors.Is(err, domain.ErrFileRequired):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_file"), nil)
+		case errors.Is(err, domain.ErrFileTooLarge):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_file_too_large"), nil)
+		case errors.Is(err, domain.ErrDocumentInvalidMime):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_invalid_mime"), nil)
 		case errors.Is(err, domain.ErrCollectionRequired):
 			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_collection_required"), nil)
 		case errors.Is(err, domain.ErrCollectionCategoryConflict):
 			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_collection_category_conflict"), nil)
 		case errors.Is(err, domain.ErrUploadFailed):
-			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "doc.error_upload"), err.Error())
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "doc.error_upload"), nil)
 		default:
-			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+			h.respondInternalError(c, lang)
 		}
 		return
 	}
@@ -97,7 +103,7 @@ func (h *DocumentHandler) CreateCollection(c *gin.Context) {
 		case errors.Is(err, domain.ErrCollectionDuplicate):
 			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_collection_duplicate"), nil)
 		default:
-			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+			h.respondInternalError(c, lang)
 		}
 		return
 	}
@@ -111,7 +117,7 @@ func (h *DocumentHandler) ListCollections(c *gin.Context) {
 
 	collections, err := h.useCase.ListCollections(c.Request.Context(), userID)
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+		h.respondInternalError(c, lang)
 		return
 	}
 
@@ -133,7 +139,7 @@ func (h *DocumentHandler) GetCollection(c *gin.Context) {
 		case errors.Is(err, domain.ErrCollectionNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_collection_not_found"), nil)
 		default:
-			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+			h.respondInternalError(c, lang)
 		}
 		return
 	}
@@ -156,7 +162,7 @@ func (h *DocumentHandler) GetCollectionContext(c *gin.Context) {
 		case errors.Is(err, domain.ErrCollectionNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_collection_not_found"), nil)
 		default:
-			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+			h.respondInternalError(c, lang)
 		}
 		return
 	}
@@ -170,7 +176,7 @@ func (h *DocumentHandler) ListCategories(c *gin.Context) {
 
 	categories, err := h.useCase.ListCategories(c.Request.Context(), userID)
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+		h.respondInternalError(c, lang)
 		return
 	}
 
@@ -195,7 +201,7 @@ func (h *DocumentHandler) CreateCategory(c *gin.Context) {
 		case errors.Is(err, domain.ErrCategoryDuplicate):
 			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_category_duplicate"), nil)
 		default:
-			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+			h.respondInternalError(c, lang)
 		}
 		return
 	}
@@ -233,7 +239,7 @@ func (h *DocumentHandler) UpdateCategory(c *gin.Context) {
 		case errors.Is(err, domain.ErrCategoryDuplicate):
 			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_category_duplicate"), nil)
 		default:
-			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+			h.respondInternalError(c, lang)
 		}
 		return
 	}
@@ -266,7 +272,7 @@ func (h *DocumentHandler) UpdateCollectionCategory(c *gin.Context) {
 		case errors.Is(err, domain.ErrCollectionNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_collection_not_found"), nil)
 		default:
-			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+			h.respondInternalError(c, lang)
 		}
 		return
 	}
@@ -283,7 +289,7 @@ func (h *DocumentHandler) ListDocuments(c *gin.Context) {
 
 	docs, err := h.useCase.ListDocuments(c.Request.Context(), userID)
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+		h.respondInternalError(c, lang)
 		return
 	}
 
@@ -305,7 +311,7 @@ func (h *DocumentHandler) GetDocument(c *gin.Context) {
 		case errors.Is(err, domain.ErrDocumentNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
 		default:
-			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+			h.respondInternalError(c, lang)
 		}
 		return
 	}
@@ -324,7 +330,7 @@ func (h *DocumentHandler) ListDocumentsByCategory(c *gin.Context) {
 
 	docs, err := h.useCase.ListDocumentsByCategory(c.Request.Context(), categoryID, userID)
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+		h.respondInternalError(c, lang)
 		return
 	}
 
@@ -362,7 +368,7 @@ func (h *DocumentHandler) StoreParagraphNodes(c *gin.Context) {
 		case errors.Is(err, domain.ErrDocumentNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
 		default:
-			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+			h.respondInternalError(c, lang)
 		}
 		return
 	}
@@ -402,7 +408,7 @@ func (h *DocumentHandler) StoreTableSections(c *gin.Context) {
 		case errors.Is(err, domain.ErrDocumentNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
 		default:
-			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+			h.respondInternalError(c, lang)
 		}
 		return
 	}
@@ -440,7 +446,7 @@ func (h *DocumentHandler) StoreMetadataPairs(c *gin.Context) {
 		case errors.Is(err, domain.ErrDocumentNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
 		default:
-			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), err.Error())
+			h.respondInternalError(c, lang)
 		}
 		return
 	}
@@ -457,4 +463,8 @@ func parseUintParam(c *gin.Context, paramName string, invalidMessage string) (ui
 	}
 
 	return uint(parsed), true
+}
+
+func (h *DocumentHandler) respondInternalError(c *gin.Context, lang string) {
+	response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
 }
