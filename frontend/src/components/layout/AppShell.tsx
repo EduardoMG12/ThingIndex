@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { LogOut, User, Settings, LayoutDashboard, Database, HelpCircle, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -22,6 +21,7 @@ const AppShell = ({ children }: AppShellProps) => {
         { label: "Documentação", icon: BookOpen, href: "/documentation" },
         { label: "Configurações", icon: Settings, href: "/settings" },
     ];
+    const activeItem = navItems.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
 
     return (
         <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
@@ -36,7 +36,7 @@ const AppShell = ({ children }: AppShellProps) => {
 
                 <nav className="flex-1 p-4 space-y-1">
                     {navItems.map((item) => {
-                        const isActive = pathname === item.href;
+                        const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
                         const Icon = item.icon;
                         return (
                             <Link
@@ -80,7 +80,7 @@ const AppShell = ({ children }: AppShellProps) => {
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">Workspace</span>
                         <span className="text-muted-foreground/30">/</span>
-                        <span className="text-[10px] font-mono font-medium uppercase tracking-widest">Dashboard</span>
+                        <span className="text-[10px] font-mono font-medium uppercase tracking-widest">{activeItem?.label || "Workspace"}</span>
                     </div>
                     <div className="flex items-center gap-4">
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">

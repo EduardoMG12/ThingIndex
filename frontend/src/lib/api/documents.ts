@@ -103,3 +103,23 @@ export async function uploadDocument(input: {
 
     return normalizeDocument(payload.data);
 }
+
+export async function fetchDocuments(signal?: AbortSignal): Promise<Document[]> {
+    const response = await fetchWithAuthRedirect("/api/documents", {
+        method: "GET",
+        cache: "no-store",
+        signal,
+    });
+
+    const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<DocumentApiRecord[]> | ApiErrorResponse | null;
+
+    if (!response.ok) {
+        throw new Error(payload?.message || "Nao foi possivel carregar os documentos.");
+    }
+
+    if (!hasResponseData(payload) || !Array.isArray(payload.data)) {
+        return [];
+    }
+
+    return payload.data.map(normalizeDocument);
+}
