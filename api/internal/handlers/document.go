@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -328,6 +329,48 @@ func (h *DocumentHandler) GetDocument(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_document_get"), dto.ToDocumentResponse(doc))
+}
+
+func (h *DocumentHandler) GetDocumentContent(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	documentID, ok := parseUintParam(c, "id", i18n.T(lang, "error.invalid_document_id"))
+	if !ok {
+		return
+	}
+
+	content, err := h.useCase.GetDocumentContent(c.Request.Context(), userID, documentID)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrDocumentNotFound):
+			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
+		case errors.Is(err, domain.ErrStorageProviderUnavailable):
+			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_storage_provider"), nil)
+		default:
+			h.respondInternalError(c, lang)
+		}
+		return
+	}
+	defer content.Reader.Close()
+
+	disposition := "attachment"
+	switch content.Document.MimeType {
+	case "application/pdf", "text/html", "text/plain":
+		disposition = "inline"
+	}
+
+	c.Header("Content-Type", content.Document.MimeType)
+	c.Header("Content-Disposition", disposition+`; filename="`+content.Document.Title+`"`)
+	c.Header("Cache-Control", "no-store")
+	if content.Document.Size > 0 {
+		c.Header("Content-Length", strconv.FormatInt(content.Document.Size, 10))
+	}
+	c.Status(http.StatusOK)
+
+	if _, copyErr := io.Copy(c.Writer, content.Reader); copyErr != nil {
+		_ = c.Error(copyErr)
+	}
 }
 
 func (h *DocumentHandler) GetDocumentIndex(c *gin.Context) {

@@ -6,6 +6,11 @@ import (
 	"thing-index/internal/models"
 )
 
+type DocumentContent struct {
+	Document *models.Document
+	Reader   io.ReadCloser
+}
+
 type CollectionContext struct {
 	Collection     *models.Collection
 	Documents      []models.Document
@@ -77,6 +82,7 @@ type DocumentCatalogUseCase interface {
 	ListCategories(ctx context.Context, userID uint) ([]models.DocumentCategory, error)
 	ListDocuments(ctx context.Context, userID uint) ([]models.Document, error)
 	GetDocument(ctx context.Context, userID, documentID uint) (*models.Document, error)
+	GetDocumentContent(ctx context.Context, userID, documentID uint) (*DocumentContent, error)
 	GetDocumentIndex(ctx context.Context, userID, documentID uint) (*DocumentIndex, error)
 	ListDocumentsByCategory(ctx context.Context, categoryID uint, userID uint) ([]models.Document, error)
 	ListCollections(ctx context.Context, userID uint) ([]models.Collection, error)

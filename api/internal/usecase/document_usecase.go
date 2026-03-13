@@ -451,6 +451,44 @@ func (u *documentCatalogUseCase) GetDocument(ctx context.Context, userID, docume
 	return doc, nil
 }
 
+func (u *documentCatalogUseCase) GetDocumentContent(ctx context.Context, userID, documentID uint) (*domain.DocumentContent, error) {
+	doc, err := u.GetDocument(ctx, userID, documentID)
+	if err != nil {
+		return nil, err
+	}
+
+	storageClient := u.storage
+	usedCustomStorage := false
+	userStorage, providerErr := u.storageResolver.ResolveStorage(ctx, userID)
+	switch {
+	case providerErr == nil:
+		storageClient = userStorage
+		usedCustomStorage = true
+	case errors.Is(providerErr, domain.ErrStorageProviderNotConfigured):
+	default:
+		return nil, providerErr
+	}
+
+	reader, err := storageClient.OpenFile(ctx, doc.FileURL)
+	if err != nil {
+		if usedCustomStorage {
+			fallbackReader, fallbackErr := u.storage.OpenFile(ctx, doc.FileURL)
+			if fallbackErr == nil {
+				reader = fallbackReader
+			} else {
+				return nil, fmt.Errorf("%w: custom storage open failed: %v; fallback open failed: %v", domain.ErrUploadFailed, err, fallbackErr)
+			}
+		} else {
+			return nil, fmt.Errorf("%w: %v", domain.ErrUploadFailed, err)
+		}
+	}
+
+	return &domain.DocumentContent{
+		Document: doc,
+		Reader:   reader,
+	}, nil
+}
+
 func (u *documentCatalogUseCase) GetDocumentIndex(ctx context.Context, userID, documentID uint) (*domain.DocumentIndex, error) {
 	doc, err := u.GetDocument(ctx, userID, documentID)
 	if err != nil {

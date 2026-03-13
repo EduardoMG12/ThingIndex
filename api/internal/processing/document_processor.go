@@ -48,10 +48,12 @@ func (p *DocumentProcessor) Process(ctx context.Context, event domain.DocumentIn
 	}
 
 	storageClient := p.baseStorage
+	usedCustomStorage := false
 	userStorage, resolveErr := p.storageResolver.ResolveStorage(ctx, doc.UserID)
 	switch {
 	case resolveErr == nil:
 		storageClient = userStorage
+		usedCustomStorage = true
 	case errors.Is(resolveErr, domain.ErrStorageProviderNotConfigured):
 	default:
 		_ = p.repo.UpdateDocumentStatus(ctx, doc.ID, domain.DocumentStatusFailed)
@@ -60,8 +62,18 @@ func (p *DocumentProcessor) Process(ctx context.Context, event domain.DocumentIn
 
 	reader, err := storageClient.OpenFile(ctx, doc.FileURL)
 	if err != nil {
-		_ = p.repo.UpdateDocumentStatus(ctx, doc.ID, domain.DocumentStatusFailed)
-		return fmt.Errorf("%w: open file: %v", domain.ErrDocumentIndexing, err)
+		if usedCustomStorage {
+			fallbackReader, fallbackErr := p.baseStorage.OpenFile(ctx, doc.FileURL)
+			if fallbackErr == nil {
+				reader = fallbackReader
+			} else {
+				_ = p.repo.UpdateDocumentStatus(ctx, doc.ID, domain.DocumentStatusFailed)
+				return fmt.Errorf("%w: open file: custom storage: %v; fallback storage: %v", domain.ErrDocumentIndexing, err, fallbackErr)
+			}
+		} else {
+			_ = p.repo.UpdateDocumentStatus(ctx, doc.ID, domain.DocumentStatusFailed)
+			return fmt.Errorf("%w: open file: %v", domain.ErrDocumentIndexing, err)
+		}
 	}
 	defer reader.Close()
 

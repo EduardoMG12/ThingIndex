@@ -135,6 +135,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 			documents.POST("/:id/paragraph-nodes", docHandler.StoreParagraphNodes)
 			documents.POST("/:id/table-sections", docHandler.StoreTableSections)
 			documents.POST("/:id/metadata-pairs", docHandler.StoreMetadataPairs)
+			documents.GET("/:id/content", docHandler.GetDocumentContent)
 			documents.GET("/:id/index", docHandler.GetDocumentIndex)
 			documents.GET("/:id", docHandler.GetDocument)
 			documents.GET("/", docHandler.ListDocuments)
