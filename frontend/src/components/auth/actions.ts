@@ -2,10 +2,14 @@
 
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { createForwardHeaders } from "@/app/api/_utils/locale";
+import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, normalizeLocale } from "@/lib/i18n/config";
 
 const API_URL = process.env.API_INTERNAL_URL || "http://api:8080/api/v1";
 
 export async function login(formData: FormData) {
+  const cookieStore = await cookies();
+  const locale = normalizeLocale(cookieStore.get(LOCALE_COOKIE_NAME)?.value ?? DEFAULT_LOCALE);
   const email = formData.get("email");
   const password = formData.get("password");
 
@@ -16,7 +20,7 @@ export async function login(formData: FormData) {
   try {
     const res = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await createForwardHeaders(undefined, { contentType: "application/json" }),
       body: JSON.stringify({ email, password }),
     });
 
@@ -38,22 +42,24 @@ export async function login(formData: FormData) {
     }
 
     // Configura o cookie com o token JWT
-    (await cookies()).set("token", token, {
+    cookieStore.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 24, // 1 dia
       path: "/",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Login error:", error);
     return { error: "Erro de conexão com o servidor", type: "error" };
   }
 
-  redirect("/dashboard");
+  redirect(`/${locale}/dashboard`);
 }
 
 export async function register(formData: FormData) {
+  const cookieStore = await cookies();
+  const locale = normalizeLocale(cookieStore.get(LOCALE_COOKIE_NAME)?.value ?? DEFAULT_LOCALE);
   const name = formData.get("name");
   const email = formData.get("email");
   const password = formData.get("password");
@@ -65,7 +71,7 @@ export async function register(formData: FormData) {
   try {
     const res = await fetch(`${API_URL}/auth/register`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await createForwardHeaders(undefined, { contentType: "application/json" }),
       body: JSON.stringify({ name, email, password }),
     });
 
@@ -87,22 +93,24 @@ export async function register(formData: FormData) {
     }
 
     // Configura o cookie com o token JWT
-    (await cookies()).set("token", token, {
+    cookieStore.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 24, // 1 dia
       path: "/",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Registration error:", error);
     return { error: "Erro de conexão com o servidor", type: "error" };
   }
 
-  redirect("/dashboard");
+  redirect(`/${locale}/dashboard`);
 }
 
 export async function logout() {
-  (await cookies()).delete("token");
-  redirect("/");
+  const cookieStore = await cookies();
+  const locale = normalizeLocale(cookieStore.get(LOCALE_COOKIE_NAME)?.value ?? DEFAULT_LOCALE);
+  cookieStore.delete("token");
+  redirect(`/${locale}`);
 }
