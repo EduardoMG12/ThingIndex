@@ -46,6 +46,10 @@ services:
       DOCUMENT_INDEX_EXCHANGE: ${DOCUMENT_INDEX_EXCHANGE:-thingindex.document.index}
       DOCUMENT_INDEX_QUEUE: ${DOCUMENT_INDEX_QUEUE:-thingindex.document.index.queue}
       DOCUMENT_INDEX_ROUTING_KEY: ${DOCUMENT_INDEX_ROUTING_KEY:-document.index.requested}
+      DOCUMENT_INDEX_RETRY_QUEUE: ${DOCUMENT_INDEX_RETRY_QUEUE:-thingindex.document.index.retry}
+      DOCUMENT_INDEX_DLQ: ${DOCUMENT_INDEX_DLQ:-thingindex.document.index.dlq}
+      DOCUMENT_INDEX_RETRY_DELAY_SECONDS: ${DOCUMENT_INDEX_RETRY_DELAY_SECONDS:-30}
+      DOCUMENT_INDEX_MAX_RETRIES: ${DOCUMENT_INDEX_MAX_RETRIES:-5}
       # Use the host-published Postgres port to avoid container DNS issues.
       DB_HOST: host.docker.internal
       DB_PORT: 5433
@@ -71,6 +75,10 @@ services:
       DOCUMENT_INDEX_EXCHANGE: ${DOCUMENT_INDEX_EXCHANGE:-thingindex.document.index}
       DOCUMENT_INDEX_QUEUE: ${DOCUMENT_INDEX_QUEUE:-thingindex.document.index.queue}
       DOCUMENT_INDEX_ROUTING_KEY: ${DOCUMENT_INDEX_ROUTING_KEY:-document.index.requested}
+      DOCUMENT_INDEX_RETRY_QUEUE: ${DOCUMENT_INDEX_RETRY_QUEUE:-thingindex.document.index.retry}
+      DOCUMENT_INDEX_DLQ: ${DOCUMENT_INDEX_DLQ:-thingindex.document.index.dlq}
+      DOCUMENT_INDEX_RETRY_DELAY_SECONDS: ${DOCUMENT_INDEX_RETRY_DELAY_SECONDS:-30}
+      DOCUMENT_INDEX_MAX_RETRIES: ${DOCUMENT_INDEX_MAX_RETRIES:-5}
       DB_HOST: host.docker.internal
       DB_PORT: 5433
       DB_USER: ${POSTGRES_USER}

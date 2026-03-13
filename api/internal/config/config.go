@@ -51,9 +51,13 @@ type Config struct {
 	DocumentIndexExchange   string
 	DocumentIndexQueue      string
 	DocumentIndexRoutingKey string
+	DocumentIndexRetryQueue string
+	DocumentIndexDLQ        string
 	OutboxPollInterval      time.Duration
 	OutboxBatchSize         int
 	ConsumerPrefetchCount   int
+	DocumentIndexRetryDelay time.Duration
+	DocumentIndexMaxRetries int
 	MaxUploadSizeBytes      int64
 	MasterEncryptionKey     string
 	ServerReadTimeout       time.Duration
@@ -119,9 +123,13 @@ func Load() {
 		DocumentIndexExchange:        getEnv("DOCUMENT_INDEX_EXCHANGE", "thingindex.document.index"),
 		DocumentIndexQueue:           getEnv("DOCUMENT_INDEX_QUEUE", "thingindex.document.index.queue"),
 		DocumentIndexRoutingKey:      getEnv("DOCUMENT_INDEX_ROUTING_KEY", "document.index.requested"),
+		DocumentIndexRetryQueue:      getEnv("DOCUMENT_INDEX_RETRY_QUEUE", "thingindex.document.index.retry"),
+		DocumentIndexDLQ:             getEnv("DOCUMENT_INDEX_DLQ", "thingindex.document.index.dlq"),
 		OutboxPollInterval:           getEnvDurationSeconds("OUTBOX_POLL_INTERVAL_SECONDS", 5),
 		OutboxBatchSize:              getEnvInt("OUTBOX_BATCH_SIZE", 20),
 		ConsumerPrefetchCount:        getEnvInt("CONSUMER_PREFETCH_COUNT", 10),
+		DocumentIndexRetryDelay:      getEnvDurationSeconds("DOCUMENT_INDEX_RETRY_DELAY_SECONDS", 30),
+		DocumentIndexMaxRetries:      getEnvInt("DOCUMENT_INDEX_MAX_RETRIES", 5),
 		MaxUploadSizeBytes:           getEnvInt64("MAX_UPLOAD_SIZE_BYTES", 20*1024*1024),
 		MasterEncryptionKey:          getEnv("MASTER_ENCRYPTION_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMaster)),
 		ServerReadTimeout:            getEnvDurationSeconds("SERVER_READ_TIMEOUT_SECONDS", 15),
@@ -235,6 +243,9 @@ func (c *Config) Validate() error {
 	if strings.TrimSpace(c.DocumentIndexExchange) == "" || strings.TrimSpace(c.DocumentIndexQueue) == "" || strings.TrimSpace(c.DocumentIndexRoutingKey) == "" {
 		return errors.New("document indexing queue configuration is required")
 	}
+	if strings.TrimSpace(c.DocumentIndexRetryQueue) == "" || strings.TrimSpace(c.DocumentIndexDLQ) == "" {
+		return errors.New("document indexing retry queue configuration is required")
+	}
 	if c.OutboxPollInterval <= 0 {
 		return errors.New("OUTBOX_POLL_INTERVAL_SECONDS must be greater than zero")
 	}
@@ -243,6 +254,12 @@ func (c *Config) Validate() error {
 	}
 	if c.ConsumerPrefetchCount <= 0 {
 		return errors.New("CONSUMER_PREFETCH_COUNT must be greater than zero")
+	}
+	if c.DocumentIndexRetryDelay <= 0 {
+		return errors.New("DOCUMENT_INDEX_RETRY_DELAY_SECONDS must be greater than zero")
+	}
+	if c.DocumentIndexMaxRetries <= 0 {
+		return errors.New("DOCUMENT_INDEX_MAX_RETRIES must be greater than zero")
 	}
 	if c.ServerReadTimeout <= 0 || c.ServerWriteTimeout <= 0 || c.ServerIdleTimeout <= 0 {
 		return errors.New("server timeout values must be greater than zero")
