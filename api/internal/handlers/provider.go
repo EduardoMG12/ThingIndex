@@ -22,14 +22,21 @@ func NewProviderHandler(useCase domain.ProviderUseCase) *ProviderHandler {
 }
 
 type saveCredentialsRequest struct {
-	Family       string            `json:"family" binding:"required"`
-	ProviderType string            `json:"provider_type" binding:"required"`
-	Credentials  map[string]string `json:"credentials" binding:"required"`
+	Family             string            `json:"family" binding:"required"`
+	ProviderType       string            `json:"provider_type" binding:"required"`
+	Credentials        map[string]string `json:"credentials" binding:"required"`
+	IsEnabled          *bool             `json:"is_enabled,omitempty"`
+	EnabledForIndexing *bool             `json:"enabled_for_indexing,omitempty"`
+	EnabledForChat     *bool             `json:"enabled_for_chat,omitempty"`
 }
 
 type updateProviderStateRequest struct {
-	Family    string `json:"family" binding:"required"`
-	IsEnabled bool   `json:"is_enabled"`
+	Family             string `json:"family"`
+	ActivationTarget   string `json:"activation_target"`
+	Enabled            *bool  `json:"enabled"`
+	IsEnabled          *bool  `json:"is_enabled"`
+	EnabledForIndexing *bool  `json:"enabled_for_indexing"`
+	EnabledForChat     *bool  `json:"enabled_for_chat"`
 }
 
 func (h *ProviderHandler) SaveCredentials(c *gin.Context) {
@@ -42,7 +49,18 @@ func (h *ProviderHandler) SaveCredentials(c *gin.Context) {
 		return
 	}
 
-	if err := h.useCase.SaveCredentials(c.Request.Context(), userID, req.Family, req.ProviderType, req.Credentials); err != nil {
+	activation := domain.ProviderActivation{}
+	if req.IsEnabled != nil {
+		activation.IsEnabled = *req.IsEnabled
+	}
+	if req.EnabledForIndexing != nil {
+		activation.EnabledForIndexing = *req.EnabledForIndexing
+	}
+	if req.EnabledForChat != nil {
+		activation.EnabledForChat = *req.EnabledForChat
+	}
+
+	if err := h.useCase.SaveCredentials(c.Request.Context(), userID, req.Family, req.ProviderType, req.Credentials, activation); err != nil {
 		switch {
 		case errors.Is(err, domain.ErrProviderFamilyInvalid):
 			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_family"), nil)
@@ -115,7 +133,37 @@ func (h *ProviderHandler) UpdateProviderState(c *gin.Context) {
 		return
 	}
 
-	if err := h.useCase.SetProviderEnabled(c.Request.Context(), userID, req.Family, providerType, req.IsEnabled); err != nil {
+	enabled := false
+	switch {
+	case req.Enabled != nil:
+		enabled = *req.Enabled
+	case req.IsEnabled != nil:
+		enabled = *req.IsEnabled
+	case req.EnabledForIndexing != nil:
+		enabled = *req.EnabledForIndexing
+	case req.EnabledForChat != nil:
+		enabled = *req.EnabledForChat
+	}
+
+	activationTarget := normalizeActivationTarget(req.ActivationTarget, req.Family, req.EnabledForIndexing, req.EnabledForChat)
+	if activationTarget == "" {
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_family"), nil)
+		return
+	}
+
+	var err error
+	switch activationTarget {
+	case "STORAGE":
+		err = h.useCase.SetProviderEnabled(c.Request.Context(), userID, domain.FamilyStorage, providerType, enabled)
+	case "INDEXING":
+		err = h.useCase.SetLLMUsageEnabled(c.Request.Context(), userID, providerType, domain.LLMUsageIndexing, enabled)
+	case "CHAT":
+		err = h.useCase.SetLLMUsageEnabled(c.Request.Context(), userID, providerType, domain.LLMUsageChat, enabled)
+	default:
+		err = domain.ErrProviderFamilyInvalid
+	}
+
+	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrProviderFamilyInvalid):
 			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_family"), nil)
@@ -130,4 +178,32 @@ func (h *ProviderHandler) UpdateProviderState(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "provider.success_save"), nil)
+}
+
+func normalizeActivationTarget(target string, family string, enabledForIndexing *bool, enabledForChat *bool) string {
+	normalizedTarget := strings.ToUpper(strings.TrimSpace(target))
+	switch normalizedTarget {
+	case "STORAGE", "INDEXING", "CHAT":
+		return normalizedTarget
+	case "INDEX":
+		return "INDEXING"
+	case "LLM_INDEXING":
+		return "INDEXING"
+	case "LLM_CHAT":
+		return "CHAT"
+	}
+
+	switch {
+	case enabledForIndexing != nil:
+		return "INDEXING"
+	case enabledForChat != nil:
+		return "CHAT"
+	}
+
+	switch strings.ToUpper(strings.TrimSpace(family)) {
+	case domain.FamilyStorage:
+		return "STORAGE"
+	}
+
+	return ""
 }

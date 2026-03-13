@@ -48,7 +48,7 @@ func NewProviderUseCase(repo domain.ProviderRepository, cfg *config.Config) doma
 	}
 }
 
-func (u *providerUseCase) SaveCredentials(ctx context.Context, userID uint, family, providerType string, credentials map[string]string) error {
+func (u *providerUseCase) SaveCredentials(ctx context.Context, userID uint, family, providerType string, credentials map[string]string, activation domain.ProviderActivation) error {
 	normalizedFamily, normalizedProviderType, err := normalizeProviderSelection(family, providerType)
 	if err != nil {
 		return err
@@ -69,11 +69,17 @@ func (u *providerUseCase) SaveCredentials(ctx context.Context, userID uint, fami
 	}
 
 	config := &models.UserProviderConfig{
-		UserID:        userID,
-		Family:        normalizedFamily,
-		ProviderType:  normalizedProviderType,
-		EncryptedData: encrypted,
-		IsEnabled:     true,
+		UserID:             userID,
+		Family:             normalizedFamily,
+		ProviderType:       normalizedProviderType,
+		EncryptedData:      encrypted,
+		IsEnabled:          normalizedFamily == domain.FamilyStorage && activation.IsEnabled,
+		EnabledForIndexing: normalizedFamily == domain.FamilyLLM && activation.EnabledForIndexing,
+		EnabledForChat:     normalizedFamily == domain.FamilyLLM && activation.EnabledForChat,
+	}
+
+	if normalizedFamily == domain.FamilyStorage && !activation.IsEnabled {
+		config.IsEnabled = true
 	}
 
 	return u.repo.SaveConfig(ctx, config)
@@ -121,6 +127,27 @@ func (u *providerUseCase) SetProviderEnabled(ctx context.Context, userID uint, f
 	return nil
 }
 
+func (u *providerUseCase) SetLLMUsageEnabled(ctx context.Context, userID uint, providerType, usage string, enabled bool) error {
+	normalizedProviderType := strings.ToUpper(strings.TrimSpace(providerType))
+	if _, ok := supportedProvidersByFamily[domain.FamilyLLM][normalizedProviderType]; !ok {
+		return domain.ErrProviderTypeInvalid
+	}
+
+	normalizedUsage := strings.ToUpper(strings.TrimSpace(usage))
+	if normalizedUsage != domain.LLMUsageIndexing && normalizedUsage != domain.LLMUsageChat {
+		return domain.ErrProviderFamilyInvalid
+	}
+
+	if err := u.repo.SetLLMConfigUsage(ctx, userID, normalizedProviderType, normalizedUsage, enabled); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return domain.ErrProviderCredentialsInvalid
+		}
+		return err
+	}
+
+	return nil
+}
+
 func (u *providerUseCase) ResolveStorage(ctx context.Context, userID uint) (domain.StorageService, error) {
 	config, err := u.repo.GetConfigByFamily(ctx, userID, domain.FamilyStorage)
 	if err != nil {
@@ -148,8 +175,16 @@ func (u *providerUseCase) ResolveStorage(ctx context.Context, userID uint) (doma
 	return storageService, nil
 }
 
-func (u *providerUseCase) ResolveLLM(ctx context.Context, userID uint) (domain.LLMService, error) {
-	config, err := u.repo.GetConfigByFamily(ctx, userID, domain.FamilyLLM)
+func (u *providerUseCase) ResolveLLMForIndexing(ctx context.Context, userID uint) (domain.LLMService, error) {
+	return u.resolveLLMByUsage(ctx, userID, domain.LLMUsageIndexing)
+}
+
+func (u *providerUseCase) ResolveLLMForChat(ctx context.Context, userID uint) (domain.LLMService, error) {
+	return u.resolveLLMByUsage(ctx, userID, domain.LLMUsageChat)
+}
+
+func (u *providerUseCase) resolveLLMByUsage(ctx context.Context, userID uint, usage string) (domain.LLMService, error) {
+	config, err := u.repo.GetConfigByLLMUsage(ctx, userID, usage)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrLLMProviderNotConfigured

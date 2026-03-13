@@ -84,7 +84,7 @@ func (p *DocumentProcessor) Process(ctx context.Context, event domain.DocumentIn
 	}
 
 	if p.llmResolver != nil && p.enricher != nil {
-		llmClient, resolveErr := p.llmResolver.ResolveLLM(ctx, doc.UserID)
+		llmClient, resolveErr := p.llmResolver.ResolveLLMForIndexing(ctx, doc.UserID)
 		switch {
 		case resolveErr == nil:
 			if enrichedResult, enrichErr := p.enricher.Enrich(ctx, llmClient, doc, result); enrichErr == nil {
