@@ -15,7 +15,7 @@ export function TableOfContents() {
                 className="flex w-full items-center justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-4 hover:text-primary transition-colors"
             >
                 <span className="flex items-center gap-2">
-                    Índice
+                    Navegação
                 </span>
                 {expandedToc ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
             </button>

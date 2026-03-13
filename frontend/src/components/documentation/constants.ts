@@ -1,16 +1,17 @@
-import { FileText, GitBranch, Database, Layers, Code2, BookOpen, Target, Lightbulb, Workflow, Brain } from "lucide-react";
-
 export const TOC = [
-  { id: "about", label: "Sobre o Projeto" },
-  { id: "rag-vs-thingindex", label: "RAG Tradicional vs ThingIndex" },
-  { id: "how-it-works", label: "Como Funciona" },
-  { id: "pipeline", label: "Pipeline Detalhado" },
-  { id: "prompt-chain", label: "Cadeia de Prompts" },
-  { id: "categories", label: "Categorias & Collections" },
-  { id: "tech-stack", label: "Stack Tecnológico" },
-  { id: "pricing", label: "Comparativo de Preços (AI)" },
-  { id: "article", label: "Artigo (TCC)" },
-  { id: "references", label: "Referências" },
+  { id: "overview", label: "Visão Geral" },
+  { id: "principles", label: "Princípios de Projeto" },
+  { id: "architecture", label: "Arquitetura do Sistema" },
+  { id: "pipeline", label: "Pipeline de Processamento" },
+  { id: "data-model", label: "Modelo de Dados" },
+  { id: "retrieval", label: "Retrieval e Indexação" },
+  { id: "security", label: "Segurança e Governança" },
+  { id: "deployment", label: "Deploy e Operação" },
+  { id: "providers", label: "Providers e Portabilidade" },
+  { id: "pricing", label: "Custos e Benchmark" },
+  { id: "academic", label: "TCC e Artigo" },
+  { id: "contributing", label: "Contribuição e Roadmap" },
+  { id: "references", label: "Referências e Materiais" },
 ];
 
 export const FEATURES = [
