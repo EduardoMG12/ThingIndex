@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+
 import { AnimatePresence, motion } from "framer-motion";
 import { Moon, SunMedium } from "lucide-react";
 
@@ -8,12 +9,11 @@ import { cn } from "@/lib/utils";
 
 type ThemeMode = "dark" | "light";
 
-const STORAGE_KEY = "thingindex-theme";
 const THEME_EVENT = "thingindex-theme-change";
 
 function subscribeToClientRender(onStoreChange: () => void) {
     if (typeof window === "undefined") {
-        return () => {};
+        return () => { };
     }
 
     const frame = window.requestAnimationFrame(onStoreChange);
@@ -32,24 +32,18 @@ function resolveThemeSnapshot(): ThemeMode {
         return "dark";
     }
 
-    const storedTheme = window.localStorage.getItem(STORAGE_KEY);
-    if (storedTheme === "dark" || storedTheme === "light") {
-        return storedTheme;
-    }
-
     return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
 }
 
 function applyTheme(theme: ThemeMode) {
     document.documentElement.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
-    window.localStorage.setItem(STORAGE_KEY, theme);
     window.dispatchEvent(new Event(THEME_EVENT));
 }
 
 function subscribeToTheme(onStoreChange: () => void) {
     if (typeof window === "undefined") {
-        return () => {};
+        return () => { };
     }
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: light)");
@@ -62,13 +56,11 @@ function subscribeToTheme(onStoreChange: () => void) {
     const handleThemeChange = () => onStoreChange();
 
     window.addEventListener(THEME_EVENT, handleThemeChange);
-    window.addEventListener("storage", handleThemeChange);
     mediaQuery.addEventListener("change", handleThemeChange);
 
     return () => {
         observer.disconnect();
         window.removeEventListener(THEME_EVENT, handleThemeChange);
-        window.removeEventListener("storage", handleThemeChange);
         mediaQuery.removeEventListener("change", handleThemeChange);
     };
 }

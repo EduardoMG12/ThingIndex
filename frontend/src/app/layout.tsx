@@ -6,12 +6,7 @@ import "./globals.css";
 
 const themeInitScript = `
 (() => {
-  const storageKey = "thingindex-theme";
-  const storedTheme = window.localStorage.getItem(storageKey);
-  const preferredTheme =
-    storedTheme === "light" || storedTheme === "dark"
-      ? storedTheme
-      : (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+  const preferredTheme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
 
   document.documentElement.dataset.theme = preferredTheme;
   document.documentElement.style.colorScheme = preferredTheme;
