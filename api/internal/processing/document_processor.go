@@ -75,7 +75,7 @@ func (p *DocumentProcessor) Process(ctx context.Context, event domain.DocumentIn
 		llmClient, resolveErr := p.llmResolver.ResolveLLM(ctx, doc.UserID)
 		switch {
 		case resolveErr == nil:
-			if enrichedResult, enrichErr := p.enricher.Enrich(ctx, llmClient, result); enrichErr == nil {
+			if enrichedResult, enrichErr := p.enricher.Enrich(ctx, llmClient, doc, result); enrichErr == nil {
 				result = enrichedResult
 			}
 		case errors.Is(resolveErr, domain.ErrLLMProviderNotConfigured):

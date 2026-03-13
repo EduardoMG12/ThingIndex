@@ -28,19 +28,12 @@ func NewLLMEnricher() *LLMEnricher {
 	return &LLMEnricher{}
 }
 
-func (e *LLMEnricher) Enrich(ctx context.Context, llm domain.LLMService, result domain.IndexingResult) (domain.IndexingResult, error) {
+func (e *LLMEnricher) Enrich(ctx context.Context, llm domain.LLMService, doc *models.Document, result domain.IndexingResult) (domain.IndexingResult, error) {
 	if llm == nil {
 		return result, nil
 	}
 
-	systemPrompt := strings.TrimSpace(`
-You enrich a document index.
-Return only valid JSON.
-Do not wrap the response in markdown fences.
-Keep summaries factual, short, and grounded in the supplied outline and extracted paragraphs.
-`)
-
-	userPrompt := buildEnrichmentPrompt(result)
+	systemPrompt, userPrompt := buildEnrichmentPrompt(doc, result)
 	responseText, err := llm.GenerateText(ctx, systemPrompt, userPrompt)
 	if err != nil {
 		return result, err
@@ -83,11 +76,32 @@ Keep summaries factual, short, and grounded in the supplied outline and extracte
 	return updated, nil
 }
 
-func buildEnrichmentPrompt(result domain.IndexingResult) string {
+func buildEnrichmentPrompt(doc *models.Document, result domain.IndexingResult) (string, string) {
+	promptProfile := promptProfileForDocument(doc)
+
+	systemPrompt := strings.TrimSpace(`
+You enrich a structured document index.
+Return only valid JSON.
+Do not wrap the response in markdown fences.
+Keep summaries factual, concise, and grounded only in the supplied content.
+Do not invent sections, facts, numbers, or legal conclusions not present in the input.
+`)
+
 	var builder strings.Builder
 	builder.WriteString("Produce JSON with fields document_summary, keywords, sections.\n")
 	builder.WriteString("sections must be an array of objects with sequence_order and summary.\n")
 	builder.WriteString("Summaries must be in Portuguese.\n\n")
+	builder.WriteString("Document type guidance:\n")
+	builder.WriteString(promptProfile)
+	builder.WriteString("\n\n")
+	if doc != nil {
+		builder.WriteString("Document metadata:\n")
+		builder.WriteString("- title=")
+		builder.WriteString(doc.Title)
+		builder.WriteString("\n- mime_type=")
+		builder.WriteString(doc.MimeType)
+		builder.WriteString("\n\n")
+	}
 
 	builder.WriteString("Outline:\n")
 	for idx, node := range result.OutlineNodes {
@@ -127,7 +141,7 @@ func buildEnrichmentPrompt(result domain.IndexingResult) string {
 		}
 	}
 
-	return builder.String()
+	return systemPrompt, builder.String()
 }
 
 func nextMetadataSequence(pairs []models.MetadataPair) int {
