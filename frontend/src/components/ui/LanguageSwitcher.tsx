@@ -11,6 +11,8 @@ import {
     type AppLocale,
 } from "@/lib/i18n/config";
 import { useI18n } from "@/lib/i18n/provider";
+// hidden from the UI, as Spanish translation is not ready yet and we don't want to show a broken experience.
+const VISIBLE_LOCALES: AppLocale[] = SUPPORTED_LOCALES.filter((locale) => locale !== "es");
 
 export function LanguageSwitcher() {
     const router = useRouter();
@@ -30,7 +32,7 @@ export function LanguageSwitcher() {
                 <Languages className="h-3.5 w-3.5" />
             </div>
             <div className="flex items-center rounded-full bg-muted/40 p-0.5">
-                {SUPPORTED_LOCALES.map((option) => {
+                {VISIBLE_LOCALES.map((option) => {
                     const active = option === locale;
 
                     return (
@@ -38,11 +40,10 @@ export function LanguageSwitcher() {
                             key={option}
                             type="button"
                             onClick={() => handleChange(option)}
-                            className={`rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] transition-all ${
-                                active
+                            className={`rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] transition-all ${active
                                     ? "bg-foreground text-background"
                                     : "text-muted-foreground/80 hover:text-foreground"
-                            }`}
+                                }`}
                             aria-pressed={active}
                             aria-label={getLocaleLabel(option)}
                         >
