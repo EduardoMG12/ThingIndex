@@ -347,6 +347,48 @@ export function normalizeOutlineNodes(value: unknown): OutlineNode[] {
     }, []);
 }
 
+export function normalizeParagraphNodes(value: unknown): ParagraphNode[] {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value.reduce<ParagraphNode[]>((items, entry) => {
+        const normalized = normalizeParagraphNode(entry);
+        if (normalized) {
+            items.push(normalized);
+        }
+        return items;
+    }, []);
+}
+
+export function normalizeTableSections(value: unknown): TableSection[] {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value.reduce<TableSection[]>((items, entry) => {
+        const normalized = normalizeTableSection(entry);
+        if (normalized) {
+            items.push(normalized);
+        }
+        return items;
+    }, []);
+}
+
+export function normalizeMetadataPairs(value: unknown): MetadataPair[] {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value.reduce<MetadataPair[]>((items, entry) => {
+        const normalized = normalizeMetadataPair(entry);
+        if (normalized) {
+            items.push(normalized);
+        }
+        return items;
+    }, []);
+}
+
 export function normalizeCollectionContext(value: unknown): CollectionContext | null {
     if (!isRecord(value)) {
         return null;
@@ -368,33 +410,9 @@ export function normalizeCollectionContext(value: unknown): CollectionContext | 
                   return items;
               }, [])
             : [],
-        paragraphNodes: Array.isArray(value.paragraph_nodes)
-            ? value.paragraph_nodes.reduce<ParagraphNode[]>((items, entry) => {
-                  const normalized = normalizeParagraphNode(entry);
-                  if (normalized) {
-                      items.push(normalized);
-                  }
-                  return items;
-              }, [])
-            : [],
-        tableSections: Array.isArray(value.table_sections)
-            ? value.table_sections.reduce<TableSection[]>((items, entry) => {
-                  const normalized = normalizeTableSection(entry);
-                  if (normalized) {
-                      items.push(normalized);
-                  }
-                  return items;
-              }, [])
-            : [],
-        metadataPairs: Array.isArray(value.metadata_pairs)
-            ? value.metadata_pairs.reduce<MetadataPair[]>((items, entry) => {
-                  const normalized = normalizeMetadataPair(entry);
-                  if (normalized) {
-                      items.push(normalized);
-                  }
-                  return items;
-              }, [])
-            : [],
+        paragraphNodes: normalizeParagraphNodes(value.paragraph_nodes),
+        tableSections: normalizeTableSections(value.table_sections),
+        metadataPairs: normalizeMetadataPairs(value.metadata_pairs),
         outlineNodes: normalizeOutlineNodes(value.outline_nodes),
     };
 }

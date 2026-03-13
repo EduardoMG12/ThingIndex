@@ -7,9 +7,15 @@ import type { Category } from "@/lib/api/categories";
 import {
     getCollectionName,
     normalizeCollectionSummary,
+    normalizeMetadataPairs,
     normalizeOutlineNodes,
+    normalizeParagraphNodes,
+    normalizeTableSections,
     type CollectionSummary,
+    type MetadataPair,
     type OutlineNode,
+    type ParagraphNode,
+    type TableSection,
 } from "@/lib/api/contracts/document-context";
 import { fetchWithAuthRedirect } from "@/lib/api/fetch-with-auth-redirect";
 
@@ -142,15 +148,77 @@ type DocumentIndexApiRecord = {
     paragraph_nodes?: unknown[];
     table_sections?: unknown[];
     metadata_pairs?: Array<{ key?: string; value?: string; document_id?: number; sequence_order?: number; id?: number | string }>;
+    chunks?: Array<{
+        id?: number | string;
+        document_id?: number;
+        sequence_order?: number;
+        chunk_type?: string;
+        title?: string;
+        content?: string;
+        source_paragraph_start?: number;
+        source_paragraph_end?: number;
+        token_estimate?: number;
+        metadata?: Record<string, unknown>;
+    }>;
     outline_nodes?: unknown[];
     document_summary?: string;
 };
 
+export type DocumentChunk = {
+    id: number | string;
+    document_id: number;
+    sequence_order: number;
+    chunk_type: string;
+    title?: string;
+    content: string;
+    source_paragraph_start?: number;
+    source_paragraph_end?: number;
+    token_estimate: number;
+    metadata?: Record<string, unknown>;
+};
+
 export type DocumentIndex = {
     document: Document | null;
+    paragraph_nodes: ParagraphNode[];
+    table_sections: TableSection[];
+    metadata_pairs: MetadataPair[];
+    chunks: DocumentChunk[];
     document_summary: string;
     outline_nodes: OutlineNode[];
 };
+
+function normalizeDocumentChunks(value: DocumentIndexApiRecord["chunks"]): DocumentChunk[] {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value.reduce<DocumentChunk[]>((items, chunk) => {
+        if (
+            !chunk ||
+            typeof chunk.document_id !== "number" ||
+            typeof chunk.sequence_order !== "number" ||
+            typeof chunk.chunk_type !== "string" ||
+            typeof chunk.content !== "string"
+        ) {
+            return items;
+        }
+
+        items.push({
+            id: chunk.id ?? `chunk:${chunk.document_id}:${chunk.sequence_order}`,
+            document_id: chunk.document_id,
+            sequence_order: chunk.sequence_order,
+            chunk_type: chunk.chunk_type,
+            title: chunk.title,
+            content: chunk.content,
+            source_paragraph_start: chunk.source_paragraph_start,
+            source_paragraph_end: chunk.source_paragraph_end,
+            token_estimate: chunk.token_estimate ?? 0,
+            metadata: chunk.metadata ?? {},
+        });
+
+        return items;
+    }, []);
+}
 
 export async function fetchDocumentIndex(documentId: number, signal?: AbortSignal): Promise<DocumentIndex> {
     const response = await fetchWithAuthRedirect(`/api/documents/${documentId}/index`, {
@@ -171,6 +239,10 @@ export async function fetchDocumentIndex(documentId: number, signal?: AbortSigna
 
     return {
         document: payload.data.document ? normalizeDocument(payload.data.document) : null,
+        paragraph_nodes: normalizeParagraphNodes(payload.data.paragraph_nodes),
+        table_sections: normalizeTableSections(payload.data.table_sections),
+        metadata_pairs: normalizeMetadataPairs(payload.data.metadata_pairs),
+        chunks: normalizeDocumentChunks(payload.data.chunks),
         document_summary: payload.data.document_summary ?? "",
         outline_nodes: normalizeOutlineNodes(payload.data.outline_nodes),
     };
