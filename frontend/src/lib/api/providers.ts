@@ -26,6 +26,8 @@ type ProviderApiRecord = {
     family: ProviderFamily;
     provider_type: ProviderType;
     is_enabled: boolean;
+    enabled_for_indexing: boolean;
+    enabled_for_chat: boolean;
     public_metadata?: Record<string, string>;
     created_at: string;
     updated_at: string;
@@ -37,6 +39,8 @@ export type ProviderConfig = {
     family: ProviderFamily;
     provider_type: ProviderType;
     is_enabled: boolean;
+    enabled_for_indexing: boolean;
+    enabled_for_chat: boolean;
     public_metadata: Record<string, string>;
     created_at: string;
     updated_at: string;
@@ -49,6 +53,8 @@ function normalizeProvider(record: ProviderApiRecord): ProviderConfig {
         family: record.family,
         provider_type: record.provider_type,
         is_enabled: record.is_enabled,
+        enabled_for_indexing: record.enabled_for_indexing,
+        enabled_for_chat: record.enabled_for_chat,
         public_metadata: record.public_metadata ?? {},
         created_at: record.created_at,
         updated_at: record.updated_at,
@@ -79,6 +85,9 @@ export async function saveProvider(input: {
     family: ProviderFamily;
     providerType: ProviderType;
     credentials: Record<string, string>;
+    isEnabled?: boolean;
+    enabledForIndexing?: boolean;
+    enabledForChat?: boolean;
 }): Promise<void> {
     const response = await fetchWithAuthRedirect("/api/user/providers", {
         method: "POST",
@@ -89,6 +98,9 @@ export async function saveProvider(input: {
             family: input.family,
             provider_type: input.providerType,
             credentials: input.credentials,
+            is_enabled: input.isEnabled,
+            enabled_for_indexing: input.enabledForIndexing,
+            enabled_for_chat: input.enabledForChat,
         }),
     });
 
@@ -102,7 +114,8 @@ export async function saveProvider(input: {
 export async function setProviderEnabled(input: {
     family: ProviderFamily;
     providerType: ProviderType;
-    isEnabled: boolean;
+    activationTarget: "STORAGE" | "INDEXING" | "CHAT";
+    enabled: boolean;
 }): Promise<void> {
     const response = await fetchWithAuthRedirect(`/api/user/providers/${input.providerType}`, {
         method: "PATCH",
@@ -111,7 +124,11 @@ export async function setProviderEnabled(input: {
         },
         body: JSON.stringify({
             family: input.family,
-            is_enabled: input.isEnabled,
+            activation_target: input.activationTarget,
+            enabled: input.enabled,
+            is_enabled: input.activationTarget === "STORAGE" ? input.enabled : undefined,
+            enabled_for_indexing: input.activationTarget === "INDEXING" ? input.enabled : undefined,
+            enabled_for_chat: input.activationTarget === "CHAT" ? input.enabled : undefined,
         }),
     });
 

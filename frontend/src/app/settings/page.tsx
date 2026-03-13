@@ -22,6 +22,9 @@ import {
     type ProviderType,
 } from "@/lib/api/providers";
 
+type ActivationTarget = "STORAGE" | "INDEXING" | "CHAT";
+type LLMSelectionState = Record<ProviderType, { enabledForIndexing: boolean; enabledForChat: boolean }>;
+
 type ProviderField = {
     key: string;
     label: string;
@@ -237,18 +240,40 @@ function getInitialFormState() {
     }, {} as Record<ProviderType, Record<string, string>>);
 }
 
+function getInitialLLMSelectionState(): LLMSelectionState {
+    return PROVIDERS.reduce<LLMSelectionState>((state, provider) => {
+        state[provider.providerType] = {
+            enabledForIndexing: false,
+            enabledForChat: false,
+        };
+        return state;
+    }, {} as LLMSelectionState);
+}
+
 function hasSavedConfig(configs: ProviderConfig[], family: ProviderFamily, providerType: ProviderType) {
     return configs.some((config) => config.family === family && config.provider_type === providerType);
 }
 
-function isEnabled(configs: ProviderConfig[], family: ProviderFamily, providerType: ProviderType) {
-    return configs.some((config) => config.family === family && config.provider_type === providerType && config.is_enabled);
+function isStorageEnabled(configs: ProviderConfig[], providerType: ProviderType) {
+    return configs.some((config) => config.family === "STORAGE" && config.provider_type === providerType && config.is_enabled);
+}
+
+function isLLMEnabledForIndexing(configs: ProviderConfig[], providerType: ProviderType) {
+    return configs.some((config) => config.family === "LLM" && config.provider_type === providerType && config.enabled_for_indexing);
+}
+
+function isLLMEnabledForChat(configs: ProviderConfig[], providerType: ProviderType) {
+    return configs.some((config) => config.family === "LLM" && config.provider_type === providerType && config.enabled_for_chat);
 }
 
 function getSavedConfigs(configs: ProviderConfig[], family: ProviderFamily) {
     return configs
         .filter((config) => config.family === family)
-        .sort((left, right) => Number(right.is_enabled) - Number(left.is_enabled));
+        .sort((left, right) => {
+            const leftScore = Number(left.is_enabled) + Number(left.enabled_for_indexing) + Number(left.enabled_for_chat);
+            const rightScore = Number(right.is_enabled) + Number(right.enabled_for_indexing) + Number(right.enabled_for_chat);
+            return rightScore - leftScore;
+        });
 }
 
 function FamilySection({
@@ -258,7 +283,9 @@ function FamilySection({
     activeProviderType,
     onSelect,
     forms,
+    llmSelections,
     onFieldChange,
+    onLLMSelectionChange,
     onSave,
     onToggle,
     isPending,
@@ -269,9 +296,11 @@ function FamilySection({
     activeProviderType: ProviderType;
     onSelect: (providerType: ProviderType) => void;
     forms: Record<ProviderType, Record<string, string>>;
+    llmSelections: LLMSelectionState;
     onFieldChange: (providerType: ProviderType, key: string, value: string) => void;
+    onLLMSelectionChange: (providerType: ProviderType, key: "enabledForIndexing" | "enabledForChat", value: boolean) => void;
     onSave: (provider: ProviderDefinition) => void;
-    onToggle: (provider: ProviderDefinition, enabled: boolean) => void;
+    onToggle: (provider: ProviderDefinition, target: ActivationTarget, enabled: boolean) => void;
     isPending: boolean;
 }) {
     const { t } = useI18n();
@@ -297,7 +326,7 @@ function FamilySection({
                     <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{familyCopy.description}</p>
                 </div>
                 <div className="rounded-full border border-border bg-background/70 px-3 py-1 text-[10px] font-mono uppercase tracking-[0.24em] text-muted-foreground">
-                    {t("common.oneActive")}
+                    {family === "LLM" ? t("settings.llmTargetsTitle") : t("common.oneActive")}
                 </div>
             </div>
 
@@ -314,8 +343,12 @@ function FamilySection({
                         {providers.map((provider) => {
                             const ProviderIcon = provider.icon;
                             const saved = hasSavedConfig(configs, family, provider.providerType);
-                            const enabled = isEnabled(configs, family, provider.providerType);
+                            const enabled = family === "STORAGE"
+                                ? isStorageEnabled(configs, provider.providerType)
+                                : isLLMEnabledForIndexing(configs, provider.providerType) || isLLMEnabledForChat(configs, provider.providerType);
                             const selected = activeProviderType === provider.providerType;
+                            const llmIndexingActive = family === "LLM" && isLLMEnabledForIndexing(configs, provider.providerType);
+                            const llmChatActive = family === "LLM" && isLLMEnabledForChat(configs, provider.providerType);
 
                             return (
                                 <motion.button
@@ -346,6 +379,16 @@ function FamilySection({
                                                 {enabled ? (
                                                     <span className="rounded-full border border-primary/20 bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
                                                         {t("common.active")}
+                                                    </span>
+                                                ) : null}
+                                                {llmIndexingActive ? (
+                                                    <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-sky-300">
+                                                        {t("settings.llmIndexingLabel")}
+                                                    </span>
+                                                ) : null}
+                                                {llmChatActive ? (
+                                                    <span className="rounded-full border border-fuchsia-500/20 bg-fuchsia-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-fuchsia-300">
+                                                        {t("settings.llmChatLabel")}
                                                     </span>
                                                 ) : null}
                                             </div>
@@ -393,10 +436,43 @@ function FamilySection({
                                 </div>
                             ))}
 
+                            {family === "LLM" ? (
+                                <div className="rounded-2xl border border-border bg-background/60 p-4">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t("settings.llmTargetsTitle")}</p>
+                                    <p className="mt-2 text-sm leading-relaxed text-foreground/85">{t("settings.llmTargetsDescription")}</p>
+                                    <div className="mt-4 space-y-3">
+                                        <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-background/70 px-3 py-2">
+                                            <div>
+                                                <p className="text-sm font-medium text-foreground">{t("settings.llmIndexingLabel")}</p>
+                                                <p className="text-xs text-muted-foreground">{t("settings.llmActiveForIndexing")}</p>
+                                            </div>
+                                            <Switch
+                                                checked={llmSelections[activeProvider.providerType]?.enabledForIndexing ?? false}
+                                                disabled={isPending}
+                                                onCheckedChange={(checked) => onLLMSelectionChange(activeProvider.providerType, "enabledForIndexing", checked)}
+                                                aria-label={`${activeProvider.name} indexing`}
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-background/70 px-3 py-2">
+                                            <div>
+                                                <p className="text-sm font-medium text-foreground">{t("settings.llmChatLabel")}</p>
+                                                <p className="text-xs text-muted-foreground">{t("settings.llmActiveForChat")}</p>
+                                            </div>
+                                            <Switch
+                                                checked={llmSelections[activeProvider.providerType]?.enabledForChat ?? false}
+                                                disabled={isPending}
+                                                onCheckedChange={(checked) => onLLMSelectionChange(activeProvider.providerType, "enabledForChat", checked)}
+                                                aria-label={`${activeProvider.name} chat`}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : null}
+
                             <div className="rounded-2xl border border-border bg-background/60 p-4">
                                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t("settings.behaviorTitle")}</p>
                                 <p className="mt-2 text-sm leading-relaxed text-foreground/85">
-                                    {t("settings.behaviorDescription")}
+                                    {family === "LLM" ? t("settings.behaviorDescriptionLLM") : t("settings.behaviorDescription")}
                                 </p>
                             </div>
                         </div>
@@ -444,15 +520,25 @@ function FamilySection({
                                         <div>
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <p className="text-sm font-semibold">{provider.name}</p>
-                                                {config.is_enabled ? (
+                                                {family === "STORAGE" && config.is_enabled ? (
                                                     <span className="rounded-full border border-primary/20 bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
                                                         {t("common.active")}
                                                     </span>
-                                                ) : (
+                                                ) : family === "STORAGE" ? (
                                                     <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                                                         {t("common.inactive")}
                                                     </span>
-                                                )}
+                                                ) : null}
+                                                {family === "LLM" && config.enabled_for_indexing ? (
+                                                    <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-sky-300">
+                                                        {t("settings.llmIndexingLabel")}
+                                                    </span>
+                                                ) : null}
+                                                {family === "LLM" && config.enabled_for_chat ? (
+                                                    <span className="rounded-full border border-fuchsia-500/20 bg-fuchsia-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-fuchsia-300">
+                                                        {t("settings.llmChatLabel")}
+                                                    </span>
+                                                ) : null}
                                             </div>
                                             <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
                                                 {provider.tagline}
@@ -472,17 +558,52 @@ function FamilySection({
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-3 self-end md:self-auto">
-                                        <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
-                                            {config.is_enabled ? t("common.enabled") : t("common.disabled")}
-                                        </span>
-                                        <Switch
-                                            checked={config.is_enabled}
-                                            disabled={isPending}
-                                            onCheckedChange={(checked) => onToggle(provider, checked)}
-                                            aria-label={`Toggle ${provider.name}`}
-                                        />
-                                    </div>
+                                    {family === "STORAGE" ? (
+                                        <div className="flex items-center gap-3 self-end md:self-auto">
+                                            <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
+                                                {config.is_enabled ? t("common.enabled") : t("common.disabled")}
+                                            </span>
+                                            <Switch
+                                                checked={config.is_enabled}
+                                                disabled={isPending}
+                                                onCheckedChange={(checked) => onToggle(provider, "STORAGE", checked)}
+                                                aria-label={`Toggle ${provider.name}`}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="grid min-w-[260px] gap-3 self-end md:self-auto">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
+                                                    {config.enabled_for_indexing ? t("settings.llmActiveForIndexing") : t("settings.llmSelectForIndexing")}
+                                                </span>
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant={config.enabled_for_indexing ? "primary" : "outline"}
+                                                    disabled={isPending || config.enabled_for_indexing}
+                                                    onClick={() => onToggle(provider, "INDEXING", true)}
+                                                    className="min-w-[138px]"
+                                                >
+                                                    {config.enabled_for_indexing ? t("settings.llmActiveForIndexing") : t("settings.llmSelectForIndexing")}
+                                                </Button>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-3">
+                                                <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
+                                                    {config.enabled_for_chat ? t("settings.llmActiveForChat") : t("settings.llmSelectForChat")}
+                                                </span>
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant={config.enabled_for_chat ? "primary" : "outline"}
+                                                    disabled={isPending || config.enabled_for_chat}
+                                                    onClick={() => onToggle(provider, "CHAT", true)}
+                                                    className="min-w-[138px]"
+                                                >
+                                                    {config.enabled_for_chat ? t("settings.llmActiveForChat") : t("settings.llmSelectForChat")}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })
@@ -501,6 +622,7 @@ export default function SettingsPage() {
     const { t } = useI18n();
     const [providers, setProviders] = useState<ProviderConfig[]>([]);
     const [forms, setForms] = useState<Record<ProviderType, Record<string, string>>>(getInitialFormState);
+    const [llmSelections, setLLMSelections] = useState<LLMSelectionState>(getInitialLLMSelectionState);
     const [activeStorageType, setActiveStorageType] = useState<ProviderType>("MINIO");
     const [activeLLMType, setActiveLLMType] = useState<ProviderType>("OPENAI");
     const [isLoading, setIsLoading] = useState(true);
@@ -516,9 +638,11 @@ export default function SettingsPage() {
                 setError(null);
                 const data = await fetchProviders(controller.signal);
                 setProviders(data);
+                syncLLMSelections(data);
 
                 const activeStorage = data.find((provider) => provider.family === "STORAGE" && provider.is_enabled);
-                const activeLLM = data.find((provider) => provider.family === "LLM" && provider.is_enabled);
+                const activeLLM = data.find((provider) => provider.family === "LLM" && provider.enabled_for_indexing)
+                    ?? data.find((provider) => provider.family === "LLM" && provider.enabled_for_chat);
 
                 if (activeStorage) {
                     setActiveStorageType(activeStorage.provider_type);
@@ -547,6 +671,7 @@ export default function SettingsPage() {
             try {
                 const data = await fetchProviders();
                 setProviders(data);
+                syncLLMSelections(data);
             } catch (err) {
                 toast.error(err instanceof Error ? err.message : "Could not refresh providers.");
             }
@@ -563,7 +688,42 @@ export default function SettingsPage() {
         }));
     }
 
+    function syncLLMSelections(data: ProviderConfig[]) {
+        setLLMSelections((current) => {
+            const next = { ...current };
+            for (const provider of PROVIDERS) {
+                if (provider.family !== "LLM") {
+                    continue;
+                }
+                const config = data.find((item) => item.family === "LLM" && item.provider_type === provider.providerType);
+                next[provider.providerType] = {
+                    enabledForIndexing: config?.enabled_for_indexing ?? false,
+                    enabledForChat: config?.enabled_for_chat ?? false,
+                };
+            }
+            return next;
+        });
+    }
+
+    function handleLLMSelectionChange(providerType: ProviderType, key: "enabledForIndexing" | "enabledForChat", value: boolean) {
+        setLLMSelections((current) => ({
+            ...current,
+            [providerType]: {
+                ...current[providerType],
+                [key]: value,
+            },
+        }));
+    }
+
     function handleSave(provider: ProviderDefinition) {
+        if (provider.family === "LLM") {
+            const selection = llmSelections[provider.providerType];
+            if (!selection?.enabledForIndexing && !selection?.enabledForChat) {
+                toast.error(t("settings.llmSelectionRequired"));
+                return;
+            }
+        }
+
         const credentials = Object.entries(forms[provider.providerType]).reduce<Record<string, string>>((acc, [key, value]) => {
             const trimmed = value.trim();
             if (trimmed) {
@@ -578,27 +738,39 @@ export default function SettingsPage() {
                     family: provider.family,
                     providerType: provider.providerType,
                     credentials,
+                    isEnabled: provider.family === "STORAGE" ? true : undefined,
+                    enabledForIndexing: provider.family === "LLM" ? llmSelections[provider.providerType]?.enabledForIndexing : undefined,
+                    enabledForChat: provider.family === "LLM" ? llmSelections[provider.providerType]?.enabledForChat : undefined,
                 });
                 toast.success(`${provider.name} saved and enabled.`);
                 const latest = await fetchProviders();
                 setProviders(latest);
+                syncLLMSelections(latest);
             } catch (err) {
                 toast.error(err instanceof Error ? err.message : "Nao foi possivel salvar o provider.");
             }
         });
     }
 
-    function handleToggle(provider: ProviderDefinition, enabled: boolean) {
+    function handleToggle(provider: ProviderDefinition, target: ActivationTarget, enabled: boolean) {
         startTransition(async () => {
             try {
                 await setProviderEnabled({
                     family: provider.family,
                     providerType: provider.providerType,
-                    isEnabled: enabled,
+                    activationTarget: target,
+                    enabled,
                 });
-                toast.success(enabled ? `${provider.name} enabled.` : `${provider.name} disabled.`);
+                if (provider.family === "LLM" && target === "INDEXING") {
+                    toast.success(`${provider.name} selected for indexing.`);
+                } else if (provider.family === "LLM" && target === "CHAT") {
+                    toast.success(`${provider.name} selected for chat.`);
+                } else {
+                    toast.success(enabled ? `${provider.name} enabled.` : `${provider.name} disabled.`);
+                }
                 const latest = await fetchProviders();
                 setProviders(latest);
+                syncLLMSelections(latest);
             } catch (err) {
                 toast.error(err instanceof Error ? err.message : "Nao foi possivel atualizar o provider.");
             }
@@ -667,7 +839,9 @@ export default function SettingsPage() {
                             activeProviderType={activeStorageType}
                             onSelect={setActiveStorageType}
                             forms={forms}
+                            llmSelections={llmSelections}
                             onFieldChange={handleFieldChange}
+                            onLLMSelectionChange={handleLLMSelectionChange}
                             onSave={handleSave}
                             onToggle={handleToggle}
                             isPending={isPending}
@@ -680,7 +854,9 @@ export default function SettingsPage() {
                             activeProviderType={activeLLMType}
                             onSelect={setActiveLLMType}
                             forms={forms}
+                            llmSelections={llmSelections}
                             onFieldChange={handleFieldChange}
+                            onLLMSelectionChange={handleLLMSelectionChange}
                             onSave={handleSave}
                             onToggle={handleToggle}
                             isPending={isPending}
