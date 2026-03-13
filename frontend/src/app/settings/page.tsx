@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { useI18n } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
 import {
     fetchProviders,
@@ -273,7 +274,12 @@ function FamilySection({
     onToggle: (provider: ProviderDefinition, enabled: boolean) => void;
     isPending: boolean;
 }) {
-    const familyCopy = FAMILY_COPY[family];
+    const { t } = useI18n();
+    const familyCopy = {
+        ...FAMILY_COPY[family],
+        title: t(`settings.family.${family}.title`),
+        description: t(`settings.family.${family}.description`),
+    };
     const FamilyIcon = familyCopy.icon;
     const activeProvider = providers.find((provider) => provider.providerType === activeProviderType) ?? providers[0];
     const ActiveProviderIcon = activeProvider.icon;
@@ -291,17 +297,17 @@ function FamilySection({
                     <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{familyCopy.description}</p>
                 </div>
                 <div className="rounded-full border border-border bg-background/70 px-3 py-1 text-[10px] font-mono uppercase tracking-[0.24em] text-muted-foreground">
-                    One active at a time
+                    {t("common.oneActive")}
                 </div>
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
                 <Card className="flex h-[680px] flex-col border-border/80 bg-card/75">
                     <CardHeader className="space-y-3">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-primary">1. Select provider</p>
-                        <h3 className="text-lg font-semibold">Choose which {family === "LLM" ? "AI" : "storage"} you want to configure</h3>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-primary">{t("settings.steps.select")}</p>
+                        <h3 className="text-lg font-semibold">{family === "LLM" ? t("settings.selectTitleLLM") : t("settings.selectTitleStorage")}</h3>
                         <p className="text-sm text-muted-foreground">
-                            Select one option below. Then fill only the credentials for that provider on the right.
+                            {t("settings.selectDescription")}
                         </p>
                     </CardHeader>
                     <CardContent className="grid flex-1 auto-rows-max gap-3 overflow-y-auto pr-2 custom-scrollbar">
@@ -334,12 +340,12 @@ function FamilySection({
                                                 {saved ? (
                                                     <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
                                                         <CheckCircle2 className="h-3 w-3" />
-                                                        Saved
+                                                        {t("common.saved")}
                                                     </span>
                                                 ) : null}
                                                 {enabled ? (
                                                     <span className="rounded-full border border-primary/20 bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
-                                                        Active
+                                                        {t("common.active")}
                                                     </span>
                                                 ) : null}
                                             </div>
@@ -360,7 +366,7 @@ function FamilySection({
                                 <ActiveProviderIcon className="h-5 w-5 text-primary" />
                             </div>
                             <div>
-                                <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-primary">2. Fill credentials</p>
+                                <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-primary">{t("settings.steps.fill")}</p>
                                 <h3 className="mt-1 text-lg font-semibold">{activeProvider.name}</h3>
                             </div>
                         </div>
@@ -372,7 +378,7 @@ function FamilySection({
                                 <Label htmlFor={`${activeProvider.providerType}-${field.key}`}>
                                     {field.label}
                                     {field.optional ? (
-                                        <span className="ml-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Optional</span>
+                                        <span className="ml-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{t("common.optional")}</span>
                                     ) : null}
                                 </Label>
                                 <Input
@@ -387,9 +393,9 @@ function FamilySection({
                         ))}
 
                         <div className="rounded-2xl border border-border bg-background/60 p-4">
-                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Behavior</p>
+                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t("settings.behaviorTitle")}</p>
                             <p className="mt-2 text-sm leading-relaxed text-foreground/85">
-                                Saving this provider stores its credentials and enables it automatically. Any other provider in the same family is disabled.
+                                {t("settings.behaviorDescription")}
                             </p>
                         </div>
 
@@ -400,7 +406,7 @@ function FamilySection({
                             className="w-full gap-2"
                         >
                             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
-                            Save and enable {activeProvider.name}
+                            {t("common.saveAndEnable", { name: activeProvider.name })}
                         </Button>
                     </CardContent>
                 </Card>
@@ -408,10 +414,10 @@ function FamilySection({
 
             <Card className="flex h-[460px] flex-col border-border/80 bg-card/70">
                 <CardHeader className="space-y-3">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-primary">3. Saved options</p>
-                    <h3 className="text-lg font-semibold">Providers already configured for {family === "LLM" ? "AI" : "storage"}</h3>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-primary">{t("settings.steps.saved")}</p>
+                    <h3 className="text-lg font-semibold">{family === "LLM" ? t("settings.savedTitleLLM") : t("settings.savedTitleStorage")}</h3>
                     <p className="text-sm text-muted-foreground">
-                        You can keep several saved options, but only one stays active in this family at a time.
+                        {t("settings.savedDescription")}
                     </p>
                 </CardHeader>
                 <CardContent className="grid flex-1 auto-rows-max gap-3 overflow-y-auto pr-2 custom-scrollbar">
@@ -438,11 +444,11 @@ function FamilySection({
                                                 <p className="text-sm font-semibold">{provider.name}</p>
                                                 {config.is_enabled ? (
                                                     <span className="rounded-full border border-primary/20 bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
-                                                        Active
+                                                        {t("common.active")}
                                                     </span>
                                                 ) : (
                                                     <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                                        Inactive
+                                                        {t("common.inactive")}
                                                     </span>
                                                 )}
                                             </div>
@@ -454,14 +460,14 @@ function FamilySection({
                                                 onClick={() => onSelect(provider.providerType)}
                                                 className="mt-2 text-xs font-medium text-primary hover:underline"
                                             >
-                                                Edit this configuration
+                                                {t("common.editConfig")}
                                             </button>
                                         </div>
                                     </div>
 
                                     <div className="flex items-center gap-3 self-end md:self-auto">
                                         <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
-                                            {config.is_enabled ? "Enabled" : "Disabled"}
+                                            {config.is_enabled ? t("common.enabled") : t("common.disabled")}
                                         </span>
                                         <Switch
                                             checked={config.is_enabled}
@@ -475,7 +481,7 @@ function FamilySection({
                         })
                     ) : (
                         <div className="rounded-2xl border border-dashed border-border bg-background/45 p-5 text-sm text-muted-foreground">
-                            No saved {family === "LLM" ? "AI" : "storage"} providers yet. Select one above and save its credentials first.
+                            {family === "LLM" ? t("settings.emptyLLM") : t("settings.emptyStorage")}
                         </div>
                     )}
                 </CardContent>
@@ -485,6 +491,7 @@ function FamilySection({
 }
 
 export default function SettingsPage() {
+    const { t } = useI18n();
     const [providers, setProviders] = useState<ProviderConfig[]>([]);
     const [forms, setForms] = useState<Record<ProviderType, Record<string, string>>>(getInitialFormState);
     const [activeStorageType, setActiveStorageType] = useState<ProviderType>("MINIO");
@@ -534,7 +541,7 @@ export default function SettingsPage() {
                 const data = await fetchProviders();
                 setProviders(data);
             } catch (err) {
-                toast.error(err instanceof Error ? err.message : "Nao foi possivel atualizar os providers.");
+                toast.error(err instanceof Error ? err.message : "Could not refresh providers.");
             }
         });
     }
@@ -603,16 +610,16 @@ export default function SettingsPage() {
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(245,166,35,0.16),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(82,168,255,0.1),transparent_28%)]" />
                     <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                         <div>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary">Provider Control</p>
-                            <h1 className="mt-3 text-3xl font-semibold tracking-tight">Storage and LLM settings</h1>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary">{t("settings.heroEyebrow")}</p>
+                            <h1 className="mt-3 text-3xl font-semibold tracking-tight">{t("settings.heroTitle")}</h1>
                             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-                                Add the environment values for your infrastructure and choose which storage backend and which LLM stay active. The platform allows one active storage and one active LLM at any given time.
+                                {t("settings.heroDescription")}
                             </p>
                         </div>
 
                         <Button type="button" variant="outline" onClick={reloadProviders} disabled={isPending} className="gap-2 self-start">
                             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ServerCog className="h-4 w-4" />}
-                            Refresh status
+                            {t("common.refresh")}
                         </Button>
                     </div>
                 </motion.section>
@@ -620,7 +627,7 @@ export default function SettingsPage() {
                 {isLoading ? (
                     <div className="flex items-center gap-2 rounded-2xl border border-border bg-card/70 p-5 text-sm text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Loading provider settings...
+                        {t("settings.loading")}
                     </div>
                 ) : null}
 

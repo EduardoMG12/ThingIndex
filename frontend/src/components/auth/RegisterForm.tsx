@@ -10,10 +10,12 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { register } from "./actions";
 import { Logo } from "@/components/ui/Logo";
+import { useI18n } from "@/lib/i18n/provider";
 
 export const RegisterForm = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const { t, href } = useI18n();
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -27,7 +29,7 @@ export const RegisterForm = () => {
             toast[type](res.error, {
                 description: res.errors && res.errors.length > 0
                     ? res.errors.join(", ")
-                    : "Verifique os dados informados e tente novamente."
+                    : t("auth.register.fallbackError")
             });
         }
     };
@@ -52,14 +54,14 @@ export const RegisterForm = () => {
                     thing<span className="text-primary">index</span>
                 </h1>
                 <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                    configure seu pipeline em minutos
+                    {t("auth.register.strapline")}
                 </p>
             </div>
 
             <div className="rounded-xl border border-border bg-secondary/20 p-6 backdrop-blur-sm">
                 <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                     <div className="space-y-1.5">
-                        <Label htmlFor="name" className="text-[11px] uppercase tracking-wider text-muted-foreground">Nome</Label>
+                        <Label htmlFor="name" className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("auth.register.name")}</Label>
                         <Input
                             id="name"
                             name="name"
@@ -69,7 +71,7 @@ export const RegisterForm = () => {
                         />
                     </div>
                     <div className="space-y-1.5">
-                        <Label htmlFor="email" className="text-[11px] uppercase tracking-wider text-muted-foreground">Email</Label>
+                        <Label htmlFor="email" className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("auth.shared.email")}</Label>
                         <Input
                             id="email"
                             name="email"
@@ -80,7 +82,7 @@ export const RegisterForm = () => {
                         />
                     </div>
                     <div className="space-y-1.5">
-                        <Label htmlFor="password" className="text-[11px] uppercase tracking-wider text-muted-foreground">Senha</Label>
+                        <Label htmlFor="password" className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("auth.register.password")}</Label>
                         <div className="relative">
                             <Input
                                 id="password"
@@ -94,7 +96,7 @@ export const RegisterForm = () => {
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                                aria-label={showPassword ? "Esconder senha" : "Mostrar senha"}
+                                aria-label={showPassword ? t("auth.register.hidePassword") : t("auth.register.showPassword")}
                             >
                                 {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                             </button>
@@ -110,26 +112,26 @@ export const RegisterForm = () => {
                         ) : (
                             <UserPlus className="h-3.5 w-3.5" />
                         )}
-                        Criar Conta
+                        {t("auth.register.submit")}
                     </Button>
                 </form>
 
                 <div className="mt-5 flex items-center gap-3">
                     <div className="h-px flex-1 bg-border" />
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">ou</span>
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{t("auth.shared.or")}</span>
                     <div className="h-px flex-1 bg-border" />
                 </div>
 
                 <p className="mt-4 text-center text-xs text-muted-foreground">
-                    Já tem conta?{" "}
-                    <Link href="/login" className="font-medium text-primary hover:underline">
-                        Fazer login
+                    {t("auth.register.hasAccount")}{" "}
+                    <Link href={href("/login")} className="font-medium text-primary hover:underline">
+                        {t("auth.register.login")}
                     </Link>
                 </p>
             </div>
 
             <p className="mt-8 text-center font-mono text-[9px] text-muted-foreground/40">
-                thingindex v0.1.0 · encrypted · sao paulo
+                thingindex v0.1.0 · encrypted · {t("auth.shared.city")}
             </p>
         </motion.div >
     );

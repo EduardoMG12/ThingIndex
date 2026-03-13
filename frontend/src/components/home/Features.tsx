@@ -9,6 +9,7 @@ import {
     GitBranch,
     Layers,
 } from "lucide-react";
+import { useI18n } from "@/lib/i18n/provider";
 
 const fadeUp = {
     initial: { opacity: 0, y: 24 },
@@ -16,49 +17,23 @@ const fadeUp = {
     viewport: { once: true },
 };
 
-const features = [
-    {
-        icon: Brain,
-        title: "3-Prompt Adaptive Chain",
-        desc: "Cada chunk passa por resumo, estruturação e embedding — não é um RAG genérico.",
-    },
-    {
-        icon: Zap,
-        title: "Pipeline Assíncrono",
-        desc: "RabbitMQ + workers paralelos processam milhares de páginas sem travar.",
-    },
-    {
-        icon: Database,
-        title: "Busca Vetorial",
-        desc: "Qdrant com embeddings de alta dimensão para retrieval preciso e rápido.",
-    },
-    {
-        icon: Layers,
-        title: "Categorias & Collections",
-        desc: "Organize documentos com metadados ricos para filtragem inteligente.",
-    },
-    {
-        icon: Shield,
-        title: "Segurança First",
-        desc: "ClamAV escaneia cada upload. Seus dados nunca saem da sua infra.",
-    },
-    {
-        icon: GitBranch,
-        title: "Open Source",
-        desc: "MIT License. Rode na sua VM com suas keys ou use nossa API gerenciada.",
-    },
-];
-
 export const Features = () => {
+    const { t } = useI18n();
+    const features = [
+        { icon: Brain, title: t("landing.features.items.adaptive.title"), desc: t("landing.features.items.adaptive.desc") },
+        { icon: Zap, title: t("landing.features.items.async.title"), desc: t("landing.features.items.async.desc") },
+        { icon: Database, title: t("landing.features.items.vector.title"), desc: t("landing.features.items.vector.desc") },
+        { icon: Layers, title: t("landing.features.items.taxonomy.title"), desc: t("landing.features.items.taxonomy.desc") },
+        { icon: Shield, title: t("landing.features.items.security.title"), desc: t("landing.features.items.security.desc") },
+        { icon: GitBranch, title: t("landing.features.items.openSource.title"), desc: t("landing.features.items.openSource.desc") },
+    ];
+
     return (
         <section className="mx-auto max-w-6xl px-6 py-20">
             <motion.div {...fadeUp} transition={{ duration: 0.5 }} className="text-center">
-                <h2 className="font-display text-2xl font-bold sm:text-3xl">
-                    Por que <span className="text-primary">ThingIndex</span>?
-                </h2>
+                <h2 className="font-display text-2xl font-bold sm:text-3xl">{t("landing.features.title")}</h2>
                 <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">
-                    Não é só mais um wrapper de LLM. É uma pipeline completa de
-                    document intelligence.
+                    {t("landing.features.description")}
                 </p>
             </motion.div>
 

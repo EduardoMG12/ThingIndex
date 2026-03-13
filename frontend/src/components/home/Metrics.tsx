@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useI18n } from "@/lib/i18n/provider";
 
 const fadeUp = {
     initial: { opacity: 0, y: 24 },
@@ -8,14 +9,15 @@ const fadeUp = {
     viewport: { once: true },
 };
 
-const metrics = [
-    { value: "3x", label: "mais preciso que RAG tradicional" },
-    { value: "<200ms", label: "latência média de query" },
-    { value: "10k+", label: "páginas processadas/hora" },
-    { value: "99.9%", label: "uptime da API gerenciada" },
-];
-
 export const Metrics = () => {
+    const { t } = useI18n();
+    const metrics = [
+        { value: "3x", label: t("landing.metrics.precision") },
+        { value: "<200ms", label: t("landing.metrics.latency") },
+        { value: "10k+", label: t("landing.metrics.throughput") },
+        { value: "99.9%", label: t("landing.metrics.uptime") },
+    ];
+
     return (
         <section className="border-y border-border bg-secondary/30">
             <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-6 py-12 lg:grid-cols-4">

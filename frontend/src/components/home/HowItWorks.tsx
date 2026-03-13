@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { FileText, Brain, BarChart3 } from "lucide-react";
+import { useI18n } from "@/lib/i18n/provider";
 
 const fadeUp = {
     initial: { opacity: 0, y: 24 },
@@ -9,34 +10,20 @@ const fadeUp = {
     viewport: { once: true },
 };
 
-const steps = [
-    {
-        step: "01",
-        title: "Upload & Scan",
-        desc: "Envie PDFs, defina categoria e collection. ClamAV valida segurança automaticamente.",
-        icon: FileText,
-    },
-    {
-        step: "02",
-        title: "Pipeline de 3 Prompts",
-        desc: "Cada chunk passa por resumo contextual, estruturação semântica e geração de embedding vetorial.",
-        icon: Brain,
-    },
-    {
-        step: "03",
-        title: "Query & Resposta",
-        desc: "Pergunte em linguagem natural. O sistema busca vetorialmente e gera respostas com fontes.",
-        icon: BarChart3,
-    },
-];
-
 export const HowItWorks = () => {
+    const { t } = useI18n();
+    const steps = [
+        { step: "01", title: t("landing.howItWorks.steps.upload.title"), desc: t("landing.howItWorks.steps.upload.desc"), icon: FileText },
+        { step: "02", title: t("landing.howItWorks.steps.pipeline.title"), desc: t("landing.howItWorks.steps.pipeline.desc"), icon: Brain },
+        { step: "03", title: t("landing.howItWorks.steps.query.title"), desc: t("landing.howItWorks.steps.query.desc"), icon: BarChart3 },
+    ];
+
     return (
         <section className="border-t border-border bg-secondary/20">
             <div className="mx-auto max-w-6xl px-6 py-20">
                 <motion.div {...fadeUp} transition={{ duration: 0.5 }} className="text-center">
                     <h2 className="font-display text-2xl font-bold sm:text-3xl">
-                        Como funciona
+                        {t("landing.howItWorks.title")}
                     </h2>
                 </motion.div>
 

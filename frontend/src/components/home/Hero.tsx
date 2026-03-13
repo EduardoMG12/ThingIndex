@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n/provider";
 
 const fadeUp = {
     initial: { opacity: 0, y: 24 },
@@ -12,6 +13,8 @@ const fadeUp = {
 };
 
 export const Hero = () => {
+    const { t, href } = useI18n();
+
     return (
         <section className="relative overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.08),transparent_60%)]" />
@@ -19,7 +22,7 @@ export const Hero = () => {
                 <motion.div {...fadeUp} transition={{ duration: 0.6 }}>
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                         <FileText className="h-3 w-3 text-primary" />
-                        Document Intelligence Platform
+                        {t("landing.hero.badge")}
                     </span>
                 </motion.div>
 
@@ -28,9 +31,9 @@ export const Hero = () => {
                     transition={{ delay: 0.1, duration: 0.6 }}
                     className="mx-auto mt-6 max-w-3xl font-display text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl text-foreground"
                 >
-                    Transforme documentos em{" "}
+                    {t("landing.hero.titleStart")}{" "}
                     <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                        conhecimento estruturado
+                        {t("landing.hero.titleHighlight")}
                     </span>
                 </motion.h1>
 
@@ -39,8 +42,7 @@ export const Hero = () => {
                     transition={{ delay: 0.2, duration: 0.6 }}
                     className="mx-auto mt-5 max-w-xl text-base text-muted-foreground sm:text-lg"
                 >
-                    Pipeline RAG adaptativo com cadeia de 3 prompts. Indexe, estruture e
-                    consulte qualquer documento com precisão superior.
+                    {t("landing.hero.description")}
                 </motion.p>
 
                 <motion.div
@@ -48,15 +50,15 @@ export const Hero = () => {
                     transition={{ delay: 0.3, duration: 0.6 }}
                     className="mt-8 flex items-center justify-center gap-3"
                 >
-                    <Link href="/register">
+                    <Link href={href("/register")}>
                         <Button size="lg" className="gap-2 text-sm font-semibold rounded-full px-8">
-                            Começar agora
+                            {t("landing.hero.primaryCta")}
                             <ArrowRight className="h-4 w-4" />
                         </Button>
                     </Link>
-                    <Link href="/docs">
+                    <Link href={href("/documentation")}>
                         <Button variant="outline" size="lg" className="text-sm rounded-full px-8">
-                            Ver documentação
+                            {t("landing.hero.secondaryCta")}
                         </Button>
                     </Link>
                 </motion.div>
@@ -72,7 +74,7 @@ export const Hero = () => {
                         <div className="h-2.5 w-2.5 rounded-full bg-primary/60" />
                         <div className="h-2.5 w-2.5 rounded-full bg-accent/60" />
                         <span className="ml-2 font-mono text-[10px] text-muted-foreground">
-                            thingindex pipeline
+                            {t("landing.hero.terminalTitle")}
                         </span>
                     </div>
                     <div className="p-5 text-left font-mono text-xs leading-relaxed text-muted-foreground">
@@ -91,7 +93,7 @@ export const Hero = () => {
                         </p>
                         <p className="mt-2">
                             <span className="text-accent">$</span> thingindex query
-                            "cláusulas de rescisão"
+                            &quot;cláusulas de rescisão&quot;
                         </p>
                         <p className="mt-1 text-foreground/70">
                             ✓ 3 chunks relevantes encontrados · score 0.94

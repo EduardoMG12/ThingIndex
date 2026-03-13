@@ -6,9 +6,11 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Home, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n/provider";
 
 export const NotFoundContent = () => {
     const pathname = usePathname();
+    const { href } = useI18n();
 
     useEffect(() => {
         console.error("404 Error: Usuário tentou acessar rota inexistente:", pathname);
@@ -64,7 +66,7 @@ export const NotFoundContent = () => {
                     transition={{ delay: 0.4 }}
                     className="mt-10"
                 >
-                    <Link href="/dashboard" className="inline-block">
+                    <Link href={href("/dashboard")} className="inline-block">
                         <Button variant="primary" size="lg" className="gap-2 px-8">
                             <Home className="h-4 w-4 text-primary-foreground" />
                             <span>Voltar para o Início</span>

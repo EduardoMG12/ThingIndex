@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n/provider";
 
 export const Footer = () => {
+    const { t, href } = useI18n();
+
     return (
         <footer className="border-t border-border bg-secondary/30">
             <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
@@ -14,10 +17,10 @@ export const Footer = () => {
                 </div>
                 <div className="flex items-center gap-4">
                     <Link
-                        href="/docs"
+                        href={href("/documentation")}
                         className="font-mono text-[10px] text-muted-foreground transition-colors hover:text-foreground"
                     >
-                        docs
+                        {t("landing.footer.docs")}
                     </Link>
                     <a
                         href="https://github.com/thingindex"
