@@ -127,6 +127,31 @@ func (u *providerUseCase) ResolveStorage(ctx context.Context, userID uint) (doma
 	return storageService, nil
 }
 
+func (u *providerUseCase) ResolveLLM(ctx context.Context, userID uint) (domain.LLMService, error) {
+	config, err := u.repo.GetConfigByFamily(ctx, userID, domain.FamilyLLM)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrLLMProviderNotConfigured
+		}
+		return nil, fmt.Errorf("%w: %v", domain.ErrLLMProviderUnavailable, err)
+	}
+
+	creds, err := u.decryptConfig(config, userID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrLLMProviderUnavailable, err)
+	}
+	if err := u.validateCredentials(ctx, config.Family, config.ProviderType, creds); err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrLLMProviderUnavailable, err)
+	}
+
+	llmService, err := provider.NewLLMProvider(config.ProviderType, creds)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrLLMProviderUnavailable, err)
+	}
+
+	return llmService, nil
+}
+
 func normalizeProviderSelection(family, providerType string) (string, string, error) {
 	normalizedFamily := strings.ToUpper(strings.TrimSpace(family))
 	allowedProviders, ok := supportedProvidersByFamily[normalizedFamily]

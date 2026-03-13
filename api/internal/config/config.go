@@ -42,16 +42,23 @@ type Config struct {
 	ResetPasswordURL string
 
 	// Storage config
-	MinioEndpoint       string
-	MinioAccessKey      string
-	MinioSecretKey      string
-	MinioUseSSL         string
-	MinioBucketName     string
-	MaxUploadSizeBytes  int64
-	MasterEncryptionKey string
-	ServerReadTimeout   time.Duration
-	ServerWriteTimeout  time.Duration
-	ServerIdleTimeout   time.Duration
+	MinioEndpoint           string
+	MinioAccessKey          string
+	MinioSecretKey          string
+	MinioUseSSL             string
+	MinioBucketName         string
+	RabbitMQURL             string
+	DocumentIndexExchange   string
+	DocumentIndexQueue      string
+	DocumentIndexRoutingKey string
+	OutboxPollInterval      time.Duration
+	OutboxBatchSize         int
+	ConsumerPrefetchCount   int
+	MaxUploadSizeBytes      int64
+	MasterEncryptionKey     string
+	ServerReadTimeout       time.Duration
+	ServerWriteTimeout      time.Duration
+	ServerIdleTimeout       time.Duration
 }
 
 var AppConfig *Config
@@ -108,6 +115,13 @@ func Load() {
 		MinioSecretKey:               getEnv("MINIO_SECRET_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMinioSec)),
 		MinioUseSSL:                  getEnv("MINIO_USE_SSL", "false"),
 		MinioBucketName:              getEnv("MINIO_BUCKET_NAME", "thingindex-docs"),
+		RabbitMQURL:                  getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
+		DocumentIndexExchange:        getEnv("DOCUMENT_INDEX_EXCHANGE", "thingindex.document.index"),
+		DocumentIndexQueue:           getEnv("DOCUMENT_INDEX_QUEUE", "thingindex.document.index.queue"),
+		DocumentIndexRoutingKey:      getEnv("DOCUMENT_INDEX_ROUTING_KEY", "document.index.requested"),
+		OutboxPollInterval:           getEnvDurationSeconds("OUTBOX_POLL_INTERVAL_SECONDS", 5),
+		OutboxBatchSize:              getEnvInt("OUTBOX_BATCH_SIZE", 20),
+		ConsumerPrefetchCount:        getEnvInt("CONSUMER_PREFETCH_COUNT", 10),
 		MaxUploadSizeBytes:           getEnvInt64("MAX_UPLOAD_SIZE_BYTES", 20*1024*1024),
 		MasterEncryptionKey:          getEnv("MASTER_ENCRYPTION_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMaster)),
 		ServerReadTimeout:            getEnvDurationSeconds("SERVER_READ_TIMEOUT_SECONDS", 15),
@@ -214,6 +228,21 @@ func (c *Config) Validate() error {
 	}
 	if c.MaxUploadSizeBytes <= 0 {
 		return errors.New("MAX_UPLOAD_SIZE_BYTES must be greater than zero")
+	}
+	if strings.TrimSpace(c.RabbitMQURL) == "" {
+		return errors.New("RABBITMQ_URL is required")
+	}
+	if strings.TrimSpace(c.DocumentIndexExchange) == "" || strings.TrimSpace(c.DocumentIndexQueue) == "" || strings.TrimSpace(c.DocumentIndexRoutingKey) == "" {
+		return errors.New("document indexing queue configuration is required")
+	}
+	if c.OutboxPollInterval <= 0 {
+		return errors.New("OUTBOX_POLL_INTERVAL_SECONDS must be greater than zero")
+	}
+	if c.OutboxBatchSize <= 0 {
+		return errors.New("OUTBOX_BATCH_SIZE must be greater than zero")
+	}
+	if c.ConsumerPrefetchCount <= 0 {
+		return errors.New("CONSUMER_PREFETCH_COUNT must be greater than zero")
 	}
 	if c.ServerReadTimeout <= 0 || c.ServerWriteTimeout <= 0 || c.ServerIdleTimeout <= 0 {
 		return errors.New("server timeout values must be greater than zero")

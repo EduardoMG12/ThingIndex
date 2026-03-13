@@ -12,6 +12,7 @@ type CollectionContext struct {
 	ParagraphNodes []models.ParagraphNode
 	TableSections  []models.TableSection
 	MetadataPairs  []models.MetadataPair
+	OutlineNodes   []models.DocumentOutlineNode
 }
 
 type CategoryCatalogRepository interface {
@@ -33,19 +34,24 @@ type CollectionRepository interface {
 
 type CatalogDocumentRepository interface {
 	CreateDocument(ctx context.Context, doc *models.Document) error
+	CreateDocumentWithOutbox(ctx context.Context, doc *models.Document, event *models.OutboxEvent) error
 	GetDocumentByID(ctx context.Context, id uint, userID uint) (*models.Document, error)
+	GetDocumentByIDForProcessing(ctx context.Context, id uint) (*models.Document, error)
 	GetDocumentsByUserID(ctx context.Context, userID uint) ([]models.Document, error)
 	GetDocumentsByCategoryID(ctx context.Context, categoryID uint, userID uint) ([]models.Document, error)
 	GetDocumentsByCollectionID(ctx context.Context, collectionID uint, userID uint) ([]models.Document, error)
+	UpdateDocumentStatus(ctx context.Context, documentID uint, status string) error
 }
 
 type StructuredDataRepository interface {
 	ReplaceParagraphNodes(ctx context.Context, documentID uint, nodes []models.ParagraphNode) error
 	ReplaceTableSections(ctx context.Context, documentID uint, sections []models.TableSection) error
 	ReplaceMetadataPairs(ctx context.Context, documentID uint, pairs []models.MetadataPair) error
+	ReplaceOutlineNodes(ctx context.Context, documentID uint, nodes []models.DocumentOutlineNode) error
 	GetParagraphNodesByDocumentIDs(ctx context.Context, documentIDs []uint) ([]models.ParagraphNode, error)
 	GetTableSectionsByDocumentIDs(ctx context.Context, documentIDs []uint) ([]models.TableSection, error)
 	GetMetadataPairsByDocumentIDs(ctx context.Context, documentIDs []uint) ([]models.MetadataPair, error)
+	GetOutlineNodesByDocumentIDs(ctx context.Context, documentIDs []uint) ([]models.DocumentOutlineNode, error)
 }
 
 type CollectionContextRepository interface {

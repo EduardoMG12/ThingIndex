@@ -42,7 +42,35 @@ services:
       - .env
     environment:
       TELEMETRY_EXCHANGE: ${TELEMETRY_EXCHANGE:-pipeline_telemetry}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}
+      DOCUMENT_INDEX_EXCHANGE: ${DOCUMENT_INDEX_EXCHANGE:-thingindex.document.index}
+      DOCUMENT_INDEX_QUEUE: ${DOCUMENT_INDEX_QUEUE:-thingindex.document.index.queue}
+      DOCUMENT_INDEX_ROUTING_KEY: ${DOCUMENT_INDEX_ROUTING_KEY:-document.index.requested}
       # Use the host-published Postgres port to avoid container DNS issues.
+      DB_HOST: host.docker.internal
+      DB_PORT: 5433
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+
+  indexer:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.indexer
+    restart: unless-stopped
+    depends_on:
+      - db
+      - minio
+      - rabbitmq
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - .env
+    environment:
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}
+      DOCUMENT_INDEX_EXCHANGE: ${DOCUMENT_INDEX_EXCHANGE:-thingindex.document.index}
+      DOCUMENT_INDEX_QUEUE: ${DOCUMENT_INDEX_QUEUE:-thingindex.document.index.queue}
+      DOCUMENT_INDEX_ROUTING_KEY: ${DOCUMENT_INDEX_ROUTING_KEY:-document.index.requested}
       DB_HOST: host.docker.internal
       DB_PORT: 5433
       DB_USER: ${POSTGRES_USER}

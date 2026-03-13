@@ -41,8 +41,13 @@ type ProviderUseCase interface {
 type ProviderService interface {
 	ProviderUseCase
 	UserStorageResolver
+	UserLLMResolver
 }
 
 type LLMService interface {
-	Summarize(ctx context.Context, text string) (string, error)
+	GenerateText(ctx context.Context, systemPrompt, userPrompt string) (string, error)
+}
+
+type UserLLMResolver interface {
+	ResolveLLM(ctx context.Context, userID uint) (LLMService, error)
 }

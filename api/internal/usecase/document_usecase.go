@@ -404,7 +404,7 @@ func (u *documentCatalogUseCase) UploadDocument(ctx context.Context, userID uint
 		FileURL:       fileURL,
 		Size:          size,
 		MimeType:      resolvedContentType,
-		Status:        "PENDING",
+		Status:        domain.DocumentStatusQueued,
 		Collection:    collectionRef.Name,
 		CollectionID:  &collectionRef.ID,
 		CollectionRef: collectionRef,
@@ -413,7 +413,18 @@ func (u *documentCatalogUseCase) UploadDocument(ctx context.Context, userID uint
 		doc.CategoryID = &category.ID
 	}
 
-	if err := u.documentRepo.CreateDocument(ctx, doc); err != nil {
+	event := &models.OutboxEvent{
+		AggregateType: domain.OutboxAggregateDocument,
+		EventType:     domain.OutboxEventDocumentIndexRequested,
+		Status:        domain.OutboxEventStatusPending,
+		Payload: map[string]any{
+			"document_id": doc.ID,
+			"user_id":     userID,
+		},
+		AvailableAt: time.Now().UTC(),
+	}
+
+	if err := u.documentRepo.CreateDocumentWithOutbox(ctx, doc, event); err != nil {
 		return nil, fmt.Errorf("%w: %v", domain.ErrInternal, err)
 	}
 

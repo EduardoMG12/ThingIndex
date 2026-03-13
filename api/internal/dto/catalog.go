@@ -111,12 +111,24 @@ type MetadataPairResponse struct {
 	Value         string `json:"value"`
 }
 
+type OutlineNodeResponse struct {
+	ID            uint           `json:"id"`
+	DocumentID    uint           `json:"document_id"`
+	SequenceOrder int            `json:"sequence_order"`
+	Level         int            `json:"level"`
+	Title         string         `json:"title"`
+	Slug          string         `json:"slug,omitempty"`
+	Summary       string         `json:"summary,omitempty"`
+	Metadata      map[string]any `json:"metadata"`
+}
+
 type CollectionContextResponse struct {
 	Collection     *CollectionResponse     `json:"collection"`
 	Documents      []DocumentResponse      `json:"documents"`
 	ParagraphNodes []ParagraphNodeResponse `json:"paragraph_nodes"`
 	TableSections  []TableSectionResponse  `json:"table_sections"`
 	MetadataPairs  []MetadataPairResponse  `json:"metadata_pairs"`
+	OutlineNodes   []OutlineNodeResponse   `json:"outline_nodes"`
 }
 
 func ToCategoryResponse(category *models.DocumentCategory) *CategoryResponse {
@@ -280,6 +292,29 @@ func ToMetadataPairResponses(pairs []models.MetadataPair) []MetadataPairResponse
 	return items
 }
 
+func ToOutlineNodeResponses(nodes []models.DocumentOutlineNode) []OutlineNodeResponse {
+	items := make([]OutlineNodeResponse, 0, len(nodes))
+	for _, node := range nodes {
+		metadata := node.Metadata
+		if metadata == nil {
+			metadata = map[string]any{}
+		}
+
+		items = append(items, OutlineNodeResponse{
+			ID:            node.ID,
+			DocumentID:    node.DocumentID,
+			SequenceOrder: node.SequenceOrder,
+			Level:         node.Level,
+			Title:         node.Title,
+			Slug:          node.Slug,
+			Summary:       node.Summary,
+			Metadata:      metadata,
+		})
+	}
+
+	return items
+}
+
 func ToCollectionContextResponse(ctx *domain.CollectionContext) *CollectionContextResponse {
 	if ctx == nil {
 		return nil
@@ -291,5 +326,6 @@ func ToCollectionContextResponse(ctx *domain.CollectionContext) *CollectionConte
 		ParagraphNodes: ToParagraphNodeResponses(ctx.ParagraphNodes),
 		TableSections:  ToTableSectionResponses(ctx.TableSections),
 		MetadataPairs:  ToMetadataPairResponses(ctx.MetadataPairs),
+		OutlineNodes:   ToOutlineNodeResponses(ctx.OutlineNodes),
 	}
 }

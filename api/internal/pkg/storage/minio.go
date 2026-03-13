@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"thing-index/internal/pkg/netsec"
@@ -128,4 +129,23 @@ func (m *MinioStorage) UploadFile(ctx context.Context, file io.Reader, objectSiz
 
 	fileUrl := fmt.Sprintf("%s/%s", m.bucketName, info.Key)
 	return fileUrl, nil
+}
+
+func (m *MinioStorage) OpenFile(ctx context.Context, objectPath string) (io.ReadCloser, error) {
+	objectKey := strings.TrimPrefix(strings.TrimSpace(objectPath), m.bucketName+"/")
+	if objectKey == "" {
+		return nil, errors.New("object path is required")
+	}
+
+	object, err := m.client.GetObject(ctx, m.bucketName, objectKey, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file from minio: %w", err)
+	}
+
+	if _, err := object.Stat(); err != nil {
+		_ = object.Close()
+		return nil, fmt.Errorf("failed to stat file from minio: %w", err)
+	}
+
+	return object, nil
 }

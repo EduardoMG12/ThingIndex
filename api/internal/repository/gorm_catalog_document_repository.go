@@ -20,6 +20,21 @@ func (r *GormCatalogDocumentRepository) CreateDocument(ctx context.Context, doc 
 	return r.db.WithContext(ctx).Create(doc).Error
 }
 
+func (r *GormCatalogDocumentRepository) CreateDocumentWithOutbox(ctx context.Context, doc *models.Document, event *models.OutboxEvent) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(doc).Error; err != nil {
+			return err
+		}
+
+		event.AggregateID = doc.ID
+		if event.Payload == nil {
+			event.Payload = map[string]any{}
+		}
+		event.Payload["document_id"] = doc.ID
+		return tx.Create(event).Error
+	})
+}
+
 func (r *GormCatalogDocumentRepository) GetDocumentByID(ctx context.Context, id uint, userID uint) (*models.Document, error) {
 	var doc models.Document
 	if err := r.db.WithContext(ctx).
@@ -27,6 +42,18 @@ func (r *GormCatalogDocumentRepository) GetDocumentByID(ctx context.Context, id 
 		Preload("CollectionRef.Category").
 		Where("id = ? AND user_id = ?", id, userID).
 		First(&doc).Error; err != nil {
+		return nil, err
+	}
+
+	return &doc, nil
+}
+
+func (r *GormCatalogDocumentRepository) GetDocumentByIDForProcessing(ctx context.Context, id uint) (*models.Document, error) {
+	var doc models.Document
+	if err := r.db.WithContext(ctx).
+		Preload("CollectionRef").
+		Preload("CollectionRef.Category").
+		First(&doc, id).Error; err != nil {
 		return nil, err
 	}
 
@@ -74,4 +101,11 @@ func (r *GormCatalogDocumentRepository) GetDocumentsByCollectionID(ctx context.C
 	}
 
 	return docs, nil
+}
+
+func (r *GormCatalogDocumentRepository) UpdateDocumentStatus(ctx context.Context, documentID uint, status string) error {
+	return r.db.WithContext(ctx).
+		Model(&models.Document{}).
+		Where("id = ?", documentID).
+		Update("status", status).Error
 }

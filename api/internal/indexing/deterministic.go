@@ -1,0 +1,441 @@
+package indexing
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"io"
+	"regexp"
+	"strconv"
+	"strings"
+	"unicode"
+
+	"thing-index/internal/domain"
+	"thing-index/internal/models"
+
+	"github.com/ledongthuc/pdf"
+	"github.com/xuri/excelize/v2"
+	"golang.org/x/net/html"
+)
+
+type DeterministicIndexer struct{}
+
+type outlineDraft struct {
+	Level int
+	Title string
+}
+
+func NewDeterministicIndexer() *DeterministicIndexer {
+	return &DeterministicIndexer{}
+}
+
+func (i *DeterministicIndexer) Index(ctx context.Context, doc *models.Document, file io.Reader) (domain.IndexingResult, error) {
+	select {
+	case <-ctx.Done():
+		return domain.IndexingResult{}, ctx.Err()
+	default:
+	}
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return domain.IndexingResult{}, fmt.Errorf("%w: read document: %v", domain.ErrDocumentIndexing, err)
+	}
+
+	switch doc.MimeType {
+	case "text/html":
+		return i.indexHTML(doc.ID, data)
+	case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+		return i.indexSpreadsheet(doc.ID, data)
+	case "application/pdf":
+		return i.indexPDF(doc.ID, data)
+	default:
+		return i.indexPlainText(doc.ID, string(data)), nil
+	}
+}
+
+func (i *DeterministicIndexer) indexHTML(documentID uint, data []byte) (domain.IndexingResult, error) {
+	root, err := html.Parse(bytes.NewReader(data))
+	if err != nil {
+		return domain.IndexingResult{}, fmt.Errorf("%w: parse html: %v", domain.ErrDocumentIndexing, err)
+	}
+
+	headings := make([]outlineDraft, 0)
+	paragraphs := make([]string, 0)
+	tables := make([]models.TableSection, 0)
+
+	var walk func(*html.Node)
+	walk = func(node *html.Node) {
+		if node == nil {
+			return
+		}
+
+		if node.Type == html.ElementNode {
+			switch node.Data {
+			case "h1", "h2", "h3", "h4", "h5", "h6":
+				level, _ := strconv.Atoi(strings.TrimPrefix(node.Data, "h"))
+				title := normalizeText(extractHTMLText(node))
+				if title != "" {
+					headings = append(headings, outlineDraft{Level: level, Title: title})
+				}
+			case "p", "li":
+				text := normalizeText(extractHTMLText(node))
+				if text != "" {
+					paragraphs = append(paragraphs, text)
+				}
+			case "table":
+				section := extractHTMLTable(documentID, len(tables), node)
+				if len(section.Headers) > 0 || len(section.Rows) > 0 {
+					tables = append(tables, section)
+				}
+			}
+		}
+
+		for child := node.FirstChild; child != nil; child = child.NextSibling {
+			walk(child)
+		}
+	}
+
+	walk(root)
+
+	return buildIndexingResult(documentID, headings, paragraphs, tables), nil
+}
+
+func (i *DeterministicIndexer) indexSpreadsheet(documentID uint, data []byte) (domain.IndexingResult, error) {
+	workbook, err := excelize.OpenReader(bytes.NewReader(data))
+	if err != nil {
+		return domain.IndexingResult{}, fmt.Errorf("%w: parse spreadsheet: %v", domain.ErrDocumentIndexing, err)
+	}
+	defer func() {
+		_ = workbook.Close()
+	}()
+
+	headings := make([]outlineDraft, 0)
+	paragraphs := make([]string, 0)
+	tables := make([]models.TableSection, 0)
+
+	for sheetIndex, sheetName := range workbook.GetSheetList() {
+		rows, err := workbook.GetRows(sheetName)
+		if err != nil {
+			return domain.IndexingResult{}, fmt.Errorf("%w: read spreadsheet rows: %v", domain.ErrDocumentIndexing, err)
+		}
+
+		headings = append(headings, outlineDraft{Level: 1, Title: sheetName})
+		paragraphs = append(paragraphs, fmt.Sprintf("Planilha %s com %d linhas.", sheetName, len(rows)))
+
+		section := models.TableSection{
+			DocumentID:    documentID,
+			SequenceOrder: sheetIndex,
+			Title:         sheetName,
+			Headers:       []string{},
+			Rows:          [][]string{},
+			Metadata: map[string]any{
+				"sheet_name": sheetName,
+				"row_count":  len(rows),
+			},
+		}
+
+		if len(rows) > 0 {
+			section.Headers = normalizeCells(rows[0])
+		}
+		if len(rows) > 1 {
+			for _, row := range rows[1:] {
+				section.Rows = append(section.Rows, normalizeCells(row))
+			}
+		}
+
+		tables = append(tables, section)
+	}
+
+	return buildIndexingResult(documentID, headings, paragraphs, tables), nil
+}
+
+func (i *DeterministicIndexer) indexPDF(documentID uint, data []byte) (domain.IndexingResult, error) {
+	reader := bytes.NewReader(data)
+	pdfReader, err := pdf.NewReader(reader, int64(len(data)))
+	if err != nil {
+		return domain.IndexingResult{}, fmt.Errorf("%w: parse pdf: %v", domain.ErrDocumentIndexing, err)
+	}
+
+	textReader, err := pdfReader.GetPlainText()
+	if err != nil {
+		return domain.IndexingResult{}, fmt.Errorf("%w: extract pdf text: %v", domain.ErrDocumentIndexing, err)
+	}
+
+	textBytes, err := io.ReadAll(textReader)
+	if err != nil {
+		return domain.IndexingResult{}, fmt.Errorf("%w: read pdf text: %v", domain.ErrDocumentIndexing, err)
+	}
+
+	return i.indexPlainText(documentID, string(textBytes)), nil
+}
+
+func (i *DeterministicIndexer) indexPlainText(documentID uint, raw string) domain.IndexingResult {
+	normalized := normalizeText(raw)
+	blocks := splitBlocks(normalized)
+	headings := make([]outlineDraft, 0)
+	paragraphs := make([]string, 0, len(blocks))
+
+	for _, block := range blocks {
+		if looksLikeHeading(block) {
+			headings = append(headings, outlineDraft{
+				Level: inferHeadingLevel(block),
+				Title: block,
+			})
+			continue
+		}
+
+		paragraphs = append(paragraphs, block)
+	}
+
+	if len(headings) == 0 && len(paragraphs) > 0 {
+		headings = append(headings, outlineDraft{Level: 1, Title: firstSentence(paragraphs[0])})
+	}
+
+	return buildIndexingResult(documentID, headings, paragraphs, nil)
+}
+
+func buildIndexingResult(documentID uint, headings []outlineDraft, paragraphs []string, tables []models.TableSection) domain.IndexingResult {
+	outlineNodes := make([]models.DocumentOutlineNode, 0, len(headings))
+	for _, heading := range headings {
+		title := strings.TrimSpace(heading.Title)
+		if title == "" {
+			continue
+		}
+
+		outlineNodes = append(outlineNodes, models.DocumentOutlineNode{
+			DocumentID:    documentID,
+			SequenceOrder: len(outlineNodes),
+			Level:         max(1, heading.Level),
+			Title:         title,
+			Slug:          slugify(title),
+			Summary:       "",
+			Metadata:      map[string]any{},
+		})
+	}
+
+	paragraphNodes := make([]models.ParagraphNode, 0, len(paragraphs))
+	for idx, paragraph := range paragraphs {
+		paragraphNodes = append(paragraphNodes, models.ParagraphNode{
+			DocumentID:    documentID,
+			SequenceOrder: idx,
+			Content:       paragraph,
+			Metadata:      map[string]any{},
+		})
+	}
+
+	metadataPairs := []models.MetadataPair{
+		{DocumentID: documentID, SequenceOrder: 0, Key: "paragraph_count", Value: strconv.Itoa(len(paragraphNodes))},
+		{DocumentID: documentID, SequenceOrder: 1, Key: "table_count", Value: strconv.Itoa(len(tables))},
+		{DocumentID: documentID, SequenceOrder: 2, Key: "outline_count", Value: strconv.Itoa(len(outlineNodes))},
+	}
+
+	allText := strings.Join(paragraphs, " ")
+	metadataPairs = append(metadataPairs,
+		models.MetadataPair{DocumentID: documentID, SequenceOrder: 3, Key: "word_count", Value: strconv.Itoa(len(strings.Fields(allText)))},
+		models.MetadataPair{DocumentID: documentID, SequenceOrder: 4, Key: "character_count", Value: strconv.Itoa(len([]rune(allText)))},
+	)
+
+	return domain.IndexingResult{
+		ParagraphNodes: paragraphNodes,
+		TableSections:  tables,
+		MetadataPairs:  metadataPairs,
+		OutlineNodes:   outlineNodes,
+	}
+}
+
+func extractHTMLText(node *html.Node) string {
+	var parts []string
+	var visit func(*html.Node)
+	visit = func(current *html.Node) {
+		if current == nil {
+			return
+		}
+		if current.Type == html.TextNode {
+			text := strings.TrimSpace(current.Data)
+			if text != "" {
+				parts = append(parts, text)
+			}
+		}
+		for child := current.FirstChild; child != nil; child = child.NextSibling {
+			visit(child)
+		}
+	}
+	visit(node)
+	return strings.Join(parts, " ")
+}
+
+func extractHTMLTable(documentID uint, sequence int, node *html.Node) models.TableSection {
+	rows := make([][]string, 0)
+	var walk func(*html.Node)
+	walk = func(current *html.Node) {
+		if current == nil {
+			return
+		}
+		if current.Type == html.ElementNode && current.Data == "tr" {
+			cells := make([]string, 0)
+			for child := current.FirstChild; child != nil; child = child.NextSibling {
+				if child.Type == html.ElementNode && (child.Data == "th" || child.Data == "td") {
+					text := normalizeText(extractHTMLText(child))
+					cells = append(cells, text)
+				}
+			}
+			if len(cells) > 0 {
+				rows = append(rows, cells)
+			}
+		}
+		for child := current.FirstChild; child != nil; child = child.NextSibling {
+			walk(child)
+		}
+	}
+	walk(node)
+
+	section := models.TableSection{
+		DocumentID:    documentID,
+		SequenceOrder: sequence,
+		Headers:       []string{},
+		Rows:          [][]string{},
+		Metadata:      map[string]any{},
+	}
+	if len(rows) > 0 {
+		section.Headers = rows[0]
+	}
+	if len(rows) > 1 {
+		section.Rows = rows[1:]
+	}
+	return section
+}
+
+func splitBlocks(text string) []string {
+	if text == "" {
+		return nil
+	}
+
+	normalized := strings.ReplaceAll(text, "\r\n", "\n")
+	rawBlocks := strings.Split(normalized, "\n\n")
+	blocks := make([]string, 0, len(rawBlocks))
+	for _, block := range rawBlocks {
+		cleaned := normalizeText(block)
+		if cleaned != "" {
+			blocks = append(blocks, cleaned)
+		}
+	}
+	return blocks
+}
+
+var numberedHeadingPattern = regexp.MustCompile(`^\d+(\.\d+)*\s+`)
+
+func looksLikeHeading(text string) bool {
+	if text == "" || strings.Contains(text, ". ") && len(text) > 120 {
+		return false
+	}
+	if numberedHeadingPattern.MatchString(text) {
+		return true
+	}
+	if len(strings.Fields(text)) <= 12 && text == strings.ToUpper(text) {
+		return true
+	}
+	return len(strings.Fields(text)) <= 10 && isMostlyTitleCase(text)
+}
+
+func inferHeadingLevel(text string) int {
+	if matches := numberedHeadingPattern.FindString(text); matches != "" {
+		trimmed := strings.TrimSpace(matches)
+		return strings.Count(trimmed, ".") + 1
+	}
+
+	switch {
+	case text == strings.ToUpper(text):
+		return 1
+	case len(strings.Fields(text)) <= 4:
+		return 2
+	default:
+		return 3
+	}
+}
+
+func isMostlyTitleCase(text string) bool {
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return false
+	}
+
+	titleCaseCount := 0
+	for _, word := range words {
+		runes := []rune(word)
+		if len(runes) == 0 {
+			continue
+		}
+		if unicode.IsUpper(runes[0]) {
+			titleCaseCount++
+		}
+	}
+
+	return titleCaseCount*2 >= len(words)
+}
+
+func normalizeCells(cells []string) []string {
+	result := make([]string, 0, len(cells))
+	for _, cell := range cells {
+		result = append(result, normalizeText(cell))
+	}
+	return result
+}
+
+func normalizeText(text string) string {
+	text = strings.ReplaceAll(text, "\u00a0", " ")
+	lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
+	compacted := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.Join(strings.Fields(strings.TrimSpace(line)), " ")
+		if line != "" {
+			compacted = append(compacted, line)
+		}
+	}
+	return strings.TrimSpace(strings.Join(compacted, "\n"))
+}
+
+func firstSentence(text string) string {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return ""
+	}
+	if idx := strings.Index(text, "."); idx > 0 {
+		return strings.TrimSpace(text[:idx])
+	}
+	words := strings.Fields(text)
+	if len(words) > 8 {
+		words = words[:8]
+	}
+	return strings.Join(words, " ")
+}
+
+func slugify(text string) string {
+	text = strings.ToLower(strings.TrimSpace(text))
+	var builder strings.Builder
+	lastDash := false
+	for _, r := range text {
+		switch {
+		case unicode.IsLetter(r) || unicode.IsDigit(r):
+			builder.WriteRune(r)
+			lastDash = false
+		case unicode.IsSpace(r) || r == '-' || r == '_' || r == '.':
+			if !lastDash && builder.Len() > 0 {
+				builder.WriteRune('-')
+				lastDash = true
+			}
+		}
+	}
+
+	slug := strings.Trim(builder.String(), "-")
+	if slug == "" {
+		return "section"
+	}
+	return slug
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}

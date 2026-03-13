@@ -38,7 +38,7 @@ type Document struct {
 	FileURL       string            `gorm:"size:512;not null" json:"file_url"`
 	Size          int64             `json:"size"`
 	MimeType      string            `gorm:"size:100" json:"mime_type"`
-	Status        string            `gorm:"size:50;default:'PENDING'" json:"status"` // E.g., PENDING, MAPPED, FAILED
+	Status        string            `gorm:"size:50;default:'UPLOADED';index" json:"status"`
 	Collection    string            `gorm:"column:collection;size:255;index" json:"-"`
 	CollectionID  *uint             `gorm:"index" json:"collection_id,omitempty"`
 	CollectionRef *Collection       `gorm:"foreignKey:CollectionID" json:"collection,omitempty"`
@@ -83,4 +83,33 @@ type MetadataPair struct {
 	CreatedAt     time.Time      `json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+type DocumentOutlineNode struct {
+	ID            uint           `gorm:"primarykey" json:"id"`
+	DocumentID    uint           `gorm:"not null;index;uniqueIndex:idx_outline_nodes_document_sequence" json:"document_id"`
+	SequenceOrder int            `gorm:"not null;uniqueIndex:idx_outline_nodes_document_sequence" json:"sequence_order"`
+	Level         int            `gorm:"not null" json:"level"`
+	Title         string         `gorm:"size:255;not null" json:"title"`
+	Slug          string         `gorm:"size:255" json:"slug,omitempty"`
+	Summary       string         `gorm:"type:text" json:"summary,omitempty"`
+	Metadata      map[string]any `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+type OutboxEvent struct {
+	ID            uint           `gorm:"primarykey" json:"id"`
+	AggregateType string         `gorm:"size:64;not null;index:idx_outbox_events_aggregate" json:"aggregate_type"`
+	AggregateID   uint           `gorm:"not null;index:idx_outbox_events_aggregate" json:"aggregate_id"`
+	EventType     string         `gorm:"size:128;not null;index" json:"event_type"`
+	Status        string         `gorm:"size:32;not null;index" json:"status"`
+	Payload       map[string]any `gorm:"type:jsonb;serializer:json" json:"payload"`
+	Attempts      int            `gorm:"not null;default:0" json:"attempts"`
+	AvailableAt   time.Time      `gorm:"not null;index" json:"available_at"`
+	PublishedAt   *time.Time     `json:"published_at,omitempty"`
+	LastError     string         `gorm:"type:text" json:"last_error,omitempty"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
 }
