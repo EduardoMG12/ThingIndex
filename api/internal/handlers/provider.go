@@ -26,6 +26,11 @@ type saveCredentialsRequest struct {
 	Credentials  map[string]string `json:"credentials" binding:"required"`
 }
 
+type updateProviderStateRequest struct {
+	Family    string `json:"family" binding:"required"`
+	IsEnabled bool   `json:"is_enabled"`
+}
+
 func (h *ProviderHandler) SaveCredentials(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
@@ -64,4 +69,32 @@ func (h *ProviderHandler) ListProviders(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "provider.success_list"), dto.ToProviderConfigResponses(providers))
+}
+
+func (h *ProviderHandler) UpdateProviderState(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+	providerType := c.Param("providerType")
+
+	var req updateProviderStateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
+		return
+	}
+
+	if err := h.useCase.SetProviderEnabled(c.Request.Context(), userID, req.Family, providerType, req.IsEnabled); err != nil {
+		switch {
+		case errors.Is(err, domain.ErrProviderFamilyInvalid):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_family"), nil)
+		case errors.Is(err, domain.ErrProviderTypeInvalid):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_type"), nil)
+		case errors.Is(err, domain.ErrProviderCredentialsInvalid):
+			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "provider.error_invalid_credentials"), nil)
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
+		}
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "provider.success_save"), nil)
 }

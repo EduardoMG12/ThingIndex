@@ -64,6 +64,29 @@ func (r *gormProviderRepository) ListConfigs(ctx context.Context, userID uint) (
 	return configs, nil
 }
 
+func (r *gormProviderRepository) SetConfigEnabled(ctx context.Context, userID uint, family, providerType string, enabled bool) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if enabled {
+			if err := tx.Model(&models.UserProviderConfig{}).
+				Where("user_id = ? AND family = ? AND provider_type <> ?", userID, family, providerType).
+				Update("is_enabled", false).Error; err != nil {
+				return err
+			}
+		}
+
+		result := tx.Model(&models.UserProviderConfig{}).
+			Where("user_id = ? AND family = ? AND provider_type = ?", userID, family, providerType).
+			Update("is_enabled", enabled)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		return nil
+	})
+}
+
 func (r *gormProviderRepository) DeleteConfig(ctx context.Context, userID uint, providerType string) error {
 	return r.db.WithContext(ctx).Where("user_id = ? AND provider_type = ?", userID, providerType).Delete(&models.UserProviderConfig{}).Error
 }

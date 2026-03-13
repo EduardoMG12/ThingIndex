@@ -117,6 +117,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		{
 			user.POST("/providers", providerHandler.SaveCredentials)
 			user.GET("/providers", providerHandler.ListProviders)
+			user.PATCH("/providers/:providerType", providerHandler.UpdateProviderState)
 		}
 
 		documents := v1.Group("/documents")

@@ -100,6 +100,22 @@ func (u *providerUseCase) ListUserProviders(ctx context.Context, userID uint) ([
 	return u.repo.ListConfigs(ctx, userID)
 }
 
+func (u *providerUseCase) SetProviderEnabled(ctx context.Context, userID uint, family, providerType string, enabled bool) error {
+	normalizedFamily, normalizedProviderType, err := normalizeProviderSelection(family, providerType)
+	if err != nil {
+		return err
+	}
+
+	if err := u.repo.SetConfigEnabled(ctx, userID, normalizedFamily, normalizedProviderType, enabled); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return domain.ErrProviderCredentialsInvalid
+		}
+		return err
+	}
+
+	return nil
+}
+
 func (u *providerUseCase) ResolveStorage(ctx context.Context, userID uint) (domain.StorageService, error) {
 	config, err := u.repo.GetConfigByFamily(ctx, userID, domain.FamilyStorage)
 	if err != nil {

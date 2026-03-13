@@ -29,6 +29,7 @@ type ProviderRepository interface {
 	GetConfig(ctx context.Context, userID uint, providerType string) (*models.UserProviderConfig, error)
 	GetConfigByFamily(ctx context.Context, userID uint, family string) (*models.UserProviderConfig, error)
 	ListConfigs(ctx context.Context, userID uint) ([]models.UserProviderConfig, error)
+	SetConfigEnabled(ctx context.Context, userID uint, family, providerType string, enabled bool) error
 	DeleteConfig(ctx context.Context, userID uint, providerType string) error
 }
 
@@ -36,6 +37,7 @@ type ProviderUseCase interface {
 	SaveCredentials(ctx context.Context, userID uint, family, providerType string, credentials map[string]string) error
 	GetDecryptedCredentials(ctx context.Context, userID uint, providerType string) (map[string]string, error)
 	ListUserProviders(ctx context.Context, userID uint) ([]models.UserProviderConfig, error)
+	SetProviderEnabled(ctx context.Context, userID uint, family, providerType string, enabled bool) error
 }
 
 type ProviderService interface {
