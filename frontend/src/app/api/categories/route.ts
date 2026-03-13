@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { proxyJsonWithAuthCleanup, unauthorizedJson } from "@/app/api/_utils/auth";
 
 const API_URL = process.env.API_INTERNAL_URL || "http://api:8080/api/v1";
 
@@ -7,10 +8,7 @@ export async function GET() {
     const token = (await cookies()).get("token")?.value;
 
     if (!token) {
-        return NextResponse.json(
-            { message: "Usuario nao autenticado." },
-            { status: 401 }
-        );
+        return unauthorizedJson();
     }
 
     try {
@@ -26,7 +24,7 @@ export async function GET() {
             message: "Nao foi possivel processar a resposta da API.",
         }));
 
-        return NextResponse.json(payload, { status: response.status });
+        return proxyJsonWithAuthCleanup(payload, response.status);
     } catch {
         return NextResponse.json(
             { message: "Erro ao consultar categorias." },
@@ -39,10 +37,7 @@ export async function POST(request: Request) {
     const token = (await cookies()).get("token")?.value;
 
     if (!token) {
-        return NextResponse.json(
-            { message: "Usuario nao autenticado." },
-            { status: 401 }
-        );
+        return unauthorizedJson();
     }
 
     const body = await request.json().catch(() => null) as { name?: string; description?: string } | null;
@@ -73,7 +68,7 @@ export async function POST(request: Request) {
             message: "Nao foi possivel processar a resposta da API.",
         }));
 
-        return NextResponse.json(payload, { status: response.status });
+        return proxyJsonWithAuthCleanup(payload, response.status);
     } catch {
         return NextResponse.json(
             { message: "Erro ao criar categoria." },
