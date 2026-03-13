@@ -85,22 +85,18 @@ function subscribeToTheme(onStoreChange: () => void) {
 export const SplashScreen = () => {
     const isHydrated = useSyncExternalStore(subscribeToClientRender, () => true, () => false);
     const theme = useSyncExternalStore(subscribeToTheme, resolveTheme, () => "dark");
-    const shouldDisplay = useSyncExternalStore(
-        subscribeToClientRender,
-        shouldShowSplash,
-        () => false
-    );
     const [isDismissed, setIsDismissed] = useState(false);
     const points = useMemo(() => (isHydrated ? createSplashPoints() : []), [isHydrated]);
+    const shouldDisplay = useMemo(() => (isHydrated ? shouldShowSplash() : false), [isHydrated]);
     const isVisible = isHydrated && shouldDisplay && !isDismissed;
 
     useEffect(() => {
         if (!isVisible) {
             return;
         }
-        localStorage.setItem(SPLASH_STORAGE_KEY, Date.now().toString());
 
         const timer = setTimeout(() => {
+            // localStorage.setItem(SPLASH_STORAGE_KEY, Date.now().toString());
             setIsDismissed(true);
         }, 3500);
 

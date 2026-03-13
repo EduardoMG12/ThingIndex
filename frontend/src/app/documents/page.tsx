@@ -24,6 +24,7 @@ import { useDocuments } from "@/hooks/use-documents";
 import { fetchCollectionContext } from "@/lib/api/collections";
 import type { CollectionContext } from "@/lib/api/contracts/document-context";
 import { fetchDocumentIndex, type Document, type DocumentIndex } from "@/lib/api/documents";
+import { useI18n } from "@/lib/i18n/provider";
 
 const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } };
 
@@ -37,12 +38,12 @@ function formatSize(bytes: number) {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function formatDate(value?: string) {
+function formatDate(value: string | undefined, locale: string) {
     if (!value) {
         return "-";
     }
 
-    return new Intl.DateTimeFormat("pt-BR", {
+    return new Intl.DateTimeFormat(locale, {
         dateStyle: "short",
         timeStyle: "short",
     }).format(new Date(value));
@@ -56,7 +57,7 @@ function buildPreviewURL(document: Document) {
     return `/api/documents/${document.id}/preview`;
 }
 
-function groupDocuments(documents: Document[]) {
+function groupDocuments(documents: Document[], locale: string) {
     const categories = new Map<string, Map<string, Document[]>>();
     const uncategorizedCollections = new Map<string, Document[]>();
     const uncategorizedLoose: Document[] = [];
@@ -84,7 +85,7 @@ function groupDocuments(documents: Document[]) {
         }
 
         const collections = categories.get(categoryName)!;
-        const normalizedCollection = collectionName || "Sem collection";
+        const normalizedCollection = collectionName || "No collection";
 
         if (!collections.has(normalizedCollection)) {
             collections.set(normalizedCollection, []);
@@ -103,9 +104,9 @@ function groupDocuments(documents: Document[]) {
                         new Date(right.created_at ?? 0).getTime() - new Date(left.created_at ?? 0).getTime()
                     ),
                 }))
-                .sort((left, right) => left.name.localeCompare(right.name, "pt-BR")),
+                .sort((left, right) => left.name.localeCompare(right.name, locale)),
         }))
-        .sort((left, right) => left.name.localeCompare(right.name, "pt-BR"));
+        .sort((left, right) => left.name.localeCompare(right.name, locale));
 
     const uncategorizedByCollection = Array.from(uncategorizedCollections.entries())
         .map(([collectionName, collectionDocuments]) => ({
@@ -114,7 +115,7 @@ function groupDocuments(documents: Document[]) {
                 new Date(right.created_at ?? 0).getTime() - new Date(left.created_at ?? 0).getTime()
             ),
         }))
-        .sort((left, right) => left.name.localeCompare(right.name, "pt-BR"));
+        .sort((left, right) => left.name.localeCompare(right.name, locale));
 
     const uncategorizedWithoutCollection = [...uncategorizedLoose].sort((left, right) =>
         new Date(right.created_at ?? 0).getTime() - new Date(left.created_at ?? 0).getTime()
@@ -452,9 +453,11 @@ function DocumentPreviewPanel({
 function DocumentCard({
     document,
     onOpenPreview,
+    locale,
 }: {
     document: Document;
     onOpenPreview: (document: Document) => void;
+    locale: string;
 }) {
     return (
         <div className="rounded-xl border border-border bg-background/70 p-4 shadow-card">
@@ -485,17 +488,17 @@ function DocumentCard({
                 </span>
                 <span className="flex items-center gap-1 rounded border border-border bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground">
                     <FolderOpen className="h-3 w-3" />
-                    {document.collection || "Sem collection"}
+                    {document.collection || "No collection"}
                 </span>
                 <span className="flex items-center gap-1 rounded border border-border bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground">
                     <Tag className="h-3 w-3" />
-                    {document.category?.name || "Sem categoria"}
+                    {document.category?.name || "Uncategorized"}
                 </span>
             </div>
 
             <div className="mt-4 grid gap-2 border-t border-border pt-4 text-[11px] text-muted-foreground md:grid-cols-2">
-                <p>Criado em: <span className="font-mono text-foreground">{formatDate(document.created_at)}</span></p>
-                <p>Atualizado em: <span className="font-mono text-foreground">{formatDate(document.updated_at)}</span></p>
+                <p>Created: <span className="font-mono text-foreground">{formatDate(document.created_at, locale)}</span></p>
+                <p>Updated: <span className="font-mono text-foreground">{formatDate(document.updated_at, locale)}</span></p>
             </div>
 
             <div className="mt-4 border-t border-border pt-4">
@@ -505,7 +508,7 @@ function DocumentCard({
                     className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary"
                 >
                     <PanelRight className="h-4 w-4" />
-                    Abrir preview lateral
+                    Open side preview
                     <ChevronLeft className="h-4 w-4" />
                 </button>
             </div>
@@ -514,11 +517,12 @@ function DocumentCard({
 }
 
 export default function DocumentsPage() {
+    const { locale } = useI18n();
     const { documents, isLoading, error } = useDocuments();
     const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
     const [openCollections, setOpenCollections] = useState<Record<string, boolean>>({});
     const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
-    const groupedDocuments = groupDocuments(documents);
+    const groupedDocuments = groupDocuments(documents, locale);
 
     const toggleCategory = (categoryName: string) => {
         setOpenCategories((current) => ({
@@ -644,7 +648,7 @@ export default function DocumentsPage() {
                                                             {isCollectionOpen && (
                                                                 <div className="grid gap-3 border-t border-border p-4">
                                                                     {collection.documents.map((document) => (
-                                                                        <DocumentCard key={document.id} document={document} onOpenPreview={setSelectedDocument} />
+                                                                        <DocumentCard key={document.id} document={document} onOpenPreview={setSelectedDocument} locale={locale} />
                                                                     ))}
                                                                 </div>
                                                             )}
@@ -696,7 +700,7 @@ export default function DocumentsPage() {
                                                             {isCollectionOpen && (
                                                                 <div className="grid gap-3 border-t border-border p-4">
                                                                     {collection.documents.map((document) => (
-                                                                        <DocumentCard key={document.id} document={document} onOpenPreview={setSelectedDocument} />
+                                                                        <DocumentCard key={document.id} document={document} onOpenPreview={setSelectedDocument} locale={locale} />
                                                                     ))}
                                                                 </div>
                                                             )}
@@ -709,7 +713,7 @@ export default function DocumentsPage() {
                                         {groupedDocuments.uncategorizedWithoutCollection.length > 0 && (
                                             <div className="grid gap-3">
                                                 {groupedDocuments.uncategorizedWithoutCollection.map((document) => (
-                                                    <DocumentCard key={document.id} document={document} onOpenPreview={setSelectedDocument} />
+                                                    <DocumentCard key={document.id} document={document} onOpenPreview={setSelectedDocument} locale={locale} />
                                                 ))}
                                             </div>
                                         )}

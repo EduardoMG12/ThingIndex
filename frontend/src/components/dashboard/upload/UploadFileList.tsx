@@ -5,6 +5,7 @@ import { ComponentType } from "react";
 import { File, FileSpreadsheet, FileText, FolderOpen, Globe, Hash, X } from "lucide-react";
 
 import type { DocumentUploadFile } from "@/hooks/use-document-upload";
+import { useI18n } from "@/lib/i18n/provider";
 
 type UploadFileListProps = {
     files: DocumentUploadFile[];
@@ -25,6 +26,8 @@ const formatSize = (bytes: number) => {
 };
 
 export default function UploadFileList({ files, onRemove, isProcessing }: UploadFileListProps) {
+    const { t } = useI18n();
+
     if (files.length === 0) {
         return null;
     }
@@ -55,8 +58,8 @@ export default function UploadFileList({ files, onRemove, isProcessing }: Upload
                                         <motion.div className="h-full bg-primary" style={{ width: `${file.progress}%` }} />
                                     </div>
                                 )}
-                                {file.status === "done" && <span className="text-xs font-bold text-emerald-500">PRONTO</span>}
-                                {file.status === "error" && <span className="text-xs font-bold text-destructive">ERRO</span>}
+                                {file.status === "done" && <span className="text-xs font-bold text-emerald-500">{t("dashboard.upload.ready")}</span>}
+                                {file.status === "error" && <span className="text-xs font-bold text-destructive">{t("dashboard.upload.error")}</span>}
                                 <button
                                     type="button"
                                     disabled={isProcessing}
@@ -68,10 +71,10 @@ export default function UploadFileList({ files, onRemove, isProcessing }: Upload
                             </div>
                             <div className="flex gap-2 pl-11">
                                 <span className="flex items-center gap-1 text-[9px] bg-muted px-2 py-0.5 rounded border border-border text-muted-foreground font-mono">
-                                    <FolderOpen className="h-2.5 w-2.5" /> {file.category || "Sem categoria"}
+                                    <FolderOpen className="h-2.5 w-2.5" /> {file.category || t("dashboard.upload.uncategorized")}
                                 </span>
                                 <span className="flex items-center gap-1 text-[9px] bg-muted px-2 py-0.5 rounded border border-border text-muted-foreground font-mono">
-                                    <Hash className="h-2.5 w-2.5" /> {file.collection || "Collection obrigatoria"}
+                                    <Hash className="h-2.5 w-2.5" /> {file.collection || t("dashboard.upload.collectionRequired")}
                                 </span>
                             </div>
                             {file.error && (

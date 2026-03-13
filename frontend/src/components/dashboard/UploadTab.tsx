@@ -11,8 +11,10 @@ import CollectionCombobox from "@/components/dashboard/CollectionCombobox";
 import UploadDropzone from "@/components/dashboard/upload/UploadDropzone";
 import UploadFileList from "@/components/dashboard/upload/UploadFileList";
 import { useDocumentUpload } from "@/hooks/use-document-upload";
+import { useI18n } from "@/lib/i18n/provider";
 
 const UploadTab = () => {
+    const { t } = useI18n();
     const [defaultCategory, setDefaultCategory] = useState("");
     const [defaultCollection, setDefaultCollection] = useState("");
     const { files, isProcessing, addFiles, removeFile, processQueue } = useDocumentUpload();
@@ -20,7 +22,7 @@ const UploadTab = () => {
 
     const onDrop = (accepted: File[]) => {
         if (!defaultCollection.trim()) {
-            toast.error("Informe uma collection antes de adicionar arquivos.");
+            toast.error(t("dashboard.upload.setCollectionFirst"));
             return;
         }
 
@@ -42,7 +44,7 @@ const UploadTab = () => {
 
     const handleProcessAll = async () => {
         if (hasFilesWithoutCollection) {
-            toast.error("Todos os arquivos precisam de uma collection antes do envio.");
+            toast.error(t("dashboard.upload.allNeedCollection"));
             return;
         }
 
@@ -59,17 +61,17 @@ const UploadTab = () => {
                 <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                         <Label className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-muted-foreground">
-                            <FolderOpen className="h-3 w-3" /> Categoria
+                            <FolderOpen className="h-3 w-3" /> {t("dashboard.upload.category")}
                         </Label>
                         <CategoryCombobox value={defaultCategory} onChange={setDefaultCategory} />
-                        <p className="text-[10px] text-muted-foreground">Opcional. Em branco, o arquivo sobe sem categoria.</p>
+                        <p className="text-[10px] text-muted-foreground">{t("dashboard.upload.categoryHelp")}</p>
                     </div>
                     <div className="space-y-1">
                         <Label className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-muted-foreground">
-                            <Tag className="h-3 w-3" /> Collection *
+                            <Tag className="h-3 w-3" /> {t("dashboard.upload.collection")} *
                         </Label>
                         <CollectionCombobox value={defaultCollection} onChange={setDefaultCollection} />
-                        <p className="text-[10px] text-muted-foreground">Obrigatoria. A collection centraliza o contexto relacional entre arquivos.</p>
+                        <p className="text-[10px] text-muted-foreground">{t("dashboard.upload.collectionHelp")}</p>
                     </div>
                 </div>
             </div>
@@ -91,12 +93,16 @@ const UploadTab = () => {
                         ) : (
                             <ArrowRight className="h-4 w-4" />
                         )}
-                        {isProcessing ? "Enviando arquivos..." : `Enviar ${files.length} documento${files.length > 1 ? "s" : ""}`}
+                        {isProcessing
+                            ? t("dashboard.upload.sending")
+                            : files.length > 1
+                                ? t("dashboard.upload.sendDocumentsPlural", { count: files.length })
+                                : t("dashboard.upload.sendDocuments", { count: files.length })}
                     </Button>
                 )}
                 {files.length > 0 && hasFilesWithoutCollection && (
                     <p className="text-[10px] text-destructive">
-                        Defina uma collection para todos os arquivos antes de enviar.
+                        {t("dashboard.upload.defineCollectionForAll")}
                     </p>
                 )}
             </div>

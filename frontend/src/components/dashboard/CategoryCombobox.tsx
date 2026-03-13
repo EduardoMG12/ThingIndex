@@ -5,6 +5,7 @@ import { Check, FolderOpen, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { useCategories } from "@/hooks/use-categories";
+import { useI18n } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
 
 type CategoryComboboxProps = {
@@ -18,6 +19,7 @@ function normalizeCategoryName(value: string) {
 }
 
 export default function CategoryCombobox({ value, onChange, className }: CategoryComboboxProps) {
+    const { t } = useI18n();
     const [query, setQuery] = useState(value);
     const [isOpen, setIsOpen] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
@@ -99,9 +101,9 @@ export default function CategoryCombobox({ value, onChange, className }: Categor
             setIsCreating(true);
             const category = await createAndStoreCategory(trimmedValue);
             commitCategory(category.name);
-            toast.success("Categoria criada com sucesso.");
+            toast.success(t("dashboard.upload.categoryCreated"));
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Nao foi possivel criar a categoria.");
+            toast.error(err instanceof Error ? err.message : t("dashboard.upload.createCategoryFailed"));
         } finally {
             setIsCreating(false);
         }
@@ -140,7 +142,7 @@ export default function CategoryCombobox({ value, onChange, className }: Categor
                         setIsOpen(false);
                     }
                 }}
-                placeholder="Selecione ou crie uma categoria"
+                placeholder={t("dashboard.upload.selectOrCreateCategory")}
                 className={cn("h-7 bg-background font-mono text-xs", className)}
             />
 
@@ -150,7 +152,7 @@ export default function CategoryCombobox({ value, onChange, className }: Categor
                         {(isLoading || isCreating) && (
                             <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground">
                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                {isCreating ? "Criando categoria..." : "Carregando categorias..."}
+                                {isCreating ? t("dashboard.upload.creatingCategory") : t("dashboard.upload.loadingCategories")}
                             </div>
                         )}
 
@@ -183,19 +185,19 @@ export default function CategoryCombobox({ value, onChange, className }: Categor
                                 className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-xs text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 {isCreating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                                Criar categoria &quot;{query.trim()}&quot;
+                                {t("dashboard.upload.createCategory", { name: query.trim() })}
                             </button>
                         )}
 
                         {!isLoading && filteredCategories.length === 0 && !canCreate && (
                             <div className="px-3 py-2 text-xs text-muted-foreground">
-                                Nenhuma categoria encontrada.
+                                {t("dashboard.upload.noCategories")}
                             </div>
                         )}
                     </div>
 
                     <div className="border-t border-border bg-muted/20 px-3 py-2 text-[10px] text-muted-foreground">
-                        Ao criar, o frontend envia a requisicao imediatamente para o backend.
+                        {t("dashboard.upload.categoryBackendHint")}
                     </div>
                 </div>
             )}

@@ -9,11 +9,13 @@ import CostCalculator from "@/components/dashboard/CostCalculator";
 import UploadTab from "@/components/dashboard/UploadTab";
 import ChatTab from "@/components/dashboard/ChatTab";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useI18n } from "@/lib/i18n/provider";
 
 const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } };
 
 export default function DashboardPage() {
     const [activeTab, setActiveTab] = useState("upload");
+    const { t } = useI18n();
 
     return (
         <AppShell>
@@ -24,14 +26,13 @@ export default function DashboardPage() {
             >
                 <div className="flex items-center gap-2 mb-3">
                     <span className="h-px w-8 bg-primary" />
-                    <span className="text-[10px] uppercase tracking-[0.3em] text-primary font-bold">Relational Workspace</span>
+                    <span className="text-[10px] uppercase tracking-[0.3em] text-primary font-bold">{t("dashboard.eyebrow")}</span>
                 </div>
                 <h1 className="font-display text-4xl font-bold tracking-tight text-foreground">
                     Legis<span className="text-primary italic">Context</span> Dashboard
                 </h1>
                 <p className="mt-4 max-w-2xl text-base text-muted-foreground leading-relaxed">
-                    Centralize sua legislacao e documentos juridicos. Preserve contexto por categoria,
-                    collection e estruturas normalizadas em <span className="text-foreground font-semibold">PostgreSQL</span>.
+                    {t("dashboard.description")}
                 </p>
             </motion.div>
 
@@ -51,13 +52,13 @@ export default function DashboardPage() {
                                 value="upload"
                                 className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary border border-transparent data-[state=active]:border-primary/20 gap-2 px-6 py-2.5 text-xs font-bold uppercase tracking-widest transition-all"
                             >
-                                <FileStack className="h-4 w-4" /> Pipeline
+                                <FileStack className="h-4 w-4" /> {t("dashboard.tabs.pipeline")}
                             </TabsTrigger>
                             <TabsTrigger
                                 value="chat"
                                 className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary border border-transparent data-[state=active]:border-primary/20 gap-2 px-6 py-2.5 text-xs font-bold uppercase tracking-widest transition-all"
                             >
-                                <MessageSquare className="h-4 w-4" /> AI Assistant
+                                <MessageSquare className="h-4 w-4" /> {t("dashboard.tabs.assistant")}
                             </TabsTrigger>
                         </TabsList>
 
@@ -88,7 +89,7 @@ export default function DashboardPage() {
                     <div className="surface-elevated rounded-xl border border-border p-6 space-y-5">
                         <div className="flex items-center gap-2 text-primary">
                             <Info className="h-4 w-4" />
-                            <h3 className="text-sm font-bold tracking-tight">Guia Rápido</h3>
+                            <h3 className="text-sm font-bold tracking-tight">{t("dashboard.guide.title")}</h3>
                         </div>
 
                         <div className="space-y-4">
@@ -97,8 +98,8 @@ export default function DashboardPage() {
                                     <FolderOpen className="h-3 w-3 text-muted-foreground" />
                                 </div>
                                 <div>
-                                    <h4 className="text-[11px] font-bold uppercase tracking-wider mb-1">Categorias</h4>
-                                    <p className="text-[11px] text-muted-foreground leading-relaxed">Organize por tipo de documento (Leis, Processos, etc).</p>
+                                    <h4 className="text-[11px] font-bold uppercase tracking-wider mb-1">{t("dashboard.guide.categoriesTitle")}</h4>
+                                    <p className="text-[11px] text-muted-foreground leading-relaxed">{t("dashboard.guide.categoriesDesc")}</p>
                                 </div>
                             </div>
 
@@ -107,8 +108,8 @@ export default function DashboardPage() {
                                     <Tag className="h-3 w-3 text-muted-foreground" />
                                 </div>
                                 <div>
-                                    <h4 className="text-[11px] font-bold uppercase tracking-wider mb-1">Collections</h4>
-                                    <p className="text-[11px] text-muted-foreground leading-relaxed">Agrupamentos logicos que unificam contexto entre varios arquivos.</p>
+                                    <h4 className="text-[11px] font-bold uppercase tracking-wider mb-1">{t("dashboard.guide.collectionsTitle")}</h4>
+                                    <p className="text-[11px] text-muted-foreground leading-relaxed">{t("dashboard.guide.collectionsDesc")}</p>
                                 </div>
                             </div>
 
@@ -117,15 +118,15 @@ export default function DashboardPage() {
                                     <MessageSquare className="h-3 w-3 text-muted-foreground" />
                                 </div>
                                 <div>
-                                    <h4 className="text-[11px] font-bold uppercase tracking-wider mb-1">Context Query</h4>
-                                    <p className="text-[11px] text-muted-foreground leading-relaxed">Consulte uma collection e agregue tabelas, paragrafos e metadados no mesmo fluxo.</p>
+                                    <h4 className="text-[11px] font-bold uppercase tracking-wider mb-1">{t("dashboard.guide.contextTitle")}</h4>
+                                    <p className="text-[11px] text-muted-foreground leading-relaxed">{t("dashboard.guide.contextDesc")}</p>
                                 </div>
                             </div>
                         </div>
 
                         <div className="pt-2">
                             <div className="rounded-lg bg-primary/5 p-3 border border-primary/10 flex items-center justify-between">
-                                <span className="text-[10px] font-mono text-primary font-bold">PRECISÃO ESTIMADA</span>
+                                <span className="text-[10px] font-mono text-primary font-bold">{t("dashboard.guide.accuracy")}</span>
                                 <span className="text-xs font-bold text-primary italic">98.4%</span>
                             </div>
                         </div>

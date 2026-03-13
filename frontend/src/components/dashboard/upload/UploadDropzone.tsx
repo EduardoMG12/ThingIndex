@@ -2,6 +2,7 @@
 
 import type { DropzoneInputProps, DropzoneRootProps } from "react-dropzone";
 import { Upload } from "lucide-react";
+import { useI18n } from "@/lib/i18n/provider";
 
 type UploadDropzoneProps = {
     getRootProps: (
@@ -20,6 +21,7 @@ export default function UploadDropzone({
     isDragActive,
     disabled,
 }: UploadDropzoneProps) {
+    const { t } = useI18n();
     const highlightClasses = isDragActive
         ? "border-primary bg-primary/5 shadow-inner"
         : "border-border hover:border-primary/40 hover:bg-muted/30";
@@ -36,8 +38,8 @@ export default function UploadDropzone({
         <div {...rootProps}>
             <input {...getInputProps()} />
             <Upload className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-            <p className="text-sm font-medium">Arraste seus documentos jurídicos</p>
-            <p className="mt-1 text-xs text-muted-foreground">PDF, HTML ou Excel (Máx 20MB)</p>
+            <p className="text-sm font-medium">{t("dashboard.upload.dropTitle")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("dashboard.upload.dropSubtitle")}</p>
         </div>
     );
 }

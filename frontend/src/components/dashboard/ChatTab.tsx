@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Bot, User, Loader2, Sparkles, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import SourceReference, { type Source } from "@/components/chat/SourceReference";
 import SubQueryProgress, { type SubQuery } from "@/components/chat/SubQueryProgress";
+import { useI18n } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
 
 type Message = {
@@ -29,6 +30,7 @@ const MOCK_SUB_QUERIES: SubQuery[] = [
 ];
 
 const ChatTab = () => {
+    const { t } = useI18n();
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -39,7 +41,7 @@ const ChatTab = () => {
         scrollRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, activeSubQueries]);
 
-    const simulateResponse = useCallback(() => {
+    const simulateResponse = () => {
         setIsLoading(true);
         const subQueries = MOCK_SUB_QUERIES.map(q => ({ ...q, status: "pending" as const }));
         setActiveSubQueries(subQueries);
@@ -57,12 +59,12 @@ const ChatTab = () => {
             setMessages(prev => [...prev, {
                 id: crypto.randomUUID(),
                 role: "assistant",
-                content: "Encontrei as informações solicitadas. Na **Petição Inicial**, a fundamentação se baseia nos atrasos sistemáticos. Na **Contestação**, a defesa foca na força maior.\n\nRecomendo revisar a cláusula 7.2 do contrato.",
+                content: t("dashboard.chat.answer"),
                 sources: MOCK_SOURCES,
             }]);
             setIsLoading(false);
         }, 4000);
-    }, []);
+    };
 
     const handleSend = () => {
         if (!input.trim() || isLoading) return;
@@ -78,9 +80,9 @@ const ChatTab = () => {
                     {messages.length === 0 && (
                         <div className="flex h-96 flex-col items-center justify-center text-center opacity-40">
                             <Sparkles className="mb-4 h-12 w-12 text-primary" />
-                            <h3 className="text-sm font-semibold">Inicie uma Consulta Contextual</h3>
+                            <h3 className="text-sm font-semibold">{t("dashboard.chat.emptyTitle")}</h3>
                             <p className="mt-2 max-w-xs text-xs leading-relaxed">
-                                Nossa IA ira decompor sua pergunta e reconstruir o contexto da collection a partir das tabelas relacionais.
+                                {t("dashboard.chat.emptyDescription")}
                             </p>
                         </div>
                     )}
@@ -138,7 +140,7 @@ const ChatTab = () => {
             <div className="border-t border-border p-4 bg-muted/20">
                 <div className="relative flex items-end gap-2 pr-12">
                     <Textarea
-                        placeholder="Pergunte sobre os processos indexados..."
+                        placeholder={t("dashboard.chat.placeholder")}
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => {
@@ -161,10 +163,10 @@ const ChatTab = () => {
                 </div>
                 <div className="mt-2 flex items-center justify-between">
                     <p className="text-[10px] text-muted-foreground font-mono flex items-center gap-1.5 uppercase">
-                        <AlertCircle className="h-3 w-3" /> IA pode alucinar · Verifique as fontes
+                        <AlertCircle className="h-3 w-3" /> {t("dashboard.chat.hallucination")}
                     </p>
                     <p className="text-[9px] text-muted-foreground font-mono uppercase tracking-widest">
-                        Shift + Enter para nova linha
+                        {t("dashboard.chat.newLineHint")}
                     </p>
                 </div>
             </div>

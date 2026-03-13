@@ -1,7 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { CheckCircle2, Circle, Loader2, Search } from "lucide-react";
+import { useI18n } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
 
 export type SubQuery = {
@@ -15,11 +15,13 @@ interface SubQueryProgressProps {
 }
 
 const SubQueryProgress = ({ queries }: SubQueryProgressProps) => {
+    const { t } = useI18n();
+
     return (
         <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-4">
             <div className="flex items-center gap-2 mb-3">
                 <Search className="h-3.5 w-3.5 text-primary" />
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Decomposição de Query</h4>
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t("dashboard.chat.queryDecomposition")}</h4>
             </div>
 
             <div className="space-y-3">

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { useCollections } from "@/hooks/use-collections";
 import { getCollectionName } from "@/lib/api/contracts/document-context";
+import { useI18n } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
 
 type CollectionComboboxProps = {
@@ -19,6 +20,7 @@ function normalizeCollection(value: string) {
 }
 
 export default function CollectionCombobox({ value, onChange, className }: CollectionComboboxProps) {
+    const { t } = useI18n();
     const [query, setQuery] = useState(value);
     const [isOpen, setIsOpen] = useState(false);
     const rootRef = useRef<HTMLDivElement | null>(null);
@@ -95,7 +97,7 @@ export default function CollectionCombobox({ value, onChange, className }: Colle
                         setIsOpen(false);
                     }
                 }}
-                placeholder="Selecione ou digite uma collection"
+                placeholder={t("dashboard.upload.selectOrTypeCollection")}
                 className={cn("h-7 bg-background font-mono text-xs", className)}
             />
 
@@ -105,7 +107,7 @@ export default function CollectionCombobox({ value, onChange, className }: Colle
                         {isLoading && (
                             <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground">
                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                Carregando collections...
+                                {t("dashboard.upload.loadingCollections")}
                             </div>
                         )}
 
@@ -132,13 +134,13 @@ export default function CollectionCombobox({ value, onChange, className }: Colle
 
                         {!isLoading && filteredCollections.length === 0 && (
                             <div className="px-3 py-2 text-xs text-muted-foreground">
-                                Nenhuma collection encontrada. Pressione Enter para usar uma nova.
+                                {t("dashboard.upload.noCollections")}
                             </div>
                         )}
                     </div>
 
                     <div className="border-t border-border bg-muted/20 px-3 py-2 text-[10px] text-muted-foreground">
-                        O campo aceita uma collection nova e o dropdown exibe os agrupamentos relacionais ja catalogados.
+                        {t("dashboard.upload.collectionHint")}
                     </div>
                 </div>
             )}
