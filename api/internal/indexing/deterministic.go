@@ -170,8 +170,7 @@ func (i *DeterministicIndexer) indexPDF(documentID uint, data []byte) (domain.In
 }
 
 func (i *DeterministicIndexer) indexPlainText(documentID uint, raw string) domain.IndexingResult {
-	normalized := normalizeText(raw)
-	blocks := splitBlocks(normalized)
+	blocks := splitBlocks(raw)
 	headings := make([]outlineDraft, 0)
 	paragraphs := make([]string, 0, len(blocks))
 
