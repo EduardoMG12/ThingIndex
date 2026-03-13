@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"thing-index/internal/domain"
@@ -15,13 +14,23 @@ const llmOutlineLimit = 12
 
 type LLMEnricher struct{}
 
-type enrichmentResponse struct {
+type documentSynopsisResponse struct {
 	DocumentSummary string   `json:"document_summary"`
 	Keywords        []string `json:"keywords"`
-	Sections        []struct {
+	DocumentPurpose string   `json:"document_purpose"`
+}
+
+type sectionSummaryResponse struct {
+	Sections []struct {
 		SequenceOrder int    `json:"sequence_order"`
 		Summary       string `json:"summary"`
 	} `json:"sections"`
+}
+
+type retrievalSignalsResponse struct {
+	Topics   []string `json:"topics"`
+	Entities []string `json:"entities"`
+	Dates    []string `json:"dates"`
 }
 
 func NewLLMEnricher() *LLMEnricher {
@@ -33,115 +42,139 @@ func (e *LLMEnricher) Enrich(ctx context.Context, llm domain.LLMService, doc *mo
 		return result, nil
 	}
 
-	systemPrompt, userPrompt := buildEnrichmentPrompt(doc, result)
-	responseText, err := llm.GenerateText(ctx, systemPrompt, userPrompt)
+	updated := result
+	documentID := documentIDFromResult(result)
+	contextBlock := buildPromptContext(doc, result)
+
+	synopsis, err := e.generateDocumentSynopsis(ctx, llm, contextBlock)
 	if err != nil {
 		return result, err
 	}
+	applyDocumentSynopsis(&updated, documentID, synopsis)
 
-	var payload enrichmentResponse
-	if err := json.Unmarshal([]byte(strings.TrimSpace(responseText)), &payload); err != nil {
-		return result, fmt.Errorf("parse llm enrichment json: %w", err)
+	sectionSummaries, err := e.generateSectionSummaries(ctx, llm, contextBlock)
+	if err == nil {
+		applySectionSummaries(&updated, sectionSummaries)
 	}
 
-	updated := result
-	if summary := strings.TrimSpace(payload.DocumentSummary); summary != "" {
-		updated.MetadataPairs = append(updated.MetadataPairs, models.MetadataPair{
-			DocumentID:    documentIDFromResult(result),
-			SequenceOrder: nextMetadataSequence(updated.MetadataPairs),
-			Key:           "document_summary",
-			Value:         summary,
-		})
-	}
-
-	if len(payload.Keywords) > 0 {
-		keywords := normalizeKeywords(payload.Keywords)
-		if keywords != "" {
-			updated.MetadataPairs = append(updated.MetadataPairs, models.MetadataPair{
-				DocumentID:    documentIDFromResult(result),
-				SequenceOrder: nextMetadataSequence(updated.MetadataPairs),
-				Key:           "keywords",
-				Value:         keywords,
-			})
-		}
-	}
-
-	for _, section := range payload.Sections {
-		if section.SequenceOrder < 0 || section.SequenceOrder >= len(updated.OutlineNodes) {
-			continue
-		}
-		updated.OutlineNodes[section.SequenceOrder].Summary = strings.TrimSpace(section.Summary)
+	retrievalSignals, err := e.generateRetrievalSignals(ctx, llm, contextBlock)
+	if err == nil {
+		applyRetrievalSignals(&updated, documentID, retrievalSignals)
 	}
 
 	return updated, nil
 }
 
-func buildEnrichmentPrompt(doc *models.Document, result domain.IndexingResult) (string, string) {
-	promptProfile := promptProfileForDocument(doc)
-
-	systemPrompt := strings.TrimSpace(`
-You enrich a structured document index.
-Return only valid JSON.
-Do not wrap the response in markdown fences.
-Keep summaries factual, concise, and grounded only in the supplied content.
-Do not invent sections, facts, numbers, or legal conclusions not present in the input.
-`)
-
-	var builder strings.Builder
-	builder.WriteString("Produce JSON with fields document_summary, keywords, sections.\n")
-	builder.WriteString("sections must be an array of objects with sequence_order and summary.\n")
-	builder.WriteString("Summaries must be in Portuguese.\n\n")
-	builder.WriteString("Document type guidance:\n")
-	builder.WriteString(promptProfile)
-	builder.WriteString("\n\n")
-	if doc != nil {
-		builder.WriteString("Document metadata:\n")
-		builder.WriteString("- title=")
-		builder.WriteString(doc.Title)
-		builder.WriteString("\n- mime_type=")
-		builder.WriteString(doc.MimeType)
-		builder.WriteString("\n\n")
+func (e *LLMEnricher) generateDocumentSynopsis(ctx context.Context, llm domain.LLMService, contextBlock string) (documentSynopsisResponse, error) {
+	systemPrompt, userPrompt := buildDocumentSynopsisPrompt(contextBlock)
+	raw, err := llm.GenerateText(ctx, systemPrompt, userPrompt)
+	if err != nil {
+		return documentSynopsisResponse{}, err
 	}
 
-	builder.WriteString("Outline:\n")
-	for idx, node := range result.OutlineNodes {
-		if idx >= llmOutlineLimit {
-			break
+	var payload documentSynopsisResponse
+	if err := parseLLMJSON(raw, &payload); err != nil {
+		return documentSynopsisResponse{}, fmt.Errorf("parse synopsis enrichment json: %w", err)
+	}
+
+	return payload, nil
+}
+
+func (e *LLMEnricher) generateSectionSummaries(ctx context.Context, llm domain.LLMService, contextBlock string) (sectionSummaryResponse, error) {
+	systemPrompt, userPrompt := buildSectionSummaryPrompt(contextBlock)
+	raw, err := llm.GenerateText(ctx, systemPrompt, userPrompt)
+	if err != nil {
+		return sectionSummaryResponse{}, err
+	}
+
+	var payload sectionSummaryResponse
+	if err := parseLLMJSON(raw, &payload); err != nil {
+		return sectionSummaryResponse{}, fmt.Errorf("parse section enrichment json: %w", err)
+	}
+
+	return payload, nil
+}
+
+func (e *LLMEnricher) generateRetrievalSignals(ctx context.Context, llm domain.LLMService, contextBlock string) (retrievalSignalsResponse, error) {
+	systemPrompt, userPrompt := buildRetrievalSignalsPrompt(contextBlock)
+	raw, err := llm.GenerateText(ctx, systemPrompt, userPrompt)
+	if err != nil {
+		return retrievalSignalsResponse{}, err
+	}
+
+	var payload retrievalSignalsResponse
+	if err := parseLLMJSON(raw, &payload); err != nil {
+		return retrievalSignalsResponse{}, fmt.Errorf("parse retrieval signal json: %w", err)
+	}
+
+	return payload, nil
+}
+
+func parseLLMJSON(raw string, target any) error {
+	cleaned := strings.TrimSpace(raw)
+	cleaned = strings.TrimPrefix(cleaned, "```json")
+	cleaned = strings.TrimPrefix(cleaned, "```")
+	cleaned = strings.TrimSuffix(cleaned, "```")
+	cleaned = strings.TrimSpace(cleaned)
+
+	return json.Unmarshal([]byte(cleaned), target)
+}
+
+func applyDocumentSynopsis(result *domain.IndexingResult, documentID uint, payload documentSynopsisResponse) {
+	if result == nil {
+		return
+	}
+
+	appendMetadataIfPresent(result, documentID, "document_summary", payload.DocumentSummary)
+
+	if keywords := normalizeKeywords(payload.Keywords); keywords != "" {
+		appendMetadata(result, documentID, "keywords", keywords)
+	}
+
+	appendMetadataIfPresent(result, documentID, "document_purpose", payload.DocumentPurpose)
+}
+
+func applySectionSummaries(result *domain.IndexingResult, payload sectionSummaryResponse) {
+	if result == nil {
+		return
+	}
+
+	for _, section := range payload.Sections {
+		if section.SequenceOrder < 0 || section.SequenceOrder >= len(result.OutlineNodes) {
+			continue
 		}
-		builder.WriteString("- sequence_order=")
-		builder.WriteString(strconv.Itoa(node.SequenceOrder))
-		builder.WriteString(", level=")
-		builder.WriteString(strconv.Itoa(node.Level))
-		builder.WriteString(", title=")
-		builder.WriteString(node.Title)
-		builder.WriteString("\n")
-	}
-
-	builder.WriteString("\nParagraph samples:\n")
-	for idx, node := range result.ParagraphNodes {
-		if idx >= llmOutlineLimit {
-			break
+		summary := strings.TrimSpace(section.Summary)
+		if summary == "" {
+			continue
 		}
-		builder.WriteString("- ")
-		builder.WriteString(node.Content)
-		builder.WriteString("\n")
+		result.OutlineNodes[section.SequenceOrder].Summary = summary
+	}
+}
+
+func applyRetrievalSignals(result *domain.IndexingResult, documentID uint, payload retrievalSignalsResponse) {
+	if result == nil {
+		return
 	}
 
-	if len(result.TableSections) > 0 {
-		builder.WriteString("\nTables:\n")
-		for idx, table := range result.TableSections {
-			if idx >= 4 {
-				break
-			}
-			builder.WriteString("- title=")
-			builder.WriteString(table.Title)
-			builder.WriteString(", headers=")
-			builder.WriteString(strings.Join(table.Headers, ", "))
-			builder.WriteString("\n")
-		}
-	}
+	appendMetadataIfPresent(result, documentID, "topics", normalizeKeywords(payload.Topics))
+	appendMetadataIfPresent(result, documentID, "entities", normalizeKeywords(payload.Entities))
+	appendMetadataIfPresent(result, documentID, "dates", normalizeKeywords(payload.Dates))
+}
 
-	return systemPrompt, builder.String()
+func appendMetadataIfPresent(result *domain.IndexingResult, documentID uint, key, value string) {
+	if strings.TrimSpace(value) == "" {
+		return
+	}
+	appendMetadata(result, documentID, key, value)
+}
+
+func appendMetadata(result *domain.IndexingResult, documentID uint, key, value string) {
+	result.MetadataPairs = append(result.MetadataPairs, models.MetadataPair{
+		DocumentID:    documentID,
+		SequenceOrder: nextMetadataSequence(result.MetadataPairs),
+		Key:           key,
+		Value:         strings.TrimSpace(value),
+	})
 }
 
 func nextMetadataSequence(pairs []models.MetadataPair) int {
@@ -167,16 +200,26 @@ func documentIDFromResult(result domain.IndexingResult) uint {
 	if len(result.OutlineNodes) > 0 {
 		return result.OutlineNodes[0].DocumentID
 	}
+	if len(result.Chunks) > 0 {
+		return result.Chunks[0].DocumentID
+	}
 	return 0
 }
 
 func normalizeKeywords(keywords []string) string {
 	items := make([]string, 0, len(keywords))
+	seen := make(map[string]struct{}, len(keywords))
 	for _, keyword := range keywords {
 		keyword = strings.TrimSpace(keyword)
-		if keyword != "" {
-			items = append(items, keyword)
+		if keyword == "" {
+			continue
 		}
+		normalizedKey := strings.ToLower(keyword)
+		if _, ok := seen[normalizedKey]; ok {
+			continue
+		}
+		seen[normalizedKey] = struct{}{}
+		items = append(items, keyword)
 	}
 	return strings.Join(items, ", ")
 }
