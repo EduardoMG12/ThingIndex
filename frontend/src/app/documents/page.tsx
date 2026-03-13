@@ -147,7 +147,7 @@ function FilePreview({ document }: { document: Document }) {
     );
 }
 
-function VectorizationView({
+function IndexStructureView({
     document,
     context,
     documentIndex,
@@ -216,7 +216,7 @@ function VectorizationView({
             </div>
 
             <div className="space-y-2">
-                <h3 className="text-sm font-semibold">Preview da vetorizacao</h3>
+                <h3 className="text-sm font-semibold">Preview da indexacao</h3>
                 {paragraphNodes.length > 0 ? (
                     <div className="space-y-2">
                         {paragraphNodes.map((node) => (
@@ -232,7 +232,7 @@ function VectorizationView({
                     </div>
                 ) : (
                     <p className="text-sm text-muted-foreground">
-                        Ainda nao ha estrutura vetorizada persistida para este documento. Quando o processamento estrutural ocorrer, os chunks aparecerao aqui.
+                        Ainda nao ha estrutura indexada persistida para este documento. Quando o processamento estrutural ocorrer, os blocos aparecerao aqui.
                     </p>
                 )}
             </div>
@@ -318,7 +318,7 @@ function DocumentPreviewPanel({
                     return;
                 }
 
-                setError(err instanceof Error ? err.message : "Nao foi possivel carregar a vetorizacao do documento.");
+                setError(err instanceof Error ? err.message : "Nao foi possivel carregar a estrutura indexada do documento.");
             } finally {
                 if (!controller.signal.aborted) {
                     setIsLoading(false);
@@ -396,10 +396,10 @@ function DocumentPreviewPanel({
                                     Documento
                                 </TabsTrigger>
                                 <TabsTrigger
-                                    value="vectorization"
+                                    value="index"
                                     className="border border-transparent px-4 py-2 text-xs font-bold uppercase tracking-widest data-[state=active]:border-primary/20 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
                                 >
-                                    Vetorizacao
+                                    Indexacao
                                 </TabsTrigger>
                             </TabsList>
 
@@ -424,7 +424,7 @@ function DocumentPreviewPanel({
                                 )}
                             </TabsContent>
 
-                            <TabsContent value="vectorization" className="mt-0 space-y-4">
+                            <TabsContent value="index" className="mt-0 space-y-4">
                                 {isLoading && (
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -439,7 +439,7 @@ function DocumentPreviewPanel({
                                 )}
 
                                 {!isLoading && !error && (
-                                    <VectorizationView document={document} context={context} documentIndex={documentIndex} />
+                                    <IndexStructureView document={document} context={context} documentIndex={documentIndex} />
                                 )}
                             </TabsContent>
                         </Tabs>
@@ -549,7 +549,7 @@ export default function DocumentsPage() {
                     Document<span className="text-primary italic">os</span>
                 </h1>
                 <p className="mt-4 max-w-3xl text-base leading-relaxed text-muted-foreground">
-                    Visualize os arquivos separados por categoria e collection. Cada documento pode ser aberto em um painel lateral grande com preview e vetorizacao.
+                    Visualize os arquivos separados por categoria e collection. Cada documento pode ser aberto em um painel lateral grande com preview e estrutura indexada.
                 </p>
             </motion.div>
 
