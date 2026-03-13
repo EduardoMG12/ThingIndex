@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
+import { Logo } from "@/components/ui/Logo";
 import { useI18n } from "@/lib/i18n/provider";
 
 export const Navbar = () => {
@@ -12,9 +13,7 @@ export const Navbar = () => {
         <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
             <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
                 <Link href={href("/")} className="flex items-center gap-2.5">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
-                        <div className="h-4 w-4 bg-primary rounded-sm" />
-                    </div>
+                    <Logo className="text-primary" size={28} />
                     <span className="font-display text-base font-bold tracking-tight">
                         thing<span className="text-primary">index</span>
                     </span>
