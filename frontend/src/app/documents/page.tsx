@@ -53,13 +53,7 @@ function isPreviewableDocument(document: Document) {
 }
 
 function buildPreviewURL(document: Document) {
-    const params = new URLSearchParams({
-        path: document.file_path || document.file_url,
-        contentType: document.mime_type,
-        title: document.title,
-    });
-
-    return `/api/documents/preview?${params.toString()}`;
+    return `/api/documents/${document.id}/preview`;
 }
 
 function groupDocuments(documents: Document[]) {
