@@ -156,10 +156,23 @@ function IndexStructureView({
     context: CollectionContext | null;
     documentIndex: DocumentIndex | null;
 }) {
-    const paragraphNodes = context?.paragraphNodes.filter((node) => node.documentId === document.id) ?? [];
-    const tableSections = context?.tableSections.filter((section) => section.documentId === document.id) ?? [];
-    const metadataPairs = context?.metadataPairs.filter((pair) => pair.documentId === document.id) ?? [];
-    const outlineNodes = documentIndex?.outline_nodes ?? context?.outlineNodes.filter((node) => node.documentId === document.id) ?? [];
+    const paragraphNodes =
+        documentIndex?.paragraph_nodes ??
+        context?.paragraphNodes.filter((node) => node.documentId === document.id) ??
+        [];
+    const tableSections =
+        documentIndex?.table_sections ??
+        context?.tableSections.filter((section) => section.documentId === document.id) ??
+        [];
+    const metadataPairs =
+        documentIndex?.metadata_pairs ??
+        context?.metadataPairs.filter((pair) => pair.documentId === document.id) ??
+        [];
+    const outlineNodes =
+        documentIndex?.outline_nodes ??
+        context?.outlineNodes.filter((node) => node.documentId === document.id) ??
+        [];
+    const chunks = documentIndex?.chunks ?? [];
     const documentSummary =
         documentIndex?.document_summary ||
         metadataPairs.find((pair) => pair.key === "document_summary")?.value ||
@@ -168,10 +181,14 @@ function IndexStructureView({
 
     return (
         <div className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-lg border border-border bg-background/60 p-3">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Blocos</p>
+                    <p className="mt-2 text-lg font-semibold">{paragraphNodes.length}</p>
+                </div>
                 <div className="rounded-lg border border-border bg-background/60 p-3">
                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Chunks</p>
-                    <p className="mt-2 text-lg font-semibold">{paragraphNodes.length}</p>
+                    <p className="mt-2 text-lg font-semibold">{chunks.length}</p>
                 </div>
                 <div className="rounded-lg border border-border bg-background/60 p-3">
                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Tabelas</p>
@@ -183,7 +200,7 @@ function IndexStructureView({
                 </div>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
                 <div className="rounded-xl border border-border bg-background/60 p-4">
                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Resumo indexado</p>
                     <p className="mt-3 text-sm leading-relaxed text-foreground/90">
@@ -214,6 +231,31 @@ function IndexStructureView({
                     )}
                 </div>
             </div>
+
+            {chunks.length > 0 && (
+                <div className="space-y-2">
+                    <h3 className="text-sm font-semibold">Chunks gerados</h3>
+                    <div className="space-y-2">
+                        {chunks.map((chunk) => (
+                            <div key={String(chunk.id)} className="rounded-lg border border-border bg-background/60 p-3">
+                                <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+                                    <span className="rounded bg-muted px-2 py-1 font-mono">{chunk.chunk_type}</span>
+                                    <span className="rounded bg-muted px-2 py-1 font-mono">seq:{chunk.sequence_order}</span>
+                                    <span className="rounded bg-muted px-2 py-1 font-mono">tokens:{chunk.token_estimate}</span>
+                                    {typeof chunk.source_paragraph_start === "number" &&
+                                    typeof chunk.source_paragraph_end === "number" ? (
+                                        <span className="rounded bg-muted px-2 py-1 font-mono">
+                                            p:{chunk.source_paragraph_start}-{chunk.source_paragraph_end}
+                                        </span>
+                                    ) : null}
+                                </div>
+                                {chunk.title ? <p className="mt-2 text-xs font-semibold">{chunk.title}</p> : null}
+                                <p className="mt-2 text-xs leading-relaxed text-foreground/90">{chunk.content}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="space-y-2">
                 <h3 className="text-sm font-semibold">Preview da indexacao</h3>
@@ -300,6 +342,7 @@ function DocumentPreviewPanel({
         const currentDocument = document;
 
         const controller = new AbortController();
+        let pollTimer: ReturnType<typeof setTimeout> | null = null;
 
         async function loadContext() {
             try {
@@ -313,6 +356,13 @@ function DocumentPreviewPanel({
                 ]);
                 setDocumentIndex(indexData);
                 setContext(contextData);
+
+                const currentStatus = indexData.document?.status ?? currentDocument.status;
+                if (!controller.signal.aborted && (currentStatus === "QUEUED" || currentStatus === "PROCESSING")) {
+                    pollTimer = setTimeout(() => {
+                        void loadContext();
+                    }, 3000);
+                }
             } catch (err) {
                 if (controller.signal.aborted) {
                     return;
@@ -328,7 +378,12 @@ function DocumentPreviewPanel({
 
         void loadContext();
 
-        return () => controller.abort();
+        return () => {
+            controller.abort();
+            if (pollTimer) {
+                clearTimeout(pollTimer);
+            }
+        };
     }, [document]);
 
     if (!document) {
