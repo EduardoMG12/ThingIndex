@@ -23,7 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDocuments } from "@/hooks/use-documents";
 import { fetchCollectionContext } from "@/lib/api/collections";
 import type { CollectionContext } from "@/lib/api/contracts/document-context";
-import type { Document } from "@/lib/api/documents";
+import { fetchDocumentIndex, type Document, type DocumentIndex } from "@/lib/api/documents";
 
 const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } };
 
@@ -155,13 +155,21 @@ function FilePreview({ document }: { document: Document }) {
 function VectorizationView({
     document,
     context,
+    documentIndex,
 }: {
     document: Document;
     context: CollectionContext | null;
+    documentIndex: DocumentIndex | null;
 }) {
     const paragraphNodes = context?.paragraphNodes.filter((node) => node.documentId === document.id) ?? [];
     const tableSections = context?.tableSections.filter((section) => section.documentId === document.id) ?? [];
     const metadataPairs = context?.metadataPairs.filter((pair) => pair.documentId === document.id) ?? [];
+    const outlineNodes = documentIndex?.outline_nodes ?? context?.outlineNodes.filter((node) => node.documentId === document.id) ?? [];
+    const documentSummary =
+        documentIndex?.document_summary ||
+        metadataPairs.find((pair) => pair.key === "document_summary")?.value ||
+        document.document_summary ||
+        "";
 
     return (
         <div className="space-y-4">
@@ -177,6 +185,38 @@ function VectorizationView({
                 <div className="rounded-lg border border-border bg-background/60 p-3">
                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Metadados</p>
                     <p className="mt-2 text-lg font-semibold">{metadataPairs.length}</p>
+                </div>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+                <div className="rounded-xl border border-border bg-background/60 p-4">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Resumo indexado</p>
+                    <p className="mt-3 text-sm leading-relaxed text-foreground/90">
+                        {documentSummary || "Resumo ainda indisponivel. Quando o worker concluir o enriquecimento, ele aparecera aqui."}
+                    </p>
+                </div>
+
+                <div className="rounded-xl border border-border bg-background/60 p-4">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Outline</p>
+                    {outlineNodes.length > 0 ? (
+                        <div className="mt-3 space-y-2">
+                            {outlineNodes.map((node) => (
+                                <div key={String(node.id)} className="rounded-lg border border-border bg-card/70 px-3 py-2">
+                                    <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                                        nivel {node.level} · secao {node.sequenceOrder}
+                                    </p>
+                                    <p className="mt-1 text-sm font-medium">{node.title}</p>
+                                    {node.summary ? (
+                                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{node.summary}</p>
+                                    ) : null}
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="mt-3 text-xs text-muted-foreground">
+                            O outline estrutural ainda nao foi gerado para este documento.
+                        </p>
+                    )}
                 </div>
             </div>
 
@@ -250,23 +290,19 @@ function DocumentPreviewPanel({
     onClose: () => void;
 }) {
     const [context, setContext] = useState<CollectionContext | null>(null);
+    const [documentIndex, setDocumentIndex] = useState<DocumentIndex | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!document) {
             setContext(null);
+            setDocumentIndex(null);
             setIsLoading(false);
             setError(null);
             return;
         }
-
-        if (!document.collection_id) {
-            setContext(null);
-            setIsLoading(false);
-            setError(null);
-            return;
-        }
+        const currentDocument = document;
 
         const controller = new AbortController();
 
@@ -274,8 +310,14 @@ function DocumentPreviewPanel({
             try {
                 setIsLoading(true);
                 setError(null);
-                const data = await fetchCollectionContext(document.collection_id!, controller.signal);
-                setContext(data);
+                const [indexData, contextData] = await Promise.all([
+                    fetchDocumentIndex(currentDocument.id, controller.signal),
+                    currentDocument.collection_id
+                        ? fetchCollectionContext(currentDocument.collection_id, controller.signal)
+                        : Promise.resolve(null),
+                ]);
+                setDocumentIndex(indexData);
+                setContext(contextData);
             } catch (err) {
                 if (controller.signal.aborted) {
                     return;
@@ -402,7 +444,7 @@ function DocumentPreviewPanel({
                                 )}
 
                                 {!isLoading && !error && (
-                                    <VectorizationView document={document} context={context} />
+                                    <VectorizationView document={document} context={context} documentIndex={documentIndex} />
                                 )}
                             </TabsContent>
                         </Tabs>

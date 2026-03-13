@@ -57,12 +57,24 @@ export type MetadataPair = {
     value: string;
 };
 
+export type OutlineNode = {
+    id: number | string;
+    documentId: number;
+    sequenceOrder: number;
+    level: number;
+    title: string;
+    slug?: string;
+    summary?: string;
+    metadata?: Record<string, unknown>;
+};
+
 export type CollectionContext = {
     collection: CollectionSummary;
     documents: DocumentSummary[];
     paragraphNodes: ParagraphNode[];
     tableSections: TableSection[];
     metadataPairs: MetadataPair[];
+    outlineNodes: OutlineNode[];
 };
 
 type CollectionApiRecord = {
@@ -192,6 +204,19 @@ type MetadataPairApiRecord = {
     value?: string;
 };
 
+type OutlineNodeApiRecord = {
+    id?: number | string;
+    document_id?: number;
+    documentId?: number;
+    sequence_order?: number;
+    sequenceOrder?: number;
+    level?: number;
+    title?: string;
+    slug?: string;
+    summary?: string;
+    metadata?: Record<string, unknown>;
+};
+
 function normalizeDocumentSummary(value: unknown): DocumentSummary | null {
     if (!isRecord(value) || typeof value.id !== "number" || typeof value.title !== "string") {
         return null;
@@ -282,6 +307,46 @@ function normalizeMetadataPair(value: unknown): MetadataPair | null {
     };
 }
 
+function normalizeOutlineNode(value: unknown): OutlineNode | null {
+    if (!isRecord(value) || typeof value.title !== "string") {
+        return null;
+    }
+
+    const record = value as OutlineNodeApiRecord;
+    const documentId = record.documentId ?? record.document_id;
+    const sequenceOrder = record.sequenceOrder ?? record.sequence_order;
+    const level = record.level;
+
+    if (typeof documentId !== "number" || typeof sequenceOrder !== "number" || typeof level !== "number") {
+        return null;
+    }
+
+    return {
+        id: record.id ?? `outline:${documentId}:${sequenceOrder}`,
+        documentId,
+        sequenceOrder,
+        level,
+        title: record.title!,
+        slug: record.slug,
+        summary: record.summary,
+        metadata: isRecord(record.metadata) ? record.metadata : {},
+    };
+}
+
+export function normalizeOutlineNodes(value: unknown): OutlineNode[] {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value.reduce<OutlineNode[]>((items, entry) => {
+        const normalized = normalizeOutlineNode(entry);
+        if (normalized) {
+            items.push(normalized);
+        }
+        return items;
+    }, []);
+}
+
 export function normalizeCollectionContext(value: unknown): CollectionContext | null {
     if (!isRecord(value)) {
         return null;
@@ -330,5 +395,6 @@ export function normalizeCollectionContext(value: unknown): CollectionContext | 
                   return items;
               }, [])
             : [],
+        outlineNodes: normalizeOutlineNodes(value.outline_nodes),
     };
 }
