@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"thing-index/internal/domain"
 	"thing-index/internal/dto"
 	"thing-index/internal/pkg/i18n"
@@ -68,7 +69,39 @@ func (h *ProviderHandler) ListProviders(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, http.StatusOK, "success", i18n.T(lang, "provider.success_list"), dto.ToProviderConfigResponses(providers))
+	publicMetadataByProvider := make(map[string]map[string]string, len(providers))
+	for i := range providers {
+		credentials, err := h.useCase.GetDecryptedCredentials(c.Request.Context(), userID, providers[i].ProviderType)
+		if err != nil {
+			continue
+		}
+
+		if publicMetadata := extractPublicMetadata(providers[i].Family, credentials); len(publicMetadata) > 0 {
+			publicMetadataByProvider[providers[i].ProviderType] = publicMetadata
+		}
+	}
+
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "provider.success_list"), dto.ToProviderConfigResponses(providers, publicMetadataByProvider))
+}
+
+func extractPublicMetadata(family string, credentials map[string]string) map[string]string {
+	publicMetadata := make(map[string]string)
+
+	switch strings.ToUpper(strings.TrimSpace(family)) {
+	case domain.FamilyLLM:
+		if model := strings.TrimSpace(credentials["model"]); model != "" {
+			publicMetadata["model"] = model
+		}
+	case domain.FamilyStorage:
+		if bucket := strings.TrimSpace(credentials["bucket_name"]); bucket != "" {
+			publicMetadata["bucket_name"] = bucket
+		}
+		if region := strings.TrimSpace(credentials["region"]); region != "" {
+			publicMetadata["region"] = region
+		}
+	}
+
+	return publicMetadata
 }
 
 func (h *ProviderHandler) UpdateProviderState(c *gin.Context) {
