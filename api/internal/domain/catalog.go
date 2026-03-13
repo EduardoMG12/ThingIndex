@@ -15,6 +15,15 @@ type CollectionContext struct {
 	OutlineNodes   []models.DocumentOutlineNode
 }
 
+type DocumentIndex struct {
+	Document        *models.Document
+	ParagraphNodes  []models.ParagraphNode
+	TableSections   []models.TableSection
+	MetadataPairs   []models.MetadataPair
+	OutlineNodes    []models.DocumentOutlineNode
+	DocumentSummary string
+}
+
 type CategoryCatalogRepository interface {
 	CreateCategory(ctx context.Context, category *models.DocumentCategory) error
 	UpdateCategory(ctx context.Context, category *models.DocumentCategory) error
@@ -68,6 +77,7 @@ type DocumentCatalogUseCase interface {
 	ListCategories(ctx context.Context, userID uint) ([]models.DocumentCategory, error)
 	ListDocuments(ctx context.Context, userID uint) ([]models.Document, error)
 	GetDocument(ctx context.Context, userID, documentID uint) (*models.Document, error)
+	GetDocumentIndex(ctx context.Context, userID, documentID uint) (*DocumentIndex, error)
 	ListDocumentsByCategory(ctx context.Context, categoryID uint, userID uint) ([]models.Document, error)
 	ListCollections(ctx context.Context, userID uint) ([]models.Collection, error)
 	GetCollectionContext(ctx context.Context, userID, collectionID uint) (*CollectionContext, error)

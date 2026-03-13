@@ -451,6 +451,51 @@ func (u *documentCatalogUseCase) GetDocument(ctx context.Context, userID, docume
 	return doc, nil
 }
 
+func (u *documentCatalogUseCase) GetDocumentIndex(ctx context.Context, userID, documentID uint) (*domain.DocumentIndex, error) {
+	doc, err := u.GetDocument(ctx, userID, documentID)
+	if err != nil {
+		return nil, err
+	}
+
+	documentIDs := []uint{documentID}
+	paragraphNodes, err := u.structuredDataRepo.GetParagraphNodesByDocumentIDs(ctx, documentIDs)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
+	}
+
+	tableSections, err := u.structuredDataRepo.GetTableSectionsByDocumentIDs(ctx, documentIDs)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
+	}
+
+	metadataPairs, err := u.structuredDataRepo.GetMetadataPairsByDocumentIDs(ctx, documentIDs)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
+	}
+
+	outlineNodes, err := u.structuredDataRepo.GetOutlineNodesByDocumentIDs(ctx, documentIDs)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
+	}
+
+	documentSummary := ""
+	for _, pair := range metadataPairs {
+		if pair.Key == "document_summary" {
+			documentSummary = pair.Value
+			break
+		}
+	}
+
+	return &domain.DocumentIndex{
+		Document:        doc,
+		ParagraphNodes:  paragraphNodes,
+		TableSections:   tableSections,
+		MetadataPairs:   metadataPairs,
+		OutlineNodes:    outlineNodes,
+		DocumentSummary: documentSummary,
+	}, nil
+}
+
 func (u *documentCatalogUseCase) ListDocumentsByCategory(ctx context.Context, categoryID uint, userID uint) ([]models.Document, error) {
 	return u.documentRepo.GetDocumentsByCategoryID(ctx, categoryID, userID)
 }

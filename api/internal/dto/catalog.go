@@ -131,6 +131,15 @@ type CollectionContextResponse struct {
 	OutlineNodes   []OutlineNodeResponse   `json:"outline_nodes"`
 }
 
+type DocumentIndexResponse struct {
+	Document        *DocumentResponse       `json:"document"`
+	ParagraphNodes  []ParagraphNodeResponse `json:"paragraph_nodes"`
+	TableSections   []TableSectionResponse  `json:"table_sections"`
+	MetadataPairs   []MetadataPairResponse  `json:"metadata_pairs"`
+	OutlineNodes    []OutlineNodeResponse   `json:"outline_nodes"`
+	DocumentSummary string                  `json:"document_summary"`
+}
+
 func ToCategoryResponse(category *models.DocumentCategory) *CategoryResponse {
 	if category == nil {
 		return nil
@@ -327,5 +336,20 @@ func ToCollectionContextResponse(ctx *domain.CollectionContext) *CollectionConte
 		TableSections:  ToTableSectionResponses(ctx.TableSections),
 		MetadataPairs:  ToMetadataPairResponses(ctx.MetadataPairs),
 		OutlineNodes:   ToOutlineNodeResponses(ctx.OutlineNodes),
+	}
+}
+
+func ToDocumentIndexResponse(index *domain.DocumentIndex) *DocumentIndexResponse {
+	if index == nil {
+		return nil
+	}
+
+	return &DocumentIndexResponse{
+		Document:        ToDocumentResponse(index.Document),
+		ParagraphNodes:  ToParagraphNodeResponses(index.ParagraphNodes),
+		TableSections:   ToTableSectionResponses(index.TableSections),
+		MetadataPairs:   ToMetadataPairResponses(index.MetadataPairs),
+		OutlineNodes:    ToOutlineNodeResponses(index.OutlineNodes),
+		DocumentSummary: index.DocumentSummary,
 	}
 }
