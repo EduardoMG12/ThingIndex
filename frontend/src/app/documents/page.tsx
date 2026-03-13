@@ -141,7 +141,7 @@ function FilePreview({ document }: { document: Document }) {
             title={`Preview de ${document.title}`}
             src={buildPreviewURL(document)}
             className="h-[70vh] w-full rounded-xl border border-border bg-white"
-            sandbox="allow-same-origin"
+            sandbox="allow-same-origin allow-scripts allow-downloads"
         />
     );
 }
