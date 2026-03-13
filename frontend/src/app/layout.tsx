@@ -4,6 +4,20 @@ import { cn } from '@/lib/utils';
 import { SplashScreen } from '@/components/ui/SplashScreen';
 import "./globals.css";
 
+const themeInitScript = `
+(() => {
+  const storageKey = "thingindex-theme";
+  const storedTheme = window.localStorage.getItem(storageKey);
+  const preferredTheme =
+    storedTheme === "light" || storedTheme === "dark"
+      ? storedTheme
+      : (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+
+  document.documentElement.dataset.theme = preferredTheme;
+  document.documentElement.style.colorScheme = preferredTheme;
+})();
+`;
+
 export const metadata: Metadata = {
   title: {
     default: "ThingIndex — Grafo de Conhecimento Jurídico com IA",
@@ -55,7 +69,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className={cn("antialiased min-h-screen bg-background")}>
         <SplashScreen />
         <Toaster

@@ -1,66 +1,84 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useMemo, useSyncExternalStore } from "react";
+
+type BackgroundBlob = {
+    color: string;
+    initialX: string;
+    initialY: string;
+    targetX: [string, string, string];
+    targetY: [string, string, string];
+    duration: number;
+};
+
+function subscribeToClientRender(onStoreChange: () => void) {
+    if (typeof window === "undefined") {
+        return () => {};
+    }
+
+    const frame = window.requestAnimationFrame(onStoreChange);
+    return () => window.cancelAnimationFrame(frame);
+}
+
+function createBlobs(): BackgroundBlob[] {
+    const colors = [
+        "hsl(40 90% 55%)",
+        "hsl(30 85% 45%)",
+        "hsl(45 100% 60%)",
+    ];
+
+    return Array.from({ length: 3 }, (_, index) => ({
+        color: colors[index % colors.length],
+        initialX: `${Math.random() * 30 + 70}%`,
+        initialY: `${Math.random() * 40 - 10}%`,
+        targetX: [
+            `${Math.random() * 30 + 70}%`,
+            `${Math.random() * 20 + 85}%`,
+            `${Math.random() * 30 + 70}%`,
+        ],
+        targetY: [
+            `${Math.random() * 40 - 15}%`,
+            `${Math.random() * 30 - 5}%`,
+            `${Math.random() * 40 - 15}%`,
+        ],
+        duration: Math.random() * 35 + 35,
+    }));
+}
 
 export const AnimatedBackground = () => {
-    const [mounted, setMounted] = useState(false);
+    const isHydrated = useSyncExternalStore(subscribeToClientRender, () => true, () => false);
+    const blobs = useMemo(() => (isHydrated ? createBlobs() : []), [isHydrated]);
 
-    useEffect(() => {
-        setMounted(true);
-    }, []);
-
-    if (!mounted) return null;
-
-    // Reduced to 3 blobs for performance, focusing on the top right
-    const blobs = Array.from({ length: 3 });
+    if (!isHydrated) return null;
 
     return (
         <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-            {blobs.map((_, i) => {
-                const colors = [
-                    "hsl(40 90% 55%)", // Primary Orange
-                    "hsl(30 85% 45%)", // Deep Amber
-                    "hsl(45 100% 60%)", // Golden Yellow
-                ];
-                const color = colors[i % colors.length];
-
-                // Positioned on the top right (x: 70-100%, y: -10-30%)
-                const startX = (Math.random() * 30 + 70) + "%";
-                const startY = (Math.random() * 40 - 10) + "%";
-
+            {blobs.map((blob, i) => {
                 return (
                     <motion.div
                         key={i}
                         className="absolute rounded-full opacity-[0.25] blur-[150px]"
                         initial={{
-                            x: startX,
-                            y: startY,
+                            x: blob.initialX,
+                            y: blob.initialY,
                             scale: 1,
                         }}
                         animate={{
-                            x: [
-                                (Math.random() * 30 + 70) + "%",
-                                (Math.random() * 20 + 85) + "%",
-                                (Math.random() * 30 + 70) + "%",
-                            ],
-                            y: [
-                                (Math.random() * 40 - 15) + "%",
-                                (Math.random() * 30 - 5) + "%",
-                                (Math.random() * 40 - 15) + "%",
-                            ],
+                            x: blob.targetX,
+                            y: blob.targetY,
                             scale: [1, 1.4, 1],
                             rotate: [0, 90, 0],
                         }}
                         transition={{
-                            duration: Math.random() * 35 + 35,
+                            duration: blob.duration,
                             repeat: Infinity,
                             ease: "easeInOut",
                         }}
                         style={{
                             width: "900px",
                             height: "900px",
-                            background: color,
+                            background: blob.color,
                         }}
                     />
                 );

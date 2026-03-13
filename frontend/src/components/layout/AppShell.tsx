@@ -1,12 +1,12 @@
 "use client";
 
-import { LogOut, User, Settings, LayoutDashboard, Database, HelpCircle, BookOpen } from "lucide-react";
+import { LogOut, User, Settings, LayoutDashboard, Database, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { logout } from "@/components/auth/actions";
 import { Logo } from "@/components/ui/Logo";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 interface AppShellProps {
     children: React.ReactNode;
@@ -83,9 +83,7 @@ const AppShell = ({ children }: AppShellProps) => {
                         <span className="text-[10px] font-mono font-medium uppercase tracking-widest">{activeItem?.label || "Workspace"}</span>
                     </div>
                     <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-                            <HelpCircle className="h-4 w-4" />
-                        </Button>
+                        <ThemeToggle />
                     </div>
                 </header>
 
