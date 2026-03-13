@@ -15,6 +15,9 @@ const (
 	ProviderAWSS3      = "AWS_S3"
 	ProviderGCPStorage = "GCP_STORAGE"
 	ProviderCloudflare = "CLOUDFLARE_R2"
+	ProviderDOSpaces   = "DIGITALOCEAN_SPACES"
+	ProviderWasabi     = "WASABI"
+	ProviderB2         = "BACKBLAZE_B2"
 
 	// LLM Providers
 	ProviderOpenAI   = "OPENAI"

@@ -18,7 +18,12 @@ import (
 
 var supportedProvidersByFamily = map[string]map[string]struct{}{
 	domain.FamilyStorage: {
-		domain.ProviderMinio: {},
+		domain.ProviderMinio:      {},
+		domain.ProviderAWSS3:      {},
+		domain.ProviderCloudflare: {},
+		domain.ProviderDOSpaces:   {},
+		domain.ProviderWasabi:     {},
+		domain.ProviderB2:         {},
 	},
 	domain.FamilyLLM: {
 		domain.ProviderOpenAI:   {},
@@ -196,8 +201,40 @@ func (u *providerUseCase) validateCredentials(ctx context.Context, family, provi
 
 	switch family {
 	case domain.FamilyStorage:
-		if providerType == domain.ProviderMinio {
+		switch providerType {
+		case domain.ProviderMinio:
 			for _, requiredKey := range []string{"endpoint", "access_key", "secret_key", "bucket_name"} {
+				if strings.TrimSpace(credentials[requiredKey]) == "" {
+					return domain.ErrProviderCredentialsInvalid
+				}
+			}
+			if err := u.endpointValidator.Validate(ctx, credentials["endpoint"]); err != nil {
+				return domain.ErrProviderCredentialsInvalid
+			}
+		case domain.ProviderAWSS3:
+			for _, requiredKey := range []string{"access_key", "secret_key", "bucket_name", "region"} {
+				if strings.TrimSpace(credentials[requiredKey]) == "" {
+					return domain.ErrProviderCredentialsInvalid
+				}
+			}
+			if endpoint := strings.TrimSpace(credentials["endpoint"]); endpoint != "" {
+				if err := u.endpointValidator.Validate(ctx, endpoint); err != nil {
+					return domain.ErrProviderCredentialsInvalid
+				}
+			}
+		case domain.ProviderCloudflare:
+			for _, requiredKey := range []string{"account_id", "access_key", "secret_key", "bucket_name"} {
+				if strings.TrimSpace(credentials[requiredKey]) == "" {
+					return domain.ErrProviderCredentialsInvalid
+				}
+			}
+			if endpoint := strings.TrimSpace(credentials["endpoint"]); endpoint != "" {
+				if err := u.endpointValidator.Validate(ctx, endpoint); err != nil {
+					return domain.ErrProviderCredentialsInvalid
+				}
+			}
+		case domain.ProviderDOSpaces, domain.ProviderWasabi, domain.ProviderB2:
+			for _, requiredKey := range []string{"endpoint", "access_key", "secret_key", "bucket_name", "region"} {
 				if strings.TrimSpace(credentials[requiredKey]) == "" {
 					return domain.ErrProviderCredentialsInvalid
 				}

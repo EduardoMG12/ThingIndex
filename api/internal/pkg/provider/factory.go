@@ -71,19 +71,89 @@ func NewStorageProvider(providerType string, credentials map[string]string, opti
 
 	switch normalizedProvider {
 	case domain.ProviderMinio:
-		endpoint := strings.TrimSpace(credentials["endpoint"])
-		accessKey := strings.TrimSpace(credentials["access_key"])
-		secretKey := strings.TrimSpace(credentials["secret_key"])
-		bucketName := strings.TrimSpace(credentials["bucket_name"])
-		useSSL := strings.EqualFold(strings.TrimSpace(credentials["use_ssl"]), "true")
-
-		if endpoint == "" || accessKey == "" || secretKey == "" || bucketName == "" {
-			return nil, errors.New("missing required minio credentials")
-		}
-
-		return storage.NewValidatedMinioStorage(endpoint, accessKey, secretKey, bucketName, useSSL, options.EndpointValidator)
+		return buildS3CompatibleStorage(normalizedProvider, credentials, options)
+	case domain.ProviderAWSS3:
+		return buildS3CompatibleStorage(normalizedProvider, credentials, options)
+	case domain.ProviderCloudflare:
+		return buildS3CompatibleStorage(normalizedProvider, credentials, options)
+	case domain.ProviderDOSpaces:
+		return buildS3CompatibleStorage(normalizedProvider, credentials, options)
+	case domain.ProviderWasabi:
+		return buildS3CompatibleStorage(normalizedProvider, credentials, options)
+	case domain.ProviderB2:
+		return buildS3CompatibleStorage(normalizedProvider, credentials, options)
 	default:
 		return nil, fmt.Errorf("storage provider %s is not implemented", normalizedProvider)
+	}
+}
+
+func buildS3CompatibleStorage(providerType string, credentials map[string]string, options StorageProviderOptions) (domain.StorageService, error) {
+	endpoint, accessKey, secretKey, bucketName, useSSL, err := resolveS3CompatibleConfig(providerType, credentials)
+	if err != nil {
+		return nil, err
+	}
+
+	return storage.NewValidatedMinioStorage(endpoint, accessKey, secretKey, bucketName, useSSL, options.EndpointValidator)
+}
+
+func resolveS3CompatibleConfig(providerType string, credentials map[string]string) (string, string, string, string, bool, error) {
+	accessKey := strings.TrimSpace(credentials["access_key"])
+	secretKey := strings.TrimSpace(credentials["secret_key"])
+	bucketName := strings.TrimSpace(credentials["bucket_name"])
+	useSSL := !strings.EqualFold(strings.TrimSpace(credentials["use_ssl"]), "false")
+
+	switch providerType {
+	case domain.ProviderMinio:
+		endpoint := strings.TrimSpace(credentials["endpoint"])
+		if endpoint == "" || accessKey == "" || secretKey == "" || bucketName == "" {
+			return "", "", "", "", false, errors.New("missing required minio credentials")
+		}
+		return endpoint, accessKey, secretKey, bucketName, useSSL, nil
+
+	case domain.ProviderAWSS3:
+		region := strings.TrimSpace(credentials["region"])
+		endpoint := strings.TrimSpace(credentials["endpoint"])
+		if region == "" || accessKey == "" || secretKey == "" || bucketName == "" {
+			return "", "", "", "", false, errors.New("missing required aws s3 credentials")
+		}
+		if endpoint == "" {
+			endpoint = fmt.Sprintf("s3.%s.amazonaws.com", region)
+		}
+		return endpoint, accessKey, secretKey, bucketName, true, nil
+
+	case domain.ProviderCloudflare:
+		accountID := strings.TrimSpace(credentials["account_id"])
+		if accountID == "" || accessKey == "" || secretKey == "" || bucketName == "" {
+			return "", "", "", "", false, errors.New("missing required cloudflare r2 credentials")
+		}
+		endpoint := strings.TrimSpace(credentials["endpoint"])
+		if endpoint == "" {
+			endpoint = fmt.Sprintf("%s.r2.cloudflarestorage.com", accountID)
+		}
+		return endpoint, accessKey, secretKey, bucketName, true, nil
+	case domain.ProviderDOSpaces:
+		region := strings.TrimSpace(credentials["region"])
+		endpoint := strings.TrimSpace(credentials["endpoint"])
+		if endpoint == "" || region == "" || accessKey == "" || secretKey == "" || bucketName == "" {
+			return "", "", "", "", false, errors.New("missing required digitalocean spaces credentials")
+		}
+		return endpoint, accessKey, secretKey, bucketName, true, nil
+	case domain.ProviderWasabi:
+		region := strings.TrimSpace(credentials["region"])
+		endpoint := strings.TrimSpace(credentials["endpoint"])
+		if endpoint == "" || region == "" || accessKey == "" || secretKey == "" || bucketName == "" {
+			return "", "", "", "", false, errors.New("missing required wasabi credentials")
+		}
+		return endpoint, accessKey, secretKey, bucketName, true, nil
+	case domain.ProviderB2:
+		region := strings.TrimSpace(credentials["region"])
+		endpoint := strings.TrimSpace(credentials["endpoint"])
+		if endpoint == "" || region == "" || accessKey == "" || secretKey == "" || bucketName == "" {
+			return "", "", "", "", false, errors.New("missing required backblaze b2 credentials")
+		}
+		return endpoint, accessKey, secretKey, bucketName, true, nil
+	default:
+		return "", "", "", "", false, fmt.Errorf("storage provider %s is not implemented", providerType)
 	}
 }
 
