@@ -139,3 +139,196 @@ export function normalizeCollectionSummaries(value: unknown): CollectionSummary[
         return items;
     }, []);
 }
+
+type DocumentApiRecord = {
+    id?: number;
+    collection_id?: number;
+    collectionId?: number;
+    title?: string;
+    file_path?: string;
+    filePath?: string;
+    file_url?: string;
+    fileUrl?: string;
+    mime_type?: string;
+    mimeType?: string;
+    status?: string;
+    created_at?: string;
+    createdAt?: string;
+    updated_at?: string;
+    updatedAt?: string;
+};
+
+type ParagraphNodeApiRecord = {
+    id?: number | string;
+    document_id?: number;
+    documentId?: number;
+    sequence_order?: number;
+    sequenceOrder?: number;
+    content?: string;
+    page_number?: number;
+    pageNumber?: number;
+    metadata?: Record<string, unknown>;
+};
+
+type TableSectionApiRecord = {
+    id?: number | string;
+    document_id?: number;
+    documentId?: number;
+    sequence_order?: number;
+    sequenceOrder?: number;
+    title?: string;
+    headers?: string[];
+    rows?: string[][];
+    metadata?: Record<string, unknown>;
+};
+
+type MetadataPairApiRecord = {
+    id?: number | string;
+    document_id?: number;
+    documentId?: number;
+    sequence_order?: number;
+    sequenceOrder?: number;
+    key?: string;
+    value?: string;
+};
+
+function normalizeDocumentSummary(value: unknown): DocumentSummary | null {
+    if (!isRecord(value) || typeof value.id !== "number" || typeof value.title !== "string") {
+        return null;
+    }
+
+    const record = value as DocumentApiRecord;
+
+    return {
+        id: record.id!,
+        collectionId: record.collectionId ?? record.collection_id ?? 0,
+        title: record.title!,
+        filePath: record.filePath ?? record.file_path ?? record.fileUrl ?? record.file_url ?? "",
+        mimeType: record.mimeType ?? record.mime_type ?? "",
+        status: record.status ?? "",
+        createdAt: record.createdAt ?? record.created_at,
+        updatedAt: record.updatedAt ?? record.updated_at,
+    };
+}
+
+function normalizeParagraphNode(value: unknown): ParagraphNode | null {
+    if (!isRecord(value) || typeof value.content !== "string") {
+        return null;
+    }
+
+    const record = value as ParagraphNodeApiRecord;
+    const documentId = record.documentId ?? record.document_id;
+    const sequenceOrder = record.sequenceOrder ?? record.sequence_order;
+
+    if (typeof documentId !== "number" || typeof sequenceOrder !== "number") {
+        return null;
+    }
+
+    return {
+        id: record.id ?? `paragraph:${documentId}:${sequenceOrder}`,
+        documentId,
+        sequenceOrder,
+        content: record.content!,
+        pageNumber: record.pageNumber ?? record.page_number,
+        metadata: isRecord(record.metadata) ? record.metadata : {},
+    };
+}
+
+function normalizeTableSection(value: unknown): TableSection | null {
+    if (!isRecord(value)) {
+        return null;
+    }
+
+    const record = value as TableSectionApiRecord;
+    const documentId = record.documentId ?? record.document_id;
+    const sequenceOrder = record.sequenceOrder ?? record.sequence_order;
+
+    if (typeof documentId !== "number" || typeof sequenceOrder !== "number") {
+        return null;
+    }
+
+    return {
+        id: record.id ?? `table:${documentId}:${sequenceOrder}`,
+        documentId,
+        sequenceOrder,
+        title: record.title,
+        headers: Array.isArray(record.headers) ? record.headers.filter((item): item is string => typeof item === "string") : [],
+        rows: Array.isArray(record.rows)
+            ? record.rows.map((row) => (Array.isArray(row) ? row.filter((item): item is string => typeof item === "string") : []))
+            : [],
+        metadata: isRecord(record.metadata) ? record.metadata : {},
+    };
+}
+
+function normalizeMetadataPair(value: unknown): MetadataPair | null {
+    if (!isRecord(value) || typeof value.key !== "string" || typeof value.value !== "string") {
+        return null;
+    }
+
+    const record = value as MetadataPairApiRecord;
+    const documentId = record.documentId ?? record.document_id;
+    const sequenceOrder = record.sequenceOrder ?? record.sequence_order;
+
+    if (typeof documentId !== "number" || typeof sequenceOrder !== "number") {
+        return null;
+    }
+
+    return {
+        id: record.id ?? `metadata:${documentId}:${sequenceOrder}:${record.key}`,
+        documentId,
+        sequenceOrder,
+        key: record.key!,
+        value: record.value!,
+    };
+}
+
+export function normalizeCollectionContext(value: unknown): CollectionContext | null {
+    if (!isRecord(value)) {
+        return null;
+    }
+
+    const collection = normalizeCollectionSummary(value.collection);
+    if (!collection) {
+        return null;
+    }
+
+    return {
+        collection,
+        documents: Array.isArray(value.documents)
+            ? value.documents.reduce<DocumentSummary[]>((items, entry) => {
+                  const normalized = normalizeDocumentSummary(entry);
+                  if (normalized) {
+                      items.push(normalized);
+                  }
+                  return items;
+              }, [])
+            : [],
+        paragraphNodes: Array.isArray(value.paragraph_nodes)
+            ? value.paragraph_nodes.reduce<ParagraphNode[]>((items, entry) => {
+                  const normalized = normalizeParagraphNode(entry);
+                  if (normalized) {
+                      items.push(normalized);
+                  }
+                  return items;
+              }, [])
+            : [],
+        tableSections: Array.isArray(value.table_sections)
+            ? value.table_sections.reduce<TableSection[]>((items, entry) => {
+                  const normalized = normalizeTableSection(entry);
+                  if (normalized) {
+                      items.push(normalized);
+                  }
+                  return items;
+              }, [])
+            : [],
+        metadataPairs: Array.isArray(value.metadata_pairs)
+            ? value.metadata_pairs.reduce<MetadataPair[]>((items, entry) => {
+                  const normalized = normalizeMetadataPair(entry);
+                  if (normalized) {
+                      items.push(normalized);
+                  }
+                  return items;
+              }, [])
+            : [],
+    };
+}
