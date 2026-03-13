@@ -29,7 +29,7 @@ export default function DashboardPage() {
                     <span className="text-[10px] uppercase tracking-[0.3em] text-primary font-bold">{t("dashboard.eyebrow")}</span>
                 </div>
                 <h1 className="font-display text-4xl font-bold tracking-tight text-foreground">
-                    Legis<span className="text-primary italic">Context</span> Dashboard
+                    Thing<span className="text-primary italic">Index</span> Dashboard
                 </h1>
                 <p className="mt-4 max-w-2xl text-base text-muted-foreground leading-relaxed">
                     {t("dashboard.description")}

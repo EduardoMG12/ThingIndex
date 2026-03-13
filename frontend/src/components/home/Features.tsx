@@ -22,7 +22,7 @@ export const Features = () => {
     const features = [
         { icon: Brain, title: t("landing.features.items.adaptive.title"), desc: t("landing.features.items.adaptive.desc") },
         { icon: Zap, title: t("landing.features.items.async.title"), desc: t("landing.features.items.async.desc") },
-        { icon: Database, title: t("landing.features.items.vector.title"), desc: t("landing.features.items.vector.desc") },
+        { icon: Database, title: t("landing.features.items.relational.title"), desc: t("landing.features.items.relational.desc") },
         { icon: Layers, title: t("landing.features.items.taxonomy.title"), desc: t("landing.features.items.taxonomy.desc") },
         { icon: Shield, title: t("landing.features.items.security.title"), desc: t("landing.features.items.security.desc") },
         { icon: GitBranch, title: t("landing.features.items.openSource.title"), desc: t("landing.features.items.openSource.desc") },

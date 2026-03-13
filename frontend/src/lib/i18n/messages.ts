@@ -29,32 +29,32 @@ export const messages: LocaleMessages = {
         seo: {
             siteTitle: "ThingIndex",
             siteDescription:
-                "Plataforma de inteligência documental com RAG, indexação semântica e orquestração de documentos com IA.",
+                "Plataforma de inteligência documental relacional com indexação estrutural e recuperação de contexto.",
             pages: {
                 home: {
                     title: "ThingIndex | Inteligência documental com IA",
                     description:
-                        "Transforme documentos em conhecimento estruturado com pipeline RAG, indexação vetorial e automação de contexto.",
+                        "Transforme documentos em conhecimento estruturado com indexação relacional e recuperação de contexto.",
                 },
                 login: {
                     title: "Entrar | ThingIndex",
-                    description: "Acesse sua workspace de documentos, vetorização e IA no ThingIndex.",
+                    description: "Acesse sua workspace de documentos, indexação estrutural e contexto no ThingIndex.",
                 },
                 register: {
                     title: "Criar conta | ThingIndex",
-                    description: "Crie sua conta e configure pipelines de documentos com storage e LLM dedicados.",
+                    description: "Crie sua conta e configure storage, uploads e contexto documental.",
                 },
                 dashboard: {
                     title: "Dashboard | ThingIndex",
-                    description: "Gerencie uploads, pipelines e consultas de documentos na sua workspace do ThingIndex.",
+                    description: "Gerencie uploads, indexação e consultas de documentos na sua workspace do ThingIndex.",
                 },
                 documents: {
                     title: "Documentos | ThingIndex",
-                    description: "Explore previews, outlines e vetorização dos seus documentos processados.",
+                    description: "Explore previews, outlines e estruturas indexadas dos seus documentos processados.",
                 },
                 documentation: {
                     title: "Documentação | ThingIndex",
-                    description: "Conheça a arquitetura, o pipeline e os fundamentos técnicos do ThingIndex.",
+                    description: "Conheça a arquitetura relacional e os fundamentos técnicos do ThingIndex.",
                 },
                 settings: {
                     title: "Configurações | ThingIndex",
@@ -86,10 +86,10 @@ export const messages: LocaleMessages = {
                 titleStart: "Transforme documentos em",
                 titleHighlight: "conhecimento estruturado",
                 description:
-                    "Pipeline RAG adaptativo com cadeia de 3 prompts. Indexe, estruture e consulte qualquer documento com precisão superior.",
+                    "Organize documentos com categorias, collections e estruturas indexadas em uma arquitetura relacional auditável.",
                 primaryCta: "Começar agora",
                 secondaryCta: "Ver documentação",
-                terminalTitle: "pipeline thingindex",
+                terminalTitle: "thingindex context",
             },
             metrics: {
                 precision: "mais preciso que RAG tradicional",
@@ -99,19 +99,19 @@ export const messages: LocaleMessages = {
             },
             features: {
                 title: "Por que ThingIndex?",
-                description: "Não é só mais um wrapper de LLM. É uma pipeline completa de document intelligence.",
+                description: "Não é só upload de arquivos. É um catálogo relacional de contexto documental.",
                 items: {
                     adaptive: {
-                        title: "Cadeia adaptativa de 3 prompts",
-                        desc: "Cada chunk passa por resumo, estruturação e embedding. Não é um RAG genérico.",
+                        title: "Indexação estrutural",
+                        desc: "O backend extrai resumo, outline, parágrafos, tabelas e metadados rastreáveis por documento.",
                     },
                     async: {
-                        title: "Pipeline assíncrono",
-                        desc: "RabbitMQ e workers paralelos processam milhares de páginas sem travar.",
+                        title: "Processamento assíncrono",
+                        desc: "A base já suporta processamento desacoplado sem bloquear a experiência principal.",
                     },
-                    vector: {
-                        title: "Busca vetorial",
-                        desc: "Qdrant com embeddings de alta dimensão para retrieval preciso e rápido.",
+                    relational: {
+                        title: "Contexto relacional",
+                        desc: "Collections e estruturas tipadas permitem reconstrução previsível do contexto no PostgreSQL.",
                     },
                     taxonomy: {
                         title: "Categorias e collections",
@@ -119,11 +119,11 @@ export const messages: LocaleMessages = {
                     },
                     security: {
                         title: "Segurança primeiro",
-                        desc: "ClamAV escaneia cada upload. Seus dados permanecem na sua infraestrutura.",
+                        desc: "JWT, escopo por usuário e criptografia de credenciais reduzem risco e acoplamento.",
                     },
                     openSource: {
                         title: "Open source",
-                        desc: "Licença MIT. Rode na sua VM com suas chaves ou use nossa API gerenciada.",
+                        desc: "Projeto acadêmico com foco em clareza arquitetural, reprodutibilidade e evolução incremental.",
                     },
                 },
             },
@@ -131,16 +131,16 @@ export const messages: LocaleMessages = {
                 title: "Como funciona",
                 steps: {
                     upload: {
-                        title: "Upload e scan",
-                        desc: "Envie PDFs, defina categoria e collection. O ClamAV valida a segurança automaticamente.",
+                        title: "Upload e organização",
+                        desc: "Envie PDFs, HTML ou Excel e associe cada arquivo a categoria e collection.",
                     },
                     pipeline: {
-                        title: "Pipeline de 3 prompts",
-                        desc: "Cada chunk passa por resumo contextual, estruturação semântica e geração de embedding vetorial.",
+                        title: "Indexação estrutural",
+                        desc: "O backend persiste outline, parágrafos, tabelas e metadados para navegação e contexto.",
                     },
                     query: {
-                        title: "Query e resposta",
-                        desc: "Pergunte em linguagem natural. O sistema busca vetorialmente e gera respostas com fontes.",
+                        title: "Consulta de contexto",
+                        desc: "Navegue por collections e reconstrua o contexto consolidado de múltiplos documentos.",
                     },
                 },
             },
@@ -155,7 +155,7 @@ export const messages: LocaleMessages = {
         },
         auth: {
             login: {
-                strapline: "orquestração documental e rag",
+                strapline: "inteligência documental relacional",
                 password: "Senha",
                 submit: "Entrar",
                 noAccount: "Não tem conta?",
@@ -163,10 +163,10 @@ export const messages: LocaleMessages = {
                 fallbackError: "Verifique suas credenciais e tente novamente.",
                 showPassword: "Mostrar senha",
                 hidePassword: "Esconder senha",
-                pageDescription: "Faça login no ThingIndex para acessar a orquestração de documentos e RAG.",
+                pageDescription: "Faça login no ThingIndex para acessar documentos, contexto e indexação estrutural.",
             },
             register: {
-                strapline: "configure seu pipeline em minutos",
+                strapline: "configure seu workspace em minutos",
                 name: "Nome",
                 password: "Senha",
                 submit: "Criar conta",
@@ -175,7 +175,7 @@ export const messages: LocaleMessages = {
                 fallbackError: "Verifique os dados informados e tente novamente.",
                 showPassword: "Mostrar senha",
                 hidePassword: "Esconder senha",
-                pageDescription: "Crie sua conta ThingIndex para configurar pipelines de documentos e IA.",
+                pageDescription: "Crie sua conta ThingIndex para organizar documentos e contexto relacional.",
             },
             shared: {
                 email: "Email",
@@ -185,7 +185,7 @@ export const messages: LocaleMessages = {
         },
         dashboard: {
             eyebrow: "Workspace relacional",
-            title: "Dashboard LegisContext",
+            title: "Dashboard ThingIndex",
             description:
                 "Centralize sua legislação e documentos jurídicos. Preserve contexto por categoria, collection e estruturas normalizadas em PostgreSQL.",
             account: {
@@ -196,8 +196,8 @@ export const messages: LocaleMessages = {
                 expiresIn: "Expira em 4h",
             },
             tabs: {
-                pipeline: "Pipeline",
-                assistant: "Assistente IA",
+                pipeline: "Indexação",
+                assistant: "Assistente",
             },
             upload: {
                 category: "Categoria",
@@ -315,32 +315,32 @@ export const messages: LocaleMessages = {
         seo: {
             siteTitle: "ThingIndex",
             siteDescription:
-                "Document intelligence platform with RAG, semantic indexing, and AI-powered document orchestration.",
+                "Relational document intelligence platform with structured indexing and context recovery.",
             pages: {
                 home: {
                     title: "ThingIndex | AI document intelligence",
                     description:
-                        "Turn documents into structured knowledge with RAG pipelines, vector search, and context automation.",
+                        "Turn documents into structured knowledge with relational indexing and context recovery.",
                 },
                 login: {
                     title: "Login | ThingIndex",
-                    description: "Sign in to your ThingIndex workspace for documents, vectorization, and AI workflows.",
+                    description: "Sign in to your ThingIndex workspace for documents, indexing, and context workflows.",
                 },
                 register: {
                     title: "Create account | ThingIndex",
-                    description: "Create your account and configure document pipelines with dedicated storage and LLM providers.",
+                    description: "Create your account and configure storage, uploads, and document context.",
                 },
                 dashboard: {
                     title: "Dashboard | ThingIndex",
-                    description: "Manage uploads, pipelines, and document queries in your ThingIndex workspace.",
+                    description: "Manage uploads, indexing, and document queries in your ThingIndex workspace.",
                 },
                 documents: {
                     title: "Documents | ThingIndex",
-                    description: "Explore previews, outlines, and vectorization results for your processed documents.",
+                    description: "Explore previews, outlines, and indexed structures for your processed documents.",
                 },
                 documentation: {
                     title: "Documentation | ThingIndex",
-                    description: "Explore the architecture, pipeline, and technical foundations behind ThingIndex.",
+                    description: "Explore the relational architecture and technical foundations behind ThingIndex.",
                 },
                 settings: {
                     title: "Settings | ThingIndex",
@@ -372,10 +372,10 @@ export const messages: LocaleMessages = {
                 titleStart: "Turn documents into",
                 titleHighlight: "structured knowledge",
                 description:
-                    "Adaptive RAG pipeline with a 3-prompt chain. Index, structure, and query any document with better precision.",
+                    "Organize documents with categories, collections, and indexed structures in an auditable relational architecture.",
                 primaryCta: "Start now",
                 secondaryCta: "View documentation",
-                terminalTitle: "thingindex pipeline",
+                terminalTitle: "thingindex context",
             },
             metrics: {
                 precision: "more accurate than traditional RAG",
@@ -385,19 +385,19 @@ export const messages: LocaleMessages = {
             },
             features: {
                 title: "Why ThingIndex?",
-                description: "This is more than another LLM wrapper. It is a full document intelligence pipeline.",
+                description: "This is more than file upload. It is a relational document context catalog.",
                 items: {
                     adaptive: {
-                        title: "Adaptive 3-prompt chain",
-                        desc: "Each chunk goes through summarization, structuring, and embeddings. This is not generic RAG.",
+                        title: "Structured indexing",
+                        desc: "The backend extracts summaries, outlines, paragraphs, tables, and metadata per document.",
                     },
                     async: {
-                        title: "Asynchronous pipeline",
-                        desc: "RabbitMQ and parallel workers process thousands of pages without blocking.",
+                        title: "Asynchronous processing",
+                        desc: "The foundation already supports decoupled processing without blocking the main workflow.",
                     },
-                    vector: {
-                        title: "Vector retrieval",
-                        desc: "Qdrant with high-dimensional embeddings for precise and fast retrieval.",
+                    relational: {
+                        title: "Relational context",
+                        desc: "Collections and typed structures make context reconstruction predictable in PostgreSQL.",
                     },
                     taxonomy: {
                         title: "Categories and collections",
@@ -405,11 +405,11 @@ export const messages: LocaleMessages = {
                     },
                     security: {
                         title: "Security first",
-                        desc: "ClamAV scans every upload. Your data stays inside your own infrastructure.",
+                        desc: "JWT, user scoping, and encrypted provider credentials reduce risk and coupling.",
                     },
                     openSource: {
                         title: "Open source",
-                        desc: "MIT licensed. Run it on your VM with your keys or use our managed API.",
+                        desc: "Academic project focused on architectural clarity, reproducibility, and incremental evolution.",
                     },
                 },
             },
@@ -417,16 +417,16 @@ export const messages: LocaleMessages = {
                 title: "How it works",
                 steps: {
                     upload: {
-                        title: "Upload and scan",
-                        desc: "Upload PDFs, define a category and collection. ClamAV validates security automatically.",
+                        title: "Upload and organize",
+                        desc: "Upload PDFs, HTML, or Excel files and assign each one to a category and collection.",
                     },
                     pipeline: {
-                        title: "3-prompt pipeline",
-                        desc: "Each chunk goes through contextual summarization, semantic structuring, and vector embedding generation.",
+                        title: "Structured indexing",
+                        desc: "The backend persists outlines, paragraphs, tables, and metadata for navigation and context.",
                     },
                     query: {
-                        title: "Query and answer",
-                        desc: "Ask in natural language. The system retrieves vector context and answers with sources.",
+                        title: "Context query",
+                        desc: "Browse collections and rebuild consolidated context across multiple documents.",
                     },
                 },
             },
@@ -441,7 +441,7 @@ export const messages: LocaleMessages = {
         },
         auth: {
             login: {
-                strapline: "document orchestration and rag",
+                strapline: "relational document intelligence",
                 password: "Password",
                 submit: "Sign in",
                 noAccount: "Don't have an account?",
@@ -449,10 +449,10 @@ export const messages: LocaleMessages = {
                 fallbackError: "Check your credentials and try again.",
                 showPassword: "Show password",
                 hidePassword: "Hide password",
-                pageDescription: "Sign in to ThingIndex to access document orchestration and RAG workflows.",
+                pageDescription: "Sign in to ThingIndex to access documents, context, and structured indexing.",
             },
             register: {
-                strapline: "configure your pipeline in minutes",
+                strapline: "configure your workspace in minutes",
                 name: "Name",
                 password: "Password",
                 submit: "Create account",
@@ -461,7 +461,7 @@ export const messages: LocaleMessages = {
                 fallbackError: "Check the submitted data and try again.",
                 showPassword: "Show password",
                 hidePassword: "Hide password",
-                pageDescription: "Create your ThingIndex account to configure document and AI pipelines.",
+                pageDescription: "Create your ThingIndex account to organize documents and relational context.",
             },
             shared: {
                 email: "Email",
@@ -471,7 +471,7 @@ export const messages: LocaleMessages = {
         },
         dashboard: {
             eyebrow: "Relational workspace",
-            title: "LegisContext Dashboard",
+            title: "ThingIndex Dashboard",
             description:
                 "Centralize your legislation and legal documents. Preserve context through categories, collections, and normalized PostgreSQL structures.",
             account: {
@@ -482,8 +482,8 @@ export const messages: LocaleMessages = {
                 expiresIn: "Expires in 4h",
             },
             tabs: {
-                pipeline: "Pipeline",
-                assistant: "AI Assistant",
+                pipeline: "Indexing",
+                assistant: "Assistant",
             },
             upload: {
                 category: "Category",
@@ -601,32 +601,32 @@ export const messages: LocaleMessages = {
         seo: {
             siteTitle: "ThingIndex",
             siteDescription:
-                "Plataforma de inteligencia documental con RAG, indexación semántica y orquestación de documentos con IA.",
+                "Plataforma de inteligencia documental relacional con indexación estructural y recuperación de contexto.",
             pages: {
                 home: {
                     title: "ThingIndex | Inteligencia documental con IA",
                     description:
-                        "Convierte documentos en conocimiento estructurado con pipelines RAG, búsqueda vectorial y automatización de contexto.",
+                        "Convierte documentos en conocimiento estructurado con indexación relacional y recuperación de contexto.",
                 },
                 login: {
                     title: "Iniciar sesión | ThingIndex",
-                    description: "Accede a tu workspace de documentos, vectorización e IA en ThingIndex.",
+                    description: "Accede a tu workspace de documentos, indexación estructural y contexto en ThingIndex.",
                 },
                 register: {
                     title: "Crear cuenta | ThingIndex",
-                    description: "Crea tu cuenta y configura pipelines de documentos con storage y LLM dedicados.",
+                    description: "Crea tu cuenta y configura storage, cargas y contexto documental.",
                 },
                 dashboard: {
                     title: "Dashboard | ThingIndex",
-                    description: "Gestiona cargas, pipelines y consultas de documentos en tu workspace de ThingIndex.",
+                    description: "Gestiona cargas, indexación y consultas de documentos en tu workspace de ThingIndex.",
                 },
                 documents: {
                     title: "Documentos | ThingIndex",
-                    description: "Explora previews, outlines y resultados de vectorización de tus documentos procesados.",
+                    description: "Explora previews, outlines y estructuras indexadas de tus documentos procesados.",
                 },
                 documentation: {
                     title: "Documentación | ThingIndex",
-                    description: "Conoce la arquitectura, el pipeline y los fundamentos técnicos de ThingIndex.",
+                    description: "Conoce la arquitectura relacional y los fundamentos técnicos de ThingIndex.",
                 },
                 settings: {
                     title: "Configuración | ThingIndex",
@@ -658,10 +658,10 @@ export const messages: LocaleMessages = {
                 titleStart: "Convierte documentos en",
                 titleHighlight: "conocimiento estructurado",
                 description:
-                    "Pipeline RAG adaptativo con una cadena de 3 prompts. Indexa, estructura y consulta cualquier documento con mejor precisión.",
+                    "Organiza documentos con categorías, collections y estructuras indexadas en una arquitectura relacional auditable.",
                 primaryCta: "Empezar ahora",
                 secondaryCta: "Ver documentación",
-                terminalTitle: "thingindex pipeline",
+                terminalTitle: "thingindex context",
             },
             metrics: {
                 precision: "más preciso que el RAG tradicional",
@@ -671,19 +671,19 @@ export const messages: LocaleMessages = {
             },
             features: {
                 title: "¿Por qué ThingIndex?",
-                description: "No es solo otro wrapper de LLM. Es un pipeline completo de inteligencia documental.",
+                description: "No es solo una carga de archivos. Es un catálogo relacional de contexto documental.",
                 items: {
                     adaptive: {
-                        title: "Cadena adaptativa de 3 prompts",
-                        desc: "Cada chunk pasa por resumen, estructuración y embeddings. No es un RAG genérico.",
+                        title: "Indexación estructural",
+                        desc: "El backend extrae resúmenes, outline, párrafos, tablas y metadatos rastreables por documento.",
                     },
                     async: {
-                        title: "Pipeline asíncrono",
-                        desc: "RabbitMQ y workers paralelos procesan miles de páginas sin bloquear.",
+                        title: "Procesamiento asíncrono",
+                        desc: "La base ya soporta procesamiento desacoplado sin bloquear el flujo principal.",
                     },
-                    vector: {
-                        title: "Búsqueda vectorial",
-                        desc: "Qdrant con embeddings de alta dimensión para recuperación precisa y rápida.",
+                    relational: {
+                        title: "Contexto relacional",
+                        desc: "Collections y estructuras tipadas permiten reconstrucción predecible del contexto en PostgreSQL.",
                     },
                     taxonomy: {
                         title: "Categorías y collections",
@@ -691,11 +691,11 @@ export const messages: LocaleMessages = {
                     },
                     security: {
                         title: "Seguridad primero",
-                        desc: "ClamAV escanea cada carga. Tus datos permanecen dentro de tu infraestructura.",
+                        desc: "JWT, alcance por usuario y credenciales cifradas reducen riesgo y acoplamiento.",
                     },
                     openSource: {
                         title: "Open source",
-                        desc: "Licencia MIT. Ejecútalo en tu VM con tus claves o usa nuestra API gestionada.",
+                        desc: "Proyecto académico enfocado en claridad arquitectónica, reproducibilidad y evolución incremental.",
                     },
                 },
             },
@@ -703,16 +703,16 @@ export const messages: LocaleMessages = {
                 title: "Cómo funciona",
                 steps: {
                     upload: {
-                        title: "Carga y escaneo",
-                        desc: "Sube PDFs, define categoría y collection. ClamAV valida la seguridad automáticamente.",
+                        title: "Carga y organización",
+                        desc: "Sube archivos PDF, HTML o Excel y asigna cada uno a una categoría y collection.",
                     },
                     pipeline: {
-                        title: "Pipeline de 3 prompts",
-                        desc: "Cada chunk pasa por resumen contextual, estructuración semántica y generación de embeddings vectoriales.",
+                        title: "Indexación estructural",
+                        desc: "El backend persiste outline, párrafos, tablas y metadatos para navegación y contexto.",
                     },
                     query: {
-                        title: "Consulta y respuesta",
-                        desc: "Pregunta en lenguaje natural. El sistema recupera contexto vectorial y responde con fuentes.",
+                        title: "Consulta de contexto",
+                        desc: "Navega por collections y reconstruye contexto consolidado entre varios documentos.",
                     },
                 },
             },
@@ -727,7 +727,7 @@ export const messages: LocaleMessages = {
         },
         auth: {
             login: {
-                strapline: "orquestación documental y rag",
+                strapline: "inteligencia documental relacional",
                 password: "Contraseña",
                 submit: "Entrar",
                 noAccount: "¿No tienes cuenta?",
@@ -735,10 +735,10 @@ export const messages: LocaleMessages = {
                 fallbackError: "Revisa tus credenciales e inténtalo de nuevo.",
                 showPassword: "Mostrar contraseña",
                 hidePassword: "Ocultar contraseña",
-                pageDescription: "Inicia sesión en ThingIndex para acceder a la orquestación documental y los flujos RAG.",
+                pageDescription: "Inicia sesión en ThingIndex para acceder a documentos, contexto e indexación estructural.",
             },
             register: {
-                strapline: "configura tu pipeline en minutos",
+                strapline: "configura tu workspace en minutos",
                 name: "Nombre",
                 password: "Contraseña",
                 submit: "Crear cuenta",
@@ -747,7 +747,7 @@ export const messages: LocaleMessages = {
                 fallbackError: "Revisa los datos enviados e inténtalo de nuevo.",
                 showPassword: "Mostrar contraseña",
                 hidePassword: "Ocultar contraseña",
-                pageDescription: "Crea tu cuenta ThingIndex para configurar pipelines documentales y de IA.",
+                pageDescription: "Crea tu cuenta ThingIndex para organizar documentos y contexto relacional.",
             },
             shared: {
                 email: "Email",
@@ -757,7 +757,7 @@ export const messages: LocaleMessages = {
         },
         dashboard: {
             eyebrow: "Workspace relacional",
-            title: "Dashboard LegisContext",
+            title: "Dashboard ThingIndex",
             description:
                 "Centraliza tu legislación y documentos jurídicos. Conserva el contexto mediante categorías, collections y estructuras normalizadas en PostgreSQL.",
             account: {
@@ -768,8 +768,8 @@ export const messages: LocaleMessages = {
                 expiresIn: "Expira en 4h",
             },
             tabs: {
-                pipeline: "Pipeline",
-                assistant: "Asistente IA",
+                pipeline: "Indexación",
+                assistant: "Asistente",
             },
             upload: {
                 category: "Categoría",

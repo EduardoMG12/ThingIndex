@@ -18,8 +18,8 @@ export const metadata: Metadata = {
     default: "ThingIndex",
     template: "%s | ThingIndex",
   },
-  description: "AI-native document intelligence for indexing, retrieval, and structured knowledge.",
-  keywords: ["document intelligence", "RAG", "AI", "vector search", "knowledge graph", "ThingIndex"],
+  description: "Relational document intelligence for indexing, structured extraction, and context recovery.",
+  keywords: ["document intelligence", "relational context", "document indexing", "structured extraction", "ThingIndex"],
   authors: [{ name: "ThingIndex Team" }],
   creator: "ThingIndex",
   robots: {
@@ -31,12 +31,12 @@ export const metadata: Metadata = {
     locale: "en",
     siteName: "ThingIndex",
     title: "ThingIndex",
-    description: "AI-native document intelligence for indexing, retrieval, and structured knowledge.",
+    description: "Relational document intelligence for indexing, structured extraction, and context recovery.",
   },
   twitter: {
     card: "summary_large_image",
     title: "ThingIndex",
-    description: "AI-native document intelligence for indexing, retrieval, and structured knowledge.",
+    description: "Relational document intelligence for indexing, structured extraction, and context recovery.",
   },
 };
 

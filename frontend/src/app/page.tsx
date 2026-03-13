@@ -7,8 +7,8 @@ import { CTA } from "@/components/home/CTA";
 import { Footer } from "@/components/home/Footer";
 
 export const metadata = {
-    title: "ThingIndex | Document Intelligence Pipeline",
-    description: "Automate your legal document processing with an AI-driven async pipeline.",
+    title: "ThingIndex | Relational Document Intelligence",
+    description: "Organize, index, and recover document context with a relational architecture.",
 };
 
 export default function LandingPage() {

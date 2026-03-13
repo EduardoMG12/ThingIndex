@@ -3,7 +3,7 @@ import { AnimatedBackground } from "@/components/ui/AnimatedBackground";
 
 export const metadata = {
     title: "Criar Conta | ThingIndex",
-    description: "Crie sua conta no ThingIndex para configurar seu pipeline de document intelligence.",
+    description: "Crie sua conta no ThingIndex para organizar documentos e contexto relacional.",
 };
 
 export default function RegisterPage() {

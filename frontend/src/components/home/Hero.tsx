@@ -86,20 +86,20 @@ export const Hero = () => {
                             ✓ Upload concluído · 42 páginas detectadas
                         </p>
                         <p className="mt-1 text-foreground/70">
-                            ✓ ClamAV scan passed · nenhuma ameaça
+                            ✓ Documento armazenado com sucesso
                         </p>
                         <p className="mt-1 text-foreground/70">
-                            ✓ Enfileirado no RabbitMQ · 42 chunks criados
+                            ✓ Indexação estrutural iniciada · resumo e outline em processamento
                         </p>
                         <p className="mt-2">
-                            <span className="text-accent">$</span> thingindex query
-                            &quot;cláusulas de rescisão&quot;
+                            <span className="text-accent">$</span> thingindex context
+                            --collection contrato-principal
                         </p>
                         <p className="mt-1 text-foreground/70">
-                            ✓ 3 chunks relevantes encontrados · score 0.94
+                            ✓ 12 parágrafos · 2 tabelas · 9 metadados agregados
                         </p>
                         <p className="mt-1 text-primary">
-                            → Resposta gerada em 180ms com 3 fontes
+                            → Contexto reconstruído para navegação e auditoria
                         </p>
                     </div>
                 </motion.div>
