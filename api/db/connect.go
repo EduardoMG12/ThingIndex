@@ -33,6 +33,7 @@ func Connect() (*gorm.DB, error) {
 		&models.ParagraphNode{},
 		&models.TableSection{},
 		&models.MetadataPair{},
+		&models.DocumentChunk{},
 		&models.DocumentOutlineNode{},
 		&models.OutboxEvent{},
 		&models.UserProviderConfig{},

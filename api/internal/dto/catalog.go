@@ -111,6 +111,19 @@ type MetadataPairResponse struct {
 	Value         string `json:"value"`
 }
 
+type DocumentChunkResponse struct {
+	ID                   uint           `json:"id"`
+	DocumentID           uint           `json:"document_id"`
+	SequenceOrder        int            `json:"sequence_order"`
+	ChunkType            string         `json:"chunk_type"`
+	Title                string         `json:"title,omitempty"`
+	Content              string         `json:"content"`
+	SourceParagraphStart *int           `json:"source_paragraph_start,omitempty"`
+	SourceParagraphEnd   *int           `json:"source_paragraph_end,omitempty"`
+	TokenEstimate        int            `json:"token_estimate"`
+	Metadata             map[string]any `json:"metadata"`
+}
+
 type OutlineNodeResponse struct {
 	ID            uint           `json:"id"`
 	DocumentID    uint           `json:"document_id"`
@@ -136,6 +149,7 @@ type DocumentIndexResponse struct {
 	ParagraphNodes  []ParagraphNodeResponse `json:"paragraph_nodes"`
 	TableSections   []TableSectionResponse  `json:"table_sections"`
 	MetadataPairs   []MetadataPairResponse  `json:"metadata_pairs"`
+	Chunks          []DocumentChunkResponse `json:"chunks"`
 	OutlineNodes    []OutlineNodeResponse   `json:"outline_nodes"`
 	DocumentSummary string                  `json:"document_summary"`
 }
@@ -301,6 +315,30 @@ func ToMetadataPairResponses(pairs []models.MetadataPair) []MetadataPairResponse
 	return items
 }
 
+func ToDocumentChunkResponses(chunks []models.DocumentChunk) []DocumentChunkResponse {
+	items := make([]DocumentChunkResponse, 0, len(chunks))
+	for _, chunk := range chunks {
+		metadata := chunk.Metadata
+		if metadata == nil {
+			metadata = map[string]any{}
+		}
+
+		items = append(items, DocumentChunkResponse{
+			ID:                   chunk.ID,
+			DocumentID:           chunk.DocumentID,
+			SequenceOrder:        chunk.SequenceOrder,
+			ChunkType:            chunk.ChunkType,
+			Title:                chunk.Title,
+			Content:              chunk.Content,
+			SourceParagraphStart: chunk.SourceParagraphStart,
+			SourceParagraphEnd:   chunk.SourceParagraphEnd,
+			TokenEstimate:        chunk.TokenEstimate,
+			Metadata:             metadata,
+		})
+	}
+	return items
+}
+
 func ToOutlineNodeResponses(nodes []models.DocumentOutlineNode) []OutlineNodeResponse {
 	items := make([]OutlineNodeResponse, 0, len(nodes))
 	for _, node := range nodes {
@@ -349,6 +387,7 @@ func ToDocumentIndexResponse(index *domain.DocumentIndex) *DocumentIndexResponse
 		ParagraphNodes:  ToParagraphNodeResponses(index.ParagraphNodes),
 		TableSections:   ToTableSectionResponses(index.TableSections),
 		MetadataPairs:   ToMetadataPairResponses(index.MetadataPairs),
+		Chunks:          ToDocumentChunkResponses(index.Chunks),
 		OutlineNodes:    ToOutlineNodeResponses(index.OutlineNodes),
 		DocumentSummary: index.DocumentSummary,
 	}

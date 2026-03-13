@@ -65,6 +65,15 @@ func (r *gormDocumentProcessingRepository) ReplaceIndexingResult(ctx context.Con
 			}
 		}
 
+		if err := tx.Unscoped().Where("document_id = ?", documentID).Delete(&models.DocumentChunk{}).Error; err != nil {
+			return err
+		}
+		if len(result.Chunks) > 0 {
+			if err := tx.Create(&result.Chunks).Error; err != nil {
+				return err
+			}
+		}
+
 		if err := tx.Unscoped().Where("document_id = ?", documentID).Delete(&models.DocumentOutlineNode{}).Error; err != nil {
 			return err
 		}

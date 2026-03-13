@@ -511,6 +511,11 @@ func (u *documentCatalogUseCase) GetDocumentIndex(ctx context.Context, userID, d
 		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
 	}
 
+	chunks, err := u.structuredDataRepo.GetDocumentChunksByDocumentIDs(ctx, documentIDs)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
+	}
+
 	outlineNodes, err := u.structuredDataRepo.GetOutlineNodesByDocumentIDs(ctx, documentIDs)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
@@ -529,6 +534,7 @@ func (u *documentCatalogUseCase) GetDocumentIndex(ctx context.Context, userID, d
 		ParagraphNodes:  paragraphNodes,
 		TableSections:   tableSections,
 		MetadataPairs:   metadataPairs,
+		Chunks:          chunks,
 		OutlineNodes:    outlineNodes,
 		DocumentSummary: documentSummary,
 	}, nil

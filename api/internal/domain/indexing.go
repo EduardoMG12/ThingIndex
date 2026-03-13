@@ -32,6 +32,7 @@ type IndexingResult struct {
 	ParagraphNodes []models.ParagraphNode
 	TableSections  []models.TableSection
 	MetadataPairs  []models.MetadataPair
+	Chunks         []models.DocumentChunk
 	OutlineNodes   []models.DocumentOutlineNode
 }
 

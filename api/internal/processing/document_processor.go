@@ -95,6 +95,8 @@ func (p *DocumentProcessor) Process(ctx context.Context, event domain.DocumentIn
 		}
 	}
 
+	result.Chunks = buildDocumentChunks(doc.ID, result)
+
 	if err := p.repo.ReplaceIndexingResult(ctx, doc.ID, result); err != nil {
 		_ = p.repo.UpdateDocumentStatus(ctx, doc.ID, domain.DocumentStatusFailed)
 		return fmt.Errorf("%w: persist indexing result: %v", domain.ErrDocumentIndexing, err)

@@ -52,6 +52,18 @@ func (r *GormStructuredDataRepository) ReplaceMetadataPairs(ctx context.Context,
 	})
 }
 
+func (r *GormStructuredDataRepository) ReplaceDocumentChunks(ctx context.Context, documentID uint, chunks []models.DocumentChunk) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Unscoped().Where("document_id = ?", documentID).Delete(&models.DocumentChunk{}).Error; err != nil {
+			return err
+		}
+		if len(chunks) == 0 {
+			return nil
+		}
+		return tx.Create(&chunks).Error
+	})
+}
+
 func (r *GormStructuredDataRepository) ReplaceOutlineNodes(ctx context.Context, documentID uint, nodes []models.DocumentOutlineNode) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Unscoped().Where("document_id = ?", documentID).Delete(&models.DocumentOutlineNode{}).Error; err != nil {
@@ -110,6 +122,22 @@ func (r *GormStructuredDataRepository) GetMetadataPairsByDocumentIDs(ctx context
 	}
 
 	return pairs, nil
+}
+
+func (r *GormStructuredDataRepository) GetDocumentChunksByDocumentIDs(ctx context.Context, documentIDs []uint) ([]models.DocumentChunk, error) {
+	chunks := make([]models.DocumentChunk, 0)
+	if len(documentIDs) == 0 {
+		return chunks, nil
+	}
+
+	if err := r.db.WithContext(ctx).
+		Where("document_id IN ?", documentIDs).
+		Order("document_id ASC, sequence_order ASC").
+		Find(&chunks).Error; err != nil {
+		return nil, err
+	}
+
+	return chunks, nil
 }
 
 func (r *GormStructuredDataRepository) GetOutlineNodesByDocumentIDs(ctx context.Context, documentIDs []uint) ([]models.DocumentOutlineNode, error) {
