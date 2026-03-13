@@ -26,6 +26,7 @@ type ProviderApiRecord = {
     family: ProviderFamily;
     provider_type: ProviderType;
     is_enabled: boolean;
+    public_metadata?: Record<string, string>;
     created_at: string;
     updated_at: string;
 };
@@ -36,6 +37,7 @@ export type ProviderConfig = {
     family: ProviderFamily;
     provider_type: ProviderType;
     is_enabled: boolean;
+    public_metadata: Record<string, string>;
     created_at: string;
     updated_at: string;
 };
@@ -47,6 +49,7 @@ function normalizeProvider(record: ProviderApiRecord): ProviderConfig {
         family: record.family,
         provider_type: record.provider_type,
         is_enabled: record.is_enabled,
+        public_metadata: record.public_metadata ?? {},
         created_at: record.created_at,
         updated_at: record.updated_at,
     };

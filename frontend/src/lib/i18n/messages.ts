@@ -264,7 +264,10 @@ export const messages: LocaleMessages = {
             heroEyebrow: "Controle de providers",
             heroTitle: "Configurações de storage e LLM",
             heroDescription:
-                "Adicione os valores do seu ambiente e escolha qual backend de storage e qual LLM ficam ativos. A plataforma permite um storage e uma LLM ativos ao mesmo tempo.",
+                "Adicione os valores do seu ambiente e escolha qual backend de storage e qual LLM ficam ativos. A plataforma permite um storage e uma LLM ativos ao mesmo tempo. As credenciais são criptografadas com proteção forte antes de serem persistidas.",
+            securityTitle: "Credenciais protegidas",
+            securityDescription:
+                "As envs e chaves salvas aqui são criptografadas antes de ir para o banco. O sistema nunca exibe segredos completos de volta na interface.",
             family: {
                 STORAGE: {
                     title: "Storage",
@@ -290,7 +293,7 @@ export const messages: LocaleMessages = {
             emptyLLM: "Nenhum provider de IA salvo ainda. Selecione um acima e salve as credenciais primeiro.",
             behaviorTitle: "Comportamento",
             behaviorDescription:
-                "Salvar este provider armazena as credenciais e o habilita automaticamente. Qualquer outro provider da mesma família é desabilitado.",
+                "Salvar este provider armazena as credenciais de forma criptografada e o habilita automaticamente. Qualquer outro provider da mesma família é desabilitado.",
             loading: "Carregando configurações de providers...",
         },
     },
@@ -550,7 +553,10 @@ export const messages: LocaleMessages = {
             heroEyebrow: "Provider control",
             heroTitle: "Storage and LLM settings",
             heroDescription:
-                "Add your environment values and choose which storage backend and LLM remain active. The platform allows one active storage and one active LLM at a time.",
+                "Add your environment values and choose which storage backend and LLM remain active. The platform allows one active storage and one active LLM at a time. Saved credentials are encrypted with strong protection before they are persisted.",
+            securityTitle: "Protected credentials",
+            securityDescription:
+                "The env values and keys saved here are encrypted before reaching the database. The system never renders full secrets back in the interface.",
             family: {
                 STORAGE: {
                     title: "Storage provider",
@@ -576,7 +582,7 @@ export const messages: LocaleMessages = {
             emptyLLM: "No saved AI providers yet. Select one above and save its credentials first.",
             behaviorTitle: "Behavior",
             behaviorDescription:
-                "Saving this provider stores its credentials and enables it automatically. Any other provider in the same family is disabled.",
+                "Saving this provider stores its credentials in encrypted form and enables it automatically. Any other provider in the same family is disabled.",
             loading: "Loading provider settings...",
         },
     },
@@ -836,7 +842,10 @@ export const messages: LocaleMessages = {
             heroEyebrow: "Control de providers",
             heroTitle: "Configuración de storage y LLM",
             heroDescription:
-                "Agrega los valores de tu entorno y elige qué backend de storage y qué LLM permanecen activos. La plataforma permite un storage y una LLM activos al mismo tiempo.",
+                "Agrega los valores de tu entorno y elige qué backend de storage y qué LLM permanecen activos. La plataforma permite un storage y una LLM activos al mismo tiempo. Las credenciales guardadas se cifran con protección fuerte antes de persistirse.",
+            securityTitle: "Credenciales protegidas",
+            securityDescription:
+                "Las envs y claves guardadas aquí se cifran antes de llegar a la base de datos. El sistema nunca vuelve a mostrar secretos completos en la interfaz.",
             family: {
                 STORAGE: {
                     title: "Provider de storage",
@@ -862,7 +871,7 @@ export const messages: LocaleMessages = {
             emptyLLM: "Todavía no hay providers de IA guardados. Selecciona uno arriba y guarda primero sus credenciales.",
             behaviorTitle: "Comportamiento",
             behaviorDescription:
-                "Guardar este provider almacena sus credenciales y lo habilita automáticamente. Cualquier otro provider de la misma familia se deshabilita.",
+                "Guardar este provider almacena sus credenciales de forma cifrada y lo habilita automáticamente. Cualquier otro provider de la misma familia se deshabilita.",
             loading: "Cargando configuración de providers...",
         },
     },

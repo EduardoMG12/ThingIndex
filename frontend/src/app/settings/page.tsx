@@ -372,38 +372,40 @@ function FamilySection({
                         </div>
                         <p className="text-sm leading-relaxed text-muted-foreground">{activeProvider.description}</p>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        {activeProvider.fields.map((field) => (
-                            <div key={field.key} className="space-y-2">
-                                <Label htmlFor={`${activeProvider.providerType}-${field.key}`}>
-                                    {field.label}
-                                    {field.optional ? (
-                                        <span className="ml-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{t("common.optional")}</span>
-                                    ) : null}
-                                </Label>
-                                <Input
-                                    id={`${activeProvider.providerType}-${field.key}`}
-                                    type={field.type || "text"}
-                                    value={forms[activeProvider.providerType]?.[field.key] ?? ""}
-                                    onChange={(event) => onFieldChange(activeProvider.providerType, field.key, event.target.value)}
-                                    placeholder={field.placeholder}
-                                    autoComplete="off"
-                                />
-                            </div>
-                        ))}
+                    <CardContent className="flex min-h-0 flex-1 flex-col gap-4">
+                        <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+                            {activeProvider.fields.map((field) => (
+                                <div key={field.key} className="space-y-2">
+                                    <Label htmlFor={`${activeProvider.providerType}-${field.key}`}>
+                                        {field.label}
+                                        {field.optional ? (
+                                            <span className="ml-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{t("common.optional")}</span>
+                                        ) : null}
+                                    </Label>
+                                    <Input
+                                        id={`${activeProvider.providerType}-${field.key}`}
+                                        type={field.type || "text"}
+                                        value={forms[activeProvider.providerType]?.[field.key] ?? ""}
+                                        onChange={(event) => onFieldChange(activeProvider.providerType, field.key, event.target.value)}
+                                        placeholder={field.placeholder}
+                                        autoComplete="off"
+                                    />
+                                </div>
+                            ))}
 
-                        <div className="rounded-2xl border border-border bg-background/60 p-4">
-                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t("settings.behaviorTitle")}</p>
-                            <p className="mt-2 text-sm leading-relaxed text-foreground/85">
-                                {t("settings.behaviorDescription")}
-                            </p>
+                            <div className="rounded-2xl border border-border bg-background/60 p-4">
+                                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t("settings.behaviorTitle")}</p>
+                                <p className="mt-2 text-sm leading-relaxed text-foreground/85">
+                                    {t("settings.behaviorDescription")}
+                                </p>
+                            </div>
                         </div>
 
                         <Button
                             type="button"
                             onClick={() => onSave(activeProvider)}
                             disabled={isPending}
-                            className="w-full gap-2"
+                            className="w-full shrink-0 gap-2"
                         >
                             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
                             {t("common.saveAndEnable", { name: activeProvider.name })}
@@ -455,6 +457,11 @@ function FamilySection({
                                             <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
                                                 {provider.tagline}
                                             </p>
+                                            {family === "LLM" && config.public_metadata.model ? (
+                                                <p className="mt-2 text-xs text-foreground/80">
+                                                    Model: <span className="font-medium text-foreground">{config.public_metadata.model}</span>
+                                                </p>
+                                            ) : null}
                                             <button
                                                 type="button"
                                                 onClick={() => onSelect(provider.providerType)}
@@ -621,6 +628,20 @@ export default function SettingsPage() {
                             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ServerCog className="h-4 w-4" />}
                             {t("common.refresh")}
                         </Button>
+                    </div>
+
+                    <div className="relative mt-6 flex max-w-2xl items-start gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-emerald-500/20 bg-background/70">
+                            <ShieldCheck className="h-5 w-5 text-emerald-400" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
+                                {t("settings.securityTitle")}
+                            </p>
+                            <p className="mt-1 text-sm leading-relaxed text-foreground/85">
+                                {t("settings.securityDescription")}
+                            </p>
+                        </div>
                     </div>
                 </motion.section>
 
