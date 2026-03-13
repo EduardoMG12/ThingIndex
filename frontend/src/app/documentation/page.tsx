@@ -2,17 +2,11 @@
 
 import { motion, type Transition } from "framer-motion";
 import {
-    ArrowRight,
     BookOpen,
-    Brain,
     Code2,
     Database,
-    DollarSign,
-    ExternalLink,
     GitBranch,
-    Lightbulb,
     Network,
-    Rocket,
     ScrollText,
     ServerCog,
     ShieldCheck,
@@ -21,9 +15,6 @@ import {
 } from "lucide-react";
 
 import AppShell from "@/components/layout/AppShell";
-import { Button } from "@/components/ui/button";
-import { ComparisonTable } from "@/components/documentation/ComparisonTable";
-import { PricingTable } from "@/components/documentation/PricingTable";
 import { Section } from "@/components/documentation/Section";
 import { TableOfContents } from "@/components/documentation/TableOfContents";
 
@@ -50,30 +41,30 @@ export default function DocumentationPage() {
                             official docs
                         </span>
                         <span className="rounded-full border border-border bg-background/70 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-                            open source mindset
+                            current runtime
                         </span>
                         <span className="rounded-full border border-border bg-background/70 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-                            tcc / article / research
+                            tcc / research / roadmap
                         </span>
                     </div>
 
                     <h1 className="mt-6 max-w-4xl font-display text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-                        Documentação de engenharia para um projeto universitário com ambição de
-                        <span className="text-primary"> plataforma open source</span>
+                        Documentação de engenharia alinhada ao
+                        <span className="text-primary"> estado atual do projeto</span>
                     </h1>
 
                     <p className="mt-5 max-w-3xl text-base leading-relaxed text-muted-foreground">
-                        O ThingIndex foi concebido como um sistema de inteligência documental com RAG, ingestão estruturada,
-                        vetorização, rastreabilidade e flexibilidade operacional. Esta documentação descreve o projeto como
-                        software, como artefato acadêmico e como base de evolução contínua.
+                        O ThingIndex hoje é uma plataforma relacional de inteligência documental. O foco do código atual está
+                        em autenticação, upload, organização por categoria e collection, indexação estrutural e recuperação de
+                        contexto em PostgreSQL.
                     </p>
 
                     <div className="mt-8 grid gap-4 lg:grid-cols-4">
                         {[
-                            { label: "Escopo", value: "RAG documental com fluxo estruturado" },
-                            { label: "Domínio", value: "Jurídico, pesquisa, compliance e operações" },
-                            { label: "Arquitetura", value: "API + workers + storage + vetores + grafo" },
-                            { label: "Meta central", value: "Contexto auditável e portável" },
+                            { label: "Escopo", value: "Catálogo documental relacional" },
+                            { label: "Stack", value: "Next.js + Go API + PostgreSQL + MinIO" },
+                            { label: "Processamento", value: "Indexação estrutural com evolução assíncrona" },
+                            { label: "Meta central", value: "Contexto auditável e reproduzível" },
                         ].map((item) => (
                             <div key={item.label} className="rounded-2xl border border-border bg-background/60 p-4">
                                 <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
@@ -97,58 +88,35 @@ export default function DocumentationPage() {
                 <div className="space-y-10">
                     <Section icon={Target} title="Visão Geral" id="overview" delay={0.1}>
                         <p>
-                            O <strong className="text-foreground">ThingIndex</strong> é uma plataforma de inteligência documental
-                            baseada em Retrieval-Augmented Generation, desenvolvida para preservar a estrutura do documento e
-                            transformar conteúdo bruto em contexto utilizável por sistemas de IA.
+                            O <strong className="text-foreground">ThingIndex</strong> preserva o contexto documental por meio de
+                            modelagem relacional explícita. Em vez de depender de um grafo operacional ou de busca vetorial
+                            como núcleo do produto, o projeto atual organiza o domínio com categorias, collections, documentos e
+                            estruturas extraídas persistidas em tabelas tipadas.
                         </p>
                         <p className="mt-4">
-                            Em vez de tratar um PDF como texto contínuo, o sistema modela o documento como uma unidade
-                            composta por páginas, parágrafos, tabelas, metadados, agrupamentos e referências persistentes.
-                            Essa decisão afeta diretamente a qualidade da indexação, a legibilidade da recuperação e a defesa
-                            metodológica do projeto no contexto do TCC.
+                            Isso torna a recuperação mais previsível, a auditoria mais simples e a defesa técnica do TCC mais
+                            consistente com o que o repositório realmente entrega hoje.
                         </p>
-
-                        <div className="mt-6 grid gap-4 md:grid-cols-3">
-                            {[
-                                {
-                                    title: "Problema",
-                                    body: "Soluções RAG genéricas perdem contexto estrutural e oferecem pouca rastreabilidade por trecho ou etapa do pipeline.",
-                                },
-                                {
-                                    title: "Hipótese",
-                                    body: "Um pipeline multiestágio com extração estruturada melhora a qualidade do contexto entregue à IA.",
-                                },
-                                {
-                                    title: "Objetivo",
-                                    body: "Construir um sistema academicamente defensável, tecnicamente consistente e pronto para evolução open source.",
-                                },
-                            ].map((item) => (
-                                <div key={item.title} className="rounded-xl border border-border bg-background/50 p-4">
-                                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">{item.title}</p>
-                                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
-                                </div>
-                            ))}
-                        </div>
                     </Section>
 
-                    <Section icon={Brain} title="Princípios de Projeto" id="principles" delay={0.15}>
+                    <Section icon={BookOpen} title="Princípios de Projeto" id="principles" delay={0.15}>
                         <div className="grid gap-4 md:grid-cols-2">
                             {[
                                 {
-                                    title: "Structure first",
-                                    body: "A estrutura documental é tratada como sinal de alto valor semântico, não como detalhe descartável.",
+                                    title: "Relational first",
+                                    body: "Collections, categorias, documentos e estruturas tipadas são a base do sistema.",
+                                },
+                                {
+                                    title: "Thin HTTP boundary",
+                                    body: "Handlers lidam com validação, auth e serialização; regras ficam em use cases e repositórios.",
                                 },
                                 {
                                     title: "Provider agnostic",
-                                    body: "Storage e LLMs devem poder ser substituídos sem reescrever a lógica principal da aplicação.",
-                                },
-                                {
-                                    title: "Operational traceability",
-                                    body: "Cada etapa do fluxo precisa ser observável e explicável, do upload ao documento indexado.",
+                                    body: "Storage e LLM podem ser trocados sem reescrever a lógica principal.",
                                 },
                                 {
                                     title: "Academic rigor",
-                                    body: "As decisões precisam ser reproduzíveis, justificáveis e compatíveis com defesa técnica e produção de artigo.",
+                                    body: "A implementação precisa refletir com honestidade o que é código atual e o que ainda é roadmap.",
                                 },
                             ].map((item) => (
                                 <div key={item.title} className="rounded-xl border border-border bg-background/50 p-5">
@@ -161,375 +129,164 @@ export default function DocumentationPage() {
 
                     <Section icon={Network} title="Arquitetura do Sistema" id="architecture" delay={0.2}>
                         <p className="mb-6">
-                            A arquitetura do ThingIndex foi organizada para separar ingestão, orquestração, processamento,
-                            persistência e consumo de contexto. Essa divisão reduz acoplamento e melhora a capacidade de evolução do projeto.
+                            A arquitetura separa interface, API, domínio, persistência e processamento documental. Essa divisão
+                            reduz acoplamento e facilita evolução incremental.
                         </p>
 
                         <div className="grid gap-4 lg:grid-cols-2">
                             <div className="rounded-xl border border-border bg-background/50 p-5">
                                 <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Camadas</h4>
                                 <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-                                    <li><strong className="text-foreground">Frontend:</strong> workspace, preview, providers e documentação.</li>
-                                    <li><strong className="text-foreground">API:</strong> autenticação, upload, preview, metadados e acionamento de jobs.</li>
-                                    <li><strong className="text-foreground">Workers:</strong> leitura, estruturação, sumarização e vetorização.</li>
-                                    <li><strong className="text-foreground">Persistência:</strong> object storage, banco relacional, store vetorial e base relacional/grafo.</li>
+                                    <li><strong className="text-foreground">Frontend:</strong> autenticação, dashboard, preview e documentação.</li>
+                                    <li><strong className="text-foreground">API:</strong> upload, providers, documentos e recuperação de contexto.</li>
+                                    <li><strong className="text-foreground">Processamento:</strong> indexação estrutural e enriquecimento opcional.</li>
+                                    <li><strong className="text-foreground">Persistência:</strong> PostgreSQL e object storage compatível com S3.</li>
                                 </ul>
                             </div>
 
                             <div className="rounded-xl border border-border bg-background/50 p-5">
                                 <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Objetivos arquiteturais</h4>
                                 <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-                                    <li>Escalar processamento sem degradar a API interativa.</li>
-                                    <li>Manter fronteiras claras entre domínio e infraestrutura.</li>
+                                    <li>Preservar contexto com joins previsíveis.</li>
+                                    <li>Evitar N+1 e montagem quadrática na API.</li>
                                     <li>Permitir portabilidade de providers e ambientes.</li>
-                                    <li>Preservar consistência entre preview, indexação e consulta.</li>
+                                    <li>Manter consistência entre preview, indexação e contexto consolidado.</li>
                                 </ul>
                             </div>
                         </div>
 
                         <div className="mt-6 rounded-xl border border-border bg-zinc-950 p-6 font-mono text-[10px] leading-relaxed text-zinc-400 overflow-x-auto whitespace-pre custom-scrollbar">
 {`[Client Workspace]
-  -> navigation / auth / provider settings / document preview
+  -> auth / dashboard / preview / settings
 
-[Next App Routes]
-  -> internal authenticated proxies
-  -> locale-aware routes and SEO surface
-
-[Core API]
+[Go API]
   -> auth
   -> upload + metadata
-  -> content preview
+  -> collection context
   -> provider configuration
 
-[Async Processing]
-  -> queue dispatch
+[Processing]
+  -> outbox dispatch
   -> document parsing
-  -> summary / outline / metadata / embeddings
+  -> structured indexing
 
 [Persistence]
   -> object storage
-  -> relational store
-  -> vector index
-  -> future graph-oriented expansion`}
+  -> relational store`}
                         </div>
                     </Section>
 
-                    <Section icon={Workflow} title="Pipeline de Processamento" id="pipeline" delay={0.25}>
+                    <Section icon={Workflow} title="Processamento Atual" id="processing" delay={0.25}>
                         <p className="mb-6">
-                            O pipeline é assíncrono por definição. Isso permite baixa latência na API e processamento mais
-                            pesado em background, com etapas bem definidas para análise e auditoria.
+                            O repositório já contém peças para processamento assíncrono, mas o principal valor atual está em
+                            fechar o ciclo de upload, indexação estrutural e recuperação do contexto salvo.
                         </p>
 
                         <div className="space-y-4">
                             {[
                                 {
                                     step: "01",
-                                    title: "Ingestão e persistência inicial",
-                                    desc: "O arquivo é recebido, validado, classificado e armazenado de forma consistente com o contexto do usuário.",
+                                    title: "Upload e persistência",
+                                    desc: "O documento é validado, armazenado e vinculado a uma collection obrigatória.",
                                 },
                                 {
                                     step: "02",
-                                    title: "Despacho para processamento",
-                                    desc: "A API registra o documento e entrega o trabalho a um worker sem bloquear a interface principal.",
+                                    title: "Despacho opcional",
+                                    desc: "O backend pode registrar eventos em outbox e despachar indexação sem bloquear a interface.",
                                 },
                                 {
                                     step: "03",
-                                    title: "Reconstrução estrutural",
-                                    desc: "O worker identifica páginas, trechos, tabelas, outline e metadados relevantes para navegação e indexação.",
+                                    title: "Indexação estrutural",
+                                    desc: "Parágrafos, tabelas, outline e metadados são persistidos como estruturas tipadas.",
                                 },
                                 {
                                     step: "04",
-                                    title: "Enriquecimento semântico",
-                                    desc: "Prompts especializados geram artefatos intermediários reutilizáveis, como resumo, estrutura e contexto enriquecido.",
-                                },
-                                {
-                                    step: "05",
-                                    title: "Indexação e disponibilização",
-                                    desc: "Os resultados finais são persistidos e passam a alimentar preview, vetorização e futuros fluxos de query.",
+                                    title: "Consulta do contexto",
+                                    desc: "O frontend consome o contexto consolidado por collection e documento para navegação e análise.",
                                 },
                             ].map((item) => (
-                                <div key={item.step} className="group relative pl-12">
-                                    <div className="absolute left-0 top-0 flex h-8 w-8 items-center justify-center rounded-lg bg-secondary border border-border font-mono text-[10px] font-bold text-muted-foreground group-hover:border-primary group-hover:text-primary transition-colors">
-                                        {item.step}
+                                <div key={item.step} className="rounded-xl border border-border bg-background/50 p-5">
+                                    <div className="flex items-center gap-3">
+                                        <span className="rounded-md bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary">
+                                            {item.step}
+                                        </span>
+                                        <h4 className="text-sm font-semibold text-foreground">{item.title}</h4>
                                     </div>
-                                    <h4 className="text-sm font-semibold text-foreground">{item.title}</h4>
-                                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
+                                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
                                 </div>
                             ))}
                         </div>
                     </Section>
 
-                    <Section icon={Database} title="Modelo de Dados e Organização" id="data-model" delay={0.3}>
-                        <p className="mb-6">
-                            O domínio foi estruturado para refletir o modo como operadores humanos e sistemas automáticos
-                            precisam enxergar o acervo: agrupado, contextualizado e com navegação consistente.
+                    <Section icon={Database} title="Modelo de Dados" id="data-model" delay={0.3}>
+                        <p>
+                            O banco organiza o domínio em categoria, collection, documento, parágrafo, tabela e metadado
+                            tipado. A ordem do conteúdo é mantida no banco e a agregação da resposta ocorre em tempo linear
+                            sobre o conjunto carregado.
                         </p>
-
-                        <div className="grid gap-4 lg:grid-cols-[1fr_0.9fr]">
-                            <div className="rounded-xl border border-border bg-background/50 p-5">
-                                <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Hierarquia canônica</h4>
-                                <div className="mt-4 rounded-lg border border-border bg-card/70 p-4 font-mono text-[11px] text-muted-foreground">
-                                    Categoria → Collection → Documento → Página → Seção/Chunk/Tabela → Metadados → Embedding
-                                </div>
-                                <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-                                    <li><strong className="text-foreground">Categoria:</strong> classificação macro do documento.</li>
-                                    <li><strong className="text-foreground">Collection:</strong> agrupamento relacional e contextual entre documentos.</li>
-                                    <li><strong className="text-foreground">Documento:</strong> unidade principal de ingestão, preview e indexação.</li>
-                                    <li><strong className="text-foreground">Nós derivados:</strong> páginas, tabelas, outline, resumo e metadados persistidos.</li>
-                                </ul>
-                            </div>
-
-                            <div className="rounded-xl border border-border bg-background/50 p-5">
-                                <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Vantagens operacionais</h4>
-                                <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-                                    <li>Recuperação com filtros por contexto de negócio.</li>
-                                    <li>Preview e auditoria humana coerentes com a origem do dado.</li>
-                                    <li>Separação entre binário bruto e conhecimento derivado.</li>
-                                    <li>Base sólida para evolução de grafos e benchmarks futuros.</li>
-                                </ul>
-                            </div>
-                        </div>
                     </Section>
 
-                    <Section icon={Code2} title="Retrieval, Indexação e Cadeia de Prompts" id="retrieval" delay={0.35}>
-                        <p className="mb-6">
-                            O ThingIndex não reduz recuperação a similaridade vetorial. A qualidade do retrieval depende do
-                            preparo do contexto, da estrutura dos metadados e da forma como o documento foi enriquecido.
+                    <Section icon={Database} title="Recuperação de Contexto" id="retrieval" delay={0.35}>
+                        <p>
+                            O diferencial implementado hoje é a recuperação de contexto relacional. A API carrega a collection,
+                            busca os documentos relacionados, agrega estruturas tipadas por lote e devolve uma visão consolidada
+                            sem depender de similaridade vetorial para a navegação principal.
                         </p>
-
-                        <div className="grid gap-4 md:grid-cols-3">
-                            {[
-                                {
-                                    title: "Resumo",
-                                    color: "border-blue-500/20 bg-blue-500/5",
-                                    icon: ScrollText,
-                                    desc: "Sintetiza conteúdo relevante e melhora legibilidade operacional do documento indexado.",
-                                },
-                                {
-                                    title: "Estruturação",
-                                    color: "border-primary/20 bg-primary/5",
-                                    icon: Code2,
-                                    desc: "Transforma saídas em objetos coerentes para navegação, inspeção e indexação posterior.",
-                                },
-                                {
-                                    title: "Embeddings",
-                                    color: "border-emerald-500/20 bg-emerald-500/5",
-                                    icon: Brain,
-                                    desc: "Permitem retrieval semântico sobre conteúdo enriquecido, não apenas sobre texto bruto recortado.",
-                                },
-                            ].map((item) => (
-                                <div key={item.title} className={`rounded-xl border p-4 ${item.color}`}>
-                                    <item.icon className="h-4 w-4 text-primary" />
-                                    <h4 className="mt-3 text-sm font-semibold text-foreground">{item.title}</h4>
-                                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="mt-8">
-                            <ComparisonTable />
-                        </div>
                     </Section>
 
-                    <Section icon={ShieldCheck} title="Segurança, Governança e Limites" id="security" delay={0.4}>
-                        <div className="grid gap-4 md:grid-cols-2">
-                            <div className="rounded-xl border border-border bg-background/50 p-5">
-                                <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Controles presentes</h4>
-                                <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-                                    <li>Autenticação e fluxo protegido por sessão/token.</li>
-                                    <li>Preview desacoplado do provider e isolado por documento.</li>
-                                    <li>Gestão de um provider ativo por família para reduzir inconsistência operacional.</li>
-                                    <li>Separação entre frontend, proxies autenticados e backend principal.</li>
-                                </ul>
-                            </div>
-
-                            <div className="rounded-xl border border-border bg-background/50 p-5">
-                                <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Direções futuras</h4>
-                                <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-                                    <li>Auditoria formal de jobs, retries e mudanças de provider.</li>
-                                    <li>Observabilidade por etapa do pipeline.</li>
-                                    <li>Políticas explícitas de retenção e versionamento de artefatos.</li>
-                                    <li>Testes comparativos para qualidade de retrieval em cenário acadêmico.</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </Section>
-
-                    <Section icon={Rocket} title="Deploy, Operação e Ambientes" id="deployment" delay={0.45}>
-                        <p className="mb-6">
-                            O desenho atual favorece execução local, ambiente universitário controlado e self-hosting. A proposta
-                            é manter o projeto simples o suficiente para reproduzir e robusto o bastante para evoluir.
+                    <Section icon={ShieldCheck} title="Segurança e Governança" id="security" delay={0.4}>
+                        <p>
+                            O projeto já inclui autenticação JWT, escopo por usuário, respostas padronizadas, validação de upload
+                            e criptografia de credenciais de providers. Medidas adicionais podem ser incorporadas depois, mas não
+                            são vendidas aqui como se já estivessem no runtime atual.
                         </p>
-
-                        <div className="grid gap-4 md:grid-cols-3">
-                            {[
-                                {
-                                    title: "Desenvolvimento",
-                                    body: "Volumes locais, iteração rápida e inspeção contínua das saídas intermediárias.",
-                                },
-                                {
-                                    title: "Homologação",
-                                    body: "Providers reais, custos controlados, testes de fluxo e inspeção semântica do enriquecimento.",
-                                },
-                                {
-                                    title: "Produção",
-                                    body: "Storage resiliente, filas estáveis, métricas, retries e política clara de secrets.",
-                                },
-                            ].map((item) => (
-                                <div key={item.title} className="rounded-xl border border-border bg-background/50 p-5">
-                                    <h4 className="text-sm font-semibold text-foreground">{item.title}</h4>
-                                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
-                                </div>
-                            ))}
-                        </div>
                     </Section>
 
-                    <Section icon={ServerCog} title="Providers, Portabilidade e Evolução" id="providers" delay={0.5}>
-                        <p className="mb-6">
-                            Uma das linhas mestras do projeto é evitar lock-in desnecessário. Isso aparece principalmente nas
-                            abstrações de storage e LLM, que permitem alternância operacional com impacto reduzido no resto da aplicação.
+                    <Section icon={ServerCog} title="Deploy e Operação" id="deployment" delay={0.45}>
+                        <p>
+                            O ambiente local usa Docker Compose com frontend, backend, PostgreSQL, MinIO e RabbitMQ. O RabbitMQ
+                            já existe no repositório, mas ainda não é requisito obrigatório de todo o caminho principal.
                         </p>
-
-                        <div className="grid gap-4 md:grid-cols-2">
-                            <div className="rounded-xl border border-border bg-background/50 p-5">
-                                <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Storage</h4>
-                                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                                    O sistema suporta uma camada de storage abstrata para acomodar MinIO, S3 e serviços compatíveis.
-                                    Isso é importante para pesquisa, ambientes universitários e migração entre infraestruturas.
-                                </p>
-                            </div>
-                            <div className="rounded-xl border border-border bg-background/50 p-5">
-                                <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-primary">LLMs</h4>
-                                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                                    O fluxo de configuração por provider facilita experimentação com modelos, custos e latência,
-                                    o que é especialmente útil para benchmarks e escrita acadêmica comparativa.
-                                </p>
-                            </div>
-                        </div>
                     </Section>
 
-                    <Section icon={DollarSign} title="Custos, Benchmark e Comparativos" id="pricing" delay={0.55}>
-                        <p className="mb-6">
-                            Um projeto sério precisa documentar também o custo operacional. Transparência sobre embeddings, modelos
-                            e consumo de contexto é parte da disciplina de engenharia e da honestidade metodológica do TCC.
+                    <Section icon={Code2} title="Providers e Portabilidade" id="providers" delay={0.5}>
+                        <p>
+                            Há suporte para configuração de storage e LLM por usuário, com ativação controlada e credenciais
+                            criptografadas. Na prática, o storage MinIO/S3-compatible é o provider mais consolidado hoje.
                         </p>
-
-                        <PricingTable />
-
-                        <div className="mt-8 flex items-center gap-3 rounded-xl border border-border bg-muted/50 p-4 text-[10px] italic text-muted-foreground">
-                            <Lightbulb className="h-4 w-4 shrink-0 text-primary" />
-                            <span>
-                                <strong>Observação:</strong> o indicador mais relevante não é custo isolado, mas custo por contexto útil recuperado
-                                com rastreabilidade suficiente para justificar a resposta final.
-                            </span>
-                        </div>
                     </Section>
 
-                    <Section icon={BookOpen} title="Contexto Acadêmico, TCC e Artigo" id="academic" delay={0.6}>
-                        <div className="rounded-xl border border-primary/20 bg-primary/5 p-6">
-                            <div className="flex items-center gap-2 text-primary">
-                                <BookOpen className="h-4 w-4" />
-                                <span className="text-xs font-bold uppercase tracking-[0.2em]">Pesquisa aplicada</span>
-                            </div>
-                            <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                                O ThingIndex deve ser entendido tanto como sistema funcional quanto como artefato acadêmico.
-                                Isso implica documentar hipóteses, trade-offs, limitações, arquitetura e critérios de avaliação
-                                de forma clara o suficiente para banca, artigo e reprodução futura.
-                            </p>
-                        </div>
-
-                        <div className="mt-6 grid gap-4 md:grid-cols-3">
-                            {[
-                                "Formalizar o problema e o diferencial frente a pipelines RAG tradicionais.",
-                                "Registrar a cadeia de processamento com granularidade compatível com reprodutibilidade.",
-                                "Conectar escolhas de engenharia com impacto metodológico e resultados observáveis.",
-                            ].map((item) => (
-                                <div key={item} className="rounded-xl border border-border bg-background/50 p-4 text-sm leading-relaxed text-muted-foreground">
-                                    {item}
-                                </div>
-                            ))}
-                        </div>
+                    <Section icon={GitBranch} title="Roadmap" id="roadmap" delay={0.55}>
+                        <ul className="space-y-3">
+                            <li>Ampliar testes automatizados e fixtures de fluxo completo.</li>
+                            <li>Consolidar workers dedicados e observabilidade do processamento.</li>
+                            <li>Integrar o assistente do dashboard ao contexto real dos documentos.</li>
+                            <li>Continuar comparações acadêmicas com abordagens vetoriais e GraphRAG fora do caminho principal atual.</li>
+                        </ul>
                     </Section>
 
-                    <Section icon={GitBranch} title="Contribuição, Roadmap e Próximos Passos" id="contributing" delay={0.65}>
-                        <div className="grid gap-4 lg:grid-cols-2">
-                            <div className="rounded-xl border border-border bg-background/50 p-5">
-                                <h4 className="text-sm font-semibold text-foreground">Roadmap técnico</h4>
-                                <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-                                    <li>Expandir suporte a providers com testes integrados e documentação operacional.</li>
-                                    <li>Formalizar observabilidade e métricas de qualidade de pipeline.</li>
-                                    <li>Adicionar avaliação comparativa de retrieval e grounding.</li>
-                                    <li>Publicar guias de deploy, troubleshooting e operação contínua.</li>
-                                </ul>
-                            </div>
-
-                            <div className="rounded-xl border border-border bg-background/50 p-5">
-                                <h4 className="text-sm font-semibold text-foreground">Padrão de contribuição</h4>
-                                <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
-                                    <li>Commits coesos, mudanças bem justificadas e validação mínima sempre que possível.</li>
-                                    <li>Alterações de arquitetura devem registrar trade-offs e implicações de manutenção.</li>
-                                    <li>Novos providers precisam respeitar as abstrações existentes.</li>
-                                    <li>Fluxos novos devem ser acompanhados por documentação e clareza operacional.</li>
-                                </ul>
-                            </div>
-                        </div>
+                    <Section icon={ScrollText} title="TCC e Artigo" id="academic" delay={0.6}>
+                        <p>
+                            O repositório também serve como artefato de pesquisa. A principal exigência aqui é clareza: separar
+                            rigorosamente implementação atual, hipótese de pesquisa e evolução futura.
+                        </p>
                     </Section>
 
-                    <Section icon={ExternalLink} title="Referências e Materiais" id="references" delay={0.7}>
-                        <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/10 to-transparent p-8">
-                            <BookOpen className="mb-4 h-10 w-10 text-primary" />
-                            <h3 className="mb-2 text-xl font-bold text-foreground">Pacote documental do projeto</h3>
-                            <p className="mb-6 max-w-2xl text-sm text-muted-foreground">
-                                Esta seção deve concentrar o TCC em PDF, o artigo derivado da pesquisa, benchmarks,
-                                apresentações e referências bibliográficas usadas para sustentar o desenho do sistema.
-                            </p>
+                    <Section icon={GitBranch} title="Contribuição" id="contributing" delay={0.65}>
+                        <p>
+                            As contribuições mais úteis agora são pequenas e verificáveis: testes, fixtures, melhorias no
+                            dashboard documental e documentação alinhada ao runtime atual.
+                        </p>
+                    </Section>
 
-                            <div className="grid gap-3 md:grid-cols-2">
-                                {[
-                                    "TCC completo em PDF",
-                                    "Artigo técnico e versões submetidas",
-                                    "Benchmarks de retrieval e avaliação",
-                                    "Referências bibliográficas e materiais de apoio",
-                                ].map((item) => (
-                                    <div key={item} className="rounded-xl border border-border bg-background/60 p-4 text-sm text-muted-foreground">
-                                        {item}
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className="mt-6 flex flex-wrap gap-3">
-                                <Button className="gap-2 px-6 font-bold">
-                                    <ExternalLink className="h-4 w-4" />
-                                    Baixar TCC
-                                </Button>
-                                <Button variant="outline" className="gap-2 px-6">
-                                    <ArrowRight className="h-4 w-4" />
-                                    Abrir artigo técnico
-                                </Button>
-                            </div>
-                        </div>
+                    <Section icon={ScrollText} title="Referências e Materiais" id="references" delay={0.7}>
+                        <p>
+                            O documento principal para visão completa do projeto continua sendo o `README.md` na raiz do
+                            monorepo.
+                        </p>
                     </Section>
                 </div>
             </div>
-
-            <motion.footer
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="mt-20 flex flex-col items-center justify-between gap-4 border-t border-border pb-12 pt-8 md:flex-row"
-            >
-                <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
-                        docs status: maintained · version 0.1.0
-                    </span>
-                </div>
-                <div className="flex gap-6 text-[10px] font-medium text-muted-foreground">
-                    <a href="#" className="transition-colors hover:text-primary">GitHub</a>
-                    <a href="#" className="transition-colors hover:text-primary">Architecture</a>
-                    <a href="#" className="transition-colors hover:text-primary">Research</a>
-                </div>
-            </motion.footer>
         </AppShell>
     );
 }
