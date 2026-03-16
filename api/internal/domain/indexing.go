@@ -37,6 +37,15 @@ type IndexingResult struct {
 	OutlineNodes   []models.DocumentOutlineNode
 }
 
+type DocumentProcessingState struct {
+	Status       string
+	Stage        string
+	StatusDetail string
+	LastError    string
+	StartedAt    *time.Time
+	CompletedAt  *time.Time
+}
+
 type DocumentIngestionRepository interface {
 	CreateDocumentWithOutbox(ctx context.Context, doc *models.Document, event *models.OutboxEvent) error
 }
@@ -49,7 +58,7 @@ type OutboxRepository interface {
 
 type DocumentProcessingRepository interface {
 	GetDocumentByIDForProcessing(ctx context.Context, id uint) (*models.Document, error)
-	UpdateDocumentStatus(ctx context.Context, documentID uint, status string) error
+	UpdateDocumentProcessingState(ctx context.Context, documentID uint, state DocumentProcessingState) error
 	ReplaceIndexingResult(ctx context.Context, documentID uint, result IndexingResult) error
 }
 

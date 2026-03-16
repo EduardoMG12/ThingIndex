@@ -59,6 +59,20 @@ type LLMService interface {
 	GenerateText(ctx context.Context, systemPrompt, userPrompt string) (string, error)
 }
 
+type LLMPricing struct {
+	InputCostPerMillionUSD  float64
+	OutputCostPerMillionUSD float64
+}
+
+type LLMMetadataProvider interface {
+	ProviderType() string
+	ModelName() string
+}
+
+type LLMPricingProvider interface {
+	Pricing() (LLMPricing, bool)
+}
+
 type UserLLMResolver interface {
 	ResolveLLMForIndexing(ctx context.Context, userID uint) (LLMService, error)
 	ResolveLLMForChat(ctx context.Context, userID uint) (LLMService, error)

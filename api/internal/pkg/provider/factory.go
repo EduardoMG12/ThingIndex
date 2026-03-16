@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,9 +19,12 @@ import (
 
 type openAICompatibleLLMClient struct {
 	httpClient *http.Client
+	provider   string
 	endpoint   string
 	apiKey     string
 	model      string
+	pricing    domain.LLMPricing
+	hasPricing bool
 }
 
 type chatCompletionRequest struct {
@@ -53,16 +57,22 @@ func NewLLMProvider(providerType string, credentials map[string]string) (domain.
 		return nil, errors.New("missing api_key in credentials")
 	}
 
-	endpoint, model, err := llmEndpointAndModel(providerType, credentials)
+	normalizedProvider := strings.ToUpper(strings.TrimSpace(providerType))
+	endpoint, model, err := llmEndpointAndModel(normalizedProvider, credentials)
 	if err != nil {
 		return nil, err
 	}
 
+	pricing, hasPricing := llmPricingProfile(normalizedProvider, model, credentials)
+
 	return &openAICompatibleLLMClient{
 		httpClient: &http.Client{Timeout: 45 * time.Second},
+		provider:   normalizedProvider,
 		endpoint:   endpoint,
 		apiKey:     apiKey,
 		model:      model,
+		pricing:    pricing,
+		hasPricing: hasPricing,
 	}, nil
 }
 
@@ -209,6 +219,18 @@ func (c *openAICompatibleLLMClient) GenerateText(ctx context.Context, systemProm
 	return strings.TrimSpace(completion.Choices[0].Message.Content), nil
 }
 
+func (c *openAICompatibleLLMClient) ProviderType() string {
+	return c.provider
+}
+
+func (c *openAICompatibleLLMClient) ModelName() string {
+	return c.model
+}
+
+func (c *openAICompatibleLLMClient) Pricing() (domain.LLMPricing, bool) {
+	return c.pricing, c.hasPricing
+}
+
 func llmEndpointAndModel(providerType string, credentials map[string]string) (string, string, error) {
 	normalizedProvider := strings.ToUpper(strings.TrimSpace(providerType))
 	baseURL := strings.TrimRight(strings.TrimSpace(credentials["base_url"]), "/")
@@ -245,4 +267,64 @@ func llmEndpointAndModel(providerType string, credentials map[string]string) (st
 		}
 		return baseURL + "/chat/completions", model, nil
 	}
+}
+
+func llmPricingProfile(providerType, model string, credentials map[string]string) (domain.LLMPricing, bool) {
+	if pricing, ok := pricingFromCredentials(credentials); ok {
+		return pricing, true
+	}
+
+	normalizedModel := strings.ToLower(strings.TrimSpace(model))
+	switch providerType {
+	case domain.ProviderOpenAI:
+		switch normalizedModel {
+		case "gpt-4o-mini":
+			return domain.LLMPricing{
+				InputCostPerMillionUSD:  0.15,
+				OutputCostPerMillionUSD: 0.60,
+			}, true
+		case "gpt-4o":
+			return domain.LLMPricing{
+				InputCostPerMillionUSD:  2.50,
+				OutputCostPerMillionUSD: 10.00,
+			}, true
+		}
+	case domain.ProviderDeepSeek:
+		switch normalizedModel {
+		case "deepseek-chat":
+			return domain.LLMPricing{
+				InputCostPerMillionUSD:  0.27,
+				OutputCostPerMillionUSD: 1.10,
+			}, true
+		}
+	}
+
+	return domain.LLMPricing{}, false
+}
+
+func pricingFromCredentials(credentials map[string]string) (domain.LLMPricing, bool) {
+	input, inputOk := parsePricingValue(credentials["input_cost_per_million_usd"])
+	output, outputOk := parsePricingValue(credentials["output_cost_per_million_usd"])
+	if !inputOk || !outputOk {
+		return domain.LLMPricing{}, false
+	}
+
+	return domain.LLMPricing{
+		InputCostPerMillionUSD:  input,
+		OutputCostPerMillionUSD: output,
+	}, true
+}
+
+func parsePricingValue(value string) (float64, bool) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return 0, false
+	}
+
+	parsed, err := strconv.ParseFloat(trimmed, 64)
+	if err != nil || parsed < 0 {
+		return 0, false
+	}
+
+	return parsed, true
 }

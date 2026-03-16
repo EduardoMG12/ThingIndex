@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
@@ -29,11 +30,30 @@ func (r *gormDocumentProcessingRepository) GetDocumentByIDForProcessing(ctx cont
 	return &doc, nil
 }
 
-func (r *gormDocumentProcessingRepository) UpdateDocumentStatus(ctx context.Context, documentID uint, status string) error {
+func (r *gormDocumentProcessingRepository) UpdateDocumentProcessingState(ctx context.Context, documentID uint, state domain.DocumentProcessingState) error {
+	updates := map[string]any{
+		"status": state.Status,
+	}
+	if state.Stage != "" {
+		updates["processing_stage"] = state.Stage
+	}
+	if state.StatusDetail != "" || state.Stage != "" {
+		updates["status_detail"] = state.StatusDetail
+	}
+	if state.LastError != "" || state.Status == domain.DocumentStatusIndexed {
+		updates["last_processing_error"] = state.LastError
+	}
+	if state.StartedAt != nil {
+		updates["index_started_at"] = state.StartedAt.UTC()
+	}
+	if state.CompletedAt != nil {
+		updates["indexed_at"] = state.CompletedAt.UTC()
+	}
+
 	return r.db.WithContext(ctx).
 		Model(&models.Document{}).
 		Where("id = ?", documentID).
-		Update("status", status).Error
+		Updates(updates).Error
 }
 
 func (r *gormDocumentProcessingRepository) ReplaceIndexingResult(ctx context.Context, documentID uint, result domain.IndexingResult) error {
@@ -92,9 +112,16 @@ func (r *gormDocumentProcessingRepository) ReplaceIndexingResult(ctx context.Con
 			}
 		}
 
+		completedAt := time.Now().UTC()
 		return tx.Model(&models.Document{}).
 			Where("id = ?", documentID).
-			Update("status", domain.DocumentStatusIndexed).Error
+			Updates(map[string]any{
+				"status":                domain.DocumentStatusIndexed,
+				"processing_stage":      "COMPLETED",
+				"status_detail":         "Indexacao concluida e pronta para consulta.",
+				"indexed_at":            completedAt,
+				"last_processing_error": "",
+			}).Error
 	})
 }
 

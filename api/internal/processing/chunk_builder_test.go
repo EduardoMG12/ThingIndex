@@ -94,6 +94,44 @@ func TestAppendPipelineMetadataAddsVersionMarkers(t *testing.T) {
 	}
 }
 
+func TestAppendLLMUsageMetadataAddsTelemetry(t *testing.T) {
+	t.Parallel()
+
+	result := domain.IndexingResult{}
+	usage := llmUsageSnapshot{
+		ProviderType:          "OPENAI",
+		Model:                 "gpt-4o-mini",
+		RequestCount:          4,
+		EstimatedInputTokens:  1200,
+		EstimatedOutputTokens: 340,
+		EstimatedTotalTokens:  1540,
+		PricingAvailable:      true,
+		InputCostUSD:          0.000180,
+		OutputCostUSD:         0.000204,
+		TotalCostUSD:          0.000384,
+	}
+
+	appendLLMUsageMetadata(&result, 2, usage)
+
+	keys := map[string]string{}
+	for _, pair := range result.MetadataPairs {
+		keys[pair.Key] = pair.Value
+	}
+
+	if keys["llm_provider_type"] != "OPENAI" {
+		t.Fatalf("unexpected llm provider type: %q", keys["llm_provider_type"])
+	}
+	if keys["llm_model"] != "gpt-4o-mini" {
+		t.Fatalf("unexpected llm model: %q", keys["llm_model"])
+	}
+	if keys["llm_request_count"] != "4" {
+		t.Fatalf("unexpected llm request count: %q", keys["llm_request_count"])
+	}
+	if keys["llm_total_cost_usd"] == "" {
+		t.Fatal("expected total cost metadata")
+	}
+}
+
 func TestBuildDocumentChunksRespectsSectionBoundaries(t *testing.T) {
 	t.Parallel()
 
