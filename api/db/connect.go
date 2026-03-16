@@ -38,6 +38,8 @@ func Connect() (*gorm.DB, error) {
 		&models.DocumentOutlineNode{},
 		&models.OutboxEvent{},
 		&models.UserProviderConfig{},
+		&models.PricingSource{},
+		&models.ModelPrice{},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("fail to run automatic migrations: %w", err)
