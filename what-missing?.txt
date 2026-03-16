@@ -1,0 +1,4 @@
+  - acurácia de indexação: existe score heurístico, não avaliação real contra ground truth
+  - observabilidade operacional: existe bastante dado, mas ainda não é um painel completo de SRE
+  - fila/retentativas/DLQ: a base existe, mas eu ainda trataria como pipeline funcional, não como operação endurecida
+  - enriquecimento por LLM: funciona quando provider está configurado, mas depende da configuração do usuário e do provider ativo
