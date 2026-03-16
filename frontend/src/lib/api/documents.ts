@@ -260,6 +260,60 @@ export type IndexMonitoring = {
     llm: LLMMonitoring | null;
 };
 
+type DocumentMonitoringSummaryApiRecord = {
+    total_documents?: number;
+    indexed_documents?: number;
+    processing_documents?: number;
+    queued_documents?: number;
+    failed_documents?: number;
+    documents_with_llm?: number;
+    pricing_aware_documents?: number;
+    total_llm_requests?: number;
+    total_input_tokens?: number;
+    total_output_tokens?: number;
+    total_tokens?: number;
+    total_estimated_cost_usd?: number;
+    average_duration_ms?: number;
+    average_quality_score?: number;
+    last_completed_at?: string | null;
+    model_breakdown?: Array<{
+        provider_type?: string;
+        model?: string;
+        document_count?: number;
+        request_count?: number;
+        total_tokens?: number;
+        total_cost_usd?: number;
+    }>;
+};
+
+export type DocumentMonitoringModelAggregate = {
+    provider_type?: string;
+    model?: string;
+    document_count: number;
+    request_count: number;
+    total_tokens: number;
+    total_cost_usd: number;
+};
+
+export type DocumentMonitoringSummary = {
+    total_documents: number;
+    indexed_documents: number;
+    processing_documents: number;
+    queued_documents: number;
+    failed_documents: number;
+    documents_with_llm: number;
+    pricing_aware_documents: number;
+    total_llm_requests: number;
+    total_input_tokens: number;
+    total_output_tokens: number;
+    total_tokens: number;
+    total_estimated_cost_usd: number;
+    average_duration_ms: number;
+    average_quality_score: number;
+    last_completed_at?: string;
+    model_breakdown: DocumentMonitoringModelAggregate[];
+};
+
 function normalizeDocumentChunks(value: DocumentIndexApiRecord["chunks"]): DocumentChunk[] {
     if (!Array.isArray(value)) {
         return [];
@@ -338,6 +392,40 @@ function normalizeIndexMonitoring(value: DocumentIndexApiRecord["monitoring"]): 
     };
 }
 
+function normalizeDocumentMonitoringSummary(value: DocumentMonitoringSummaryApiRecord | null | undefined): DocumentMonitoringSummary {
+    const modelBreakdown = Array.isArray(value?.model_breakdown)
+        ? value.model_breakdown.map((item) => ({
+              provider_type: typeof item?.provider_type === "string" ? item.provider_type : undefined,
+              model: typeof item?.model === "string" ? item.model : undefined,
+              document_count: typeof item?.document_count === "number" ? item.document_count : 0,
+              request_count: typeof item?.request_count === "number" ? item.request_count : 0,
+              total_tokens: typeof item?.total_tokens === "number" ? item.total_tokens : 0,
+              total_cost_usd: typeof item?.total_cost_usd === "number" ? item.total_cost_usd : 0,
+          }))
+        : [];
+
+    return {
+        total_documents: typeof value?.total_documents === "number" ? value.total_documents : 0,
+        indexed_documents: typeof value?.indexed_documents === "number" ? value.indexed_documents : 0,
+        processing_documents: typeof value?.processing_documents === "number" ? value.processing_documents : 0,
+        queued_documents: typeof value?.queued_documents === "number" ? value.queued_documents : 0,
+        failed_documents: typeof value?.failed_documents === "number" ? value.failed_documents : 0,
+        documents_with_llm: typeof value?.documents_with_llm === "number" ? value.documents_with_llm : 0,
+        pricing_aware_documents: typeof value?.pricing_aware_documents === "number" ? value.pricing_aware_documents : 0,
+        total_llm_requests: typeof value?.total_llm_requests === "number" ? value.total_llm_requests : 0,
+        total_input_tokens: typeof value?.total_input_tokens === "number" ? value.total_input_tokens : 0,
+        total_output_tokens: typeof value?.total_output_tokens === "number" ? value.total_output_tokens : 0,
+        total_tokens: typeof value?.total_tokens === "number" ? value.total_tokens : 0,
+        total_estimated_cost_usd:
+            typeof value?.total_estimated_cost_usd === "number" ? value.total_estimated_cost_usd : 0,
+        average_duration_ms: typeof value?.average_duration_ms === "number" ? value.average_duration_ms : 0,
+        average_quality_score:
+            typeof value?.average_quality_score === "number" ? value.average_quality_score : 0,
+        last_completed_at: typeof value?.last_completed_at === "string" ? value.last_completed_at : undefined,
+        model_breakdown: modelBreakdown,
+    };
+}
+
 export async function fetchDocumentIndex(documentId: number, signal?: AbortSignal): Promise<DocumentIndex> {
     const response = await fetchWithAuthRedirect(`/api/documents/${documentId}/index`, {
         method: "GET",
@@ -365,4 +453,27 @@ export async function fetchDocumentIndex(documentId: number, signal?: AbortSigna
         outline_nodes: normalizeOutlineNodes(payload.data.outline_nodes),
         monitoring: normalizeIndexMonitoring(payload.data.monitoring),
     };
+}
+
+export async function fetchDocumentMonitoringSummary(signal?: AbortSignal): Promise<DocumentMonitoringSummary> {
+    const response = await fetchWithAuthRedirect("/api/documents/monitoring/summary", {
+        method: "GET",
+        cache: "no-store",
+        signal,
+    });
+
+    const payload = (await response.json().catch(() => null)) as
+        | ApiSuccessResponse<DocumentMonitoringSummaryApiRecord>
+        | ApiErrorResponse
+        | null;
+
+    if (!response.ok) {
+        throw new Error(payload?.message || "Nao foi possivel carregar o resumo de monitoramento.");
+    }
+
+    if (!hasResponseData(payload) || !payload.data) {
+        return normalizeDocumentMonitoringSummary(null);
+    }
+
+    return normalizeDocumentMonitoringSummary(payload.data);
 }
