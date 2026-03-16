@@ -12,13 +12,14 @@ type DocumentContent struct {
 }
 
 type CollectionContext struct {
-	Collection     *models.Collection
-	Documents      []models.Document
-	DocumentPages  []models.DocumentPage
-	ParagraphNodes []models.ParagraphNode
-	TableSections  []models.TableSection
-	MetadataPairs  []models.MetadataPair
-	OutlineNodes   []models.DocumentOutlineNode
+	Collection          *models.Collection
+	Documents           []models.Document
+	DocumentPages       []models.DocumentPage
+	ParagraphNodes      []models.ParagraphNode
+	TableSections       []models.TableSection
+	MetadataPairs       []models.MetadataPair
+	OutlineNodes        []models.DocumentOutlineNode
+	CollectionRetrieval *CollectionRetrievalResult
 }
 
 type DocumentIndex struct {
@@ -31,20 +32,23 @@ type DocumentIndex struct {
 	OutlineNodes    []models.DocumentOutlineNode
 	DocumentSummary string
 	TreeRetrieval   *TreeRetrievalResult
+	IndexEvaluation *IndexEvaluationResult
 }
 
 type TreeRetrievalResult struct {
-	Query    string
-	NodeHits []TreeNodeHit
-	PageHits []TreePageHit
-	UsedTree bool
-	Strategy string
+	Query          string
+	NodeHits       []TreeNodeHit
+	PageHits       []TreePageHit
+	TraversalSteps []TreeTraversalStep
+	UsedTree       bool
+	Strategy       string
 }
 
 type TreeNodeHit struct {
 	NodeID        string
 	Title         string
 	Summary       string
+	Level         int
 	StartPage     *int
 	EndPage       *int
 	Score         int
@@ -54,6 +58,55 @@ type TreeNodeHit struct {
 type TreePageHit struct {
 	PageNumber int
 	Summary    string
+	Snippet    string
+	Score      int
+}
+
+type TreeTraversalStep struct {
+	NodeID    string
+	Title     string
+	Level     int
+	Score     int
+	StartPage *int
+	EndPage   *int
+}
+
+type IndexEvaluationResult struct {
+	CoverageRatio      float64
+	TotalNodes         int
+	LowConfidenceNodes int
+	OversizedNodes     int
+	MaxDepth           int
+	RetrievalReady     bool
+}
+
+type CollectionRetrievalResult struct {
+	Query        string
+	DocumentHits []CollectionDocumentHit
+	NodeHits     []CollectionNodeHit
+	PageHits     []CollectionPageHit
+	Strategy     string
+}
+
+type CollectionDocumentHit struct {
+	DocumentID uint
+	Title      string
+	Score      int
+}
+
+type CollectionNodeHit struct {
+	DocumentID uint
+	NodeID     string
+	Title      string
+	Summary    string
+	Score      int
+	StartPage  *int
+	EndPage    *int
+}
+
+type CollectionPageHit struct {
+	DocumentID uint
+	PageNumber int
 	Snippet    string
 	Score      int
 }
@@ -119,7 +172,7 @@ type DocumentCatalogUseCase interface {
 	GetDocumentIndex(ctx context.Context, userID, documentID uint, query string) (*DocumentIndex, error)
 	ListDocumentsByCategory(ctx context.Context, categoryID uint, userID uint) ([]models.Document, error)
 	ListCollections(ctx context.Context, userID uint) ([]models.Collection, error)
-	GetCollectionContext(ctx context.Context, userID, collectionID uint) (*CollectionContext, error)
+	GetCollectionContext(ctx context.Context, userID, collectionID uint, query string) (*CollectionContext, error)
 	StoreParagraphNodes(ctx context.Context, userID, documentID uint, nodes []models.ParagraphNode) ([]models.ParagraphNode, error)
 	StoreTableSections(ctx context.Context, userID, documentID uint, sections []models.TableSection) ([]models.TableSection, error)
 	StoreMetadataPairs(ctx context.Context, userID, documentID uint, pairs []models.MetadataPair) ([]models.MetadataPair, error)

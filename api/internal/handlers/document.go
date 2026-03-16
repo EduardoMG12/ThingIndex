@@ -168,7 +168,7 @@ func (h *DocumentHandler) GetCollectionContext(c *gin.Context) {
 		return
 	}
 
-	collectionContext, err := h.useCase.GetCollectionContext(c.Request.Context(), userID, collectionID)
+	collectionContext, err := h.useCase.GetCollectionContext(c.Request.Context(), userID, collectionID, c.Query("q"))
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrCollectionNotFound):

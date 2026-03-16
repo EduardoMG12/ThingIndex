@@ -549,6 +549,7 @@ func (u *documentCatalogUseCase) GetDocumentIndex(ctx context.Context, userID, d
 	if strings.TrimSpace(query) != "" {
 		index.TreeRetrieval = buildTreeRetrieval(strings.TrimSpace(query), outlineNodes, documentPages)
 	}
+	index.IndexEvaluation = buildIndexEvaluation(metadataPairs, outlineNodes)
 
 	return index, nil
 }
@@ -561,13 +562,17 @@ func (u *documentCatalogUseCase) ListCollections(ctx context.Context, userID uin
 	return u.collectionRepo.ListCollectionsByUserID(ctx, userID)
 }
 
-func (u *documentCatalogUseCase) GetCollectionContext(ctx context.Context, userID, collectionID uint) (*domain.CollectionContext, error) {
+func (u *documentCatalogUseCase) GetCollectionContext(ctx context.Context, userID, collectionID uint, query string) (*domain.CollectionContext, error) {
 	collectionContext, err := u.collectionContextRepo.GetCollectionContext(ctx, userID, collectionID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrCollectionNotFound
 		}
 		return nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+	}
+
+	if strings.TrimSpace(query) != "" {
+		collectionContext.CollectionRetrieval = buildCollectionRetrieval(strings.TrimSpace(query), collectionContext.Documents, collectionContext.DocumentPages, collectionContext.OutlineNodes)
 	}
 
 	return collectionContext, nil
@@ -631,41 +636,14 @@ func buildTreeRetrieval(query string, nodes []models.DocumentOutlineNode, pages 
 		return nil
 	}
 
-	nodeHits := make([]domain.TreeNodeHit, 0, len(nodes))
-	for _, node := range nodes {
-		score := retrievalScore(strings.Join([]string{node.Title, node.Summary}, " "), queryTerms)
-		if score == 0 {
-			continue
-		}
-
-		nodeHits = append(nodeHits, domain.TreeNodeHit{
-			NodeID:        node.NodeID,
-			Title:         node.Title,
-			Summary:       node.Summary,
-			StartPage:     node.StartPage,
-			EndPage:       node.EndPage,
-			Score:         score,
-			SequenceOrder: node.SequenceOrder,
-		})
-	}
-
-	sort.Slice(nodeHits, func(i, j int) bool {
-		if nodeHits[i].Score == nodeHits[j].Score {
-			return nodeHits[i].SequenceOrder < nodeHits[j].SequenceOrder
-		}
-		return nodeHits[i].Score > nodeHits[j].Score
-	})
-	if len(nodeHits) > 5 {
-		nodeHits = nodeHits[:5]
-	}
-
+	nodeHits, traversalSteps := traverseTree(queryTerms, nodes)
 	pageScoreByNumber := make(map[int]int, len(pages))
-	for _, hit := range nodeHits {
-		if hit.StartPage == nil || hit.EndPage == nil {
+	for _, step := range traversalSteps {
+		if step.StartPage == nil || step.EndPage == nil {
 			continue
 		}
-		for pageNumber := *hit.StartPage; pageNumber <= *hit.EndPage; pageNumber++ {
-			pageScoreByNumber[pageNumber] += hit.Score
+		for pageNumber := *step.StartPage; pageNumber <= *step.EndPage; pageNumber++ {
+			pageScoreByNumber[pageNumber] += step.Score
 		}
 	}
 
@@ -695,11 +673,271 @@ func buildTreeRetrieval(query string, nodes []models.DocumentOutlineNode, pages 
 	}
 
 	return &domain.TreeRetrievalResult{
-		Query:    query,
-		NodeHits: nodeHits,
-		PageHits: pageHits,
-		UsedTree: true,
-		Strategy: "tree-first",
+		Query:          query,
+		NodeHits:       nodeHits,
+		PageHits:       pageHits,
+		TraversalSteps: traversalSteps,
+		UsedTree:       true,
+		Strategy:       "tree-iterative",
+	}
+}
+
+func traverseTree(queryTerms []string, nodes []models.DocumentOutlineNode) ([]domain.TreeNodeHit, []domain.TreeTraversalStep) {
+	nodeByID := make(map[string]models.DocumentOutlineNode, len(nodes))
+	childrenByParent := make(map[string][]models.DocumentOutlineNode, len(nodes))
+	roots := make([]models.DocumentOutlineNode, 0)
+
+	for _, node := range nodes {
+		nodeByID[node.NodeID] = node
+		parentNodeID, _ := node.Metadata["parent_node_id"].(string)
+		if strings.TrimSpace(parentNodeID) == "" {
+			roots = append(roots, node)
+			continue
+		}
+		childrenByParent[parentNodeID] = append(childrenByParent[parentNodeID], node)
+	}
+
+	current := rankNodesForTraversal(roots, queryTerms)
+	if len(current) == 0 {
+		return nil, nil
+	}
+
+	hits := make([]domain.TreeNodeHit, 0, 5)
+	steps := make([]domain.TreeTraversalStep, 0, 5)
+	seen := make(map[string]struct{}, len(nodes))
+
+	for len(current) > 0 {
+		best := current[0]
+		if _, ok := seen[best.NodeID]; !ok {
+			seen[best.NodeID] = struct{}{}
+			hits = append(hits, domain.TreeNodeHit{
+				NodeID:        best.NodeID,
+				Title:         best.Title,
+				Summary:       best.Summary,
+				Level:         best.Level,
+				StartPage:     best.StartPage,
+				EndPage:       best.EndPage,
+				Score:         best.Score,
+				SequenceOrder: best.SequenceOrder,
+			})
+			steps = append(steps, domain.TreeTraversalStep{
+				NodeID:    best.NodeID,
+				Title:     best.Title,
+				Level:     best.Level,
+				Score:     best.Score,
+				StartPage: best.StartPage,
+				EndPage:   best.EndPage,
+			})
+		}
+
+		children := childrenByParent[best.NodeID]
+		current = rankNodesForTraversal(children, queryTerms)
+		if len(hits) >= 5 {
+			break
+		}
+	}
+
+	return hits, steps
+}
+
+func rankNodesForTraversal(nodes []models.DocumentOutlineNode, queryTerms []string) []domain.TreeNodeHit {
+	hits := make([]domain.TreeNodeHit, 0, len(nodes))
+	for _, node := range nodes {
+		score := retrievalScore(strings.Join([]string{node.Title, node.Summary}, " "), queryTerms)
+		score += metadataIntValue(node.Metadata, "confidence_score") / 25
+		if score == 0 {
+			continue
+		}
+		hits = append(hits, domain.TreeNodeHit{
+			NodeID:        node.NodeID,
+			Title:         node.Title,
+			Summary:       node.Summary,
+			Level:         node.Level,
+			StartPage:     node.StartPage,
+			EndPage:       node.EndPage,
+			Score:         score,
+			SequenceOrder: node.SequenceOrder,
+		})
+	}
+
+	sort.Slice(hits, func(i, j int) bool {
+		if hits[i].Score == hits[j].Score {
+			return hits[i].SequenceOrder < hits[j].SequenceOrder
+		}
+		return hits[i].Score > hits[j].Score
+	})
+
+	if len(hits) > 3 {
+		hits = hits[:3]
+	}
+	return hits
+}
+
+func buildIndexEvaluation(metadataPairs []models.MetadataPair, nodes []models.DocumentOutlineNode) *domain.IndexEvaluationResult {
+	if len(metadataPairs) == 0 && len(nodes) == 0 {
+		return nil
+	}
+
+	pairMap := make(map[string]string, len(metadataPairs))
+	for _, pair := range metadataPairs {
+		if _, exists := pairMap[pair.Key]; !exists {
+			pairMap[pair.Key] = pair.Value
+		}
+	}
+
+	evaluation := &domain.IndexEvaluationResult{
+		CoverageRatio:      parseFloatMetric(pairMap["tree_coverage_ratio"]),
+		TotalNodes:         parseIntMetric(pairMap["tree_total_nodes"], len(nodes)),
+		LowConfidenceNodes: parseIntMetric(pairMap["tree_low_confidence_nodes"], 0),
+		OversizedNodes:     parseIntMetric(pairMap["tree_oversized_nodes"], 0),
+		MaxDepth:           parseIntMetric(pairMap["tree_max_depth"], 0),
+	}
+	evaluation.RetrievalReady = evaluation.CoverageRatio >= 0.6 && evaluation.TotalNodes > 0
+	return evaluation
+}
+
+func buildCollectionRetrieval(
+	query string,
+	documents []models.Document,
+	pages []models.DocumentPage,
+	nodes []models.DocumentOutlineNode,
+) *domain.CollectionRetrievalResult {
+	queryTerms := tokenizeRetrievalText(query)
+	if len(queryTerms) == 0 {
+		return nil
+	}
+
+	documentTitles := make(map[uint]string, len(documents))
+	for _, doc := range documents {
+		documentTitles[doc.ID] = doc.Title
+	}
+
+	documentScores := make(map[uint]int, len(documents))
+	nodeHits := make([]domain.CollectionNodeHit, 0)
+	for _, node := range nodes {
+		score := retrievalScore(strings.Join([]string{node.Title, node.Summary}, " "), queryTerms)
+		score += metadataIntValue(node.Metadata, "confidence_score") / 25
+		if score == 0 {
+			continue
+		}
+
+		documentScores[node.DocumentID] += score
+		nodeHits = append(nodeHits, domain.CollectionNodeHit{
+			DocumentID: node.DocumentID,
+			NodeID:     node.NodeID,
+			Title:      node.Title,
+			Summary:    node.Summary,
+			Score:      score,
+			StartPage:  node.StartPage,
+			EndPage:    node.EndPage,
+		})
+	}
+
+	sort.Slice(nodeHits, func(i, j int) bool {
+		if nodeHits[i].Score == nodeHits[j].Score {
+			if nodeHits[i].DocumentID == nodeHits[j].DocumentID {
+				return nodeHits[i].NodeID < nodeHits[j].NodeID
+			}
+			return nodeHits[i].DocumentID < nodeHits[j].DocumentID
+		}
+		return nodeHits[i].Score > nodeHits[j].Score
+	})
+	if len(nodeHits) > 8 {
+		nodeHits = nodeHits[:8]
+	}
+
+	documentHits := make([]domain.CollectionDocumentHit, 0, len(documentScores))
+	for documentID, score := range documentScores {
+		documentHits = append(documentHits, domain.CollectionDocumentHit{
+			DocumentID: documentID,
+			Title:      documentTitles[documentID],
+			Score:      score,
+		})
+	}
+	sort.Slice(documentHits, func(i, j int) bool {
+		if documentHits[i].Score == documentHits[j].Score {
+			return documentHits[i].DocumentID < documentHits[j].DocumentID
+		}
+		return documentHits[i].Score > documentHits[j].Score
+	})
+	if len(documentHits) > 5 {
+		documentHits = documentHits[:5]
+	}
+
+	pageHits := make([]domain.CollectionPageHit, 0)
+	for _, page := range pages {
+		score := retrievalScore(strings.Join([]string{page.Summary, page.Content}, " "), queryTerms)
+		if score == 0 {
+			continue
+		}
+		documentScores[page.DocumentID] += score
+		pageHits = append(pageHits, domain.CollectionPageHit{
+			DocumentID: page.DocumentID,
+			PageNumber: page.PageNumber,
+			Snippet:    clampRetrievalSnippet(page.Content, 220),
+			Score:      score,
+		})
+	}
+	sort.Slice(pageHits, func(i, j int) bool {
+		if pageHits[i].Score == pageHits[j].Score {
+			if pageHits[i].DocumentID == pageHits[j].DocumentID {
+				return pageHits[i].PageNumber < pageHits[j].PageNumber
+			}
+			return pageHits[i].DocumentID < pageHits[j].DocumentID
+		}
+		return pageHits[i].Score > pageHits[j].Score
+	})
+	if len(pageHits) > 8 {
+		pageHits = pageHits[:8]
+	}
+
+	return &domain.CollectionRetrievalResult{
+		Query:        query,
+		DocumentHits: documentHits,
+		NodeHits:     nodeHits,
+		PageHits:     pageHits,
+		Strategy:     "collection-tree",
+	}
+}
+
+func parseIntMetric(value string, fallback int) int {
+	parsed, err := strconv.Atoi(strings.TrimSpace(value))
+	if err != nil {
+		return fallback
+	}
+	return parsed
+}
+
+func parseFloatMetric(value string) float64 {
+	parsed, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
+	if err != nil {
+		return 0
+	}
+	return parsed
+}
+
+func metadataIntValue(metadata map[string]any, key string) int {
+	if metadata == nil {
+		return 0
+	}
+	value, ok := metadata[key]
+	if !ok {
+		return 0
+	}
+
+	switch typed := value.(type) {
+	case int:
+		return typed
+	case int32:
+		return int(typed)
+	case int64:
+		return int(typed)
+	case float32:
+		return int(typed)
+	case float64:
+		return int(typed)
+	default:
+		return 0
 	}
 }
 

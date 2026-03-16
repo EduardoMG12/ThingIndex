@@ -151,25 +151,27 @@ type OutlineNodeResponse struct {
 }
 
 type CollectionContextResponse struct {
-	Collection     *CollectionResponse     `json:"collection"`
-	Documents      []DocumentResponse      `json:"documents"`
-	DocumentPages  []DocumentPageResponse  `json:"document_pages"`
-	ParagraphNodes []ParagraphNodeResponse `json:"paragraph_nodes"`
-	TableSections  []TableSectionResponse  `json:"table_sections"`
-	MetadataPairs  []MetadataPairResponse  `json:"metadata_pairs"`
-	OutlineNodes   []OutlineNodeResponse   `json:"outline_nodes"`
+	Collection          *CollectionResponse          `json:"collection"`
+	Documents           []DocumentResponse           `json:"documents"`
+	DocumentPages       []DocumentPageResponse       `json:"document_pages"`
+	ParagraphNodes      []ParagraphNodeResponse      `json:"paragraph_nodes"`
+	TableSections       []TableSectionResponse       `json:"table_sections"`
+	MetadataPairs       []MetadataPairResponse       `json:"metadata_pairs"`
+	OutlineNodes        []OutlineNodeResponse        `json:"outline_nodes"`
+	CollectionRetrieval *CollectionRetrievalResponse `json:"collection_retrieval,omitempty"`
 }
 
 type DocumentIndexResponse struct {
-	Document        *DocumentResponse       `json:"document"`
-	DocumentPages   []DocumentPageResponse  `json:"document_pages"`
-	ParagraphNodes  []ParagraphNodeResponse `json:"paragraph_nodes"`
-	TableSections   []TableSectionResponse  `json:"table_sections"`
-	MetadataPairs   []MetadataPairResponse  `json:"metadata_pairs"`
-	Chunks          []DocumentChunkResponse `json:"chunks"`
-	OutlineNodes    []OutlineNodeResponse   `json:"outline_nodes"`
-	DocumentSummary string                  `json:"document_summary"`
-	TreeRetrieval   *TreeRetrievalResponse  `json:"tree_retrieval,omitempty"`
+	Document        *DocumentResponse        `json:"document"`
+	DocumentPages   []DocumentPageResponse   `json:"document_pages"`
+	ParagraphNodes  []ParagraphNodeResponse  `json:"paragraph_nodes"`
+	TableSections   []TableSectionResponse   `json:"table_sections"`
+	MetadataPairs   []MetadataPairResponse   `json:"metadata_pairs"`
+	Chunks          []DocumentChunkResponse  `json:"chunks"`
+	OutlineNodes    []OutlineNodeResponse    `json:"outline_nodes"`
+	DocumentSummary string                   `json:"document_summary"`
+	TreeRetrieval   *TreeRetrievalResponse   `json:"tree_retrieval,omitempty"`
+	IndexEvaluation *IndexEvaluationResponse `json:"index_evaluation,omitempty"`
 }
 
 type TreeRetrievalNodeHitResponse struct {
@@ -190,11 +192,61 @@ type TreeRetrievalPageHitResponse struct {
 }
 
 type TreeRetrievalResponse struct {
-	Query    string                         `json:"query"`
-	NodeHits []TreeRetrievalNodeHitResponse `json:"node_hits"`
-	PageHits []TreeRetrievalPageHitResponse `json:"page_hits"`
-	UsedTree bool                           `json:"used_tree"`
-	Strategy string                         `json:"strategy"`
+	Query          string                         `json:"query"`
+	NodeHits       []TreeRetrievalNodeHitResponse `json:"node_hits"`
+	PageHits       []TreeRetrievalPageHitResponse `json:"page_hits"`
+	TraversalSteps []TreeTraversalStepResponse    `json:"traversal_steps"`
+	UsedTree       bool                           `json:"used_tree"`
+	Strategy       string                         `json:"strategy"`
+}
+
+type TreeTraversalStepResponse struct {
+	NodeID    string `json:"node_id"`
+	Title     string `json:"title"`
+	Level     int    `json:"level"`
+	Score     int    `json:"score"`
+	StartPage *int   `json:"start_page,omitempty"`
+	EndPage   *int   `json:"end_page,omitempty"`
+}
+
+type IndexEvaluationResponse struct {
+	CoverageRatio      float64 `json:"coverage_ratio"`
+	TotalNodes         int     `json:"total_nodes"`
+	LowConfidenceNodes int     `json:"low_confidence_nodes"`
+	OversizedNodes     int     `json:"oversized_nodes"`
+	MaxDepth           int     `json:"max_depth"`
+	RetrievalReady     bool    `json:"retrieval_ready"`
+}
+
+type CollectionRetrievalResponse struct {
+	Query        string                          `json:"query"`
+	DocumentHits []CollectionDocumentHitResponse `json:"document_hits"`
+	NodeHits     []CollectionNodeHitResponse     `json:"node_hits"`
+	PageHits     []CollectionPageHitResponse     `json:"page_hits"`
+	Strategy     string                          `json:"strategy"`
+}
+
+type CollectionDocumentHitResponse struct {
+	DocumentID uint   `json:"document_id"`
+	Title      string `json:"title"`
+	Score      int    `json:"score"`
+}
+
+type CollectionNodeHitResponse struct {
+	DocumentID uint   `json:"document_id"`
+	NodeID     string `json:"node_id"`
+	Title      string `json:"title"`
+	Summary    string `json:"summary,omitempty"`
+	Score      int    `json:"score"`
+	StartPage  *int   `json:"start_page,omitempty"`
+	EndPage    *int   `json:"end_page,omitempty"`
+}
+
+type CollectionPageHitResponse struct {
+	DocumentID uint   `json:"document_id"`
+	PageNumber int    `json:"page_number"`
+	Snippet    string `json:"snippet,omitempty"`
+	Score      int    `json:"score"`
 }
 
 func ToCategoryResponse(category *models.DocumentCategory) *CategoryResponse {
@@ -437,13 +489,14 @@ func ToCollectionContextResponse(ctx *domain.CollectionContext) *CollectionConte
 	}
 
 	return &CollectionContextResponse{
-		Collection:     ToCollectionResponse(ctx.Collection),
-		Documents:      ToDocumentsResponse(ctx.Documents),
-		DocumentPages:  ToDocumentPageResponses(ctx.DocumentPages),
-		ParagraphNodes: ToParagraphNodeResponses(ctx.ParagraphNodes),
-		TableSections:  ToTableSectionResponses(ctx.TableSections),
-		MetadataPairs:  ToMetadataPairResponses(ctx.MetadataPairs),
-		OutlineNodes:   ToOutlineNodeResponses(ctx.OutlineNodes),
+		Collection:          ToCollectionResponse(ctx.Collection),
+		Documents:           ToDocumentsResponse(ctx.Documents),
+		DocumentPages:       ToDocumentPageResponses(ctx.DocumentPages),
+		ParagraphNodes:      ToParagraphNodeResponses(ctx.ParagraphNodes),
+		TableSections:       ToTableSectionResponses(ctx.TableSections),
+		MetadataPairs:       ToMetadataPairResponses(ctx.MetadataPairs),
+		OutlineNodes:        ToOutlineNodeResponses(ctx.OutlineNodes),
+		CollectionRetrieval: ToCollectionRetrievalResponse(ctx.CollectionRetrieval),
 	}
 }
 
@@ -462,6 +515,7 @@ func ToDocumentIndexResponse(index *domain.DocumentIndex) *DocumentIndexResponse
 		OutlineNodes:    ToOutlineNodeResponses(index.OutlineNodes),
 		DocumentSummary: index.DocumentSummary,
 		TreeRetrieval:   ToTreeRetrievalResponse(index.TreeRetrieval),
+		IndexEvaluation: ToIndexEvaluationResponse(index.IndexEvaluation),
 	}
 }
 
@@ -493,11 +547,85 @@ func ToTreeRetrievalResponse(result *domain.TreeRetrievalResult) *TreeRetrievalR
 		})
 	}
 
+	steps := make([]TreeTraversalStepResponse, 0, len(result.TraversalSteps))
+	for _, step := range result.TraversalSteps {
+		steps = append(steps, TreeTraversalStepResponse{
+			NodeID:    step.NodeID,
+			Title:     step.Title,
+			Level:     step.Level,
+			Score:     step.Score,
+			StartPage: step.StartPage,
+			EndPage:   step.EndPage,
+		})
+	}
+
 	return &TreeRetrievalResponse{
-		Query:    result.Query,
-		NodeHits: nodeHits,
-		PageHits: pageHits,
-		UsedTree: result.UsedTree,
-		Strategy: result.Strategy,
+		Query:          result.Query,
+		NodeHits:       nodeHits,
+		PageHits:       pageHits,
+		TraversalSteps: steps,
+		UsedTree:       result.UsedTree,
+		Strategy:       result.Strategy,
+	}
+}
+
+func ToIndexEvaluationResponse(result *domain.IndexEvaluationResult) *IndexEvaluationResponse {
+	if result == nil {
+		return nil
+	}
+
+	return &IndexEvaluationResponse{
+		CoverageRatio:      result.CoverageRatio,
+		TotalNodes:         result.TotalNodes,
+		LowConfidenceNodes: result.LowConfidenceNodes,
+		OversizedNodes:     result.OversizedNodes,
+		MaxDepth:           result.MaxDepth,
+		RetrievalReady:     result.RetrievalReady,
+	}
+}
+
+func ToCollectionRetrievalResponse(result *domain.CollectionRetrievalResult) *CollectionRetrievalResponse {
+	if result == nil {
+		return nil
+	}
+
+	documentHits := make([]CollectionDocumentHitResponse, 0, len(result.DocumentHits))
+	for _, hit := range result.DocumentHits {
+		documentHits = append(documentHits, CollectionDocumentHitResponse{
+			DocumentID: hit.DocumentID,
+			Title:      hit.Title,
+			Score:      hit.Score,
+		})
+	}
+
+	nodeHits := make([]CollectionNodeHitResponse, 0, len(result.NodeHits))
+	for _, hit := range result.NodeHits {
+		nodeHits = append(nodeHits, CollectionNodeHitResponse{
+			DocumentID: hit.DocumentID,
+			NodeID:     hit.NodeID,
+			Title:      hit.Title,
+			Summary:    hit.Summary,
+			Score:      hit.Score,
+			StartPage:  hit.StartPage,
+			EndPage:    hit.EndPage,
+		})
+	}
+
+	pageHits := make([]CollectionPageHitResponse, 0, len(result.PageHits))
+	for _, hit := range result.PageHits {
+		pageHits = append(pageHits, CollectionPageHitResponse{
+			DocumentID: hit.DocumentID,
+			PageNumber: hit.PageNumber,
+			Snippet:    hit.Snippet,
+			Score:      hit.Score,
+		})
+	}
+
+	return &CollectionRetrievalResponse{
+		Query:        result.Query,
+		DocumentHits: documentHits,
+		NodeHits:     nodeHits,
+		PageHits:     pageHits,
+		Strategy:     result.Strategy,
 	}
 }
