@@ -9,6 +9,7 @@ import (
 	"mime"
 	"net/http"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -489,13 +490,18 @@ func (u *documentCatalogUseCase) GetDocumentContent(ctx context.Context, userID,
 	}, nil
 }
 
-func (u *documentCatalogUseCase) GetDocumentIndex(ctx context.Context, userID, documentID uint) (*domain.DocumentIndex, error) {
+func (u *documentCatalogUseCase) GetDocumentIndex(ctx context.Context, userID, documentID uint, query string) (*domain.DocumentIndex, error) {
 	doc, err := u.GetDocument(ctx, userID, documentID)
 	if err != nil {
 		return nil, err
 	}
 
 	documentIDs := []uint{documentID}
+	documentPages, err := u.structuredDataRepo.GetDocumentPagesByDocumentIDs(ctx, documentIDs)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
+	}
+
 	paragraphNodes, err := u.structuredDataRepo.GetParagraphNodesByDocumentIDs(ctx, documentIDs)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
@@ -529,15 +535,22 @@ func (u *documentCatalogUseCase) GetDocumentIndex(ctx context.Context, userID, d
 		}
 	}
 
-	return &domain.DocumentIndex{
+	index := &domain.DocumentIndex{
 		Document:        doc,
+		DocumentPages:   documentPages,
 		ParagraphNodes:  paragraphNodes,
 		TableSections:   tableSections,
 		MetadataPairs:   metadataPairs,
 		Chunks:          chunks,
 		OutlineNodes:    outlineNodes,
 		DocumentSummary: documentSummary,
-	}, nil
+	}
+
+	if strings.TrimSpace(query) != "" {
+		index.TreeRetrieval = buildTreeRetrieval(strings.TrimSpace(query), outlineNodes, documentPages)
+	}
+
+	return index, nil
 }
 
 func (u *documentCatalogUseCase) ListDocumentsByCategory(ctx context.Context, categoryID uint, userID uint) ([]models.Document, error) {
@@ -610,6 +623,130 @@ func (u *documentCatalogUseCase) StoreMetadataPairs(ctx context.Context, userID,
 	}
 
 	return pairs, nil
+}
+
+func buildTreeRetrieval(query string, nodes []models.DocumentOutlineNode, pages []models.DocumentPage) *domain.TreeRetrievalResult {
+	queryTerms := tokenizeRetrievalText(query)
+	if len(queryTerms) == 0 {
+		return nil
+	}
+
+	nodeHits := make([]domain.TreeNodeHit, 0, len(nodes))
+	for _, node := range nodes {
+		score := retrievalScore(strings.Join([]string{node.Title, node.Summary}, " "), queryTerms)
+		if score == 0 {
+			continue
+		}
+
+		nodeHits = append(nodeHits, domain.TreeNodeHit{
+			NodeID:        node.NodeID,
+			Title:         node.Title,
+			Summary:       node.Summary,
+			StartPage:     node.StartPage,
+			EndPage:       node.EndPage,
+			Score:         score,
+			SequenceOrder: node.SequenceOrder,
+		})
+	}
+
+	sort.Slice(nodeHits, func(i, j int) bool {
+		if nodeHits[i].Score == nodeHits[j].Score {
+			return nodeHits[i].SequenceOrder < nodeHits[j].SequenceOrder
+		}
+		return nodeHits[i].Score > nodeHits[j].Score
+	})
+	if len(nodeHits) > 5 {
+		nodeHits = nodeHits[:5]
+	}
+
+	pageScoreByNumber := make(map[int]int, len(pages))
+	for _, hit := range nodeHits {
+		if hit.StartPage == nil || hit.EndPage == nil {
+			continue
+		}
+		for pageNumber := *hit.StartPage; pageNumber <= *hit.EndPage; pageNumber++ {
+			pageScoreByNumber[pageNumber] += hit.Score
+		}
+	}
+
+	pageHits := make([]domain.TreePageHit, 0, len(pages))
+	for _, page := range pages {
+		score := pageScoreByNumber[page.PageNumber] + retrievalScore(strings.Join([]string{page.Summary, page.Content}, " "), queryTerms)
+		if score == 0 {
+			continue
+		}
+
+		pageHits = append(pageHits, domain.TreePageHit{
+			PageNumber: page.PageNumber,
+			Summary:    page.Summary,
+			Snippet:    clampRetrievalSnippet(page.Content, 220),
+			Score:      score,
+		})
+	}
+
+	sort.Slice(pageHits, func(i, j int) bool {
+		if pageHits[i].Score == pageHits[j].Score {
+			return pageHits[i].PageNumber < pageHits[j].PageNumber
+		}
+		return pageHits[i].Score > pageHits[j].Score
+	})
+	if len(pageHits) > 5 {
+		pageHits = pageHits[:5]
+	}
+
+	return &domain.TreeRetrievalResult{
+		Query:    query,
+		NodeHits: nodeHits,
+		PageHits: pageHits,
+		UsedTree: true,
+		Strategy: "tree-first",
+	}
+}
+
+func tokenizeRetrievalText(value string) []string {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	if normalized == "" {
+		return nil
+	}
+
+	normalized = strings.NewReplacer(",", " ", ".", " ", ";", " ", ":", " ", "\n", " ", "\t", " ").Replace(normalized)
+	parts := strings.Fields(normalized)
+	seen := make(map[string]struct{}, len(parts))
+	tokens := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if len(part) < 2 {
+			continue
+		}
+		if _, ok := seen[part]; ok {
+			continue
+		}
+		seen[part] = struct{}{}
+		tokens = append(tokens, part)
+	}
+	return tokens
+}
+
+func retrievalScore(text string, queryTerms []string) int {
+	normalized := strings.ToLower(strings.TrimSpace(text))
+	if normalized == "" || len(queryTerms) == 0 {
+		return 0
+	}
+
+	score := 0
+	for _, term := range queryTerms {
+		if strings.Contains(normalized, term) {
+			score++
+		}
+	}
+	return score
+}
+
+func clampRetrievalSnippet(value string, maxLen int) string {
+	cleaned := strings.Join(strings.Fields(strings.TrimSpace(value)), " ")
+	if len([]rune(cleaned)) <= maxLen {
+		return cleaned
+	}
+	return strings.TrimSpace(string([]rune(cleaned)[:maxLen]))
 }
 
 func extractExtension(contentType string) string {

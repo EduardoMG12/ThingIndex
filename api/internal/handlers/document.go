@@ -382,7 +382,7 @@ func (h *DocumentHandler) GetDocumentIndex(c *gin.Context) {
 		return
 	}
 
-	index, err := h.useCase.GetDocumentIndex(c.Request.Context(), userID, documentID)
+	index, err := h.useCase.GetDocumentIndex(c.Request.Context(), userID, documentID, c.Query("q"))
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrDocumentNotFound):

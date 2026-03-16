@@ -93,6 +93,16 @@ type ParagraphNodeResponse struct {
 	Metadata      map[string]any `json:"metadata"`
 }
 
+type DocumentPageResponse struct {
+	ID            uint           `json:"id"`
+	DocumentID    uint           `json:"document_id"`
+	PageNumber    int            `json:"page_number"`
+	Content       string         `json:"content"`
+	Summary       string         `json:"summary,omitempty"`
+	TokenEstimate int            `json:"token_estimate"`
+	Metadata      map[string]any `json:"metadata"`
+}
+
 type TableSectionResponse struct {
 	ID            uint           `json:"id"`
 	DocumentID    uint           `json:"document_id"`
@@ -128,16 +138,22 @@ type OutlineNodeResponse struct {
 	ID            uint           `json:"id"`
 	DocumentID    uint           `json:"document_id"`
 	SequenceOrder int            `json:"sequence_order"`
+	NodeID        string         `json:"node_id"`
+	ParentID      *uint          `json:"parent_id,omitempty"`
 	Level         int            `json:"level"`
 	Title         string         `json:"title"`
 	Slug          string         `json:"slug,omitempty"`
 	Summary       string         `json:"summary,omitempty"`
+	StartPage     *int           `json:"start_page,omitempty"`
+	EndPage       *int           `json:"end_page,omitempty"`
+	NodePath      string         `json:"node_path,omitempty"`
 	Metadata      map[string]any `json:"metadata"`
 }
 
 type CollectionContextResponse struct {
 	Collection     *CollectionResponse     `json:"collection"`
 	Documents      []DocumentResponse      `json:"documents"`
+	DocumentPages  []DocumentPageResponse  `json:"document_pages"`
 	ParagraphNodes []ParagraphNodeResponse `json:"paragraph_nodes"`
 	TableSections  []TableSectionResponse  `json:"table_sections"`
 	MetadataPairs  []MetadataPairResponse  `json:"metadata_pairs"`
@@ -146,12 +162,39 @@ type CollectionContextResponse struct {
 
 type DocumentIndexResponse struct {
 	Document        *DocumentResponse       `json:"document"`
+	DocumentPages   []DocumentPageResponse  `json:"document_pages"`
 	ParagraphNodes  []ParagraphNodeResponse `json:"paragraph_nodes"`
 	TableSections   []TableSectionResponse  `json:"table_sections"`
 	MetadataPairs   []MetadataPairResponse  `json:"metadata_pairs"`
 	Chunks          []DocumentChunkResponse `json:"chunks"`
 	OutlineNodes    []OutlineNodeResponse   `json:"outline_nodes"`
 	DocumentSummary string                  `json:"document_summary"`
+	TreeRetrieval   *TreeRetrievalResponse  `json:"tree_retrieval,omitempty"`
+}
+
+type TreeRetrievalNodeHitResponse struct {
+	NodeID        string `json:"node_id"`
+	Title         string `json:"title"`
+	Summary       string `json:"summary,omitempty"`
+	StartPage     *int   `json:"start_page,omitempty"`
+	EndPage       *int   `json:"end_page,omitempty"`
+	Score         int    `json:"score"`
+	SequenceOrder int    `json:"sequence_order"`
+}
+
+type TreeRetrievalPageHitResponse struct {
+	PageNumber int    `json:"page_number"`
+	Summary    string `json:"summary,omitempty"`
+	Snippet    string `json:"snippet,omitempty"`
+	Score      int    `json:"score"`
+}
+
+type TreeRetrievalResponse struct {
+	Query    string                         `json:"query"`
+	NodeHits []TreeRetrievalNodeHitResponse `json:"node_hits"`
+	PageHits []TreeRetrievalPageHitResponse `json:"page_hits"`
+	UsedTree bool                           `json:"used_tree"`
+	Strategy string                         `json:"strategy"`
 }
 
 func ToCategoryResponse(category *models.DocumentCategory) *CategoryResponse {
@@ -272,6 +315,27 @@ func ToParagraphNodeResponses(nodes []models.ParagraphNode) []ParagraphNodeRespo
 	return items
 }
 
+func ToDocumentPageResponses(pages []models.DocumentPage) []DocumentPageResponse {
+	items := make([]DocumentPageResponse, 0, len(pages))
+	for _, page := range pages {
+		metadata := page.Metadata
+		if metadata == nil {
+			metadata = map[string]any{}
+		}
+
+		items = append(items, DocumentPageResponse{
+			ID:            page.ID,
+			DocumentID:    page.DocumentID,
+			PageNumber:    page.PageNumber,
+			Content:       page.Content,
+			Summary:       page.Summary,
+			TokenEstimate: page.TokenEstimate,
+			Metadata:      metadata,
+		})
+	}
+	return items
+}
+
 func ToTableSectionResponses(sections []models.TableSection) []TableSectionResponse {
 	items := make([]TableSectionResponse, 0, len(sections))
 	for _, section := range sections {
@@ -351,10 +415,15 @@ func ToOutlineNodeResponses(nodes []models.DocumentOutlineNode) []OutlineNodeRes
 			ID:            node.ID,
 			DocumentID:    node.DocumentID,
 			SequenceOrder: node.SequenceOrder,
+			NodeID:        node.NodeID,
+			ParentID:      node.ParentID,
 			Level:         node.Level,
 			Title:         node.Title,
 			Slug:          node.Slug,
 			Summary:       node.Summary,
+			StartPage:     node.StartPage,
+			EndPage:       node.EndPage,
+			NodePath:      node.NodePath,
 			Metadata:      metadata,
 		})
 	}
@@ -370,6 +439,7 @@ func ToCollectionContextResponse(ctx *domain.CollectionContext) *CollectionConte
 	return &CollectionContextResponse{
 		Collection:     ToCollectionResponse(ctx.Collection),
 		Documents:      ToDocumentsResponse(ctx.Documents),
+		DocumentPages:  ToDocumentPageResponses(ctx.DocumentPages),
 		ParagraphNodes: ToParagraphNodeResponses(ctx.ParagraphNodes),
 		TableSections:  ToTableSectionResponses(ctx.TableSections),
 		MetadataPairs:  ToMetadataPairResponses(ctx.MetadataPairs),
@@ -384,11 +454,50 @@ func ToDocumentIndexResponse(index *domain.DocumentIndex) *DocumentIndexResponse
 
 	return &DocumentIndexResponse{
 		Document:        ToDocumentResponse(index.Document),
+		DocumentPages:   ToDocumentPageResponses(index.DocumentPages),
 		ParagraphNodes:  ToParagraphNodeResponses(index.ParagraphNodes),
 		TableSections:   ToTableSectionResponses(index.TableSections),
 		MetadataPairs:   ToMetadataPairResponses(index.MetadataPairs),
 		Chunks:          ToDocumentChunkResponses(index.Chunks),
 		OutlineNodes:    ToOutlineNodeResponses(index.OutlineNodes),
 		DocumentSummary: index.DocumentSummary,
+		TreeRetrieval:   ToTreeRetrievalResponse(index.TreeRetrieval),
+	}
+}
+
+func ToTreeRetrievalResponse(result *domain.TreeRetrievalResult) *TreeRetrievalResponse {
+	if result == nil {
+		return nil
+	}
+
+	nodeHits := make([]TreeRetrievalNodeHitResponse, 0, len(result.NodeHits))
+	for _, hit := range result.NodeHits {
+		nodeHits = append(nodeHits, TreeRetrievalNodeHitResponse{
+			NodeID:        hit.NodeID,
+			Title:         hit.Title,
+			Summary:       hit.Summary,
+			StartPage:     hit.StartPage,
+			EndPage:       hit.EndPage,
+			Score:         hit.Score,
+			SequenceOrder: hit.SequenceOrder,
+		})
+	}
+
+	pageHits := make([]TreeRetrievalPageHitResponse, 0, len(result.PageHits))
+	for _, hit := range result.PageHits {
+		pageHits = append(pageHits, TreeRetrievalPageHitResponse{
+			PageNumber: hit.PageNumber,
+			Summary:    hit.Summary,
+			Snippet:    hit.Snippet,
+			Score:      hit.Score,
+		})
+	}
+
+	return &TreeRetrievalResponse{
+		Query:    result.Query,
+		NodeHits: nodeHits,
+		PageHits: pageHits,
+		UsedTree: result.UsedTree,
+		Strategy: result.Strategy,
 	}
 }

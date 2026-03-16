@@ -20,9 +20,12 @@ export async function GET(request: Request, context: RouteContext) {
     }
 
     const { id } = await context.params;
+    const incomingURL = new URL(request.url);
+    const search = incomingURL.searchParams.toString();
+    const targetURL = search ? `${API_URL}/documents/${id}/index?${search}` : `${API_URL}/documents/${id}/index`;
 
     try {
-        const response = await fetch(`${API_URL}/documents/${id}/index`, {
+        const response = await fetch(targetURL, {
             method: "GET",
             headers: await createForwardHeaders(request, { token }),
             cache: "no-store",
