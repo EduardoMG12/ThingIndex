@@ -58,6 +58,9 @@ func TestDeterministicIndexerIndexHTML(t *testing.T) {
 	if len(result.TableSections) != 1 {
 		t.Fatalf("expected 1 table section, got %d", len(result.TableSections))
 	}
+	if len(result.DocumentPages) != 1 || result.DocumentPages[0].PageNumber != 1 {
+		t.Fatalf("unexpected document pages: %#v", result.DocumentPages)
+	}
 	if !slices.Equal(result.TableSections[0].Headers, []string{"Clause", "Value"}) {
 		t.Fatalf("unexpected table headers: %#v", result.TableSections[0].Headers)
 	}
@@ -104,6 +107,9 @@ func TestDeterministicIndexerIndexSpreadsheet(t *testing.T) {
 	if len(result.OutlineNodes) != 1 || result.OutlineNodes[0].Title != "Vendors" {
 		t.Fatalf("unexpected outline nodes: %#v", result.OutlineNodes)
 	}
+	if len(result.DocumentPages) != 1 || result.DocumentPages[0].PageNumber != 1 {
+		t.Fatalf("unexpected document pages: %#v", result.DocumentPages)
+	}
 	if len(result.ParagraphNodes) != 1 || result.ParagraphNodes[0].Content != "Planilha Vendors com 2 linhas." {
 		t.Fatalf("unexpected paragraph nodes: %#v", result.ParagraphNodes)
 	}
@@ -149,10 +155,44 @@ func TestDeterministicIndexerFallsBackToPlainText(t *testing.T) {
 	if len(result.ParagraphNodes) != 1 || result.ParagraphNodes[0].Content != "This agreement starts today." {
 		t.Fatalf("unexpected paragraph nodes: %#v", result.ParagraphNodes)
 	}
+	if len(result.DocumentPages) != 1 || result.DocumentPages[0].PageNumber != 1 {
+		t.Fatalf("unexpected document pages: %#v", result.DocumentPages)
+	}
 
 	assertMetadataValue(t, result.MetadataPairs, "paragraph_count", "1")
 	assertMetadataValue(t, result.MetadataPairs, "table_count", "0")
 	assertMetadataValue(t, result.MetadataPairs, "outline_count", "2")
+}
+
+func TestDeterministicIndexerAssignsSectionMetadataToParagraphs(t *testing.T) {
+	t.Parallel()
+
+	indexer := NewDeterministicIndexer()
+	doc := &models.Document{
+		ID:       100,
+		MimeType: "text/plain",
+	}
+
+	content := "INTRODUCTION\n\nOpening paragraph.\n\nPAYMENT TERMS\n\nInvoice due in 15 days."
+	result, err := indexer.Index(context.Background(), doc, bytes.NewBufferString(content))
+	if err != nil {
+		t.Fatalf("Index() returned error: %v", err)
+	}
+
+	if len(result.ParagraphNodes) != 2 {
+		t.Fatalf("expected 2 paragraph nodes, got %d", len(result.ParagraphNodes))
+	}
+
+	if got := result.ParagraphNodes[0].Metadata["section_title"]; got != "INTRODUCTION" {
+		t.Fatalf("unexpected first section title: %#v", got)
+	}
+	if got := result.ParagraphNodes[1].Metadata["section_title"]; got != "PAYMENT TERMS" {
+		t.Fatalf("unexpected second section title: %#v", got)
+	}
+
+	if got := result.OutlineNodes[1].Metadata["paragraph_start"]; got != 1 {
+		t.Fatalf("unexpected outline paragraph_start: %#v", got)
+	}
 }
 
 func assertMetadataValue(t *testing.T, pairs []models.MetadataPair, key, want string) {

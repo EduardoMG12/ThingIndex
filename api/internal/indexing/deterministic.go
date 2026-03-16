@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode"
@@ -21,8 +22,17 @@ import (
 type DeterministicIndexer struct{}
 
 type outlineDraft struct {
-	Level int
-	Title string
+	Level          int
+	Title          string
+	PageNumber     *int
+	ParagraphStart int
+	SectionKey     string
+}
+
+type textBlock struct {
+	Content    string
+	PageNumber *int
+	SectionKey string
 }
 
 func NewDeterministicIndexer() *DeterministicIndexer {
@@ -60,8 +70,11 @@ func (i *DeterministicIndexer) indexHTML(documentID uint, data []byte) (domain.I
 	}
 
 	headings := make([]outlineDraft, 0)
-	paragraphs := make([]string, 0)
+	paragraphs := make([]textBlock, 0)
 	tables := make([]models.TableSection, 0)
+	pageNumber := 1
+	currentSectionKey := ""
+	currentSectionTitle := ""
 
 	var walk func(*html.Node)
 	walk = func(node *html.Node) {
@@ -75,16 +88,31 @@ func (i *DeterministicIndexer) indexHTML(documentID uint, data []byte) (domain.I
 				level, _ := strconv.Atoi(strings.TrimPrefix(node.Data, "h"))
 				title := normalizeText(extractHTMLText(node))
 				if title != "" {
-					headings = append(headings, outlineDraft{Level: level, Title: title})
+					currentSectionTitle = title
+					currentSectionKey = slugify(title)
+					headings = append(headings, outlineDraft{
+						Level:          level,
+						Title:          title,
+						ParagraphStart: len(paragraphs),
+						SectionKey:     currentSectionKey,
+					})
 				}
 			case "p", "li":
 				text := normalizeText(extractHTMLText(node))
 				if text != "" {
-					paragraphs = append(paragraphs, text)
+					paragraphs = append(paragraphs, textBlock{
+						Content:    text,
+						PageNumber: &pageNumber,
+						SectionKey: currentSectionKey,
+					})
 				}
 			case "table":
 				section := extractHTMLTable(documentID, len(tables), node)
 				if len(section.Headers) > 0 || len(section.Rows) > 0 {
+					if currentSectionTitle != "" {
+						section.Title = currentSectionTitle
+						section.Metadata["section_key"] = currentSectionKey
+					}
 					tables = append(tables, section)
 				}
 			}
@@ -110,7 +138,7 @@ func (i *DeterministicIndexer) indexSpreadsheet(documentID uint, data []byte) (d
 	}()
 
 	headings := make([]outlineDraft, 0)
-	paragraphs := make([]string, 0)
+	paragraphs := make([]textBlock, 0)
 	tables := make([]models.TableSection, 0)
 
 	for sheetIndex, sheetName := range workbook.GetSheetList() {
@@ -119,8 +147,18 @@ func (i *DeterministicIndexer) indexSpreadsheet(documentID uint, data []byte) (d
 			return domain.IndexingResult{}, fmt.Errorf("%w: read spreadsheet rows: %v", domain.ErrDocumentIndexing, err)
 		}
 
-		headings = append(headings, outlineDraft{Level: 1, Title: sheetName})
-		paragraphs = append(paragraphs, fmt.Sprintf("Planilha %s com %d linhas.", sheetName, len(rows)))
+		sectionKey := slugify(sheetName)
+		headings = append(headings, outlineDraft{
+			Level:          1,
+			Title:          sheetName,
+			ParagraphStart: len(paragraphs),
+			SectionKey:     sectionKey,
+		})
+		paragraphs = append(paragraphs, textBlock{
+			Content:    fmt.Sprintf("Planilha %s com %d linhas.", sheetName, len(rows)),
+			PageNumber: intPtr(sheetIndex + 1),
+			SectionKey: sectionKey,
+		})
 
 		section := models.TableSection{
 			DocumentID:    documentID,
@@ -129,8 +167,9 @@ func (i *DeterministicIndexer) indexSpreadsheet(documentID uint, data []byte) (d
 			Headers:       []string{},
 			Rows:          [][]string{},
 			Metadata: map[string]any{
-				"sheet_name": sheetName,
-				"row_count":  len(rows),
+				"sheet_name":  sheetName,
+				"row_count":   len(rows),
+				"section_key": sectionKey,
 			},
 		}
 
@@ -156,71 +195,115 @@ func (i *DeterministicIndexer) indexPDF(documentID uint, data []byte) (domain.In
 		return domain.IndexingResult{}, fmt.Errorf("%w: parse pdf: %v", domain.ErrDocumentIndexing, err)
 	}
 
-	textReader, err := pdfReader.GetPlainText()
-	if err != nil {
-		return domain.IndexingResult{}, fmt.Errorf("%w: extract pdf text: %v", domain.ErrDocumentIndexing, err)
+	headings := make([]outlineDraft, 0)
+	paragraphs := make([]textBlock, 0)
+	currentSectionKey := ""
+
+	for pageIndex := 1; pageIndex <= pdfReader.NumPage(); pageIndex++ {
+		page := pdfReader.Page(pageIndex)
+		if page.V.IsNull() || page.V.Key("Contents").Kind() == pdf.Null {
+			continue
+		}
+
+		rows, rowErr := page.GetTextByRow()
+		if rowErr != nil {
+			return domain.IndexingResult{}, fmt.Errorf("%w: extract pdf rows: %v", domain.ErrDocumentIndexing, rowErr)
+		}
+
+		pageNumber := pageIndex
+		for _, block := range blocksFromPDFRows(rows, &pageNumber) {
+			if looksLikeHeading(block.Content) {
+				currentSectionKey = slugify(block.Content)
+				headings = append(headings, outlineDraft{
+					Level:          inferHeadingLevel(block.Content),
+					Title:          block.Content,
+					PageNumber:     block.PageNumber,
+					ParagraphStart: len(paragraphs),
+					SectionKey:     currentSectionKey,
+				})
+				continue
+			}
+
+			block.SectionKey = currentSectionKey
+			paragraphs = append(paragraphs, block)
+		}
 	}
 
-	textBytes, err := io.ReadAll(textReader)
-	if err != nil {
-		return domain.IndexingResult{}, fmt.Errorf("%w: read pdf text: %v", domain.ErrDocumentIndexing, err)
+	if len(headings) == 0 && len(paragraphs) > 0 {
+		headings = append(headings, outlineDraft{
+			Level:          1,
+			Title:          firstSentence(paragraphs[0].Content),
+			PageNumber:     paragraphs[0].PageNumber,
+			ParagraphStart: 0,
+			SectionKey:     slugify(firstSentence(paragraphs[0].Content)),
+		})
+		if headings[0].SectionKey != "" && paragraphs[0].SectionKey == "" {
+			paragraphs[0].SectionKey = headings[0].SectionKey
+		}
 	}
 
-	return i.indexPlainText(documentID, string(textBytes)), nil
+	return buildIndexingResult(documentID, headings, paragraphs, nil), nil
 }
 
 func (i *DeterministicIndexer) indexPlainText(documentID uint, raw string) domain.IndexingResult {
 	blocks := splitBlocks(raw)
 	headings := make([]outlineDraft, 0)
-	paragraphs := make([]string, 0, len(blocks))
+	paragraphs := make([]textBlock, 0, len(blocks))
+	currentSectionKey := ""
 
 	for _, block := range blocks {
 		if looksLikeHeading(block) {
+			currentSectionKey = slugify(block)
 			headings = append(headings, outlineDraft{
-				Level: inferHeadingLevel(block),
-				Title: block,
+				Level:          inferHeadingLevel(block),
+				Title:          block,
+				ParagraphStart: len(paragraphs),
+				SectionKey:     currentSectionKey,
 			})
 			continue
 		}
 
-		paragraphs = append(paragraphs, block)
+		paragraphs = append(paragraphs, textBlock{
+			Content:    block,
+			SectionKey: currentSectionKey,
+		})
 	}
 
 	if len(headings) == 0 && len(paragraphs) > 0 {
-		headings = append(headings, outlineDraft{Level: 1, Title: firstSentence(paragraphs[0])})
+		title := firstSentence(paragraphs[0].Content)
+		headings = append(headings, outlineDraft{
+			Level:          1,
+			Title:          title,
+			PageNumber:     intPtr(1),
+			ParagraphStart: 0,
+			SectionKey:     slugify(title),
+		})
+		paragraphs[0].SectionKey = headings[0].SectionKey
 	}
 
 	return buildIndexingResult(documentID, headings, paragraphs, nil)
 }
 
-func buildIndexingResult(documentID uint, headings []outlineDraft, paragraphs []string, tables []models.TableSection) domain.IndexingResult {
-	outlineNodes := make([]models.DocumentOutlineNode, 0, len(headings))
-	for _, heading := range headings {
-		title := strings.TrimSpace(heading.Title)
-		if title == "" {
-			continue
-		}
-
-		outlineNodes = append(outlineNodes, models.DocumentOutlineNode{
-			DocumentID:    documentID,
-			SequenceOrder: len(outlineNodes),
-			Level:         max(1, heading.Level),
-			Title:         title,
-			Slug:          slugify(title),
-			Summary:       "",
-			Metadata:      map[string]any{},
-		})
-	}
-
+func buildIndexingResult(documentID uint, headings []outlineDraft, paragraphs []textBlock, tables []models.TableSection) domain.IndexingResult {
 	paragraphNodes := make([]models.ParagraphNode, 0, len(paragraphs))
 	for idx, paragraph := range paragraphs {
+		metadata := map[string]any{}
+		if paragraph.SectionKey != "" {
+			metadata["section_key"] = paragraph.SectionKey
+			metadata["section_title"] = sectionTitleForKey(headings, paragraph.SectionKey)
+		}
+
 		paragraphNodes = append(paragraphNodes, models.ParagraphNode{
 			DocumentID:    documentID,
 			SequenceOrder: idx,
-			Content:       paragraph,
-			Metadata:      map[string]any{},
+			PageNumber:    paragraph.PageNumber,
+			Content:       paragraph.Content,
+			Metadata:      metadata,
 		})
 	}
+
+	documentPages := buildDocumentPages(documentID, paragraphs)
+	outlineNodes := buildOutlineNodes(documentID, headings, paragraphs)
 
 	metadataPairs := []models.MetadataPair{
 		{DocumentID: documentID, SequenceOrder: 0, Key: "paragraph_count", Value: strconv.Itoa(len(paragraphNodes))},
@@ -228,18 +311,193 @@ func buildIndexingResult(documentID uint, headings []outlineDraft, paragraphs []
 		{DocumentID: documentID, SequenceOrder: 2, Key: "outline_count", Value: strconv.Itoa(len(outlineNodes))},
 	}
 
-	allText := strings.Join(paragraphs, " ")
+	allTextParts := make([]string, 0, len(paragraphs))
+	for _, paragraph := range paragraphs {
+		if strings.TrimSpace(paragraph.Content) != "" {
+			allTextParts = append(allTextParts, paragraph.Content)
+		}
+	}
+	allText := strings.Join(allTextParts, " ")
 	metadataPairs = append(metadataPairs,
 		models.MetadataPair{DocumentID: documentID, SequenceOrder: 3, Key: "word_count", Value: strconv.Itoa(len(strings.Fields(allText)))},
 		models.MetadataPair{DocumentID: documentID, SequenceOrder: 4, Key: "character_count", Value: strconv.Itoa(len([]rune(allText)))},
 	)
 
 	return domain.IndexingResult{
+		DocumentPages:  documentPages,
 		ParagraphNodes: paragraphNodes,
 		TableSections:  tables,
 		MetadataPairs:  metadataPairs,
 		OutlineNodes:   outlineNodes,
 	}
+}
+
+func buildDocumentPages(documentID uint, paragraphs []textBlock) []models.DocumentPage {
+	pageBuckets := make(map[int][]string)
+	pageSectionKeys := make(map[int]map[string]struct{})
+
+	for _, paragraph := range paragraphs {
+		pageNumber := 1
+		if paragraph.PageNumber != nil && *paragraph.PageNumber > 0 {
+			pageNumber = *paragraph.PageNumber
+		}
+
+		content := strings.TrimSpace(paragraph.Content)
+		if content != "" {
+			pageBuckets[pageNumber] = append(pageBuckets[pageNumber], content)
+		}
+		if paragraph.SectionKey != "" {
+			if pageSectionKeys[pageNumber] == nil {
+				pageSectionKeys[pageNumber] = map[string]struct{}{}
+			}
+			pageSectionKeys[pageNumber][paragraph.SectionKey] = struct{}{}
+		}
+	}
+
+	if len(pageBuckets) == 0 {
+		return nil
+	}
+
+	pageNumbers := make([]int, 0, len(pageBuckets))
+	for pageNumber := range pageBuckets {
+		pageNumbers = append(pageNumbers, pageNumber)
+	}
+	sortInts(pageNumbers)
+
+	pages := make([]models.DocumentPage, 0, len(pageNumbers))
+	for _, pageNumber := range pageNumbers {
+		content := strings.Join(pageBuckets[pageNumber], "\n\n")
+		metadata := map[string]any{
+			"section_keys": sortedMapKeys(pageSectionKeys[pageNumber]),
+		}
+		pages = append(pages, models.DocumentPage{
+			DocumentID:    documentID,
+			PageNumber:    pageNumber,
+			Content:       content,
+			TokenEstimate: estimateTextTokens(content),
+			Metadata:      metadata,
+		})
+	}
+
+	return pages
+}
+
+func buildOutlineNodes(documentID uint, headings []outlineDraft, paragraphs []textBlock) []models.DocumentOutlineNode {
+	nodes := make([]models.DocumentOutlineNode, 0, len(headings))
+	if len(headings) == 0 {
+		return nodes
+	}
+
+	type levelEntry struct {
+		level     int
+		nodeID    string
+		sequence  int
+		startPage *int
+		endPage   *int
+		title     string
+	}
+
+	stack := make([]levelEntry, 0, len(headings))
+	for idx, heading := range headings {
+		title := strings.TrimSpace(heading.Title)
+		if title == "" {
+			continue
+		}
+
+		level := max(1, heading.Level)
+		nodeID := fmt.Sprintf("node-%03d-%s", len(nodes), slugify(title))
+		startPage, endPage := headingPageRange(idx, headings, paragraphs)
+
+		for len(stack) > 0 && stack[len(stack)-1].level >= level {
+			stack = stack[:len(stack)-1]
+		}
+
+		var parentNodeID string
+		pathParts := make([]string, 0, len(stack)+1)
+		for _, item := range stack {
+			pathParts = append(pathParts, item.nodeID)
+		}
+		if len(stack) > 0 {
+			parentNodeID = stack[len(stack)-1].nodeID
+		}
+		pathParts = append(pathParts, nodeID)
+
+		metadata := map[string]any{
+			"paragraph_start": heading.ParagraphStart,
+			"section_key":     heading.SectionKey,
+		}
+		if heading.PageNumber != nil && *heading.PageNumber > 0 {
+			metadata["page_number"] = *heading.PageNumber
+		}
+		if parentNodeID != "" {
+			metadata["parent_node_id"] = parentNodeID
+		}
+
+		nodes = append(nodes, models.DocumentOutlineNode{
+			DocumentID:    documentID,
+			SequenceOrder: len(nodes),
+			NodeID:        nodeID,
+			Level:         level,
+			Title:         title,
+			Slug:          slugify(title),
+			Summary:       "",
+			StartPage:     startPage,
+			EndPage:       endPage,
+			NodePath:      strings.Join(pathParts, "/"),
+			Metadata:      metadata,
+		})
+
+		stack = append(stack, levelEntry{
+			level:     level,
+			nodeID:    nodeID,
+			sequence:  len(nodes) - 1,
+			startPage: startPage,
+			endPage:   endPage,
+			title:     title,
+		})
+	}
+
+	return nodes
+}
+
+func headingPageRange(index int, headings []outlineDraft, paragraphs []textBlock) (*int, *int) {
+	if index < 0 || index >= len(headings) {
+		return nil, nil
+	}
+
+	startParagraph := max(0, headings[index].ParagraphStart)
+	endParagraph := len(paragraphs) - 1
+	if index+1 < len(headings) {
+		endParagraph = max(startParagraph, headings[index+1].ParagraphStart-1)
+	}
+
+	var startPage *int
+	var endPage *int
+	if headings[index].PageNumber != nil {
+		start := *headings[index].PageNumber
+		startPage = &start
+	}
+
+	for paragraphIndex := startParagraph; paragraphIndex <= endParagraph && paragraphIndex < len(paragraphs); paragraphIndex++ {
+		pageNumber := 1
+		if paragraphs[paragraphIndex].PageNumber != nil {
+			pageNumber = *paragraphs[paragraphIndex].PageNumber
+		}
+
+		if startPage == nil {
+			start := pageNumber
+			startPage = &start
+		}
+		end := pageNumber
+		endPage = &end
+	}
+
+	if endPage == nil && startPage != nil {
+		end := *startPage
+		endPage = &end
+	}
+
+	return startPage, endPage
 }
 
 func extractHTMLText(node *html.Node) string {
@@ -304,6 +562,76 @@ func extractHTMLTable(documentID uint, sequence int, node *html.Node) models.Tab
 	return section
 }
 
+func blocksFromPDFRows(rows pdf.Rows, pageNumber *int) []textBlock {
+	blocks := make([]textBlock, 0, len(rows))
+	lineBuffer := make([]string, 0, 4)
+
+	flush := func() {
+		if len(lineBuffer) == 0 {
+			return
+		}
+		content := normalizeText(strings.Join(lineBuffer, "\n"))
+		lineBuffer = lineBuffer[:0]
+		if content == "" {
+			return
+		}
+		var pageRef *int
+		if pageNumber != nil {
+			pageCopy := *pageNumber
+			pageRef = &pageCopy
+		}
+		blocks = append(blocks, textBlock{
+			Content:    content,
+			PageNumber: pageRef,
+		})
+	}
+
+	for _, row := range rows {
+		line := pdfRowToLine(row)
+		if line == "" {
+			flush()
+			continue
+		}
+
+		lineBuffer = append(lineBuffer, line)
+		if looksLikeHeading(line) || strings.HasSuffix(line, ".") || strings.HasSuffix(line, ":") {
+			flush()
+		}
+	}
+
+	flush()
+	return blocks
+}
+
+func pdfRowToLine(row *pdf.Row) string {
+	if row == nil {
+		return ""
+	}
+
+	parts := make([]string, 0, len(row.Content))
+	for _, word := range row.Content {
+		text := normalizeText(word.S)
+		if text != "" {
+			parts = append(parts, text)
+		}
+	}
+	return normalizeText(strings.Join(parts, " "))
+}
+
+func sectionTitleForKey(headings []outlineDraft, sectionKey string) string {
+	if sectionKey == "" {
+		return ""
+	}
+
+	for _, heading := range headings {
+		if heading.SectionKey == sectionKey {
+			return heading.Title
+		}
+	}
+
+	return ""
+}
+
 func splitBlocks(text string) []string {
 	if text == "" {
 		return nil
@@ -329,6 +657,9 @@ func looksLikeHeading(text string) bool {
 	}
 	if numberedHeadingPattern.MatchString(text) {
 		return true
+	}
+	if strings.HasSuffix(text, ".") || strings.HasSuffix(text, "!") || strings.HasSuffix(text, "?") {
+		return false
 	}
 	if len(strings.Fields(text)) <= 12 && text == strings.ToUpper(text) {
 		return true
@@ -437,4 +768,29 @@ func max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func intPtr(value int) *int {
+	return &value
+}
+
+func estimateTextTokens(content string) int {
+	return len(strings.Fields(content))
+}
+
+func sortedMapKeys(values map[string]struct{}) []string {
+	if len(values) == 0 {
+		return []string{}
+	}
+
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func sortInts(values []int) {
+	sort.Ints(values)
 }

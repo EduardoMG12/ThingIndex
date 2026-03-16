@@ -15,32 +15,56 @@ Return only valid JSON.
 Do not wrap the response in markdown fences.
 Ground every field strictly in the supplied document content.
 Do not invent facts, sections, parties, dates, obligations, or conclusions.
+Keep outputs compact, auditable, and useful for later retrieval.
 `)
 
 	var userPrompt strings.Builder
 	userPrompt.WriteString("Task: create a compact document synopsis for later retrieval and inspection.\n")
 	userPrompt.WriteString("Return JSON with fields document_summary, keywords, document_purpose.\n")
 	userPrompt.WriteString("document_summary and document_purpose must be in Portuguese.\n")
-	userPrompt.WriteString("keywords must be a short array of concrete retrieval terms.\n\n")
+	userPrompt.WriteString("document_summary must be at most 120 words.\n")
+	userPrompt.WriteString("document_purpose must be at most 60 words.\n")
+	userPrompt.WriteString("keywords must be a short array of concrete retrieval terms with at most 8 items.\n\n")
 	userPrompt.WriteString(contextBlock)
 
 	return systemPrompt, userPrompt.String()
 }
 
-func buildSectionSummaryPrompt(contextBlock string) (string, string) {
+func buildOutlineNodeSummaryPrompt(contextBlock string) (string, string) {
 	systemPrompt := strings.TrimSpace(`
 You generate one stage of a structured document indexing pipeline.
 Return only valid JSON.
 Do not wrap the response in markdown fences.
-Summarize only sections that are actually evidenced by the supplied outline and text.
-If evidence is weak, leave the section out instead of guessing.
+Summarize only tree nodes that are actually evidenced by the supplied pages and outline.
+If evidence is weak, leave the node out instead of guessing.
+Prefer navigation-grade summaries, page-grounded and auditable.
 `)
 
 	var userPrompt strings.Builder
-	userPrompt.WriteString("Task: summarize indexed sections for navigation and grounded retrieval.\n")
-	userPrompt.WriteString("Return JSON with field sections.\n")
-	userPrompt.WriteString("sections must be an array of objects with sequence_order and summary.\n")
-	userPrompt.WriteString("Each summary must be concise, factual, and in Portuguese.\n\n")
+	userPrompt.WriteString("Task: summarize indexed tree nodes for navigation and grounded retrieval.\n")
+	userPrompt.WriteString("Return JSON with field nodes.\n")
+	userPrompt.WriteString("nodes must be an array of objects with sequence_order and summary.\n")
+	userPrompt.WriteString("Each summary must be concise, factual, in Portuguese, and no longer than 40 words.\n")
+	userPrompt.WriteString("Do not repeat the node title inside the summary.\n\n")
+	userPrompt.WriteString(contextBlock)
+
+	return systemPrompt, userPrompt.String()
+}
+
+func buildPageSummaryPrompt(contextBlock string) (string, string) {
+	systemPrompt := strings.TrimSpace(`
+You generate one stage of a structured document indexing pipeline.
+Return only valid JSON.
+Do not wrap the response in markdown fences.
+Summarize only page content that is explicitly present in the supplied page text.
+Keep the summaries useful for tree navigation and later evidence lookup.
+`)
+
+	var userPrompt strings.Builder
+	userPrompt.WriteString("Task: summarize indexed pages for grounded retrieval.\n")
+	userPrompt.WriteString("Return JSON with field pages.\n")
+	userPrompt.WriteString("pages must be an array of objects with page_number and summary.\n")
+	userPrompt.WriteString("Each summary must be concise, factual, in Portuguese, and no longer than 45 words.\n\n")
 	userPrompt.WriteString(contextBlock)
 
 	return systemPrompt, userPrompt.String()
@@ -53,12 +77,14 @@ Return only valid JSON.
 Do not wrap the response in markdown fences.
 Extract only signals that improve retrieval later.
 Prefer concrete nouns, entities, dates, and operational topics over generic abstractions.
+Avoid generic labels such as documento, contrato, planilha, secao, conteudo.
 `)
 
 	var userPrompt strings.Builder
 	userPrompt.WriteString("Task: extract retrieval signals from the indexed document.\n")
 	userPrompt.WriteString("Return JSON with fields topics, entities, dates.\n")
 	userPrompt.WriteString("Each field must be an array of short strings grounded in the content.\n")
+	userPrompt.WriteString("Use at most 8 topics, 12 entities, and 10 dates.\n")
 	userPrompt.WriteString("If a field has no reliable evidence, return an empty array.\n\n")
 	userPrompt.WriteString(contextBlock)
 
@@ -71,6 +97,7 @@ func buildPromptContext(doc *models.Document, result domain.IndexingResult) stri
 	var builder strings.Builder
 	builder.WriteString("Document type guidance:\n")
 	builder.WriteString(promptProfile)
+	builder.WriteString("\nPipeline versions:\n- chunk_strategy=tree-aware-v1\n- prompt_profile=llm-index-v3")
 	builder.WriteString("\n\n")
 
 	if doc != nil {
@@ -102,6 +129,14 @@ func buildPromptContext(doc *models.Document, result domain.IndexingResult) stri
 		builder.WriteString(strconv.Itoa(node.SequenceOrder))
 		builder.WriteString(", level=")
 		builder.WriteString(strconv.Itoa(node.Level))
+		if node.StartPage != nil {
+			builder.WriteString(", start_page=")
+			builder.WriteString(strconv.Itoa(*node.StartPage))
+		}
+		if node.EndPage != nil {
+			builder.WriteString(", end_page=")
+			builder.WriteString(strconv.Itoa(*node.EndPage))
+		}
 		builder.WriteString(", title=")
 		builder.WriteString(node.Title)
 		builder.WriteString("\n")
@@ -117,6 +152,20 @@ func buildPromptContext(doc *models.Document, result domain.IndexingResult) stri
 		builder.WriteString(", content=")
 		builder.WriteString(node.Content)
 		builder.WriteString("\n")
+	}
+
+	if len(result.DocumentPages) > 0 {
+		builder.WriteString("\nPages:\n")
+		for idx, page := range result.DocumentPages {
+			if idx >= 8 {
+				break
+			}
+			builder.WriteString("- page_number=")
+			builder.WriteString(strconv.Itoa(page.PageNumber))
+			builder.WriteString(", content=")
+			builder.WriteString(page.Content)
+			builder.WriteString("\n")
+		}
 	}
 
 	if len(result.Chunks) > 0 {

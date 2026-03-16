@@ -37,6 +37,8 @@ func NewDocumentProcessor(
 }
 
 func (p *DocumentProcessor) Process(ctx context.Context, event domain.DocumentIndexRequestedEvent) error {
+	enrichmentStatus := "not_configured"
+
 	if err := p.repo.UpdateDocumentStatus(ctx, event.DocumentID, domain.DocumentStatusProcessing); err != nil {
 		return fmt.Errorf("%w: update status to processing: %v", domain.ErrDocumentIndexing, err)
 	}
@@ -83,19 +85,28 @@ func (p *DocumentProcessor) Process(ctx context.Context, event domain.DocumentIn
 		return err
 	}
 
+	result.Chunks = buildDocumentChunks(doc.ID, result)
+
 	if p.llmResolver != nil && p.enricher != nil {
 		llmClient, resolveErr := p.llmResolver.ResolveLLMForIndexing(ctx, doc.UserID)
 		switch {
 		case resolveErr == nil:
+			enrichmentStatus = "configured"
 			if enrichedResult, enrichErr := p.enricher.Enrich(ctx, llmClient, doc, result); enrichErr == nil {
 				result = enrichedResult
+				enrichmentStatus = "applied"
+			} else {
+				enrichmentStatus = "failed"
 			}
 		case errors.Is(resolveErr, domain.ErrLLMProviderNotConfigured):
+			enrichmentStatus = "not_configured"
 		default:
+			enrichmentStatus = "unavailable"
 		}
 	}
 
 	result.Chunks = buildDocumentChunks(doc.ID, result)
+	appendPipelineMetadata(&result, doc.ID, enrichmentStatus)
 
 	if err := p.repo.ReplaceIndexingResult(ctx, doc.ID, result); err != nil {
 		_ = p.repo.UpdateDocumentStatus(ctx, doc.ID, domain.DocumentStatusFailed)
