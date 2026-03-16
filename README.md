@@ -22,7 +22,7 @@
 
 ThingIndex is an academic and engineering project focused on document ingestion, categorization, structured extraction, and context reconstruction over a **pure relational architecture**. The current backend does **not** depend on RAG, vector databases, or graph databases to organize context. Instead, it uses PostgreSQL, hierarchical joins, and typed structured-data tables to keep documents, collections, categories, and extracted content connected in a traceable and performant way.
 
-Although the broader research line still explores GraphRAG and legal knowledge systems, the code currently available in this repository is centered on a **document catalog with relational context recovery**, JWT authentication, i18n, secure provider credential storage, MinIO-compatible object storage, and a Next.js interface.
+Although the broader research line still explores GraphRAG and legal knowledge systems, the code currently available in this repository is centered on a **document catalog with relational context recovery**, JWT authentication, i18n, secure provider credential storage, MinIO-compatible object storage, asynchronous indexing with RabbitMQ, and a Next.js interface.
 
 ## Sumario
 
@@ -75,7 +75,8 @@ O projeto nasceu em contexto academico, mas foi estruturado com preocupacoes rea
 
 - Nao e um sistema de GraphRAG em execucao.
 - Nao depende de banco de grafos para recuperar contexto.
-- Ja possui pipeline assincrono basico com outbox, RabbitMQ e worker dedicado para indexacao estrutural, mas ainda nao tem uma etapa de parsing/enriquecimento tao madura quanto um sistema de producao.
+- Ja possui pipeline assincrono funcional com outbox, RabbitMQ e worker dedicado para indexacao estrutural.
+- Ja possui enriquecimento opcional com LLM para indexacao, incluindo telemetria estimada de tokens, custo e qualidade heuristica por documento.
 - Nao possui chat juridico/QA com LLM em producao.
 - Nao implementa multiplos storages de forma concreta hoje: o provider de storage efetivamente suportado no runtime atual e **MinIO/S3-compatible**.
 
@@ -124,7 +125,11 @@ flowchart TD
     PG --> TAB[table_sections]
     PG --> META[metadata_pairs]
 
-    RABBIT[(RabbitMQ)] -.reserved for roadmap.- API
+    API --> OUTBOX[outbox events]
+    OUTBOX --> RABBIT[(RabbitMQ)]
+    RABBIT --> INDEXER[indexer worker]
+    INDEXER --> PG
+    INDEXER --> MINIO
 ```
 
 ### Principios arquiteturais adotados
@@ -187,27 +192,36 @@ Essa abordagem evita consultas por documento e mantem a montagem da resposta em 
 ### Backend
 
 - Cadastro, login e reset de senha com JWT.
+- Revogacao de sessoes antigas apos reset de senha.
 - Upload de documentos com validacao de tamanho e MIME.
+- Persistencia de uploads em MinIO/S3-compatible.
 - CRUD parcial de categorias e collections.
 - Persistencia de documentos com vinculacao obrigatoria a `collection`.
 - Persistencia de estruturas extraidas em tabelas tipadas.
+- Pipeline assincrono com outbox, RabbitMQ e worker de indexacao.
+- Endpoint de indice por documento com `tree_retrieval`, `index_evaluation` e `monitoring`.
+- Resumo agregado de monitoramento por usuario com custo estimado, tokens, requests, duracao media, score medio e breakdown por modelo.
 - Recuperacao de contexto consolidado de uma collection.
 - Internacionalizacao de mensagens HTTP em portugues e ingles.
 - Criptografia de credenciais de providers por usuario.
 - Provider de storage customizado com resolucao segura de endpoint.
+- Validacao de `base_url` customizada para providers de LLM, com bloqueio de endpoints privados fora de overrides de desenvolvimento.
 
 ### Frontend
 
 - Landing page institucional.
 - Dashboard para autenticacao e operacao do catalogo.
+- Painel de documentos com preview lateral, telemetria de indexacao por documento e resumo agregado de monitoramento.
 - Documentacao visual da proposta e da arquitetura.
+- Configuracao de providers de storage e LLM com papeis separados para indexacao e chat.
 
 ### Infraestrutura local
 
 - PostgreSQL para persistencia transacional.
 - MinIO para object storage.
+- RabbitMQ para orquestracao assincrona da indexacao.
 - Docker Compose para reproducao do ambiente.
-- RabbitMQ presente no compose como infraestrutura de roadmap, mas nao acoplado ao fluxo principal atual.
+- Worker de indexacao e pricing worker como processos separados.
 
 ## 7. Estrutura do Monorepo
 
@@ -282,7 +296,7 @@ docker compose up --build
 
 ### Observacoes importantes
 
-- O `docker-compose.yml` sobe RabbitMQ, mas o fluxo principal da API atual nao depende dele.
+- O `docker-compose.yml` sobe RabbitMQ e suporta o pipeline assincrono de indexacao.
 - O fluxo de `forgot-password` exige um servidor SMTP acessivel. O compose atual nao sobe Mailpit/Mailhog por padrao.
 - O frontend consome a API por `NEXT_PUBLIC_API_URL`.
 
@@ -364,6 +378,18 @@ O arquivo `.env.example` foi pensado para **desenvolvimento local**. Em producao
 | `AUTH_RATE_LIMIT_REQUESTS` | `10` | Limite de requests de auth por janela |
 | `AUTH_RATE_LIMIT_WINDOW_SECONDS` | `60` | Janela do rate limit |
 | `ALLOW_PRIVATE_STORAGE_ENDPOINTS` | `false` | Override de desenvolvimento para endpoints privados |
+| `RABBITMQ_URL` | `amqp://guest:guest@localhost:5672/` | URL de conexao do RabbitMQ |
+| `DOCUMENT_INDEX_EXCHANGE` | `thingindex.document.index` | Exchange usada na indexacao assincrona |
+| `DOCUMENT_INDEX_QUEUE` | `thingindex.document.index.queue` | Fila principal de indexacao |
+| `DOCUMENT_INDEX_ROUTING_KEY` | `document.index.requested` | Routing key da fila principal |
+| `DOCUMENT_INDEX_RETRY_QUEUE` | `thingindex.document.index.retry` | Fila de retry da indexacao |
+| `DOCUMENT_INDEX_DLQ` | `thingindex.document.index.dlq` | Dead-letter queue da indexacao |
+| `OUTBOX_POLL_INTERVAL_SECONDS` | `5` | Intervalo de polling do dispatcher da outbox |
+| `OUTBOX_BATCH_SIZE` | `20` | Quantidade maxima de eventos por lote |
+| `CONSUMER_PREFETCH_COUNT` | `10` | Prefetch do consumer de indexacao |
+| `DOCUMENT_INDEX_RETRY_DELAY_SECONDS` | `30` | Delay entre tentativas de reprocessamento |
+| `DOCUMENT_INDEX_MAX_RETRIES` | `5` | Numero maximo de tentativas de indexacao |
+| `PRICING_SYNC_INTERVAL_SECONDS` | `86400` | Intervalo do worker de sincronizacao de precos |
 
 ### Variaveis de frontend
 
@@ -415,6 +441,7 @@ Erros de validacao retornam `errors` com mensagens sanitizadas e localizadas.
 | --- | --- | --- |
 | `POST` | `/api/v1/user/providers` | Salva credenciais por usuario |
 | `GET` | `/api/v1/user/providers` | Lista configuracoes de provider do usuario |
+| `PATCH` | `/api/v1/user/providers/:providerType` | Ativa/desativa provider ou papel LLM |
 
 ### Rotas autenticadas de documentos
 
@@ -423,6 +450,9 @@ Erros de validacao retornam `errors` com mensagens sanitizadas e localizadas.
 | `POST` | `/api/v1/documents/upload` | Upload de arquivo com `multipart/form-data` |
 | `GET` | `/api/v1/documents/` | Lista documentos do usuario |
 | `GET` | `/api/v1/documents/:id` | Busca documento por ID |
+| `GET` | `/api/v1/documents/:id/content` | Recupera o arquivo bruto do documento |
+| `GET` | `/api/v1/documents/:id/index` | Recupera indice, chunks e monitoramento do documento |
+| `GET` | `/api/v1/documents/monitoring/summary` | Resume uso, custo e qualidade da indexacao do usuario |
 | `GET` | `/api/v1/documents/category/:id` | Lista documentos por categoria |
 | `POST` | `/api/v1/documents/categories` | Cria categoria |
 | `GET` | `/api/v1/documents/categories` | Lista categorias |
@@ -554,14 +584,17 @@ curl -X GET http://localhost:8000/api/v1/documents/collections/1/context \
 - **JWT assinado** para autenticacao stateless.
 - **bcrypt** para hash de senhas.
 - **Tokens de reset hashados** no banco.
+- **Revogacao de sessao apos reset de senha** para invalidar JWTs anteriores.
 - **Criptografia AES-GCM** para credenciais de provider, com chave derivada por usuario.
 - **Rate limit** nas rotas de autenticacao.
 - **CORS configuravel** sem wildcard com credenciais.
 - **Sanitizacao de erros** para nao vazar detalhes internos nas respostas.
 - **Validacao de uploads** com limite de corpo e checagem de MIME.
 - **Mitigacao de SSRF** para storage customizado.
+- **Validacao de `base_url` para LLM** com restricao de esquema e bloqueio de hosts privados.
 - **Bloqueio de endpoints privados** por padrao para providers de storage.
 - **Resolucao segura de hostname** no dial do storage para evitar bypass por DNS rebinding.
+- **Preview HTML desativado** para evitar execucao de conteudo ativo enviado pelo usuario.
 - **Validacoes de configuracao insegura** fora de ambiente de desenvolvimento.
 
 ### Decisoes de seguranca relevantes
@@ -625,10 +658,10 @@ Os materiais em `docs/` e `frontend/architecture/` registram essa evolucao e tam
 
 ## 17. Limitacoes Atuais
 
-- Apenas MinIO/S3-compatible esta implementado de fato como storage provider.
-- O modulo de LLM/provider ainda nao esta integrado a um fluxo de assistente em runtime.
-- O frontend `frontend/README.md` ainda esta com o texto padrao do Next.js.
-- RabbitMQ esta no compose, mas nao participa do caminho principal atual.
+- Apenas MinIO/S3-compatible esta implementado de fato como storage provider no fluxo principal.
+- O chat ainda nao esta integrado a um fluxo de assistente em runtime; a UI de chat continua mockada e ainda nao usa streaming incremental.
+- A estimativa de custo e tokens de LLM e heuristica quando o provider nao devolve usage real.
+- O score de qualidade da indexacao e heuristico; nao substitui avaliacao com ground truth.
 - Nao ha arquivo `LICENSE` publicado ainda.
 - Algumas docs antigas do repositorio ainda refletem a fase de pesquisa em grafos e precisam ser lidas com contexto.
 
@@ -643,8 +676,8 @@ Os materiais em `docs/` e `frontend/architecture/` registram essa evolucao e tam
 
 ### Medio prazo
 
-- pipeline assincro de parsing e extracao;
-- workers dedicados;
+- stream real de chat com contexto relacional e resposta incremental;
+- ampliar o pipeline assincrono de parsing e extracao;
 - suporte real a mais providers de storage;
 - observabilidade e telemetria.
 
