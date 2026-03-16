@@ -17,6 +17,14 @@ func NewGormAuthRepository(db *gorm.DB) domain.AuthRepository {
 	return &gormAuthRepository{db: db}
 }
 
+func (r *gormAuthRepository) GetUserByID(ctx context.Context, userID uint) (*models.User, error) {
+	var user models.User
+	if err := r.db.WithContext(ctx).Where("id = ?", userID).First(&user).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (r *gormAuthRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
 	normalizedEmail := strings.ToLower(strings.TrimSpace(email))

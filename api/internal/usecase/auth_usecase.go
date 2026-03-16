@@ -119,6 +119,8 @@ func (u *authUseCase) ResetPassword(ctx context.Context, token, newPassword stri
 	user.Password = string(hashedPassword)
 	user.ResetToken = ""
 	user.ResetTokenExpiresAt = nil
+	invalidAfter := time.Now().UTC()
+	user.SessionInvalidAfter = &invalidAfter
 
 	return u.repo.UpdateUser(ctx, user)
 }

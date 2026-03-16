@@ -6,6 +6,7 @@ import (
 )
 
 type AuthRepository interface {
+	GetUserByID(ctx context.Context, userID uint) (*models.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
 	CreateUser(ctx context.Context, user *models.User) error
 	UpdateUser(ctx context.Context, user *models.User) error

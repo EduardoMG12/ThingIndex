@@ -116,7 +116,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		}
 
 		user := v1.Group("/user")
-		user.Use(middleware.AuthMiddleware(cfg))
+		user.Use(middleware.AuthMiddleware(cfg, authRepo))
 		{
 			user.POST("/providers", providerHandler.SaveCredentials)
 			user.GET("/providers", providerHandler.ListProviders)
@@ -128,7 +128,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		}
 
 		documents := v1.Group("/documents")
-		documents.Use(middleware.AuthMiddleware(cfg))
+		documents.Use(middleware.AuthMiddleware(cfg, authRepo))
 		{
 			documents.POST("/upload", docHandler.Upload)
 			documents.POST("/collections", docHandler.CreateCollection)
