@@ -63,6 +63,9 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 	providerRepo := repository.NewGormProviderRepository(db)
 	providerUseCase := usecase.NewProviderUseCase(providerRepo, cfg)
 	providerHandler := handlers.NewProviderHandler(providerUseCase)
+	pricingRepo := repository.NewGormPricingRepository(db)
+	pricingUseCase := usecase.NewPricingUseCase(pricingRepo)
+	pricingHandler := handlers.NewPricingHandler(pricingUseCase)
 
 	docUseCase := usecase.NewDocumentUseCase(
 		categoryRepo,
@@ -118,6 +121,9 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 			user.POST("/providers", providerHandler.SaveCredentials)
 			user.GET("/providers", providerHandler.ListProviders)
 			user.PATCH("/providers/:providerType", providerHandler.UpdateProviderState)
+			user.POST("/pricing-sources", pricingHandler.SaveSource)
+			user.GET("/pricing-sources", pricingHandler.ListSources)
+			user.GET("/prices", pricingHandler.ListPrices)
 		}
 
 		documents := v1.Group("/documents")
