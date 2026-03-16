@@ -356,13 +356,14 @@ func (h *DocumentHandler) GetDocumentContent(c *gin.Context) {
 
 	disposition := "attachment"
 	switch content.Document.MimeType {
-	case "application/pdf", "text/html", "text/plain":
+	case "application/pdf", "text/plain":
 		disposition = "inline"
 	}
 
 	c.Header("Content-Type", content.Document.MimeType)
 	c.Header("Content-Disposition", disposition+`; filename="`+content.Document.Title+`"`)
 	c.Header("Cache-Control", "no-store")
+	c.Header("X-Content-Type-Options", "nosniff")
 	if content.Document.Size > 0 {
 		c.Header("Content-Length", strconv.FormatInt(content.Document.Size, 10))
 	}

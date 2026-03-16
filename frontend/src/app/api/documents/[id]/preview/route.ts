@@ -47,6 +47,7 @@ export async function GET(request: Request, context: RouteContext) {
                 "Content-Disposition": response.headers.get("content-disposition") || 'inline; filename="documento"',
                 "Content-Length": response.headers.get("content-length") || "",
                 "Cache-Control": "no-store",
+                "X-Content-Type-Options": "nosniff",
             },
         });
     } catch {

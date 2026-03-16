@@ -299,7 +299,7 @@ function MonitoringSummaryPanel({
 }
 
 function isPreviewableDocument(document: Document) {
-    return ["application/pdf", "text/html", "text/plain"].includes(document.mime_type);
+    return ["application/pdf", "text/plain"].includes(document.mime_type);
 }
 
 function buildPreviewURL(document: Document) {
@@ -381,7 +381,7 @@ function FilePreview({ document }: { document: Document }) {
     if (!isPreviewableDocument(document)) {
         return (
             <div className="rounded-xl border border-border bg-background/60 p-5 text-sm text-muted-foreground">
-                Preview visual indisponivel para este tipo de arquivo. Tipos suportados: PDF, HTML e texto plano.
+                Preview visual indisponivel para este tipo de arquivo. Tipos suportados: PDF e texto plano.
             </div>
         );
     }
@@ -726,7 +726,7 @@ function DocumentPreviewPanel({
                                 <FilePreview document={document} />
                                 {!isPreviewableDocument(document) && (
                                     <p className="text-xs text-muted-foreground">
-                                        `docx`, `xlsx` e formatos similares nao possuem renderizacao nativa no navegador sem conversao adicional.
+                                        `html`, `docx`, `xlsx` e formatos similares nao possuem renderizacao nativa segura no navegador sem conversao adicional.
                                     </p>
                                 )}
                             </TabsContent>
