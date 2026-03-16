@@ -14,6 +14,7 @@ type DocumentContent struct {
 type CollectionContext struct {
 	Collection     *models.Collection
 	Documents      []models.Document
+	DocumentPages  []models.DocumentPage
 	ParagraphNodes []models.ParagraphNode
 	TableSections  []models.TableSection
 	MetadataPairs  []models.MetadataPair
@@ -22,12 +23,39 @@ type CollectionContext struct {
 
 type DocumentIndex struct {
 	Document        *models.Document
+	DocumentPages   []models.DocumentPage
 	ParagraphNodes  []models.ParagraphNode
 	TableSections   []models.TableSection
 	MetadataPairs   []models.MetadataPair
 	Chunks          []models.DocumentChunk
 	OutlineNodes    []models.DocumentOutlineNode
 	DocumentSummary string
+	TreeRetrieval   *TreeRetrievalResult
+}
+
+type TreeRetrievalResult struct {
+	Query    string
+	NodeHits []TreeNodeHit
+	PageHits []TreePageHit
+	UsedTree bool
+	Strategy string
+}
+
+type TreeNodeHit struct {
+	NodeID        string
+	Title         string
+	Summary       string
+	StartPage     *int
+	EndPage       *int
+	Score         int
+	SequenceOrder int
+}
+
+type TreePageHit struct {
+	PageNumber int
+	Summary    string
+	Snippet    string
+	Score      int
 }
 
 type CategoryCatalogRepository interface {
@@ -59,11 +87,13 @@ type CatalogDocumentRepository interface {
 }
 
 type StructuredDataRepository interface {
+	ReplaceDocumentPages(ctx context.Context, documentID uint, pages []models.DocumentPage) error
 	ReplaceParagraphNodes(ctx context.Context, documentID uint, nodes []models.ParagraphNode) error
 	ReplaceTableSections(ctx context.Context, documentID uint, sections []models.TableSection) error
 	ReplaceMetadataPairs(ctx context.Context, documentID uint, pairs []models.MetadataPair) error
 	ReplaceDocumentChunks(ctx context.Context, documentID uint, chunks []models.DocumentChunk) error
 	ReplaceOutlineNodes(ctx context.Context, documentID uint, nodes []models.DocumentOutlineNode) error
+	GetDocumentPagesByDocumentIDs(ctx context.Context, documentIDs []uint) ([]models.DocumentPage, error)
 	GetParagraphNodesByDocumentIDs(ctx context.Context, documentIDs []uint) ([]models.ParagraphNode, error)
 	GetTableSectionsByDocumentIDs(ctx context.Context, documentIDs []uint) ([]models.TableSection, error)
 	GetMetadataPairsByDocumentIDs(ctx context.Context, documentIDs []uint) ([]models.MetadataPair, error)
@@ -86,7 +116,7 @@ type DocumentCatalogUseCase interface {
 	ListDocuments(ctx context.Context, userID uint) ([]models.Document, error)
 	GetDocument(ctx context.Context, userID, documentID uint) (*models.Document, error)
 	GetDocumentContent(ctx context.Context, userID, documentID uint) (*DocumentContent, error)
-	GetDocumentIndex(ctx context.Context, userID, documentID uint) (*DocumentIndex, error)
+	GetDocumentIndex(ctx context.Context, userID, documentID uint, query string) (*DocumentIndex, error)
 	ListDocumentsByCategory(ctx context.Context, categoryID uint, userID uint) ([]models.Document, error)
 	ListCollections(ctx context.Context, userID uint) ([]models.Collection, error)
 	GetCollectionContext(ctx context.Context, userID, collectionID uint) (*CollectionContext, error)

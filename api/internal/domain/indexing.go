@@ -30,6 +30,7 @@ type DocumentIndexRequestedEvent struct {
 
 type IndexingResult struct {
 	ParagraphNodes []models.ParagraphNode
+	DocumentPages  []models.DocumentPage
 	TableSections  []models.TableSection
 	MetadataPairs  []models.MetadataPair
 	Chunks         []models.DocumentChunk

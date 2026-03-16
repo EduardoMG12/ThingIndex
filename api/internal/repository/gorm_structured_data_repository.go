@@ -16,6 +16,18 @@ func NewGormStructuredDataRepository(db *gorm.DB) domain.StructuredDataRepositor
 	return &GormStructuredDataRepository{db: db}
 }
 
+func (r *GormStructuredDataRepository) ReplaceDocumentPages(ctx context.Context, documentID uint, pages []models.DocumentPage) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Unscoped().Where("document_id = ?", documentID).Delete(&models.DocumentPage{}).Error; err != nil {
+			return err
+		}
+		if len(pages) == 0 {
+			return nil
+		}
+		return tx.Create(&pages).Error
+	})
+}
+
 func (r *GormStructuredDataRepository) ReplaceParagraphNodes(ctx context.Context, documentID uint, nodes []models.ParagraphNode) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Unscoped().Where("document_id = ?", documentID).Delete(&models.ParagraphNode{}).Error; err != nil {
@@ -72,8 +84,24 @@ func (r *GormStructuredDataRepository) ReplaceOutlineNodes(ctx context.Context, 
 		if len(nodes) == 0 {
 			return nil
 		}
-		return tx.Create(&nodes).Error
+		return createStructuredOutlineNodesWithParents(tx, nodes)
 	})
+}
+
+func (r *GormStructuredDataRepository) GetDocumentPagesByDocumentIDs(ctx context.Context, documentIDs []uint) ([]models.DocumentPage, error) {
+	pages := make([]models.DocumentPage, 0)
+	if len(documentIDs) == 0 {
+		return pages, nil
+	}
+
+	if err := r.db.WithContext(ctx).
+		Where("document_id IN ?", documentIDs).
+		Order("document_id ASC, page_number ASC").
+		Find(&pages).Error; err != nil {
+		return nil, err
+	}
+
+	return pages, nil
 }
 
 func (r *GormStructuredDataRepository) GetParagraphNodesByDocumentIDs(ctx context.Context, documentIDs []uint) ([]models.ParagraphNode, error) {
@@ -154,4 +182,39 @@ func (r *GormStructuredDataRepository) GetOutlineNodesByDocumentIDs(ctx context.
 	}
 
 	return nodes, nil
+}
+
+func createStructuredOutlineNodesWithParents(tx *gorm.DB, nodes []models.DocumentOutlineNode) error {
+	for idx := range nodes {
+		nodes[idx].ParentID = nil
+	}
+
+	if err := tx.Create(&nodes).Error; err != nil {
+		return err
+	}
+
+	nodeIDToID := make(map[string]uint, len(nodes))
+	for _, node := range nodes {
+		nodeIDToID[node.NodeID] = node.ID
+	}
+
+	for _, node := range nodes {
+		parentNodeID, ok := node.Metadata["parent_node_id"].(string)
+		if !ok || parentNodeID == "" {
+			continue
+		}
+
+		parentID, ok := nodeIDToID[parentNodeID]
+		if !ok {
+			continue
+		}
+
+		if err := tx.Model(&models.DocumentOutlineNode{}).
+			Where("id = ?", node.ID).
+			Update("parent_id", parentID).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -30,6 +30,7 @@ func Connect() (*gorm.DB, error) {
 		&models.DocumentCategory{},
 		&models.Collection{},
 		&models.Document{},
+		&models.DocumentPage{},
 		&models.ParagraphNode{},
 		&models.TableSection{},
 		&models.MetadataPair{},

@@ -61,6 +61,19 @@ type ParagraphNode struct {
 	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
+type DocumentPage struct {
+	ID            uint           `gorm:"primarykey" json:"id"`
+	DocumentID    uint           `gorm:"not null;index;uniqueIndex:idx_document_pages_document_page" json:"document_id"`
+	PageNumber    int            `gorm:"not null;uniqueIndex:idx_document_pages_document_page" json:"page_number"`
+	Content       string         `gorm:"type:text;not null" json:"content"`
+	Summary       string         `gorm:"type:text" json:"summary,omitempty"`
+	TokenEstimate int            `gorm:"not null;default:0" json:"token_estimate"`
+	Metadata      map[string]any `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
 type TableSection struct {
 	ID            uint           `gorm:"primarykey" json:"id"`
 	DocumentID    uint           `gorm:"not null;index;uniqueIndex:idx_table_sections_document_sequence" json:"document_id"`
@@ -102,17 +115,23 @@ type DocumentChunk struct {
 }
 
 type DocumentOutlineNode struct {
-	ID            uint           `gorm:"primarykey" json:"id"`
-	DocumentID    uint           `gorm:"not null;index;uniqueIndex:idx_outline_nodes_document_sequence" json:"document_id"`
-	SequenceOrder int            `gorm:"not null;uniqueIndex:idx_outline_nodes_document_sequence" json:"sequence_order"`
-	Level         int            `gorm:"not null" json:"level"`
-	Title         string         `gorm:"size:255;not null" json:"title"`
-	Slug          string         `gorm:"size:255" json:"slug,omitempty"`
-	Summary       string         `gorm:"type:text" json:"summary,omitempty"`
-	Metadata      map[string]any `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
-	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
+	ID            uint                 `gorm:"primarykey" json:"id"`
+	DocumentID    uint                 `gorm:"not null;index;uniqueIndex:idx_outline_nodes_document_sequence" json:"document_id"`
+	SequenceOrder int                  `gorm:"not null;uniqueIndex:idx_outline_nodes_document_sequence" json:"sequence_order"`
+	NodeID        string               `gorm:"size:128;not null;uniqueIndex:idx_outline_nodes_document_node" json:"node_id"`
+	ParentID      *uint                `gorm:"index" json:"parent_id,omitempty"`
+	Parent        *DocumentOutlineNode `gorm:"foreignKey:ParentID" json:"-"`
+	Level         int                  `gorm:"not null" json:"level"`
+	Title         string               `gorm:"size:255;not null" json:"title"`
+	Slug          string               `gorm:"size:255" json:"slug,omitempty"`
+	Summary       string               `gorm:"type:text" json:"summary,omitempty"`
+	StartPage     *int                 `json:"start_page,omitempty"`
+	EndPage       *int                 `json:"end_page,omitempty"`
+	NodePath      string               `gorm:"size:1024;index" json:"node_path,omitempty"`
+	Metadata      map[string]any       `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
+	CreatedAt     time.Time            `json:"created_at"`
+	UpdatedAt     time.Time            `json:"updated_at"`
+	DeletedAt     gorm.DeletedAt       `gorm:"index" json:"-"`
 }
 
 type OutboxEvent struct {
