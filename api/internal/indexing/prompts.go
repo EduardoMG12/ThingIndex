@@ -8,6 +8,30 @@ import (
 	"thing-index/internal/models"
 )
 
+func buildDocumentIdentityBlock(doc *models.Document) string {
+	var builder strings.Builder
+	if doc != nil {
+		builder.WriteString("Document metadata:\n")
+		builder.WriteString("- title=")
+		builder.WriteString(doc.Title)
+		builder.WriteString("\n- mime_type=")
+		builder.WriteString(doc.MimeType)
+		builder.WriteString("\n")
+		if doc.CollectionRef != nil {
+			builder.WriteString("- collection=")
+			builder.WriteString(doc.CollectionRef.Name)
+			builder.WriteString("\n")
+			if doc.CollectionRef.Category != nil {
+				builder.WriteString("- category=")
+				builder.WriteString(doc.CollectionRef.Category.Name)
+				builder.WriteString("\n")
+			}
+		}
+		builder.WriteString("\n")
+	}
+	return builder.String()
+}
+
 func buildDocumentSynopsisPrompt(contextBlock string) (string, string) {
 	systemPrompt := strings.TrimSpace(`
 You generate one stage of a structured document indexing pipeline.
@@ -25,6 +49,29 @@ Keep outputs compact, auditable, and useful for later retrieval.
 	userPrompt.WriteString("document_summary must be at most 120 words.\n")
 	userPrompt.WriteString("document_purpose must be at most 60 words.\n")
 	userPrompt.WriteString("keywords must be a short array of concrete retrieval terms with at most 8 items.\n\n")
+	userPrompt.WriteString(contextBlock)
+
+	return systemPrompt, userPrompt.String()
+}
+
+func buildTreeConstructionPrompt(contextBlock string) (string, string) {
+	systemPrompt := strings.TrimSpace(`
+You construct a hierarchical page-grounded index for a document.
+Return only valid JSON.
+Do not wrap the response in markdown fences.
+Every node must be grounded in the supplied page content.
+Prefer a compact, auditable tree over a large noisy tree.
+Children must stay inside the page range of their parent.
+`)
+
+	var userPrompt strings.Builder
+	userPrompt.WriteString("Task: build a tree index for this document.\n")
+	userPrompt.WriteString("Return JSON with field nodes.\n")
+	userPrompt.WriteString("nodes must be an array of objects with node_id, parent_node_id, title, level, start_page, end_page, summary.\n")
+	userPrompt.WriteString("Use Portuguese for summaries.\n")
+	userPrompt.WriteString("Keep summaries under 40 words.\n")
+	userPrompt.WriteString("If a node has no parent, use an empty string for parent_node_id.\n")
+	userPrompt.WriteString("Prefer 3 to 10 nodes unless the document is clearly very small.\n\n")
 	userPrompt.WriteString(contextBlock)
 
 	return systemPrompt, userPrompt.String()
@@ -97,28 +144,10 @@ func buildPromptContext(doc *models.Document, result domain.IndexingResult) stri
 	var builder strings.Builder
 	builder.WriteString("Document type guidance:\n")
 	builder.WriteString(promptProfile)
-	builder.WriteString("\nPipeline versions:\n- chunk_strategy=tree-aware-v1\n- prompt_profile=llm-index-v3")
+	builder.WriteString("\nPipeline versions:\n- chunk_strategy=tree-aware-v1\n- prompt_profile=llm-index-v4")
 	builder.WriteString("\n\n")
 
-	if doc != nil {
-		builder.WriteString("Document metadata:\n")
-		builder.WriteString("- title=")
-		builder.WriteString(doc.Title)
-		builder.WriteString("\n- mime_type=")
-		builder.WriteString(doc.MimeType)
-		builder.WriteString("\n")
-		if doc.CollectionRef != nil {
-			builder.WriteString("- collection=")
-			builder.WriteString(doc.CollectionRef.Name)
-			builder.WriteString("\n")
-			if doc.CollectionRef.Category != nil {
-				builder.WriteString("- category=")
-				builder.WriteString(doc.CollectionRef.Category.Name)
-				builder.WriteString("\n")
-			}
-		}
-		builder.WriteString("\n")
-	}
+	builder.WriteString(buildDocumentIdentityBlock(doc))
 
 	builder.WriteString("Outline:\n")
 	for idx, node := range result.OutlineNodes {

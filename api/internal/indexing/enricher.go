@@ -51,7 +51,11 @@ func (e *LLMEnricher) Enrich(ctx context.Context, llm domain.LLMService, doc *mo
 
 	updated := result
 	documentID := documentIDFromResult(result)
-	contextBlock := buildPromptContext(doc, result)
+	if treeBuilt, err := e.buildTree(ctx, llm, doc, updated); err == nil {
+		updated = treeBuilt
+	}
+
+	contextBlock := buildPromptContext(doc, updated)
 
 	synopsis, err := e.generateDocumentSynopsis(ctx, llm, contextBlock)
 	if err != nil {
