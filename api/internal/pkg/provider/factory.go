@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -31,6 +32,7 @@ type chatCompletionRequest struct {
 	Model       string                  `json:"model"`
 	Messages    []chatCompletionMessage `json:"messages"`
 	Temperature float64                 `json:"temperature,omitempty"`
+	Stream      bool                    `json:"stream,omitempty"`
 }
 
 type chatCompletionMessage struct {
@@ -41,6 +43,17 @@ type chatCompletionMessage struct {
 type chatCompletionResponse struct {
 	Choices []struct {
 		Message chatCompletionMessage `json:"message"`
+	} `json:"choices"`
+	Error *struct {
+		Message string `json:"message"`
+	} `json:"error,omitempty"`
+}
+
+type chatCompletionStreamResponse struct {
+	Choices []struct {
+		Delta struct {
+			Content string `json:"content"`
+		} `json:"delta"`
 	} `json:"choices"`
 	Error *struct {
 		Message string `json:"message"`
@@ -217,6 +230,88 @@ func (c *openAICompatibleLLMClient) GenerateText(ctx context.Context, systemProm
 	}
 
 	return strings.TrimSpace(completion.Choices[0].Message.Content), nil
+}
+
+func (c *openAICompatibleLLMClient) StreamText(ctx context.Context, systemPrompt, userPrompt string, onDelta func(string) error) error {
+	payload := chatCompletionRequest{
+		Model: c.model,
+		Messages: []chatCompletionMessage{
+			{Role: "system", Content: systemPrompt},
+			{Role: "user", Content: userPrompt},
+		},
+		Temperature: 0.2,
+		Stream:      true,
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "text/event-stream")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		respBody, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			return readErr
+		}
+
+		var completion chatCompletionResponse
+		if err := json.Unmarshal(respBody, &completion); err == nil && completion.Error != nil && strings.TrimSpace(completion.Error.Message) != "" {
+			return errors.New(completion.Error.Message)
+		}
+		return fmt.Errorf("llm stream request failed with status %d", resp.StatusCode)
+	}
+
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || !strings.HasPrefix(line, "data:") {
+			continue
+		}
+
+		payload := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+		if payload == "" {
+			continue
+		}
+		if payload == "[DONE]" {
+			return nil
+		}
+
+		var chunk chatCompletionStreamResponse
+		if err := json.Unmarshal([]byte(payload), &chunk); err != nil {
+			continue
+		}
+		if chunk.Error != nil && strings.TrimSpace(chunk.Error.Message) != "" {
+			return errors.New(chunk.Error.Message)
+		}
+		if len(chunk.Choices) == 0 {
+			continue
+		}
+
+		delta := chunk.Choices[0].Delta.Content
+		if strings.TrimSpace(delta) == "" {
+			continue
+		}
+		if err := onDelta(delta); err != nil {
+			return err
+		}
+	}
+
+	return scanner.Err()
 }
 
 func (c *openAICompatibleLLMClient) ProviderType() string {

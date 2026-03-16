@@ -18,6 +18,7 @@ var (
 			"provider.error_invalid_family":          "Família de provider inválida",
 			"provider.error_invalid_type":            "Tipo de provider inválido",
 			"provider.error_invalid_credentials":     "Credenciais do provider inválidas",
+			"provider.error_llm_not_configured":      "Nenhuma LLM está configurada para o chat",
 			"provider.success_save":                  "Credenciais salvas com sucesso",
 			"provider.success_list":                  "Providers recuperados com sucesso",
 			"error.internal":                         "Erro interno do servidor",
@@ -59,6 +60,7 @@ var (
 			"doc.success_paragraph_nodes_store":      "Parágrafos estruturados salvos com sucesso",
 			"doc.success_table_sections_store":       "Tabelas estruturadas salvas com sucesso",
 			"doc.success_metadata_pairs_store":       "Metadados estruturados salvos com sucesso",
+			"chat.error_stream":                      "Falha ao gerar resposta do chat",
 		},
 		"en": {
 			"auth.user_exists":                       "Email already registered in the system",
@@ -72,6 +74,7 @@ var (
 			"provider.error_invalid_family":          "Invalid provider family",
 			"provider.error_invalid_type":            "Invalid provider type",
 			"provider.error_invalid_credentials":     "Invalid provider credentials",
+			"provider.error_llm_not_configured":      "No LLM is configured for chat",
 			"provider.success_save":                  "Credentials saved successfully",
 			"provider.success_list":                  "Providers retrieved successfully",
 			"error.internal":                         "Internal server error",
@@ -113,6 +116,7 @@ var (
 			"doc.success_paragraph_nodes_store":      "Structured paragraphs stored successfully",
 			"doc.success_table_sections_store":       "Structured tables stored successfully",
 			"doc.success_metadata_pairs_store":       "Structured metadata stored successfully",
+			"chat.error_stream":                      "Failed to generate chat response",
 		},
 	}
 )

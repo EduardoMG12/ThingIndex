@@ -78,6 +78,8 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		cfg.MaxUploadSizeBytes,
 	)
 	docHandler := handlers.NewDocumentHandler(docUseCase, cfg.UploadRequestLimitBytes())
+	chatUseCase := usecase.NewChatUseCase(collectionContextRepo, providerUseCase)
+	chatHandler := handlers.NewChatHandler(chatUseCase)
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.GET("/docs", func(c *gin.Context) {
@@ -148,6 +150,12 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 			documents.GET("/:id/index", docHandler.GetDocumentIndex)
 			documents.GET("/:id", docHandler.GetDocument)
 			documents.GET("/", docHandler.ListDocuments)
+		}
+
+		chat := v1.Group("/chat")
+		chat.Use(middleware.AuthMiddleware(cfg, authRepo))
+		{
+			chat.POST("/stream", chatHandler.StreamCollectionChat)
 		}
 	}
 

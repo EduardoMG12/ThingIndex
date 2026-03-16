@@ -59,6 +59,10 @@ type LLMService interface {
 	GenerateText(ctx context.Context, systemPrompt, userPrompt string) (string, error)
 }
 
+type LLMStreamingService interface {
+	StreamText(ctx context.Context, systemPrompt, userPrompt string, onDelta func(string) error) error
+}
+
 type LLMPricing struct {
 	InputCostPerMillionUSD  float64
 	OutputCostPerMillionUSD float64
