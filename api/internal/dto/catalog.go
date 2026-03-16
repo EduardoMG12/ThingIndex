@@ -180,6 +180,34 @@ type DocumentIndexResponse struct {
 	Monitoring      *IndexMonitoringResponse `json:"monitoring,omitempty"`
 }
 
+type DocumentMonitoringSummaryResponse struct {
+	TotalDocuments        int                                        `json:"total_documents"`
+	IndexedDocuments      int                                        `json:"indexed_documents"`
+	ProcessingDocuments   int                                        `json:"processing_documents"`
+	QueuedDocuments       int                                        `json:"queued_documents"`
+	FailedDocuments       int                                        `json:"failed_documents"`
+	DocumentsWithLLM      int                                        `json:"documents_with_llm"`
+	PricingAwareDocuments int                                        `json:"pricing_aware_documents"`
+	TotalLLMRequests      int                                        `json:"total_llm_requests"`
+	TotalInputTokens      int                                        `json:"total_input_tokens"`
+	TotalOutputTokens     int                                        `json:"total_output_tokens"`
+	TotalTokens           int                                        `json:"total_tokens"`
+	TotalEstimatedCostUSD float64                                    `json:"total_estimated_cost_usd"`
+	AverageDurationMs     int64                                      `json:"average_duration_ms"`
+	AverageQualityScore   float64                                    `json:"average_quality_score"`
+	LastCompletedAt       *time.Time                                 `json:"last_completed_at,omitempty"`
+	ModelBreakdown        []DocumentMonitoringModelAggregateResponse `json:"model_breakdown"`
+}
+
+type DocumentMonitoringModelAggregateResponse struct {
+	ProviderType  string  `json:"provider_type,omitempty"`
+	Model         string  `json:"model,omitempty"`
+	DocumentCount int     `json:"document_count"`
+	RequestCount  int     `json:"request_count"`
+	TotalTokens   int     `json:"total_tokens"`
+	TotalCostUSD  float64 `json:"total_cost_usd"`
+}
+
 type TreeRetrievalNodeHitResponse struct {
 	NodeID        string `json:"node_id"`
 	Title         string `json:"title"`
@@ -558,6 +586,43 @@ func ToDocumentIndexResponse(index *domain.DocumentIndex) *DocumentIndexResponse
 		TreeRetrieval:   ToTreeRetrievalResponse(index.TreeRetrieval),
 		IndexEvaluation: ToIndexEvaluationResponse(index.IndexEvaluation),
 		Monitoring:      ToIndexMonitoringResponse(index.Monitoring),
+	}
+}
+
+func ToDocumentMonitoringSummaryResponse(summary *domain.DocumentMonitoringSummary) *DocumentMonitoringSummaryResponse {
+	if summary == nil {
+		return nil
+	}
+
+	modelBreakdown := make([]DocumentMonitoringModelAggregateResponse, 0, len(summary.ModelBreakdown))
+	for _, model := range summary.ModelBreakdown {
+		modelBreakdown = append(modelBreakdown, DocumentMonitoringModelAggregateResponse{
+			ProviderType:  model.ProviderType,
+			Model:         model.Model,
+			DocumentCount: model.DocumentCount,
+			RequestCount:  model.RequestCount,
+			TotalTokens:   model.TotalTokens,
+			TotalCostUSD:  model.TotalCostUSD,
+		})
+	}
+
+	return &DocumentMonitoringSummaryResponse{
+		TotalDocuments:        summary.TotalDocuments,
+		IndexedDocuments:      summary.IndexedDocuments,
+		ProcessingDocuments:   summary.ProcessingDocuments,
+		QueuedDocuments:       summary.QueuedDocuments,
+		FailedDocuments:       summary.FailedDocuments,
+		DocumentsWithLLM:      summary.DocumentsWithLLM,
+		PricingAwareDocuments: summary.PricingAwareDocuments,
+		TotalLLMRequests:      summary.TotalLLMRequests,
+		TotalInputTokens:      summary.TotalInputTokens,
+		TotalOutputTokens:     summary.TotalOutputTokens,
+		TotalTokens:           summary.TotalTokens,
+		TotalEstimatedCostUSD: summary.TotalEstimatedCostUSD,
+		AverageDurationMs:     summary.AverageDurationMs,
+		AverageQualityScore:   summary.AverageQualityScore,
+		LastCompletedAt:       summary.LastCompletedAt,
+		ModelBreakdown:        modelBreakdown,
 	}
 }
 

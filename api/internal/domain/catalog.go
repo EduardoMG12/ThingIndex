@@ -37,6 +37,34 @@ type DocumentIndex struct {
 	Monitoring      *IndexMonitoringResult
 }
 
+type DocumentMonitoringSummary struct {
+	TotalDocuments        int
+	IndexedDocuments      int
+	ProcessingDocuments   int
+	QueuedDocuments       int
+	FailedDocuments       int
+	DocumentsWithLLM      int
+	PricingAwareDocuments int
+	TotalLLMRequests      int
+	TotalInputTokens      int
+	TotalOutputTokens     int
+	TotalTokens           int
+	TotalEstimatedCostUSD float64
+	AverageDurationMs     int64
+	AverageQualityScore   float64
+	LastCompletedAt       *time.Time
+	ModelBreakdown        []DocumentMonitoringModelAggregate
+}
+
+type DocumentMonitoringModelAggregate struct {
+	ProviderType  string
+	Model         string
+	DocumentCount int
+	RequestCount  int
+	TotalTokens   int
+	TotalCostUSD  float64
+}
+
 type TreeRetrievalResult struct {
 	Query          string
 	NodeHits       []TreeNodeHit
@@ -202,6 +230,7 @@ type DocumentCatalogUseCase interface {
 	GetDocument(ctx context.Context, userID, documentID uint) (*models.Document, error)
 	GetDocumentContent(ctx context.Context, userID, documentID uint) (*DocumentContent, error)
 	GetDocumentIndex(ctx context.Context, userID, documentID uint, query string) (*DocumentIndex, error)
+	GetDocumentMonitoringSummary(ctx context.Context, userID uint) (*DocumentMonitoringSummary, error)
 	ListDocumentsByCategory(ctx context.Context, categoryID uint, userID uint) ([]models.Document, error)
 	ListCollections(ctx context.Context, userID uint) ([]models.Collection, error)
 	GetCollectionContext(ctx context.Context, userID, collectionID uint, query string) (*CollectionContext, error)

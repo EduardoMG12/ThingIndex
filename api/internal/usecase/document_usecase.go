@@ -557,6 +557,129 @@ func (u *documentCatalogUseCase) GetDocumentIndex(ctx context.Context, userID, d
 	return index, nil
 }
 
+func (u *documentCatalogUseCase) GetDocumentMonitoringSummary(ctx context.Context, userID uint) (*domain.DocumentMonitoringSummary, error) {
+	documents, err := u.documentRepo.GetDocumentsByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list user documents: %w", err)
+	}
+
+	documentIDs := make([]uint, 0, len(documents))
+	for _, doc := range documents {
+		documentIDs = append(documentIDs, doc.ID)
+	}
+
+	metadataPairs, err := u.structuredDataRepo.GetMetadataPairsByDocumentIDs(ctx, documentIDs)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
+	}
+
+	return aggregateDocumentMonitoringSummary(documents, metadataPairs), nil
+}
+
+func aggregateDocumentMonitoringSummary(
+	documents []models.Document,
+	metadataPairs []models.MetadataPair,
+) *domain.DocumentMonitoringSummary {
+	summary := &domain.DocumentMonitoringSummary{
+		TotalDocuments: len(documents),
+		ModelBreakdown: make([]domain.DocumentMonitoringModelAggregate, 0),
+	}
+	if len(documents) == 0 {
+		return summary
+	}
+
+	metadataByDocument := make(map[uint][]models.MetadataPair, len(documents))
+	for _, pair := range metadataPairs {
+		metadataByDocument[pair.DocumentID] = append(metadataByDocument[pair.DocumentID], pair)
+	}
+
+	modelAggregateByKey := make(map[string]*domain.DocumentMonitoringModelAggregate)
+	var durationSamples int64
+	var qualitySamples int
+
+	for i := range documents {
+		doc := &documents[i]
+		switch doc.Status {
+		case domain.DocumentStatusIndexed:
+			summary.IndexedDocuments++
+		case domain.DocumentStatusProcessing:
+			summary.ProcessingDocuments++
+		case domain.DocumentStatusQueued:
+			summary.QueuedDocuments++
+		case domain.DocumentStatusFailed:
+			summary.FailedDocuments++
+		}
+
+		evaluation := buildIndexEvaluation(metadataByDocument[doc.ID], nil)
+		monitoring := buildIndexMonitoring(doc, metadataByDocument[doc.ID], evaluation)
+		if monitoring == nil {
+			continue
+		}
+
+		if monitoring.LLM != nil {
+			summary.DocumentsWithLLM++
+			summary.TotalLLMRequests += monitoring.LLM.RequestCount
+			summary.TotalInputTokens += monitoring.LLM.EstimatedInputTokens
+			summary.TotalOutputTokens += monitoring.LLM.EstimatedOutputTokens
+			summary.TotalTokens += monitoring.LLM.EstimatedTotalTokens
+			summary.TotalEstimatedCostUSD += monitoring.LLM.TotalCostUSD
+			if monitoring.LLM.PricingAvailable {
+				summary.PricingAwareDocuments++
+			}
+
+			key := monitoring.LLM.ProviderType + "::" + monitoring.LLM.Model
+			aggregate := modelAggregateByKey[key]
+			if aggregate == nil {
+				aggregate = &domain.DocumentMonitoringModelAggregate{
+					ProviderType: monitoring.LLM.ProviderType,
+					Model:        monitoring.LLM.Model,
+				}
+				modelAggregateByKey[key] = aggregate
+			}
+			aggregate.DocumentCount++
+			aggregate.RequestCount += monitoring.LLM.RequestCount
+			aggregate.TotalTokens += monitoring.LLM.EstimatedTotalTokens
+			aggregate.TotalCostUSD += monitoring.LLM.TotalCostUSD
+		}
+
+		if monitoring.DurationMs > 0 {
+			summary.AverageDurationMs += monitoring.DurationMs
+			durationSamples++
+		}
+		if monitoring.EstimatedQualityScore > 0 {
+			summary.AverageQualityScore += monitoring.EstimatedQualityScore
+			qualitySamples++
+		}
+		if monitoring.CompletedAt != nil && (summary.LastCompletedAt == nil || monitoring.CompletedAt.After(*summary.LastCompletedAt)) {
+			completedAt := *monitoring.CompletedAt
+			summary.LastCompletedAt = &completedAt
+		}
+	}
+
+	if durationSamples > 0 {
+		summary.AverageDurationMs /= durationSamples
+	}
+	if qualitySamples > 0 {
+		summary.AverageQualityScore /= float64(qualitySamples)
+	}
+
+	for _, aggregate := range modelAggregateByKey {
+		summary.ModelBreakdown = append(summary.ModelBreakdown, *aggregate)
+	}
+
+	sort.Slice(summary.ModelBreakdown, func(i, j int) bool {
+		if summary.ModelBreakdown[i].TotalCostUSD == summary.ModelBreakdown[j].TotalCostUSD {
+			if summary.ModelBreakdown[i].TotalTokens == summary.ModelBreakdown[j].TotalTokens {
+				return summary.ModelBreakdown[i].Model < summary.ModelBreakdown[j].Model
+			}
+			return summary.ModelBreakdown[i].TotalTokens > summary.ModelBreakdown[j].TotalTokens
+		}
+		return summary.ModelBreakdown[i].TotalCostUSD > summary.ModelBreakdown[j].TotalCostUSD
+	})
+
+	return summary
+}
+
 func (u *documentCatalogUseCase) ListDocumentsByCategory(ctx context.Context, categoryID uint, userID uint) ([]models.Document, error) {
 	return u.documentRepo.GetDocumentsByCategoryID(ctx, categoryID, userID)
 }

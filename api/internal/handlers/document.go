@@ -396,6 +396,19 @@ func (h *DocumentHandler) GetDocumentIndex(c *gin.Context) {
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_document_get"), dto.ToDocumentIndexResponse(index))
 }
 
+func (h *DocumentHandler) GetDocumentMonitoringSummary(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	summary, err := h.useCase.GetDocumentMonitoringSummary(c.Request.Context(), userID)
+	if err != nil {
+		h.respondInternalError(c, lang)
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_documents_list"), dto.ToDocumentMonitoringSummaryResponse(summary))
+}
+
 func (h *DocumentHandler) ListDocumentsByCategory(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")

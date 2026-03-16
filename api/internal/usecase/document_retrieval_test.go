@@ -156,3 +156,68 @@ func TestBuildIndexMonitoringBuildsTelemetrySnapshot(t *testing.T) {
 		t.Fatalf("expected positive quality score, got %f", monitoring.EstimatedQualityScore)
 	}
 }
+
+func TestAggregateDocumentMonitoringSummaryAggregatesTelemetry(t *testing.T) {
+	t.Parallel()
+
+	startedAt := time.Date(2026, time.March, 16, 11, 0, 0, 0, time.UTC)
+	completedAt := startedAt.Add(2 * time.Second)
+	completedAtTwo := startedAt.Add(5 * time.Second)
+
+	summary := aggregateDocumentMonitoringSummary(
+		[]models.Document{
+			{
+				ID:              1,
+				Status:          "INDEXED",
+				ProcessingStage: "COMPLETED",
+				IndexStartedAt:  &startedAt,
+				IndexedAt:       &completedAt,
+			},
+			{
+				ID:              2,
+				Status:          "FAILED",
+				ProcessingStage: "FAILED_PERSISTING_INDEX",
+				IndexStartedAt:  &startedAt,
+				IndexedAt:       &completedAtTwo,
+			},
+		},
+		[]models.MetadataPair{
+			{DocumentID: 1, Key: "tree_coverage_ratio", Value: "0.91"},
+			{DocumentID: 1, Key: "tree_total_nodes", Value: "8"},
+			{DocumentID: 1, Key: "tree_low_confidence_nodes", Value: "1"},
+			{DocumentID: 1, Key: "tree_oversized_nodes", Value: "0"},
+			{DocumentID: 1, Key: "llm_provider_type", Value: "OPENAI"},
+			{DocumentID: 1, Key: "llm_model", Value: "gpt-4o-mini"},
+			{DocumentID: 1, Key: "llm_request_count", Value: "5"},
+			{DocumentID: 1, Key: "llm_input_tokens_estimate", Value: "2400"},
+			{DocumentID: 1, Key: "llm_output_tokens_estimate", Value: "900"},
+			{DocumentID: 1, Key: "llm_total_tokens_estimate", Value: "3300"},
+			{DocumentID: 1, Key: "llm_pricing_available", Value: "true"},
+			{DocumentID: 1, Key: "llm_total_cost_usd", Value: "0.001230"},
+			{DocumentID: 1, Key: "index_completed_at", Value: completedAt.Format(time.RFC3339)},
+			{DocumentID: 2, Key: "index_completed_at", Value: completedAtTwo.Format(time.RFC3339)},
+		},
+	)
+
+	if summary.TotalDocuments != 2 || summary.IndexedDocuments != 1 || summary.FailedDocuments != 1 {
+		t.Fatalf("unexpected document counters: %#v", summary)
+	}
+	if summary.DocumentsWithLLM != 1 || summary.TotalLLMRequests != 5 || summary.TotalTokens != 3300 {
+		t.Fatalf("unexpected llm totals: %#v", summary)
+	}
+	if summary.TotalEstimatedCostUSD != 0.001230 {
+		t.Fatalf("unexpected cost total: %f", summary.TotalEstimatedCostUSD)
+	}
+	if summary.AverageDurationMs != 3500 {
+		t.Fatalf("unexpected average duration: %d", summary.AverageDurationMs)
+	}
+	if summary.AverageQualityScore <= 0 {
+		t.Fatalf("expected positive quality score: %#v", summary)
+	}
+	if summary.LastCompletedAt == nil || !summary.LastCompletedAt.Equal(completedAtTwo) {
+		t.Fatalf("unexpected last completed at: %#v", summary.LastCompletedAt)
+	}
+	if len(summary.ModelBreakdown) != 1 || summary.ModelBreakdown[0].Model != "gpt-4o-mini" {
+		t.Fatalf("unexpected model breakdown: %#v", summary.ModelBreakdown)
+	}
+}
