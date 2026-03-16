@@ -75,7 +75,7 @@ O projeto nasceu em contexto academico, mas foi estruturado com preocupacoes rea
 
 - Nao e um sistema de GraphRAG em execucao.
 - Nao depende de banco de grafos para recuperar contexto.
-- Nao possui pipeline de workers/document parsing automatizado finalizado dentro deste backend.
+- Ja possui pipeline assincrono basico com outbox, RabbitMQ e worker dedicado para indexacao estrutural, mas ainda nao tem uma etapa de parsing/enriquecimento tao madura quanto um sistema de producao.
 - Nao possui chat juridico/QA com LLM em producao.
 - Nao implementa multiplos storages de forma concreta hoje: o provider de storage efetivamente suportado no runtime atual e **MinIO/S3-compatible**.
 
