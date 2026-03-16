@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"thing-index/internal/domain"
 	"thing-index/internal/dto"
@@ -81,4 +82,24 @@ func (h *PricingHandler) ListPrices(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, "success", "Precos carregados.", dto.ToModelPriceResponses(prices))
+}
+
+func (h *PricingHandler) ListPriceHistory(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	limit := 100
+	if rawLimit := c.Query("limit"); rawLimit != "" {
+		if parsed, err := strconv.Atoi(rawLimit); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+
+	history, err := h.useCase.ListPriceHistory(c.Request.Context(), userID, limit)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", "Historico de precos carregado.", dto.ToModelPriceHistoryResponses(history))
 }

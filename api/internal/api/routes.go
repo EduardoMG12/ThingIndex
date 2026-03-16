@@ -124,6 +124,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 			user.POST("/pricing-sources", pricingHandler.SaveSource)
 			user.GET("/pricing-sources", pricingHandler.ListSources)
 			user.GET("/prices", pricingHandler.ListPrices)
+			user.GET("/prices/history", pricingHandler.ListPriceHistory)
 		}
 
 		documents := v1.Group("/documents")

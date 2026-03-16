@@ -38,11 +38,14 @@ func (s *SyncService) SyncAllEnabledSources(ctx context.Context) (*domain.Pricin
 	totalPrices := 0
 	totalSources := 0
 	for i := range sources {
+		startedAt := time.Now().UTC()
 		count, syncErr := s.syncSingleSource(ctx, &sources[i])
 		if syncErr != nil {
+			_ = s.repo.MarkSourceSyncFailed(ctx, &sources[i], time.Now().UTC(), time.Since(startedAt).Milliseconds(), syncErr.Error())
 			log.Printf("pricing sync skipped for user=%d source=%d provider=%s: %v", sources[i].UserID, sources[i].ID, sources[i].ProviderType, syncErr)
 			continue
 		}
+		_ = s.repo.MarkSourceSyncSucceeded(ctx, &sources[i], time.Now().UTC(), time.Since(startedAt).Milliseconds(), count)
 		totalSources++
 		totalPrices += count
 	}

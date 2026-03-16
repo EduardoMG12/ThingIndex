@@ -19,13 +19,17 @@ type PricingSourceRepository interface {
 	ListEnabledSources(ctx context.Context, userID uint) ([]models.PricingSource, error)
 	ListAllEnabledSources(ctx context.Context) ([]models.PricingSource, error)
 	ReplacePrices(ctx context.Context, source *models.PricingSource, prices []models.ModelPrice, syncedAt time.Time) error
+	MarkSourceSyncSucceeded(ctx context.Context, source *models.PricingSource, finishedAt time.Time, durationMs int64, priceCount int) error
+	MarkSourceSyncFailed(ctx context.Context, source *models.PricingSource, finishedAt time.Time, durationMs int64, failure string) error
 	ListPrices(ctx context.Context, userID uint) ([]models.ModelPrice, error)
+	ListPriceHistory(ctx context.Context, userID uint, limit int) ([]models.ModelPriceHistory, error)
 }
 
 type PricingUseCase interface {
 	SaveSource(ctx context.Context, userID uint, input PricingSourceInput) (*models.PricingSource, error)
 	ListSources(ctx context.Context, userID uint) ([]models.PricingSource, error)
 	ListPrices(ctx context.Context, userID uint) ([]models.ModelPrice, error)
+	ListPriceHistory(ctx context.Context, userID uint, limit int) ([]models.ModelPriceHistory, error)
 }
 
 type PricingSourceInput struct {

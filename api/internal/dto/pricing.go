@@ -14,15 +14,19 @@ type SavePricingSourceRequest struct {
 }
 
 type PricingSourceResponse struct {
-	ID           uint       `json:"id"`
-	UserID       uint       `json:"user_id"`
-	ProviderType string     `json:"provider_type"`
-	Name         string     `json:"name"`
-	SourceURL    string     `json:"source_url"`
-	IsEnabled    bool       `json:"is_enabled"`
-	LastSyncedAt *time.Time `json:"last_synced_at,omitempty"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
+	ID                 uint       `json:"id"`
+	UserID             uint       `json:"user_id"`
+	ProviderType       string     `json:"provider_type"`
+	Name               string     `json:"name"`
+	SourceURL          string     `json:"source_url"`
+	IsEnabled          bool       `json:"is_enabled"`
+	LastSyncedAt       *time.Time `json:"last_synced_at,omitempty"`
+	LastSyncStatus     string     `json:"last_sync_status,omitempty"`
+	LastSyncError      string     `json:"last_sync_error,omitempty"`
+	LastSyncDurationMs int64      `json:"last_sync_duration_ms"`
+	LastPriceCount     int        `json:"last_price_count"`
+	CreatedAt          time.Time  `json:"created_at"`
+	UpdatedAt          time.Time  `json:"updated_at"`
 }
 
 type ModelPriceResponse struct {
@@ -42,20 +46,41 @@ type ModelPriceResponse struct {
 	LastSyncedAt                 time.Time `json:"last_synced_at"`
 }
 
+type ModelPriceHistoryResponse struct {
+	ID                           uint      `json:"id"`
+	PricingSourceID              uint      `json:"pricing_source_id"`
+	ProviderType                 string    `json:"provider_type"`
+	ModelKey                     string    `json:"model_key"`
+	ModelName                    string    `json:"model_name"`
+	Unit                         string    `json:"unit"`
+	Currency                     string    `json:"currency"`
+	FlatPriceUSD                 float64   `json:"flat_price_usd"`
+	InputCostPerMillionUSD       float64   `json:"input_cost_per_million_usd"`
+	OutputCostPerMillionUSD      float64   `json:"output_cost_per_million_usd"`
+	CachedInputCostPerMillionUSD float64   `json:"cached_input_cost_per_million_usd"`
+	ContextCostPerMillionUSD     float64   `json:"context_cost_per_million_usd"`
+	PriceNotes                   string    `json:"price_notes,omitempty"`
+	CapturedAt                   time.Time `json:"captured_at"`
+}
+
 func ToPricingSourceResponse(source *models.PricingSource) *PricingSourceResponse {
 	if source == nil {
 		return nil
 	}
 	return &PricingSourceResponse{
-		ID:           source.ID,
-		UserID:       source.UserID,
-		ProviderType: source.ProviderType,
-		Name:         source.Name,
-		SourceURL:    source.SourceURL,
-		IsEnabled:    source.IsEnabled,
-		LastSyncedAt: source.LastSyncedAt,
-		CreatedAt:    source.CreatedAt,
-		UpdatedAt:    source.UpdatedAt,
+		ID:                 source.ID,
+		UserID:             source.UserID,
+		ProviderType:       source.ProviderType,
+		Name:               source.Name,
+		SourceURL:          source.SourceURL,
+		IsEnabled:          source.IsEnabled,
+		LastSyncedAt:       source.LastSyncedAt,
+		LastSyncStatus:     source.LastSyncStatus,
+		LastSyncError:      source.LastSyncError,
+		LastSyncDurationMs: source.LastSyncDurationMs,
+		LastPriceCount:     source.LastPriceCount,
+		CreatedAt:          source.CreatedAt,
+		UpdatedAt:          source.UpdatedAt,
 	}
 }
 
@@ -65,6 +90,29 @@ func ToPricingSourceResponses(sources []models.PricingSource) []PricingSourceRes
 		if item := ToPricingSourceResponse(&sources[i]); item != nil {
 			items = append(items, *item)
 		}
+	}
+	return items
+}
+
+func ToModelPriceHistoryResponses(history []models.ModelPriceHistory) []ModelPriceHistoryResponse {
+	items := make([]ModelPriceHistoryResponse, 0, len(history))
+	for i := range history {
+		items = append(items, ModelPriceHistoryResponse{
+			ID:                           history[i].ID,
+			PricingSourceID:              history[i].PricingSourceID,
+			ProviderType:                 history[i].ProviderType,
+			ModelKey:                     history[i].ModelKey,
+			ModelName:                    history[i].ModelName,
+			Unit:                         history[i].Unit,
+			Currency:                     history[i].Currency,
+			FlatPriceUSD:                 history[i].FlatPriceUSD,
+			InputCostPerMillionUSD:       history[i].InputCostPerMillionUSD,
+			OutputCostPerMillionUSD:      history[i].OutputCostPerMillionUSD,
+			CachedInputCostPerMillionUSD: history[i].CachedInputCostPerMillionUSD,
+			ContextCostPerMillionUSD:     history[i].ContextCostPerMillionUSD,
+			PriceNotes:                   history[i].PriceNotes,
+			CapturedAt:                   history[i].CapturedAt,
+		})
 	}
 	return items
 }

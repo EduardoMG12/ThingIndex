@@ -55,6 +55,10 @@ func (u *pricingUseCase) ListPrices(ctx context.Context, userID uint) ([]models.
 	return u.repo.ListPrices(ctx, userID)
 }
 
+func (u *pricingUseCase) ListPriceHistory(ctx context.Context, userID uint, limit int) ([]models.ModelPriceHistory, error) {
+	return u.repo.ListPriceHistory(ctx, userID, limit)
+}
+
 func validatePricingSourceURL(rawURL string) error {
 	parsed, err := url.Parse(strings.TrimSpace(rawURL))
 	if err != nil || parsed == nil || parsed.Scheme == "" || parsed.Host == "" {

@@ -40,6 +40,7 @@ func Connect() (*gorm.DB, error) {
 		&models.UserProviderConfig{},
 		&models.PricingSource{},
 		&models.ModelPrice{},
+		&models.ModelPriceHistory{},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("fail to run automatic migrations: %w", err)
