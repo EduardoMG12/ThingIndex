@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Bot, User, Loader2, Sparkles, AlertCircle, Hash, FolderOpen } from "lucide-react";
+import { Send, Bot, User, Loader2, Sparkles, AlertCircle, Hash, FolderOpen, Square, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -72,6 +72,10 @@ function normalizeSources(sources: ChatSource[]): Source[] {
     }));
 }
 
+function getChatStorageKey(collectionId: number | null) {
+    return collectionId ? `thingindex:chat:${collectionId}` : "";
+}
+
 const ChatTab = () => {
     const { t } = useI18n();
     const { collections, isLoading: collectionsLoading } = useCollections();
@@ -104,6 +108,44 @@ const ChatTab = () => {
             abortRef.current?.abort();
         };
     }, []);
+
+    useEffect(() => {
+        const storageKey = getChatStorageKey(selectedCollectionId);
+        if (!storageKey || typeof window === "undefined") {
+            setMessages([]);
+            setStreamError(null);
+            setActiveSubQueries([]);
+            return;
+        }
+
+        try {
+            const rawValue = window.sessionStorage.getItem(storageKey);
+            if (!rawValue) {
+                setMessages([]);
+                setStreamError(null);
+                setActiveSubQueries([]);
+                return;
+            }
+
+            const parsed = JSON.parse(rawValue) as { messages?: Message[] };
+            setMessages(Array.isArray(parsed.messages) ? parsed.messages : []);
+            setStreamError(null);
+            setActiveSubQueries([]);
+        } catch {
+            setMessages([]);
+            setStreamError(null);
+            setActiveSubQueries([]);
+        }
+    }, [selectedCollectionId]);
+
+    useEffect(() => {
+        const storageKey = getChatStorageKey(selectedCollectionId);
+        if (!storageKey || typeof window === "undefined") {
+            return;
+        }
+
+        window.sessionStorage.setItem(storageKey, JSON.stringify({ messages }));
+    }, [messages, selectedCollectionId]);
 
     const handleStreamEvent = (assistantMessageId: string) => (event: ChatStreamEvent) => {
         switch (event.type) {
@@ -209,6 +251,31 @@ const ChatTab = () => {
         }
     };
 
+    const handleCancel = () => {
+        abortRef.current?.abort();
+        abortRef.current = null;
+        setIsLoading(false);
+        setActiveSubQueries([]);
+        setStreamError(t("dashboard.chat.cancelled"));
+    };
+
+    const handleClear = () => {
+        if (abortRef.current) {
+            abortRef.current.abort();
+            abortRef.current = null;
+        }
+        setMessages([]);
+        setInput("");
+        setIsLoading(false);
+        setActiveSubQueries([]);
+        setStreamError(null);
+
+        const storageKey = getChatStorageKey(selectedCollectionId);
+        if (storageKey && typeof window !== "undefined") {
+            window.sessionStorage.removeItem(storageKey);
+        }
+    };
+
     const hasCollections = collections.some((collection) => typeof collection.id === "number");
 
     return (
@@ -224,30 +291,44 @@ const ChatTab = () => {
                         </p>
                     </div>
 
-                    <label className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
-                        <FolderOpen className="h-3.5 w-3.5 text-primary" />
-                        <select
-                            value={selectedCollectionId ?? ""}
-                            onChange={(event) => {
-                                const value = Number(event.target.value);
-                                setSelectedCollectionId(Number.isFinite(value) && value > 0 ? value : null);
-                            }}
-                            disabled={!hasCollections || collectionsLoading || isLoading}
-                            className="min-w-52 bg-transparent text-xs font-mono outline-none"
+                    <div className="flex flex-wrap items-center gap-2">
+                        <label className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
+                            <FolderOpen className="h-3.5 w-3.5 text-primary" />
+                            <select
+                                value={selectedCollectionId ?? ""}
+                                onChange={(event) => {
+                                    const value = Number(event.target.value);
+                                    setSelectedCollectionId(Number.isFinite(value) && value > 0 ? value : null);
+                                }}
+                                disabled={!hasCollections || collectionsLoading || isLoading}
+                                className="min-w-52 bg-transparent text-xs font-mono outline-none"
+                            >
+                                {!hasCollections && (
+                                    <option value="">{t("dashboard.chat.noCollections")}</option>
+                                )}
+                                {collections
+                                    .filter((collection) => typeof collection.id === "number")
+                                    .map((collection) => (
+                                        <option key={String(collection.id)} value={collection.id}>
+                                            {collection.name}
+                                        </option>
+                                    ))}
+                            </select>
+                            {collectionsLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                        </label>
+
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleClear}
+                            disabled={messages.length === 0 && !streamError}
+                            className="gap-2"
                         >
-                            {!hasCollections && (
-                                <option value="">{t("dashboard.chat.noCollections")}</option>
-                            )}
-                            {collections
-                                .filter((collection) => typeof collection.id === "number")
-                                .map((collection) => (
-                                    <option key={String(collection.id)} value={collection.id}>
-                                        {collection.name}
-                                    </option>
-                                ))}
-                        </select>
-                        {collectionsLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-                    </label>
+                            <Trash2 className="h-3.5 w-3.5" />
+                            {t("dashboard.chat.clear")}
+                        </Button>
+                    </div>
                 </div>
             </div>
 
@@ -356,9 +437,23 @@ const ChatTab = () => {
                     <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase text-muted-foreground">
                         <AlertCircle className="h-3 w-3" /> {t("dashboard.chat.hallucination")}
                     </p>
-                    <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
-                        {hasCollections ? t("dashboard.chat.newLineHint") : t("dashboard.chat.createCollectionHint")}
-                    </p>
+                    <div className="flex items-center gap-2">
+                        {isLoading && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={handleCancel}
+                                className="gap-2 px-2.5 py-1 text-[10px] uppercase tracking-widest"
+                            >
+                                <Square className="h-3 w-3" />
+                                {t("dashboard.chat.cancel")}
+                            </Button>
+                        )}
+                        <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                            {hasCollections ? t("dashboard.chat.newLineHint") : t("dashboard.chat.createCollectionHint")}
+                        </p>
+                    </div>
                 </div>
                 {selectedCollectionId && (
                     <div className="mt-3 flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">

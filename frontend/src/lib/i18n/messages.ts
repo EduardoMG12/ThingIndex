@@ -252,6 +252,9 @@ export const messages: LocaleMessages = {
                 streaming: "Gerando resposta...",
                 error: "Não foi possível concluir a resposta do chat.",
                 fallbackError: "Não foi possível gerar a resposta agora. Verifique a configuração da LLM de chat e tente novamente.",
+                cancel: "Parar",
+                cancelled: "Geração interrompida pelo usuário.",
+                clear: "Limpar",
             },
             cost: {
                 title: "Estimativa de custos",
@@ -565,6 +568,9 @@ export const messages: LocaleMessages = {
                 streaming: "Generating answer...",
                 error: "Unable to complete the chat response.",
                 fallbackError: "Could not generate the answer right now. Check the chat LLM configuration and try again.",
+                cancel: "Stop",
+                cancelled: "Generation stopped by the user.",
+                clear: "Clear",
             },
             cost: {
                 title: "Cost estimate",
@@ -878,6 +884,9 @@ export const messages: LocaleMessages = {
                 streaming: "Generando respuesta...",
                 error: "No fue posible completar la respuesta del chat.",
                 fallbackError: "No fue posible generar la respuesta ahora. Revisa la configuración de la LLM de chat e inténtalo nuevamente.",
+                cancel: "Detener",
+                cancelled: "La generación fue interrumpida por el usuario.",
+                clear: "Limpiar",
             },
             cost: {
                 title: "Estimación de costos",
