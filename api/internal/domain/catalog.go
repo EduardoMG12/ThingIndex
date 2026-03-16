@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"thing-index/internal/models"
+	"time"
 )
 
 type DocumentContent struct {
@@ -33,6 +34,7 @@ type DocumentIndex struct {
 	DocumentSummary string
 	TreeRetrieval   *TreeRetrievalResult
 	IndexEvaluation *IndexEvaluationResult
+	Monitoring      *IndexMonitoringResult
 }
 
 type TreeRetrievalResult struct {
@@ -78,6 +80,36 @@ type IndexEvaluationResult struct {
 	OversizedNodes     int
 	MaxDepth           int
 	RetrievalReady     bool
+}
+
+type IndexMonitoringResult struct {
+	Status                 string
+	Stage                  string
+	StatusDetail           string
+	StartedAt              *time.Time
+	CompletedAt            *time.Time
+	DurationMs             int64
+	EnrichmentStatus       string
+	PipelineVersion        string
+	PromptProfileVersion   string
+	ChunkStrategyVersion   string
+	TreeBuilder            string
+	TreeVerificationPassed bool
+	EstimatedQualityScore  float64
+	LLM                    *LLMMonitoringResult
+}
+
+type LLMMonitoringResult struct {
+	ProviderType          string
+	Model                 string
+	RequestCount          int
+	EstimatedInputTokens  int
+	EstimatedOutputTokens int
+	EstimatedTotalTokens  int
+	PricingAvailable      bool
+	InputCostUSD          float64
+	OutputCostUSD         float64
+	TotalCostUSD          float64
 }
 
 type CollectionRetrievalResult struct {

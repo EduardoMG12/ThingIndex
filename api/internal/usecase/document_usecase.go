@@ -400,15 +400,17 @@ func (u *documentCatalogUseCase) UploadDocument(ctx context.Context, userID uint
 	}
 
 	doc := &models.Document{
-		UserID:        userID,
-		Title:         strings.TrimSpace(title),
-		FileURL:       fileURL,
-		Size:          size,
-		MimeType:      resolvedContentType,
-		Status:        domain.DocumentStatusQueued,
-		Collection:    collectionRef.Name,
-		CollectionID:  &collectionRef.ID,
-		CollectionRef: collectionRef,
+		UserID:          userID,
+		Title:           strings.TrimSpace(title),
+		FileURL:         fileURL,
+		Size:            size,
+		MimeType:        resolvedContentType,
+		Status:          domain.DocumentStatusQueued,
+		ProcessingStage: "QUEUED",
+		StatusDetail:    "Documento enviado e aguardando processamento pelo worker.",
+		Collection:      collectionRef.Name,
+		CollectionID:    &collectionRef.ID,
+		CollectionRef:   collectionRef,
 	}
 	if category != nil {
 		doc.CategoryID = &category.ID
@@ -550,6 +552,7 @@ func (u *documentCatalogUseCase) GetDocumentIndex(ctx context.Context, userID, d
 		index.TreeRetrieval = buildTreeRetrieval(strings.TrimSpace(query), outlineNodes, documentPages)
 	}
 	index.IndexEvaluation = buildIndexEvaluation(metadataPairs, outlineNodes)
+	index.Monitoring = buildIndexMonitoring(doc, metadataPairs, index.IndexEvaluation)
 
 	return index, nil
 }
@@ -796,6 +799,106 @@ func buildIndexEvaluation(metadataPairs []models.MetadataPair, nodes []models.Do
 	return evaluation
 }
 
+func buildIndexMonitoring(
+	doc *models.Document,
+	metadataPairs []models.MetadataPair,
+	evaluation *domain.IndexEvaluationResult,
+) *domain.IndexMonitoringResult {
+	if doc == nil && len(metadataPairs) == 0 {
+		return nil
+	}
+
+	pairMap := make(map[string]string, len(metadataPairs))
+	for _, pair := range metadataPairs {
+		if _, exists := pairMap[pair.Key]; !exists {
+			pairMap[pair.Key] = pair.Value
+		}
+	}
+
+	monitoring := &domain.IndexMonitoringResult{
+		EnrichmentStatus:       strings.TrimSpace(pairMap["enrichment_status"]),
+		PipelineVersion:        strings.TrimSpace(pairMap["index_pipeline_version"]),
+		PromptProfileVersion:   strings.TrimSpace(pairMap["prompt_profile_version"]),
+		ChunkStrategyVersion:   strings.TrimSpace(pairMap["chunk_strategy_version"]),
+		TreeBuilder:            strings.TrimSpace(pairMap["tree_builder"]),
+		TreeVerificationPassed: strings.EqualFold(strings.TrimSpace(pairMap["tree_verification_passed"]), "true"),
+	}
+
+	if doc != nil {
+		monitoring.Status = doc.Status
+		monitoring.Stage = doc.ProcessingStage
+		monitoring.StatusDetail = doc.StatusDetail
+		monitoring.StartedAt = doc.IndexStartedAt
+		monitoring.CompletedAt = doc.IndexedAt
+		if doc.IndexStartedAt != nil && doc.IndexedAt != nil {
+			monitoring.DurationMs = doc.IndexedAt.Sub(*doc.IndexStartedAt).Milliseconds()
+		}
+	}
+
+	if monitoring.StartedAt == nil {
+		if startedAt := parseTimeMetric(pairMap["index_started_at"]); startedAt != nil {
+			monitoring.StartedAt = startedAt
+		}
+	}
+	if monitoring.CompletedAt == nil {
+		if completedAt := parseTimeMetric(pairMap["index_completed_at"]); completedAt != nil {
+			monitoring.CompletedAt = completedAt
+		}
+	}
+	if monitoring.DurationMs == 0 {
+		monitoring.DurationMs = parseInt64Metric(pairMap["index_duration_ms"], 0)
+	}
+
+	llmMonitoring := &domain.LLMMonitoringResult{
+		ProviderType:          strings.TrimSpace(pairMap["llm_provider_type"]),
+		Model:                 strings.TrimSpace(pairMap["llm_model"]),
+		RequestCount:          parseIntMetric(pairMap["llm_request_count"], 0),
+		EstimatedInputTokens:  parseIntMetric(pairMap["llm_input_tokens_estimate"], 0),
+		EstimatedOutputTokens: parseIntMetric(pairMap["llm_output_tokens_estimate"], 0),
+		EstimatedTotalTokens:  parseIntMetric(pairMap["llm_total_tokens_estimate"], 0),
+		PricingAvailable:      strings.EqualFold(strings.TrimSpace(pairMap["llm_pricing_available"]), "true"),
+		InputCostUSD:          parseFloatMetric(pairMap["llm_input_cost_usd"]),
+		OutputCostUSD:         parseFloatMetric(pairMap["llm_output_cost_usd"]),
+		TotalCostUSD:          parseFloatMetric(pairMap["llm_total_cost_usd"]),
+	}
+	if llmMonitoring.ProviderType != "" || llmMonitoring.Model != "" || llmMonitoring.RequestCount > 0 {
+		monitoring.LLM = llmMonitoring
+	}
+
+	monitoring.EstimatedQualityScore = estimateIndexQualityScore(evaluation)
+	if monitoring.Status == "" &&
+		monitoring.Stage == "" &&
+		monitoring.EnrichmentStatus == "" &&
+		monitoring.PipelineVersion == "" &&
+		monitoring.LLM == nil &&
+		monitoring.EstimatedQualityScore == 0 {
+		return nil
+	}
+
+	return monitoring
+}
+
+func estimateIndexQualityScore(evaluation *domain.IndexEvaluationResult) float64 {
+	if evaluation == nil {
+		return 0
+	}
+
+	score := evaluation.CoverageRatio * 70
+	if evaluation.RetrievalReady {
+		score += 15
+	}
+	score += float64(max(0, 5-evaluation.LowConfidenceNodes)) * 2
+	score += float64(max(0, 3-evaluation.OversizedNodes))
+
+	if score > 100 {
+		return 100
+	}
+	if score < 0 {
+		return 0
+	}
+	return score
+}
+
 func buildCollectionRetrieval(
 	query string,
 	documents []models.Document,
@@ -914,6 +1017,22 @@ func parseFloatMetric(value string) float64 {
 		return 0
 	}
 	return parsed
+}
+
+func parseInt64Metric(value string, fallback int64) int64 {
+	parsed, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
+	if err != nil {
+		return fallback
+	}
+	return parsed
+}
+
+func parseTimeMetric(value string) *time.Time {
+	parsed, err := time.Parse(time.RFC3339, strings.TrimSpace(value))
+	if err != nil {
+		return nil
+	}
+	return &parsed
 }
 
 func metadataIntValue(metadata map[string]any, key string) int {

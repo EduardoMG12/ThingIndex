@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"testing"
+	"time"
 
 	"thing-index/internal/models"
 )
@@ -102,5 +103,56 @@ func BenchmarkBuildIndexEvaluation(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = buildIndexEvaluation(metadata, nodes)
+	}
+}
+
+func TestBuildIndexMonitoringBuildsTelemetrySnapshot(t *testing.T) {
+	t.Parallel()
+
+	startedAt := time.Date(2026, time.March, 16, 11, 0, 0, 0, time.UTC)
+	completedAt := startedAt.Add(2 * time.Second)
+	doc := &models.Document{
+		Status:          "INDEXED",
+		ProcessingStage: "COMPLETED",
+		StatusDetail:    "Indexacao concluida e pronta para consulta.",
+		IndexStartedAt:  &startedAt,
+		IndexedAt:       &completedAt,
+	}
+	metadata := []models.MetadataPair{
+		{Key: "enrichment_status", Value: "applied"},
+		{Key: "index_pipeline_version", Value: "page-tree-v3"},
+		{Key: "prompt_profile_version", Value: "llm-index-v5"},
+		{Key: "chunk_strategy_version", Value: "section-window-v2"},
+		{Key: "tree_builder", Value: "llm-first"},
+		{Key: "tree_verification_passed", Value: "true"},
+		{Key: "llm_provider_type", Value: "OPENAI"},
+		{Key: "llm_model", Value: "gpt-4o-mini"},
+		{Key: "llm_request_count", Value: "5"},
+		{Key: "llm_input_tokens_estimate", Value: "2400"},
+		{Key: "llm_output_tokens_estimate", Value: "900"},
+		{Key: "llm_total_tokens_estimate", Value: "3300"},
+		{Key: "llm_pricing_available", Value: "true"},
+		{Key: "llm_total_cost_usd", Value: "0.001230"},
+	}
+	evaluation := buildIndexEvaluation([]models.MetadataPair{
+		{Key: "tree_coverage_ratio", Value: "0.91"},
+		{Key: "tree_total_nodes", Value: "8"},
+		{Key: "tree_low_confidence_nodes", Value: "1"},
+		{Key: "tree_oversized_nodes", Value: "0"},
+		{Key: "tree_max_depth", Value: "4"},
+	}, []models.DocumentOutlineNode{{NodeID: "root", Title: "Contrato"}})
+
+	monitoring := buildIndexMonitoring(doc, metadata, evaluation)
+	if monitoring == nil {
+		t.Fatal("expected monitoring snapshot")
+	}
+	if monitoring.DurationMs != 2000 {
+		t.Fatalf("unexpected duration: %d", monitoring.DurationMs)
+	}
+	if monitoring.LLM == nil || monitoring.LLM.RequestCount != 5 {
+		t.Fatalf("unexpected llm monitoring: %#v", monitoring.LLM)
+	}
+	if monitoring.EstimatedQualityScore <= 0 {
+		t.Fatalf("expected positive quality score, got %f", monitoring.EstimatedQualityScore)
 	}
 }

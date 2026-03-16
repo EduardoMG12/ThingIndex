@@ -68,20 +68,25 @@ type CollectionResponse struct {
 }
 
 type DocumentResponse struct {
-	ID           uint                `json:"id"`
-	UserID       uint                `json:"user_id"`
-	Title        string              `json:"title"`
-	FileURL      string              `json:"file_url"`
-	FilePath     string              `json:"file_path"`
-	Size         int64               `json:"size"`
-	MimeType     string              `json:"mime_type"`
-	Status       string              `json:"status"`
-	CollectionID *uint               `json:"collection_id,omitempty"`
-	Collection   *CollectionResponse `json:"collection,omitempty"`
-	CategoryID   *uint               `json:"category_id,omitempty"`
-	Category     *CategoryResponse   `json:"category,omitempty"`
-	CreatedAt    time.Time           `json:"created_at"`
-	UpdatedAt    time.Time           `json:"updated_at"`
+	ID                  uint                `json:"id"`
+	UserID              uint                `json:"user_id"`
+	Title               string              `json:"title"`
+	FileURL             string              `json:"file_url"`
+	FilePath            string              `json:"file_path"`
+	Size                int64               `json:"size"`
+	MimeType            string              `json:"mime_type"`
+	Status              string              `json:"status"`
+	ProcessingStage     string              `json:"processing_stage,omitempty"`
+	StatusDetail        string              `json:"status_detail,omitempty"`
+	IndexStartedAt      *time.Time          `json:"index_started_at,omitempty"`
+	IndexedAt           *time.Time          `json:"indexed_at,omitempty"`
+	LastProcessingError string              `json:"last_processing_error,omitempty"`
+	CollectionID        *uint               `json:"collection_id,omitempty"`
+	Collection          *CollectionResponse `json:"collection,omitempty"`
+	CategoryID          *uint               `json:"category_id,omitempty"`
+	Category            *CategoryResponse   `json:"category,omitempty"`
+	CreatedAt           time.Time           `json:"created_at"`
+	UpdatedAt           time.Time           `json:"updated_at"`
 }
 
 type ParagraphNodeResponse struct {
@@ -172,6 +177,7 @@ type DocumentIndexResponse struct {
 	DocumentSummary string                   `json:"document_summary"`
 	TreeRetrieval   *TreeRetrievalResponse   `json:"tree_retrieval,omitempty"`
 	IndexEvaluation *IndexEvaluationResponse `json:"index_evaluation,omitempty"`
+	Monitoring      *IndexMonitoringResponse `json:"monitoring,omitempty"`
 }
 
 type TreeRetrievalNodeHitResponse struct {
@@ -216,6 +222,36 @@ type IndexEvaluationResponse struct {
 	OversizedNodes     int     `json:"oversized_nodes"`
 	MaxDepth           int     `json:"max_depth"`
 	RetrievalReady     bool    `json:"retrieval_ready"`
+}
+
+type IndexMonitoringResponse struct {
+	Status                 string                 `json:"status"`
+	Stage                  string                 `json:"stage,omitempty"`
+	StatusDetail           string                 `json:"status_detail,omitempty"`
+	StartedAt              *time.Time             `json:"started_at,omitempty"`
+	CompletedAt            *time.Time             `json:"completed_at,omitempty"`
+	DurationMs             int64                  `json:"duration_ms"`
+	EnrichmentStatus       string                 `json:"enrichment_status,omitempty"`
+	PipelineVersion        string                 `json:"pipeline_version,omitempty"`
+	PromptProfileVersion   string                 `json:"prompt_profile_version,omitempty"`
+	ChunkStrategyVersion   string                 `json:"chunk_strategy_version,omitempty"`
+	TreeBuilder            string                 `json:"tree_builder,omitempty"`
+	TreeVerificationPassed bool                   `json:"tree_verification_passed"`
+	EstimatedQualityScore  float64                `json:"estimated_quality_score"`
+	LLM                    *LLMMonitoringResponse `json:"llm,omitempty"`
+}
+
+type LLMMonitoringResponse struct {
+	ProviderType          string  `json:"provider_type,omitempty"`
+	Model                 string  `json:"model,omitempty"`
+	RequestCount          int     `json:"request_count"`
+	EstimatedInputTokens  int     `json:"estimated_input_tokens"`
+	EstimatedOutputTokens int     `json:"estimated_output_tokens"`
+	EstimatedTotalTokens  int     `json:"estimated_total_tokens"`
+	PricingAvailable      bool    `json:"pricing_available"`
+	InputCostUSD          float64 `json:"input_cost_usd"`
+	OutputCostUSD         float64 `json:"output_cost_usd"`
+	TotalCostUSD          float64 `json:"total_cost_usd"`
 }
 
 type CollectionRetrievalResponse struct {
@@ -320,20 +356,25 @@ func ToDocumentResponse(doc *models.Document) *DocumentResponse {
 	}
 
 	return &DocumentResponse{
-		ID:           doc.ID,
-		UserID:       doc.UserID,
-		Title:        doc.Title,
-		FileURL:      doc.FileURL,
-		FilePath:     doc.FileURL,
-		Size:         doc.Size,
-		MimeType:     doc.MimeType,
-		Status:       doc.Status,
-		CollectionID: doc.CollectionID,
-		Collection:   ToCollectionResponse(doc.CollectionRef),
-		CategoryID:   categoryID,
-		Category:     ToCategoryResponse(category),
-		CreatedAt:    doc.CreatedAt,
-		UpdatedAt:    doc.UpdatedAt,
+		ID:                  doc.ID,
+		UserID:              doc.UserID,
+		Title:               doc.Title,
+		FileURL:             doc.FileURL,
+		FilePath:            doc.FileURL,
+		Size:                doc.Size,
+		MimeType:            doc.MimeType,
+		Status:              doc.Status,
+		ProcessingStage:     doc.ProcessingStage,
+		StatusDetail:        doc.StatusDetail,
+		IndexStartedAt:      doc.IndexStartedAt,
+		IndexedAt:           doc.IndexedAt,
+		LastProcessingError: doc.LastProcessingError,
+		CollectionID:        doc.CollectionID,
+		Collection:          ToCollectionResponse(doc.CollectionRef),
+		CategoryID:          categoryID,
+		Category:            ToCategoryResponse(category),
+		CreatedAt:           doc.CreatedAt,
+		UpdatedAt:           doc.UpdatedAt,
 	}
 }
 
@@ -516,6 +557,7 @@ func ToDocumentIndexResponse(index *domain.DocumentIndex) *DocumentIndexResponse
 		DocumentSummary: index.DocumentSummary,
 		TreeRetrieval:   ToTreeRetrievalResponse(index.TreeRetrieval),
 		IndexEvaluation: ToIndexEvaluationResponse(index.IndexEvaluation),
+		Monitoring:      ToIndexMonitoringResponse(index.Monitoring),
 	}
 }
 
@@ -581,6 +623,48 @@ func ToIndexEvaluationResponse(result *domain.IndexEvaluationResult) *IndexEvalu
 		OversizedNodes:     result.OversizedNodes,
 		MaxDepth:           result.MaxDepth,
 		RetrievalReady:     result.RetrievalReady,
+	}
+}
+
+func ToIndexMonitoringResponse(result *domain.IndexMonitoringResult) *IndexMonitoringResponse {
+	if result == nil {
+		return nil
+	}
+
+	return &IndexMonitoringResponse{
+		Status:                 result.Status,
+		Stage:                  result.Stage,
+		StatusDetail:           result.StatusDetail,
+		StartedAt:              result.StartedAt,
+		CompletedAt:            result.CompletedAt,
+		DurationMs:             result.DurationMs,
+		EnrichmentStatus:       result.EnrichmentStatus,
+		PipelineVersion:        result.PipelineVersion,
+		PromptProfileVersion:   result.PromptProfileVersion,
+		ChunkStrategyVersion:   result.ChunkStrategyVersion,
+		TreeBuilder:            result.TreeBuilder,
+		TreeVerificationPassed: result.TreeVerificationPassed,
+		EstimatedQualityScore:  result.EstimatedQualityScore,
+		LLM:                    ToLLMMonitoringResponse(result.LLM),
+	}
+}
+
+func ToLLMMonitoringResponse(result *domain.LLMMonitoringResult) *LLMMonitoringResponse {
+	if result == nil {
+		return nil
+	}
+
+	return &LLMMonitoringResponse{
+		ProviderType:          result.ProviderType,
+		Model:                 result.Model,
+		RequestCount:          result.RequestCount,
+		EstimatedInputTokens:  result.EstimatedInputTokens,
+		EstimatedOutputTokens: result.EstimatedOutputTokens,
+		EstimatedTotalTokens:  result.EstimatedTotalTokens,
+		PricingAvailable:      result.PricingAvailable,
+		InputCostUSD:          result.InputCostUSD,
+		OutputCostUSD:         result.OutputCostUSD,
+		TotalCostUSD:          result.TotalCostUSD,
 	}
 }
 
