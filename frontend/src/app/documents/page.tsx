@@ -29,7 +29,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDocuments } from "@/hooks/use-documents";
 import { fetchCollectionContext } from "@/lib/api/collections";
 import type { CollectionContext } from "@/lib/api/contracts/document-context";
-import { fetchDocumentIndex, type Document, type DocumentIndex, type IndexMonitoring } from "@/lib/api/documents";
+import {
+    fetchDocumentIndex,
+    fetchDocumentMonitoringSummary,
+    type Document,
+    type DocumentIndex,
+    type DocumentMonitoringSummary,
+    type IndexMonitoring,
+} from "@/lib/api/documents";
 import { useI18n } from "@/lib/i18n/provider";
 
 const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } };
@@ -195,6 +202,96 @@ function MonitoringView({
                     <p><span className="text-muted-foreground">Tree builder:</span> <span className="font-mono">{monitoring?.tree_builder || "-"}</span></p>
                     <p><span className="text-muted-foreground">Enrichment:</span> <span className="font-mono">{monitoring?.enrichment_status || "-"}</span></p>
                     <p><span className="text-muted-foreground">Tree verificada:</span> <span className="font-mono">{monitoring?.tree_verification_passed ? "true" : "false"}</span></p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function MonitoringSummaryPanel({
+    summary,
+}: {
+    summary: DocumentMonitoringSummary;
+}) {
+    const primaryModel = summary.model_breakdown[0];
+
+    return (
+        <div className="mb-6 space-y-4">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-xl border border-border bg-background/60 p-4">
+                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                        <Activity className="h-3.5 w-3.5 text-primary" />
+                        Cobertura operacional
+                    </div>
+                    <p className="mt-3 text-lg font-semibold">{summary.indexed_documents} / {summary.total_documents}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        {summary.processing_documents} processando · {summary.queued_documents} em fila · {summary.failed_documents} falharam
+                    </p>
+                </div>
+                <div className="rounded-xl border border-border bg-background/60 p-4">
+                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                        <Coins className="h-3.5 w-3.5 text-primary" />
+                        Custo agregado
+                    </div>
+                    <p className="mt-3 text-lg font-semibold">{formatUSD(summary.total_estimated_cost_usd)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        {summary.total_tokens.toLocaleString("en-US")} tokens estimados · {summary.total_llm_requests} requests
+                    </p>
+                </div>
+                <div className="rounded-xl border border-border bg-background/60 p-4">
+                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                        <Gauge className="h-3.5 w-3.5 text-primary" />
+                        Qualidade media
+                    </div>
+                    <p className="mt-3 text-lg font-semibold">{summary.average_quality_score.toFixed(1)} / 100</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        Duracao media {formatDuration(summary.average_duration_ms)}
+                    </p>
+                </div>
+                <div className="rounded-xl border border-border bg-background/60 p-4">
+                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                        <BrainCircuit className="h-3.5 w-3.5 text-primary" />
+                        Modelo dominante
+                    </div>
+                    <p className="mt-3 text-sm font-semibold">{primaryModel?.model || "Sem LLM consolidada"}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        {primaryModel?.provider_type || "-"} · {summary.documents_with_llm} documento(s) enriquecidos
+                    </p>
+                </div>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+                <div className="rounded-xl border border-border bg-background/60 p-4">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Telemetria consolidada</p>
+                    <div className="mt-3 grid gap-2 md:grid-cols-2 text-sm">
+                        <p><span className="text-muted-foreground">Tokens input:</span> <span className="font-mono">{summary.total_input_tokens.toLocaleString("en-US")}</span></p>
+                        <p><span className="text-muted-foreground">Tokens output:</span> <span className="font-mono">{summary.total_output_tokens.toLocaleString("en-US")}</span></p>
+                        <p><span className="text-muted-foreground">Docs com preco:</span> <span className="font-mono">{summary.pricing_aware_documents}</span></p>
+                        <p><span className="text-muted-foreground">Ultima conclusao:</span> <span className="font-mono">{formatDate(summary.last_completed_at, "pt-BR")}</span></p>
+                    </div>
+                </div>
+
+                <div className="rounded-xl border border-border bg-background/60 p-4">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Modelos em uso</p>
+                    {summary.model_breakdown.length > 0 ? (
+                        <div className="mt-3 space-y-2">
+                            {summary.model_breakdown.slice(0, 3).map((item) => (
+                                <div key={`${item.provider_type || "unknown"}:${item.model || "unknown"}`} className="rounded-lg border border-border bg-card/70 px-3 py-2">
+                                    <p className="text-xs font-semibold">{item.model || "Modelo nao informado"}</p>
+                                    <p className="mt-1 text-[11px] text-muted-foreground">
+                                        {(item.provider_type || "-")} · {item.document_count} docs · {item.request_count} requests
+                                    </p>
+                                    <p className="mt-1 font-mono text-[11px] text-foreground/85">
+                                        {item.total_tokens.toLocaleString("en-US")} tokens · {formatUSD(item.total_cost_usd)}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="mt-3 text-xs text-muted-foreground">
+                            Ainda nao ha uso consolidado de LLM para indexacao nesta conta.
+                        </p>
+                    )}
                 </div>
             </div>
         </div>
@@ -731,10 +828,34 @@ function DocumentCard({
 export default function DocumentsPage() {
     const { locale } = useI18n();
     const { documents, isLoading, error } = useDocuments();
+    const [monitoringSummary, setMonitoringSummary] = useState<DocumentMonitoringSummary | null>(null);
+    const [monitoringError, setMonitoringError] = useState<string | null>(null);
     const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
     const [openCollections, setOpenCollections] = useState<Record<string, boolean>>({});
     const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
     const groupedDocuments = groupDocuments(documents, locale);
+
+    useEffect(() => {
+        const controller = new AbortController();
+
+        async function loadMonitoringSummary() {
+            try {
+                setMonitoringError(null);
+                const data = await fetchDocumentMonitoringSummary(controller.signal);
+                setMonitoringSummary(data);
+            } catch (err) {
+                if (controller.signal.aborted) {
+                    return;
+                }
+
+                setMonitoringError(err instanceof Error ? err.message : "Nao foi possivel carregar o resumo de monitoramento.");
+            }
+        }
+
+        void loadMonitoringSummary();
+
+        return () => controller.abort();
+    }, []);
 
     const toggleCategory = (categoryName: string) => {
         setOpenCategories((current) => ({
@@ -783,6 +904,16 @@ export default function DocumentsPage() {
                 </div>
 
                 <div className="p-6">
+                    {!isLoading && !error && monitoringSummary && (
+                        <MonitoringSummaryPanel summary={monitoringSummary} />
+                    )}
+
+                    {!isLoading && !error && monitoringError && (
+                        <div className="mb-6 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+                            {monitoringError}
+                        </div>
+                    )}
+
                     {isLoading && (
                         <div className="flex min-h-64 items-center justify-center gap-3 text-sm text-muted-foreground">
                             <Loader2 className="h-4 w-4 animate-spin" />
