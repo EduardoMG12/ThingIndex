@@ -2,3 +2,4 @@
   - observabilidade operacional: existe bastante dado, mas ainda não é um painel completo de SRE
   - fila/retentativas/DLQ: a base existe, mas eu ainda trataria como pipeline funcional, não como operação endurecida
   - enriquecimento por LLM: funciona quando provider está configurado, mas depende da configuração do usuário e do provider ativo
+  - chat em produção com resposta incremental: a UI de chat ainda está mockada; falta endpoint real, integração com a LLM marcada para chat, recuperação de contexto e streaming da resposta por SSE/HTTP streaming para não chegar tudo de uma vez
