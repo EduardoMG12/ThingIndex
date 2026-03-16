@@ -77,6 +77,45 @@ Children must stay inside the page range of their parent.
 	return systemPrompt, userPrompt.String()
 }
 
+func buildSubtreeExpansionPrompt(contextBlock string) (string, string) {
+	systemPrompt := strings.TrimSpace(`
+You expand one oversized tree node into grounded child nodes.
+Return only valid JSON.
+Do not wrap the response in markdown fences.
+Every child must stay inside the supplied parent page range.
+Prefer a small set of concrete children over speculative structure.
+`)
+
+	var userPrompt strings.Builder
+	userPrompt.WriteString("Task: expand the supplied parent node into child nodes.\n")
+	userPrompt.WriteString("Return JSON with field nodes.\n")
+	userPrompt.WriteString("nodes must be an array of objects with node_id, parent_node_id, title, level, start_page, end_page, summary.\n")
+	userPrompt.WriteString("Each child must use the supplied parent node id as parent_node_id.\n")
+	userPrompt.WriteString("Use Portuguese for summaries and keep them under 40 words.\n\n")
+	userPrompt.WriteString(contextBlock)
+
+	return systemPrompt, userPrompt.String()
+}
+
+func buildTreeFixPrompt(contextBlock string) (string, string) {
+	systemPrompt := strings.TrimSpace(`
+You repair a page-grounded tree index that failed verification.
+Return only valid JSON.
+Do not wrap the response in markdown fences.
+Fix page ranges, hierarchy issues, and low-coverage structure using only the supplied pages.
+Prefer a smaller correct tree over a larger incorrect tree.
+`)
+
+	var userPrompt strings.Builder
+	userPrompt.WriteString("Task: repair the supplied tree index.\n")
+	userPrompt.WriteString("Return JSON with field nodes.\n")
+	userPrompt.WriteString("nodes must be an array of objects with node_id, parent_node_id, title, level, start_page, end_page, summary.\n")
+	userPrompt.WriteString("Keep summaries in Portuguese and under 40 words.\n\n")
+	userPrompt.WriteString(contextBlock)
+
+	return systemPrompt, userPrompt.String()
+}
+
 func buildOutlineNodeSummaryPrompt(contextBlock string) (string, string) {
 	systemPrompt := strings.TrimSpace(`
 You generate one stage of a structured document indexing pipeline.
@@ -144,7 +183,7 @@ func buildPromptContext(doc *models.Document, result domain.IndexingResult) stri
 	var builder strings.Builder
 	builder.WriteString("Document type guidance:\n")
 	builder.WriteString(promptProfile)
-	builder.WriteString("\nPipeline versions:\n- chunk_strategy=tree-aware-v1\n- prompt_profile=llm-index-v4")
+	builder.WriteString("\nPipeline versions:\n- chunk_strategy=tree-aware-v1\n- prompt_profile=llm-index-v5")
 	builder.WriteString("\n\n")
 
 	builder.WriteString(buildDocumentIdentityBlock(doc))

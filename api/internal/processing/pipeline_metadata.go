@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	indexPipelineVersion = "page-tree-v2"
-	promptProfileVersion = "llm-index-v4"
+	indexPipelineVersion = "page-tree-v3"
+	promptProfileVersion = "llm-index-v5"
 )
 
 func appendPipelineMetadata(result *domain.IndexingResult, documentID uint, enrichmentStatus string) {
