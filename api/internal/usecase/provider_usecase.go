@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"thing-index/internal/config"
 	"thing-index/internal/domain"
@@ -282,6 +283,45 @@ func (u *providerUseCase) validateCredentials(ctx context.Context, family, provi
 		if strings.TrimSpace(credentials["api_key"]) == "" {
 			return domain.ErrProviderCredentialsInvalid
 		}
+		if err := u.validateLLMBaseURL(ctx, credentials["base_url"]); err != nil {
+			return domain.ErrProviderCredentialsInvalid
+		}
+	}
+
+	return nil
+}
+
+func (u *providerUseCase) validateLLMBaseURL(ctx context.Context, rawURL string) error {
+	trimmedURL := strings.TrimSpace(rawURL)
+	if trimmedURL == "" {
+		return nil
+	}
+
+	parsed, err := url.Parse(trimmedURL)
+	if err != nil {
+		return err
+	}
+	if parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return domain.ErrProviderCredentialsInvalid
+	}
+	if parsed.Host == "" {
+		return domain.ErrProviderCredentialsInvalid
+	}
+
+	scheme := strings.ToLower(strings.TrimSpace(parsed.Scheme))
+	if scheme == "" {
+		return domain.ErrProviderCredentialsInvalid
+	}
+	if u.cfg != nil && u.cfg.IsDevelopment() {
+		if scheme != "https" && scheme != "http" {
+			return domain.ErrProviderCredentialsInvalid
+		}
+	} else if scheme != "https" {
+		return domain.ErrProviderCredentialsInvalid
+	}
+
+	if err := u.endpointValidator.Validate(ctx, parsed.Host); err != nil {
+		return domain.ErrProviderCredentialsInvalid
 	}
 
 	return nil
