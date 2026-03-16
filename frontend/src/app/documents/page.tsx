@@ -3,13 +3,19 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
+    Activity,
+    BrainCircuit,
     ChevronDown,
     ChevronLeft,
     ChevronRight,
+    Clock3,
+    Coins,
+    Cpu,
     Database,
     ExternalLink,
     FileText,
     FolderOpen,
+    Gauge,
     Hash,
     Loader2,
     PanelRight,
@@ -23,7 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDocuments } from "@/hooks/use-documents";
 import { fetchCollectionContext } from "@/lib/api/collections";
 import type { CollectionContext } from "@/lib/api/contracts/document-context";
-import { fetchDocumentIndex, type Document, type DocumentIndex } from "@/lib/api/documents";
+import { fetchDocumentIndex, type Document, type DocumentIndex, type IndexMonitoring } from "@/lib/api/documents";
 import { useI18n } from "@/lib/i18n/provider";
 
 const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } };
@@ -47,6 +53,152 @@ function formatDate(value: string | undefined, locale: string) {
         dateStyle: "short",
         timeStyle: "short",
     }).format(new Date(value));
+}
+
+function formatDuration(durationMs: number) {
+    if (!durationMs || durationMs <= 0) {
+        return "-";
+    }
+    if (durationMs < 1000) {
+        return `${durationMs} ms`;
+    }
+    if (durationMs < 60_000) {
+        return `${(durationMs / 1000).toFixed(1)} s`;
+    }
+    return `${(durationMs / 60_000).toFixed(1)} min`;
+}
+
+function formatUSD(value: number) {
+    if (!value || value <= 0) {
+        return "$0.000000";
+    }
+    return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 6,
+        maximumFractionDigits: 6,
+    }).format(value);
+}
+
+function formatStageLabel(stage?: string) {
+    if (!stage) {
+        return "Sem etapa";
+    }
+    return stage
+        .toLowerCase()
+        .split("_")
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+}
+
+function MonitoringView({
+    document,
+    monitoring,
+}: {
+    document: Document;
+    monitoring: IndexMonitoring | null;
+}) {
+    const status = monitoring?.status || document.status;
+    const stage = monitoring?.stage || document.processing_stage;
+    const detail = monitoring?.status_detail || document.status_detail;
+    const startedAt = monitoring?.started_at || document.index_started_at;
+    const completedAt = monitoring?.completed_at || document.indexed_at;
+    const llm = monitoring?.llm ?? null;
+    const qualityScore = monitoring?.estimated_quality_score ?? 0;
+
+    return (
+        <div className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-xl border border-border bg-background/60 p-4">
+                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                        <Activity className="h-3.5 w-3.5 text-primary" />
+                        Status atual
+                    </div>
+                    <p className="mt-3 text-lg font-semibold">{status || "Desconhecido"}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{formatStageLabel(stage)}</p>
+                </div>
+                <div className="rounded-xl border border-border bg-background/60 p-4">
+                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                        <Gauge className="h-3.5 w-3.5 text-primary" />
+                        Qualidade estimada
+                    </div>
+                    <p className="mt-3 text-lg font-semibold">{qualityScore.toFixed(1)} / 100</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        Score heuristico com base em cobertura, confianca e readiness.
+                    </p>
+                </div>
+                <div className="rounded-xl border border-border bg-background/60 p-4">
+                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                        <Cpu className="h-3.5 w-3.5 text-primary" />
+                        Modelo ativo
+                    </div>
+                    <p className="mt-3 text-sm font-semibold">{llm?.model || "Sem LLM aplicada"}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{llm?.provider_type || monitoring?.enrichment_status || "-"}</p>
+                </div>
+                <div className="rounded-xl border border-border bg-background/60 p-4">
+                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                        <Coins className="h-3.5 w-3.5 text-primary" />
+                        Custo estimado
+                    </div>
+                    <p className="mt-3 text-lg font-semibold">
+                        {llm?.pricing_available ? formatUSD(llm.total_cost_usd) : "Indisponivel"}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        {llm?.pricing_available ? "Baseado em tokens estimados." : "Sem perfil de preco conhecido para este modelo."}
+                    </p>
+                </div>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+                <div className="rounded-xl border border-border bg-background/60 p-4">
+                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                        <Clock3 className="h-3.5 w-3.5 text-primary" />
+                        Processo
+                    </div>
+                    <div className="mt-3 space-y-2 text-sm">
+                        <p><span className="text-muted-foreground">Etapa:</span> <span className="font-medium">{formatStageLabel(stage)}</span></p>
+                        <p><span className="text-muted-foreground">Detalhe:</span> <span className="font-medium">{detail || "-"}</span></p>
+                        <p><span className="text-muted-foreground">Inicio:</span> <span className="font-mono">{formatDate(startedAt, "pt-BR")}</span></p>
+                        <p><span className="text-muted-foreground">Fim:</span> <span className="font-mono">{formatDate(completedAt, "pt-BR")}</span></p>
+                        <p><span className="text-muted-foreground">Duracao:</span> <span className="font-mono">{formatDuration(monitoring?.duration_ms ?? 0)}</span></p>
+                        {document.last_processing_error ? (
+                            <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                                {document.last_processing_error}
+                            </p>
+                        ) : null}
+                    </div>
+                </div>
+
+                <div className="rounded-xl border border-border bg-background/60 p-4">
+                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                        <BrainCircuit className="h-3.5 w-3.5 text-primary" />
+                        Telemetria LLM
+                    </div>
+                    <div className="mt-3 space-y-2 text-sm">
+                        <p><span className="text-muted-foreground">Requests:</span> <span className="font-mono">{llm?.request_count ?? 0}</span></p>
+                        <p><span className="text-muted-foreground">Tokens input:</span> <span className="font-mono">{llm?.estimated_input_tokens ?? 0}</span></p>
+                        <p><span className="text-muted-foreground">Tokens output:</span> <span className="font-mono">{llm?.estimated_output_tokens ?? 0}</span></p>
+                        <p><span className="text-muted-foreground">Tokens totais:</span> <span className="font-mono">{llm?.estimated_total_tokens ?? 0}</span></p>
+                        <p><span className="text-muted-foreground">Custo input:</span> <span className="font-mono">{formatUSD(llm?.input_cost_usd ?? 0)}</span></p>
+                        <p><span className="text-muted-foreground">Custo output:</span> <span className="font-mono">{formatUSD(llm?.output_cost_usd ?? 0)}</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-background/60 p-4">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Versoes e validacao</p>
+                <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4 text-sm">
+                    <p><span className="text-muted-foreground">Pipeline:</span> <span className="font-mono">{monitoring?.pipeline_version || "-"}</span></p>
+                    <p><span className="text-muted-foreground">Prompt profile:</span> <span className="font-mono">{monitoring?.prompt_profile_version || "-"}</span></p>
+                    <p><span className="text-muted-foreground">Chunk strategy:</span> <span className="font-mono">{monitoring?.chunk_strategy_version || "-"}</span></p>
+                    <p><span className="text-muted-foreground">Tree builder:</span> <span className="font-mono">{monitoring?.tree_builder || "-"}</span></p>
+                    <p><span className="text-muted-foreground">Enrichment:</span> <span className="font-mono">{monitoring?.enrichment_status || "-"}</span></p>
+                    <p><span className="text-muted-foreground">Tree verificada:</span> <span className="font-mono">{monitoring?.tree_verification_passed ? "true" : "false"}</span></p>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 function isPreviewableDocument(document: Document) {
@@ -178,9 +330,12 @@ function IndexStructureView({
         metadataPairs.find((pair) => pair.key === "document_summary")?.value ||
         document.document_summary ||
         "";
+    const monitoring = documentIndex?.monitoring ?? null;
 
     return (
         <div className="space-y-4">
+            <MonitoringView document={document} monitoring={monitoring} />
+
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-lg border border-border bg-background/60 p-3">
                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Blocos</p>
@@ -528,7 +683,7 @@ function DocumentCard({
                 </div>
 
                 <div className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">
-                    {document.status}
+                    {document.status}{document.processing_stage ? ` · ${formatStageLabel(document.processing_stage)}` : ""}
                 </div>
             </div>
 
@@ -554,6 +709,8 @@ function DocumentCard({
             <div className="mt-4 grid gap-2 border-t border-border pt-4 text-[11px] text-muted-foreground md:grid-cols-2">
                 <p>Created: <span className="font-mono text-foreground">{formatDate(document.created_at, locale)}</span></p>
                 <p>Updated: <span className="font-mono text-foreground">{formatDate(document.updated_at, locale)}</span></p>
+                <p>Stage: <span className="font-mono text-foreground">{formatStageLabel(document.processing_stage)}</span></p>
+                <p>Started: <span className="font-mono text-foreground">{formatDate(document.index_started_at, locale)}</span></p>
             </div>
 
             <div className="mt-4 border-t border-border pt-4">

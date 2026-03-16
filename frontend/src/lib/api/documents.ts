@@ -28,6 +28,11 @@ type DocumentApiRecord = {
     size: number;
     mime_type: string;
     status: string;
+    processing_stage?: string;
+    status_detail?: string;
+    index_started_at?: string | null;
+    indexed_at?: string | null;
+    last_processing_error?: string;
     collection?: string | Record<string, unknown> | null;
     category_id?: number | null;
     category?: Category | null;
@@ -45,6 +50,11 @@ export type Document = {
     size: number;
     mime_type: string;
     status: string;
+    processing_stage?: string;
+    status_detail?: string;
+    index_started_at?: string;
+    indexed_at?: string;
+    last_processing_error?: string;
     collection_id?: number | null;
     collection?: string;
     collection_ref?: CollectionSummary | null;
@@ -68,6 +78,11 @@ function normalizeDocument(record: DocumentApiRecord): Document {
         size: record.size,
         mime_type: record.mime_type,
         status: record.status,
+        processing_stage: record.processing_stage ?? undefined,
+        status_detail: record.status_detail ?? undefined,
+        index_started_at: record.index_started_at ?? undefined,
+        indexed_at: record.indexed_at ?? undefined,
+        last_processing_error: record.last_processing_error ?? undefined,
         collection_id:
             collectionRef && typeof collectionRef.id === "number"
                 ? collectionRef.id
@@ -162,6 +177,33 @@ type DocumentIndexApiRecord = {
     }>;
     outline_nodes?: unknown[];
     document_summary?: string;
+    monitoring?: {
+        status?: string;
+        stage?: string;
+        status_detail?: string;
+        started_at?: string | null;
+        completed_at?: string | null;
+        duration_ms?: number;
+        enrichment_status?: string;
+        pipeline_version?: string;
+        prompt_profile_version?: string;
+        chunk_strategy_version?: string;
+        tree_builder?: string;
+        tree_verification_passed?: boolean;
+        estimated_quality_score?: number;
+        llm?: {
+            provider_type?: string;
+            model?: string;
+            request_count?: number;
+            estimated_input_tokens?: number;
+            estimated_output_tokens?: number;
+            estimated_total_tokens?: number;
+            pricing_available?: boolean;
+            input_cost_usd?: number;
+            output_cost_usd?: number;
+            total_cost_usd?: number;
+        } | null;
+    } | null;
 };
 
 export type DocumentChunk = {
@@ -185,6 +227,37 @@ export type DocumentIndex = {
     chunks: DocumentChunk[];
     document_summary: string;
     outline_nodes: OutlineNode[];
+    monitoring: IndexMonitoring | null;
+};
+
+export type LLMMonitoring = {
+    provider_type?: string;
+    model?: string;
+    request_count: number;
+    estimated_input_tokens: number;
+    estimated_output_tokens: number;
+    estimated_total_tokens: number;
+    pricing_available: boolean;
+    input_cost_usd: number;
+    output_cost_usd: number;
+    total_cost_usd: number;
+};
+
+export type IndexMonitoring = {
+    status?: string;
+    stage?: string;
+    status_detail?: string;
+    started_at?: string;
+    completed_at?: string;
+    duration_ms: number;
+    enrichment_status?: string;
+    pipeline_version?: string;
+    prompt_profile_version?: string;
+    chunk_strategy_version?: string;
+    tree_builder?: string;
+    tree_verification_passed: boolean;
+    estimated_quality_score: number;
+    llm: LLMMonitoring | null;
 };
 
 function normalizeDocumentChunks(value: DocumentIndexApiRecord["chunks"]): DocumentChunk[] {
@@ -220,6 +293,51 @@ function normalizeDocumentChunks(value: DocumentIndexApiRecord["chunks"]): Docum
     }, []);
 }
 
+function normalizeIndexMonitoring(value: DocumentIndexApiRecord["monitoring"]): IndexMonitoring | null {
+    if (!value || typeof value !== "object") {
+        return null;
+    }
+
+    const llm =
+        value.llm && typeof value.llm === "object"
+            ? {
+                  provider_type: typeof value.llm.provider_type === "string" ? value.llm.provider_type : undefined,
+                  model: typeof value.llm.model === "string" ? value.llm.model : undefined,
+                  request_count: typeof value.llm.request_count === "number" ? value.llm.request_count : 0,
+                  estimated_input_tokens:
+                      typeof value.llm.estimated_input_tokens === "number" ? value.llm.estimated_input_tokens : 0,
+                  estimated_output_tokens:
+                      typeof value.llm.estimated_output_tokens === "number" ? value.llm.estimated_output_tokens : 0,
+                  estimated_total_tokens:
+                      typeof value.llm.estimated_total_tokens === "number" ? value.llm.estimated_total_tokens : 0,
+                  pricing_available: Boolean(value.llm.pricing_available),
+                  input_cost_usd: typeof value.llm.input_cost_usd === "number" ? value.llm.input_cost_usd : 0,
+                  output_cost_usd: typeof value.llm.output_cost_usd === "number" ? value.llm.output_cost_usd : 0,
+                  total_cost_usd: typeof value.llm.total_cost_usd === "number" ? value.llm.total_cost_usd : 0,
+              }
+            : null;
+
+    return {
+        status: typeof value.status === "string" ? value.status : undefined,
+        stage: typeof value.stage === "string" ? value.stage : undefined,
+        status_detail: typeof value.status_detail === "string" ? value.status_detail : undefined,
+        started_at: typeof value.started_at === "string" ? value.started_at : undefined,
+        completed_at: typeof value.completed_at === "string" ? value.completed_at : undefined,
+        duration_ms: typeof value.duration_ms === "number" ? value.duration_ms : 0,
+        enrichment_status: typeof value.enrichment_status === "string" ? value.enrichment_status : undefined,
+        pipeline_version: typeof value.pipeline_version === "string" ? value.pipeline_version : undefined,
+        prompt_profile_version:
+            typeof value.prompt_profile_version === "string" ? value.prompt_profile_version : undefined,
+        chunk_strategy_version:
+            typeof value.chunk_strategy_version === "string" ? value.chunk_strategy_version : undefined,
+        tree_builder: typeof value.tree_builder === "string" ? value.tree_builder : undefined,
+        tree_verification_passed: Boolean(value.tree_verification_passed),
+        estimated_quality_score:
+            typeof value.estimated_quality_score === "number" ? value.estimated_quality_score : 0,
+        llm,
+    };
+}
+
 export async function fetchDocumentIndex(documentId: number, signal?: AbortSignal): Promise<DocumentIndex> {
     const response = await fetchWithAuthRedirect(`/api/documents/${documentId}/index`, {
         method: "GET",
@@ -245,5 +363,6 @@ export async function fetchDocumentIndex(documentId: number, signal?: AbortSigna
         chunks: normalizeDocumentChunks(payload.data.chunks),
         document_summary: payload.data.document_summary ?? "",
         outline_nodes: normalizeOutlineNodes(payload.data.outline_nodes),
+        monitoring: normalizeIndexMonitoring(payload.data.monitoring),
     };
 }
