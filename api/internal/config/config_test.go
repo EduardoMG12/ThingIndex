@@ -107,6 +107,7 @@ func validConfig() *Config {
 		ConsumerPrefetchCount:        10,
 		DocumentIndexRetryDelay:      30 * time.Second,
 		DocumentIndexMaxRetries:      5,
+		PricingSyncInterval:          24 * time.Hour,
 		MaxUploadSizeBytes:           20 * 1024 * 1024,
 		MasterEncryptionKey:          "master-key",
 		ServerReadTimeout:            15 * time.Second,

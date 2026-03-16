@@ -58,6 +58,7 @@ type Config struct {
 	ConsumerPrefetchCount   int
 	DocumentIndexRetryDelay time.Duration
 	DocumentIndexMaxRetries int
+	PricingSyncInterval     time.Duration
 	MaxUploadSizeBytes      int64
 	MasterEncryptionKey     string
 	ServerReadTimeout       time.Duration
@@ -130,6 +131,7 @@ func Load() {
 		ConsumerPrefetchCount:        getEnvInt("CONSUMER_PREFETCH_COUNT", 10),
 		DocumentIndexRetryDelay:      getEnvDurationSeconds("DOCUMENT_INDEX_RETRY_DELAY_SECONDS", 30),
 		DocumentIndexMaxRetries:      getEnvInt("DOCUMENT_INDEX_MAX_RETRIES", 5),
+		PricingSyncInterval:          getEnvDurationSeconds("PRICING_SYNC_INTERVAL_SECONDS", 86400),
 		MaxUploadSizeBytes:           getEnvInt64("MAX_UPLOAD_SIZE_BYTES", 20*1024*1024),
 		MasterEncryptionKey:          getEnv("MASTER_ENCRYPTION_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMaster)),
 		ServerReadTimeout:            getEnvDurationSeconds("SERVER_READ_TIMEOUT_SECONDS", 15),
@@ -257,6 +259,9 @@ func (c *Config) Validate() error {
 	}
 	if c.DocumentIndexRetryDelay <= 0 {
 		return errors.New("DOCUMENT_INDEX_RETRY_DELAY_SECONDS must be greater than zero")
+	}
+	if c.PricingSyncInterval <= 0 {
+		return errors.New("PRICING_SYNC_INTERVAL_SECONDS must be greater than zero")
 	}
 	if c.DocumentIndexMaxRetries <= 0 {
 		return errors.New("DOCUMENT_INDEX_MAX_RETRIES must be greater than zero")
