@@ -1,36 +1,104 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frontend
 
-## Getting Started
+O frontend do ThingIndex e uma aplicacao Next.js 16 responsavel por:
 
-First, run the development server:
+- autenticacao do usuario;
+- configuracao de providers de storage e LLM;
+- upload e navegacao de documentos;
+- visualizacao de colecoes, categorias e contexto;
+- auditoria visual da indexacao, incluindo monitoramento por documento e resumo agregado.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+O app atua como camada de experiencia sobre a API Go do monorepo. Ele nao implementa logica de indexacao no browser; a maior parte das operacoes de negocio e delegada para o backend por rotas `app/api/*` que fazem proxy autenticado.
+
+## Stack
+
+- Next.js 16
+- React 19
+- TypeScript
+- Tailwind CSS
+- Framer Motion
+
+## Estrutura relevante
+
+```text
+src/
+|-- app/                 # rotas, layouts e API routes do Next.js
+|-- components/          # interface reutilizavel
+|-- hooks/               # hooks de consulta e estado
+|-- lib/api/             # clientes e contratos de API
+|-- lib/i18n/            # mensagens e infraestrutura de localizacao
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Principais telas
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- landing page institucional;
+- login e registro;
+- dashboard com abas de upload, documentos, chat e custo;
+- tela de configuracao de providers;
+- documentacao visual da arquitetura.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## O que ja funciona
 
-## Learn More
+- login, registro e persistencia de sessao por cookie `httpOnly`;
+- proxy autenticado para rotas protegidas da API;
+- upload de documentos;
+- listagem de categorias, collections e documentos;
+- painel lateral de preview e auditoria da indexacao;
+- exibicao de monitoramento por documento:
+  - status, etapa e duracao;
+  - tokens estimados;
+  - custo estimado;
+  - modelo ativo;
+  - score heuristico de qualidade;
+- resumo agregado de monitoramento por usuario na tela de documentos;
+- configuracao de providers com separacao entre LLM de indexacao e LLM de chat;
+- internacionalizacao em portugues, ingles e espanhol.
 
-To learn more about Next.js, take a look at the following resources:
+## Limitacoes atuais
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- a aba de chat ainda esta mockada e nao conversa com um endpoint real;
+- ainda nao existe stream incremental de resposta no frontend;
+- o preview inline foi intencionalmente restringido para formatos seguros, evitando execucao de HTML enviado pelo usuario;
+- a maior parte da telemetria vem do backend; o frontend hoje exibe esses dados, mas nao e a origem deles.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Desenvolvimento local
 
-## Deploy on Vercel
+Instale as dependencias:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+pnpm install
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Execute em modo desenvolvimento:
+
+```bash
+pnpm dev
+```
+
+Valide o codigo:
+
+```bash
+pnpm lint
+```
+
+## Variaveis importantes
+
+| Variavel | Exemplo | Descricao |
+| --- | --- | --- |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8000/api/v1` | URL publica consumida pelo navegador |
+| `API_INTERNAL_URL` | `http://api:8080/api/v1` | URL interna usada pelas rotas de proxy do Next.js |
+
+## Integracao com a API
+
+As rotas em `src/app/api/*` encapsulam:
+
+- leitura do cookie de autenticacao;
+- repasse de headers de idioma;
+- limpeza de cookie quando a API responde `401`;
+- isolamento do browser em relacao a detalhes internos da API.
+
+Esse desenho reduz acoplamento entre componentes React e detalhes de transporte, e facilita futura evolucao para streaming, cache seletivo e politicas de sessao mais refinadas.
+
+## Observacao de produto
+
+O frontend atual ja cobre o fluxo principal de autenticacao, upload, organizacao documental e auditoria da indexacao. O proximo salto funcional mais importante nesta camada e substituir o chat simulado por um fluxo real com contexto relacional e resposta incremental.
