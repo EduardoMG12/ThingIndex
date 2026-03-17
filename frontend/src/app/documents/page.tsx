@@ -19,6 +19,7 @@ import {
     Hash,
     Loader2,
     PanelRight,
+    RotateCw,
     Table2,
     Tag,
     X,
@@ -32,6 +33,7 @@ import type { CollectionContext } from "@/lib/api/contracts/document-context";
 import {
     fetchDocumentIndex,
     fetchDocumentMonitoringSummary,
+    retryDocumentIndexing,
     type Document,
     type DocumentIndex,
     type DocumentMonitoringSummary,
@@ -760,10 +762,14 @@ function DocumentPreviewPanel({
 function DocumentCard({
     document,
     onOpenPreview,
+    onRetry,
+    isRetrying,
     locale,
 }: {
     document: Document;
     onOpenPreview: (document: Document) => void;
+    onRetry: (document: Document) => void;
+    isRetrying: boolean;
     locale: string;
 }) {
     return (
@@ -810,7 +816,7 @@ function DocumentCard({
                 <p>Started: <span className="font-mono text-foreground">{formatDate(document.index_started_at, locale)}</span></p>
             </div>
 
-            <div className="mt-4 border-t border-border pt-4">
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
                 <button
                     type="button"
                     onClick={() => onOpenPreview(document)}
@@ -820,6 +826,18 @@ function DocumentCard({
                     Open side preview
                     <ChevronLeft className="h-4 w-4" />
                 </button>
+
+                {document.status === "FAILED" ? (
+                    <button
+                        type="button"
+                        onClick={() => onRetry(document)}
+                        disabled={isRetrying}
+                        className="inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-amber-300"
+                    >
+                        {isRetrying ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
+                        Retry indexing
+                    </button>
+                ) : null}
             </div>
         </div>
     );
@@ -827,12 +845,13 @@ function DocumentCard({
 
 export default function DocumentsPage() {
     const { locale } = useI18n();
-    const { documents, isLoading, error } = useDocuments();
+    const { documents, isLoading, error, reloadDocuments, setDocuments } = useDocuments();
     const [monitoringSummary, setMonitoringSummary] = useState<DocumentMonitoringSummary | null>(null);
     const [monitoringError, setMonitoringError] = useState<string | null>(null);
     const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
     const [openCollections, setOpenCollections] = useState<Record<string, boolean>>({});
     const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+    const [retryingDocumentId, setRetryingDocumentId] = useState<number | null>(null);
     const groupedDocuments = groupDocuments(documents, locale);
 
     useEffect(() => {
@@ -869,6 +888,24 @@ export default function DocumentsPage() {
             ...current,
             [key]: !current[key],
         }));
+    };
+
+    const handleRetryDocument = async (document: Document) => {
+        setRetryingDocumentId(document.id);
+
+        try {
+            const updatedDocument = await retryDocumentIndexing(document.id);
+
+            setDocuments((current) => current.map((item) => (item.id === updatedDocument.id ? updatedDocument : item)));
+
+            if (selectedDocument?.id === updatedDocument.id) {
+                setSelectedDocument(updatedDocument);
+            }
+
+            await reloadDocuments();
+        } finally {
+            setRetryingDocumentId(null);
+        }
     };
 
     return (
@@ -991,7 +1028,14 @@ export default function DocumentsPage() {
                                                             {isCollectionOpen && (
                                                                 <div className="grid gap-3 border-t border-border p-4">
                                                                     {collection.documents.map((document) => (
-                                                                        <DocumentCard key={document.id} document={document} onOpenPreview={setSelectedDocument} locale={locale} />
+                                                                        <DocumentCard
+                                                                            key={document.id}
+                                                                            document={document}
+                                                                            onOpenPreview={setSelectedDocument}
+                                                                            onRetry={handleRetryDocument}
+                                                                            isRetrying={retryingDocumentId === document.id}
+                                                                            locale={locale}
+                                                                        />
                                                                     ))}
                                                                 </div>
                                                             )}
@@ -1043,7 +1087,14 @@ export default function DocumentsPage() {
                                                             {isCollectionOpen && (
                                                                 <div className="grid gap-3 border-t border-border p-4">
                                                                     {collection.documents.map((document) => (
-                                                                        <DocumentCard key={document.id} document={document} onOpenPreview={setSelectedDocument} locale={locale} />
+                                                                        <DocumentCard
+                                                                            key={document.id}
+                                                                            document={document}
+                                                                            onOpenPreview={setSelectedDocument}
+                                                                            onRetry={handleRetryDocument}
+                                                                            isRetrying={retryingDocumentId === document.id}
+                                                                            locale={locale}
+                                                                        />
                                                                     ))}
                                                                 </div>
                                                             )}
@@ -1056,7 +1107,14 @@ export default function DocumentsPage() {
                                         {groupedDocuments.uncategorizedWithoutCollection.length > 0 && (
                                             <div className="grid gap-3">
                                                 {groupedDocuments.uncategorizedWithoutCollection.map((document) => (
-                                                    <DocumentCard key={document.id} document={document} onOpenPreview={setSelectedDocument} locale={locale} />
+                                                    <DocumentCard
+                                                        key={document.id}
+                                                        document={document}
+                                                        onOpenPreview={setSelectedDocument}
+                                                        onRetry={handleRetryDocument}
+                                                        isRetrying={retryingDocumentId === document.id}
+                                                        locale={locale}
+                                                    />
                                                 ))}
                                             </div>
                                         )}

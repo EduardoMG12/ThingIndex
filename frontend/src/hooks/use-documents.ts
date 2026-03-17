@@ -9,33 +9,33 @@ export function useDocuments() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    async function loadDocuments(signal?: AbortSignal) {
+        try {
+            setIsLoading(true);
+            setError(null);
+
+            const data = await fetchDocuments(signal);
+            setDocuments(data);
+        } catch (err) {
+            if (signal?.aborted) {
+                return;
+            }
+
+            setError(err instanceof Error ? err.message : "Nao foi possivel carregar os documentos.");
+        } finally {
+            if (!signal?.aborted) {
+                setIsLoading(false);
+            }
+        }
+    }
+
     useEffect(() => {
         const controller = new AbortController();
 
-        async function loadDocuments() {
-            try {
-                setIsLoading(true);
-                setError(null);
-
-                const data = await fetchDocuments(controller.signal);
-                setDocuments(data);
-            } catch (err) {
-                if (controller.signal.aborted) {
-                    return;
-                }
-
-                setError(err instanceof Error ? err.message : "Nao foi possivel carregar os documentos.");
-            } finally {
-                if (!controller.signal.aborted) {
-                    setIsLoading(false);
-                }
-            }
-        }
-
-        void loadDocuments();
+        void loadDocuments(controller.signal);
 
         return () => controller.abort();
     }, []);
 
-    return { documents, isLoading, error };
+    return { documents, isLoading, error, reloadDocuments: loadDocuments, setDocuments };
 }

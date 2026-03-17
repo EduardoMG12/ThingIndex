@@ -172,6 +172,14 @@ export async function fetchDocuments(signal?: AbortSignal): Promise<Document[]> 
     return payload.data.map(normalizeDocument);
 }
 
+export async function retryDocumentIndexing(documentId: number): Promise<Document> {
+    const response = await fetchWithAuthRedirect(`/api/documents/${documentId}/retry`, {
+        method: "POST",
+    });
+
+    return parseDocumentResponse(response, "Nao foi possivel reenfileirar o documento para indexacao.");
+}
+
 type DocumentIndexApiRecord = {
     document?: DocumentApiRecord | null;
     paragraph_nodes?: unknown[];
