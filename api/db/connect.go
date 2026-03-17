@@ -41,6 +41,8 @@ func Connect() (*gorm.DB, error) {
 		&models.PricingSource{},
 		&models.ModelPrice{},
 		&models.ModelPriceHistory{},
+		&models.ChatConversation{},
+		&models.ChatConversationEntry{},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("fail to run automatic migrations: %w", err)

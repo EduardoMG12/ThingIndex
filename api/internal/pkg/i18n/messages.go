@@ -61,6 +61,12 @@ var (
 			"doc.success_table_sections_store":       "Tabelas estruturadas salvas com sucesso",
 			"doc.success_metadata_pairs_store":       "Metadados estruturados salvos com sucesso",
 			"chat.error_stream":                      "Falha ao gerar resposta do chat",
+			"chat.error_invalid_conversation_id":     "ID de conversa inválido",
+			"chat.error_conversation_not_found":      "Conversa não encontrada",
+			"chat.success_conversation_create":       "Conversa criada com sucesso",
+			"chat.success_conversation_get":          "Conversa recuperada com sucesso",
+			"chat.success_conversation_delete":       "Conversa removida com sucesso",
+			"chat.success_conversations_list":        "Conversas recuperadas com sucesso",
 		},
 		"en": {
 			"auth.user_exists":                       "Email already registered in the system",
@@ -117,6 +123,12 @@ var (
 			"doc.success_table_sections_store":       "Structured tables stored successfully",
 			"doc.success_metadata_pairs_store":       "Structured metadata stored successfully",
 			"chat.error_stream":                      "Failed to generate chat response",
+			"chat.error_invalid_conversation_id":     "Invalid conversation ID",
+			"chat.error_conversation_not_found":      "Conversation not found",
+			"chat.success_conversation_create":       "Conversation created successfully",
+			"chat.success_conversation_get":          "Conversation retrieved successfully",
+			"chat.success_conversation_delete":       "Conversation deleted successfully",
+			"chat.success_conversations_list":        "Conversations retrieved successfully",
 		},
 	}
 )

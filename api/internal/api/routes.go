@@ -53,6 +53,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 	documentRepo := repository.NewGormCatalogDocumentRepository(db)
 	structuredDataRepo := repository.NewGormStructuredDataRepository(db)
 	collectionContextRepo := repository.NewGormCollectionContextRepository(db)
+	chatConversationRepo := repository.NewGormChatConversationRepository(db)
 
 	smtpMailer := mailer.NewSMTPMailer(cfg)
 
@@ -78,7 +79,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		cfg.MaxUploadSizeBytes,
 	)
 	docHandler := handlers.NewDocumentHandler(docUseCase, cfg.UploadRequestLimitBytes())
-	chatUseCase := usecase.NewChatUseCase(collectionContextRepo, providerUseCase)
+	chatUseCase := usecase.NewChatUseCase(collectionContextRepo, chatConversationRepo, providerUseCase)
 	chatHandler := handlers.NewChatHandler(chatUseCase)
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -155,6 +156,10 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		chat := v1.Group("/chat")
 		chat.Use(middleware.AuthMiddleware(cfg, authRepo))
 		{
+			chat.POST("/conversations", chatHandler.CreateConversation)
+			chat.GET("/conversations", chatHandler.ListConversations)
+			chat.GET("/conversations/:id", chatHandler.GetConversation)
+			chat.DELETE("/conversations/:id", chatHandler.DeleteConversation)
 			chat.POST("/stream", chatHandler.StreamCollectionChat)
 		}
 	}

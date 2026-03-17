@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
@@ -21,17 +22,88 @@ const (
 
 type chatUseCase struct {
 	collectionContextRepo domain.CollectionContextRepository
+	conversationRepo      domain.ChatConversationRepository
 	llmResolver           domain.UserLLMResolver
 }
 
 func NewChatUseCase(
 	collectionContextRepo domain.CollectionContextRepository,
+	conversationRepo domain.ChatConversationRepository,
 	llmResolver domain.UserLLMResolver,
 ) domain.ChatUseCase {
 	return &chatUseCase{
 		collectionContextRepo: collectionContextRepo,
+		conversationRepo:      conversationRepo,
 		llmResolver:           llmResolver,
 	}
+}
+
+func (u *chatUseCase) CreateConversation(ctx context.Context, userID uint, collectionID uint, title string) (*models.ChatConversation, error) {
+	if collectionID == 0 {
+		return nil, domain.ErrCollectionRequired
+	}
+
+	if _, err := u.collectionContextRepo.GetCollectionContext(ctx, userID, collectionID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrCollectionNotFound
+		}
+		return nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+	}
+
+	conversation := &models.ChatConversation{
+		UserID:       userID,
+		CollectionID: collectionID,
+		Title:        buildConversationTitle(title),
+	}
+	if err := u.conversationRepo.CreateConversation(ctx, conversation); err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrChatConversationCreate, err)
+	}
+
+	return conversation, nil
+}
+
+func (u *chatUseCase) ListConversations(ctx context.Context, userID uint, collectionID uint) ([]models.ChatConversation, error) {
+	if collectionID == 0 {
+		return nil, domain.ErrCollectionRequired
+	}
+
+	conversations, err := u.conversationRepo.ListConversationsByCollection(ctx, userID, collectionID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrChatConversationFind, err)
+	}
+
+	return conversations, nil
+}
+
+func (u *chatUseCase) GetConversationMessages(ctx context.Context, userID uint, conversationID uint) (*models.ChatConversation, []models.ChatConversationEntry, error) {
+	conversation, err := u.conversationRepo.GetConversationByID(ctx, userID, conversationID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil, domain.ErrChatConversationNotFound
+		}
+		return nil, nil, fmt.Errorf("%w: %v", domain.ErrChatConversationFind, err)
+	}
+
+	messages, err := u.conversationRepo.ListMessagesByConversation(ctx, userID, conversationID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil, domain.ErrChatConversationNotFound
+		}
+		return nil, nil, fmt.Errorf("%w: %v", domain.ErrChatConversationFind, err)
+	}
+
+	return conversation, messages, nil
+}
+
+func (u *chatUseCase) DeleteConversation(ctx context.Context, userID uint, conversationID uint) error {
+	if err := u.conversationRepo.DeleteConversation(ctx, userID, conversationID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return domain.ErrChatConversationNotFound
+		}
+		return fmt.Errorf("%w: %v", domain.ErrChatConversationDelete, err)
+	}
+
+	return nil
 }
 
 func (u *chatUseCase) StreamCollectionChat(
@@ -43,6 +115,17 @@ func (u *chatUseCase) StreamCollectionChat(
 	prompt := strings.TrimSpace(request.Prompt)
 	if request.CollectionID == 0 || prompt == "" {
 		return domain.ErrCollectionRequired
+	}
+
+	conversation, err := u.conversationRepo.GetConversationByID(ctx, userID, request.ConversationID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return domain.ErrChatConversationNotFound
+		}
+		return fmt.Errorf("%w: %v", domain.ErrChatConversationFind, err)
+	}
+	if conversation.CollectionID != request.CollectionID {
+		return domain.ErrChatConversationNotFound
 	}
 
 	if err := onEvent(domain.ChatStreamEvent{
@@ -84,6 +167,16 @@ func (u *chatUseCase) StreamCollectionChat(
 		return err
 	}
 
+	if err := u.conversationRepo.AddMessage(ctx, userID, conversation.ID, &models.ChatConversationEntry{
+		Role:    "user",
+		Content: prompt,
+	}); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return domain.ErrChatConversationNotFound
+		}
+		return fmt.Errorf("%w: %v", domain.ErrChatConversationMessageStore, err)
+	}
+
 	systemPrompt, userPrompt := buildCollectionChatPrompt(collectionContext, retrieval, request, sources)
 	if err := onEvent(domain.ChatStreamEvent{
 		Type:    chatStreamEventStage,
@@ -93,11 +186,13 @@ func (u *chatUseCase) StreamCollectionChat(
 		return err
 	}
 
+	var answerBuilder strings.Builder
 	if streamer, ok := llm.(domain.LLMStreamingService); ok {
 		if err := streamer.StreamText(ctx, systemPrompt, userPrompt, func(delta string) error {
 			if delta == "" {
 				return nil
 			}
+			answerBuilder.WriteString(delta)
 			return onEvent(domain.ChatStreamEvent{
 				Type:  chatStreamEventDelta,
 				Delta: delta,
@@ -110,6 +205,7 @@ func (u *chatUseCase) StreamCollectionChat(
 		if err != nil {
 			return err
 		}
+		answerBuilder.WriteString(strings.TrimSpace(response))
 		if err := onEvent(domain.ChatStreamEvent{
 			Type:  chatStreamEventDelta,
 			Delta: strings.TrimSpace(response),
@@ -118,11 +214,46 @@ func (u *chatUseCase) StreamCollectionChat(
 		}
 	}
 
+	answer := strings.TrimSpace(answerBuilder.String())
+	if answer != "" {
+		persistedSources := make([]models.ChatSourceReference, 0, len(sources))
+		for _, source := range sources {
+			persistedSources = append(persistedSources, models.ChatSourceReference{
+				ID:      source.ID,
+				DocName: source.DocName,
+				Page:    source.Page,
+				Snippet: source.Snippet,
+			})
+		}
+
+		if err := u.conversationRepo.AddMessage(ctx, userID, conversation.ID, &models.ChatConversationEntry{
+			Role:    "assistant",
+			Content: answer,
+			Sources: persistedSources,
+		}); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return domain.ErrChatConversationNotFound
+			}
+			return fmt.Errorf("%w: %v", domain.ErrChatConversationMessageStore, err)
+		}
+	}
+
 	return onEvent(domain.ChatStreamEvent{
 		Type:    chatStreamEventDone,
 		Stage:   "completed",
 		Message: "Answer completed.",
 	})
+}
+
+func buildConversationTitle(title string) string {
+	normalized := strings.Join(strings.Fields(strings.TrimSpace(title)), " ")
+	if normalized == "" {
+		return fmt.Sprintf("Chat %s", time.Now().UTC().Format("2006-01-02 15:04"))
+	}
+	if len(normalized) > 255 {
+		return strings.TrimSpace(normalized[:255])
+	}
+	return normalized
 }
 
 func buildChatSources(
