@@ -224,6 +224,18 @@ export async function deleteChatConversation(
     }
 }
 
+function readEventField<T>(payload: Record<string, unknown>, camelCase: string, pascalCase: string): T | undefined {
+    if (payload[camelCase] !== undefined) {
+        return payload[camelCase] as T;
+    }
+
+    if (payload[pascalCase] !== undefined) {
+        return payload[pascalCase] as T;
+    }
+
+    return undefined;
+}
+
 function parseSSEEvent(rawEvent: string): ChatStreamEvent | null {
     const lines = rawEvent.split("\n");
     let eventName = "message";
@@ -249,25 +261,23 @@ function parseSSEEvent(rawEvent: string): ChatStreamEvent | null {
 
     const payload = dataLines.join("\n");
     try {
-        const parsed = JSON.parse(payload) as {
-            type?: string;
-            stage?: string;
-            message?: string;
-            delta?: string;
-            sources?: ChatSource[];
-        };
+        const parsed = JSON.parse(payload) as Record<string, unknown>;
+        const stage = readEventField<string>(parsed, "stage", "Stage");
+        const message = readEventField<string>(parsed, "message", "Message");
+        const delta = readEventField<string>(parsed, "delta", "Delta");
+        const sources = readEventField<ChatSource[]>(parsed, "sources", "Sources");
 
         switch (eventName) {
             case "stage":
-                return { type: "stage", stage: parsed.stage, message: parsed.message };
+                return { type: "stage", stage, message };
             case "delta":
-                return { type: "delta", delta: typeof parsed.delta === "string" ? parsed.delta : "" };
+                return typeof delta === "string" ? { type: "delta", delta } : null;
             case "sources":
-                return { type: "sources", sources: Array.isArray(parsed.sources) ? parsed.sources : [] };
+                return { type: "sources", sources: Array.isArray(sources) ? sources : [] };
             case "done":
-                return { type: "done", stage: parsed.stage, message: parsed.message };
+                return { type: "done", stage, message };
             case "error":
-                return { type: "error", message: typeof parsed.message === "string" ? parsed.message : "Erro no chat." };
+                return { type: "error", message: typeof message === "string" ? message : "Erro no chat." };
             default:
                 return null;
         }

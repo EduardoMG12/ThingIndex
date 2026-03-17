@@ -22,18 +22,18 @@ type ChatRequest struct {
 }
 
 type ChatSource struct {
-	ID      string
-	DocName string
-	Page    int
-	Snippet string
+	ID      string `json:"id"`
+	DocName string `json:"docName"`
+	Page    int    `json:"page"`
+	Snippet string `json:"snippet"`
 }
 
 type ChatStreamEvent struct {
-	Type    string
-	Stage   string
-	Message string
-	Delta   string
-	Sources []ChatSource
+	Type    string       `json:"type"`
+	Stage   string       `json:"stage,omitempty"`
+	Message string       `json:"message,omitempty"`
+	Delta   string       `json:"delta,omitempty"`
+	Sources []ChatSource `json:"sources,omitempty"`
 }
 
 type ChatConversationRepository interface {
