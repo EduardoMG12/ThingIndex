@@ -125,6 +125,7 @@ export async function setProviderEnabled(input: {
             "Content-Type": "application/json",
         },
         body: JSON.stringify({
+            provider_type: input.providerType,
             family: input.family,
             activation_target: input.activationTarget,
             enabled: input.enabled,

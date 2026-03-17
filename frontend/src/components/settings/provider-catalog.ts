@@ -61,6 +61,7 @@ const claudeModelSuggestions = [
 ];
 
 const ollamaModelSuggestions = [
+    "deepseek-v3.1:671b",
     "llama3.1:8b",
     "llama3.1:70b",
     "llama3.2",
@@ -256,9 +257,9 @@ export const PROVIDERS: ProviderDefinition[] = [
         icon: ServerCog,
         accentClass: "from-orange-500/20 via-yellow-500/10 to-transparent",
         fields: [
-            { key: "api_key", label: "API key", placeholder: "Optional token", type: "password", optional: true },
-            { key: "model", label: "Model", placeholder: "llama3.1:8b", kind: "model", suggestions: ollamaModelSuggestions },
-            { key: "base_url", label: "Base URL", placeholder: "http://localhost:11434/v1", optional: true },
+            { key: "api_key", label: "API key", placeholder: "Required for Ollama Cloud", type: "password", optional: true },
+            { key: "model", label: "Model", placeholder: "deepseek-v3.1:671b", kind: "model", suggestions: ollamaModelSuggestions },
+            { key: "base_url", label: "Base URL", placeholder: "https://ollama.com/v1 or http://localhost:11434/v1", optional: true },
         ],
     },
     {
