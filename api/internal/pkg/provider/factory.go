@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -19,6 +20,16 @@ import (
 )
 
 type openAICompatibleLLMClient struct {
+	httpClient *http.Client
+	provider   string
+	endpoint   string
+	apiKey     string
+	model      string
+	pricing    domain.LLMPricing
+	hasPricing bool
+}
+
+type ollamaNativeLLMClient struct {
 	httpClient *http.Client
 	provider   string
 	endpoint   string
@@ -59,6 +70,24 @@ type chatCompletionStreamResponse struct {
 	Error *struct {
 		Message string `json:"message"`
 	} `json:"error,omitempty"`
+}
+
+type ollamaChatRequest struct {
+	Model    string                  `json:"model"`
+	Messages []chatCompletionMessage `json:"messages"`
+	Stream   bool                    `json:"stream,omitempty"`
+	Options  *ollamaChatOptions      `json:"options,omitempty"`
+}
+
+type ollamaChatOptions struct {
+	Temperature *float64 `json:"temperature,omitempty"`
+	NumPredict  *int     `json:"num_predict,omitempty"`
+}
+
+type ollamaChatResponse struct {
+	Message *chatCompletionMessage `json:"message,omitempty"`
+	Done    bool                   `json:"done"`
+	Error   string                 `json:"error,omitempty"`
 }
 
 type StorageProviderOptions struct {
@@ -135,6 +164,18 @@ func NewLLMProvider(providerType string, credentials map[string]string) (domain.
 	}
 
 	pricing, hasPricing := llmPricingProfile(normalizedProvider, model, credentials)
+
+	if normalizedProvider == domain.ProviderOllama && isOllamaNativeEndpoint(endpoint) {
+		return &ollamaNativeLLMClient{
+			httpClient: newLLMHTTPClient(),
+			provider:   normalizedProvider,
+			endpoint:   endpoint,
+			apiKey:     apiKey,
+			model:      model,
+			pricing:    pricing,
+			hasPricing: hasPricing,
+		}, nil
+	}
 
 	return &openAICompatibleLLMClient{
 		httpClient: newLLMHTTPClient(),
@@ -266,24 +307,38 @@ func ValidateLLMConnection(ctx context.Context, providerType string, credentials
 		return err
 	}
 
-	client, ok := service.(*openAICompatibleLLMClient)
-	if !ok {
-		return errors.New("llm validation is not supported for this provider")
-	}
-
 	timeoutCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	_, err = client.createChatCompletion(timeoutCtx, chatCompletionRequest{
-		Model: client.model,
-		Messages: []chatCompletionMessage{
-			{Role: "system", Content: "Reply with OK."},
-			{Role: "user", Content: "ping"},
-		},
-		Temperature: 0,
-		MaxTokens:   1,
-	})
-	return err
+	switch client := service.(type) {
+	case *openAICompatibleLLMClient:
+		_, err = client.createChatCompletion(timeoutCtx, chatCompletionRequest{
+			Model: client.model,
+			Messages: []chatCompletionMessage{
+				{Role: "system", Content: "Reply with OK."},
+				{Role: "user", Content: "ping"},
+			},
+			Temperature: 0,
+			MaxTokens:   1,
+		})
+		return err
+	case *ollamaNativeLLMClient:
+		_, err = client.createChat(timeoutCtx, ollamaChatRequest{
+			Model: client.model,
+			Messages: []chatCompletionMessage{
+				{Role: "system", Content: "Reply with OK."},
+				{Role: "user", Content: "ping"},
+			},
+			Stream: false,
+			Options: &ollamaChatOptions{
+				Temperature: floatPtr(0),
+				NumPredict:  intPtr(1),
+			},
+		})
+		return err
+	default:
+		return errors.New("llm validation is not supported for this provider")
+	}
 }
 
 func (c *openAICompatibleLLMClient) createChatCompletion(ctx context.Context, payload chatCompletionRequest) (*chatCompletionResponse, error) {
@@ -411,6 +466,154 @@ func (c *openAICompatibleLLMClient) StreamText(ctx context.Context, systemPrompt
 	return scanner.Err()
 }
 
+func (c *ollamaNativeLLMClient) GenerateText(ctx context.Context, systemPrompt, userPrompt string) (string, error) {
+	response, err := c.createChat(ctx, ollamaChatRequest{
+		Model: c.model,
+		Messages: []chatCompletionMessage{
+			{Role: "system", Content: systemPrompt},
+			{Role: "user", Content: userPrompt},
+		},
+		Stream: false,
+		Options: &ollamaChatOptions{
+			Temperature: floatPtr(0.2),
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if response.Message == nil {
+		return "", errors.New("ollama response returned no message")
+	}
+
+	return strings.TrimSpace(response.Message.Content), nil
+}
+
+func (c *ollamaNativeLLMClient) StreamText(ctx context.Context, systemPrompt, userPrompt string, onDelta func(string) error) error {
+	body, err := json.Marshal(ollamaChatRequest{
+		Model: c.model,
+		Messages: []chatCompletionMessage{
+			{Role: "system", Content: systemPrompt},
+			{Role: "user", Content: userPrompt},
+		},
+		Stream: true,
+		Options: &ollamaChatOptions{
+			Temperature: floatPtr(0.2),
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	if c.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/x-ndjson")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return readOllamaErrorResponse(resp)
+	}
+
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+
+		var chunk ollamaChatResponse
+		if err := json.Unmarshal([]byte(line), &chunk); err != nil {
+			continue
+		}
+		if strings.TrimSpace(chunk.Error) != "" {
+			return errors.New(strings.TrimSpace(chunk.Error))
+		}
+		if chunk.Message == nil {
+			if chunk.Done {
+				return nil
+			}
+			continue
+		}
+
+		delta := strings.TrimSpace(chunk.Message.Content)
+		if delta == "" {
+			if chunk.Done {
+				return nil
+			}
+			continue
+		}
+		if err := onDelta(delta); err != nil {
+			return err
+		}
+		if chunk.Done {
+			return nil
+		}
+	}
+
+	return scanner.Err()
+}
+
+func (c *ollamaNativeLLMClient) createChat(ctx context.Context, payload ollamaChatRequest) (*ollamaChatResponse, error) {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	if c.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return nil, readOllamaErrorResponse(resp)
+	}
+
+	var response ollamaChatResponse
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("parse ollama response: %w", err)
+	}
+	if strings.TrimSpace(response.Error) != "" {
+		return nil, errors.New(strings.TrimSpace(response.Error))
+	}
+
+	return &response, nil
+}
+
+func readOllamaErrorResponse(resp *http.Response) error {
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	var apiErr ollamaChatResponse
+	if err := json.Unmarshal(respBody, &apiErr); err == nil && strings.TrimSpace(apiErr.Error) != "" {
+		return errors.New(strings.TrimSpace(apiErr.Error))
+	}
+
+	return fmt.Errorf("ollama request failed with status %d", resp.StatusCode)
+}
+
 func (c *openAICompatibleLLMClient) ProviderType() string {
 	return c.provider
 }
@@ -420,6 +623,18 @@ func (c *openAICompatibleLLMClient) ModelName() string {
 }
 
 func (c *openAICompatibleLLMClient) Pricing() (domain.LLMPricing, bool) {
+	return c.pricing, c.hasPricing
+}
+
+func (c *ollamaNativeLLMClient) ProviderType() string {
+	return c.provider
+}
+
+func (c *ollamaNativeLLMClient) ModelName() string {
+	return c.model
+}
+
+func (c *ollamaNativeLLMClient) Pricing() (domain.LLMPricing, bool) {
 	return c.pricing, c.hasPricing
 }
 
@@ -436,7 +651,7 @@ func llmEndpointAndModel(providerType string, credentials map[string]string) (st
 	if baseURL == "" {
 		if normalizedProvider == domain.ProviderOllama {
 			if strings.TrimSpace(credentials["api_key"]) != "" {
-				baseURL = "https://ollama.com/v1"
+				baseURL = "https://ollama.com/api"
 			} else {
 				baseURL = "http://localhost:11434/v1"
 			}
@@ -458,7 +673,54 @@ func llmEndpointAndModel(providerType string, credentials map[string]string) (st
 		return "", "", fmt.Errorf("provider %s requires base_url and model", normalizedProvider)
 	}
 
+	if normalizedProvider == domain.ProviderOllama {
+		return ollamaEndpoint(baseURL), model, nil
+	}
+
 	return baseURL + "/chat/completions", model, nil
+}
+
+func ollamaEndpoint(baseURL string) string {
+	trimmed := strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	if trimmed == "" {
+		return ""
+	}
+
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		return trimmed + "/chat/completions"
+	}
+
+	host := strings.ToLower(strings.TrimSpace(parsed.Hostname()))
+	path := strings.TrimRight(parsed.Path, "/")
+	if host == "ollama.com" || host == "www.ollama.com" {
+		parsed.Path = "/api/chat"
+		return strings.TrimRight(parsed.String(), "/")
+	}
+	if path == "/api" || path == "/api/chat" {
+		parsed.Path = "/api/chat"
+		return strings.TrimRight(parsed.String(), "/")
+	}
+
+	return trimmed + "/chat/completions"
+}
+
+func isOllamaNativeEndpoint(endpoint string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(endpoint))
+	if err != nil {
+		return false
+	}
+
+	host := strings.ToLower(strings.TrimSpace(parsed.Hostname()))
+	return (host == "ollama.com" || host == "www.ollama.com") && strings.HasSuffix(strings.TrimRight(parsed.Path, "/"), "/api/chat")
+}
+
+func floatPtr(value float64) *float64 {
+	return &value
+}
+
+func intPtr(value int) *int {
+	return &value
 }
 
 func llmPricingProfile(providerType, model string, credentials map[string]string) (domain.LLMPricing, bool) {

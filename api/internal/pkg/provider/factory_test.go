@@ -49,8 +49,28 @@ func TestLLMEndpointAndModelUsesOllamaCloudDefaultWhenAPIKeyIsPresent(t *testing
 		t.Fatalf("expected ollama cloud defaults, got error: %v", err)
 	}
 
-	if endpoint != "https://ollama.com/v1/chat/completions" {
+	if endpoint != "https://ollama.com/api/chat" {
 		t.Fatalf("unexpected ollama cloud endpoint: %s", endpoint)
+	}
+	if model != "deepseek-v3.1:671b" {
+		t.Fatalf("unexpected ollama cloud model: %s", model)
+	}
+}
+
+func TestLLMEndpointAndModelNormalizesExplicitOllamaCloudV1BaseURL(t *testing.T) {
+	t.Parallel()
+
+	endpoint, model, err := llmEndpointAndModel(domain.ProviderOllama, map[string]string{
+		"api_key":  "secret",
+		"base_url": "https://ollama.com/v1",
+		"model":    "deepseek-v3.1:671b",
+	})
+	if err != nil {
+		t.Fatalf("expected explicit ollama cloud v1 base url to be normalized, got error: %v", err)
+	}
+
+	if endpoint != "https://ollama.com/api/chat" {
+		t.Fatalf("unexpected normalized ollama cloud endpoint: %s", endpoint)
 	}
 	if model != "deepseek-v3.1:671b" {
 		t.Fatalf("unexpected ollama cloud model: %s", model)
