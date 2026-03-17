@@ -977,7 +977,7 @@ export default function DocumentsPage() {
                     {!isLoading && !error && documents.length > 0 && (
                         <div className="space-y-4">
                             {groupedDocuments.categorized.map((category) => {
-                                const isCategoryOpen = openCategories[category.name] ?? true;
+                                const isCategoryOpen = openCategories[category.name] ?? false;
 
                                 return (
                                     <div key={category.name} className="rounded-xl border border-border bg-background/40">
@@ -1004,7 +1004,7 @@ export default function DocumentsPage() {
                                             <div className="space-y-3 border-t border-border p-4">
                                                 {category.collections.map((collection) => {
                                                     const collectionKey = `${category.name}::${collection.name}`;
-                                                    const isCollectionOpen = openCollections[collectionKey] ?? true;
+                                                    const isCollectionOpen = openCollections[collectionKey] ?? false;
 
                                                     return (
                                                         <div key={collectionKey} className="rounded-xl border border-border bg-card/40">
@@ -1063,7 +1063,7 @@ export default function DocumentsPage() {
                                             <div key={`uncategorized-${collection.name}`} className="rounded-xl border border-border bg-card/40">
                                                 {(() => {
                                                     const collectionKey = `uncategorized::${collection.name}`;
-                                                    const isCollectionOpen = openCollections[collectionKey] ?? true;
+                                                    const isCollectionOpen = openCollections[collectionKey] ?? false;
 
                                                     return (
                                                         <>
