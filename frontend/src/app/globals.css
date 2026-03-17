@@ -131,6 +131,23 @@
     border-radius: var(--radius);
   }
 
+  .surface-elevated {
+    background:
+      linear-gradient(180deg, hsl(var(--card) / 0.96), hsl(var(--card) / 0.88)),
+      radial-gradient(circle at top, hsl(var(--primary) / 0.08), transparent 38%);
+    border: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-card);
+    backdrop-filter: blur(18px);
+  }
+
+  .chat-panel {
+    background:
+      radial-gradient(circle at top right, hsl(var(--primary) / 0.1), transparent 24%),
+      linear-gradient(180deg, hsl(var(--background) / 0.82), hsl(var(--card) / 0.96));
+    border: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-card);
+  }
+
   .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
   }

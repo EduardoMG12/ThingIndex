@@ -75,6 +75,9 @@ export const messages: LocaleMessages = {
                 documentation: "Documentação",
                 settings: "Configurações",
             },
+            chat: {
+                empty: "Conversas aparecem aqui.",
+            },
             user: {
                 role: "Plano Explorer",
                 logout: "Sair",
@@ -412,6 +415,9 @@ export const messages: LocaleMessages = {
                 documentation: "Documentation",
                 settings: "Settings",
             },
+            chat: {
+                empty: "Conversations appear here.",
+            },
             user: {
                 role: "Explorer Plan",
                 logout: "Sign out",
@@ -748,6 +754,9 @@ export const messages: LocaleMessages = {
                 documents: "Documentos",
                 documentation: "Documentación",
                 settings: "Configuración",
+            },
+            chat: {
+                empty: "Las conversaciones aparecen aquí.",
             },
             user: {
                 role: "Plan Explorer",

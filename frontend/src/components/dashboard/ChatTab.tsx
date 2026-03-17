@@ -2,7 +2,8 @@
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Bot, User, Loader2, Sparkles, AlertCircle, Hash, FolderOpen, Square, Trash2, MessageSquarePlus } from "lucide-react";
+import { Send, Bot, User, Loader2, Sparkles, AlertCircle, FolderOpen, Square } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,7 +13,6 @@ import SubQueryProgress, { type SubQuery } from "@/components/chat/SubQueryProgr
 import { useCollections } from "@/hooks/use-collections";
 import {
     createChatConversation,
-    deleteChatConversation,
     fetchChatConversation,
     fetchChatConversations,
     streamCollectionChat,
@@ -191,6 +191,9 @@ function StreamingCard() {
 
 const ChatTab = ({ className }: { className?: string }) => {
     const { t } = useI18n();
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const { collections, isLoading: collectionsLoading } = useCollections();
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
@@ -214,6 +217,8 @@ const ChatTab = ({ className }: { className?: string }) => {
     const hasShownDeltaRef = useRef(false);
     const shouldAutoScrollRef = useRef(true);
     const previousMessageCountRef = useRef(0);
+    const hasHydratedRouteRef = useRef(false);
+    const previousNewTriggerRef = useRef<string | null>(null);
 
     const stopDeltaFlush = () => {
         if (flushTimerRef.current !== null) {
@@ -350,6 +355,18 @@ const ChatTab = ({ className }: { className?: string }) => {
     }, [collections, selectedCollectionId]);
 
     useEffect(() => {
+        const queryCollectionId = Number(searchParams.get("collection"));
+        if (Number.isFinite(queryCollectionId) && queryCollectionId > 0 && queryCollectionId !== selectedCollectionId) {
+            setSelectedCollectionId(queryCollectionId);
+            return;
+        }
+
+        if (!hasHydratedRouteRef.current) {
+            hasHydratedRouteRef.current = true;
+        }
+    }, [searchParams, selectedCollectionId]);
+
+    useEffect(() => {
         return () => {
             abortRef.current?.abort();
             stopDeltaFlush();
@@ -407,6 +424,42 @@ const ChatTab = ({ className }: { className?: string }) => {
             controller.abort();
         };
     }, [selectedCollectionId, t]);
+
+    useEffect(() => {
+        const queryConversationId = Number(searchParams.get("conversation"));
+        if (!Number.isFinite(queryConversationId) || queryConversationId <= 0) {
+            return;
+        }
+
+        if (conversations.some((conversation) => conversation.id === queryConversationId) && activeConversationId !== queryConversationId) {
+            setActiveConversationId(queryConversationId);
+        }
+    }, [searchParams, conversations, activeConversationId]);
+
+    useEffect(() => {
+        const newTrigger = searchParams.get("new");
+        if (!newTrigger || previousNewTriggerRef.current === newTrigger) {
+            return;
+        }
+
+        previousNewTriggerRef.current = newTrigger;
+        if (abortRef.current) {
+            abortRef.current.abort();
+            abortRef.current = null;
+        }
+
+        pendingDeltaRef.current = "";
+        streamMessageIdRef.current = null;
+        stopDeltaFlush();
+        setActiveConversationId(null);
+        setMessages([]);
+        setInput("");
+        setIsLoading(false);
+        setActiveSubQueries([]);
+        setStreamError(null);
+        hideStreamingCard();
+        setDeltaCount(0);
+    }, [searchParams]);
 
     useEffect(() => {
         if (!activeConversationId) {
@@ -625,311 +678,285 @@ const ChatTab = ({ className }: { className?: string }) => {
         setDeltaCount(0);
     };
 
-    const handleNewConversation = () => {
-        if (abortRef.current) {
-            abortRef.current.abort();
-            abortRef.current = null;
-        }
+    const hasCollections = collections.some((collection) => typeof collection.id === "number");
+    const activeCollection = collections.find((collection) => collection.id === selectedCollectionId);
 
-        pendingDeltaRef.current = "";
-        streamMessageIdRef.current = null;
-        stopDeltaFlush();
-        setActiveConversationId(null);
-        setMessages([]);
-        setInput("");
-        setIsLoading(false);
-        setActiveSubQueries([]);
-        setStreamError(null);
-        hideStreamingCard();
-        setDeltaCount(0);
-    };
+    useEffect(() => {
+        window.dispatchEvent(new CustomEvent("thingindex:chat-sidebar-sync", {
+            detail: {
+                selectedCollectionId,
+                activeConversationId,
+                conversations,
+            },
+        }));
+    }, [selectedCollectionId, activeConversationId, conversations]);
 
-    const handleDeleteConversation = async () => {
-        if (!activeConversationId || isLoading) {
-            handleNewConversation();
+    useEffect(() => {
+        const handleConversationUpdated = (event: Event) => {
+            const detail = (event as CustomEvent<ChatConversationSummary>).detail;
+            if (!detail) {
+                return;
+            }
+
+            setConversations((current) =>
+                current.map((conversation) => (
+                    conversation.id === detail.id ? detail : conversation
+                ))
+            );
+        };
+
+        const handleConversationDeleted = (event: Event) => {
+            const detail = (event as CustomEvent<{ id: number }>).detail;
+            if (!detail) {
+                return;
+            }
+
+            setConversations((current) => current.filter((conversation) => conversation.id !== detail.id));
+            setActiveConversationId((current) => (current === detail.id ? null : current));
+            setMessages((current) => (activeConversationId === detail.id ? [] : current));
+            setInput((current) => (activeConversationId === detail.id ? "" : current));
+            setStreamError(null);
+            setActiveSubQueries([]);
+        };
+
+        window.addEventListener("thingindex:chat-conversation-updated", handleConversationUpdated as EventListener);
+        window.addEventListener("thingindex:chat-conversation-deleted", handleConversationDeleted as EventListener);
+
+        return () => {
+            window.removeEventListener("thingindex:chat-conversation-updated", handleConversationUpdated as EventListener);
+            window.removeEventListener("thingindex:chat-conversation-deleted", handleConversationDeleted as EventListener);
+        };
+    }, [activeConversationId]);
+
+    useEffect(() => {
+        if (!hasHydratedRouteRef.current) {
             return;
         }
 
-        try {
-            const nextConversations = conversations.filter((conversation) => conversation.id !== activeConversationId);
-            await deleteChatConversation(activeConversationId);
-            setConversations(nextConversations);
-            setActiveConversationId(nextConversations[0]?.id ?? null);
-            setMessages([]);
-            setInput("");
-            setStreamError(null);
-            setActiveSubQueries([]);
-        } catch (error) {
-            setStreamError(error instanceof Error ? error.message : t("dashboard.chat.error"));
+        const params = new URLSearchParams(searchParams.toString());
+        if (selectedCollectionId) {
+            params.set("collection", String(selectedCollectionId));
+        } else {
+            params.delete("collection");
         }
-    };
 
-    const hasCollections = collections.some((collection) => typeof collection.id === "number");
+        if (activeConversationId) {
+            params.set("conversation", String(activeConversationId));
+        } else {
+            params.delete("conversation");
+        }
+
+        params.delete("new");
+
+        const next = params.toString();
+        const current = searchParams.toString();
+        if (next !== current) {
+            router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+        }
+    }, [selectedCollectionId, activeConversationId, pathname, router, searchParams]);
 
     return (
-        <div className={cn("surface-elevated flex h-[600px] flex-col overflow-hidden rounded-lg border border-border shadow-lg", className)}>
-            <div className="border-b border-border bg-muted/20 px-4 py-3">
-                <div className="flex flex-col gap-3">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                        <div>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-primary">
-                                {t("dashboard.chat.collectionLabel")}
+        <div className={cn("chat-panel flex h-[600px] overflow-hidden rounded-[32px]", className)}>
+            <div className="flex min-h-0 flex-1 flex-col bg-background/35">
+                <div className="px-5 pb-2 pt-4 sm:px-7">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                            <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+                                {t("chatPage.title")}
                             </p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                                {t("dashboard.chat.collectionHint")}
+                            <p className="mt-1 truncate text-sm font-medium text-foreground">
+                                {activeConversationId ? (conversations.find((conversation) => conversation.id === activeConversationId)?.title || activeCollection?.name) : t("dashboard.chat.newConversation")}
                             </p>
                         </div>
-
-                        <div className="flex flex-wrap items-center gap-2">
-                            <label className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
-                                <FolderOpen className="h-3.5 w-3.5 text-primary" />
-                                <select
-                                    value={selectedCollectionId ?? ""}
-                                    onChange={(event) => {
-                                        const value = Number(event.target.value);
-                                        setSelectedCollectionId(Number.isFinite(value) && value > 0 ? value : null);
-                                    }}
-                                    disabled={!hasCollections || collectionsLoading || isLoading}
-                                    className="min-w-52 bg-transparent text-xs font-mono outline-none"
-                                >
-                                    {!hasCollections && (
-                                        <option value="">{t("dashboard.chat.noCollections")}</option>
-                                    )}
-                                    {collections
-                                        .filter((collection) => typeof collection.id === "number")
-                                        .map((collection) => (
-                                            <option key={String(collection.id)} value={collection.id}>
-                                                {collection.name}
-                                            </option>
-                                        ))}
-                                </select>
-                                {collectionsLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-                            </label>
-
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={handleNewConversation}
-                                disabled={!selectedCollectionId || isLoading}
-                                className="gap-2"
+                        <label className="flex max-w-md items-center gap-3 rounded-2xl border border-border bg-background/70 px-4 py-2.5">
+                            <FolderOpen className="h-4 w-4 text-primary" />
+                            <select
+                                value={selectedCollectionId ?? ""}
+                                onChange={(event) => {
+                                    const value = Number(event.target.value);
+                                    setSelectedCollectionId(Number.isFinite(value) && value > 0 ? value : null);
+                                }}
+                                disabled={!hasCollections || collectionsLoading || isLoading}
+                                className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none"
                             >
-                                <MessageSquarePlus className="h-3.5 w-3.5" />
-                                {t("dashboard.chat.newConversation")}
-                            </Button>
-
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => void handleDeleteConversation()}
-                                disabled={!activeConversationId}
-                                className="gap-2"
-                            >
-                                <Trash2 className="h-3.5 w-3.5" />
-                                {t("dashboard.chat.clear")}
-                            </Button>
-                        </div>
-                    </div>
-
-                    {selectedCollectionId && (
-                        <div className="flex flex-wrap items-center gap-2">
-                            <label className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
-                                <Hash className="h-3.5 w-3.5 text-primary" />
-                                <select
-                                    value={activeConversationId ?? ""}
-                                    onChange={(event) => {
-                                        const value = Number(event.target.value);
-                                        setActiveConversationId(Number.isFinite(value) && value > 0 ? value : null);
-                                    }}
-                                    disabled={isLoading || isConversationsLoading || conversations.length === 0}
-                                    className="min-w-60 bg-transparent text-xs font-mono outline-none"
-                                >
-                                    {conversations.length === 0 && (
-                                        <option value="">{t("dashboard.chat.noConversations")}</option>
-                                    )}
-                                    {conversations.map((conversation) => (
-                                        <option key={conversation.id} value={conversation.id}>
-                                            {conversation.title}
+                                {!hasCollections && (
+                                    <option value="">{t("dashboard.chat.noCollections")}</option>
+                                )}
+                                {collections
+                                    .filter((collection) => typeof collection.id === "number")
+                                    .map((collection) => (
+                                        <option key={String(collection.id)} value={collection.id}>
+                                            {collection.name}
                                         </option>
                                     ))}
-                                </select>
-                                {(isConversationsLoading || isConversationLoading) && (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-                                )}
-                            </label>
-                            <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                                {t("dashboard.chat.conversationsLabel")}
-                            </p>
-                        </div>
-                    )}
+                            </select>
+                            {(collectionsLoading || isConversationsLoading || isConversationLoading) && (
+                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            )}
+                        </label>
+                    </div>
                 </div>
-            </div>
 
-            <ScrollArea ref={scrollAreaRef} className="flex-1 bg-background/30 p-6">
-                <div className="space-y-6">
-                    {messages.length === 0 && !isConversationLoading && (
-                        <div className="flex h-96 flex-col items-center justify-center text-center opacity-40">
-                            <Sparkles className="mb-4 h-12 w-12 text-primary" />
-                            <h3 className="text-sm font-semibold">{t("dashboard.chat.emptyTitle")}</h3>
-                            <p className="mt-2 max-w-xs text-xs leading-relaxed">
-                                {hasCollections ? t("dashboard.chat.emptyDescription") : t("dashboard.chat.emptyNoCollection")}
-                            </p>
-                        </div>
-                    )}
-
-                    {isConversationLoading && (
-                        <div className="flex h-96 items-center justify-center gap-3 text-sm text-muted-foreground">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            {t("dashboard.chat.loadingConversation")}
-                        </div>
-                    )}
-
-                    <AnimatePresence>
-                        {showStreamingCard && <StreamingCard />}
-                        {messages.map((msg) => (
-                            <motion.div
-                                key={msg.id}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className={cn("flex gap-4", msg.role === "user" ? "flex-row-reverse" : "flex-row")}
-                            >
-                                <div
-                                    className={cn(
-                                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border",
-                                        msg.role === "user"
-                                            ? "border-primary bg-primary text-primary-foreground"
-                                            : "border-border bg-card text-primary"
-                                    )}
-                                >
-                                    {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                <ScrollArea ref={scrollAreaRef} className="flex-1 px-4 py-5 sm:px-7">
+                    <div className="mx-auto max-w-4xl space-y-7">
+                        {messages.length === 0 && !isConversationLoading && (
+                            <div className="flex h-[34rem] flex-col items-center justify-center rounded-[32px] border border-dashed border-border bg-card/45 px-8 text-center">
+                                <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-[22px] bg-primary/12">
+                                    <Sparkles className="h-8 w-8 text-primary" />
                                 </div>
+                                <h3 className="text-2xl font-semibold tracking-tight">{t("dashboard.chat.emptyTitle")}</h3>
+                                <p className="mt-3 max-w-lg text-base leading-relaxed text-muted-foreground">
+                                    {hasCollections ? t("dashboard.chat.emptyDescription") : t("dashboard.chat.emptyNoCollection")}
+                                </p>
+                            </div>
+                        )}
 
-                                <div
-                                    className={cn(
-                                        "max-w-[85%] space-y-2",
-                                        msg.role === "user" ? "items-end text-right" : "items-start text-left"
-                                    )}
+                        {isConversationLoading && (
+                            <div className="flex h-96 items-center justify-center gap-3 text-sm text-muted-foreground">
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                {t("dashboard.chat.loadingConversation")}
+                            </div>
+                        )}
+
+                        <AnimatePresence>
+                            {showStreamingCard && <StreamingCard />}
+                            {messages.map((msg) => (
+                                <motion.div
+                                    key={msg.id}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className={cn("flex gap-4 sm:gap-5", msg.role === "user" ? "flex-row-reverse" : "flex-row")}
                                 >
                                     <div
                                         className={cn(
-                                            "rounded-2xl px-4 py-3 text-sm shadow-sm transition-all break-words",
+                                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border",
                                             msg.role === "user"
-                                                ? "rounded-tr-none bg-primary text-primary-foreground whitespace-pre-wrap leading-relaxed"
-                                                : cn(
-                                                    "rounded-tl-none border border-border bg-card text-foreground",
-                                                    isLoading && !msg.content.trim() && msg.id === streamMessageIdRef.current && "min-w-56"
-                                                )
+                                                ? "border-primary bg-primary text-primary-foreground"
+                                                : "border-border bg-card text-primary shadow-sm"
                                         )}
                                     >
-                                        {msg.role === "assistant" ? (
-                                            <div className="space-y-3 text-[15px] leading-7 text-foreground/95">
-                                                {msg.content.trim() ? (
-                                                    <>
-                                                        {renderFormattedText(msg.content)}
-                                                        {isLoading && msg.id === streamMessageIdRef.current && (
-                                                            <span className="inline-block h-5 w-[2px] translate-y-1 animate-pulse rounded-full bg-primary/70 align-bottom" />
-                                                        )}
-                                                    </>
-                                                ) : (
-                                                    isLoading && msg.id === streamMessageIdRef.current
-                                                        ? <StreamingPlaceholder label={t("dashboard.chat.streaming")} />
-                                                        : null
-                                                )}
-                                            </div>
-                                        ) : (
-                                            msg.content
-                                        )}
+                                        {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                                     </div>
 
-                                    {msg.role === "assistant" && isLoading && msg.id === streamMessageIdRef.current && (
-                                        <StreamingStatus deltaCount={deltaCount} />
-                                    )}
-
-                                    {msg.sources && msg.sources.length > 0 && (
-                                        <div className="flex flex-wrap gap-2 pt-1">
-                                            {msg.sources.map((source) => (
-                                                <SourceReference key={source.id} source={source} />
-                                            ))}
+                                    <div
+                                        className={cn(
+                                            "max-w-[92%] space-y-3 sm:max-w-[88%]",
+                                            msg.role === "user" ? "items-end text-right" : "items-start text-left"
+                                        )}
+                                    >
+                                        <div
+                                            className={cn(
+                                                "break-words rounded-[24px] px-5 py-4 shadow-sm transition-all",
+                                                msg.role === "user"
+                                                    ? "rounded-tr-md bg-primary text-primary-foreground whitespace-pre-wrap text-[15px] leading-7"
+                                                    : cn(
+                                                        "rounded-tl-md border border-border bg-card/95 text-foreground",
+                                                        isLoading && !msg.content.trim() && msg.id === streamMessageIdRef.current && "min-w-72"
+                                                    )
+                                            )}
+                                        >
+                                            {msg.role === "assistant" ? (
+                                                <div className="space-y-3 text-[15px] leading-7 text-foreground/95">
+                                                    {msg.content.trim() ? (
+                                                        <>
+                                                            {renderFormattedText(msg.content)}
+                                                            {isLoading && msg.id === streamMessageIdRef.current && (
+                                                                <span className="inline-block h-5 w-[2px] translate-y-1 animate-pulse rounded-full bg-primary/70 align-bottom" />
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        isLoading && msg.id === streamMessageIdRef.current
+                                                            ? <StreamingPlaceholder label={t("dashboard.chat.streaming")} />
+                                                            : null
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                msg.content
+                                            )}
                                         </div>
-                                    )}
-                                </div>
+
+                                        {msg.role === "assistant" && isLoading && msg.id === streamMessageIdRef.current && (
+                                            <StreamingStatus deltaCount={deltaCount} />
+                                        )}
+
+                                        {msg.sources && msg.sources.length > 0 && (
+                                            <div className="flex flex-wrap gap-2 pt-1">
+                                                {msg.sources.map((source) => (
+                                                    <SourceReference key={source.id} source={source} />
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
+
+                        {activeSubQueries.length > 0 && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                                <SubQueryProgress queries={activeSubQueries} />
                             </motion.div>
-                        ))}
-                    </AnimatePresence>
-
-                    {activeSubQueries.length > 0 && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                            <SubQueryProgress queries={activeSubQueries} />
-                        </motion.div>
-                    )}
-
-                    {streamError && (
-                        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-                            {streamError}
-                        </div>
-                    )}
-
-                    <div ref={scrollRef} />
-                </div>
-            </ScrollArea>
-
-            <div className="border-t border-border bg-muted/20 p-4">
-                <div className="relative flex items-end gap-2 pr-12">
-                    <Textarea
-                        placeholder={hasCollections ? t("dashboard.chat.placeholder") : t("dashboard.chat.disabledPlaceholder")}
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                void handleSend();
-                            }
-                        }}
-                        disabled={!hasCollections || isLoading}
-                        className="min-h-[44px] max-h-32 resize-none bg-background py-3 text-sm focus:ring-1 focus:ring-primary/30"
-                        rows={1}
-                    />
-                    <Button
-                        onClick={() => void handleSend()}
-                        disabled={isLoading || !input.trim() || !selectedCollectionId}
-                        size="icon"
-                        className="absolute bottom-0.5 right-0 h-10 w-10 shadow-gold transition-transform active:scale-95"
-                    >
-                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    </Button>
-                </div>
-                <div className="mt-2 flex items-center justify-between">
-                    <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase text-muted-foreground">
-                        <AlertCircle className="h-3 w-3" /> {t("dashboard.chat.hallucination")}
-                    </p>
-                    <div className="flex items-center gap-2">
-                        {isLoading && (
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={handleCancel}
-                                className="gap-2 px-2.5 py-1 text-[10px] uppercase tracking-widest"
-                            >
-                                <Square className="h-3 w-3" />
-                                {t("dashboard.chat.cancel")}
-                            </Button>
                         )}
-                        <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
-                            {hasCollections ? t("dashboard.chat.newLineHint") : t("dashboard.chat.createCollectionHint")}
-                        </p>
+
+                        {streamError && (
+                            <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+                                {streamError}
+                            </div>
+                        )}
+
+                        <div ref={scrollRef} />
+                    </div>
+                </ScrollArea>
+
+                <div className="border-t border-border bg-card/90 px-4 py-4 sm:px-7 sm:py-5">
+                    <div className="mx-auto max-w-4xl">
+                        <div className="relative flex items-end gap-3 rounded-[28px] border border-border bg-background/80 p-3 pr-16 shadow-sm">
+                            <Textarea
+                                placeholder={hasCollections ? t("dashboard.chat.placeholder") : t("dashboard.chat.disabledPlaceholder")}
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey) {
+                                        e.preventDefault();
+                                        void handleSend();
+                                    }
+                                }}
+                                disabled={!hasCollections || isLoading}
+                                className="min-h-[88px] max-h-44 resize-none border-0 bg-transparent px-2 py-2 text-base leading-7 focus-visible:ring-0 focus-visible:ring-offset-0"
+                                rows={3}
+                            />
+                            <Button
+                                onClick={() => void handleSend()}
+                                disabled={isLoading || !input.trim() || !selectedCollectionId}
+                                size="icon"
+                                className="absolute bottom-3 right-3 h-12 w-12 rounded-2xl shadow-gold transition-transform active:scale-95"
+                            >
+                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                            </Button>
+                        </div>
+                        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase text-muted-foreground">
+                                <AlertCircle className="h-3 w-3" /> {t("dashboard.chat.hallucination")}
+                            </p>
+                            <div className="flex items-center gap-2">
+                                {isLoading && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleCancel}
+                                        className="gap-2 rounded-2xl px-3 py-2 text-[10px] uppercase tracking-widest"
+                                    >
+                                        <Square className="h-3 w-3" />
+                                        {t("dashboard.chat.cancel")}
+                                    </Button>
+                                )}
+                                <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                                    {hasCollections ? t("dashboard.chat.newLineHint") : t("dashboard.chat.createCollectionHint")}
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                {selectedCollectionId && (
-                    <div className="mt-3 flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
-                        <Hash className="h-3 w-3 text-primary" />
-                        {t("dashboard.chat.activeCollection")}{" "}
-                        <span className="font-mono text-foreground">
-                            {collections.find((collection) => collection.id === selectedCollectionId)?.name || selectedCollectionId}
-                        </span>
-                    </div>
-                )}
             </div>
         </div>
     );
