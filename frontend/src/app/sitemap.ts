@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://thingindex.app";
   const locales = ["pt-BR", "en", "es"] as const;
-  const localizedPaths = ["/", "/login", "/register", "/dashboard", "/documents", "/documentation", "/settings"];
+  const localizedPaths = ["/", "/login", "/register", "/dashboard", "/chat", "/documents", "/documentation", "/settings"];
 
   return locales.flatMap((locale) =>
     localizedPaths.map((path) => ({

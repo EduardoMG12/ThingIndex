@@ -189,7 +189,7 @@ function StreamingCard() {
     );
 }
 
-const ChatTab = () => {
+const ChatTab = ({ className }: { className?: string }) => {
     const { t } = useI18n();
     const { collections, isLoading: collectionsLoading } = useCollections();
     const [messages, setMessages] = useState<Message[]>([]);
@@ -667,7 +667,7 @@ const ChatTab = () => {
     const hasCollections = collections.some((collection) => typeof collection.id === "number");
 
     return (
-        <div className="surface-elevated flex h-[600px] flex-col overflow-hidden rounded-lg border border-border shadow-lg">
+        <div className={cn("surface-elevated flex h-[600px] flex-col overflow-hidden rounded-lg border border-border shadow-lg", className)}>
             <div className="border-b border-border bg-muted/20 px-4 py-3">
                 <div className="flex flex-col gap-3">
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

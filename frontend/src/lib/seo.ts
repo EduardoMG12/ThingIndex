@@ -8,7 +8,7 @@ import {
 } from "@/lib/i18n/config";
 import { getMessages } from "@/lib/i18n/messages";
 
-type PageKey = "home" | "login" | "register" | "dashboard" | "documents" | "documentation" | "settings";
+type PageKey = "home" | "login" | "register" | "dashboard" | "chat" | "documents" | "documentation" | "settings";
 
 export function buildLocalizedMetadata(locale: AppLocale, page: PageKey, pathname: string): Metadata {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://thingindex.app";

@@ -1,21 +1,19 @@
 "use client";
 
-import { useState } from "react";
 import { motion } from "framer-motion";
-import { FileStack, MessageSquare, Info, FolderOpen, Tag } from "lucide-react";
+import Link from "next/link";
+import { FileStack, MessageSquare, Info, FolderOpen, Tag, ArrowUpRight } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import AccountStatus from "@/components/dashboard/AccountStatus";
 import CostCalculator from "@/components/dashboard/CostCalculator";
 import UploadTab from "@/components/dashboard/UploadTab";
-import ChatTab from "@/components/dashboard/ChatTab";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n/provider";
 
 const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } };
 
 export default function DashboardPage() {
-    const [activeTab, setActiveTab] = useState("upload");
-    const { t } = useI18n();
+    const { t, href } = useI18n();
 
     return (
         <AppShell>
@@ -24,9 +22,18 @@ export default function DashboardPage() {
                 transition={{ duration: 0.5 }}
                 className="mb-8"
             >
-                <div className="flex items-center gap-2 mb-3">
-                    <span className="h-px w-8 bg-primary" />
-                    <span className="text-[10px] uppercase tracking-[0.3em] text-primary font-bold">{t("dashboard.eyebrow")}</span>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                        <span className="h-px w-8 bg-primary" />
+                        <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary">{t("dashboard.eyebrow")}</span>
+                    </div>
+                    <Button asChild variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-xs text-muted-foreground whitespace-nowrap hover:text-foreground">
+                        <Link href={href("/chat")}>
+                            <MessageSquare className="h-3.5 w-3.5" />
+                            {t("dashboard.openChat")}
+                            <ArrowUpRight className="h-3.5 w-3.5" />
+                        </Link>
+                    </Button>
                 </div>
                 <h1 className="font-display text-4xl font-bold tracking-tight text-foreground">
                     Thing<span className="text-primary italic">Index</span> Dashboard
@@ -46,30 +53,11 @@ export default function DashboardPage() {
                     transition={{ delay: 0.2, duration: 0.4 }}
                     className="min-w-0"
                 >
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="mb-6 w-full justify-start gap-4 bg-transparent p-0 h-auto">
-                            <TabsTrigger
-                                value="upload"
-                                className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary border border-transparent data-[state=active]:border-primary/20 gap-2 px-6 py-2.5 text-xs font-bold uppercase tracking-widest transition-all"
-                            >
-                                <FileStack className="h-4 w-4" /> {t("dashboard.tabs.pipeline")}
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="chat"
-                                className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary border border-transparent data-[state=active]:border-primary/20 gap-2 px-6 py-2.5 text-xs font-bold uppercase tracking-widest transition-all"
-                            >
-                                <MessageSquare className="h-4 w-4" /> {t("dashboard.tabs.assistant")}
-                            </TabsTrigger>
-                        </TabsList>
-
-                        <TabsContent value="upload" className="mt-0 focus-visible:ring-0">
-                            <UploadTab />
-                        </TabsContent>
-
-                        <TabsContent value="chat" className="mt-0 focus-visible:ring-0">
-                            <ChatTab />
-                        </TabsContent>
-                    </Tabs>
+                    <div className="mb-6 flex items-center gap-2">
+                        <FileStack className="h-4 w-4 text-primary" />
+                        <span className="text-xs font-bold uppercase tracking-widest text-primary">{t("dashboard.tabs.pipeline")}</span>
+                    </div>
+                    <UploadTab />
                 </motion.div>
 
                 <motion.div

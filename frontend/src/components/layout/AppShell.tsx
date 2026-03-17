@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, User, Settings, LayoutDashboard, Database, BookOpen } from "lucide-react";
+import { LogOut, User, Settings, LayoutDashboard, Database, BookOpen, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -12,14 +12,16 @@ import { useI18n } from "@/lib/i18n/provider";
 
 interface AppShellProps {
     children: React.ReactNode;
+    contentClassName?: string;
 }
 
-const AppShell = ({ children }: AppShellProps) => {
+const AppShell = ({ children, contentClassName }: AppShellProps) => {
     const pathname = usePathname();
     const { t, href } = useI18n();
 
     const navItems = [
         { label: t("shell.nav.dashboard"), icon: LayoutDashboard, href: href("/dashboard") },
+        { label: t("shell.nav.chat"), icon: MessageSquare, href: href("/chat") },
         { label: t("shell.nav.documents"), icon: Database, href: href("/documents") },
         { label: t("shell.nav.documentation"), icon: BookOpen, href: href("/documentation") },
         { label: t("shell.nav.settings"), icon: Settings, href: href("/settings") },
@@ -92,7 +94,7 @@ const AppShell = ({ children }: AppShellProps) => {
                 </header>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar" id="main-content">
-                    <div className="max-w-7xl mx-auto p-8">
+                    <div className={cn("mx-auto max-w-7xl p-8", contentClassName)}>
                         {children}
                     </div>
                 </div>

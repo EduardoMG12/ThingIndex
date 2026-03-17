@@ -5,12 +5,13 @@ import { motion, HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface ButtonProps extends HTMLMotionProps<"button"> {
+    asChild?: boolean;
     variant?: "primary" | "secondary" | "ghost" | "outline";
     size?: "sm" | "md" | "lg" | "icon";
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-    ({ className, variant = "primary", size = "md", ...props }, ref) => {
+    ({ className, variant = "primary", size = "md", asChild = false, children, ...props }, ref) => {
         const variants = {
             primary: "bg-primary text-primary-foreground hover:opacity-90 shadow-gold",
             secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
@@ -25,19 +26,32 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             icon: "h-8 w-8",
         };
 
+        const classes = cn(
+            "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+            variants[variant],
+            sizes[size],
+            className
+        );
+
+        if (asChild && React.isValidElement(children)) {
+            const child = React.Children.only(children);
+
+            return React.cloneElement(child, {
+                ...props,
+                className: cn(classes, (child.props as { className?: string }).className),
+            });
+        }
+
         return (
             <motion.button
                 ref={ref}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className={cn(
-                    "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-                    variants[variant],
-                    sizes[size],
-                    className
-                )}
+                className={classes}
                 {...props}
-            />
+            >
+                {children}
+            </motion.button>
         );
     }
 );

@@ -48,6 +48,10 @@ export const messages: LocaleMessages = {
                     title: "Dashboard | ThingIndex",
                     description: "Gerencie uploads, indexação e consultas de documentos na sua workspace do ThingIndex.",
                 },
+                chat: {
+                    title: "Chat | ThingIndex",
+                    description: "Converse com o contexto consolidado das suas collections e valide respostas com fontes rastreáveis.",
+                },
                 documents: {
                     title: "Documentos | ThingIndex",
                     description: "Explore previews, outlines e estruturas indexadas dos seus documentos processados.",
@@ -66,6 +70,7 @@ export const messages: LocaleMessages = {
             workspace: "Workspace",
             nav: {
                 dashboard: "Dashboard",
+                chat: "Chat",
                 documents: "Documentos",
                 documentation: "Documentação",
                 settings: "Configurações",
@@ -188,6 +193,7 @@ export const messages: LocaleMessages = {
             title: "Dashboard ThingIndex",
             description:
                 "Centralize sua legislação e documentos jurídicos. Preserve contexto por categoria, collection e estruturas normalizadas em PostgreSQL.",
+            openChat: "Abrir chat dedicado",
             account: {
                 apiStatus: "Status da API",
                 connected: "Conectado",
@@ -280,6 +286,17 @@ export const messages: LocaleMessages = {
                 accuracy: "Precisão estimada",
             },
         },
+        chatPage: {
+            eyebrow: "Consulta contextual",
+            title: "Chat ThingIndex",
+            description: "Converse com o contexto consolidado das suas collections, acompanhe o streaming da resposta e valide cada evidência antes de confiar no resultado.",
+            panelTitle: "Workspace dedicado",
+            panelDescription: "Esta página isola o fluxo de chat do pipeline de upload para reduzir ruído operacional e manter foco na investigação.",
+            collectionsTitle: "Contexto por collection",
+            collectionsDescription: "Selecione a collection ativa para restringir a busca ao contexto já indexado e recuperar evidências mais consistentes.",
+            verificationTitle: "Resposta verificável",
+            verificationDescription: "Use as referências de fonte e o progresso das etapas para auditar a resposta da LLM e identificar possíveis alucinações.",
+        },
         settings: {
             heroEyebrow: "Controle de providers",
             heroTitle: "Configurações de storage e LLM",
@@ -368,6 +385,10 @@ export const messages: LocaleMessages = {
                     title: "Dashboard | ThingIndex",
                     description: "Manage uploads, indexing, and document queries in your ThingIndex workspace.",
                 },
+                chat: {
+                    title: "Chat | ThingIndex",
+                    description: "Chat with consolidated collection context and validate answers with traceable source references.",
+                },
                 documents: {
                     title: "Documents | ThingIndex",
                     description: "Explore previews, outlines, and indexed structures for your processed documents.",
@@ -386,6 +407,7 @@ export const messages: LocaleMessages = {
             workspace: "Workspace",
             nav: {
                 dashboard: "Dashboard",
+                chat: "Chat",
                 documents: "Documents",
                 documentation: "Documentation",
                 settings: "Settings",
@@ -508,6 +530,7 @@ export const messages: LocaleMessages = {
             title: "ThingIndex Dashboard",
             description:
                 "Centralize your legislation and legal documents. Preserve context through categories, collections, and normalized PostgreSQL structures.",
+            openChat: "Open dedicated chat",
             account: {
                 apiStatus: "API status",
                 connected: "Connected",
@@ -600,6 +623,17 @@ export const messages: LocaleMessages = {
                 accuracy: "Estimated accuracy",
             },
         },
+        chatPage: {
+            eyebrow: "Context query",
+            title: "ThingIndex Chat",
+            description: "Chat with consolidated collection context, follow the answer stream, and validate each piece of evidence before trusting the result.",
+            panelTitle: "Dedicated workspace",
+            panelDescription: "This page isolates the chat flow from the upload pipeline to reduce operational noise and keep the investigation focused.",
+            collectionsTitle: "Collection-scoped context",
+            collectionsDescription: "Select the active collection to constrain retrieval to indexed context and surface stronger evidence.",
+            verificationTitle: "Verifiable answer",
+            verificationDescription: "Use source references and step progress to audit the LLM answer and spot possible hallucinations.",
+        },
         settings: {
             heroEyebrow: "Provider control",
             heroTitle: "Storage and LLM settings",
@@ -688,6 +722,10 @@ export const messages: LocaleMessages = {
                     title: "Dashboard | ThingIndex",
                     description: "Gestiona cargas, indexación y consultas de documentos en tu workspace de ThingIndex.",
                 },
+                chat: {
+                    title: "Chat | ThingIndex",
+                    description: "Conversa con el contexto consolidado de tus collections y valida respuestas con fuentes rastreables.",
+                },
                 documents: {
                     title: "Documentos | ThingIndex",
                     description: "Explora previews, outlines y estructuras indexadas de tus documentos procesados.",
@@ -706,6 +744,7 @@ export const messages: LocaleMessages = {
             workspace: "Workspace",
             nav: {
                 dashboard: "Dashboard",
+                chat: "Chat",
                 documents: "Documentos",
                 documentation: "Documentación",
                 settings: "Configuración",
@@ -828,6 +867,7 @@ export const messages: LocaleMessages = {
             title: "Dashboard ThingIndex",
             description:
                 "Centraliza tu legislación y documentos jurídicos. Conserva el contexto mediante categorías, collections y estructuras normalizadas en PostgreSQL.",
+            openChat: "Abrir chat dedicado",
             account: {
                 apiStatus: "Estado de la API",
                 connected: "Conectado",
@@ -919,6 +959,17 @@ export const messages: LocaleMessages = {
                 contextDesc: "Consulta una collection y agrega tablas, párrafos y metadatos en el mismo flujo.",
                 accuracy: "Precisión estimada",
             },
+        },
+        chatPage: {
+            eyebrow: "Consulta contextual",
+            title: "Chat ThingIndex",
+            description: "Conversa con el contexto consolidado de tus collections, sigue el streaming de la respuesta y valida cada evidencia antes de confiar en el resultado.",
+            panelTitle: "Workspace dedicado",
+            panelDescription: "Esta página aísla el flujo de chat del pipeline de carga para reducir ruido operativo y mantener el foco en la investigación.",
+            collectionsTitle: "Contexto por collection",
+            collectionsDescription: "Selecciona la collection activa para limitar la búsqueda al contexto ya indexado y recuperar evidencia más consistente.",
+            verificationTitle: "Respuesta verificable",
+            verificationDescription: "Usa las referencias de fuente y el progreso de etapas para auditar la respuesta de la LLM y detectar posibles alucinaciones.",
         },
         settings: {
             heroEyebrow: "Control de providers",
