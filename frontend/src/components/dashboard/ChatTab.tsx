@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Bot, User, Loader2, Sparkles, AlertCircle, Hash, FolderOpen, Square, Trash2, MessageSquarePlus } from "lucide-react";
 
@@ -101,6 +101,51 @@ function buildConversationTitle(prompt: string, t: (key: string) => string) {
     return normalized.length > 80 ? `${normalized.slice(0, 80).trim()}...` : normalized;
 }
 
+function renderFormattedText(content: string): ReactNode {
+    const normalizedContent = content.replace(/\r\n/g, "\n").trim();
+    if (!normalizedContent) {
+        return null;
+    }
+
+    const renderInline = (text: string, keyPrefix: string) => text
+        .split(/(\*\*[^*]+\*\*)/g)
+        .filter(Boolean)
+        .map((segment, index) => {
+            if (segment.startsWith("**") && segment.endsWith("**") && segment.length > 4) {
+                return <strong key={`${keyPrefix}-strong-${index}`} className="font-semibold text-foreground">{segment.slice(2, -2)}</strong>;
+            }
+            return <span key={`${keyPrefix}-text-${index}`}>{segment}</span>;
+        });
+
+    return normalizedContent.split(/\n{2,}/).map((paragraph, paragraphIndex) => {
+        const lines = paragraph.split("\n").map((line) => line.trimEnd());
+        const bulletLines = lines.filter((line) => /^[-*]\s+/.test(line));
+
+        if (bulletLines.length === lines.length && bulletLines.length > 0) {
+            return (
+                <ul key={`paragraph-${paragraphIndex}`} className="list-disc space-y-2 pl-5 leading-7">
+                    {bulletLines.map((line, lineIndex) => (
+                        <li key={`paragraph-${paragraphIndex}-item-${lineIndex}`}>
+                            {renderInline(line.replace(/^[-*]\s+/, ""), `paragraph-${paragraphIndex}-item-${lineIndex}`)}
+                        </li>
+                    ))}
+                </ul>
+            );
+        }
+
+        return (
+            <p key={`paragraph-${paragraphIndex}`} className="leading-7">
+                {lines.map((line, lineIndex) => (
+                    <span key={`paragraph-${paragraphIndex}-line-${lineIndex}`}>
+                        {lineIndex > 0 && <br />}
+                        {renderInline(line, `paragraph-${paragraphIndex}-line-${lineIndex}`)}
+                    </span>
+                ))}
+            </p>
+        );
+    });
+}
+
 const ChatTab = () => {
     const { t } = useI18n();
     const { collections, isLoading: collectionsLoading } = useCollections();
@@ -116,6 +161,77 @@ const ChatTab = () => {
     const [streamError, setStreamError] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const abortRef = useRef<AbortController | null>(null);
+    const pendingDeltaRef = useRef("");
+    const streamMessageIdRef = useRef<string | null>(null);
+    const flushTimerRef = useRef<number | null>(null);
+
+    const stopDeltaFlush = () => {
+        if (flushTimerRef.current !== null) {
+            window.clearTimeout(flushTimerRef.current);
+            flushTimerRef.current = null;
+        }
+    };
+
+    const flushPendingDelta = () => {
+        const messageId = streamMessageIdRef.current;
+        if (!messageId) {
+            pendingDeltaRef.current = "";
+            stopDeltaFlush();
+            return;
+        }
+
+        if (!pendingDeltaRef.current) {
+            stopDeltaFlush();
+            return;
+        }
+
+        const chunkSize = pendingDeltaRef.current.length > 80 ? 20 : 8;
+        const chunk = pendingDeltaRef.current.slice(0, chunkSize);
+        pendingDeltaRef.current = pendingDeltaRef.current.slice(chunk.length);
+
+        setMessages((current) =>
+            current.map((message) =>
+                message.id === messageId
+                    ? { ...message, content: `${message.content}${chunk}` }
+                    : message
+            )
+        );
+
+        flushTimerRef.current = window.setTimeout(flushPendingDelta, 24);
+    };
+
+    const queueDelta = (messageId: string, delta: string) => {
+        if (!delta) {
+            return;
+        }
+
+        streamMessageIdRef.current = messageId;
+        pendingDeltaRef.current += delta;
+
+        if (flushTimerRef.current === null) {
+            flushPendingDelta();
+        }
+    };
+
+    const flushAllPendingDelta = () => {
+        const messageId = streamMessageIdRef.current;
+        if (!messageId || !pendingDeltaRef.current) {
+            stopDeltaFlush();
+            return;
+        }
+
+        const remainder = pendingDeltaRef.current;
+        pendingDeltaRef.current = "";
+        stopDeltaFlush();
+
+        setMessages((current) =>
+            current.map((message) =>
+                message.id === messageId
+                    ? { ...message, content: `${message.content}${remainder}` }
+                    : message
+            )
+        );
+    };
 
     useEffect(() => {
         scrollRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -135,6 +251,7 @@ const ChatTab = () => {
     useEffect(() => {
         return () => {
             abortRef.current?.abort();
+            stopDeltaFlush();
         };
     }, []);
 
@@ -240,18 +357,14 @@ const ChatTab = () => {
                 );
                 break;
             case "delta":
-                setMessages((current) =>
-                    current.map((message) =>
-                        message.id === assistantMessageId
-                            ? { ...message, content: `${message.content}${event.delta}` }
-                            : message
-                    )
-                );
+                queueDelta(assistantMessageId, event.delta);
                 break;
             case "done":
+                flushAllPendingDelta();
                 setActiveSubQueries(mapStageToSteps(event.stage, t));
                 break;
             case "error":
+                flushAllPendingDelta();
                 setStreamError(event.message);
                 break;
             default:
@@ -313,6 +426,10 @@ const ChatTab = () => {
             sources: [],
         };
 
+        pendingDeltaRef.current = "";
+        streamMessageIdRef.current = assistantMessageId;
+        stopDeltaFlush();
+
         const history: ChatHistoryMessage[] = messages
             .filter((message) => message.content.trim())
             .slice(-6)
@@ -354,6 +471,7 @@ const ChatTab = () => {
                 });
             });
         } catch (error) {
+            flushAllPendingDelta();
             if (controller.signal.aborted) {
                 setMessages((current) =>
                     current.filter((message) => !(message.id === assistantMessageId && !message.content.trim()))
@@ -372,6 +490,7 @@ const ChatTab = () => {
                 )
             );
         } finally {
+            flushAllPendingDelta();
             if (!controller.signal.aborted) {
                 setIsLoading(false);
                 setActiveSubQueries([]);
@@ -385,6 +504,7 @@ const ChatTab = () => {
     const handleCancel = () => {
         abortRef.current?.abort();
         abortRef.current = null;
+        flushAllPendingDelta();
         setIsLoading(false);
         setActiveSubQueries([]);
         setStreamError(t("dashboard.chat.cancelled"));
@@ -396,6 +516,9 @@ const ChatTab = () => {
             abortRef.current = null;
         }
 
+        pendingDeltaRef.current = "";
+        streamMessageIdRef.current = null;
+        stopDeltaFlush();
         setActiveConversationId(null);
         setMessages([]);
         setInput("");
@@ -572,13 +695,19 @@ const ChatTab = () => {
                                 >
                                     <div
                                         className={cn(
-                                            "rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm transition-all whitespace-pre-wrap",
+                                            "rounded-2xl px-4 py-3 text-sm shadow-sm transition-all break-words",
                                             msg.role === "user"
-                                                ? "rounded-tr-none bg-primary text-primary-foreground"
+                                                ? "rounded-tr-none bg-primary text-primary-foreground whitespace-pre-wrap leading-relaxed"
                                                 : "rounded-tl-none border border-border bg-card text-foreground"
                                         )}
                                     >
-                                        {msg.content || (isLoading && msg.role === "assistant" ? t("dashboard.chat.streaming") : "")}
+                                        {msg.role === "assistant" ? (
+                                            <div className="space-y-3 text-[15px] leading-7 text-foreground/95">
+                                                {renderFormattedText(msg.content || (isLoading ? t("dashboard.chat.streaming") : ""))}
+                                            </div>
+                                        ) : (
+                                            msg.content
+                                        )}
                                     </div>
 
                                     {msg.sources && msg.sources.length > 0 && (

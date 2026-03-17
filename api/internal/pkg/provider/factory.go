@@ -455,7 +455,7 @@ func (c *openAICompatibleLLMClient) StreamText(ctx context.Context, systemPrompt
 		}
 
 		delta := chunk.Choices[0].Delta.Content
-		if strings.TrimSpace(delta) == "" {
+		if delta == "" {
 			continue
 		}
 		if err := onDelta(delta); err != nil {
@@ -546,7 +546,7 @@ func (c *ollamaNativeLLMClient) StreamText(ctx context.Context, systemPrompt, us
 			continue
 		}
 
-		delta := strings.TrimSpace(chunk.Message.Content)
+		delta := chunk.Message.Content
 		if delta == "" {
 			if chunk.Done {
 				return nil

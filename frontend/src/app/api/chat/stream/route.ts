@@ -6,6 +6,9 @@ import { createForwardHeaders } from "@/app/api/_utils/locale";
 
 const API_URL = process.env.API_INTERNAL_URL || "http://api:8080/api/v1";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
     const token = (await cookies()).get("token")?.value;
 
@@ -36,12 +39,39 @@ export async function POST(request: Request) {
             return NextResponse.json(errorPayload, { status: response.status });
         }
 
-        return new NextResponse(response.body, {
+        const stream = new ReadableStream<Uint8Array>({
+            async start(controller) {
+                const reader = response.body!.getReader();
+
+                try {
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) {
+                            break;
+                        }
+                        if (value) {
+                            controller.enqueue(value);
+                        }
+                    }
+                    controller.close();
+                } catch (error) {
+                    controller.error(error);
+                } finally {
+                    reader.releaseLock();
+                }
+            },
+            cancel() {
+                response.body?.cancel().catch(() => undefined);
+            },
+        });
+
+        return new NextResponse(stream, {
             status: response.status,
             headers: {
-                "Content-Type": "text/event-stream",
+                "Content-Type": "text/event-stream; charset=utf-8",
                 "Cache-Control": "no-store",
                 "Connection": "keep-alive",
+                "Content-Encoding": "none",
                 "X-Accel-Buffering": "no",
             },
         });
