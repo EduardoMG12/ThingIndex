@@ -14,7 +14,7 @@ export function ComparisonTable() {
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50">
-                    {FEATURES.map((f, i) => (
+                    {FEATURES.map((f: any, i: number) => (
                         <tr key={i} className="hover:bg-muted/10 transition-colors">
                             <td className="py-2.5 pr-4 pl-4 font-medium text-foreground">{f.feature}</td>
                             <td className="py-2.5 px-4 text-muted-foreground">{f.rag}</td>

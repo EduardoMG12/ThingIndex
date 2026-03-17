@@ -13,3 +13,19 @@ export const TOC = [
   { id: "contributing", label: "Contribuição" },
   { id: "references", label: "Referências e Materiais" },
 ];
+
+export const FEATURES = [
+    { feature: "Arquitetura", rag: "Monolítica", thingindex: "Microsserviços Event-Driven" },
+    { feature: "Busca", rag: "Apenas Vetorial", thingindex: "Híbrida (Grafo de Conhecimento + Vetores)" },
+    { feature: "Rastreabilidade", rag: "Limitada", thingindex: "Total (Página, Parágrafo, Metadados)" }
+];
+
+export const MODELS = [
+    { name: "gpt-4-turbo", provider: "OpenAI", input: "$10.00", output: "$30.00", context: "128k", notes: "Alta qualidade analítica" },
+    { name: "gpt-3.5-turbo", provider: "OpenAI", input: "$0.50", output: "$1.50", context: "16k", notes: "Rápido e barato" }
+];
+
+export const EMBEDDINGS = [
+    { name: "text-embedding-3-small", provider: "OpenAI", price: "$0.02", dims: "1536", notes: "Otimizado para custo" },
+    { name: "text-embedding-3-large", provider: "OpenAI", price: "$0.13", dims: "3072", notes: "Alta precisão semântica" }
+];

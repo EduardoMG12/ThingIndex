@@ -23,7 +23,7 @@ export function PricingTable() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border/50">
-                            {MODELS.map((m, i) => (
+                            {MODELS.map((m: any, i: number) => (
                                 <tr key={i} className="hover:bg-muted/10 transition-colors">
                                     <td className="py-2.5 pr-3 pl-4 font-bold text-foreground font-mono">{m.name}</td>
                                     <td className="py-2 px-3 text-muted-foreground/80">{m.provider}</td>
@@ -55,7 +55,7 @@ export function PricingTable() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border/50">
-                            {EMBEDDINGS.map((e, i) => (
+                            {EMBEDDINGS.map((e: any, i: number) => (
                                 <tr key={i} className="hover:bg-muted/10 transition-colors">
                                     <td className="py-2.5 pr-3 pl-4 font-bold text-foreground font-mono">{e.name}</td>
                                     <td className="py-2 px-3 text-muted-foreground/80">{e.provider}</td>
