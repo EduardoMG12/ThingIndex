@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -151,6 +152,7 @@ func (h *ChatHandler) StreamCollectionChat(c *gin.Context) {
 		Language:       lang,
 		History:        history,
 	}, func(event domain.ChatStreamEvent) error {
+		log.Printf("chat stream event type=%s stage=%s delta_len=%d sources=%d", event.Type, event.Stage, len(event.Delta), len(event.Sources))
 		return writeChatEvent(c, event.Type, event)
 	}); err != nil {
 		switch {
