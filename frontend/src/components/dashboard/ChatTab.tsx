@@ -146,6 +146,37 @@ function renderFormattedText(content: string): ReactNode {
     });
 }
 
+function StreamingPlaceholder({ label }: { label: string }) {
+    return (
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-primary/85 [animation-delay:0ms]" />
+                <span className="h-2 w-2 animate-pulse rounded-full bg-primary/65 [animation-delay:150ms]" />
+                <span className="h-2 w-2 animate-pulse rounded-full bg-primary/45 [animation-delay:300ms]" />
+            </div>
+            <span className="font-medium text-foreground/80">{label}</span>
+        </div>
+    );
+}
+
+function StreamingCard() {
+    return (
+        <motion.div
+            key="streaming-card"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            className="rounded-2xl border border-border bg-card p-4 shadow-sm"
+        >
+            <div className="space-y-3 animate-pulse">
+                <div className="h-2.5 w-32 rounded-full bg-muted" />
+                <div className="h-2 w-40 rounded-full bg-muted/70" />
+                <div className="h-2 w-full rounded-full bg-muted/60" />
+            </div>
+        </motion.div>
+    );
+}
+
 const ChatTab = () => {
     const { t } = useI18n();
     const { collections, isLoading: collectionsLoading } = useCollections();
@@ -159,11 +190,14 @@ const ChatTab = () => {
     const [isConversationsLoading, setIsConversationsLoading] = useState(false);
     const [isConversationLoading, setIsConversationLoading] = useState(false);
     const [streamError, setStreamError] = useState<string | null>(null);
+    const [showStreamingCard, setShowStreamingCard] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     const abortRef = useRef<AbortController | null>(null);
     const pendingDeltaRef = useRef("");
     const streamMessageIdRef = useRef<string | null>(null);
     const flushTimerRef = useRef<number | null>(null);
+    const streamingCardTimerRef = useRef<number | null>(null);
+    const hasShownDeltaRef = useRef(false);
 
     const stopDeltaFlush = () => {
         if (flushTimerRef.current !== null) {
@@ -233,6 +267,26 @@ const ChatTab = () => {
         );
     };
 
+    const displayStreamingCard = () => {
+        setShowStreamingCard(true);
+        hasShownDeltaRef.current = false;
+        if (streamingCardTimerRef.current !== null) {
+            window.clearTimeout(streamingCardTimerRef.current);
+        }
+        streamingCardTimerRef.current = window.setTimeout(() => {
+            setShowStreamingCard(false);
+            streamingCardTimerRef.current = null;
+        }, 900);
+    };
+
+    const hideStreamingCard = () => {
+        if (streamingCardTimerRef.current !== null) {
+            window.clearTimeout(streamingCardTimerRef.current);
+            streamingCardTimerRef.current = null;
+        }
+        setShowStreamingCard(false);
+    };
+
     useEffect(() => {
         scrollRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, activeSubQueries, isLoading]);
@@ -252,6 +306,7 @@ const ChatTab = () => {
         return () => {
             abortRef.current?.abort();
             stopDeltaFlush();
+            hideStreamingCard();
         };
     }, []);
 
@@ -357,14 +412,20 @@ const ChatTab = () => {
                 );
                 break;
             case "delta":
+                if (!hasShownDeltaRef.current) {
+                    hasShownDeltaRef.current = true;
+                    hideStreamingCard();
+                }
                 queueDelta(assistantMessageId, event.delta);
                 break;
             case "done":
                 flushAllPendingDelta();
+                hideStreamingCard();
                 setActiveSubQueries(mapStageToSteps(event.stage, t));
                 break;
             case "error":
                 flushAllPendingDelta();
+                hideStreamingCard();
                 setStreamError(event.message);
                 break;
             default:
@@ -402,6 +463,7 @@ const ChatTab = () => {
         setIsLoading(true);
         setStreamError(null);
         setActiveSubQueries(buildInitialSteps(t));
+        displayStreamingCard();
 
         let conversation: ChatConversationSummary;
         try {
@@ -508,6 +570,7 @@ const ChatTab = () => {
         setIsLoading(false);
         setActiveSubQueries([]);
         setStreamError(t("dashboard.chat.cancelled"));
+        hideStreamingCard();
     };
 
     const handleNewConversation = () => {
@@ -525,6 +588,7 @@ const ChatTab = () => {
         setIsLoading(false);
         setActiveSubQueries([]);
         setStreamError(null);
+        hideStreamingCard();
     };
 
     const handleDeleteConversation = async () => {
@@ -669,6 +733,7 @@ const ChatTab = () => {
                     )}
 
                     <AnimatePresence>
+                        {showStreamingCard && <StreamingCard />}
                         {messages.map((msg) => (
                             <motion.div
                                 key={msg.id}
@@ -698,12 +763,26 @@ const ChatTab = () => {
                                             "rounded-2xl px-4 py-3 text-sm shadow-sm transition-all break-words",
                                             msg.role === "user"
                                                 ? "rounded-tr-none bg-primary text-primary-foreground whitespace-pre-wrap leading-relaxed"
-                                                : "rounded-tl-none border border-border bg-card text-foreground"
+                                                : cn(
+                                                    "rounded-tl-none border border-border bg-card text-foreground",
+                                                    isLoading && !msg.content.trim() && msg.id === streamMessageIdRef.current && "min-w-56"
+                                                )
                                         )}
                                     >
                                         {msg.role === "assistant" ? (
                                             <div className="space-y-3 text-[15px] leading-7 text-foreground/95">
-                                                {renderFormattedText(msg.content || (isLoading ? t("dashboard.chat.streaming") : ""))}
+                                                {msg.content.trim() ? (
+                                                    <>
+                                                        {renderFormattedText(msg.content)}
+                                                        {isLoading && msg.id === streamMessageIdRef.current && (
+                                                            <span className="inline-block h-5 w-[2px] translate-y-1 animate-pulse rounded-full bg-primary/70 align-bottom" />
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    isLoading && msg.id === streamMessageIdRef.current
+                                                        ? <StreamingPlaceholder label={t("dashboard.chat.streaming")} />
+                                                        : null
+                                                )}
                                             </div>
                                         ) : (
                                             msg.content
