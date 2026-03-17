@@ -3,6 +3,7 @@ package indexing
 import (
 	"bytes"
 	"context"
+	"strings"
 	"slices"
 	"testing"
 
@@ -192,6 +193,38 @@ func TestDeterministicIndexerAssignsSectionMetadataToParagraphs(t *testing.T) {
 
 	if got := result.OutlineNodes[1].Metadata["paragraph_start"]; got != 1 {
 		t.Fatalf("unexpected outline paragraph_start: %#v", got)
+	}
+}
+
+func TestOutlineIdentifiersRespectStorageLimits(t *testing.T) {
+	t.Parallel()
+
+	longTitle := strings.Repeat("Secao Muito Longa Com Texto Repetido ", 12)
+	nodeID := buildOutlineNodeID(7, longTitle)
+	slug := buildOutlineSlug(longTitle)
+	nodePath := buildOutlineNodePath([]string{
+		buildOutlineNodeID(1, longTitle),
+		buildOutlineNodeID(2, longTitle),
+		buildOutlineNodeID(3, longTitle),
+		buildOutlineNodeID(4, longTitle),
+		buildOutlineNodeID(5, longTitle),
+		buildOutlineNodeID(6, longTitle),
+		buildOutlineNodeID(7, longTitle),
+		buildOutlineNodeID(8, longTitle),
+		buildOutlineNodeID(9, longTitle),
+		buildOutlineNodeID(10, longTitle),
+		buildOutlineNodeID(11, longTitle),
+		buildOutlineNodeID(12, longTitle),
+	})
+
+	if len(nodeID) > maxOutlineNodeIDLength {
+		t.Fatalf("node id exceeded limit: got %d", len(nodeID))
+	}
+	if len(slug) > maxOutlineSlugLength {
+		t.Fatalf("slug exceeded limit: got %d", len(slug))
+	}
+	if len(nodePath) > maxOutlineNodePathLength {
+		t.Fatalf("node path exceeded limit: got %d", len(nodePath))
 	}
 }
 

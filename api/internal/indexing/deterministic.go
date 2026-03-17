@@ -3,6 +3,8 @@ package indexing
 import (
 	"bytes"
 	"context"
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"regexp"
@@ -34,6 +36,12 @@ type textBlock struct {
 	PageNumber *int
 	SectionKey string
 }
+
+const (
+	maxOutlineNodeIDLength   = 128
+	maxOutlineSlugLength     = 255
+	maxOutlineNodePathLength = 1024
+)
 
 func NewDeterministicIndexer() *DeterministicIndexer {
 	return &DeterministicIndexer{}
@@ -405,7 +413,8 @@ func buildOutlineNodes(documentID uint, headings []outlineDraft, paragraphs []te
 		}
 
 		level := max(1, heading.Level)
-		nodeID := fmt.Sprintf("node-%03d-%s", len(nodes), slugify(title))
+		nodeID := buildOutlineNodeID(len(nodes), title)
+		slug := buildOutlineSlug(title)
 		startPage, endPage := headingPageRange(idx, headings, paragraphs)
 
 		for len(stack) > 0 && stack[len(stack)-1].level >= level {
@@ -439,11 +448,11 @@ func buildOutlineNodes(documentID uint, headings []outlineDraft, paragraphs []te
 			NodeID:        nodeID,
 			Level:         level,
 			Title:         title,
-			Slug:          slugify(title),
+			Slug:          slug,
 			Summary:       "",
 			StartPage:     startPage,
 			EndPage:       endPage,
-			NodePath:      strings.Join(pathParts, "/"),
+			NodePath:      buildOutlineNodePath(pathParts),
 			Metadata:      metadata,
 		})
 
@@ -761,6 +770,43 @@ func slugify(text string) string {
 		return "section"
 	}
 	return slug
+}
+
+func buildOutlineNodeID(sequence int, title string) string {
+	return clampIdentifierWithHash(
+		fmt.Sprintf("node-%03d-%s", sequence, slugify(title)),
+		maxOutlineNodeIDLength,
+	)
+}
+
+func buildOutlineSlug(title string) string {
+	return clampIdentifierWithHash(slugify(title), maxOutlineSlugLength)
+}
+
+func buildOutlineNodePath(parts []string) string {
+	return clampIdentifierWithHash(strings.Join(parts, "/"), maxOutlineNodePathLength)
+}
+
+func clampIdentifierWithHash(value string, limit int) string {
+	if len(value) <= limit {
+		return value
+	}
+	if limit <= 9 {
+		return value[:limit]
+	}
+
+	hash := shortStableHash(value)
+	keep := limit - len(hash) - 1
+	if keep < 1 {
+		keep = 1
+	}
+
+	return value[:keep] + "-" + hash
+}
+
+func shortStableHash(value string) string {
+	sum := sha1.Sum([]byte(value))
+	return hex.EncodeToString(sum[:])[:8]
 }
 
 func max(a, b int) int {

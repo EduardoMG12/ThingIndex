@@ -28,6 +28,34 @@ const formatSize = (bytes: number) => {
 export default function UploadFileList({ files, onRemove, isProcessing }: UploadFileListProps) {
     const { t } = useI18n();
 
+    const getStatusLabel = (file: DocumentUploadFile) => {
+        switch (file.status) {
+            case "uploading":
+                return "Enviando";
+            case "queued":
+                return "Na fila";
+            case "processing":
+                return "Indexando";
+            case "indexed":
+                return "Indexado";
+            case "error":
+                return t("dashboard.upload.error");
+            default:
+                return "Pendente";
+        }
+    };
+
+    const getStatusClassName = (file: DocumentUploadFile) => {
+        switch (file.status) {
+            case "indexed":
+                return "text-emerald-500";
+            case "error":
+                return "text-destructive";
+            default:
+                return "text-amber-500";
+        }
+    };
+
     if (files.length === 0) {
         return null;
     }
@@ -53,13 +81,12 @@ export default function UploadFileList({ files, onRemove, isProcessing }: Upload
                                     <p className="truncate text-xs font-semibold">{file.name}</p>
                                     <p className="text-[10px] text-muted-foreground uppercase font-mono">{formatSize(file.size)}</p>
                                 </div>
-                                {file.status === "uploading" && (
+                                {(file.status === "uploading" || file.status === "queued" || file.status === "processing") && (
                                     <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
                                         <motion.div className="h-full bg-primary" style={{ width: `${file.progress}%` }} />
                                     </div>
                                 )}
-                                {file.status === "done" && <span className="text-xs font-bold text-emerald-500">{t("dashboard.upload.ready")}</span>}
-                                {file.status === "error" && <span className="text-xs font-bold text-destructive">{t("dashboard.upload.error")}</span>}
+                                <span className={`text-xs font-bold ${getStatusClassName(file)}`}>{getStatusLabel(file)}</span>
                                 <button
                                     type="button"
                                     disabled={isProcessing}
@@ -79,6 +106,9 @@ export default function UploadFileList({ files, onRemove, isProcessing }: Upload
                             </div>
                             {file.error && (
                                 <p className="pl-11 text-[10px] text-destructive">{file.error}</p>
+                            )}
+                            {!file.error && file.statusDetail && file.status !== "indexed" && (
+                                <p className="pl-11 text-[10px] text-muted-foreground">{file.statusDetail}</p>
                             )}
                         </motion.div>
                     );

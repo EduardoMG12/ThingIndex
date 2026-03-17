@@ -166,10 +166,12 @@ func normalizeConstructedTree(result domain.IndexingResult, payload treeConstruc
 
 		nodeID := strings.TrimSpace(node.NodeID)
 		if nodeID == "" {
-			nodeID = fmt.Sprintf("node-%03d-%s", idx, slugify(title))
+			nodeID = buildOutlineNodeID(idx, title)
+		} else {
+			nodeID = clampIdentifierWithHash(nodeID, maxOutlineNodeIDLength)
 		}
 		if _, ok := seen[nodeID]; ok {
-			nodeID = fmt.Sprintf("%s-%d", nodeID, idx)
+			nodeID = buildOutlineNodeID(idx, fmt.Sprintf("%s-%d", title, idx))
 		}
 		seen[nodeID] = struct{}{}
 
@@ -238,7 +240,7 @@ func normalizeConstructedTree(result domain.IndexingResult, payload treeConstruc
 			NodeID:        item.nodeID,
 			Level:         item.level,
 			Title:         item.title,
-			Slug:          slugify(item.title),
+			Slug:          buildOutlineSlug(item.title),
 			Summary:       item.summary,
 			StartPage:     &startPage,
 			EndPage:       &endPage,

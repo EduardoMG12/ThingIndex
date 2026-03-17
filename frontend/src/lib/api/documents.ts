@@ -99,6 +99,20 @@ function normalizeDocument(record: DocumentApiRecord): Document {
     };
 }
 
+async function parseDocumentResponse(response: Response, fallbackMessage: string): Promise<Document> {
+    const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<DocumentApiRecord> | ApiErrorResponse | null;
+
+    if (!response.ok) {
+        throw new Error(payload?.message || fallbackMessage);
+    }
+
+    if (!hasResponseData(payload) || !payload.data) {
+        throw new Error("Resposta invalida ao carregar documento.");
+    }
+
+    return normalizeDocument(payload.data);
+}
+
 export async function uploadDocument(input: {
     title: string;
     file: File;
@@ -125,17 +139,17 @@ export async function uploadDocument(input: {
         body: formData,
     });
 
-    const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<DocumentApiRecord> | ApiErrorResponse | null;
+    return parseDocumentResponse(response, "Nao foi possivel enviar o documento.");
+}
 
-    if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel enviar o documento.");
-    }
+export async function fetchDocument(documentId: number, signal?: AbortSignal): Promise<Document> {
+    const response = await fetchWithAuthRedirect(`/api/documents/${documentId}`, {
+        method: "GET",
+        cache: "no-store",
+        signal,
+    });
 
-    if (!hasResponseData(payload) || !payload.data) {
-        throw new Error("Resposta invalida ao enviar documento.");
-    }
-
-    return normalizeDocument(payload.data);
+    return parseDocumentResponse(response, "Nao foi possivel carregar o documento.");
 }
 
 export async function fetchDocuments(signal?: AbortSignal): Promise<Document[]> {

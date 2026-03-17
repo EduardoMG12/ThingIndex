@@ -204,6 +204,7 @@ const ChatTab = () => {
     const [streamError, setStreamError] = useState<string | null>(null);
     const [deltaCount, setDeltaCount] = useState(0);
     const [showStreamingCard, setShowStreamingCard] = useState(false);
+    const scrollAreaRef = useRef<HTMLDivElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const abortRef = useRef<AbortController | null>(null);
     const pendingDeltaRef = useRef("");
@@ -211,6 +212,8 @@ const ChatTab = () => {
     const flushTimerRef = useRef<number | null>(null);
     const streamingCardTimerRef = useRef<number | null>(null);
     const hasShownDeltaRef = useRef(false);
+    const shouldAutoScrollRef = useRef(true);
+    const previousMessageCountRef = useRef(0);
 
     const stopDeltaFlush = () => {
         if (flushTimerRef.current !== null) {
@@ -303,8 +306,37 @@ const ChatTab = () => {
     };
 
     useEffect(() => {
-        scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages, activeSubQueries, isLoading]);
+        const viewport = scrollAreaRef.current?.querySelector("[data-radix-scroll-area-viewport]");
+        if (!(viewport instanceof HTMLDivElement)) {
+            return;
+        }
+
+        const updateAutoScroll = () => {
+            const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+            shouldAutoScrollRef.current = distanceFromBottom < 120;
+        };
+
+        updateAutoScroll();
+        viewport.addEventListener("scroll", updateAutoScroll, { passive: true });
+
+        return () => {
+            viewport.removeEventListener("scroll", updateAutoScroll);
+        };
+    }, []);
+
+    useEffect(() => {
+        const previousCount = previousMessageCountRef.current;
+        const hasNewMessage = messages.length > previousCount;
+
+        if (hasNewMessage || shouldAutoScrollRef.current) {
+            scrollRef.current?.scrollIntoView({
+                behavior: hasNewMessage ? "smooth" : "auto",
+                block: "end",
+            });
+        }
+
+        previousMessageCountRef.current = messages.length;
+    }, [messages]);
 
     useEffect(() => {
         if (selectedCollectionId !== null) {
@@ -333,6 +365,7 @@ const ChatTab = () => {
             setStreamError(null);
             setActiveSubQueries([]);
             setDeltaCount(0);
+            previousMessageCountRef.current = 0;
             return;
         }
 
@@ -343,6 +376,7 @@ const ChatTab = () => {
         setMessages([]);
         setStreamError(null);
         setActiveSubQueries([]);
+        previousMessageCountRef.current = 0;
 
         void fetchChatConversations(selectedCollectionId, controller.signal)
             .then((items) => {
@@ -379,6 +413,7 @@ const ChatTab = () => {
             setMessages([]);
             setStreamError(null);
             setActiveSubQueries([]);
+            previousMessageCountRef.current = 0;
             return;
         }
 
@@ -731,7 +766,7 @@ const ChatTab = () => {
                 </div>
             </div>
 
-            <ScrollArea className="flex-1 bg-background/30 p-6">
+            <ScrollArea ref={scrollAreaRef} className="flex-1 bg-background/30 p-6">
                 <div className="space-y-6">
                     {messages.length === 0 && !isConversationLoading && (
                         <div className="flex h-96 flex-col items-center justify-center text-center opacity-40">
