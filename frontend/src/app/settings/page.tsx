@@ -2,9 +2,18 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { motion } from "framer-motion";
-import { Activity, Bot, CheckCircle2, Coins, Database, History, KeyRound, Loader2, ServerCog, ShieldCheck, Sparkles } from "lucide-react";
+import { Activity, Bot, CheckCircle2, Coins, Database, History, KeyRound, Loader2, ServerCog, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
+import ProviderModelField from "@/components/settings/ProviderModelField";
+import {
+    getInitialFormState,
+    getInitialLLMSelectionState,
+    getProvidersByFamily,
+    PRICING_PROVIDERS,
+    PROVIDERS,
+    type ProviderDefinition,
+} from "@/components/settings/provider-catalog";
 import AppShell from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -19,7 +28,7 @@ import {
     setProviderEnabled,
     type ProviderConfig,
     type ProviderFamily,
-    type ProviderType,
+    type ProviderType
 } from "@/lib/api/providers";
 import {
     fetchPriceHistory,
@@ -35,201 +44,6 @@ import {
 type ActivationTarget = "STORAGE" | "INDEXING" | "CHAT";
 type LLMSelectionState = Record<ProviderType, { enabledForIndexing: boolean; enabledForChat: boolean }>;
 
-type ProviderField = {
-    key: string;
-    label: string;
-    placeholder: string;
-    type?: "text" | "password";
-    optional?: boolean;
-};
-
-type ProviderDefinition = {
-    family: ProviderFamily;
-    providerType: ProviderType;
-    name: string;
-    tagline: string;
-    description: string;
-    icon: typeof Database;
-    accentClass: string;
-    fields: ProviderField[];
-};
-
-const PRICING_PROVIDERS: Array<{ providerType: PricingProviderType; name: string; sourceURL: string }> = [
-    { providerType: "OPENAI", name: "OpenAI API Pricing", sourceURL: "https://developers.openai.com/api/pricing/" },
-    { providerType: "DEEP_SEEK", name: "DeepSeek Pricing", sourceURL: "https://deepseek.ai/pricing" },
-    { providerType: "GOOGLE_GEMINI", name: "Gemini API Pricing", sourceURL: "https://ai.google.dev/gemini-api/docs/pricing" },
-    { providerType: "OLLAMA", name: "Ollama Pricing", sourceURL: "https://ollama.com/pricing" },
-];
-
-const PROVIDERS: ProviderDefinition[] = [
-    {
-        family: "STORAGE",
-        providerType: "MINIO",
-        name: "MinIO / S3-compatible",
-        tagline: "Object storage for document binaries",
-        description: "Configure endpoint, access key, secret key and bucket for uploads, previews and indexing.",
-        icon: Database,
-        accentClass: "from-amber-500/20 via-orange-500/10 to-transparent",
-        fields: [
-            { key: "endpoint", label: "Endpoint", placeholder: "minio.example.com:9000" },
-            { key: "access_key", label: "Access key", placeholder: "Access key" },
-            { key: "secret_key", label: "Secret key", placeholder: "Secret key", type: "password" },
-            { key: "bucket_name", label: "Bucket name", placeholder: "thingindex-docs" },
-            { key: "use_ssl", label: "Use SSL", placeholder: "true or false", optional: true },
-        ],
-    },
-    {
-        family: "STORAGE",
-        providerType: "AWS_S3",
-        name: "AWS S3",
-        tagline: "Managed Amazon S3 buckets",
-        description: "Use an S3 bucket with region-based routing. You can also override the endpoint for custom-compatible gateways.",
-        icon: ServerCog,
-        accentClass: "from-orange-500/20 via-amber-500/10 to-transparent",
-        fields: [
-            { key: "access_key", label: "Access key", placeholder: "AWS access key" },
-            { key: "secret_key", label: "Secret key", placeholder: "AWS secret key", type: "password" },
-            { key: "bucket_name", label: "Bucket name", placeholder: "my-documents-bucket" },
-            { key: "region", label: "Region", placeholder: "us-east-1" },
-            { key: "endpoint", label: "Custom endpoint", placeholder: "Optional override", optional: true },
-        ],
-    },
-    {
-        family: "STORAGE",
-        providerType: "CLOUDFLARE_R2",
-        name: "Cloudflare R2",
-        tagline: "R2 object storage",
-        description: "Connect your Cloudflare R2 account by account ID, access key, secret key and bucket.",
-        icon: ShieldCheck,
-        accentClass: "from-sky-500/20 via-blue-500/10 to-transparent",
-        fields: [
-            { key: "account_id", label: "Account ID", placeholder: "Cloudflare account ID" },
-            { key: "access_key", label: "Access key", placeholder: "R2 access key" },
-            { key: "secret_key", label: "Secret key", placeholder: "R2 secret key", type: "password" },
-            { key: "bucket_name", label: "Bucket name", placeholder: "thingindex-docs" },
-            { key: "endpoint", label: "Custom endpoint", placeholder: "Optional override", optional: true },
-        ],
-    },
-    {
-        family: "STORAGE",
-        providerType: "DIGITALOCEAN_SPACES",
-        name: "DigitalOcean Spaces",
-        tagline: "Managed S3-compatible object storage",
-        description: "Configure your Spaces endpoint, region, keys and bucket to use DigitalOcean as the active document store.",
-        icon: Database,
-        accentClass: "from-cyan-500/20 via-sky-500/10 to-transparent",
-        fields: [
-            { key: "endpoint", label: "Endpoint", placeholder: "nyc3.digitaloceanspaces.com" },
-            { key: "region", label: "Region", placeholder: "nyc3" },
-            { key: "access_key", label: "Access key", placeholder: "Spaces access key" },
-            { key: "secret_key", label: "Secret key", placeholder: "Spaces secret key", type: "password" },
-            { key: "bucket_name", label: "Bucket name", placeholder: "thingindex-docs" },
-        ],
-    },
-    {
-        family: "STORAGE",
-        providerType: "WASABI",
-        name: "Wasabi",
-        tagline: "Low-cost S3-compatible storage",
-        description: "Connect a Wasabi bucket with the regional endpoint, keys and bucket name.",
-        icon: ServerCog,
-        accentClass: "from-lime-500/20 via-emerald-500/10 to-transparent",
-        fields: [
-            { key: "endpoint", label: "Endpoint", placeholder: "s3.us-east-1.wasabisys.com" },
-            { key: "region", label: "Region", placeholder: "us-east-1" },
-            { key: "access_key", label: "Access key", placeholder: "Wasabi access key" },
-            { key: "secret_key", label: "Secret key", placeholder: "Wasabi secret key", type: "password" },
-            { key: "bucket_name", label: "Bucket name", placeholder: "thingindex-docs" },
-        ],
-    },
-    {
-        family: "STORAGE",
-        providerType: "BACKBLAZE_B2",
-        name: "Backblaze B2",
-        tagline: "B2 S3-compatible buckets",
-        description: "Use Backblaze B2 through its S3-compatible endpoint with region, keys and bucket name.",
-        icon: ShieldCheck,
-        accentClass: "from-rose-500/20 via-red-500/10 to-transparent",
-        fields: [
-            { key: "endpoint", label: "Endpoint", placeholder: "s3.us-west-004.backblazeb2.com" },
-            { key: "region", label: "Region", placeholder: "us-west-004" },
-            { key: "access_key", label: "Access key", placeholder: "B2 key ID" },
-            { key: "secret_key", label: "Secret key", placeholder: "B2 application key", type: "password" },
-            { key: "bucket_name", label: "Bucket name", placeholder: "thingindex-docs" },
-        ],
-    },
-    {
-        family: "LLM",
-        providerType: "OPENAI",
-        name: "OpenAI",
-        tagline: "Default OpenAI-compatible setup",
-        description: "Ideal when you want the standard OpenAI API flow with optional custom model/base URL.",
-        icon: Bot,
-        accentClass: "from-emerald-500/20 via-teal-500/10 to-transparent",
-        fields: [
-            { key: "api_key", label: "API key", placeholder: "sk-...", type: "password" },
-            { key: "model", label: "Model", placeholder: "gpt-4o-mini", optional: true },
-            { key: "base_url", label: "Base URL", placeholder: "https://api.openai.com/v1", optional: true },
-        ],
-    },
-    {
-        family: "LLM",
-        providerType: "GOOGLE_GEMINI",
-        name: "Google Gemini",
-        tagline: "Gemini through an OpenAI-compatible bridge",
-        description: "Use when your Gemini endpoint is exposed behind an OpenAI-compatible API surface.",
-        icon: Sparkles,
-        accentClass: "from-sky-500/20 via-cyan-500/10 to-transparent",
-        fields: [
-            { key: "api_key", label: "API key", placeholder: "Gemini API key", type: "password" },
-            { key: "model", label: "Model", placeholder: "gemini-1.5-pro", optional: true },
-            { key: "base_url", label: "Base URL", placeholder: "OpenAI-compatible endpoint", optional: true },
-        ],
-    },
-    {
-        family: "LLM",
-        providerType: "DEEP_SEEK",
-        name: "DeepSeek",
-        tagline: "Reasoning-focused LLM provider",
-        description: "Configure your DeepSeek API key with optional model and base URL overrides.",
-        icon: ServerCog,
-        accentClass: "from-indigo-500/20 via-blue-500/10 to-transparent",
-        fields: [
-            { key: "api_key", label: "API key", placeholder: "DeepSeek API key", type: "password" },
-            { key: "model", label: "Model", placeholder: "deepseek-chat", optional: true },
-            { key: "base_url", label: "Base URL", placeholder: "https://api.deepseek.com", optional: true },
-        ],
-    },
-    {
-        family: "LLM",
-        providerType: "GROK",
-        name: "Grok",
-        tagline: "xAI Grok models",
-        description: "Connect Grok through the xAI API or a compatible proxy.",
-        icon: Sparkles,
-        accentClass: "from-fuchsia-500/20 via-pink-500/10 to-transparent",
-        fields: [
-            { key: "api_key", label: "API key", placeholder: "xAI API key", type: "password" },
-            { key: "model", label: "Model", placeholder: "grok-2-latest", optional: true },
-            { key: "base_url", label: "Base URL", placeholder: "https://api.x.ai/v1", optional: true },
-        ],
-    },
-    {
-        family: "LLM",
-        providerType: "CLAUDE",
-        name: "Claude",
-        tagline: "Anthropic or compatible bridge",
-        description: "Use an OpenAI-compatible bridge for Claude-compatible deployments.",
-        icon: ShieldCheck,
-        accentClass: "from-violet-500/20 via-purple-500/10 to-transparent",
-        fields: [
-            { key: "api_key", label: "API key", placeholder: "Anthropic API key", type: "password" },
-            { key: "model", label: "Model", placeholder: "claude-3-5-sonnet", optional: true },
-            { key: "base_url", label: "Base URL", placeholder: "OpenAI-compatible endpoint", optional: true },
-        ],
-    },
-];
-
 const FAMILY_COPY: Record<ProviderFamily, { title: string; description: string; icon: typeof Database }> = {
     STORAGE: {
         title: "Storage Provider",
@@ -242,30 +56,6 @@ const FAMILY_COPY: Record<ProviderFamily, { title: string; description: string; 
         icon: Bot,
     },
 };
-
-function getProvidersByFamily(family: ProviderFamily) {
-    return PROVIDERS.filter((provider) => provider.family === family);
-}
-
-function getInitialFormState() {
-    return PROVIDERS.reduce<Record<ProviderType, Record<string, string>>>((state, provider) => {
-        state[provider.providerType] = provider.fields.reduce<Record<string, string>>((fieldState, field) => {
-            fieldState[field.key] = "";
-            return fieldState;
-        }, {});
-        return state;
-    }, {} as Record<ProviderType, Record<string, string>>);
-}
-
-function getInitialLLMSelectionState(): LLMSelectionState {
-    return PROVIDERS.reduce<LLMSelectionState>((state, provider) => {
-        state[provider.providerType] = {
-            enabledForIndexing: false,
-            enabledForChat: false,
-        };
-        return state;
-    }, {} as LLMSelectionState);
-}
 
 function hasSavedConfig(configs: ProviderConfig[], family: ProviderFamily, providerType: ProviderType) {
     return configs.some((config) => config.family === family && config.provider_type === providerType);
@@ -435,22 +225,35 @@ function FamilySection({
                     <CardContent className="flex min-h-0 flex-1 flex-col gap-4">
                         <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
                             {activeProvider.fields.map((field) => (
-                                <div key={field.key} className="space-y-2">
-                                    <Label htmlFor={`${activeProvider.providerType}-${field.key}`}>
-                                        {field.label}
-                                        {field.optional ? (
-                                            <span className="ml-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{t("common.optional")}</span>
-                                        ) : null}
-                                    </Label>
-                                    <Input
-                                        id={`${activeProvider.providerType}-${field.key}`}
-                                        type={field.type || "text"}
-                                        value={forms[activeProvider.providerType]?.[field.key] ?? ""}
-                                        onChange={(event) => onFieldChange(activeProvider.providerType, field.key, event.target.value)}
+                                field.kind === "model" ? (
+                                    <ProviderModelField
+                                        key={field.key}
+                                        providerType={activeProvider.providerType}
+                                        label={field.label}
+                                        optional={field.optional}
                                         placeholder={field.placeholder}
-                                        autoComplete="off"
+                                        value={forms[activeProvider.providerType]?.[field.key] ?? ""}
+                                        suggestions={field.suggestions}
+                                        onChange={(value) => onFieldChange(activeProvider.providerType, field.key, value)}
                                     />
-                                </div>
+                                ) : (
+                                    <div key={field.key} className="space-y-2">
+                                        <Label htmlFor={`${activeProvider.providerType}-${field.key}`}>
+                                            {field.label}
+                                            {field.optional ? (
+                                                <span className="ml-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{t("common.optional")}</span>
+                                            ) : null}
+                                        </Label>
+                                        <Input
+                                            id={`${activeProvider.providerType}-${field.key}`}
+                                            type={field.type || "text"}
+                                            value={forms[activeProvider.providerType]?.[field.key] ?? ""}
+                                            onChange={(event) => onFieldChange(activeProvider.providerType, field.key, event.target.value)}
+                                            placeholder={field.placeholder}
+                                            autoComplete="off"
+                                        />
+                                    </div>
+                                )
                             ))}
 
                             {family === "LLM" ? (

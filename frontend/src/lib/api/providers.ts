@@ -18,7 +18,9 @@ export type ProviderType =
     | "GOOGLE_GEMINI"
     | "DEEP_SEEK"
     | "GROK"
-    | "CLAUDE";
+    | "CLAUDE"
+    | "OLLAMA"
+    | "OPENROUTER";
 
 type ProviderApiRecord = {
     id: number;
