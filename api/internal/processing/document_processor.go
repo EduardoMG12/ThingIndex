@@ -143,6 +143,7 @@ func (p *DocumentProcessor) Process(ctx context.Context, event domain.DocumentIn
 	}
 	completedAt := time.Now().UTC()
 	appendProcessingTimingMetadata(&result, doc.ID, startedAt, completedAt)
+	sanitizeIndexingResult(&result)
 
 	updateState(domain.DocumentStatusProcessing, "PERSISTING_INDEX", "Persistindo paginas, arvore, metadados e monitoramento no banco.", "", nil)
 	if err := p.repo.ReplaceIndexingResult(ctx, doc.ID, result); err != nil {
