@@ -1,0 +1,24 @@
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.dev
+    command: air -c .air.toml
+    volumes:
+      - ./api:/app
+      - go_mod_cache:/go/pkg/mod
+      - go_build_cache:/root/.cache/go-build
+
+  indexer:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.indexer.dev
+    command: air -c .air.indexer.toml
+    volumes:
+      - ./api:/app
+      - go_mod_cache:/go/pkg/mod
+      - go_build_cache:/root/.cache/go-build
+
+volumes:
+  go_mod_cache:
+  go_build_cache:
