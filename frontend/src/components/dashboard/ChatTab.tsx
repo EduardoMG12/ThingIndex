@@ -159,6 +159,18 @@ function StreamingPlaceholder({ label }: { label: string }) {
     );
 }
 
+function StreamingStatus({ deltaCount }: { deltaCount: number }) {
+    if (deltaCount === 0) {
+        return null;
+    }
+
+    return (
+        <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+            {`Eventos stream: ${deltaCount}`}
+        </p>
+    );
+}
+
 function StreamingCard() {
     return (
         <motion.div
@@ -190,6 +202,7 @@ const ChatTab = () => {
     const [isConversationsLoading, setIsConversationsLoading] = useState(false);
     const [isConversationLoading, setIsConversationLoading] = useState(false);
     const [streamError, setStreamError] = useState<string | null>(null);
+    const [deltaCount, setDeltaCount] = useState(0);
     const [showStreamingCard, setShowStreamingCard] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     const abortRef = useRef<AbortController | null>(null);
@@ -241,6 +254,7 @@ const ChatTab = () => {
 
         streamMessageIdRef.current = messageId;
         pendingDeltaRef.current += delta;
+        setDeltaCount((current) => current + 1);
 
         if (flushTimerRef.current === null) {
             flushPendingDelta();
@@ -277,6 +291,7 @@ const ChatTab = () => {
             setShowStreamingCard(false);
             streamingCardTimerRef.current = null;
         }, 900);
+        setDeltaCount(0);
     };
 
     const hideStreamingCard = () => {
@@ -317,6 +332,7 @@ const ChatTab = () => {
             setMessages([]);
             setStreamError(null);
             setActiveSubQueries([]);
+            setDeltaCount(0);
             return;
         }
 
@@ -571,6 +587,7 @@ const ChatTab = () => {
         setActiveSubQueries([]);
         setStreamError(t("dashboard.chat.cancelled"));
         hideStreamingCard();
+        setDeltaCount(0);
     };
 
     const handleNewConversation = () => {
@@ -589,6 +606,7 @@ const ChatTab = () => {
         setActiveSubQueries([]);
         setStreamError(null);
         hideStreamingCard();
+        setDeltaCount(0);
     };
 
     const handleDeleteConversation = async () => {
@@ -788,6 +806,10 @@ const ChatTab = () => {
                                             msg.content
                                         )}
                                     </div>
+
+                                    {msg.role === "assistant" && isLoading && msg.id === streamMessageIdRef.current && (
+                                        <StreamingStatus deltaCount={deltaCount} />
+                                    )}
 
                                     {msg.sources && msg.sources.length > 0 && (
                                         <div className="flex flex-wrap gap-2 pt-1">
