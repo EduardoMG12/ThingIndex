@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Bot, User, Loader2, Sparkles, AlertCircle, Hash, FolderOpen, Square, Trash2 } from "lucide-react";
+import { Send, Bot, User, Loader2, Sparkles, AlertCircle, Hash, FolderOpen, Square, Trash2, MessageSquarePlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +10,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import SourceReference, { type Source } from "@/components/chat/SourceReference";
 import SubQueryProgress, { type SubQuery } from "@/components/chat/SubQueryProgress";
 import { useCollections } from "@/hooks/use-collections";
-import { streamCollectionChat, type ChatHistoryMessage, type ChatSource, type ChatStreamEvent } from "@/lib/api/chat";
+import {
+    createChatConversation,
+    deleteChatConversation,
+    fetchChatConversation,
+    fetchChatConversations,
+    streamCollectionChat,
+    type ChatConversationSummary,
+    type ChatHistoryMessage,
+    type ChatSource,
+    type ChatStreamEvent,
+    type PersistedChatMessage,
+} from "@/lib/api/chat";
 import { useI18n } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
 
@@ -72,8 +83,22 @@ function normalizeSources(sources: ChatSource[]): Source[] {
     }));
 }
 
-function getChatStorageKey(collectionId: number | null) {
-    return collectionId ? `thingindex:chat:${collectionId}` : "";
+function normalizePersistedMessages(messages: PersistedChatMessage[]): Message[] {
+    return messages.map((message) => ({
+        id: String(message.id),
+        role: message.role,
+        content: message.content,
+        sources: normalizeSources(message.sources),
+    }));
+}
+
+function buildConversationTitle(prompt: string, t: (key: string) => string) {
+    const normalized = prompt.replace(/\s+/g, " ").trim();
+    if (!normalized) {
+        return t("dashboard.chat.newConversation");
+    }
+
+    return normalized.length > 80 ? `${normalized.slice(0, 80).trim()}...` : normalized;
 }
 
 const ChatTab = () => {
@@ -84,6 +109,10 @@ const ChatTab = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [activeSubQueries, setActiveSubQueries] = useState<SubQuery[]>([]);
     const [selectedCollectionId, setSelectedCollectionId] = useState<number | null>(null);
+    const [conversations, setConversations] = useState<ChatConversationSummary[]>([]);
+    const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
+    const [isConversationsLoading, setIsConversationsLoading] = useState(false);
+    const [isConversationLoading, setIsConversationLoading] = useState(false);
     const [streamError, setStreamError] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const abortRef = useRef<AbortController | null>(null);
@@ -110,42 +139,91 @@ const ChatTab = () => {
     }, []);
 
     useEffect(() => {
-        const storageKey = getChatStorageKey(selectedCollectionId);
-        if (!storageKey || typeof window === "undefined") {
+        if (!selectedCollectionId) {
+            setConversations([]);
+            setActiveConversationId(null);
             setMessages([]);
             setStreamError(null);
             setActiveSubQueries([]);
             return;
         }
 
-        try {
-            const rawValue = window.sessionStorage.getItem(storageKey);
-            if (!rawValue) {
-                setMessages([]);
-                setStreamError(null);
-                setActiveSubQueries([]);
-                return;
-            }
+        const controller = new AbortController();
+        setIsConversationsLoading(true);
+        setConversations([]);
+        setActiveConversationId(null);
+        setMessages([]);
+        setStreamError(null);
+        setActiveSubQueries([]);
 
-            const parsed = JSON.parse(rawValue) as { messages?: Message[] };
-            setMessages(Array.isArray(parsed.messages) ? parsed.messages : []);
-            setStreamError(null);
-            setActiveSubQueries([]);
-        } catch {
-            setMessages([]);
-            setStreamError(null);
-            setActiveSubQueries([]);
-        }
-    }, [selectedCollectionId]);
+        void fetchChatConversations(selectedCollectionId, controller.signal)
+            .then((items) => {
+                setConversations(items);
+                setActiveConversationId((current) => {
+                    if (current && items.some((conversation) => conversation.id === current)) {
+                        return current;
+                    }
+                    return items[0]?.id ?? null;
+                });
+            })
+            .catch((error) => {
+                if (controller.signal.aborted) {
+                    return;
+                }
+                setConversations([]);
+                setActiveConversationId(null);
+                setMessages([]);
+                setStreamError(error instanceof Error ? error.message : t("dashboard.chat.error"));
+            })
+            .finally(() => {
+                if (!controller.signal.aborted) {
+                    setIsConversationsLoading(false);
+                }
+            });
+
+        return () => {
+            controller.abort();
+        };
+    }, [selectedCollectionId, t]);
 
     useEffect(() => {
-        const storageKey = getChatStorageKey(selectedCollectionId);
-        if (!storageKey || typeof window === "undefined") {
+        if (!activeConversationId) {
+            setMessages([]);
+            setStreamError(null);
+            setActiveSubQueries([]);
             return;
         }
 
-        window.sessionStorage.setItem(storageKey, JSON.stringify({ messages }));
-    }, [messages, selectedCollectionId]);
+        if (isLoading) {
+            return;
+        }
+
+        const controller = new AbortController();
+        setIsConversationLoading(true);
+        setStreamError(null);
+        setActiveSubQueries([]);
+
+        void fetchChatConversation(activeConversationId, controller.signal)
+            .then((detail) => {
+                setMessages(normalizePersistedMessages(detail.messages));
+            })
+            .catch((error) => {
+                if (controller.signal.aborted) {
+                    return;
+                }
+                setMessages([]);
+                setStreamError(error instanceof Error ? error.message : t("dashboard.chat.error"));
+            })
+            .finally(() => {
+                if (!controller.signal.aborted) {
+                    setIsConversationLoading(false);
+                }
+            });
+
+        return () => {
+            controller.abort();
+        };
+    }, [activeConversationId, isLoading, t]);
 
     const handleStreamEvent = (assistantMessageId: string) => (event: ChatStreamEvent) => {
         switch (event.type) {
@@ -181,9 +259,44 @@ const ChatTab = () => {
         }
     };
 
+    const ensureConversation = async (prompt: string): Promise<ChatConversationSummary> => {
+        if (activeConversationId) {
+            const existing = conversations.find((conversation) => conversation.id === activeConversationId);
+            if (existing) {
+                return existing;
+            }
+        }
+
+        if (!selectedCollectionId) {
+            throw new Error(t("dashboard.chat.error"));
+        }
+
+        const created = await createChatConversation(
+            selectedCollectionId,
+            buildConversationTitle(prompt, t)
+        );
+        setConversations((current) => [created, ...current]);
+        setActiveConversationId(created.id);
+        return created;
+    };
+
     const handleSend = async () => {
         const prompt = input.trim();
         if (!prompt || isLoading || !selectedCollectionId) {
+            return;
+        }
+
+        setIsLoading(true);
+        setStreamError(null);
+        setActiveSubQueries(buildInitialSteps(t));
+
+        let conversation: ChatConversationSummary;
+        try {
+            conversation = await ensureConversation(prompt);
+        } catch (error) {
+            setIsLoading(false);
+            setActiveSubQueries([]);
+            setStreamError(error instanceof Error ? error.message : t("dashboard.chat.error"));
             return;
         }
 
@@ -210,23 +323,41 @@ const ChatTab = () => {
 
         setMessages((current) => [...current, userMessage, assistantMessage]);
         setInput("");
-        setIsLoading(true);
-        setStreamError(null);
-        setActiveSubQueries(buildInitialSteps(t));
 
         const controller = new AbortController();
         abortRef.current = controller;
 
         try {
             await streamCollectionChat({
+                conversationId: conversation.id,
                 collectionId: selectedCollectionId,
                 prompt,
                 history,
                 signal: controller.signal,
                 onEvent: handleStreamEvent(assistantMessageId),
             });
+
+            const timestamp = new Date().toISOString();
+            setConversations((current) => {
+                const next = current.some((item) => item.id === conversation.id)
+                    ? current.map((item) =>
+                        item.id === conversation.id
+                            ? { ...item, title: item.title || buildConversationTitle(prompt, t), lastMessageAt: timestamp, updatedAt: timestamp }
+                            : item
+                    )
+                    : [{ ...conversation, lastMessageAt: timestamp, updatedAt: timestamp }, ...current];
+
+                return next.sort((left, right) => {
+                    const leftValue = left.lastMessageAt || left.updatedAt;
+                    const rightValue = right.lastMessageAt || right.updatedAt;
+                    return rightValue.localeCompare(leftValue);
+                });
+            });
         } catch (error) {
             if (controller.signal.aborted) {
+                setMessages((current) =>
+                    current.filter((message) => !(message.id === assistantMessageId && !message.content.trim()))
+                );
                 return;
             }
 
@@ -259,20 +390,37 @@ const ChatTab = () => {
         setStreamError(t("dashboard.chat.cancelled"));
     };
 
-    const handleClear = () => {
+    const handleNewConversation = () => {
         if (abortRef.current) {
             abortRef.current.abort();
             abortRef.current = null;
         }
+
+        setActiveConversationId(null);
         setMessages([]);
         setInput("");
         setIsLoading(false);
         setActiveSubQueries([]);
         setStreamError(null);
+    };
 
-        const storageKey = getChatStorageKey(selectedCollectionId);
-        if (storageKey && typeof window !== "undefined") {
-            window.sessionStorage.removeItem(storageKey);
+    const handleDeleteConversation = async () => {
+        if (!activeConversationId || isLoading) {
+            handleNewConversation();
+            return;
+        }
+
+        try {
+            const nextConversations = conversations.filter((conversation) => conversation.id !== activeConversationId);
+            await deleteChatConversation(activeConversationId);
+            setConversations(nextConversations);
+            setActiveConversationId(nextConversations[0]?.id ?? null);
+            setMessages([]);
+            setInput("");
+            setStreamError(null);
+            setActiveSubQueries([]);
+        } catch (error) {
+            setStreamError(error instanceof Error ? error.message : t("dashboard.chat.error"));
         }
     };
 
@@ -281,66 +429,119 @@ const ChatTab = () => {
     return (
         <div className="surface-elevated flex h-[600px] flex-col overflow-hidden rounded-lg border border-border shadow-lg">
             <div className="border-b border-border bg-muted/20 px-4 py-3">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-primary">
-                            {t("dashboard.chat.collectionLabel")}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                            {t("dashboard.chat.collectionHint")}
-                        </p>
+                <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-primary">
+                                {t("dashboard.chat.collectionLabel")}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                {t("dashboard.chat.collectionHint")}
+                            </p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                            <label className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
+                                <FolderOpen className="h-3.5 w-3.5 text-primary" />
+                                <select
+                                    value={selectedCollectionId ?? ""}
+                                    onChange={(event) => {
+                                        const value = Number(event.target.value);
+                                        setSelectedCollectionId(Number.isFinite(value) && value > 0 ? value : null);
+                                    }}
+                                    disabled={!hasCollections || collectionsLoading || isLoading}
+                                    className="min-w-52 bg-transparent text-xs font-mono outline-none"
+                                >
+                                    {!hasCollections && (
+                                        <option value="">{t("dashboard.chat.noCollections")}</option>
+                                    )}
+                                    {collections
+                                        .filter((collection) => typeof collection.id === "number")
+                                        .map((collection) => (
+                                            <option key={String(collection.id)} value={collection.id}>
+                                                {collection.name}
+                                            </option>
+                                        ))}
+                                </select>
+                                {collectionsLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                            </label>
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={handleNewConversation}
+                                disabled={!selectedCollectionId || isLoading}
+                                className="gap-2"
+                            >
+                                <MessageSquarePlus className="h-3.5 w-3.5" />
+                                {t("dashboard.chat.newConversation")}
+                            </Button>
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => void handleDeleteConversation()}
+                                disabled={!activeConversationId}
+                                className="gap-2"
+                            >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                {t("dashboard.chat.clear")}
+                            </Button>
+                        </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
-                        <label className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
-                            <FolderOpen className="h-3.5 w-3.5 text-primary" />
-                            <select
-                                value={selectedCollectionId ?? ""}
-                                onChange={(event) => {
-                                    const value = Number(event.target.value);
-                                    setSelectedCollectionId(Number.isFinite(value) && value > 0 ? value : null);
-                                }}
-                                disabled={!hasCollections || collectionsLoading || isLoading}
-                                className="min-w-52 bg-transparent text-xs font-mono outline-none"
-                            >
-                                {!hasCollections && (
-                                    <option value="">{t("dashboard.chat.noCollections")}</option>
-                                )}
-                                {collections
-                                    .filter((collection) => typeof collection.id === "number")
-                                    .map((collection) => (
-                                        <option key={String(collection.id)} value={collection.id}>
-                                            {collection.name}
+                    {selectedCollectionId && (
+                        <div className="flex flex-wrap items-center gap-2">
+                            <label className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
+                                <Hash className="h-3.5 w-3.5 text-primary" />
+                                <select
+                                    value={activeConversationId ?? ""}
+                                    onChange={(event) => {
+                                        const value = Number(event.target.value);
+                                        setActiveConversationId(Number.isFinite(value) && value > 0 ? value : null);
+                                    }}
+                                    disabled={isLoading || isConversationsLoading || conversations.length === 0}
+                                    className="min-w-60 bg-transparent text-xs font-mono outline-none"
+                                >
+                                    {conversations.length === 0 && (
+                                        <option value="">{t("dashboard.chat.noConversations")}</option>
+                                    )}
+                                    {conversations.map((conversation) => (
+                                        <option key={conversation.id} value={conversation.id}>
+                                            {conversation.title}
                                         </option>
                                     ))}
-                            </select>
-                            {collectionsLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-                        </label>
-
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={handleClear}
-                            disabled={messages.length === 0 && !streamError}
-                            className="gap-2"
-                        >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            {t("dashboard.chat.clear")}
-                        </Button>
-                    </div>
+                                </select>
+                                {(isConversationsLoading || isConversationLoading) && (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                                )}
+                            </label>
+                            <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                                {t("dashboard.chat.conversationsLabel")}
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
 
             <ScrollArea className="flex-1 bg-background/30 p-6">
                 <div className="space-y-6">
-                    {messages.length === 0 && (
+                    {messages.length === 0 && !isConversationLoading && (
                         <div className="flex h-96 flex-col items-center justify-center text-center opacity-40">
                             <Sparkles className="mb-4 h-12 w-12 text-primary" />
                             <h3 className="text-sm font-semibold">{t("dashboard.chat.emptyTitle")}</h3>
                             <p className="mt-2 max-w-xs text-xs leading-relaxed">
                                 {hasCollections ? t("dashboard.chat.emptyDescription") : t("dashboard.chat.emptyNoCollection")}
                             </p>
+                        </div>
+                    )}
+
+                    {isConversationLoading && (
+                        <div className="flex h-96 items-center justify-center gap-3 text-sm text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            {t("dashboard.chat.loadingConversation")}
                         </div>
                     )}
 
