@@ -5,6 +5,12 @@ export const metadata = {
     description: "Oops! A página que você está procurando não existe no ThingIndex.",
 };
 
+import { I18nProvider } from "@/lib/i18n/provider";
+
 export default function NotFound() {
-    return <NotFoundContent />;
+    return (
+        <I18nProvider locale="pt-BR">
+            <NotFoundContent />
+        </I18nProvider>
+    );
 }
