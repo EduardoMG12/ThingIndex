@@ -454,6 +454,18 @@ func (u *documentCatalogUseCase) GetDocument(ctx context.Context, userID, docume
 	return doc, nil
 }
 
+func (u *documentCatalogUseCase) RetryDocumentIndexing(ctx context.Context, userID, documentID uint) (*models.Document, error) {
+	document, err := u.documentRepo.RetryDocumentIndexing(ctx, userID, documentID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrDocumentNotFound
+		}
+		return nil, fmt.Errorf("%w: %v", domain.ErrInternal, err)
+	}
+
+	return document, nil
+}
+
 func (u *documentCatalogUseCase) GetDocumentContent(ctx context.Context, userID, documentID uint) (*domain.DocumentContent, error) {
 	doc, err := u.GetDocument(ctx, userID, documentID)
 	if err != nil {

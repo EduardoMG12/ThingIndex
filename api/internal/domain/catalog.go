@@ -197,6 +197,7 @@ type CatalogDocumentRepository interface {
 	GetDocumentsByCategoryID(ctx context.Context, categoryID uint, userID uint) ([]models.Document, error)
 	GetDocumentsByCollectionID(ctx context.Context, collectionID uint, userID uint) ([]models.Document, error)
 	UpdateDocumentStatus(ctx context.Context, documentID uint, status string) error
+	RetryDocumentIndexing(ctx context.Context, userID uint, documentID uint) (*models.Document, error)
 }
 
 type StructuredDataRepository interface {
@@ -231,6 +232,7 @@ type DocumentCatalogUseCase interface {
 	GetDocumentContent(ctx context.Context, userID, documentID uint) (*DocumentContent, error)
 	GetDocumentIndex(ctx context.Context, userID, documentID uint, query string) (*DocumentIndex, error)
 	GetDocumentMonitoringSummary(ctx context.Context, userID uint) (*DocumentMonitoringSummary, error)
+	RetryDocumentIndexing(ctx context.Context, userID, documentID uint) (*models.Document, error)
 	ListDocumentsByCategory(ctx context.Context, categoryID uint, userID uint) ([]models.Document, error)
 	ListCollections(ctx context.Context, userID uint) ([]models.Collection, error)
 	GetCollectionContext(ctx context.Context, userID, collectionID uint, query string) (*CollectionContext, error)

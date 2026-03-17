@@ -182,6 +182,29 @@ func (h *DocumentHandler) GetCollectionContext(c *gin.Context) {
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_collection_context_get"), dto.ToCollectionContextResponse(collectionContext))
 }
 
+func (h *DocumentHandler) RetryIndexing(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	documentID, ok := parseUintParam(c, "id", i18n.T(lang, "error.invalid_document_id"))
+	if !ok {
+		return
+	}
+
+	document, err := h.useCase.RetryDocumentIndexing(c.Request.Context(), userID, documentID)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrDocumentNotFound):
+			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_not_found"), nil)
+		default:
+			h.respondInternalError(c, lang)
+		}
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", "Documento reenfileirado para indexacao.", dto.ToDocumentResponse(document))
+}
+
 func (h *DocumentHandler) ListCategories(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")

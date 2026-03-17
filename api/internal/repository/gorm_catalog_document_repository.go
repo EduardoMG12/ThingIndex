@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
 
@@ -108,4 +109,60 @@ func (r *GormCatalogDocumentRepository) UpdateDocumentStatus(ctx context.Context
 		Model(&models.Document{}).
 		Where("id = ?", documentID).
 		Update("status", status).Error
+}
+
+func (r *GormCatalogDocumentRepository) RetryDocumentIndexing(ctx context.Context, userID uint, documentID uint) (*models.Document, error) {
+	var document models.Document
+
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.
+			Preload("CollectionRef").
+			Preload("CollectionRef.Category").
+			Where("id = ? AND user_id = ?", documentID, userID).
+			First(&document).Error; err != nil {
+			return err
+		}
+
+		now := time.Now().UTC()
+		if err := tx.Model(&models.Document{}).
+			Where("id = ?", documentID).
+			Updates(map[string]any{
+				"status":                domain.DocumentStatusQueued,
+				"processing_stage":      "QUEUED",
+				"status_detail":         "Documento reenfileirado para nova tentativa de indexacao.",
+				"last_processing_error": "",
+				"index_started_at":      nil,
+				"indexed_at":            nil,
+				"updated_at":            now,
+			}).Error; err != nil {
+			return err
+		}
+
+		event := &models.OutboxEvent{
+			AggregateType: domain.OutboxAggregateDocument,
+			AggregateID:   documentID,
+			EventType:     domain.OutboxEventDocumentIndexRequested,
+			Status:        domain.OutboxEventStatusPending,
+			Payload: map[string]any{
+				"document_id": documentID,
+				"user_id":     userID,
+			},
+			AvailableAt: now,
+		}
+
+		if err := tx.Create(event).Error; err != nil {
+			return err
+		}
+
+		return tx.
+			Preload("CollectionRef").
+			Preload("CollectionRef.Category").
+			Where("id = ?", documentID).
+			First(&document).Error
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &document, nil
 }
