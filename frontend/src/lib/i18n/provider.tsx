@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useCallback, useContext, useMemo } from "react";
 import { usePathname } from "next/navigation";
 
 import type { AppLocale } from "@/lib/i18n/config";
@@ -43,7 +43,7 @@ export function useI18n() {
         throw new Error("useI18n must be used within I18nProvider");
     }
 
-    function t(key: string, variables?: Record<string, string | number>) {
+    const t = useCallback((key: string, variables?: Record<string, string | number>) => {
         const value = getValue(context.messages, key);
         if (typeof value !== "string") {
             return key;
@@ -56,11 +56,11 @@ export function useI18n() {
         return Object.entries(variables).reduce((result, [name, replacement]) => {
             return result.replaceAll(`{${name}}`, String(replacement));
         }, value);
-    }
+    }, [context.messages]);
 
-    function href(pathname: string) {
+    const href = useCallback((pathname: string) => {
         return localizePath(pathname, context.locale);
-    }
+    }, [context.locale]);
 
     return {
         locale: context.locale,
