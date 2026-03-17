@@ -1,8 +1,36 @@
 import { UnauthorizedRequestError } from "@/lib/api/fetch-with-auth-redirect";
+import {
+    hasResponseData,
+    type ApiErrorResponse,
+    type ApiSuccessResponse,
+} from "@/lib/api/types";
 
 export type ChatHistoryMessage = {
     role: "user" | "assistant";
     content: string;
+};
+
+export type ChatConversationSummary = {
+    id: number;
+    collectionId: number;
+    title: string;
+    lastMessageAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type PersistedChatMessage = {
+    id: number;
+    role: "user" | "assistant";
+    content: string;
+    sources: ChatSource[];
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type ChatConversationDetail = {
+    conversation: ChatConversationSummary;
+    messages: PersistedChatMessage[];
 };
 
 export type ChatSource = {
@@ -20,6 +48,7 @@ export type ChatStreamEvent =
     | { type: "error"; message: string };
 
 type StreamInput = {
+    conversationId: number;
     collectionId: number;
     prompt: string;
     history: ChatHistoryMessage[];
@@ -34,6 +63,7 @@ export async function streamCollectionChat(input: StreamInput): Promise<void> {
             "Content-Type": "application/json",
         },
         body: JSON.stringify({
+            conversation_id: input.conversationId,
             collection_id: input.collectionId,
             prompt: input.prompt,
             history: input.history,
@@ -80,6 +110,117 @@ export async function streamCollectionChat(input: StreamInput): Promise<void> {
         if (event) {
             input.onEvent(event);
         }
+    }
+}
+
+export async function fetchChatConversations(
+    collectionId: number,
+    signal?: AbortSignal
+): Promise<ChatConversationSummary[]> {
+    const response = await fetch(`/api/chat/conversations?collection_id=${collectionId}`, {
+        method: "GET",
+        cache: "no-store",
+        signal,
+    });
+
+    if (response.status === 401) {
+        throw new UnauthorizedRequestError();
+    }
+
+    const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<unknown> | ApiErrorResponse | null;
+    if (!response.ok) {
+        throw new Error(payload?.message || "Nao foi possivel carregar as conversas.");
+    }
+
+    const data = hasResponseData(payload) ? payload.data : null;
+    if (!Array.isArray(data)) {
+        return [];
+    }
+
+    return data
+        .map(normalizeConversationSummary)
+        .filter((conversation): conversation is ChatConversationSummary => conversation !== null);
+}
+
+export async function createChatConversation(
+    collectionId: number,
+    title: string,
+    signal?: AbortSignal
+): Promise<ChatConversationSummary> {
+    const response = await fetch("/api/chat/conversations", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            collection_id: collectionId,
+            title,
+        }),
+        cache: "no-store",
+        signal,
+    });
+
+    if (response.status === 401) {
+        throw new UnauthorizedRequestError();
+    }
+
+    const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<unknown> | ApiErrorResponse | null;
+    if (!response.ok) {
+        throw new Error(payload?.message || "Nao foi possivel criar a conversa.");
+    }
+
+    const normalized = normalizeConversationSummary(hasResponseData(payload) ? payload.data : null);
+    if (!normalized) {
+        throw new Error("Resposta invalida ao criar a conversa.");
+    }
+
+    return normalized;
+}
+
+export async function fetchChatConversation(
+    conversationId: number,
+    signal?: AbortSignal
+): Promise<ChatConversationDetail> {
+    const response = await fetch(`/api/chat/conversations/${conversationId}`, {
+        method: "GET",
+        cache: "no-store",
+        signal,
+    });
+
+    if (response.status === 401) {
+        throw new UnauthorizedRequestError();
+    }
+
+    const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<unknown> | ApiErrorResponse | null;
+    if (!response.ok) {
+        throw new Error(payload?.message || "Nao foi possivel carregar a conversa.");
+    }
+
+    const normalized = normalizeConversationDetail(hasResponseData(payload) ? payload.data : null);
+    if (!normalized) {
+        throw new Error("Resposta invalida ao carregar a conversa.");
+    }
+
+    return normalized;
+}
+
+export async function deleteChatConversation(
+    conversationId: number,
+    signal?: AbortSignal
+): Promise<void> {
+    const response = await fetch(`/api/chat/conversations/${conversationId}`, {
+        method: "DELETE",
+        cache: "no-store",
+        signal,
+    });
+
+    if (response.status === 401) {
+        throw new UnauthorizedRequestError();
+    }
+
+    const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<unknown> | ApiErrorResponse | null;
+    if (!response.ok) {
+        throw new Error(payload?.message || "Nao foi possivel remover a conversa.");
     }
 }
 
@@ -133,4 +274,101 @@ function parseSSEEvent(rawEvent: string): ChatStreamEvent | null {
     } catch {
         return null;
     }
+}
+
+function normalizeConversationSummary(value: unknown): ChatConversationSummary | null {
+    if (!value || typeof value !== "object") {
+        return null;
+    }
+
+    const record = value as Record<string, unknown>;
+    const id = Number(record.id);
+    const collectionId = Number(record.collection_id);
+
+    if (!Number.isFinite(id) || id <= 0 || !Number.isFinite(collectionId) || collectionId <= 0) {
+        return null;
+    }
+
+    return {
+        id,
+        collectionId,
+        title: typeof record.title === "string" && record.title.trim() ? record.title.trim() : `Chat ${id}`,
+        lastMessageAt: typeof record.last_message_at === "string" ? record.last_message_at : null,
+        createdAt: typeof record.created_at === "string" ? record.created_at : new Date(0).toISOString(),
+        updatedAt: typeof record.updated_at === "string" ? record.updated_at : new Date(0).toISOString(),
+    };
+}
+
+function normalizeConversationDetail(value: unknown): ChatConversationDetail | null {
+    if (!value || typeof value !== "object") {
+        return null;
+    }
+
+    const record = value as Record<string, unknown>;
+    const conversation = normalizeConversationSummary(record.conversation);
+    if (!conversation) {
+        return null;
+    }
+
+    const messages = Array.isArray(record.messages)
+        ? record.messages
+            .map(normalizePersistedMessage)
+            .filter((message): message is PersistedChatMessage => message !== null)
+        : [];
+
+    return {
+        conversation,
+        messages,
+    };
+}
+
+function normalizePersistedMessage(value: unknown): PersistedChatMessage | null {
+    if (!value || typeof value !== "object") {
+        return null;
+    }
+
+    const record = value as Record<string, unknown>;
+    const id = Number(record.id);
+    const role = record.role;
+    const content = record.content;
+
+    if (!Number.isFinite(id) || id <= 0 || (role !== "user" && role !== "assistant") || typeof content !== "string") {
+        return null;
+    }
+
+    return {
+        id,
+        role,
+        content,
+        sources: Array.isArray(record.sources)
+            ? record.sources
+                .map(normalizeSource)
+                .filter((source): source is ChatSource => source !== null)
+            : [],
+        createdAt: typeof record.created_at === "string" ? record.created_at : new Date(0).toISOString(),
+        updatedAt: typeof record.updated_at === "string" ? record.updated_at : new Date(0).toISOString(),
+    };
+}
+
+function normalizeSource(value: unknown): ChatSource | null {
+    if (!value || typeof value !== "object") {
+        return null;
+    }
+
+    const record = value as Record<string, unknown>;
+    const id = typeof record.id === "string" ? record.id : "";
+    const docName = typeof record.doc_name === "string" ? record.doc_name : "";
+    const page = Number(record.page);
+    const snippet = typeof record.snippet === "string" ? record.snippet : "";
+
+    if (!id || !docName || !Number.isFinite(page)) {
+        return null;
+    }
+
+    return {
+        id,
+        docName,
+        page,
+        snippet,
+    };
 }
