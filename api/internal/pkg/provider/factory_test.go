@@ -38,6 +38,25 @@ func TestLLMEndpointAndModelUsesOllamaDefaults(t *testing.T) {
 	}
 }
 
+func TestLLMEndpointAndModelUsesOllamaCloudDefaultWhenAPIKeyIsPresent(t *testing.T) {
+	t.Parallel()
+
+	endpoint, model, err := llmEndpointAndModel(domain.ProviderOllama, map[string]string{
+		"api_key": "secret",
+		"model":   "deepseek-v3.1:671b",
+	})
+	if err != nil {
+		t.Fatalf("expected ollama cloud defaults, got error: %v", err)
+	}
+
+	if endpoint != "https://ollama.com/v1/chat/completions" {
+		t.Fatalf("unexpected ollama cloud endpoint: %s", endpoint)
+	}
+	if model != "deepseek-v3.1:671b" {
+		t.Fatalf("unexpected ollama cloud model: %s", model)
+	}
+}
+
 func TestLLMEndpointAndModelRejectsGeminiWithoutBridgeConfiguration(t *testing.T) {
 	t.Parallel()
 

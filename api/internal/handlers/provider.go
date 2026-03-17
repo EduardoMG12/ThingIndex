@@ -31,6 +31,7 @@ type saveCredentialsRequest struct {
 }
 
 type updateProviderStateRequest struct {
+	ProviderType       string `json:"provider_type"`
 	Family             string `json:"family"`
 	ActivationTarget   string `json:"activation_target"`
 	Enabled            *bool  `json:"enabled"`
@@ -125,12 +126,16 @@ func extractPublicMetadata(family string, credentials map[string]string) map[str
 func (h *ProviderHandler) UpdateProviderState(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
-	providerType := c.Param("providerType")
 
 	var req updateProviderStateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
 		return
+	}
+
+	providerType := strings.TrimSpace(c.Param("providerType"))
+	if providerType == "" || strings.EqualFold(providerType, "undefined") || strings.EqualFold(providerType, "null") {
+		providerType = req.ProviderType
 	}
 
 	enabled := false

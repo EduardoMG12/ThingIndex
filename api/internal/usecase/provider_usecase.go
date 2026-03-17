@@ -37,6 +37,34 @@ var supportedProvidersByFamily = map[string]map[string]struct{}{
 	},
 }
 
+var providerFamilyByType = func() map[string]string {
+	index := make(map[string]string)
+	for family, providers := range supportedProvidersByFamily {
+		for providerType := range providers {
+			index[providerType] = family
+		}
+	}
+	return index
+}()
+
+var providerTypeAliases = map[string]string{
+	"AWS":              domain.ProviderAWSS3,
+	"S3":               domain.ProviderAWSS3,
+	"CLOUDFLARE":       domain.ProviderCloudflare,
+	"R2":               domain.ProviderCloudflare,
+	"DIGITALOCEAN":     domain.ProviderDOSpaces,
+	"DO_SPACES":        domain.ProviderDOSpaces,
+	"BACKBLAZE":        domain.ProviderB2,
+	"B2":               domain.ProviderB2,
+	"GEMINI":           domain.ProviderGemini,
+	"GOOGLE":           domain.ProviderGemini,
+	"DEEPSEEK":         domain.ProviderDeepSeek,
+	"OPEN_ROUTER":      domain.ProviderOpenRouter,
+	"OPEN-ROUTER":      domain.ProviderOpenRouter,
+	"ANTHROPIC":        domain.ProviderClaude,
+	"CLAUDE_ANTHROPIC": domain.ProviderClaude,
+}
+
 type providerUseCase struct {
 	repo              domain.ProviderRepository
 	cfg               *config.Config
@@ -58,6 +86,9 @@ func (u *providerUseCase) SaveCredentials(ctx context.Context, userID uint, fami
 	}
 
 	if err := u.validateCredentials(ctx, normalizedFamily, normalizedProviderType, credentials); err != nil {
+		return err
+	}
+	if err := u.validateProviderConnection(ctx, normalizedFamily, normalizedProviderType, credentials); err != nil {
 		return err
 	}
 
@@ -131,7 +162,7 @@ func (u *providerUseCase) SetProviderEnabled(ctx context.Context, userID uint, f
 }
 
 func (u *providerUseCase) SetLLMUsageEnabled(ctx context.Context, userID uint, providerType, usage string, enabled bool) error {
-	normalizedProviderType := strings.ToUpper(strings.TrimSpace(providerType))
+	normalizedProviderType := normalizeProviderType(providerType)
 	if _, ok := supportedProvidersByFamily[domain.FamilyLLM][normalizedProviderType]; !ok {
 		return domain.ErrProviderTypeInvalid
 	}
@@ -212,18 +243,32 @@ func (u *providerUseCase) resolveLLMByUsage(ctx context.Context, userID uint, us
 }
 
 func normalizeProviderSelection(family, providerType string) (string, string, error) {
-	normalizedFamily := strings.ToUpper(strings.TrimSpace(family))
-	allowedProviders, ok := supportedProvidersByFamily[normalizedFamily]
+	normalizedProviderType := normalizeProviderType(providerType)
+	inferredFamily, ok := providerFamilyByType[normalizedProviderType]
 	if !ok {
-		return "", "", domain.ErrProviderFamilyInvalid
-	}
-
-	normalizedProviderType := strings.ToUpper(strings.TrimSpace(providerType))
-	if _, ok := allowedProviders[normalizedProviderType]; !ok {
 		return "", "", domain.ErrProviderTypeInvalid
 	}
 
+	normalizedFamily := strings.ToUpper(strings.TrimSpace(family))
+	if normalizedFamily == "" {
+		return inferredFamily, normalizedProviderType, nil
+	}
+	if _, ok := supportedProvidersByFamily[normalizedFamily]; !ok {
+		return "", "", domain.ErrProviderFamilyInvalid
+	}
+	if normalizedFamily != inferredFamily {
+		return inferredFamily, normalizedProviderType, nil
+	}
+
 	return normalizedFamily, normalizedProviderType, nil
+}
+
+func normalizeProviderType(providerType string) string {
+	normalized := strings.ToUpper(strings.TrimSpace(providerType))
+	if alias, ok := providerTypeAliases[normalized]; ok {
+		return alias
+	}
+	return normalized
 }
 
 func (u *providerUseCase) validateCredentials(ctx context.Context, family, providerType string, credentials map[string]string) error {
@@ -308,12 +353,26 @@ func (u *providerUseCase) validateLLMCredentials(ctx context.Context, providerTy
 		if strings.TrimSpace(credentials["model"]) == "" {
 			return domain.ErrProviderCredentialsInvalid
 		}
+		if isOllamaCloudBaseURL(credentials["base_url"]) && strings.TrimSpace(credentials["api_key"]) == "" {
+			return domain.ErrProviderCredentialsInvalid
+		}
 	default:
 		return domain.ErrProviderTypeInvalid
 	}
 
 	if err := u.validateLLMBaseURL(ctx, credentials["base_url"]); err != nil {
 		return domain.ErrProviderCredentialsInvalid
+	}
+
+	return nil
+}
+
+func (u *providerUseCase) validateProviderConnection(ctx context.Context, family, providerType string, credentials map[string]string) error {
+	switch family {
+	case domain.FamilyLLM:
+		if err := provider.ValidateLLMConnection(ctx, providerType, credentials); err != nil {
+			return domain.ErrProviderCredentialsInvalid
+		}
 	}
 
 	return nil
@@ -353,4 +412,19 @@ func (u *providerUseCase) validateLLMBaseURL(ctx context.Context, rawURL string)
 	}
 
 	return nil
+}
+
+func isOllamaCloudBaseURL(rawURL string) bool {
+	trimmedURL := strings.TrimSpace(rawURL)
+	if trimmedURL == "" {
+		return false
+	}
+
+	parsed, err := url.Parse(trimmedURL)
+	if err != nil {
+		return false
+	}
+
+	host := strings.ToLower(strings.TrimSpace(parsed.Hostname()))
+	return host == "ollama.com" || host == "www.ollama.com"
 }

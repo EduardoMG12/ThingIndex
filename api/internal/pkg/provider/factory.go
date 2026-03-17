@@ -32,6 +32,7 @@ type chatCompletionRequest struct {
 	Model       string                  `json:"model"`
 	Messages    []chatCompletionMessage `json:"messages"`
 	Temperature float64                 `json:"temperature,omitempty"`
+	MaxTokens   int                     `json:"max_tokens,omitempty"`
 	Stream      bool                    `json:"stream,omitempty"`
 }
 
@@ -90,7 +91,6 @@ var llmProviderDefinitions = map[string]llmProviderDefinition{
 		defaultModel:   "openai/gpt-4o-mini",
 	},
 	domain.ProviderOllama: {
-		defaultBaseURL:   "http://localhost:11434/v1",
 		defaultModel:     "llama3.1:8b",
 		allowEmptyAPIKey: true,
 	},
@@ -102,6 +102,19 @@ var llmProviderDefinitions = map[string]llmProviderDefinition{
 		requireBaseURL: true,
 		requireModel:   true,
 	},
+}
+
+var newLLMHTTPClient = func() *http.Client {
+	return &http.Client{Timeout: 45 * time.Second}
+}
+
+func NewLLMHTTPClientForTests(factory func() *http.Client) func() *http.Client {
+	previous := newLLMHTTPClient
+	if factory == nil {
+		return previous
+	}
+	newLLMHTTPClient = factory
+	return previous
 }
 
 func NewLLMProvider(providerType string, credentials map[string]string) (domain.LLMService, error) {
@@ -124,7 +137,7 @@ func NewLLMProvider(providerType string, credentials map[string]string) (domain.
 	pricing, hasPricing := llmPricingProfile(normalizedProvider, model, credentials)
 
 	return &openAICompatibleLLMClient{
-		httpClient: &http.Client{Timeout: 45 * time.Second},
+		httpClient: newLLMHTTPClient(),
 		provider:   normalizedProvider,
 		endpoint:   endpoint,
 		apiKey:     apiKey,
@@ -235,14 +248,53 @@ func (c *openAICompatibleLLMClient) GenerateText(ctx context.Context, systemProm
 		Temperature: 0.2,
 	}
 
-	body, err := json.Marshal(payload)
+	completion, err := c.createChatCompletion(ctx, payload)
 	if err != nil {
 		return "", err
 	}
 
+	if len(completion.Choices) == 0 {
+		return "", errors.New("llm response returned no choices")
+	}
+
+	return strings.TrimSpace(completion.Choices[0].Message.Content), nil
+}
+
+func ValidateLLMConnection(ctx context.Context, providerType string, credentials map[string]string) error {
+	service, err := NewLLMProvider(providerType, credentials)
+	if err != nil {
+		return err
+	}
+
+	client, ok := service.(*openAICompatibleLLMClient)
+	if !ok {
+		return errors.New("llm validation is not supported for this provider")
+	}
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	_, err = client.createChatCompletion(timeoutCtx, chatCompletionRequest{
+		Model: client.model,
+		Messages: []chatCompletionMessage{
+			{Role: "system", Content: "Reply with OK."},
+			{Role: "user", Content: "ping"},
+		},
+		Temperature: 0,
+		MaxTokens:   1,
+	})
+	return err
+}
+
+func (c *openAICompatibleLLMClient) createChatCompletion(ctx context.Context, payload chatCompletionRequest) (*chatCompletionResponse, error) {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(body))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if c.apiKey != "" {
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
@@ -251,32 +303,28 @@ func (c *openAICompatibleLLMClient) GenerateText(ctx context.Context, systemProm
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	var completion chatCompletionResponse
 	if err := json.Unmarshal(respBody, &completion); err != nil {
-		return "", fmt.Errorf("parse llm response: %w", err)
+		return nil, fmt.Errorf("parse llm response: %w", err)
 	}
 
 	if resp.StatusCode >= 400 {
 		if completion.Error != nil && strings.TrimSpace(completion.Error.Message) != "" {
-			return "", errors.New(completion.Error.Message)
+			return nil, errors.New(completion.Error.Message)
 		}
-		return "", fmt.Errorf("llm request failed with status %d", resp.StatusCode)
+		return nil, fmt.Errorf("llm request failed with status %d", resp.StatusCode)
 	}
 
-	if len(completion.Choices) == 0 {
-		return "", errors.New("llm response returned no choices")
-	}
-
-	return strings.TrimSpace(completion.Choices[0].Message.Content), nil
+	return &completion, nil
 }
 
 func (c *openAICompatibleLLMClient) StreamText(ctx context.Context, systemPrompt, userPrompt string, onDelta func(string) error) error {
@@ -386,7 +434,15 @@ func llmEndpointAndModel(providerType string, credentials map[string]string) (st
 	model := strings.TrimSpace(credentials["model"])
 
 	if baseURL == "" {
-		baseURL = definition.defaultBaseURL
+		if normalizedProvider == domain.ProviderOllama {
+			if strings.TrimSpace(credentials["api_key"]) != "" {
+				baseURL = "https://ollama.com/v1"
+			} else {
+				baseURL = "http://localhost:11434/v1"
+			}
+		} else {
+			baseURL = definition.defaultBaseURL
+		}
 	}
 	if model == "" {
 		model = definition.defaultModel
