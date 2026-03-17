@@ -50,9 +50,8 @@ services:
       DOCUMENT_INDEX_DLQ: ${DOCUMENT_INDEX_DLQ:-thingindex.document.index.dlq}
       DOCUMENT_INDEX_RETRY_DELAY_SECONDS: ${DOCUMENT_INDEX_RETRY_DELAY_SECONDS:-30}
       DOCUMENT_INDEX_MAX_RETRIES: ${DOCUMENT_INDEX_MAX_RETRIES:-5}
-      # Use the host-published Postgres port to avoid container DNS issues.
-      DB_HOST: host.docker.internal
-      DB_PORT: 5433
+      DB_HOST: db
+      DB_PORT: 5432
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_NAME: ${POSTGRES_DB}
@@ -79,8 +78,8 @@ services:
       DOCUMENT_INDEX_DLQ: ${DOCUMENT_INDEX_DLQ:-thingindex.document.index.dlq}
       DOCUMENT_INDEX_RETRY_DELAY_SECONDS: ${DOCUMENT_INDEX_RETRY_DELAY_SECONDS:-30}
       DOCUMENT_INDEX_MAX_RETRIES: ${DOCUMENT_INDEX_MAX_RETRIES:-5}
-      DB_HOST: host.docker.internal
-      DB_PORT: 5433
+      DB_HOST: db
+      DB_PORT: 5432
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_NAME: ${POSTGRES_DB}
@@ -105,8 +104,7 @@ services:
       - .env
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
-      # Use the host-published API port to avoid container DNS issues.
-      API_INTERNAL_URL: http://host.docker.internal:8000/api/v1
+      API_INTERNAL_URL: http://api:8080/api/v1
 
   db:
     image: postgres:16
