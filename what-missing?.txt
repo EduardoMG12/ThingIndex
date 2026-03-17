@@ -3,3 +3,17 @@
   - fila/retentativas/DLQ: a base existe, mas eu ainda trataria como pipeline funcional, não como operação endurecida
   - enriquecimento por LLM: funciona quando provider está configurado, mas depende da configuração do usuário e do provider ativo
   - chat em produção com resposta incremental: a UI de chat ainda está mockada; falta endpoint real, integração com a LLM marcada para chat, recuperação de contexto e streaming da resposta por SSE/HTTP streaming para não chegar tudo de uma vez
+  - exclusão de documentos: faz falta um fluxo explícito para excluir o PDF bruto e limpar de forma consistente os dados derivados de indexação, storage e contexto consolidado sem deixar lixo operacional ou ambiguidade no dashboard
+  - Sobre o Ollama, também faz sentido. Pelo código atual, o backend exige api_key para toda LLM em api/internal/pkg/provider/factory.go, então um ajuste útil seria:
+    - permitir token opcional para OLLAMA
+    - só enviar header Authorization quando houver token
+    - manter base_url e model obrigatórios para esse provider
+  - teste de conexão do provider antes de salvar credenciais
+  - botão de reindexar documento
+  - exclusão por collection em lote
+  - estado de “documento órfão” quando o arquivo sumir do storage
+  - endpoint de download do PDF original
+  - confirmação forte para operações destrutivas
+  - trilha de auditoria básica para upload, reindexação e exclusão
+  - healthcheck funcional do chat/LLM selecionada
+  - feedback na UI sobre qual LLM está ativa para indexação e qual para chat
