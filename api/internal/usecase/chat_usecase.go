@@ -95,6 +95,23 @@ func (u *chatUseCase) GetConversationMessages(ctx context.Context, userID uint, 
 	return conversation, messages, nil
 }
 
+func (u *chatUseCase) UpdateConversationTitle(ctx context.Context, userID uint, conversationID uint, title string) (*models.ChatConversation, error) {
+	normalizedTitle := strings.Join(strings.Fields(strings.TrimSpace(title)), " ")
+	if normalizedTitle == "" {
+		return nil, domain.ErrTitleRequired
+	}
+
+	conversation, err := u.conversationRepo.UpdateConversationTitle(ctx, userID, conversationID, normalizedTitle)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrChatConversationNotFound
+		}
+		return nil, fmt.Errorf("%w: %v", domain.ErrChatConversationFind, err)
+	}
+
+	return conversation, nil
+}
+
 func (u *chatUseCase) DeleteConversation(ctx context.Context, userID uint, conversationID uint) error {
 	if err := u.conversationRepo.DeleteConversation(ctx, userID, conversationID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

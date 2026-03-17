@@ -224,6 +224,38 @@ export async function deleteChatConversation(
     }
 }
 
+export async function updateChatConversationTitle(
+    conversationId: number,
+    title: string,
+    signal?: AbortSignal
+): Promise<ChatConversationSummary> {
+    const response = await fetch(`/api/chat/conversations/${conversationId}`, {
+        method: "PATCH",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ title }),
+        cache: "no-store",
+        signal,
+    });
+
+    if (response.status === 401) {
+        throw new UnauthorizedRequestError();
+    }
+
+    const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<unknown> | ApiErrorResponse | null;
+    if (!response.ok) {
+        throw new Error(payload?.message || "Nao foi possivel atualizar a conversa.");
+    }
+
+    const normalized = normalizeConversationSummary(hasResponseData(payload) ? payload.data : null);
+    if (!normalized) {
+        throw new Error("Resposta invalida ao atualizar a conversa.");
+    }
+
+    return normalized;
+}
+
 function readEventField<T>(payload: Record<string, unknown>, camelCase: string, pascalCase: string): T | undefined {
     if (payload[camelCase] !== undefined) {
         return payload[camelCase] as T;

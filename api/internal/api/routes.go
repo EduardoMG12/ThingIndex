@@ -159,6 +159,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 			chat.POST("/conversations", chatHandler.CreateConversation)
 			chat.GET("/conversations", chatHandler.ListConversations)
 			chat.GET("/conversations/:id", chatHandler.GetConversation)
+			chat.PATCH("/conversations/:id", chatHandler.UpdateConversation)
 			chat.DELETE("/conversations/:id", chatHandler.DeleteConversation)
 			chat.POST("/stream", chatHandler.StreamCollectionChat)
 		}

@@ -16,6 +16,10 @@ type CreateChatConversationRequest struct {
 	Title        string `json:"title" binding:"omitempty,max=255"`
 }
 
+type UpdateChatConversationRequest struct {
+	Title string `json:"title" binding:"required,max=255"`
+}
+
 type ChatStreamRequest struct {
 	ConversationID uint                 `json:"conversation_id" binding:"required,gte=1"`
 	CollectionID   uint                 `json:"collection_id" binding:"required,gte=1"`

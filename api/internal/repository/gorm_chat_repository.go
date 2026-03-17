@@ -66,6 +66,32 @@ func (r *gormChatConversationRepository) ListMessagesByConversation(ctx context.
 	return messages, nil
 }
 
+func (r *gormChatConversationRepository) UpdateConversationTitle(ctx context.Context, userID uint, conversationID uint, title string) (*models.ChatConversation, error) {
+	normalizedTitle := normalizeWhitespace(title)
+
+	var conversation models.ChatConversation
+	if err := r.db.WithContext(ctx).
+		Where("id = ? AND user_id = ?", conversationID, userID).
+		First(&conversation).Error; err != nil {
+		return nil, err
+	}
+
+	if err := r.db.WithContext(ctx).
+		Model(&conversation).
+		Updates(map[string]any{"title": normalizedTitle}).
+		Error; err != nil {
+		return nil, err
+	}
+
+	if err := r.db.WithContext(ctx).
+		Where("id = ?", conversation.ID).
+		First(&conversation).Error; err != nil {
+		return nil, err
+	}
+
+	return &conversation, nil
+}
+
 func (r *gormChatConversationRepository) DeleteConversation(ctx context.Context, userID uint, conversationID uint) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		result := tx.Where("id = ? AND user_id = ?", conversationID, userID).

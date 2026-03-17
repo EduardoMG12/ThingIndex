@@ -41,6 +41,7 @@ type ChatConversationRepository interface {
 	GetConversationByID(ctx context.Context, userID uint, conversationID uint) (*models.ChatConversation, error)
 	ListConversationsByCollection(ctx context.Context, userID uint, collectionID uint) ([]models.ChatConversation, error)
 	ListMessagesByConversation(ctx context.Context, userID uint, conversationID uint) ([]models.ChatConversationEntry, error)
+	UpdateConversationTitle(ctx context.Context, userID uint, conversationID uint, title string) (*models.ChatConversation, error)
 	DeleteConversation(ctx context.Context, userID uint, conversationID uint) error
 	AddMessage(ctx context.Context, userID uint, conversationID uint, message *models.ChatConversationEntry) error
 }
@@ -50,5 +51,6 @@ type ChatUseCase interface {
 	CreateConversation(ctx context.Context, userID uint, collectionID uint, title string) (*models.ChatConversation, error)
 	ListConversations(ctx context.Context, userID uint, collectionID uint) ([]models.ChatConversation, error)
 	GetConversationMessages(ctx context.Context, userID uint, conversationID uint) (*models.ChatConversation, []models.ChatConversationEntry, error)
+	UpdateConversationTitle(ctx context.Context, userID uint, conversationID uint, title string) (*models.ChatConversation, error)
 	DeleteConversation(ctx context.Context, userID uint, conversationID uint) error
 }

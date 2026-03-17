@@ -65,3 +65,33 @@ export async function DELETE(request: Request, context: RouteContext) {
         );
     }
 }
+
+export async function PATCH(request: Request, context: RouteContext) {
+    const token = (await cookies()).get("token")?.value;
+
+    if (!token) {
+        return unauthorizedJson();
+    }
+
+    try {
+        const { id } = await context.params;
+        const body = await request.text();
+        const response = await fetch(`${API_URL}/chat/conversations/${id}`, {
+            method: "PATCH",
+            headers: await createForwardHeaders(request, { token }),
+            body,
+            cache: "no-store",
+        });
+
+        const payload = await response.json().catch(() => ({
+            message: "Nao foi possivel processar a resposta da API.",
+        }));
+
+        return proxyJsonWithAuthCleanup(payload, response.status);
+    } catch {
+        return NextResponse.json(
+            { message: "Erro ao atualizar a conversa do chat." },
+            { status: 502 }
+        );
+    }
+}

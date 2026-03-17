@@ -97,6 +97,38 @@ func (h *ChatHandler) GetConversation(c *gin.Context) {
 	})
 }
 
+func (h *ChatHandler) UpdateConversation(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	conversationID, err := parseChatUint(c.Param("id"))
+	if err != nil || conversationID == 0 {
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "chat.error_invalid_conversation_id"), nil)
+		return
+	}
+
+	var req dto.UpdateChatConversationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
+		return
+	}
+
+	conversation, updateErr := h.useCase.UpdateConversationTitle(c.Request.Context(), userID, conversationID, req.Title)
+	if updateErr != nil {
+		switch {
+		case errors.Is(updateErr, domain.ErrTitleRequired):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_title"), nil)
+		case errors.Is(updateErr, domain.ErrChatConversationNotFound):
+			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "chat.error_conversation_not_found"), nil)
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
+		}
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "common.saved"), dto.ToChatConversationResponse(conversation))
+}
+
 func (h *ChatHandler) DeleteConversation(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
