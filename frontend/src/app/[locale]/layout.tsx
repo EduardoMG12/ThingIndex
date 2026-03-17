@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 
 import { SUPPORTED_LOCALES, type AppLocale } from "@/lib/i18n/config";
-import { getMessages } from "@/lib/i18n/messages";
 import { I18nProvider } from "@/lib/i18n/provider";
 
 export function generateStaticParams() {
@@ -13,7 +12,7 @@ export default async function LocaleLayout({
     params,
 }: {
     children: React.ReactNode;
-    params: Promise<{ locale: string; }>;
+    params: Promise<{ locale: string }>;
 }) {
     const { locale } = await params;
 
