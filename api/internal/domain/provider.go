@@ -23,11 +23,13 @@ const (
 	ProviderB2         = "BACKBLAZE_B2"
 
 	// LLM Providers
-	ProviderOpenAI   = "OPENAI"
-	ProviderGemini   = "GOOGLE_GEMINI"
-	ProviderDeepSeek = "DEEP_SEEK"
-	ProviderGrok     = "GROK"
-	ProviderClaude   = "CLAUDE"
+	ProviderOpenAI     = "OPENAI"
+	ProviderGemini     = "GOOGLE_GEMINI"
+	ProviderDeepSeek   = "DEEP_SEEK"
+	ProviderGrok       = "GROK"
+	ProviderClaude     = "CLAUDE"
+	ProviderOllama     = "OLLAMA"
+	ProviderOpenRouter = "OPENROUTER"
 )
 
 type ProviderRepository interface {

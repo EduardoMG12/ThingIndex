@@ -8,10 +8,6 @@ import (
 	"thing-index/internal/models"
 )
 
-const (
-	ProviderOllama = "OLLAMA"
-)
-
 type PricingSourceRepository interface {
 	SaveSource(ctx context.Context, source *models.PricingSource) error
 	GetSource(ctx context.Context, userID, sourceID uint) (*models.PricingSource, error)

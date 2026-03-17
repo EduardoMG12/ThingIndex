@@ -59,3 +59,37 @@ func TestValidateCredentialsRejectsHTTPBaseURLOutsideDevelopment(t *testing.T) {
 		t.Fatal("expected http llm base url to be rejected outside development")
 	}
 }
+
+func TestValidateCredentialsAllowsOllamaWithoutAPIKey(t *testing.T) {
+	t.Parallel()
+
+	useCase := &providerUseCase{
+		cfg:               &config.Config{Environment: "development"},
+		endpointValidator: netsec.NewStorageEndpointValidator(true),
+	}
+
+	err := useCase.validateCredentials(context.Background(), domain.FamilyLLM, domain.ProviderOllama, map[string]string{
+		"model":    "llama3.1:8b",
+		"base_url": "http://127.0.0.1:11434/v1",
+	})
+	if err != nil {
+		t.Fatalf("expected ollama credentials without api key to be accepted, got %v", err)
+	}
+}
+
+func TestValidateCredentialsRejectsOpenRouterWithoutModel(t *testing.T) {
+	t.Parallel()
+
+	useCase := &providerUseCase{
+		cfg:               &config.Config{Environment: "production"},
+		endpointValidator: netsec.NewStorageEndpointValidator(false),
+	}
+
+	err := useCase.validateCredentials(context.Background(), domain.FamilyLLM, domain.ProviderOpenRouter, map[string]string{
+		"api_key":  "secret",
+		"base_url": "https://openrouter.ai/api/v1",
+	})
+	if err == nil {
+		t.Fatal("expected openrouter credentials without model to be rejected")
+	}
+}

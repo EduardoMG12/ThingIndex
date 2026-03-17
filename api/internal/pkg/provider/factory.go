@@ -64,13 +64,58 @@ type StorageProviderOptions struct {
 	EndpointValidator *netsec.StorageEndpointValidator
 }
 
+type llmProviderDefinition struct {
+	defaultBaseURL   string
+	defaultModel     string
+	requireBaseURL   bool
+	requireModel     bool
+	allowEmptyAPIKey bool
+}
+
+var llmProviderDefinitions = map[string]llmProviderDefinition{
+	domain.ProviderOpenAI: {
+		defaultBaseURL: "https://api.openai.com/v1",
+		defaultModel:   "gpt-4o-mini",
+	},
+	domain.ProviderDeepSeek: {
+		defaultBaseURL: "https://api.deepseek.com",
+		defaultModel:   "deepseek-chat",
+	},
+	domain.ProviderGrok: {
+		defaultBaseURL: "https://api.x.ai/v1",
+		defaultModel:   "grok-2-latest",
+	},
+	domain.ProviderOpenRouter: {
+		defaultBaseURL: "https://openrouter.ai/api/v1",
+		defaultModel:   "openai/gpt-4o-mini",
+	},
+	domain.ProviderOllama: {
+		defaultBaseURL:   "http://localhost:11434/v1",
+		defaultModel:     "llama3.1:8b",
+		allowEmptyAPIKey: true,
+	},
+	domain.ProviderGemini: {
+		requireBaseURL: true,
+		requireModel:   true,
+	},
+	domain.ProviderClaude: {
+		requireBaseURL: true,
+		requireModel:   true,
+	},
+}
+
 func NewLLMProvider(providerType string, credentials map[string]string) (domain.LLMService, error) {
+	normalizedProvider := strings.ToUpper(strings.TrimSpace(providerType))
+	definition, ok := llmProviderDefinitions[normalizedProvider]
+	if !ok {
+		return nil, fmt.Errorf("provider %s is not implemented", normalizedProvider)
+	}
+
 	apiKey := strings.TrimSpace(credentials["api_key"])
-	if apiKey == "" {
+	if apiKey == "" && !definition.allowEmptyAPIKey {
 		return nil, errors.New("missing api_key in credentials")
 	}
 
-	normalizedProvider := strings.ToUpper(strings.TrimSpace(providerType))
 	endpoint, model, err := llmEndpointAndModel(normalizedProvider, credentials)
 	if err != nil {
 		return nil, err
@@ -199,7 +244,9 @@ func (c *openAICompatibleLLMClient) GenerateText(ctx context.Context, systemProm
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	if c.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.httpClient.Do(req)
@@ -252,7 +299,9 @@ func (c *openAICompatibleLLMClient) StreamText(ctx context.Context, systemPrompt
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	if c.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "text/event-stream")
 
@@ -328,40 +377,32 @@ func (c *openAICompatibleLLMClient) Pricing() (domain.LLMPricing, bool) {
 
 func llmEndpointAndModel(providerType string, credentials map[string]string) (string, string, error) {
 	normalizedProvider := strings.ToUpper(strings.TrimSpace(providerType))
+	definition, ok := llmProviderDefinitions[normalizedProvider]
+	if !ok {
+		return "", "", fmt.Errorf("provider %s is not implemented", normalizedProvider)
+	}
+
 	baseURL := strings.TrimRight(strings.TrimSpace(credentials["base_url"]), "/")
 	model := strings.TrimSpace(credentials["model"])
 
-	switch normalizedProvider {
-	case domain.ProviderOpenAI:
-		if baseURL == "" {
-			baseURL = "https://api.openai.com/v1"
-		}
-		if model == "" {
-			model = "gpt-4o-mini"
-		}
-		return baseURL + "/chat/completions", model, nil
-	case domain.ProviderDeepSeek:
-		if baseURL == "" {
-			baseURL = "https://api.deepseek.com"
-		}
-		if model == "" {
-			model = "deepseek-chat"
-		}
-		return baseURL + "/chat/completions", model, nil
-	case domain.ProviderGrok:
-		if baseURL == "" {
-			baseURL = "https://api.x.ai/v1"
-		}
-		if model == "" {
-			model = "grok-2-latest"
-		}
-		return baseURL + "/chat/completions", model, nil
-	default:
-		if baseURL == "" || model == "" {
-			return "", "", fmt.Errorf("provider %s requires base_url and model", normalizedProvider)
-		}
-		return baseURL + "/chat/completions", model, nil
+	if baseURL == "" {
+		baseURL = definition.defaultBaseURL
 	}
+	if model == "" {
+		model = definition.defaultModel
+	}
+
+	if definition.requireBaseURL && baseURL == "" {
+		return "", "", fmt.Errorf("provider %s requires base_url", normalizedProvider)
+	}
+	if definition.requireModel && model == "" {
+		return "", "", fmt.Errorf("provider %s requires model", normalizedProvider)
+	}
+	if baseURL == "" || model == "" {
+		return "", "", fmt.Errorf("provider %s requires base_url and model", normalizedProvider)
+	}
+
+	return baseURL + "/chat/completions", model, nil
 }
 
 func llmPricingProfile(providerType, model string, credentials map[string]string) (domain.LLMPricing, bool) {
@@ -392,6 +433,8 @@ func llmPricingProfile(providerType, model string, credentials map[string]string
 				OutputCostPerMillionUSD: 1.10,
 			}, true
 		}
+	case domain.ProviderOpenRouter, domain.ProviderOllama:
+		return domain.LLMPricing{}, false
 	}
 
 	return domain.LLMPricing{}, false

@@ -27,11 +27,13 @@ var supportedProvidersByFamily = map[string]map[string]struct{}{
 		domain.ProviderB2:         {},
 	},
 	domain.FamilyLLM: {
-		domain.ProviderOpenAI:   {},
-		domain.ProviderGemini:   {},
-		domain.ProviderDeepSeek: {},
-		domain.ProviderGrok:     {},
-		domain.ProviderClaude:   {},
+		domain.ProviderOpenAI:     {},
+		domain.ProviderGemini:     {},
+		domain.ProviderDeepSeek:   {},
+		domain.ProviderGrok:       {},
+		domain.ProviderClaude:     {},
+		domain.ProviderOllama:     {},
+		domain.ProviderOpenRouter: {},
 	},
 }
 
@@ -280,12 +282,38 @@ func (u *providerUseCase) validateCredentials(ctx context.Context, family, provi
 			}
 		}
 	case domain.FamilyLLM:
+		if err := u.validateLLMCredentials(ctx, providerType, credentials); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (u *providerUseCase) validateLLMCredentials(ctx context.Context, providerType string, credentials map[string]string) error {
+	switch providerType {
+	case domain.ProviderOpenAI, domain.ProviderDeepSeek, domain.ProviderGrok:
 		if strings.TrimSpace(credentials["api_key"]) == "" {
 			return domain.ErrProviderCredentialsInvalid
 		}
-		if err := u.validateLLMBaseURL(ctx, credentials["base_url"]); err != nil {
+	case domain.ProviderGemini, domain.ProviderClaude:
+		if strings.TrimSpace(credentials["api_key"]) == "" || strings.TrimSpace(credentials["model"]) == "" || strings.TrimSpace(credentials["base_url"]) == "" {
 			return domain.ErrProviderCredentialsInvalid
 		}
+	case domain.ProviderOpenRouter:
+		if strings.TrimSpace(credentials["api_key"]) == "" || strings.TrimSpace(credentials["model"]) == "" {
+			return domain.ErrProviderCredentialsInvalid
+		}
+	case domain.ProviderOllama:
+		if strings.TrimSpace(credentials["model"]) == "" {
+			return domain.ErrProviderCredentialsInvalid
+		}
+	default:
+		return domain.ErrProviderTypeInvalid
+	}
+
+	if err := u.validateLLMBaseURL(ctx, credentials["base_url"]); err != nil {
+		return domain.ErrProviderCredentialsInvalid
 	}
 
 	return nil
