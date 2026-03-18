@@ -466,6 +466,10 @@ func (h *DocumentHandler) DeleteDocument(c *gin.Context) {
 		switch {
 		case errors.Is(err, domain.ErrDocumentNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
+		case errors.Is(err, domain.ErrDocumentSourceDeleteFailed):
+			response.Error(c, http.StatusBadGateway, "error", i18n.T(lang, "doc.error_delete_source"), nil)
+		case errors.Is(err, domain.ErrStorageProviderUnavailable):
+			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_storage_provider"), nil)
 		default:
 			h.respondInternalError(c, lang)
 		}
@@ -489,6 +493,10 @@ func (h *DocumentHandler) DeleteCollectionDocuments(c *gin.Context) {
 		switch {
 		case errors.Is(err, domain.ErrCollectionNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_collection_not_found"), nil)
+		case errors.Is(err, domain.ErrDocumentSourceDeleteFailed):
+			response.Error(c, http.StatusBadGateway, "error", i18n.T(lang, "doc.error_delete_source"), nil)
+		case errors.Is(err, domain.ErrStorageProviderUnavailable):
+			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_storage_provider"), nil)
 		default:
 			h.respondInternalError(c, lang)
 		}
