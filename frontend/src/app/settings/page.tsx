@@ -26,6 +26,7 @@ import {
     fetchProviders,
     saveProvider,
     setProviderEnabled,
+    testProviderConnection,
     type ProviderConfig,
     type ProviderFamily,
     type ProviderType
@@ -94,8 +95,10 @@ function FamilySection({
     onFieldChange,
     onLLMSelectionChange,
     onSave,
+    onTestConnection,
     onToggle,
     isPending,
+    isTestingProvider,
 }: {
     family: ProviderFamily;
     providers: ProviderDefinition[];
@@ -107,8 +110,10 @@ function FamilySection({
     onFieldChange: (providerType: ProviderType, key: string, value: string) => void;
     onLLMSelectionChange: (providerType: ProviderType, key: "enabledForIndexing" | "enabledForChat", value: boolean) => void;
     onSave: (provider: ProviderDefinition) => void;
+    onTestConnection: (provider: ProviderDefinition) => void;
     onToggle: (provider: ProviderDefinition, target: ActivationTarget, enabled: boolean) => void;
     isPending: boolean;
+    isTestingProvider: boolean;
 }) {
     const { t } = useI18n();
     const familyCopy = {
@@ -297,15 +302,27 @@ function FamilySection({
                             </div>
                         </div>
 
-                        <Button
-                            type="button"
-                            onClick={() => onSave(activeProvider)}
-                            disabled={isPending}
-                            className="w-full shrink-0 gap-2"
-                        >
-                            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
-                            {t("common.saveAndEnable", { name: activeProvider.name })}
-                        </Button>
+                        <div className="grid shrink-0 gap-3 md:grid-cols-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => onTestConnection(activeProvider)}
+                                disabled={isPending || isTestingProvider}
+                                className="gap-2"
+                            >
+                                {isTestingProvider ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
+                                Test connection
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={() => onSave(activeProvider)}
+                                disabled={isPending}
+                                className="gap-2"
+                            >
+                                {isPending && !isTestingProvider ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                                {t("common.saveAndEnable", { name: activeProvider.name })}
+                            </Button>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
@@ -658,6 +675,7 @@ function PricingSection({
 export default function SettingsPage() {
     const { t } = useI18n();
     const [providers, setProviders] = useState<ProviderConfig[]>([]);
+    const [testingProviderType, setTestingProviderType] = useState<ProviderType | null>(null);
     const [forms, setForms] = useState<Record<ProviderType, Record<string, string>>>(getInitialFormState);
     const [llmSelections, setLLMSelections] = useState<LLMSelectionState>(getInitialLLMSelectionState);
     const [activeStorageType, setActiveStorageType] = useState<ProviderType>("MINIO");
@@ -809,6 +827,41 @@ export default function SettingsPage() {
         });
     }
 
+    function handleTestConnection(provider: ProviderDefinition) {
+        if (provider.family === "LLM") {
+            const selection = llmSelections[provider.providerType];
+            if (!selection?.enabledForIndexing && !selection?.enabledForChat) {
+                toast.error(t("settings.llmSelectionRequired"));
+                return;
+            }
+        }
+
+        const credentials = Object.entries(forms[provider.providerType]).reduce<Record<string, string>>((acc, [key, value]) => {
+            const trimmed = value.trim();
+            if (trimmed) {
+                acc[key] = trimmed;
+            }
+            return acc;
+        }, {});
+
+        setTestingProviderType(provider.providerType);
+
+        startTransition(async () => {
+            try {
+                await testProviderConnection({
+                    family: provider.family,
+                    providerType: provider.providerType,
+                    credentials,
+                });
+                toast.success(`${provider.name} connection validated.`);
+            } catch (err) {
+                toast.error(err instanceof Error ? err.message : "Nao foi possivel testar a conexao do provider.");
+            } finally {
+                setTestingProviderType(null);
+            }
+        });
+    }
+
     function handleToggle(provider: ProviderDefinition, target: ActivationTarget, enabled: boolean) {
         startTransition(async () => {
             try {
@@ -925,8 +978,10 @@ export default function SettingsPage() {
                             onFieldChange={handleFieldChange}
                             onLLMSelectionChange={handleLLMSelectionChange}
                             onSave={handleSave}
+                            onTestConnection={handleTestConnection}
                             onToggle={handleToggle}
                             isPending={isPending}
+                            isTestingProvider={testingProviderType === activeStorageType}
                         />
 
                         <FamilySection
@@ -940,8 +995,10 @@ export default function SettingsPage() {
                             onFieldChange={handleFieldChange}
                             onLLMSelectionChange={handleLLMSelectionChange}
                             onSave={handleSave}
+                            onTestConnection={handleTestConnection}
                             onToggle={handleToggle}
                             isPending={isPending}
+                            isTestingProvider={testingProviderType === activeLLMType}
                         />
 
                         <PricingSection

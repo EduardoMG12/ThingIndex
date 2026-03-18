@@ -45,6 +45,7 @@ type ProviderRepository interface {
 
 type ProviderUseCase interface {
 	SaveCredentials(ctx context.Context, userID uint, family, providerType string, credentials map[string]string, activation ProviderActivation) error
+	TestConnection(ctx context.Context, userID uint, family, providerType string, credentials map[string]string) error
 	GetDecryptedCredentials(ctx context.Context, userID uint, providerType string) (map[string]string, error)
 	ListUserProviders(ctx context.Context, userID uint) ([]models.UserProviderConfig, error)
 	SetProviderEnabled(ctx context.Context, userID uint, family, providerType string, enabled bool) error

@@ -341,6 +341,24 @@ func ValidateLLMConnection(ctx context.Context, providerType string, credentials
 	}
 }
 
+func ValidateStorageConnection(ctx context.Context, providerType string, credentials map[string]string, options StorageProviderOptions) error {
+	service, err := NewStorageProvider(providerType, credentials, options)
+	if err != nil {
+		return err
+	}
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	bucketProbeObject := strings.TrimSpace(credentials["bucket_probe_object"])
+	if bucketProbeObject == "" {
+		return nil
+	}
+
+	_, err = service.FileExists(timeoutCtx, bucketProbeObject)
+	return err
+}
+
 func (c *openAICompatibleLLMClient) createChatCompletion(ctx context.Context, payload chatCompletionRequest) (*chatCompletionResponse, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {

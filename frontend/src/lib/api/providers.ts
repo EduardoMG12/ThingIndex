@@ -141,3 +141,27 @@ export async function setProviderEnabled(input: {
         throw new Error(payload?.message || "Nao foi possivel atualizar o provider.");
     }
 }
+
+export async function testProviderConnection(input: {
+    family: ProviderFamily;
+    providerType: ProviderType;
+    credentials: Record<string, string>;
+}): Promise<void> {
+    const response = await fetchWithAuthRedirect("/api/user/providers/test", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            family: input.family,
+            provider_type: input.providerType,
+            credentials: input.credentials,
+        }),
+    });
+
+    const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<null> | ApiErrorResponse | null;
+
+    if (!response.ok) {
+        throw new Error(payload?.message || "Nao foi possivel testar a conexao do provider.");
+    }
+}

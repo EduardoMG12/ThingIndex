@@ -30,6 +30,12 @@ type saveCredentialsRequest struct {
 	EnabledForChat     *bool             `json:"enabled_for_chat,omitempty"`
 }
 
+type testConnectionRequest struct {
+	Family       string            `json:"family" binding:"required"`
+	ProviderType string            `json:"provider_type" binding:"required"`
+	Credentials  map[string]string `json:"credentials" binding:"required"`
+}
+
 type updateProviderStateRequest struct {
 	ProviderType       string `json:"provider_type"`
 	Family             string `json:"family"`
@@ -76,6 +82,33 @@ func (h *ProviderHandler) SaveCredentials(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "provider.success_save"), nil)
+}
+
+func (h *ProviderHandler) TestConnection(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	var req testConnectionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
+		return
+	}
+
+	if err := h.useCase.TestConnection(c.Request.Context(), userID, req.Family, req.ProviderType, req.Credentials); err != nil {
+		switch {
+		case errors.Is(err, domain.ErrProviderFamilyInvalid):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_family"), nil)
+		case errors.Is(err, domain.ErrProviderTypeInvalid):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_type"), nil)
+		case errors.Is(err, domain.ErrProviderCredentialsInvalid):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_credentials"), nil)
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
+		}
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", "Conexao com o provider validada com sucesso.", nil)
 }
 
 func (h *ProviderHandler) ListProviders(c *gin.Context) {

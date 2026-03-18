@@ -119,6 +119,23 @@ func (u *providerUseCase) SaveCredentials(ctx context.Context, userID uint, fami
 	return u.repo.SaveConfig(ctx, config)
 }
 
+func (u *providerUseCase) TestConnection(ctx context.Context, userID uint, family, providerType string, credentials map[string]string) error {
+	normalizedFamily, normalizedProviderType, err := normalizeProviderSelection(family, providerType)
+	if err != nil {
+		return err
+	}
+
+	if err := u.validateCredentials(ctx, normalizedFamily, normalizedProviderType, credentials); err != nil {
+		return err
+	}
+
+	if err := u.validateProviderConnection(ctx, normalizedFamily, normalizedProviderType, credentials); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (u *providerUseCase) GetDecryptedCredentials(ctx context.Context, userID uint, providerType string) (map[string]string, error) {
 	config, err := u.repo.GetConfig(ctx, userID, strings.ToUpper(strings.TrimSpace(providerType)))
 	if err != nil {
@@ -369,6 +386,12 @@ func (u *providerUseCase) validateLLMCredentials(ctx context.Context, providerTy
 
 func (u *providerUseCase) validateProviderConnection(ctx context.Context, family, providerType string, credentials map[string]string) error {
 	switch family {
+	case domain.FamilyStorage:
+		if err := provider.ValidateStorageConnection(ctx, providerType, credentials, provider.StorageProviderOptions{
+			EndpointValidator: u.endpointValidator,
+		}); err != nil {
+			return domain.ErrProviderCredentialsInvalid
+		}
 	case domain.FamilyLLM:
 		if err := provider.ValidateLLMConnection(ctx, providerType, credentials); err != nil {
 			return domain.ErrProviderCredentialsInvalid
