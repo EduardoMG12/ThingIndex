@@ -30,6 +30,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		return fmt.Errorf("failed to configure trusted proxies: %w", err)
 	}
 	router.MaxMultipartMemory = cfg.MaxUploadSizeBytes
+	router.Use(middleware.RequestContextMiddleware())
 	router.Use(middleware.I18nMiddleware())
 
 	router.Use(cors.New(cors.Config{

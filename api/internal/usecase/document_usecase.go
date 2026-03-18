@@ -483,14 +483,14 @@ func (u *documentCatalogUseCase) DeleteDocument(ctx context.Context, userID, doc
 		detail := fmt.Sprintf("Falha ao remover o arquivo original do storage durante a exclusao do documento: %v", err)
 		log.Printf("document deletion source removal failed: user=%d document=%d file=%q err=%v", userID, documentID, doc.FileURL, err)
 		_ = u.documentRepo.CreateDocumentAuditEvents(ctx, []models.DocumentAuditEvent{
-			buildDocumentDeletionAuditEvent(doc, "FAILED", detail, "single", map[string]any{
+			buildDocumentDeletionAuditEvent(ctx, doc, "FAILED", detail, "single", map[string]any{
 				"file_url": doc.FileURL,
 			}),
 		})
 		return err
 	}
 
-	successAudit := buildDocumentDeletionAuditEvent(doc, "SUCCESS", "Documento excluido com remocao do arquivo original e limpeza dos dados derivados.", "single", map[string]any{
+	successAudit := buildDocumentDeletionAuditEvent(ctx, doc, "SUCCESS", "Documento excluido com remocao do arquivo original e limpeza dos dados derivados.", "single", map[string]any{
 		"file_url":            doc.FileURL,
 		"storage_delete_path": doc.FileURL,
 	})
@@ -504,7 +504,7 @@ func (u *documentCatalogUseCase) DeleteDocument(ctx context.Context, userID, doc
 			_, _ = u.documentRepo.MarkDocumentOrphaned(ctx, userID, documentID, "O arquivo original foi removido, mas a exclusao final do documento falhou antes da limpeza completa.")
 		}
 		_ = u.documentRepo.CreateDocumentAuditEvents(ctx, []models.DocumentAuditEvent{
-			buildDocumentDeletionAuditEvent(doc, "FAILED", fmt.Sprintf("O arquivo original foi removido, mas a limpeza final do documento falhou: %v", err), "single", map[string]any{
+			buildDocumentDeletionAuditEvent(ctx, doc, "FAILED", fmt.Sprintf("O arquivo original foi removido, mas a limpeza final do documento falhou: %v", err), "single", map[string]any{
 				"file_url": doc.FileURL,
 			}),
 		})
@@ -538,13 +538,13 @@ func (u *documentCatalogUseCase) DeleteCollectionDocuments(ctx context.Context, 
 		if deleteErr != nil {
 			detail := fmt.Sprintf("Falha ao remover um arquivo do storage durante a exclusao em lote da collection: %v", deleteErr)
 			log.Printf("collection document deletion source removal failed: user=%d collection=%d document=%d file=%q err=%v", userID, collectionID, document.ID, document.FileURL, deleteErr)
-			failureAudits = append(failureAudits, buildDocumentDeletionAuditEvent(&document, "FAILED", detail, "collection-bulk", map[string]any{
+			failureAudits = append(failureAudits, buildDocumentDeletionAuditEvent(ctx, &document, "FAILED", detail, "collection-bulk", map[string]any{
 				"collection_id": collectionID,
 				"file_url":      document.FileURL,
 			}))
 			for _, partiallyRemoved := range successfullyRemovedSources {
 				_, _ = u.documentRepo.MarkDocumentOrphaned(ctx, partiallyRemoved.UserID, partiallyRemoved.ID, "O arquivo original foi removido durante uma exclusao em lote interrompida antes da limpeza completa.")
-				failureAudits = append(failureAudits, buildDocumentDeletionAuditEvent(&partiallyRemoved, "FAILED", "O arquivo original foi removido, mas a exclusao em lote foi interrompida antes da limpeza final do documento.", "collection-bulk", map[string]any{
+				failureAudits = append(failureAudits, buildDocumentDeletionAuditEvent(ctx, &partiallyRemoved, "FAILED", "O arquivo original foi removido, mas a exclusao em lote foi interrompida antes da limpeza final do documento.", "collection-bulk", map[string]any{
 					"collection_id": collectionID,
 					"file_url":      partiallyRemoved.FileURL,
 				}))
@@ -554,7 +554,7 @@ func (u *documentCatalogUseCase) DeleteCollectionDocuments(ctx context.Context, 
 		}
 
 		successfullyRemovedSources = append(successfullyRemovedSources, document)
-		audit := buildDocumentDeletionAuditEvent(&document, "SUCCESS", "Documento excluido em lote com remocao do arquivo original e limpeza dos dados derivados.", "collection-bulk", map[string]any{
+		audit := buildDocumentDeletionAuditEvent(ctx, &document, "SUCCESS", "Documento excluido em lote com remocao do arquivo original e limpeza dos dados derivados.", "collection-bulk", map[string]any{
 			"collection_id":       collectionID,
 			"file_url":            document.FileURL,
 			"storage_delete_path": document.FileURL,
@@ -571,7 +571,7 @@ func (u *documentCatalogUseCase) DeleteCollectionDocuments(ctx context.Context, 
 		failureAudits = make([]models.DocumentAuditEvent, 0, len(successfullyRemovedSources))
 		for _, partiallyRemoved := range successfullyRemovedSources {
 			_, _ = u.documentRepo.MarkDocumentOrphaned(ctx, partiallyRemoved.UserID, partiallyRemoved.ID, "O arquivo original foi removido, mas a exclusao em lote falhou antes da limpeza completa.")
-			failureAudits = append(failureAudits, buildDocumentDeletionAuditEvent(&partiallyRemoved, "FAILED", fmt.Sprintf("O arquivo original foi removido, mas a exclusao em lote falhou antes da limpeza completa: %v", err), "collection-bulk", map[string]any{
+			failureAudits = append(failureAudits, buildDocumentDeletionAuditEvent(ctx, &partiallyRemoved, "FAILED", fmt.Sprintf("O arquivo original foi removido, mas a exclusao em lote falhou antes da limpeza completa: %v", err), "collection-bulk", map[string]any{
 				"collection_id": collectionID,
 				"file_url":      partiallyRemoved.FileURL,
 			}))
@@ -706,7 +706,7 @@ func storageDeletionDetail(usedCustomStorage bool, usedFallback bool) string {
 	}
 }
 
-func buildDocumentDeletionAuditEvent(doc *models.Document, status, detail, mode string, metadata map[string]any) models.DocumentAuditEvent {
+func buildDocumentDeletionAuditEvent(ctx context.Context, doc *models.Document, status, detail, mode string, metadata map[string]any) models.DocumentAuditEvent {
 	var collectionID *uint
 	if doc != nil {
 		collectionID = doc.CollectionID
@@ -723,21 +723,48 @@ func buildDocumentDeletionAuditEvent(doc *models.Document, status, detail, mode 
 	var documentID *uint
 	var title string
 	var userID uint
+	var actorID *uint
+	actorType := "USER"
+	var correlationID string
+	var origin string
 	if doc != nil {
 		documentID = &doc.ID
 		title = doc.Title
 		userID = doc.UserID
+		actorID = &doc.UserID
+	}
+
+	if extracted, ok := domain.ExtractAuditContext(ctx); ok {
+		if extracted.ActorType != "" {
+			actorType = extracted.ActorType
+		}
+		actorID = extracted.ActorID
+		correlationID = extracted.CorrelationID
+		origin = extracted.Origin
+		if extracted.RequestMethod != "" {
+			eventMetadata["request_method"] = extracted.RequestMethod
+		}
+		if extracted.RoutePath != "" {
+			eventMetadata["route_path"] = extracted.RoutePath
+		}
+		if extracted.RemoteAddr != "" {
+			eventMetadata["remote_addr"] = extracted.RemoteAddr
+		}
 	}
 
 	return models.DocumentAuditEvent{
-		UserID:       userID,
-		DocumentID:   documentID,
-		CollectionID: collectionID,
-		Action:       "DOCUMENT_DELETE",
-		Status:       status,
-		Title:        title,
-		Detail:       detail,
-		Metadata:     eventMetadata,
+		UserID:        userID,
+		DocumentID:    documentID,
+		CollectionID:  collectionID,
+		ActorType:     actorType,
+		ActorID:       actorID,
+		Action:        "DOCUMENT_DELETE",
+		Status:        status,
+		CorrelationID: correlationID,
+		Origin:        origin,
+		Title:         title,
+		Detail:        detail,
+		Metadata:      eventMetadata,
 	}
 }
 

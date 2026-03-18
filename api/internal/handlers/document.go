@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -462,7 +463,7 @@ func (h *DocumentHandler) DeleteDocument(c *gin.Context) {
 		return
 	}
 
-	if err := h.useCase.DeleteDocument(c.Request.Context(), userID, documentID); err != nil {
+	if err := h.useCase.DeleteDocument(withDeletionAuditContext(c, userID), userID, documentID); err != nil {
 		switch {
 		case errors.Is(err, domain.ErrDocumentNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
@@ -488,7 +489,7 @@ func (h *DocumentHandler) DeleteCollectionDocuments(c *gin.Context) {
 		return
 	}
 
-	deletedCount, collection, err := h.useCase.DeleteCollectionDocuments(c.Request.Context(), userID, collectionID)
+	deletedCount, collection, err := h.useCase.DeleteCollectionDocuments(withDeletionAuditContext(c, userID), userID, collectionID)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrCollectionNotFound):
@@ -649,4 +650,24 @@ func isUploadTooLargeError(err error) bool {
 
 	errMessage := strings.ToLower(err.Error())
 	return strings.Contains(errMessage, "request body too large") || strings.Contains(errMessage, "multipart: message too large")
+}
+
+func withDeletionAuditContext(c *gin.Context, userID uint) context.Context {
+	actorID := userID
+	requestID := c.GetString("request_id")
+	routePath := c.FullPath()
+	origin := c.Request.Method
+	if routePath != "" {
+		origin = c.Request.Method + " " + routePath
+	}
+
+	return domain.WithAuditContext(c.Request.Context(), domain.AuditContext{
+		ActorType:     "USER",
+		ActorID:       &actorID,
+		CorrelationID: requestID,
+		Origin:        origin,
+		RequestMethod: c.Request.Method,
+		RoutePath:     routePath,
+		RemoteAddr:    c.ClientIP(),
+	})
 }
