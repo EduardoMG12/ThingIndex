@@ -184,13 +184,23 @@ func TestDeleteDocumentPersistsSuccessAuditInsideDeleteTransaction(t *testing.T)
 
 	doc := &models.Document{ID: 11, UserID: 4, Title: "Relatorio.pdf", FileURL: "docs/relatorio.pdf"}
 	repo := &documentRepoStub{document: doc}
+	actorID := uint(4)
+	ctx := domain.WithAuditContext(context.Background(), domain.AuditContext{
+		ActorType:     "USER",
+		ActorID:       &actorID,
+		CorrelationID: "req-delete-001",
+		Origin:        "DELETE /api/v1/documents/:id",
+		RequestMethod: "DELETE",
+		RoutePath:     "/api/v1/documents/:id",
+		RemoteAddr:    "127.0.0.1",
+	})
 	useCase := &documentCatalogUseCase{
 		documentRepo:    repo,
 		storage:         &storageStub{},
 		storageResolver: &resolverStub{err: domain.ErrStorageProviderNotConfigured},
 	}
 
-	err := useCase.DeleteDocument(context.Background(), 4, 11)
+	err := useCase.DeleteDocument(ctx, 4, 11)
 	if err != nil {
 		t.Fatalf("expected delete to succeed, got %v", err)
 	}
@@ -199,6 +209,15 @@ func TestDeleteDocumentPersistsSuccessAuditInsideDeleteTransaction(t *testing.T)
 	}
 	if repo.deleteDocumentAudit.Status != "SUCCESS" {
 		t.Fatalf("expected success audit status, got %#v", repo.deleteDocumentAudit)
+	}
+	if repo.deleteDocumentAudit.CorrelationID != "req-delete-001" || repo.deleteDocumentAudit.Origin != "DELETE /api/v1/documents/:id" {
+		t.Fatalf("expected correlation and origin metadata, got %#v", repo.deleteDocumentAudit)
+	}
+	if repo.deleteDocumentAudit.ActorID == nil || *repo.deleteDocumentAudit.ActorID != actorID {
+		t.Fatalf("expected actor id in audit event, got %#v", repo.deleteDocumentAudit)
+	}
+	if repo.deleteDocumentAudit.Metadata["route_path"] != "/api/v1/documents/:id" {
+		t.Fatalf("expected route path in audit metadata, got %#v", repo.deleteDocumentAudit.Metadata)
 	}
 }
 
