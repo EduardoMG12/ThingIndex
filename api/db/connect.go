@@ -38,6 +38,7 @@ func Connect() (*gorm.DB, error) {
 		&models.DocumentOutlineNode{},
 		&models.OutboxEvent{},
 		&models.UserProviderConfig{},
+		&models.ProviderModelCatalog{},
 		&models.PricingSource{},
 		&models.ModelPrice{},
 		&models.ModelPriceHistory{},

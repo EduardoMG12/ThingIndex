@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/url"
+	"strconv"
 	"strings"
 	"thing-index/internal/config"
 	"thing-index/internal/domain"
@@ -13,6 +15,7 @@ import (
 	"thing-index/internal/pkg/crypto"
 	"thing-index/internal/pkg/netsec"
 	"thing-index/internal/pkg/provider"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -65,6 +68,8 @@ var providerTypeAliases = map[string]string{
 	"CLAUDE_ANTHROPIC": domain.ProviderClaude,
 }
 
+const globalModelCatalogScope = "GLOBAL"
+
 type providerUseCase struct {
 	repo              domain.ProviderRepository
 	cfg               *config.Config
@@ -86,9 +91,6 @@ func (u *providerUseCase) SaveCredentials(ctx context.Context, userID uint, fami
 	}
 
 	if err := u.validateCredentials(ctx, normalizedFamily, normalizedProviderType, credentials); err != nil {
-		return err
-	}
-	if err := u.validateProviderConnection(ctx, normalizedFamily, normalizedProviderType, credentials); err != nil {
 		return err
 	}
 
@@ -136,6 +138,76 @@ func (u *providerUseCase) TestConnection(ctx context.Context, userID uint, famil
 	return nil
 }
 
+func (u *providerUseCase) ListModels(ctx context.Context, userID uint, family, providerType string, credentials map[string]string) ([]string, error) {
+	normalizedFamily, normalizedProviderType, err := normalizeProviderSelection(family, providerType)
+	if err != nil {
+		return nil, err
+	}
+	if normalizedFamily != domain.FamilyLLM {
+		return nil, domain.ErrProviderFamilyInvalid
+	}
+
+	hasDiscoveryOverrides := false
+	for _, key := range []string{"base_url", "api_key", "model"} {
+		if strings.TrimSpace(credentials[key]) != "" {
+			hasDiscoveryOverrides = true
+			break
+		}
+	}
+
+	if !hasDiscoveryOverrides {
+		if cachedModels, err := u.listCachedModels(ctx, userID, normalizedProviderType); err == nil && len(cachedModels) > 0 {
+			return cachedModels, nil
+		}
+	}
+
+	if err := u.validateModelDiscoveryCredentials(ctx, normalizedProviderType, credentials); err != nil {
+		return nil, err
+	}
+
+	discoveryCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
+	defer cancel()
+
+	models, err := provider.ListLLMModels(discoveryCtx, normalizedProviderType, credentials)
+	if err != nil {
+		if cachedModels, cacheErr := u.listCachedModels(ctx, userID, normalizedProviderType); cacheErr == nil && len(cachedModels) > 0 {
+			return cachedModels, nil
+		}
+
+		switch {
+		case errors.Is(err, context.DeadlineExceeded), errors.Is(discoveryCtx.Err(), context.DeadlineExceeded):
+			return nil, domain.ErrProviderModelsTimeout
+		case strings.Contains(strings.ToLower(err.Error()), "not implemented"):
+			return nil, domain.ErrProviderModelsUnsupported
+		default:
+			return nil, fmt.Errorf("%w: %v", domain.ErrProviderModelsUnavailable, err)
+		}
+	}
+
+	if err := u.saveModelCatalog(ctx, userID, normalizedProviderType, models); err != nil {
+		log.Printf("provider model catalog save skipped for provider=%s user=%d: %v", normalizedProviderType, userID, err)
+	}
+
+	return models, nil
+}
+
+func (u *providerUseCase) validateModelDiscoveryCredentials(ctx context.Context, providerType string, credentials map[string]string) error {
+	switch providerType {
+	case domain.ProviderOllama:
+		// Ollama Cloud exposes /api/tags publicly, so model discovery must not require api_key.
+	default:
+		if err := u.validateLLMCredentials(ctx, providerType, credentials); err != nil {
+			return err
+		}
+	}
+
+	if err := u.validateLLMBaseURL(ctx, credentials["base_url"]); err != nil {
+		return domain.ErrProviderCredentialsInvalid
+	}
+
+	return nil
+}
+
 func (u *providerUseCase) GetDecryptedCredentials(ctx context.Context, userID uint, providerType string) (map[string]string, error) {
 	config, err := u.repo.GetConfig(ctx, userID, strings.ToUpper(strings.TrimSpace(providerType)))
 	if err != nil {
@@ -160,6 +232,40 @@ func (u *providerUseCase) decryptConfig(config *models.UserProviderConfig, userI
 
 func (u *providerUseCase) ListUserProviders(ctx context.Context, userID uint) ([]models.UserProviderConfig, error) {
 	return u.repo.ListConfigs(ctx, userID)
+}
+
+func (u *providerUseCase) SyncModelCatalogs(ctx context.Context) error {
+	for providerType := range publicModelCatalogProviders() {
+		if err := u.syncProviderModelCatalog(ctx, 0, providerType, map[string]string{
+			"base_url": publicProviderDefaultBaseURL(providerType),
+		}); err != nil {
+			log.Printf("public provider model catalog sync failed for provider=%s: %v", providerType, err)
+		}
+	}
+
+	configs, err := u.repo.ListAllConfigs(ctx)
+	if err != nil {
+		return err
+	}
+
+	for i := range configs {
+		config := configs[i]
+		if config.Family != domain.FamilyLLM || isPublicModelCatalogProvider(config.ProviderType) {
+			continue
+		}
+
+		credentials, err := u.decryptConfig(&config, config.UserID)
+		if err != nil {
+			log.Printf("provider model catalog decrypt failed for provider=%s user=%d: %v", config.ProviderType, config.UserID, err)
+			continue
+		}
+
+		if err := u.syncProviderModelCatalog(ctx, config.UserID, config.ProviderType, credentials); err != nil {
+			log.Printf("private provider model catalog sync failed for provider=%s user=%d: %v", config.ProviderType, config.UserID, err)
+		}
+	}
+
+	return nil
 }
 
 func (u *providerUseCase) SetProviderEnabled(ctx context.Context, userID uint, family, providerType string, enabled bool) error {
@@ -430,6 +536,10 @@ func (u *providerUseCase) validateLLMBaseURL(ctx context.Context, rawURL string)
 		return domain.ErrProviderCredentialsInvalid
 	}
 
+	if isOllamaCloudBaseURL(trimmedURL) {
+		return nil
+	}
+
 	if err := u.endpointValidator.Validate(ctx, parsed.Host); err != nil {
 		return domain.ErrProviderCredentialsInvalid
 	}
@@ -450,4 +560,125 @@ func isOllamaCloudBaseURL(rawURL string) bool {
 
 	host := strings.ToLower(strings.TrimSpace(parsed.Hostname()))
 	return host == "ollama.com" || host == "www.ollama.com"
+}
+
+func (u *providerUseCase) listCachedModels(ctx context.Context, userID uint, providerType string) ([]string, error) {
+	if u.repo == nil {
+		return nil, nil
+	}
+
+	scopeKeys := modelCatalogScopeOrder(userID, providerType)
+	for _, scopeKey := range scopeKeys {
+		items, err := u.repo.ListModelCatalog(ctx, scopeKey, providerType)
+		if err != nil {
+			return nil, err
+		}
+		if len(items) == 0 {
+			continue
+		}
+
+		models := make([]string, 0, len(items))
+		for _, item := range items {
+			modelID := strings.TrimSpace(item.ModelID)
+			if modelID == "" {
+				continue
+			}
+			models = append(models, modelID)
+		}
+		if len(models) > 0 {
+			return models, nil
+		}
+	}
+
+	return nil, nil
+}
+
+func (u *providerUseCase) saveModelCatalog(ctx context.Context, userID uint, providerType string, discovered []string) error {
+	if u.repo == nil {
+		return nil
+	}
+
+	scopeKey, scopedUserID := modelCatalogScope(userID, providerType)
+	entries := make([]models.ProviderModelCatalog, 0, len(discovered))
+	fetchedAt := time.Now().UTC()
+
+	for _, item := range discovered {
+		modelID := strings.TrimSpace(item)
+		if modelID == "" {
+			continue
+		}
+
+		entries = append(entries, models.ProviderModelCatalog{
+			ScopeKey:     scopeKey,
+			UserID:       scopedUserID,
+			ProviderType: providerType,
+			ModelID:      modelID,
+			DisplayName:  modelID,
+			FetchedAt:    fetchedAt,
+			IsActive:     true,
+		})
+	}
+
+	return u.repo.ReplaceModelCatalog(ctx, scopeKey, scopedUserID, providerType, entries)
+}
+
+func (u *providerUseCase) syncProviderModelCatalog(ctx context.Context, userID uint, providerType string, credentials map[string]string) error {
+	if u.repo == nil {
+		return nil
+	}
+
+	normalizedProviderType := normalizeProviderType(providerType)
+	if err := u.validateModelDiscoveryCredentials(ctx, normalizedProviderType, credentials); err != nil {
+		return err
+	}
+
+	discoveryCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
+	defer cancel()
+
+	models, err := provider.ListLLMModels(discoveryCtx, normalizedProviderType, credentials)
+	if err != nil {
+		return err
+	}
+
+	return u.saveModelCatalog(ctx, userID, normalizedProviderType, models)
+}
+
+func publicModelCatalogProviders() map[string]struct{} {
+	return map[string]struct{}{
+		domain.ProviderOllama: {},
+	}
+}
+
+func isPublicModelCatalogProvider(providerType string) bool {
+	_, ok := publicModelCatalogProviders()[normalizeProviderType(providerType)]
+	return ok
+}
+
+func publicProviderDefaultBaseURL(providerType string) string {
+	switch normalizeProviderType(providerType) {
+	case domain.ProviderOllama:
+		return "https://ollama.com/api"
+	default:
+		return ""
+	}
+}
+
+func modelCatalogScope(userID uint, providerType string) (string, *uint) {
+	if isPublicModelCatalogProvider(providerType) {
+		return globalModelCatalogScope, nil
+	}
+
+	scopeUserID := userID
+	return "USER:" + strconv.FormatUint(uint64(userID), 10), &scopeUserID
+}
+
+func modelCatalogScopeOrder(userID uint, providerType string) []string {
+	if isPublicModelCatalogProvider(providerType) {
+		return []string{globalModelCatalogScope}
+	}
+
+	return []string{
+		"USER:" + strconv.FormatUint(uint64(userID), 10),
+		globalModelCatalogScope,
+	}
 }

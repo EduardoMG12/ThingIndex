@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"net/url"
 	"strings"
 	"thing-index/internal/domain"
 	"thing-index/internal/dto"
@@ -74,7 +75,7 @@ func (h *ProviderHandler) SaveCredentials(c *gin.Context) {
 		case errors.Is(err, domain.ErrProviderTypeInvalid):
 			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_type"), nil)
 		case errors.Is(err, domain.ErrProviderCredentialsInvalid):
-			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_credentials"), nil)
+			response.Error(c, http.StatusBadRequest, "error", invalidProviderCredentialsMessage(lang, req.ProviderType, req.Credentials), nil)
 		default:
 			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
 		}
@@ -101,7 +102,7 @@ func (h *ProviderHandler) TestConnection(c *gin.Context) {
 		case errors.Is(err, domain.ErrProviderTypeInvalid):
 			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_type"), nil)
 		case errors.Is(err, domain.ErrProviderCredentialsInvalid):
-			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_credentials"), nil)
+			response.Error(c, http.StatusBadRequest, "error", invalidProviderCredentialsMessage(lang, req.ProviderType, req.Credentials), nil)
 		default:
 			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
 		}
@@ -109,6 +110,42 @@ func (h *ProviderHandler) TestConnection(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, "success", "Conexao com o provider validada com sucesso.", nil)
+}
+
+func (h *ProviderHandler) ListModels(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	var req testConnectionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
+		return
+	}
+
+	models, err := h.useCase.ListModels(c.Request.Context(), userID, req.Family, req.ProviderType, req.Credentials)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrProviderFamilyInvalid):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_family"), nil)
+		case errors.Is(err, domain.ErrProviderTypeInvalid):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_type"), nil)
+		case errors.Is(err, domain.ErrProviderCredentialsInvalid):
+			response.Error(c, http.StatusBadRequest, "error", invalidProviderModelsMessage(req.ProviderType, req.Credentials), nil)
+		case errors.Is(err, domain.ErrProviderModelsUnsupported):
+			response.Error(c, http.StatusBadRequest, "error", "A listagem automatica de modelos ainda nao esta disponivel para esse provider.", nil)
+		case errors.Is(err, domain.ErrProviderModelsTimeout):
+			response.Error(c, http.StatusGatewayTimeout, "error", "A listagem de modelos excedeu o tempo limite. Revise a URL base do provider e tente novamente.", nil)
+		case errors.Is(err, domain.ErrProviderModelsUnavailable):
+			response.Error(c, http.StatusBadGateway, "error", "Nao foi possivel consultar os modelos no provider. Revise a URL base e a conectividade do backend com esse endpoint.", nil)
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
+		}
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", "Modelos carregados com sucesso.", gin.H{
+		"models": models,
+	})
 }
 
 func (h *ProviderHandler) ListProviders(c *gin.Context) {
@@ -244,4 +281,39 @@ func normalizeActivationTarget(target string, family string, enabledForIndexing 
 	}
 
 	return ""
+}
+
+func invalidProviderCredentialsMessage(lang string, providerType string, credentials map[string]string) string {
+	if isLoopbackOllamaBaseURL(providerType, credentials) {
+		return "O Ollama nao esta acessivel em localhost a partir do container da API. Se ele roda na sua maquina host, use http://host.docker.internal:11434/v1."
+	}
+
+	return i18n.T(lang, "provider.error_invalid_credentials")
+}
+
+func invalidProviderModelsMessage(providerType string, credentials map[string]string) string {
+	if isLoopbackOllamaBaseURL(providerType, credentials) {
+		return "Nao foi possivel listar modelos do Ollama via localhost a partir do container da API. Se ele roda na sua maquina host, use http://host.docker.internal:11434/v1."
+	}
+
+	return "Nao foi possivel listar modelos para esse provider com a configuracao atual."
+}
+
+func isLoopbackOllamaBaseURL(providerType string, credentials map[string]string) bool {
+	if !strings.EqualFold(strings.TrimSpace(providerType), domain.ProviderOllama) {
+		return false
+	}
+
+	baseURL := strings.TrimSpace(credentials["base_url"])
+	if baseURL == "" {
+		return false
+	}
+
+	parsed, err := url.Parse(baseURL)
+	if err != nil {
+		return false
+	}
+
+	host := strings.ToLower(strings.TrimSpace(parsed.Hostname()))
+	return host == "localhost" || host == "127.0.0.1" || host == "::1"
 }

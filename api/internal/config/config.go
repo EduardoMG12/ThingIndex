@@ -42,28 +42,29 @@ type Config struct {
 	ResetPasswordURL string
 
 	// Storage config
-	MinioEndpoint           string
-	MinioAccessKey          string
-	MinioSecretKey          string
-	MinioUseSSL             string
-	MinioBucketName         string
-	RabbitMQURL             string
-	DocumentIndexExchange   string
-	DocumentIndexQueue      string
-	DocumentIndexRoutingKey string
-	DocumentIndexRetryQueue string
-	DocumentIndexDLQ        string
-	OutboxPollInterval      time.Duration
-	OutboxBatchSize         int
-	ConsumerPrefetchCount   int
-	DocumentIndexRetryDelay time.Duration
-	DocumentIndexMaxRetries int
-	PricingSyncInterval     time.Duration
-	MaxUploadSizeBytes      int64
-	MasterEncryptionKey     string
-	ServerReadTimeout       time.Duration
-	ServerWriteTimeout      time.Duration
-	ServerIdleTimeout       time.Duration
+	MinioEndpoint            string
+	MinioAccessKey           string
+	MinioSecretKey           string
+	MinioUseSSL              string
+	MinioBucketName          string
+	RabbitMQURL              string
+	DocumentIndexExchange    string
+	DocumentIndexQueue       string
+	DocumentIndexRoutingKey  string
+	DocumentIndexRetryQueue  string
+	DocumentIndexDLQ         string
+	OutboxPollInterval       time.Duration
+	OutboxBatchSize          int
+	ConsumerPrefetchCount    int
+	DocumentIndexRetryDelay  time.Duration
+	DocumentIndexMaxRetries  int
+	PricingSyncInterval      time.Duration
+	ModelCatalogSyncInterval time.Duration
+	MaxUploadSizeBytes       int64
+	MasterEncryptionKey      string
+	ServerReadTimeout        time.Duration
+	ServerWriteTimeout       time.Duration
+	ServerIdleTimeout        time.Duration
 }
 
 var AppConfig *Config
@@ -132,6 +133,7 @@ func Load() {
 		DocumentIndexRetryDelay:      getEnvDurationSeconds("DOCUMENT_INDEX_RETRY_DELAY_SECONDS", 30),
 		DocumentIndexMaxRetries:      getEnvInt("DOCUMENT_INDEX_MAX_RETRIES", 5),
 		PricingSyncInterval:          getEnvDurationSeconds("PRICING_SYNC_INTERVAL_SECONDS", 86400),
+		ModelCatalogSyncInterval:     getEnvDurationSeconds("MODEL_CATALOG_SYNC_INTERVAL_SECONDS", 86400),
 		MaxUploadSizeBytes:           getEnvInt64("MAX_UPLOAD_SIZE_BYTES", 20*1024*1024),
 		MasterEncryptionKey:          getEnv("MASTER_ENCRYPTION_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMaster)),
 		ServerReadTimeout:            getEnvDurationSeconds("SERVER_READ_TIMEOUT_SECONDS", 15),

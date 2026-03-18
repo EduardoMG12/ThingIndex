@@ -38,6 +38,9 @@ type ProviderRepository interface {
 	GetConfigByFamily(ctx context.Context, userID uint, family string) (*models.UserProviderConfig, error)
 	GetConfigByLLMUsage(ctx context.Context, userID uint, usage string) (*models.UserProviderConfig, error)
 	ListConfigs(ctx context.Context, userID uint) ([]models.UserProviderConfig, error)
+	ListAllConfigs(ctx context.Context) ([]models.UserProviderConfig, error)
+	ListModelCatalog(ctx context.Context, scopeKey, providerType string) ([]models.ProviderModelCatalog, error)
+	ReplaceModelCatalog(ctx context.Context, scopeKey string, userID *uint, providerType string, entries []models.ProviderModelCatalog) error
 	SetConfigEnabled(ctx context.Context, userID uint, family, providerType string, enabled bool) error
 	SetLLMConfigUsage(ctx context.Context, userID uint, providerType, usage string, enabled bool) error
 	DeleteConfig(ctx context.Context, userID uint, providerType string) error
@@ -46,8 +49,10 @@ type ProviderRepository interface {
 type ProviderUseCase interface {
 	SaveCredentials(ctx context.Context, userID uint, family, providerType string, credentials map[string]string, activation ProviderActivation) error
 	TestConnection(ctx context.Context, userID uint, family, providerType string, credentials map[string]string) error
+	ListModels(ctx context.Context, userID uint, family, providerType string, credentials map[string]string) ([]string, error)
 	GetDecryptedCredentials(ctx context.Context, userID uint, providerType string) (map[string]string, error)
 	ListUserProviders(ctx context.Context, userID uint) ([]models.UserProviderConfig, error)
+	SyncModelCatalogs(ctx context.Context) error
 	SetProviderEnabled(ctx context.Context, userID uint, family, providerType string, enabled bool) error
 	SetLLMUsageEnabled(ctx context.Context, userID uint, providerType, usage string, enabled bool) error
 }

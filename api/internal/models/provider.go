@@ -14,3 +14,17 @@ type UserProviderConfig struct {
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
 }
+
+type ProviderModelCatalog struct {
+	ID           uint      `gorm:"primarykey" json:"id"`
+	ScopeKey     string    `gorm:"size:64;not null;uniqueIndex:idx_provider_model_catalog_scope,priority:1;index" json:"scope_key"`
+	UserID       *uint     `gorm:"index" json:"user_id,omitempty"`
+	ProviderType string    `gorm:"size:50;not null;uniqueIndex:idx_provider_model_catalog_scope,priority:2;index" json:"provider_type"`
+	ModelID      string    `gorm:"size:255;not null;uniqueIndex:idx_provider_model_catalog_scope,priority:3" json:"model_id"`
+	DisplayName  string    `gorm:"size:255;not null" json:"display_name"`
+	MetadataJSON string    `gorm:"type:text" json:"metadata_json,omitempty"`
+	FetchedAt    time.Time `gorm:"not null;index" json:"fetched_at"`
+	IsActive     bool      `gorm:"not null;default:true;index" json:"is_active"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}

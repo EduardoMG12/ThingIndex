@@ -1,16 +1,20 @@
 package api
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"thing-index/internal/api/middleware"
 	"thing-index/internal/config"
+	"thing-index/internal/domain"
 	"thing-index/internal/handlers"
 	"thing-index/internal/mailer"
 	"thing-index/internal/pkg/response"
 	"thing-index/internal/pkg/storage"
 	"thing-index/internal/repository"
 	"thing-index/internal/usecase"
+	"time"
 
 	_ "thing-index/docs"
 
@@ -64,6 +68,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 	providerRepo := repository.NewGormProviderRepository(db)
 	providerUseCase := usecase.NewProviderUseCase(providerRepo, cfg)
 	providerHandler := handlers.NewProviderHandler(providerUseCase)
+	startProviderModelCatalogSync(context.Background(), providerUseCase, cfg.ModelCatalogSyncInterval)
 	pricingRepo := repository.NewGormPricingRepository(db)
 	pricingUseCase := usecase.NewPricingUseCase(pricingRepo)
 	pricingHandler := handlers.NewPricingHandler(pricingUseCase)
@@ -123,6 +128,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		{
 			user.POST("/providers", providerHandler.SaveCredentials)
 			user.POST("/providers/test", providerHandler.TestConnection)
+			user.POST("/providers/models", providerHandler.ListModels)
 			user.GET("/providers", providerHandler.ListProviders)
 			user.PATCH("/providers/:providerType", providerHandler.UpdateProviderState)
 			user.POST("/pricing-sources", pricingHandler.SaveSource)
@@ -170,4 +176,35 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 	}
 
 	return nil
+}
+
+func startProviderModelCatalogSync(ctx context.Context, providerUseCase domain.ProviderUseCase, interval time.Duration) {
+	if interval <= 0 {
+		return
+	}
+
+	go func() {
+		runSync := func() {
+			syncCtx, cancel := context.WithTimeout(ctx, interval)
+			defer cancel()
+
+			if err := providerUseCase.SyncModelCatalogs(syncCtx); err != nil {
+				log.Printf("provider model catalog sync failed: %v", err)
+			}
+		}
+
+		runSync()
+
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				runSync()
+			}
+		}
+	}()
 }
