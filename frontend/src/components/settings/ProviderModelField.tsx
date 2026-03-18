@@ -1,7 +1,10 @@
 "use client";
 
-import { Label } from "@/components/ui/label";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown } from "lucide-react";
+
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type ProviderModelFieldProps = {
     providerType: string;
@@ -13,6 +16,10 @@ type ProviderModelFieldProps = {
     onChange: (value: string) => void;
 };
 
+function normalizeModel(value: string) {
+    return value.trim().toLowerCase();
+}
+
 export default function ProviderModelField({
     providerType,
     label,
@@ -22,52 +29,131 @@ export default function ProviderModelField({
     suggestions = [],
     onChange,
 }: ProviderModelFieldProps) {
-    const listId = `${providerType.toLowerCase()}-model-suggestions`;
-    const quickSuggestions = suggestions.slice(0, 6);
+    const [query, setQuery] = useState(value);
+    const [isOpen, setIsOpen] = useState(false);
+    const rootRef = useRef<HTMLDivElement | null>(null);
+    const inputRef = useRef<HTMLInputElement | null>(null);
+
+    useEffect(() => {
+        setQuery(value);
+    }, [value]);
+
+    useEffect(() => {
+        function handlePointerDown(event: MouseEvent) {
+            if (!rootRef.current?.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        }
+
+        document.addEventListener("mousedown", handlePointerDown);
+        return () => document.removeEventListener("mousedown", handlePointerDown);
+    }, []);
+
+    const filteredSuggestions = useMemo(() => {
+        const normalizedQuery = normalizeModel(query);
+        if (!normalizedQuery) {
+            return suggestions;
+        }
+
+        return suggestions.filter((suggestion) =>
+            normalizeModel(suggestion).includes(normalizedQuery)
+        );
+    }, [suggestions, query]);
+
+    const quickSuggestions = filteredSuggestions.slice(0, 8);
+
+    function commitValue(nextValue: string) {
+        const trimmedValue = nextValue.trim();
+        onChange(trimmedValue);
+        setQuery(trimmedValue);
+        setIsOpen(false);
+    }
 
     return (
-        <div className="space-y-2">
+        <div ref={rootRef} className="space-y-2">
             <Label htmlFor={`${providerType}-model`}>
                 {label}
                 {optional ? (
                     <span className="ml-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Optional</span>
                 ) : null}
             </Label>
-            <Input
-                id={`${providerType}-model`}
-                list={suggestions.length > 0 ? listId : undefined}
-                value={value}
-                onChange={(event) => onChange(event.target.value)}
-                placeholder={placeholder}
-                autoComplete="off"
-                spellCheck={false}
-            />
-            {suggestions.length > 0 ? (
-                <datalist id={listId}>
-                    {suggestions.map((suggestion) => (
-                        <option key={suggestion} value={suggestion} />
-                    ))}
-                </datalist>
-            ) : null}
-            {quickSuggestions.length > 0 ? (
-                <div className="space-y-2">
-                    <p className="text-[11px] text-muted-foreground">
-                        Choose one of the suggested model IDs or keep typing a custom value.
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                        {quickSuggestions.map((suggestion) => (
-                            <button
-                                key={suggestion}
-                                type="button"
-                                onClick={() => onChange(suggestion)}
-                                className="rounded-full border border-border bg-background/70 px-2.5 py-1 text-xs text-foreground/85 transition-colors hover:border-primary/30 hover:text-primary"
-                            >
-                                {suggestion}
-                            </button>
-                        ))}
+
+            <div className="relative">
+                <Input
+                    ref={inputRef}
+                    id={`${providerType}-model`}
+                    value={query}
+                    onChange={(event) => {
+                        const nextValue = event.target.value;
+                        setQuery(nextValue);
+                        onChange(nextValue);
+                        setIsOpen(true);
+                    }}
+                    onFocus={() => setIsOpen(true)}
+                    onBlur={() => commitValue(query)}
+                    onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                            event.preventDefault();
+                            if (filteredSuggestions.length > 0) {
+                                commitValue(filteredSuggestions[0]);
+                                return;
+                            }
+                            commitValue(query);
+                        }
+
+                        if (event.key === "Escape") {
+                            setIsOpen(false);
+                        }
+                    }}
+                    placeholder={placeholder}
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="pr-10"
+                />
+
+                <button
+                    type="button"
+                    aria-label="Toggle model suggestions"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                        setIsOpen((current) => !current);
+                        inputRef.current?.focus();
+                    }}
+                    className="absolute inset-y-0 right-0 inline-flex w-10 items-center justify-center text-muted-foreground transition hover:text-foreground"
+                >
+                    <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {isOpen ? (
+                    <div className="absolute left-0 right-0 top-[calc(100%+0.35rem)] z-30 overflow-hidden rounded-md border border-border bg-background shadow-xl">
+                        <div className="max-h-64 overflow-y-auto p-1">
+                            {quickSuggestions.length > 0 ? (
+                                quickSuggestions.map((suggestion) => {
+                                    const isSelected = normalizeModel(suggestion) === normalizeModel(value);
+
+                                    return (
+                                        <button
+                                            key={suggestion}
+                                            type="button"
+                                            onMouseDown={(event) => event.preventDefault()}
+                                            onClick={() => commitValue(suggestion)}
+                                            className="flex w-full items-center justify-between rounded px-3 py-2 text-left text-xs transition-colors hover:bg-muted"
+                                        >
+                                            <span className="truncate font-mono">{suggestion}</span>
+                                            {isSelected ? <Check className="h-3.5 w-3.5 text-primary" /> : null}
+                                        </button>
+                                    );
+                                })
+                            ) : (
+                                <div className="px-3 py-2 text-xs text-muted-foreground">
+                                    No suggested models match this search. Keep typing to use a custom model ID.
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
-            ) : null}
+                ) : null}
+            </div>
+
         </div>
     );
 }

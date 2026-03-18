@@ -56,7 +56,7 @@ const FAMILY_COPY: Record<ProviderFamily, { title: string; description: string; 
         description: "Exactly one LLM can stay enabled at a time for enrichment and reasoning workloads.",
         icon: Bot,
     },
-};
+}
 
 function hasSavedConfig(configs: ProviderConfig[], family: ProviderFamily, providerType: ProviderType) {
     return configs.some((config) => config.family === family && config.provider_type === providerType);
@@ -763,6 +763,29 @@ export default function SettingsPage() {
         }));
     }
 
+    function handleSelectLLMProvider(providerType: ProviderType) {
+        setActiveLLMType(providerType);
+
+        if (providerType !== "OLLAMA") {
+            return;
+        }
+
+        setForms((current) => {
+            const currentBaseURL = current.OLLAMA?.base_url?.trim() ?? "";
+            if (currentBaseURL) {
+                return current;
+            }
+
+            return {
+                ...current,
+                OLLAMA: {
+                    ...current.OLLAMA,
+                    base_url: "https://ollama.com/v1",
+                },
+            };
+        });
+    }
+
     function syncLLMSelections(data: ProviderConfig[]) {
         setLLMSelections((current) => {
             const next = { ...current };
@@ -989,7 +1012,7 @@ export default function SettingsPage() {
                             providers={getProvidersByFamily("LLM")}
                             configs={providers}
                             activeProviderType={activeLLMType}
-                            onSelect={setActiveLLMType}
+                            onSelect={handleSelectLLMProvider}
                             forms={forms}
                             llmSelections={llmSelections}
                             onFieldChange={handleFieldChange}

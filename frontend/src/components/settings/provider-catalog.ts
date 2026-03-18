@@ -13,24 +13,6 @@ export type ProviderField = {
     suggestions?: string[];
 };
 
-export type ProviderDefinition = {
-    family: ProviderFamily;
-    providerType: ProviderType;
-    name: string;
-    tagline: string;
-    description: string;
-    icon: LucideIcon;
-    accentClass: string;
-    fields: ProviderField[];
-};
-
-export const PRICING_PROVIDERS: Array<{ providerType: PricingProviderType; name: string; sourceURL: string }> = [
-    { providerType: "OPENAI", name: "OpenAI API Pricing", sourceURL: "https://developers.openai.com/api/pricing/" },
-    { providerType: "DEEP_SEEK", name: "DeepSeek Pricing", sourceURL: "https://deepseek.ai/pricing" },
-    { providerType: "GOOGLE_GEMINI", name: "Gemini API Pricing", sourceURL: "https://ai.google.dev/gemini-api/docs/pricing" },
-    { providerType: "OLLAMA", name: "Ollama Pricing", sourceURL: "https://ollama.com/pricing" },
-];
-
 const openAIModelSuggestions = [
     "gpt-4o-mini",
     "gpt-4o",
@@ -79,6 +61,24 @@ const openRouterModelSuggestions = [
     "google/gemini-2.5-pro",
     "google/gemini-2.5-flash",
     "meta-llama/llama-3.1-70b-instruct",
+];
+
+export type ProviderDefinition = {
+    family: ProviderFamily;
+    providerType: ProviderType;
+    name: string;
+    tagline: string;
+    description: string;
+    icon: LucideIcon;
+    accentClass: string;
+    fields: ProviderField[];
+};
+
+export const PRICING_PROVIDERS: Array<{ providerType: PricingProviderType; name: string; sourceURL: string }> = [
+    { providerType: "OPENAI", name: "OpenAI API Pricing", sourceURL: "https://developers.openai.com/api/pricing/" },
+    { providerType: "DEEP_SEEK", name: "DeepSeek Pricing", sourceURL: "https://deepseek.ai/pricing" },
+    { providerType: "GOOGLE_GEMINI", name: "Gemini API Pricing", sourceURL: "https://ai.google.dev/gemini-api/docs/pricing" },
+    { providerType: "OLLAMA", name: "Ollama Pricing", sourceURL: "https://ollama.com/pricing" },
 ];
 
 export const PROVIDERS: ProviderDefinition[] = [
@@ -259,7 +259,7 @@ export const PROVIDERS: ProviderDefinition[] = [
         fields: [
             { key: "api_key", label: "API key", placeholder: "Required for Ollama Cloud", type: "password", optional: true },
             { key: "model", label: "Model", placeholder: "deepseek-v3.1:671b", kind: "model", suggestions: ollamaModelSuggestions },
-            { key: "base_url", label: "Base URL", placeholder: "https://ollama.com/v1 or http://localhost:11434/v1", optional: true },
+            { key: "base_url", label: "Base URL", placeholder: "https://ollama.com/v1 or http://host.docker.internal:11434/v1", optional: true },
         ],
     },
     {
