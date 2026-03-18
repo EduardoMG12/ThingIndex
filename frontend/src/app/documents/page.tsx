@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
     Activity,
+    AlertTriangle,
     BrainCircuit,
     ChevronDown,
     ChevronLeft,
@@ -22,8 +23,10 @@ import {
     RotateCw,
     Table2,
     Tag,
+    Trash2,
     X,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import AppShell from "@/components/layout/AppShell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,6 +34,8 @@ import { useDocuments } from "@/hooks/use-documents";
 import { fetchCollectionContext } from "@/lib/api/collections";
 import type { CollectionContext } from "@/lib/api/contracts/document-context";
 import {
+    deleteCollectionDocuments,
+    deleteDocument,
     fetchDocumentIndex,
     fetchDocumentMonitoringSummary,
     retryDocumentIndexing,
@@ -351,6 +356,7 @@ function groupDocuments(documents: Document[], locale: string) {
             collections: Array.from(collections.entries())
                 .map(([collectionName, collectionDocuments]) => ({
                     name: collectionName,
+                    collectionId: collectionDocuments[0]?.collection_id ?? null,
                     documents: [...collectionDocuments].sort((left, right) =>
                         new Date(right.created_at ?? 0).getTime() - new Date(left.created_at ?? 0).getTime()
                     ),
@@ -362,6 +368,7 @@ function groupDocuments(documents: Document[], locale: string) {
     const uncategorizedByCollection = Array.from(uncategorizedCollections.entries())
         .map(([collectionName, collectionDocuments]) => ({
             name: collectionName,
+            collectionId: collectionDocuments[0]?.collection_id ?? null,
             documents: [...collectionDocuments].sort((left, right) =>
                 new Date(right.created_at ?? 0).getTime() - new Date(left.created_at ?? 0).getTime()
             ),
@@ -763,13 +770,17 @@ function DocumentCard({
     document,
     onOpenPreview,
     onRetry,
+    onDelete,
     isRetrying,
+    isDeleting,
     locale,
 }: {
     document: Document;
     onOpenPreview: (document: Document) => void;
     onRetry: (document: Document) => void;
+    onDelete: (document: Document) => void;
     isRetrying: boolean;
+    isDeleting: boolean;
     locale: string;
 }) {
     return (
@@ -838,6 +849,113 @@ function DocumentCard({
                         Retry indexing
                     </button>
                 ) : null}
+
+                <button
+                    type="button"
+                    onClick={() => onDelete(document)}
+                    disabled={isDeleting}
+                    className="inline-flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive transition hover:bg-destructive/15 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                    {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    Delete document
+                </button>
+            </div>
+        </div>
+    );
+}
+
+type PendingDeletion =
+    | {
+        kind: "document";
+        document: Document;
+      }
+    | {
+        kind: "collection";
+        collectionId: number;
+        collectionName: string;
+        documentCount: number;
+      };
+
+function DeletionConfirmModal({
+    pendingDeletion,
+    confirmationValue,
+    onConfirmationChange,
+    onCancel,
+    onConfirm,
+    isDeleting,
+}: {
+    pendingDeletion: PendingDeletion | null;
+    confirmationValue: string;
+    onConfirmationChange: (value: string) => void;
+    onCancel: () => void;
+    onConfirm: () => void;
+    isDeleting: boolean;
+}) {
+    if (!pendingDeletion) {
+        return null;
+    }
+
+    const expectedValue = pendingDeletion.kind === "document"
+        ? pendingDeletion.document.title
+        : pendingDeletion.collectionName;
+    const isValid = confirmationValue.trim() === expectedValue;
+
+    return (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <button
+                type="button"
+                onClick={onCancel}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                aria-label="Fechar confirmacao"
+            />
+
+            <div className="relative z-10 w-full max-w-xl rounded-3xl border border-destructive/30 bg-card p-6 shadow-2xl">
+                <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-destructive/30 bg-destructive/10 text-destructive">
+                        <AlertTriangle className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-destructive">Destructive action</p>
+                        <h3 className="mt-2 text-lg font-semibold">
+                            {pendingDeletion.kind === "document" ? "Excluir documento" : "Excluir documentos da collection"}
+                        </h3>
+                        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                            {pendingDeletion.kind === "document"
+                                ? "Isso remove o arquivo bruto, a indexacao derivada e o registro do dashboard."
+                                : `Isso remove os ${pendingDeletion.documentCount} documento(s) da collection e limpa os dados derivados associados.`}
+                        </p>
+                        <p className="mt-3 text-sm text-foreground/90">
+                            Digite <span className="font-semibold text-destructive">{expectedValue}</span> para confirmar.
+                        </p>
+                    </div>
+                </div>
+
+                <input
+                    value={confirmationValue}
+                    onChange={(event) => onConfirmationChange(event.target.value)}
+                    placeholder={expectedValue}
+                    className="mt-5 w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none transition focus:border-destructive/40"
+                />
+
+                <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <button
+                        type="button"
+                        onClick={onCancel}
+                        disabled={isDeleting}
+                        className="inline-flex items-center justify-center rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-60"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onConfirm}
+                        disabled={!isValid || isDeleting}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-destructive/30 bg-destructive px-4 py-2.5 text-sm font-semibold text-destructive-foreground transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        Confirmar exclusao
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -852,18 +970,21 @@ export default function DocumentsPage() {
     const [openCollections, setOpenCollections] = useState<Record<string, boolean>>({});
     const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
     const [retryingDocumentId, setRetryingDocumentId] = useState<number | null>(null);
+    const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
+    const [deleteConfirmationValue, setDeleteConfirmationValue] = useState("");
+    const [deletingTargetKey, setDeletingTargetKey] = useState<string | null>(null);
     const groupedDocuments = groupDocuments(documents, locale);
 
     useEffect(() => {
         const controller = new AbortController();
 
-        async function loadMonitoringSummary() {
+        async function loadMonitoringSummary(signal?: AbortSignal) {
             try {
                 setMonitoringError(null);
-                const data = await fetchDocumentMonitoringSummary(controller.signal);
+                const data = await fetchDocumentMonitoringSummary(signal);
                 setMonitoringSummary(data);
             } catch (err) {
-                if (controller.signal.aborted) {
+                if (signal?.aborted) {
                     return;
                 }
 
@@ -871,7 +992,7 @@ export default function DocumentsPage() {
             }
         }
 
-        void loadMonitoringSummary();
+        void loadMonitoringSummary(controller.signal);
 
         return () => controller.abort();
     }, []);
@@ -905,6 +1026,72 @@ export default function DocumentsPage() {
             await reloadDocuments();
         } finally {
             setRetryingDocumentId(null);
+        }
+    };
+
+    const closeDeletionModal = () => {
+        if (deletingTargetKey) {
+            return;
+        }
+
+        setPendingDeletion(null);
+        setDeleteConfirmationValue("");
+    };
+
+    const openDocumentDeletion = (document: Document) => {
+        setPendingDeletion({ kind: "document", document });
+        setDeleteConfirmationValue("");
+    };
+
+    const openCollectionDeletion = (collectionId: number, collectionName: string, documentCount: number) => {
+        setPendingDeletion({ kind: "collection", collectionId, collectionName, documentCount });
+        setDeleteConfirmationValue("");
+    };
+
+    const refreshAfterMutation = async () => {
+        await Promise.all([
+            reloadDocuments(),
+            fetchDocumentMonitoringSummary().then(setMonitoringSummary).catch((err) => {
+                setMonitoringError(err instanceof Error ? err.message : "Nao foi possivel carregar o resumo de monitoramento.");
+            }),
+        ]);
+    };
+
+    const confirmDeletion = async () => {
+        if (!pendingDeletion) {
+            return;
+        }
+
+        const targetKey = pendingDeletion.kind === "document"
+            ? `document:${pendingDeletion.document.id}`
+            : `collection:${pendingDeletion.collectionId}`;
+
+        setDeletingTargetKey(targetKey);
+
+        try {
+            if (pendingDeletion.kind === "document") {
+                await deleteDocument(pendingDeletion.document.id);
+                if (selectedDocument?.id === pendingDeletion.document.id) {
+                    setSelectedDocument(null);
+                }
+                setDocuments((current) => current.filter((item) => item.id !== pendingDeletion.document.id));
+                toast.success("Documento excluido.");
+            } else {
+                await deleteCollectionDocuments(pendingDeletion.collectionId);
+                setDocuments((current) => current.filter((item) => item.collection_id !== pendingDeletion.collectionId));
+                if (selectedDocument?.collection_id === pendingDeletion.collectionId) {
+                    setSelectedDocument(null);
+                }
+                toast.success("Documentos da collection excluidos.");
+            }
+
+            await refreshAfterMutation();
+            setPendingDeletion(null);
+            setDeleteConfirmationValue("");
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Nao foi possivel concluir a exclusao.");
+        } finally {
+            setDeletingTargetKey(null);
         }
     };
 
@@ -1023,6 +1210,27 @@ export default function DocumentsPage() {
                                                                         {collection.documents.length} documento(s)
                                                                     </p>
                                                                 </div>
+                                                                {collection.collectionId ? (
+                                                                    <span
+                                                                        role="button"
+                                                                        tabIndex={0}
+                                                                        onClick={(event) => {
+                                                                            event.stopPropagation();
+                                                                            openCollectionDeletion(collection.collectionId!, collection.name, collection.documents.length);
+                                                                        }}
+                                                                        onKeyDown={(event) => {
+                                                                            if (event.key === "Enter" || event.key === " ") {
+                                                                                event.preventDefault();
+                                                                                event.stopPropagation();
+                                                                                openCollectionDeletion(collection.collectionId!, collection.name, collection.documents.length);
+                                                                            }
+                                                                        }}
+                                                                        className="inline-flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-[11px] font-semibold text-destructive"
+                                                                    >
+                                                                        {deletingTargetKey === `collection:${collection.collectionId}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                                                                        Delete collection docs
+                                                                    </span>
+                                                                ) : null}
                                                             </button>
 
                                                             {isCollectionOpen && (
@@ -1033,7 +1241,9 @@ export default function DocumentsPage() {
                                                                             document={document}
                                                                             onOpenPreview={setSelectedDocument}
                                                                             onRetry={handleRetryDocument}
+                                                                            onDelete={openDocumentDeletion}
                                                                             isRetrying={retryingDocumentId === document.id}
+                                                                            isDeleting={deletingTargetKey === `document:${document.id}`}
                                                                             locale={locale}
                                                                         />
                                                                     ))}
@@ -1082,6 +1292,27 @@ export default function DocumentsPage() {
                                                                         {collection.documents.length} documento(s) sem categoria
                                                                     </p>
                                                                 </div>
+                                                                {collection.collectionId ? (
+                                                                    <span
+                                                                        role="button"
+                                                                        tabIndex={0}
+                                                                        onClick={(event) => {
+                                                                            event.stopPropagation();
+                                                                            openCollectionDeletion(collection.collectionId!, collection.name, collection.documents.length);
+                                                                        }}
+                                                                        onKeyDown={(event) => {
+                                                                            if (event.key === "Enter" || event.key === " ") {
+                                                                                event.preventDefault();
+                                                                                event.stopPropagation();
+                                                                                openCollectionDeletion(collection.collectionId!, collection.name, collection.documents.length);
+                                                                            }
+                                                                        }}
+                                                                        className="inline-flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-[11px] font-semibold text-destructive"
+                                                                    >
+                                                                        {deletingTargetKey === `collection:${collection.collectionId}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                                                                        Delete collection docs
+                                                                    </span>
+                                                                ) : null}
                                                             </button>
 
                                                             {isCollectionOpen && (
@@ -1092,7 +1323,9 @@ export default function DocumentsPage() {
                                                                             document={document}
                                                                             onOpenPreview={setSelectedDocument}
                                                                             onRetry={handleRetryDocument}
+                                                                            onDelete={openDocumentDeletion}
                                                                             isRetrying={retryingDocumentId === document.id}
+                                                                            isDeleting={deletingTargetKey === `document:${document.id}`}
                                                                             locale={locale}
                                                                         />
                                                                     ))}
@@ -1112,7 +1345,9 @@ export default function DocumentsPage() {
                                                         document={document}
                                                         onOpenPreview={setSelectedDocument}
                                                         onRetry={handleRetryDocument}
+                                                        onDelete={openDocumentDeletion}
                                                         isRetrying={retryingDocumentId === document.id}
+                                                        isDeleting={deletingTargetKey === `document:${document.id}`}
                                                         locale={locale}
                                                     />
                                                 ))}
@@ -1127,6 +1362,14 @@ export default function DocumentsPage() {
             </motion.div>
 
             <DocumentPreviewPanel document={selectedDocument} onClose={() => setSelectedDocument(null)} />
+            <DeletionConfirmModal
+                pendingDeletion={pendingDeletion}
+                confirmationValue={deleteConfirmationValue}
+                onConfirmationChange={setDeleteConfirmationValue}
+                onCancel={closeDeletionModal}
+                onConfirm={() => void confirmDeletion()}
+                isDeleting={deletingTargetKey !== null}
+            />
         </AppShell>
     );
 }

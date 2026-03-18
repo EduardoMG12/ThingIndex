@@ -149,3 +149,35 @@ func (m *MinioStorage) OpenFile(ctx context.Context, objectPath string) (io.Read
 
 	return object, nil
 }
+
+func (m *MinioStorage) DeleteFile(ctx context.Context, objectPath string) error {
+	objectKey := strings.TrimPrefix(strings.TrimSpace(objectPath), m.bucketName+"/")
+	if objectKey == "" {
+		return errors.New("object path is required")
+	}
+
+	if err := m.client.RemoveObject(ctx, m.bucketName, objectKey, minio.RemoveObjectOptions{}); err != nil {
+		return fmt.Errorf("failed to delete file from minio: %w", err)
+	}
+
+	return nil
+}
+
+func (m *MinioStorage) FileExists(ctx context.Context, objectPath string) (bool, error) {
+	objectKey := strings.TrimPrefix(strings.TrimSpace(objectPath), m.bucketName+"/")
+	if objectKey == "" {
+		return false, errors.New("object path is required")
+	}
+
+	_, err := m.client.StatObject(ctx, m.bucketName, objectKey, minio.StatObjectOptions{})
+	if err == nil {
+		return true, nil
+	}
+
+	errorResponse := minio.ToErrorResponse(err)
+	if errorResponse.Code == "NoSuchKey" || errorResponse.Code == "NoSuchObject" || errorResponse.Code == "NotFound" {
+		return false, nil
+	}
+
+	return false, fmt.Errorf("failed to stat file from minio: %w", err)
+}

@@ -180,6 +180,38 @@ export async function retryDocumentIndexing(documentId: number): Promise<Documen
     return parseDocumentResponse(response, "Nao foi possivel reenfileirar o documento para indexacao.");
 }
 
+export async function deleteDocument(documentId: number): Promise<void> {
+    const response = await fetchWithAuthRedirect(`/api/documents/${documentId}`, {
+        method: "DELETE",
+    });
+
+    const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<null> | ApiErrorResponse | null;
+
+    if (!response.ok) {
+        throw new Error(payload?.message || "Nao foi possivel excluir o documento.");
+    }
+}
+
+export async function deleteCollectionDocuments(collectionId: number): Promise<{ deleted_documents: number }> {
+    const response = await fetchWithAuthRedirect(`/api/documents/collections/${collectionId}/documents`, {
+        method: "DELETE",
+    });
+
+    const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<{ deleted_documents?: number }> | ApiErrorResponse | null;
+
+    if (!response.ok) {
+        throw new Error(payload?.message || "Nao foi possivel excluir os documentos da collection.");
+    }
+
+    if (!hasResponseData(payload) || !payload.data) {
+        return { deleted_documents: 0 };
+    }
+
+    return {
+        deleted_documents: typeof payload.data.deleted_documents === "number" ? payload.data.deleted_documents : 0,
+    };
+}
+
 type DocumentIndexApiRecord = {
     document?: DocumentApiRecord | null;
     paragraph_nodes?: unknown[];

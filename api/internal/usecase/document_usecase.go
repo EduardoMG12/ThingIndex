@@ -466,12 +466,69 @@ func (u *documentCatalogUseCase) RetryDocumentIndexing(ctx context.Context, user
 	return document, nil
 }
 
+func (u *documentCatalogUseCase) DeleteDocument(ctx context.Context, userID, documentID uint) error {
+	doc, err := u.GetDocument(ctx, userID, documentID)
+	if err != nil {
+		return err
+	}
+
+	if err := u.deleteDocumentSource(ctx, userID, doc.FileURL); err != nil {
+		return err
+	}
+
+	if err := u.documentRepo.DeleteDocument(ctx, userID, documentID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return domain.ErrDocumentNotFound
+		}
+		return fmt.Errorf("%w: %v", domain.ErrInternal, err)
+	}
+
+	return nil
+}
+
+func (u *documentCatalogUseCase) DeleteCollectionDocuments(ctx context.Context, userID, collectionID uint) (int64, *models.Collection, error) {
+	collection, err := u.GetCollection(ctx, userID, collectionID)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	documents, err := u.documentRepo.GetDocumentsByCollectionID(ctx, collectionID, userID)
+	if err != nil {
+		return 0, nil, fmt.Errorf("%w: %v", domain.ErrInternal, err)
+	}
+
+	for _, document := range documents {
+		if err := u.deleteDocumentSource(ctx, userID, document.FileURL); err != nil {
+			return 0, nil, err
+		}
+	}
+
+	deletedCount, err := u.documentRepo.DeleteDocumentsByCollection(ctx, userID, collectionID)
+	if err != nil {
+		return 0, nil, fmt.Errorf("%w: %v", domain.ErrInternal, err)
+	}
+
+	return deletedCount, collection, nil
+}
+
 func (u *documentCatalogUseCase) GetDocumentContent(ctx context.Context, userID, documentID uint) (*domain.DocumentContent, error) {
 	doc, err := u.GetDocument(ctx, userID, documentID)
 	if err != nil {
 		return nil, err
 	}
 
+	reader, err := u.openDocumentReader(ctx, userID, doc)
+	if err != nil {
+		return nil, err
+	}
+
+	return &domain.DocumentContent{
+		Document: doc,
+		Reader:   reader,
+	}, nil
+}
+
+func (u *documentCatalogUseCase) openDocumentReader(ctx context.Context, userID uint, doc *models.Document) (io.ReadCloser, error) {
 	storageClient := u.storage
 	usedCustomStorage := false
 	userStorage, providerErr := u.storageResolver.ResolveStorage(ctx, userID)
@@ -485,23 +542,76 @@ func (u *documentCatalogUseCase) GetDocumentContent(ctx context.Context, userID,
 	}
 
 	reader, err := storageClient.OpenFile(ctx, doc.FileURL)
-	if err != nil {
-		if usedCustomStorage {
-			fallbackReader, fallbackErr := u.storage.OpenFile(ctx, doc.FileURL)
-			if fallbackErr == nil {
-				reader = fallbackReader
-			} else {
-				return nil, fmt.Errorf("%w: custom storage open failed: %v; fallback open failed: %v", domain.ErrUploadFailed, err, fallbackErr)
-			}
-		} else {
-			return nil, fmt.Errorf("%w: %v", domain.ErrUploadFailed, err)
+	if err == nil {
+		return reader, nil
+	}
+
+	if usedCustomStorage {
+		fallbackReader, fallbackErr := u.storage.OpenFile(ctx, doc.FileURL)
+		if fallbackErr == nil {
+			return fallbackReader, nil
+		}
+		if u.shouldMarkDocumentAsOrphaned(ctx, doc, storageClient, u.storage) {
+			return nil, domain.ErrDocumentSourceMissing
+		}
+		return nil, fmt.Errorf("%w: custom storage open failed: %v; fallback open failed: %v", domain.ErrUploadFailed, err, fallbackErr)
+	}
+
+	if u.shouldMarkDocumentAsOrphaned(ctx, doc, storageClient, nil) {
+		return nil, domain.ErrDocumentSourceMissing
+	}
+
+	return nil, fmt.Errorf("%w: %v", domain.ErrUploadFailed, err)
+}
+
+func (u *documentCatalogUseCase) shouldMarkDocumentAsOrphaned(ctx context.Context, doc *models.Document, primary domain.StorageService, secondary domain.StorageService) bool {
+	existsInPrimary, primaryErr := primary.FileExists(ctx, doc.FileURL)
+	if primaryErr == nil && existsInPrimary {
+		return false
+	}
+
+	if secondary != nil {
+		existsInSecondary, secondaryErr := secondary.FileExists(ctx, doc.FileURL)
+		if secondaryErr == nil && existsInSecondary {
+			return false
+		}
+		if secondaryErr != nil {
+			return false
 		}
 	}
 
-	return &domain.DocumentContent{
-		Document: doc,
-		Reader:   reader,
-	}, nil
+	if primaryErr != nil {
+		return false
+	}
+
+	_, _ = u.documentRepo.MarkDocumentOrphaned(ctx, doc.UserID, doc.ID, "O arquivo original nao foi encontrado no storage configurado.")
+	return true
+}
+
+func (u *documentCatalogUseCase) deleteDocumentSource(ctx context.Context, userID uint, fileURL string) error {
+	storageClient := u.storage
+	usedCustomStorage := false
+	userStorage, providerErr := u.storageResolver.ResolveStorage(ctx, userID)
+	switch {
+	case providerErr == nil:
+		storageClient = userStorage
+		usedCustomStorage = true
+	case errors.Is(providerErr, domain.ErrStorageProviderNotConfigured):
+	default:
+		return providerErr
+	}
+
+	if err := storageClient.DeleteFile(ctx, fileURL); err == nil {
+		return nil
+	}
+
+	if usedCustomStorage {
+		if err := u.storage.DeleteFile(ctx, fileURL); err == nil {
+			return nil
+		}
+	}
+
+	return nil
 }
 
 func (u *documentCatalogUseCase) GetDocumentIndex(ctx context.Context, userID, documentID uint, query string) (*domain.DocumentIndex, error) {

@@ -14,6 +14,7 @@ const (
 	DocumentStatusProcessing = "PROCESSING"
 	DocumentStatusIndexed    = "INDEXED"
 	DocumentStatusFailed     = "FAILED"
+	DocumentStatusOrphaned   = "ORPHANED"
 
 	OutboxEventStatusPending   = "PENDING"
 	OutboxEventStatusPublished = "PUBLISHED"

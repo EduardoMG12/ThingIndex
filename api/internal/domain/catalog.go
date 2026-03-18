@@ -198,6 +198,9 @@ type CatalogDocumentRepository interface {
 	GetDocumentsByCollectionID(ctx context.Context, collectionID uint, userID uint) ([]models.Document, error)
 	UpdateDocumentStatus(ctx context.Context, documentID uint, status string) error
 	RetryDocumentIndexing(ctx context.Context, userID uint, documentID uint) (*models.Document, error)
+	MarkDocumentOrphaned(ctx context.Context, userID uint, documentID uint, detail string) (*models.Document, error)
+	DeleteDocument(ctx context.Context, userID uint, documentID uint) error
+	DeleteDocumentsByCollection(ctx context.Context, userID uint, collectionID uint) (int64, error)
 }
 
 type StructuredDataRepository interface {
@@ -233,6 +236,8 @@ type DocumentCatalogUseCase interface {
 	GetDocumentIndex(ctx context.Context, userID, documentID uint, query string) (*DocumentIndex, error)
 	GetDocumentMonitoringSummary(ctx context.Context, userID uint) (*DocumentMonitoringSummary, error)
 	RetryDocumentIndexing(ctx context.Context, userID, documentID uint) (*models.Document, error)
+	DeleteDocument(ctx context.Context, userID, documentID uint) error
+	DeleteCollectionDocuments(ctx context.Context, userID, collectionID uint) (int64, *models.Collection, error)
 	ListDocumentsByCategory(ctx context.Context, categoryID uint, userID uint) ([]models.Document, error)
 	ListCollections(ctx context.Context, userID uint) ([]models.Collection, error)
 	GetCollectionContext(ctx context.Context, userID, collectionID uint, query string) (*CollectionContext, error)

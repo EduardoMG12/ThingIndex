@@ -91,11 +91,19 @@ func (p *DocumentProcessor) Process(ctx context.Context, event domain.DocumentIn
 				reader = fallbackReader
 			} else {
 				completedAt := time.Now().UTC()
+				if shouldMarkAsOrphaned(ctx, doc.FileURL, storageClient, p.baseStorage) {
+					updateState(domain.DocumentStatusOrphaned, "SOURCE_MISSING", "O arquivo original nao foi encontrado no storage configurado.", "source file missing in configured storage", &completedAt)
+					return fmt.Errorf("%w: source file missing", domain.ErrDocumentSourceMissing)
+				}
 				updateState(domain.DocumentStatusFailed, "FAILED_READING_SOURCE", "Nao foi possivel abrir o arquivo nem no storage customizado nem no fallback.", fmt.Sprintf("custom storage: %v; fallback storage: %v", err, fallbackErr), &completedAt)
 				return fmt.Errorf("%w: open file: custom storage: %v; fallback storage: %v", domain.ErrDocumentIndexing, err, fallbackErr)
 			}
 		} else {
 			completedAt := time.Now().UTC()
+			if shouldMarkAsOrphaned(ctx, doc.FileURL, storageClient, nil) {
+				updateState(domain.DocumentStatusOrphaned, "SOURCE_MISSING", "O arquivo original nao foi encontrado no storage configurado.", "source file missing in configured storage", &completedAt)
+				return fmt.Errorf("%w: source file missing", domain.ErrDocumentSourceMissing)
+			}
 			updateState(domain.DocumentStatusFailed, "FAILED_READING_SOURCE", "Nao foi possivel abrir o arquivo no storage configurado.", err.Error(), &completedAt)
 			return fmt.Errorf("%w: open file: %v", domain.ErrDocumentIndexing, err)
 		}
@@ -153,4 +161,22 @@ func (p *DocumentProcessor) Process(ctx context.Context, event domain.DocumentIn
 	}
 
 	return nil
+}
+
+func shouldMarkAsOrphaned(ctx context.Context, fileURL string, primary domain.StorageService, secondary domain.StorageService) bool {
+	existsInPrimary, err := primary.FileExists(ctx, fileURL)
+	if err != nil || existsInPrimary {
+		return false
+	}
+
+	if secondary == nil {
+		return true
+	}
+
+	existsInSecondary, secondaryErr := secondary.FileExists(ctx, fileURL)
+	if secondaryErr != nil {
+		return false
+	}
+
+	return !existsInSecondary
 }

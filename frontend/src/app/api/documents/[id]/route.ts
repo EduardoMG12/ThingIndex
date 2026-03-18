@@ -35,5 +35,37 @@ export async function GET(
             { message: "Erro ao consultar documento." },
             { status: 502 }
         );
+	}
+}
+
+export async function DELETE(
+    request: Request,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    const token = (await cookies()).get("token")?.value;
+
+    if (!token) {
+        return unauthorizedJson();
+    }
+
+    const { id } = await params;
+
+    try {
+        const response = await fetch(`${API_URL}/documents/${id}`, {
+            method: "DELETE",
+            headers: await createForwardHeaders(request, { token }),
+            cache: "no-store",
+        });
+
+        const payload = await response.json().catch(() => ({
+            message: "Nao foi possivel processar a resposta da API.",
+        }));
+
+        return proxyJsonWithAuthCleanup(payload, response.status);
+    } catch {
+        return NextResponse.json(
+            { message: "Erro ao excluir documento." },
+            { status: 502 }
+        );
     }
 }

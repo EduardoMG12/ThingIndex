@@ -368,6 +368,8 @@ func (h *DocumentHandler) GetDocumentContent(c *gin.Context) {
 		switch {
 		case errors.Is(err, domain.ErrDocumentNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
+		case errors.Is(err, domain.ErrDocumentSourceMissing):
+			response.Error(c, http.StatusGone, "error", "O arquivo original nao foi encontrado no storage.", nil)
 		case errors.Is(err, domain.ErrStorageProviderUnavailable):
 			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_storage_provider"), nil)
 		default:
@@ -449,6 +451,54 @@ func (h *DocumentHandler) ListDocumentsByCategory(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_documents_list"), dto.ToDocumentsResponse(docs))
+}
+
+func (h *DocumentHandler) DeleteDocument(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	documentID, ok := parseUintParam(c, "id", i18n.T(lang, "error.invalid_document_id"))
+	if !ok {
+		return
+	}
+
+	if err := h.useCase.DeleteDocument(c.Request.Context(), userID, documentID); err != nil {
+		switch {
+		case errors.Is(err, domain.ErrDocumentNotFound):
+			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
+		default:
+			h.respondInternalError(c, lang)
+		}
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", "Documento excluido com sucesso.", nil)
+}
+
+func (h *DocumentHandler) DeleteCollectionDocuments(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	collectionID, ok := parseUintParam(c, "id", i18n.T(lang, "error.invalid_collection_id"))
+	if !ok {
+		return
+	}
+
+	deletedCount, collection, err := h.useCase.DeleteCollectionDocuments(c.Request.Context(), userID, collectionID)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrCollectionNotFound):
+			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_collection_not_found"), nil)
+		default:
+			h.respondInternalError(c, lang)
+		}
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", "Documentos da collection excluidos com sucesso.", gin.H{
+		"collection":        dto.ToCollectionResponse(collection),
+		"deleted_documents": deletedCount,
+	})
 }
 
 func (h *DocumentHandler) StoreParagraphNodes(c *gin.Context) {

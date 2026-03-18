@@ -122,6 +122,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		user.Use(middleware.AuthMiddleware(cfg, authRepo))
 		{
 			user.POST("/providers", providerHandler.SaveCredentials)
+			user.POST("/providers/test", providerHandler.TestConnection)
 			user.GET("/providers", providerHandler.ListProviders)
 			user.PATCH("/providers/:providerType", providerHandler.UpdateProviderState)
 			user.POST("/pricing-sources", pricingHandler.SaveSource)
@@ -138,6 +139,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 			documents.GET("/collections", docHandler.ListCollections)
 			documents.GET("/collections/:id/context", docHandler.GetCollectionContext)
 			documents.GET("/collections/:id", docHandler.GetCollection)
+			documents.DELETE("/collections/:id/documents", docHandler.DeleteCollectionDocuments)
 			documents.PATCH("/collections/:collection/category", docHandler.UpdateCollectionCategory)
 			documents.POST("/categories", docHandler.CreateCategory)
 			documents.GET("/categories", docHandler.ListCategories)
@@ -148,6 +150,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 			documents.POST("/:id/metadata-pairs", docHandler.StoreMetadataPairs)
 			documents.GET("/:id/content", docHandler.GetDocumentContent)
 			documents.POST("/:id/retry", docHandler.RetryIndexing)
+			documents.DELETE("/:id", docHandler.DeleteDocument)
 			documents.GET("/monitoring/summary", docHandler.GetDocumentMonitoringSummary)
 			documents.GET("/:id/index", docHandler.GetDocumentIndex)
 			documents.GET("/:id", docHandler.GetDocument)

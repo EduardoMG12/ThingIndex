@@ -166,3 +166,117 @@ func (r *GormCatalogDocumentRepository) RetryDocumentIndexing(ctx context.Contex
 
 	return &document, nil
 }
+
+func (r *GormCatalogDocumentRepository) MarkDocumentOrphaned(ctx context.Context, userID uint, documentID uint, detail string) (*models.Document, error) {
+	var document models.Document
+
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.
+			Preload("CollectionRef").
+			Preload("CollectionRef.Category").
+			Where("id = ? AND user_id = ?", documentID, userID).
+			First(&document).Error; err != nil {
+			return err
+		}
+
+		now := time.Now().UTC()
+		if err := tx.Model(&models.Document{}).
+			Where("id = ?", documentID).
+			Updates(map[string]any{
+				"status":                domain.DocumentStatusOrphaned,
+				"processing_stage":      "SOURCE_MISSING",
+				"status_detail":         detail,
+				"last_processing_error": detail,
+				"updated_at":            now,
+			}).Error; err != nil {
+			return err
+		}
+
+		return tx.
+			Preload("CollectionRef").
+			Preload("CollectionRef.Category").
+			Where("id = ?", documentID).
+			First(&document).Error
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &document, nil
+}
+
+func (r *GormCatalogDocumentRepository) DeleteDocument(ctx context.Context, userID uint, documentID uint) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var document models.Document
+		if err := tx.Where("id = ? AND user_id = ?", documentID, userID).First(&document).Error; err != nil {
+			return err
+		}
+
+		if err := deleteStructuredDocumentData(tx, []uint{documentID}); err != nil {
+			return err
+		}
+
+		if err := tx.Where("aggregate_type = ? AND aggregate_id = ?", domain.OutboxAggregateDocument, documentID).Delete(&models.OutboxEvent{}).Error; err != nil {
+			return err
+		}
+
+		return tx.Delete(&document).Error
+	})
+}
+
+func (r *GormCatalogDocumentRepository) DeleteDocumentsByCollection(ctx context.Context, userID uint, collectionID uint) (int64, error) {
+	var deletedCount int64
+
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var documents []models.Document
+		if err := tx.Where("user_id = ? AND collection_id = ?", userID, collectionID).Find(&documents).Error; err != nil {
+			return err
+		}
+
+		documentIDs := make([]uint, 0, len(documents))
+		for _, document := range documents {
+			documentIDs = append(documentIDs, document.ID)
+		}
+
+		deletedCount = int64(len(documentIDs))
+		if len(documentIDs) == 0 {
+			return nil
+		}
+
+		if err := deleteStructuredDocumentData(tx, documentIDs); err != nil {
+			return err
+		}
+
+		if err := tx.Where("aggregate_type = ? AND aggregate_id IN ?", domain.OutboxAggregateDocument, documentIDs).Delete(&models.OutboxEvent{}).Error; err != nil {
+			return err
+		}
+
+		return tx.Where("id IN ?", documentIDs).Delete(&models.Document{}).Error
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return deletedCount, nil
+}
+
+func deleteStructuredDocumentData(tx *gorm.DB, documentIDs []uint) error {
+	if len(documentIDs) == 0 {
+		return nil
+	}
+
+	for _, model := range []any{
+		&models.DocumentPage{},
+		&models.ParagraphNode{},
+		&models.TableSection{},
+		&models.MetadataPair{},
+		&models.DocumentChunk{},
+		&models.DocumentOutlineNode{},
+	} {
+		if err := tx.Where("document_id IN ?", documentIDs).Delete(model).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

@@ -30,6 +30,7 @@ var (
 	ErrCollectionNotFound           = errors.New("collection not found")
 	ErrCollectionCategoryConflict   = errors.New("collection category conflicts with existing category")
 	ErrDocumentNotFound             = errors.New("document not found")
+	ErrDocumentSourceMissing        = errors.New("document source file is missing")
 	ErrDocumentInvalidMime          = errors.New("document mime type is invalid")
 	ErrDocumentIndexing             = errors.New("failed to index document")
 	ErrOutboxPublish                = errors.New("failed to publish outbox event")
