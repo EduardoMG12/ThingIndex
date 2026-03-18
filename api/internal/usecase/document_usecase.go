@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"mime"
 	"net/http"
 	"path/filepath"
@@ -66,6 +67,11 @@ func normalizeDisplayName(name string) string {
 
 func normalizeLookupKey(name string) string {
 	return strings.ToLower(strings.TrimSpace(name))
+}
+
+type documentDeletionSourceResult struct {
+	removed bool
+	detail  string
 }
 
 func cloneMetadata(metadata map[string]any) map[string]any {
@@ -472,17 +478,43 @@ func (u *documentCatalogUseCase) DeleteDocument(ctx context.Context, userID, doc
 		return err
 	}
 
-	if err := u.deleteDocumentSource(ctx, userID, doc.FileURL); err != nil {
+	deleteResult, err := u.deleteDocumentSource(ctx, userID, doc.FileURL)
+	if err != nil {
+		detail := fmt.Sprintf("Falha ao remover o arquivo original do storage durante a exclusao do documento: %v", err)
+		log.Printf("document deletion source removal failed: user=%d document=%d file=%q err=%v", userID, documentID, doc.FileURL, err)
+		_ = u.documentRepo.CreateDocumentAuditEvents(ctx, []models.DocumentAuditEvent{
+			buildDocumentDeletionAuditEvent(doc, "FAILED", detail, "single", map[string]any{
+				"file_url": doc.FileURL,
+			}),
+		})
 		return err
 	}
 
-	if err := u.documentRepo.DeleteDocument(ctx, userID, documentID); err != nil {
+	successAudit := buildDocumentDeletionAuditEvent(doc, "SUCCESS", "Documento excluido com remocao do arquivo original e limpeza dos dados derivados.", "single", map[string]any{
+		"file_url":            doc.FileURL,
+		"storage_delete_path": doc.FileURL,
+	})
+	if deleteResult.detail != "" {
+		successAudit.Metadata["storage_delete_detail"] = deleteResult.detail
+	}
+
+	if err := u.documentRepo.DeleteDocument(ctx, userID, documentID, &successAudit); err != nil {
+		log.Printf("document deletion repository cleanup failed after source removal: user=%d document=%d err=%v", userID, documentID, err)
+		if deleteResult.removed {
+			_, _ = u.documentRepo.MarkDocumentOrphaned(ctx, userID, documentID, "O arquivo original foi removido, mas a exclusao final do documento falhou antes da limpeza completa.")
+		}
+		_ = u.documentRepo.CreateDocumentAuditEvents(ctx, []models.DocumentAuditEvent{
+			buildDocumentDeletionAuditEvent(doc, "FAILED", fmt.Sprintf("O arquivo original foi removido, mas a limpeza final do documento falhou: %v", err), "single", map[string]any{
+				"file_url": doc.FileURL,
+			}),
+		})
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return domain.ErrDocumentNotFound
 		}
 		return fmt.Errorf("%w: %v", domain.ErrInternal, err)
 	}
 
+	log.Printf("document deleted successfully: user=%d document=%d file=%q", userID, documentID, doc.FileURL)
 	return nil
 }
 
@@ -497,17 +529,58 @@ func (u *documentCatalogUseCase) DeleteCollectionDocuments(ctx context.Context, 
 		return 0, nil, fmt.Errorf("%w: %v", domain.ErrInternal, err)
 	}
 
+	successAudits := make([]models.DocumentAuditEvent, 0, len(documents))
+	failureAudits := make([]models.DocumentAuditEvent, 0)
+	successfullyRemovedSources := make([]models.Document, 0, len(documents))
+
 	for _, document := range documents {
-		if err := u.deleteDocumentSource(ctx, userID, document.FileURL); err != nil {
-			return 0, nil, err
+		deleteResult, deleteErr := u.deleteDocumentSource(ctx, userID, document.FileURL)
+		if deleteErr != nil {
+			detail := fmt.Sprintf("Falha ao remover um arquivo do storage durante a exclusao em lote da collection: %v", deleteErr)
+			log.Printf("collection document deletion source removal failed: user=%d collection=%d document=%d file=%q err=%v", userID, collectionID, document.ID, document.FileURL, deleteErr)
+			failureAudits = append(failureAudits, buildDocumentDeletionAuditEvent(&document, "FAILED", detail, "collection-bulk", map[string]any{
+				"collection_id": collectionID,
+				"file_url":      document.FileURL,
+			}))
+			for _, partiallyRemoved := range successfullyRemovedSources {
+				_, _ = u.documentRepo.MarkDocumentOrphaned(ctx, partiallyRemoved.UserID, partiallyRemoved.ID, "O arquivo original foi removido durante uma exclusao em lote interrompida antes da limpeza completa.")
+				failureAudits = append(failureAudits, buildDocumentDeletionAuditEvent(&partiallyRemoved, "FAILED", "O arquivo original foi removido, mas a exclusao em lote foi interrompida antes da limpeza final do documento.", "collection-bulk", map[string]any{
+					"collection_id": collectionID,
+					"file_url":      partiallyRemoved.FileURL,
+				}))
+			}
+			_ = u.documentRepo.CreateDocumentAuditEvents(ctx, failureAudits)
+			return 0, nil, deleteErr
 		}
+
+		successfullyRemovedSources = append(successfullyRemovedSources, document)
+		audit := buildDocumentDeletionAuditEvent(&document, "SUCCESS", "Documento excluido em lote com remocao do arquivo original e limpeza dos dados derivados.", "collection-bulk", map[string]any{
+			"collection_id":       collectionID,
+			"file_url":            document.FileURL,
+			"storage_delete_path": document.FileURL,
+		})
+		if deleteResult.detail != "" {
+			audit.Metadata["storage_delete_detail"] = deleteResult.detail
+		}
+		successAudits = append(successAudits, audit)
 	}
 
-	deletedCount, err := u.documentRepo.DeleteDocumentsByCollection(ctx, userID, collectionID)
+	deletedCount, err := u.documentRepo.DeleteDocumentsByCollection(ctx, userID, collectionID, successAudits)
 	if err != nil {
+		log.Printf("collection document deletion repository cleanup failed after source removal: user=%d collection=%d err=%v", userID, collectionID, err)
+		failureAudits = make([]models.DocumentAuditEvent, 0, len(successfullyRemovedSources))
+		for _, partiallyRemoved := range successfullyRemovedSources {
+			_, _ = u.documentRepo.MarkDocumentOrphaned(ctx, partiallyRemoved.UserID, partiallyRemoved.ID, "O arquivo original foi removido, mas a exclusao em lote falhou antes da limpeza completa.")
+			failureAudits = append(failureAudits, buildDocumentDeletionAuditEvent(&partiallyRemoved, "FAILED", fmt.Sprintf("O arquivo original foi removido, mas a exclusao em lote falhou antes da limpeza completa: %v", err), "collection-bulk", map[string]any{
+				"collection_id": collectionID,
+				"file_url":      partiallyRemoved.FileURL,
+			}))
+		}
+		_ = u.documentRepo.CreateDocumentAuditEvents(ctx, failureAudits)
 		return 0, nil, fmt.Errorf("%w: %v", domain.ErrInternal, err)
 	}
 
+	log.Printf("collection documents deleted successfully: user=%d collection=%d deleted=%d", userID, collectionID, deletedCount)
 	return deletedCount, collection, nil
 }
 
@@ -588,7 +661,7 @@ func (u *documentCatalogUseCase) shouldMarkDocumentAsOrphaned(ctx context.Contex
 	return true
 }
 
-func (u *documentCatalogUseCase) deleteDocumentSource(ctx context.Context, userID uint, fileURL string) error {
+func (u *documentCatalogUseCase) deleteDocumentSource(ctx context.Context, userID uint, fileURL string) (documentDeletionSourceResult, error) {
 	storageClient := u.storage
 	usedCustomStorage := false
 	userStorage, providerErr := u.storageResolver.ResolveStorage(ctx, userID)
@@ -598,20 +671,74 @@ func (u *documentCatalogUseCase) deleteDocumentSource(ctx context.Context, userI
 		usedCustomStorage = true
 	case errors.Is(providerErr, domain.ErrStorageProviderNotConfigured):
 	default:
-		return providerErr
+		return documentDeletionSourceResult{}, providerErr
 	}
 
-	if err := storageClient.DeleteFile(ctx, fileURL); err == nil {
-		return nil
+	primaryErr := storageClient.DeleteFile(ctx, fileURL)
+	if primaryErr == nil {
+		return documentDeletionSourceResult{
+			removed: true,
+			detail:  storageDeletionDetail(usedCustomStorage, false),
+		}, nil
 	}
 
 	if usedCustomStorage {
 		if err := u.storage.DeleteFile(ctx, fileURL); err == nil {
-			return nil
+			return documentDeletionSourceResult{
+				removed: true,
+				detail:  storageDeletionDetail(true, true),
+			}, nil
 		}
+		return documentDeletionSourceResult{}, fmt.Errorf("%w: custom storage delete failed: %v", domain.ErrDocumentSourceDeleteFailed, primaryErr)
 	}
 
-	return nil
+	return documentDeletionSourceResult{}, fmt.Errorf("%w: %v", domain.ErrDocumentSourceDeleteFailed, primaryErr)
+}
+
+func storageDeletionDetail(usedCustomStorage bool, usedFallback bool) string {
+	switch {
+	case usedCustomStorage && usedFallback:
+		return "Arquivo removido pelo storage padrao apos falha no storage customizado."
+	case usedCustomStorage:
+		return "Arquivo removido pelo storage customizado ativo do usuario."
+	default:
+		return "Arquivo removido pelo storage padrao."
+	}
+}
+
+func buildDocumentDeletionAuditEvent(doc *models.Document, status, detail, mode string, metadata map[string]any) models.DocumentAuditEvent {
+	var collectionID *uint
+	if doc != nil {
+		collectionID = doc.CollectionID
+	}
+
+	eventMetadata := cloneMetadata(metadata)
+	if eventMetadata == nil {
+		eventMetadata = map[string]any{}
+	}
+	if mode != "" {
+		eventMetadata["mode"] = mode
+	}
+
+	var documentID *uint
+	var title string
+	var userID uint
+	if doc != nil {
+		documentID = &doc.ID
+		title = doc.Title
+		userID = doc.UserID
+	}
+
+	return models.DocumentAuditEvent{
+		UserID:       userID,
+		DocumentID:   documentID,
+		CollectionID: collectionID,
+		Action:       "DOCUMENT_DELETE",
+		Status:       status,
+		Title:        title,
+		Detail:       detail,
+		Metadata:     eventMetadata,
+	}
 }
 
 func (u *documentCatalogUseCase) GetDocumentIndex(ctx context.Context, userID, documentID uint, query string) (*domain.DocumentIndex, error) {

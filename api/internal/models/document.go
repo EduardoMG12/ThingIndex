@@ -153,3 +153,18 @@ type OutboxEvent struct {
 	CreatedAt     time.Time      `json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`
 }
+
+type DocumentAuditEvent struct {
+	ID           uint           `gorm:"primarykey" json:"id"`
+	UserID       uint           `gorm:"not null;index" json:"user_id"`
+	DocumentID   *uint          `gorm:"index" json:"document_id,omitempty"`
+	CollectionID *uint          `gorm:"index" json:"collection_id,omitempty"`
+	Action       string         `gorm:"size:64;not null;index" json:"action"`
+	Status       string         `gorm:"size:32;not null;index" json:"status"`
+	Title        string         `gorm:"size:255" json:"title,omitempty"`
+	Detail       string         `gorm:"type:text" json:"detail,omitempty"`
+	Metadata     map[string]any `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
+	DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"`
+}

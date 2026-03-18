@@ -36,6 +36,14 @@ func (r *GormCatalogDocumentRepository) CreateDocumentWithOutbox(ctx context.Con
 	})
 }
 
+func (r *GormCatalogDocumentRepository) CreateDocumentAuditEvents(ctx context.Context, events []models.DocumentAuditEvent) error {
+	if len(events) == 0 {
+		return nil
+	}
+
+	return r.db.WithContext(ctx).Create(&events).Error
+}
+
 func (r *GormCatalogDocumentRepository) GetDocumentByID(ctx context.Context, id uint, userID uint) (*models.Document, error) {
 	var doc models.Document
 	if err := r.db.WithContext(ctx).
@@ -205,7 +213,7 @@ func (r *GormCatalogDocumentRepository) MarkDocumentOrphaned(ctx context.Context
 	return &document, nil
 }
 
-func (r *GormCatalogDocumentRepository) DeleteDocument(ctx context.Context, userID uint, documentID uint) error {
+func (r *GormCatalogDocumentRepository) DeleteDocument(ctx context.Context, userID uint, documentID uint, auditEvent *models.DocumentAuditEvent) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var document models.Document
 		if err := tx.Where("id = ? AND user_id = ?", documentID, userID).First(&document).Error; err != nil {
@@ -220,11 +228,17 @@ func (r *GormCatalogDocumentRepository) DeleteDocument(ctx context.Context, user
 			return err
 		}
 
+		if auditEvent != nil {
+			if err := tx.Create(auditEvent).Error; err != nil {
+				return err
+			}
+		}
+
 		return tx.Delete(&document).Error
 	})
 }
 
-func (r *GormCatalogDocumentRepository) DeleteDocumentsByCollection(ctx context.Context, userID uint, collectionID uint) (int64, error) {
+func (r *GormCatalogDocumentRepository) DeleteDocumentsByCollection(ctx context.Context, userID uint, collectionID uint, auditEvents []models.DocumentAuditEvent) (int64, error) {
 	var deletedCount int64
 
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -249,6 +263,12 @@ func (r *GormCatalogDocumentRepository) DeleteDocumentsByCollection(ctx context.
 
 		if err := tx.Where("aggregate_type = ? AND aggregate_id IN ?", domain.OutboxAggregateDocument, documentIDs).Delete(&models.OutboxEvent{}).Error; err != nil {
 			return err
+		}
+
+		if len(auditEvents) > 0 {
+			if err := tx.Create(&auditEvents).Error; err != nil {
+				return err
+			}
 		}
 
 		return tx.Where("id IN ?", documentIDs).Delete(&models.Document{}).Error

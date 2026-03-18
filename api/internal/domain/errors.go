@@ -34,6 +34,7 @@ var (
 	ErrCollectionCategoryConflict   = errors.New("collection category conflicts with existing category")
 	ErrDocumentNotFound             = errors.New("document not found")
 	ErrDocumentSourceMissing        = errors.New("document source file is missing")
+	ErrDocumentSourceDeleteFailed   = errors.New("failed to delete document source file")
 	ErrDocumentInvalidMime          = errors.New("document mime type is invalid")
 	ErrDocumentIndexing             = errors.New("failed to index document")
 	ErrOutboxPublish                = errors.New("failed to publish outbox event")

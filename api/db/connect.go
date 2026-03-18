@@ -37,6 +37,7 @@ func Connect() (*gorm.DB, error) {
 		&models.DocumentChunk{},
 		&models.DocumentOutlineNode{},
 		&models.OutboxEvent{},
+		&models.DocumentAuditEvent{},
 		&models.UserProviderConfig{},
 		&models.ProviderModelCatalog{},
 		&models.PricingSource{},
