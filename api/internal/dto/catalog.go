@@ -186,6 +186,9 @@ type DocumentMonitoringSummaryResponse struct {
 	ProcessingDocuments   int                                        `json:"processing_documents"`
 	QueuedDocuments       int                                        `json:"queued_documents"`
 	FailedDocuments       int                                        `json:"failed_documents"`
+	RetryingDocuments     int                                        `json:"retrying_documents"`
+	OrphanedDocuments     int                                        `json:"orphaned_documents"`
+	DLQDocuments          int                                        `json:"dlq_documents"`
 	DocumentsWithLLM      int                                        `json:"documents_with_llm"`
 	PricingAwareDocuments int                                        `json:"pricing_aware_documents"`
 	TotalLLMRequests      int                                        `json:"total_llm_requests"`
@@ -612,6 +615,9 @@ func ToDocumentMonitoringSummaryResponse(summary *domain.DocumentMonitoringSumma
 		ProcessingDocuments:   summary.ProcessingDocuments,
 		QueuedDocuments:       summary.QueuedDocuments,
 		FailedDocuments:       summary.FailedDocuments,
+		RetryingDocuments:     summary.RetryingDocuments,
+		OrphanedDocuments:     summary.OrphanedDocuments,
+		DLQDocuments:          summary.DLQDocuments,
 		DocumentsWithLLM:      summary.DocumentsWithLLM,
 		PricingAwareDocuments: summary.PricingAwareDocuments,
 		TotalLLMRequests:      summary.TotalLLMRequests,

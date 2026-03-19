@@ -75,7 +75,7 @@ func (i *DeterministicIndexer) Index(ctx context.Context, doc *models.Document, 
 func (i *DeterministicIndexer) indexHTML(documentID uint, data []byte) (domain.IndexingResult, error) {
 	root, err := html.Parse(bytes.NewReader(data))
 	if err != nil {
-		return domain.IndexingResult{}, fmt.Errorf("%w: parse html: %v", domain.ErrDocumentIndexing, err)
+		return domain.IndexingResult{}, fmt.Errorf("%w: parse html: %v", domain.ErrDocumentParsingFailed, err)
 	}
 
 	headings := make([]outlineDraft, 0)
@@ -140,7 +140,7 @@ func (i *DeterministicIndexer) indexHTML(documentID uint, data []byte) (domain.I
 func (i *DeterministicIndexer) indexSpreadsheet(documentID uint, data []byte) (domain.IndexingResult, error) {
 	workbook, err := excelize.OpenReader(bytes.NewReader(data))
 	if err != nil {
-		return domain.IndexingResult{}, fmt.Errorf("%w: parse spreadsheet: %v", domain.ErrDocumentIndexing, err)
+		return domain.IndexingResult{}, fmt.Errorf("%w: parse spreadsheet: %v", domain.ErrDocumentParsingFailed, err)
 	}
 	defer func() {
 		_ = workbook.Close()
@@ -153,7 +153,7 @@ func (i *DeterministicIndexer) indexSpreadsheet(documentID uint, data []byte) (d
 	for sheetIndex, sheetName := range workbook.GetSheetList() {
 		rows, err := workbook.GetRows(sheetName)
 		if err != nil {
-			return domain.IndexingResult{}, fmt.Errorf("%w: read spreadsheet rows: %v", domain.ErrDocumentIndexing, err)
+			return domain.IndexingResult{}, fmt.Errorf("%w: read spreadsheet rows: %v", domain.ErrDocumentParsingFailed, err)
 		}
 
 		sectionKey := slugify(sheetName)
@@ -201,7 +201,7 @@ func (i *DeterministicIndexer) indexPDF(documentID uint, data []byte) (domain.In
 	reader := bytes.NewReader(data)
 	pdfReader, err := pdf.NewReader(reader, int64(len(data)))
 	if err != nil {
-		return domain.IndexingResult{}, fmt.Errorf("%w: parse pdf: %v", domain.ErrDocumentIndexing, err)
+		return domain.IndexingResult{}, fmt.Errorf("%w: parse pdf: %v", domain.ErrDocumentParsingFailed, err)
 	}
 
 	headings := make([]outlineDraft, 0)

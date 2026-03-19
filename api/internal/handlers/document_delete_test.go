@@ -20,6 +20,7 @@ type documentUseCaseAuditCaptureStub struct {
 	lastRetryAuditContext            domain.AuditContext
 	lastDeleteAuditContext           domain.AuditContext
 	lastCollectionDeleteAuditContext domain.AuditContext
+	uploadErr                        error
 	uploadCalled                     bool
 	retryCalled                      bool
 	deleteDocumentCalled             bool
@@ -30,6 +31,9 @@ func (s *documentUseCaseAuditCaptureStub) UploadDocument(ctx context.Context, _ 
 	s.uploadCalled = true
 	if auditCtx, ok := domain.ExtractAuditContext(ctx); ok {
 		s.lastUploadAuditContext = auditCtx
+	}
+	if s.uploadErr != nil {
+		return nil, s.uploadErr
 	}
 	return &models.Document{ID: 1, Title: "Arquivo.pdf"}, nil
 }
@@ -199,6 +203,64 @@ func TestUploadDocumentEndpointAddsAuditContextFromRequest(t *testing.T) {
 	}
 	if useCase.lastUploadAuditContext.Origin != "POST /api/v1/documents/upload" {
 		t.Fatalf("expected upload origin to include route, got %#v", useCase.lastUploadAuditContext)
+	}
+}
+
+func TestUploadDocumentEndpointReturnsInvalidMimeError(t *testing.T) {
+	t.Parallel()
+
+	gin.SetMode(gin.TestMode)
+	useCase := &documentUseCaseAuditCaptureStub{uploadErr: domain.ErrDocumentInvalidMime}
+	handler := NewDocumentHandler(useCase, 10<<20)
+
+	router := gin.New()
+	router.Use(middleware.RequestContextMiddleware())
+	router.Use(func(c *gin.Context) {
+		c.Set("language", "pt_BR")
+		c.Set("user_id", uint(23))
+		c.Next()
+	})
+	router.POST("/api/v1/documents/upload", handler.Upload)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/documents/upload", strings.NewReader("--x\r\nContent-Disposition: form-data; name=\"title\"\r\n\r\nArquivo\r\n--x\r\nContent-Disposition: form-data; name=\"collection\"\r\n\r\nColecao\r\n--x\r\nContent-Disposition: form-data; name=\"file\"; filename=\"arquivo.exe\"\r\nContent-Type: application/octet-stream\r\n\r\nMZ\r\n--x--\r\n"))
+	req.Header.Set("Content-Type", "multipart/form-data; boundary=x")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 response, got %d", rec.Code)
+	}
+}
+
+func TestUploadDocumentEndpointReturnsPayloadTooLargeWhenBodyExceedsLimit(t *testing.T) {
+	t.Parallel()
+
+	gin.SetMode(gin.TestMode)
+	useCase := &documentUseCaseAuditCaptureStub{}
+	handler := NewDocumentHandler(useCase, 64)
+
+	router := gin.New()
+	router.Use(middleware.RequestContextMiddleware())
+	router.Use(func(c *gin.Context) {
+		c.Set("language", "pt_BR")
+		c.Set("user_id", uint(23))
+		c.Next()
+	})
+	router.POST("/api/v1/documents/upload", handler.Upload)
+
+	body := "--x\r\nContent-Disposition: form-data; name=\"title\"\r\n\r\nArquivo\r\n--x\r\nContent-Disposition: form-data; name=\"collection\"\r\n\r\nColecao\r\n--x\r\nContent-Disposition: form-data; name=\"file\"; filename=\"arquivo.pdf\"\r\nContent-Type: application/pdf\r\n\r\n%PDF-1.7 lorem ipsum dolor sit amet\r\n--x--\r\n"
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/documents/upload", strings.NewReader(body))
+	req.Header.Set("Content-Type", "multipart/form-data; boundary=x")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected 413 response, got %d", rec.Code)
+	}
+	if useCase.uploadCalled {
+		t.Fatal("expected upload use case not to be called when body exceeds limit")
 	}
 }
 

@@ -176,9 +176,19 @@ func TestAggregateDocumentMonitoringSummaryAggregatesTelemetry(t *testing.T) {
 			{
 				ID:              2,
 				Status:          "FAILED",
-				ProcessingStage: "FAILED_PERSISTING_INDEX",
+				ProcessingStage: "MOVED_TO_DLQ",
 				IndexStartedAt:  &startedAt,
 				IndexedAt:       &completedAtTwo,
+			},
+			{
+				ID:              3,
+				Status:          "ORPHANED",
+				ProcessingStage: "SOURCE_MISSING",
+			},
+			{
+				ID:              4,
+				Status:          "QUEUED",
+				ProcessingStage: "RETRY_SCHEDULED",
 			},
 		},
 		[]models.MetadataPair{
@@ -199,8 +209,11 @@ func TestAggregateDocumentMonitoringSummaryAggregatesTelemetry(t *testing.T) {
 		},
 	)
 
-	if summary.TotalDocuments != 2 || summary.IndexedDocuments != 1 || summary.FailedDocuments != 1 {
+	if summary.TotalDocuments != 4 || summary.IndexedDocuments != 1 || summary.FailedDocuments != 1 {
 		t.Fatalf("unexpected document counters: %#v", summary)
+	}
+	if summary.QueuedDocuments != 1 || summary.RetryingDocuments != 1 || summary.OrphanedDocuments != 1 || summary.DLQDocuments != 1 {
+		t.Fatalf("unexpected operational counters: %#v", summary)
 	}
 	if summary.DocumentsWithLLM != 1 || summary.TotalLLMRequests != 5 || summary.TotalTokens != 3300 {
 		t.Fatalf("unexpected llm totals: %#v", summary)

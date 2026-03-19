@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -14,6 +15,29 @@ import (
 )
 
 const retryHeader = "x-retry-count"
+
+type DocumentIndexFailureAction string
+
+const (
+	documentIndexFailureRetry     DocumentIndexFailureAction = "retry"
+	documentIndexFailureDLQ       DocumentIndexFailureAction = "dlq"
+	documentIndexFailurePermanent DocumentIndexFailureAction = "permanent"
+)
+
+type DocumentIndexFailureDisposition struct {
+	Action           DocumentIndexFailureAction
+	RetryCount       int
+	NextRetryAttempt int
+	MaxRetries       int
+	RetryDelay       time.Duration
+	Err              error
+}
+
+type DocumentIndexFailureCallbacks struct {
+	OnRetryScheduled func(context.Context, domain.DocumentIndexRequestedEvent, DocumentIndexFailureDisposition)
+	OnMovedToDLQ     func(context.Context, domain.DocumentIndexRequestedEvent, DocumentIndexFailureDisposition)
+	OnPermanentError func(context.Context, domain.DocumentIndexRequestedEvent, DocumentIndexFailureDisposition)
+}
 
 type RabbitMQPublisher struct {
 	conn       *amqp.Connection
@@ -32,6 +56,8 @@ type RabbitMQConsumer struct {
 	dlq        string
 	retryDelay time.Duration
 	maxRetries int
+
+	failureCallbacks DocumentIndexFailureCallbacks
 }
 
 func NewRabbitMQPublisher(cfg *config.Config) (*RabbitMQPublisher, error) {
@@ -165,6 +191,10 @@ func (p *RabbitMQPublisher) Close() error {
 	return nil
 }
 
+func (c *RabbitMQConsumer) SetFailureCallbacks(callbacks DocumentIndexFailureCallbacks) {
+	c.failureCallbacks = callbacks
+}
+
 func (c *RabbitMQConsumer) ConsumeDocumentIndexRequested(ctx context.Context, handler func(context.Context, domain.DocumentIndexRequestedEvent) error) error {
 	deliveries, err := c.channel.Consume(c.queue, "", false, false, false, false, nil)
 	if err != nil {
@@ -192,9 +222,33 @@ func (c *RabbitMQConsumer) ConsumeDocumentIndexRequested(ctx context.Context, ha
 			}
 
 			if err := handler(ctx, event); err != nil {
-				if retryErr := c.handleRetry(ctx, delivery); retryErr != nil {
-					return retryErr
+				if ctx.Err() != nil {
+					return ctx.Err()
 				}
+
+				disposition := classifyDocumentIndexFailure(err, extractRetryCount(delivery.Headers), c.maxRetries, c.retryDelay)
+
+				switch disposition.Action {
+				case documentIndexFailureRetry:
+					if retryErr := c.publishRetry(ctx, delivery, disposition.NextRetryAttempt); retryErr != nil {
+						return retryErr
+					}
+					if c.failureCallbacks.OnRetryScheduled != nil {
+						c.failureCallbacks.OnRetryScheduled(ctx, event, disposition)
+					}
+				case documentIndexFailureDLQ:
+					if moveErr := c.publishToDLQ(ctx, delivery); moveErr != nil {
+						return moveErr
+					}
+					if c.failureCallbacks.OnMovedToDLQ != nil {
+						c.failureCallbacks.OnMovedToDLQ(ctx, event, disposition)
+					}
+				case documentIndexFailurePermanent:
+					if c.failureCallbacks.OnPermanentError != nil {
+						c.failureCallbacks.OnPermanentError(ctx, event, disposition)
+					}
+				}
+
 				if err := delivery.Ack(false); err != nil {
 					return fmt.Errorf("ack failed delivery: %w", err)
 				}
@@ -208,14 +262,9 @@ func (c *RabbitMQConsumer) ConsumeDocumentIndexRequested(ctx context.Context, ha
 	}
 }
 
-func (c *RabbitMQConsumer) handleRetry(ctx context.Context, delivery amqp.Delivery) error {
-	retryCount := extractRetryCount(delivery.Headers)
-	if retryCount >= c.maxRetries {
-		return c.publishToDLQ(ctx, delivery)
-	}
-
+func (c *RabbitMQConsumer) publishRetry(ctx context.Context, delivery amqp.Delivery, nextRetryAttempt int) error {
 	headers := cloneHeaders(delivery.Headers)
-	headers[retryHeader] = int32(retryCount + 1)
+	headers[retryHeader] = int32(nextRetryAttempt)
 
 	return c.channel.PublishWithContext(ctx, c.exchange, c.retryQueue, false, false, amqp.Publishing{
 		ContentType:  delivery.ContentType,
@@ -270,6 +319,33 @@ func extractRetryCount(headers amqp.Table) int {
 	}
 
 	return 0
+}
+
+func classifyDocumentIndexFailure(err error, retryCount, maxRetries int, retryDelay time.Duration) DocumentIndexFailureDisposition {
+	disposition := DocumentIndexFailureDisposition{
+		RetryCount: retryCount,
+		MaxRetries: maxRetries,
+		RetryDelay: retryDelay,
+		Err:        err,
+	}
+
+	if isPermanentDocumentProcessingError(err) {
+		disposition.Action = documentIndexFailurePermanent
+		return disposition
+	}
+
+	if retryCount >= maxRetries {
+		disposition.Action = documentIndexFailureDLQ
+		return disposition
+	}
+
+	disposition.Action = documentIndexFailureRetry
+	disposition.NextRetryAttempt = retryCount + 1
+	return disposition
+}
+
+func isPermanentDocumentProcessingError(err error) bool {
+	return errors.Is(err, domain.ErrDocumentSourceMissing) || errors.Is(err, domain.ErrDocumentParsingFailed)
 }
 
 func (c *RabbitMQConsumer) Close() error {

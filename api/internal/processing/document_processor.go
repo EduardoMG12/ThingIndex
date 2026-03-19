@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"strings"
 	"time"
 
 	"thing-index/internal/domain"
 	"thing-index/internal/indexing"
+	"thing-index/internal/queue"
 )
 
 type DocumentProcessor struct {
@@ -163,6 +166,73 @@ func (p *DocumentProcessor) Process(ctx context.Context, event domain.DocumentIn
 	return nil
 }
 
+func (p *DocumentProcessor) MarkRetryScheduled(ctx context.Context, event domain.DocumentIndexRequestedEvent, disposition queue.DocumentIndexFailureDisposition) {
+	doc, err := p.repo.GetDocumentByIDForProcessing(ctx, event.DocumentID)
+	if err != nil {
+		log.Printf("document processor: failed to load document %d for retry scheduling state update: %v", event.DocumentID, err)
+		return
+	}
+
+	if err := p.repo.UpdateDocumentProcessingState(ctx, event.DocumentID, domain.DocumentProcessingState{
+		Status:       domain.DocumentStatusQueued,
+		Stage:        "RETRY_SCHEDULED",
+		StatusDetail: buildRetryScheduledDetail(disposition.NextRetryAttempt, disposition.MaxRetries, disposition.RetryDelay),
+		LastError:    coalesceProcessingError(doc.LastProcessingError, disposition.Err),
+	}); err != nil {
+		log.Printf("document processor: failed to persist retry scheduled state for document %d: %v", event.DocumentID, err)
+	}
+}
+
+func (p *DocumentProcessor) MarkMovedToDLQ(ctx context.Context, event domain.DocumentIndexRequestedEvent, disposition queue.DocumentIndexFailureDisposition) {
+	doc, err := p.repo.GetDocumentByIDForProcessing(ctx, event.DocumentID)
+	if err != nil {
+		log.Printf("document processor: failed to load document %d for dlq state update: %v", event.DocumentID, err)
+		return
+	}
+
+	if err := p.repo.UpdateDocumentProcessingState(ctx, event.DocumentID, domain.DocumentProcessingState{
+		Status:       domain.DocumentStatusFailed,
+		Stage:        "MOVED_TO_DLQ",
+		StatusDetail: buildMovedToDLQDetail(disposition.RetryCount),
+		LastError:    coalesceProcessingError(doc.LastProcessingError, disposition.Err),
+	}); err != nil {
+		log.Printf("document processor: failed to persist dlq state for document %d: %v", event.DocumentID, err)
+	}
+}
+
+func (p *DocumentProcessor) MarkPermanentFailure(ctx context.Context, event domain.DocumentIndexRequestedEvent, disposition queue.DocumentIndexFailureDisposition) {
+	doc, err := p.repo.GetDocumentByIDForProcessing(ctx, event.DocumentID)
+	if err != nil {
+		log.Printf("document processor: failed to load document %d for permanent failure update: %v", event.DocumentID, err)
+		return
+	}
+
+	status := doc.Status
+	stage := doc.ProcessingStage
+	if status == "" || status == domain.DocumentStatusQueued || status == domain.DocumentStatusProcessing {
+		status = domain.DocumentStatusFailed
+	}
+	if stage == "" {
+		stage = "FAILED_PERMANENT"
+	}
+
+	if errors.Is(disposition.Err, domain.ErrDocumentSourceMissing) {
+		status = domain.DocumentStatusOrphaned
+		if stage == "" || stage == "FAILED_PERMANENT" {
+			stage = "SOURCE_MISSING"
+		}
+	}
+
+	if err := p.repo.UpdateDocumentProcessingState(ctx, event.DocumentID, domain.DocumentProcessingState{
+		Status:       status,
+		Stage:        stage,
+		StatusDetail: buildPermanentFailureDetail(disposition.Err),
+		LastError:    coalesceProcessingError(doc.LastProcessingError, disposition.Err),
+	}); err != nil {
+		log.Printf("document processor: failed to persist permanent failure state for document %d: %v", event.DocumentID, err)
+	}
+}
+
 func shouldMarkAsOrphaned(ctx context.Context, fileURL string, primary domain.StorageService, secondary domain.StorageService) bool {
 	existsInPrimary, err := primary.FileExists(ctx, fileURL)
 	if err != nil || existsInPrimary {
@@ -179,4 +249,44 @@ func shouldMarkAsOrphaned(ctx context.Context, fileURL string, primary domain.St
 	}
 
 	return !existsInSecondary
+}
+
+func buildRetryScheduledDetail(nextRetryAttempt, maxRetries int, retryDelay time.Duration) string {
+	delayText := retryDelay.Round(time.Second).String()
+	if delayText == "0s" {
+		delayText = "instantes"
+	}
+
+	return fmt.Sprintf("A tentativa automatica falhou. Nova tentativa %d de %d agendada para %s.", nextRetryAttempt, maxRetries, delayText)
+}
+
+func buildMovedToDLQDetail(retryCount int) string {
+	if retryCount <= 0 {
+		return "A indexacao falhou e o evento foi movido para a DLQ. Agora e necessaria intervencao manual."
+	}
+
+	return fmt.Sprintf("As tentativas automaticas foram esgotadas apos %d retry(s). O evento foi movido para a DLQ e agora exige intervencao manual.", retryCount)
+}
+
+func buildPermanentFailureDetail(err error) string {
+	if errors.Is(err, domain.ErrDocumentSourceMissing) {
+		return "O arquivo original nao foi encontrado. Nenhuma nova tentativa automatica sera agendada ate que o original seja restaurado."
+	}
+
+	if errors.Is(err, domain.ErrDocumentParsingFailed) {
+		return "A falha foi classificada como permanente durante a leitura do arquivo. Revise o documento original antes de reenfileirar."
+	}
+
+	return "A falha foi classificada como permanente e o documento nao sera reenfileirado automaticamente."
+}
+
+func coalesceProcessingError(current string, cause error) string {
+	trimmed := strings.TrimSpace(current)
+	if trimmed != "" {
+		return trimmed
+	}
+	if cause == nil {
+		return ""
+	}
+	return cause.Error()
 }

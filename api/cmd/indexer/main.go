@@ -66,6 +66,11 @@ func main() {
 		log.Fatalf("failed to initialize rabbitmq consumer: %v", err)
 	}
 	defer consumer.Close()
+	consumer.SetFailureCallbacks(queue.DocumentIndexFailureCallbacks{
+		OnRetryScheduled: processor.MarkRetryScheduled,
+		OnMovedToDLQ:     processor.MarkMovedToDLQ,
+		OnPermanentError: processor.MarkPermanentFailure,
+	})
 
 	dispatcher := processing.NewOutboxDispatcher(
 		outboxRepo,

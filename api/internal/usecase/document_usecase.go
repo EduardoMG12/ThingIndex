@@ -906,6 +906,14 @@ func aggregateDocumentMonitoringSummary(
 			summary.QueuedDocuments++
 		case domain.DocumentStatusFailed:
 			summary.FailedDocuments++
+		case domain.DocumentStatusOrphaned:
+			summary.OrphanedDocuments++
+		}
+		if doc.ProcessingStage == "RETRY_SCHEDULED" {
+			summary.RetryingDocuments++
+		}
+		if doc.ProcessingStage == "MOVED_TO_DLQ" {
+			summary.DLQDocuments++
 		}
 
 		evaluation := buildIndexEvaluation(metadataByDocument[doc.ID], nil)

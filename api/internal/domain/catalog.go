@@ -43,6 +43,9 @@ type DocumentMonitoringSummary struct {
 	ProcessingDocuments   int
 	QueuedDocuments       int
 	FailedDocuments       int
+	RetryingDocuments     int
+	OrphanedDocuments     int
+	DLQDocuments          int
 	DocumentsWithLLM      int
 	PricingAwareDocuments int
 	TotalLLMRequests      int
