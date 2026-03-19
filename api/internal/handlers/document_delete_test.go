@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"thing-index/internal/api/middleware"
@@ -15,14 +16,22 @@ import (
 )
 
 type documentUseCaseAuditCaptureStub struct {
+	lastUploadAuditContext           domain.AuditContext
+	lastRetryAuditContext            domain.AuditContext
 	lastDeleteAuditContext           domain.AuditContext
 	lastCollectionDeleteAuditContext domain.AuditContext
+	uploadCalled                     bool
+	retryCalled                      bool
 	deleteDocumentCalled             bool
 	deleteCollectionCalled           bool
 }
 
-func (s *documentUseCaseAuditCaptureStub) UploadDocument(context.Context, uint, string, io.Reader, int64, string, string, string, string) (*models.Document, error) {
-	return nil, nil
+func (s *documentUseCaseAuditCaptureStub) UploadDocument(ctx context.Context, _ uint, _ string, _ io.Reader, _ int64, _ string, _ string, _ string, _ string) (*models.Document, error) {
+	s.uploadCalled = true
+	if auditCtx, ok := domain.ExtractAuditContext(ctx); ok {
+		s.lastUploadAuditContext = auditCtx
+	}
+	return &models.Document{ID: 1, Title: "Arquivo.pdf"}, nil
 }
 
 func (s *documentUseCaseAuditCaptureStub) CreateCategory(context.Context, uint, string, string) (*models.DocumentCategory, error) {
@@ -69,8 +78,12 @@ func (s *documentUseCaseAuditCaptureStub) GetDocumentMonitoringSummary(context.C
 	return nil, nil
 }
 
-func (s *documentUseCaseAuditCaptureStub) RetryDocumentIndexing(context.Context, uint, uint) (*models.Document, error) {
-	return nil, nil
+func (s *documentUseCaseAuditCaptureStub) RetryDocumentIndexing(ctx context.Context, _ uint, _ uint) (*models.Document, error) {
+	s.retryCalled = true
+	if auditCtx, ok := domain.ExtractAuditContext(ctx); ok {
+		s.lastRetryAuditContext = auditCtx
+	}
+	return &models.Document{ID: 9, Title: "Arquivo.pdf"}, nil
 }
 
 func (s *documentUseCaseAuditCaptureStub) DeleteDocument(ctx context.Context, _ uint, _ uint) error {
@@ -149,6 +162,79 @@ func TestDeleteDocumentEndpointAddsAuditContextFromRequest(t *testing.T) {
 	}
 	if useCase.lastDeleteAuditContext.ActorID == nil || *useCase.lastDeleteAuditContext.ActorID != 42 {
 		t.Fatalf("expected actor id to propagate, got %#v", useCase.lastDeleteAuditContext)
+	}
+}
+
+func TestUploadDocumentEndpointAddsAuditContextFromRequest(t *testing.T) {
+	t.Parallel()
+
+	gin.SetMode(gin.TestMode)
+	useCase := &documentUseCaseAuditCaptureStub{}
+	handler := NewDocumentHandler(useCase, 10<<20)
+
+	router := gin.New()
+	router.Use(middleware.RequestContextMiddleware())
+	router.Use(func(c *gin.Context) {
+		c.Set("language", "pt_BR")
+		c.Set("user_id", uint(23))
+		c.Next()
+	})
+	router.POST("/api/v1/documents/upload", handler.Upload)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/documents/upload", strings.NewReader("--x\r\nContent-Disposition: form-data; name=\"title\"\r\n\r\nArquivo\r\n--x\r\nContent-Disposition: form-data; name=\"collection\"\r\n\r\nColecao\r\n--x\r\nContent-Disposition: form-data; name=\"file\"; filename=\"arquivo.pdf\"\r\nContent-Type: application/pdf\r\n\r\n%PDF-1.7\r\n--x--\r\n"))
+	req.Header.Set("Content-Type", "multipart/form-data; boundary=x")
+	req.Header.Set("X-Request-ID", "req-http-upload-001")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201 response, got %d", rec.Code)
+	}
+	if !useCase.uploadCalled {
+		t.Fatal("expected upload use case to be called")
+	}
+	if useCase.lastUploadAuditContext.CorrelationID != "req-http-upload-001" {
+		t.Fatalf("expected request id to propagate, got %#v", useCase.lastUploadAuditContext)
+	}
+	if useCase.lastUploadAuditContext.Origin != "POST /api/v1/documents/upload" {
+		t.Fatalf("expected upload origin to include route, got %#v", useCase.lastUploadAuditContext)
+	}
+}
+
+func TestRetryDocumentEndpointAddsAuditContextFromRequest(t *testing.T) {
+	t.Parallel()
+
+	gin.SetMode(gin.TestMode)
+	useCase := &documentUseCaseAuditCaptureStub{}
+	handler := NewDocumentHandler(useCase, 10<<20)
+
+	router := gin.New()
+	router.Use(middleware.RequestContextMiddleware())
+	router.Use(func(c *gin.Context) {
+		c.Set("language", "pt_BR")
+		c.Set("user_id", uint(31))
+		c.Next()
+	})
+	router.POST("/api/v1/documents/:id/retry", handler.RetryIndexing)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/documents/9/retry", nil)
+	req.Header.Set("X-Request-ID", "req-http-retry-001")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 response, got %d", rec.Code)
+	}
+	if !useCase.retryCalled {
+		t.Fatal("expected retry use case to be called")
+	}
+	if useCase.lastRetryAuditContext.CorrelationID != "req-http-retry-001" {
+		t.Fatalf("expected request id to propagate, got %#v", useCase.lastRetryAuditContext)
+	}
+	if useCase.lastRetryAuditContext.Origin != "POST /api/v1/documents/:id/retry" {
+		t.Fatalf("expected retry origin to include route, got %#v", useCase.lastRetryAuditContext)
 	}
 }
 

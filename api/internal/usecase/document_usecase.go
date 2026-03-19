@@ -433,7 +433,15 @@ func (u *documentCatalogUseCase) UploadDocument(ctx context.Context, userID uint
 		AvailableAt: time.Now().UTC(),
 	}
 
-	if err := u.documentRepo.CreateDocumentWithOutbox(ctx, doc, event); err != nil {
+	auditEvent := buildDocumentAuditEvent(ctx, doc, "DOCUMENT_UPLOAD", "SUCCESS", "Documento enviado com sucesso e reenfileirado para indexacao.", map[string]any{
+		"file_url":         fileURL,
+		"mime_type":        resolvedContentType,
+		"size_bytes":       size,
+		"processing_stage": doc.ProcessingStage,
+		"status":           doc.Status,
+	})
+
+	if err := u.documentRepo.CreateDocumentWithOutbox(ctx, doc, event, &auditEvent); err != nil {
 		return nil, fmt.Errorf("%w: %v", domain.ErrInternal, err)
 	}
 
@@ -461,7 +469,12 @@ func (u *documentCatalogUseCase) GetDocument(ctx context.Context, userID, docume
 }
 
 func (u *documentCatalogUseCase) RetryDocumentIndexing(ctx context.Context, userID, documentID uint) (*models.Document, error) {
-	document, err := u.documentRepo.RetryDocumentIndexing(ctx, userID, documentID)
+	auditEvent := buildDocumentAuditEvent(ctx, &models.Document{ID: documentID, UserID: userID}, "DOCUMENT_RETRY_INDEX", "SUCCESS", "Documento reenfileirado para nova tentativa de indexacao.", map[string]any{
+		"processing_stage": "QUEUED",
+		"status":           domain.DocumentStatusQueued,
+	})
+
+	document, err := u.documentRepo.RetryDocumentIndexing(ctx, userID, documentID, &auditEvent)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrDocumentNotFound
@@ -706,7 +719,7 @@ func storageDeletionDetail(usedCustomStorage bool, usedFallback bool) string {
 	}
 }
 
-func buildDocumentDeletionAuditEvent(ctx context.Context, doc *models.Document, status, detail, mode string, metadata map[string]any) models.DocumentAuditEvent {
+func buildDocumentAuditEvent(ctx context.Context, doc *models.Document, action, status, detail string, metadata map[string]any) models.DocumentAuditEvent {
 	var collectionID *uint
 	if doc != nil {
 		collectionID = doc.CollectionID
@@ -715,9 +728,6 @@ func buildDocumentDeletionAuditEvent(ctx context.Context, doc *models.Document, 
 	eventMetadata := cloneMetadata(metadata)
 	if eventMetadata == nil {
 		eventMetadata = map[string]any{}
-	}
-	if mode != "" {
-		eventMetadata["mode"] = mode
 	}
 
 	var documentID *uint
@@ -758,7 +768,7 @@ func buildDocumentDeletionAuditEvent(ctx context.Context, doc *models.Document, 
 		CollectionID:  collectionID,
 		ActorType:     actorType,
 		ActorID:       actorID,
-		Action:        "DOCUMENT_DELETE",
+		Action:        action,
 		Status:        status,
 		CorrelationID: correlationID,
 		Origin:        origin,
@@ -766,6 +776,18 @@ func buildDocumentDeletionAuditEvent(ctx context.Context, doc *models.Document, 
 		Detail:        detail,
 		Metadata:      eventMetadata,
 	}
+}
+
+func buildDocumentDeletionAuditEvent(ctx context.Context, doc *models.Document, status, detail, mode string, metadata map[string]any) models.DocumentAuditEvent {
+	eventMetadata := cloneMetadata(metadata)
+	if eventMetadata == nil {
+		eventMetadata = map[string]any{}
+	}
+	if mode != "" {
+		eventMetadata["mode"] = mode
+	}
+
+	return buildDocumentAuditEvent(ctx, doc, "DOCUMENT_DELETE", status, detail, eventMetadata)
 }
 
 func (u *documentCatalogUseCase) GetDocumentIndex(ctx context.Context, userID, documentID uint, query string) (*domain.DocumentIndex, error) {

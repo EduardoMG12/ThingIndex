@@ -61,7 +61,7 @@ func (h *DocumentHandler) Upload(c *gin.Context) {
 	defer file.Close()
 
 	doc, err := h.useCase.UploadDocument(
-		c.Request.Context(),
+		withRequestAuditContext(c, userID),
 		userID,
 		title,
 		file,
@@ -192,7 +192,7 @@ func (h *DocumentHandler) RetryIndexing(c *gin.Context) {
 		return
 	}
 
-	document, err := h.useCase.RetryDocumentIndexing(c.Request.Context(), userID, documentID)
+	document, err := h.useCase.RetryDocumentIndexing(withRequestAuditContext(c, userID), userID, documentID)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrDocumentNotFound):
@@ -653,21 +653,5 @@ func isUploadTooLargeError(err error) bool {
 }
 
 func withDeletionAuditContext(c *gin.Context, userID uint) context.Context {
-	actorID := userID
-	requestID := c.GetString("request_id")
-	routePath := c.FullPath()
-	origin := c.Request.Method
-	if routePath != "" {
-		origin = c.Request.Method + " " + routePath
-	}
-
-	return domain.WithAuditContext(c.Request.Context(), domain.AuditContext{
-		ActorType:     "USER",
-		ActorID:       &actorID,
-		CorrelationID: requestID,
-		Origin:        origin,
-		RequestMethod: c.Request.Method,
-		RoutePath:     routePath,
-		RemoteAddr:    c.ClientIP(),
-	})
+	return withRequestAuditContext(c, userID)
 }

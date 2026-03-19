@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"strings"
 	"testing"
 
 	"thing-index/internal/domain"
@@ -13,6 +14,9 @@ import (
 type documentRepoStub struct {
 	document                *models.Document
 	documentsByCollection   []models.Document
+	createDocumentCalled    bool
+	createDocumentAudit     *models.DocumentAuditEvent
+	retryDocumentAudit      *models.DocumentAuditEvent
 	deleteDocumentCalled    bool
 	deleteDocumentAudit     *models.DocumentAuditEvent
 	deleteCollectionCalled  bool
@@ -27,7 +31,17 @@ func (r *documentRepoStub) CreateDocument(context.Context, *models.Document) err
 	return nil
 }
 
-func (r *documentRepoStub) CreateDocumentWithOutbox(context.Context, *models.Document, *models.OutboxEvent) error {
+func (r *documentRepoStub) CreateDocumentWithOutbox(_ context.Context, doc *models.Document, _ *models.OutboxEvent, auditEvent *models.DocumentAuditEvent) error {
+	r.createDocumentCalled = true
+	if doc.ID == 0 {
+		doc.ID = 99
+	}
+	if auditEvent != nil {
+		copied := *auditEvent
+		documentID := doc.ID
+		copied.DocumentID = &documentID
+		r.createDocumentAudit = &copied
+	}
 	return nil
 }
 
@@ -63,8 +77,16 @@ func (r *documentRepoStub) UpdateDocumentStatus(context.Context, uint, string) e
 	return nil
 }
 
-func (r *documentRepoStub) RetryDocumentIndexing(context.Context, uint, uint) (*models.Document, error) {
-	return nil, nil
+func (r *documentRepoStub) RetryDocumentIndexing(_ context.Context, _ uint, documentID uint, auditEvent *models.DocumentAuditEvent) (*models.Document, error) {
+	if auditEvent != nil {
+		copied := *auditEvent
+		copied.DocumentID = &documentID
+		r.retryDocumentAudit = &copied
+	}
+	if r.document == nil {
+		return nil, domain.ErrDocumentNotFound
+	}
+	return r.document, nil
 }
 
 func (r *documentRepoStub) MarkDocumentOrphaned(_ context.Context, _ uint, documentID uint, _ string) (*models.Document, error) {
@@ -88,7 +110,30 @@ func (r *documentRepoStub) DeleteDocumentsByCollection(_ context.Context, _ uint
 }
 
 type collectionRepoStub struct {
-	collection *models.Collection
+	collection       *models.Collection
+	collectionByName *models.Collection
+}
+
+type categoryRepoStub struct{}
+
+func (r *categoryRepoStub) CreateCategory(context.Context, *models.DocumentCategory) error {
+	return nil
+}
+
+func (r *categoryRepoStub) UpdateCategory(context.Context, *models.DocumentCategory) error {
+	return nil
+}
+
+func (r *categoryRepoStub) GetCategoryByID(context.Context, uint, uint) (*models.DocumentCategory, error) {
+	return nil, domain.ErrCategoryNotFound
+}
+
+func (r *categoryRepoStub) GetCategoryByNormalizedName(context.Context, string, uint) (*models.DocumentCategory, error) {
+	return nil, domain.ErrCategoryNotFound
+}
+
+func (r *categoryRepoStub) ListCategoriesByUserID(context.Context, uint) ([]models.DocumentCategory, error) {
+	return nil, nil
 }
 
 func (r *collectionRepoStub) CreateCollection(context.Context, *models.Collection) error {
@@ -107,7 +152,10 @@ func (r *collectionRepoStub) GetCollectionByID(context.Context, uint, uint) (*mo
 }
 
 func (r *collectionRepoStub) GetCollectionByNormalizedName(context.Context, string, uint) (*models.Collection, error) {
-	return nil, domain.ErrCollectionNotFound
+	if r.collectionByName == nil {
+		return nil, domain.ErrCollectionNotFound
+	}
+	return r.collectionByName, nil
 }
 
 func (r *collectionRepoStub) ListCollectionsByUserID(context.Context, uint) ([]models.Collection, error) {
@@ -120,9 +168,13 @@ func (r *collectionRepoStub) CountDocuments(context.Context, uint, uint) (int64,
 
 type storageStub struct {
 	deleteErrByPath map[string]error
+	uploadURL       string
 }
 
 func (s *storageStub) UploadFile(context.Context, io.Reader, int64, string, string) (string, error) {
+	if s.uploadURL != "" {
+		return s.uploadURL, nil
+	}
 	return "", nil
 }
 
@@ -176,6 +228,83 @@ func TestDeleteDocumentReturnsErrorWhenStorageDeletionFailsAndAuditsFailure(t *t
 	}
 	if repo.recordedAuditEvents[0].Status != "FAILED" {
 		t.Fatalf("expected failed audit status, got %#v", repo.recordedAuditEvents[0])
+	}
+}
+
+func TestUploadDocumentPersistsSuccessAuditInsideCreateTransaction(t *testing.T) {
+	t.Parallel()
+
+	collectionID := uint(13)
+	actorID := uint(4)
+	repo := &documentRepoStub{}
+	useCase := &documentCatalogUseCase{
+		categoryRepo:       &categoryRepoStub{},
+		collectionRepo:     &collectionRepoStub{collectionByName: &models.Collection{ID: collectionID, UserID: 4, Name: "Contratos", NormalizedName: "contratos"}},
+		documentRepo:       repo,
+		storage:            &storageStub{uploadURL: "docs/contrato.pdf"},
+		storageResolver:    &resolverStub{err: domain.ErrStorageProviderNotConfigured},
+		maxUploadSizeBytes: 10 << 20,
+	}
+
+	ctx := domain.WithAuditContext(context.Background(), domain.AuditContext{
+		ActorType:     "USER",
+		ActorID:       &actorID,
+		CorrelationID: "req-upload-001",
+		Origin:        "POST /api/v1/documents/upload",
+		RequestMethod: "POST",
+		RoutePath:     "/api/v1/documents/upload",
+		RemoteAddr:    "127.0.0.1",
+	})
+
+	doc, err := useCase.UploadDocument(ctx, 4, "Contrato.pdf", io.NopCloser(strings.NewReader("%PDF-1.7 sample")), 15, "application/pdf", "", "", "Contratos")
+	if err != nil {
+		t.Fatalf("expected upload to succeed, got %v", err)
+	}
+	if doc == nil || !repo.createDocumentCalled || repo.createDocumentAudit == nil {
+		t.Fatal("expected document creation to persist an audit event")
+	}
+	if repo.createDocumentAudit.Action != "DOCUMENT_UPLOAD" || repo.createDocumentAudit.Status != "SUCCESS" {
+		t.Fatalf("unexpected upload audit event: %#v", repo.createDocumentAudit)
+	}
+	if repo.createDocumentAudit.CorrelationID != "req-upload-001" || repo.createDocumentAudit.Origin != "POST /api/v1/documents/upload" {
+		t.Fatalf("expected correlation and origin in upload audit, got %#v", repo.createDocumentAudit)
+	}
+	if repo.createDocumentAudit.Metadata["mime_type"] != "application/pdf" {
+		t.Fatalf("expected mime type metadata, got %#v", repo.createDocumentAudit.Metadata)
+	}
+}
+
+func TestRetryDocumentIndexingPersistsSuccessAudit(t *testing.T) {
+	t.Parallel()
+
+	collectionID := uint(22)
+	actorID := uint(9)
+	doc := &models.Document{ID: 21, UserID: 9, Title: "Acordao.pdf", CollectionID: &collectionID}
+	repo := &documentRepoStub{document: doc}
+	useCase := &documentCatalogUseCase{documentRepo: repo}
+
+	ctx := domain.WithAuditContext(context.Background(), domain.AuditContext{
+		ActorType:     "USER",
+		ActorID:       &actorID,
+		CorrelationID: "req-retry-001",
+		Origin:        "POST /api/v1/documents/:id/retry",
+		RequestMethod: "POST",
+		RoutePath:     "/api/v1/documents/:id/retry",
+		RemoteAddr:    "127.0.0.1",
+	})
+
+	_, err := useCase.RetryDocumentIndexing(ctx, 9, 21)
+	if err != nil {
+		t.Fatalf("expected retry to succeed, got %v", err)
+	}
+	if repo.retryDocumentAudit == nil {
+		t.Fatal("expected retry audit to be persisted")
+	}
+	if repo.retryDocumentAudit.Action != "DOCUMENT_RETRY_INDEX" || repo.retryDocumentAudit.Status != "SUCCESS" {
+		t.Fatalf("unexpected retry audit event: %#v", repo.retryDocumentAudit)
+	}
+	if repo.retryDocumentAudit.CorrelationID != "req-retry-001" {
+		t.Fatalf("expected retry correlation id, got %#v", repo.retryDocumentAudit)
 	}
 }
 

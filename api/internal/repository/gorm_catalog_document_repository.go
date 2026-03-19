@@ -2,9 +2,9 @@ package repository
 
 import (
 	"context"
-	"time"
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -21,7 +21,7 @@ func (r *GormCatalogDocumentRepository) CreateDocument(ctx context.Context, doc 
 	return r.db.WithContext(ctx).Create(doc).Error
 }
 
-func (r *GormCatalogDocumentRepository) CreateDocumentWithOutbox(ctx context.Context, doc *models.Document, event *models.OutboxEvent) error {
+func (r *GormCatalogDocumentRepository) CreateDocumentWithOutbox(ctx context.Context, doc *models.Document, event *models.OutboxEvent, auditEvent *models.DocumentAuditEvent) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(doc).Error; err != nil {
 			return err
@@ -32,7 +32,21 @@ func (r *GormCatalogDocumentRepository) CreateDocumentWithOutbox(ctx context.Con
 			event.Payload = map[string]any{}
 		}
 		event.Payload["document_id"] = doc.ID
-		return tx.Create(event).Error
+		if err := tx.Create(event).Error; err != nil {
+			return err
+		}
+
+		if auditEvent != nil {
+			documentID := doc.ID
+			auditEvent.DocumentID = &documentID
+			auditEvent.CollectionID = doc.CollectionID
+			if auditEvent.Title == "" {
+				auditEvent.Title = doc.Title
+			}
+			return tx.Create(auditEvent).Error
+		}
+
+		return nil
 	})
 }
 
@@ -119,7 +133,7 @@ func (r *GormCatalogDocumentRepository) UpdateDocumentStatus(ctx context.Context
 		Update("status", status).Error
 }
 
-func (r *GormCatalogDocumentRepository) RetryDocumentIndexing(ctx context.Context, userID uint, documentID uint) (*models.Document, error) {
+func (r *GormCatalogDocumentRepository) RetryDocumentIndexing(ctx context.Context, userID uint, documentID uint, auditEvent *models.DocumentAuditEvent) (*models.Document, error) {
 	var document models.Document
 
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -160,6 +174,18 @@ func (r *GormCatalogDocumentRepository) RetryDocumentIndexing(ctx context.Contex
 
 		if err := tx.Create(event).Error; err != nil {
 			return err
+		}
+
+		if auditEvent != nil {
+			auditEvent.DocumentID = &document.ID
+			auditEvent.CollectionID = document.CollectionID
+			auditEvent.Title = document.Title
+			if auditEvent.UserID == 0 {
+				auditEvent.UserID = document.UserID
+			}
+			if err := tx.Create(auditEvent).Error; err != nil {
+				return err
+			}
 		}
 
 		return tx.

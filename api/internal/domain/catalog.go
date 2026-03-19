@@ -190,7 +190,7 @@ type CollectionRepository interface {
 
 type CatalogDocumentRepository interface {
 	CreateDocument(ctx context.Context, doc *models.Document) error
-	CreateDocumentWithOutbox(ctx context.Context, doc *models.Document, event *models.OutboxEvent) error
+	CreateDocumentWithOutbox(ctx context.Context, doc *models.Document, event *models.OutboxEvent, auditEvent *models.DocumentAuditEvent) error
 	CreateDocumentAuditEvents(ctx context.Context, events []models.DocumentAuditEvent) error
 	GetDocumentByID(ctx context.Context, id uint, userID uint) (*models.Document, error)
 	GetDocumentByIDForProcessing(ctx context.Context, id uint) (*models.Document, error)
@@ -198,7 +198,7 @@ type CatalogDocumentRepository interface {
 	GetDocumentsByCategoryID(ctx context.Context, categoryID uint, userID uint) ([]models.Document, error)
 	GetDocumentsByCollectionID(ctx context.Context, collectionID uint, userID uint) ([]models.Document, error)
 	UpdateDocumentStatus(ctx context.Context, documentID uint, status string) error
-	RetryDocumentIndexing(ctx context.Context, userID uint, documentID uint) (*models.Document, error)
+	RetryDocumentIndexing(ctx context.Context, userID uint, documentID uint, auditEvent *models.DocumentAuditEvent) (*models.Document, error)
 	MarkDocumentOrphaned(ctx context.Context, userID uint, documentID uint, detail string) (*models.Document, error)
 	DeleteDocument(ctx context.Context, userID uint, documentID uint, auditEvent *models.DocumentAuditEvent) error
 	DeleteDocumentsByCollection(ctx context.Context, userID uint, collectionID uint, auditEvents []models.DocumentAuditEvent) (int64, error)
