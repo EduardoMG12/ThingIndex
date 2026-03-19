@@ -212,6 +212,68 @@ export async function deleteCollectionDocuments(collectionId: number): Promise<{
     };
 }
 
+export async function downloadDocumentOriginal(document: Pick<Document, "id" | "title">): Promise<void> {
+    if (typeof window === "undefined") {
+        throw new Error("Download disponivel apenas no navegador.");
+    }
+
+    const response = await fetchWithAuthRedirect(`/api/documents/${document.id}/download`, {
+        method: "GET",
+        cache: "no-store",
+    });
+
+    const payload = !response.ok
+        ? ((await response.json().catch(() => null)) as ApiErrorResponse | null)
+        : null;
+
+    if (!response.ok) {
+        throw new Error(payload?.message || "Nao foi possivel baixar o documento original.");
+    }
+
+    const blob = await response.blob();
+    const objectURL = window.URL.createObjectURL(blob);
+    const anchor = window.document.createElement("a");
+
+    anchor.href = objectURL;
+    anchor.download = extractFilenameFromDisposition(response.headers.get("content-disposition"), document.title);
+    anchor.rel = "noopener";
+
+    window.document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+
+    window.setTimeout(() => {
+        window.URL.revokeObjectURL(objectURL);
+    }, 0);
+}
+
+function extractFilenameFromDisposition(disposition: string | null, fallback: string) {
+    if (!disposition) {
+        return fallback;
+    }
+
+    const encodedMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (encodedMatch?.[1]) {
+        try {
+            return decodeURIComponent(encodedMatch[1]);
+        } catch {
+            return encodedMatch[1];
+        }
+    }
+
+    const quotedMatch = disposition.match(/filename="([^"]+)"/i);
+    if (quotedMatch?.[1]) {
+        return quotedMatch[1];
+    }
+
+    const plainMatch = disposition.match(/filename=([^;]+)/i);
+    if (plainMatch?.[1]) {
+        return plainMatch[1].trim();
+    }
+
+    return fallback;
+}
+
 type DocumentIndexApiRecord = {
     document?: DocumentApiRecord | null;
     paragraph_nodes?: unknown[];
@@ -320,6 +382,9 @@ type DocumentMonitoringSummaryApiRecord = {
     processing_documents?: number;
     queued_documents?: number;
     failed_documents?: number;
+    retrying_documents?: number;
+    orphaned_documents?: number;
+    dlq_documents?: number;
     documents_with_llm?: number;
     pricing_aware_documents?: number;
     total_llm_requests?: number;
@@ -355,6 +420,9 @@ export type DocumentMonitoringSummary = {
     processing_documents: number;
     queued_documents: number;
     failed_documents: number;
+    retrying_documents: number;
+    orphaned_documents: number;
+    dlq_documents: number;
     documents_with_llm: number;
     pricing_aware_documents: number;
     total_llm_requests: number;
@@ -464,6 +532,9 @@ function normalizeDocumentMonitoringSummary(value: DocumentMonitoringSummaryApiR
         processing_documents: typeof value?.processing_documents === "number" ? value.processing_documents : 0,
         queued_documents: typeof value?.queued_documents === "number" ? value.queued_documents : 0,
         failed_documents: typeof value?.failed_documents === "number" ? value.failed_documents : 0,
+        retrying_documents: typeof value?.retrying_documents === "number" ? value.retrying_documents : 0,
+        orphaned_documents: typeof value?.orphaned_documents === "number" ? value.orphaned_documents : 0,
+        dlq_documents: typeof value?.dlq_documents === "number" ? value.dlq_documents : 0,
         documents_with_llm: typeof value?.documents_with_llm === "number" ? value.documents_with_llm : 0,
         pricing_aware_documents: typeof value?.pricing_aware_documents === "number" ? value.pricing_aware_documents : 0,
         total_llm_requests: typeof value?.total_llm_requests === "number" ? value.total_llm_requests : 0,

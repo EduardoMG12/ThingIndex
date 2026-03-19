@@ -5,6 +5,7 @@ import { Check, ChevronDown } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useI18n } from "@/lib/i18n/provider";
 
 type ProviderModelFieldProps = {
     providerType: string;
@@ -29,6 +30,7 @@ export default function ProviderModelField({
     suggestions = [],
     onChange,
 }: ProviderModelFieldProps) {
+    const { t } = useI18n();
     const [query, setQuery] = useState(value);
     const [isOpen, setIsOpen] = useState(false);
     const rootRef = useRef<HTMLDivElement | null>(null);
@@ -74,7 +76,7 @@ export default function ProviderModelField({
             <Label htmlFor={`${providerType}-model`}>
                 {label}
                 {optional ? (
-                    <span className="ml-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Optional</span>
+                    <span className="ml-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{t("common.optional")}</span>
                 ) : null}
             </Label>
 
@@ -113,7 +115,7 @@ export default function ProviderModelField({
 
                 <button
                     type="button"
-                    aria-label="Toggle model suggestions"
+                    aria-label={t("settings.toggleModelSuggestions")}
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => {
                         setIsOpen((current) => !current);
@@ -146,7 +148,7 @@ export default function ProviderModelField({
                                 })
                             ) : (
                                 <div className="px-3 py-2 text-xs text-muted-foreground">
-                                    No suggested models match this search. Keep typing to use a custom model ID.
+                                    {t("settings.noSuggestedModels")}
                                 </div>
                             )}
                         </div>

@@ -9,6 +9,7 @@ import { logout } from "@/components/auth/actions";
 import { Logo } from "@/components/ui/Logo";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
+import { DangerConfirmModal } from "@/components/ui/danger-confirm-modal";
 import { useI18n } from "@/lib/i18n/provider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { deleteChatConversation, updateChatConversationTitle, type ChatConversationSummary } from "@/lib/api/chat";
@@ -38,6 +39,7 @@ const AppShell = ({ children, contentClassName }: AppShellProps) => {
     const [editingTitle, setEditingTitle] = useState("");
     const [isSavingConversationTitle, setIsSavingConversationTitle] = useState(false);
     const [conversationPendingDelete, setConversationPendingDelete] = useState<ChatConversationSummary | null>(null);
+    const [conversationDeleteConfirmationValue, setConversationDeleteConfirmationValue] = useState("");
     const [isDeletingConversation, setIsDeletingConversation] = useState(false);
 
     const navItems = [
@@ -145,6 +147,7 @@ const AppShell = ({ children, contentClassName }: AppShellProps) => {
             }
 
             setConversationPendingDelete(null);
+            setConversationDeleteConfirmationValue("");
         } finally {
             setIsDeletingConversation(false);
         }
@@ -280,7 +283,10 @@ const AppShell = ({ children, contentClassName }: AppShellProps) => {
                                                                             </button>
                                                                             <button
                                                                                 type="button"
-                                                                                onClick={() => setConversationPendingDelete(conversation)}
+                                                                                onClick={() => {
+                                                                                    setConversationPendingDelete(conversation);
+                                                                                    setConversationDeleteConfirmationValue("");
+                                                                                }}
                                                                                 className="rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
                                                                             >
                                                                                 <Trash2 className="h-3.5 w-3.5" />
@@ -336,34 +342,26 @@ const AppShell = ({ children, contentClassName }: AppShellProps) => {
                 </div>
             </aside>
 
-            {conversationPendingDelete && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/70 px-4 backdrop-blur-sm">
-                    <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-2xl">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-destructive">Excluir chat</p>
-                        <h3 className="mt-2 text-lg font-semibold text-foreground">{conversationPendingDelete.title}</h3>
-                        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                            Essa ação remove a conversa inteira. Não dá para desfazer.
-                        </p>
-                        <div className="mt-5 flex justify-end gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setConversationPendingDelete(null)}
-                                className="rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => void confirmDeleteConversation()}
-                                disabled={isDeletingConversation}
-                                className="rounded-xl bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-opacity disabled:opacity-60"
-                            >
-                                {isDeletingConversation ? "Excluindo..." : "Excluir"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <DangerConfirmModal
+                isOpen={conversationPendingDelete !== null}
+                eyebrow="Acao destrutiva"
+                title={conversationPendingDelete ? `Excluir chat: ${conversationPendingDelete.title}` : "Excluir chat"}
+                description="Isso remove a conversa inteira e o historico associado. O fluxo nao pode ser desfeito."
+                confirmLabel="Confirmar exclusao"
+                expectedValue={conversationPendingDelete?.title}
+                confirmationValue={conversationDeleteConfirmationValue}
+                onConfirmationChange={setConversationDeleteConfirmationValue}
+                onCancel={() => {
+                    if (isDeletingConversation) {
+                        return;
+                    }
+
+                    setConversationPendingDelete(null);
+                    setConversationDeleteConfirmationValue("");
+                }}
+                onConfirm={() => void confirmDeleteConversation()}
+                isPending={isDeletingConversation}
+            />
 
             <main className="flex-1 flex flex-col overflow-hidden">
                 <header className="h-14 border-b border-border bg-background/50 backdrop-blur-sm flex items-center justify-between px-8 shrink-0">

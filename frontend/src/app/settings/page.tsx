@@ -311,7 +311,7 @@ function FamilySection({
                                 className="gap-2"
                             >
                                 {isTestingProvider ? <Loader2 className="h-4 w-4 animate-spin" /> : <Activity className="h-4 w-4" />}
-                                Test connection
+                                {t("settings.testConnection")}
                             </Button>
                             <Button
                                 type="button"
@@ -382,7 +382,7 @@ function FamilySection({
                                             </p>
                                             {family === "LLM" && config.public_metadata.model ? (
                                                 <p className="mt-2 text-xs text-foreground/80">
-                                                    Model: <span className="font-medium text-foreground">{config.public_metadata.model}</span>
+                                                    {t("settings.savedModelLabel")}: <span className="font-medium text-foreground">{config.public_metadata.model}</span>
                                                 </p>
                                             ) : null}
                                             <button
@@ -840,7 +840,7 @@ export default function SettingsPage() {
                     enabledForIndexing: provider.family === "LLM" ? llmSelections[provider.providerType]?.enabledForIndexing : undefined,
                     enabledForChat: provider.family === "LLM" ? llmSelections[provider.providerType]?.enabledForChat : undefined,
                 });
-                toast.success(`${provider.name} saved and enabled.`);
+                toast.success(t("settings.providerSavedEnabled", { name: provider.name }));
                 const latest = await fetchProviders();
                 setProviders(latest);
                 syncLLMSelections(latest);
@@ -876,7 +876,7 @@ export default function SettingsPage() {
                     providerType: provider.providerType,
                     credentials,
                 });
-                toast.success(`${provider.name} connection validated.`);
+                toast.success(t("settings.providerConnectionValidated", { name: provider.name }));
             } catch (err) {
                 toast.error(err instanceof Error ? err.message : "Nao foi possivel testar a conexao do provider.");
             } finally {
@@ -895,11 +895,13 @@ export default function SettingsPage() {
                     enabled,
                 });
                 if (provider.family === "LLM" && target === "INDEXING") {
-                    toast.success(`${provider.name} selected for indexing.`);
+                    toast.success(t("settings.providerSelectedForIndexing", { name: provider.name }));
                 } else if (provider.family === "LLM" && target === "CHAT") {
-                    toast.success(`${provider.name} selected for chat.`);
+                    toast.success(t("settings.providerSelectedForChat", { name: provider.name }));
                 } else {
-                    toast.success(enabled ? `${provider.name} enabled.` : `${provider.name} disabled.`);
+                    toast.success(enabled
+                        ? t("settings.providerEnabled", { name: provider.name })
+                        : t("settings.providerDisabled", { name: provider.name }));
                 }
                 const latest = await fetchProviders();
                 setProviders(latest);

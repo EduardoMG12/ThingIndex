@@ -30,18 +30,26 @@ export default function UploadFileList({ files, onRemove, isProcessing }: Upload
 
     const getStatusLabel = (file: DocumentUploadFile) => {
         switch (file.status) {
+            case "pending":
+                return t("dashboard.upload.status.pending");
             case "uploading":
-                return "Enviando";
+                return t("dashboard.upload.status.uploading");
             case "queued":
-                return "Na fila";
+                return t("dashboard.upload.status.queued");
+            case "retrying":
+                return t("dashboard.upload.status.retrying");
             case "processing":
-                return "Indexando";
+                return t("dashboard.upload.status.processing");
             case "indexed":
-                return "Indexado";
-            case "error":
-                return t("dashboard.upload.error");
+                return t("dashboard.upload.status.indexed");
+            case "upload_error":
+                return t("dashboard.upload.status.uploadError");
+            case "failed":
+                return t("dashboard.upload.status.failed");
+            case "orphaned":
+                return t("dashboard.upload.status.orphaned");
             default:
-                return "Pendente";
+                return t("dashboard.upload.error");
         }
     };
 
@@ -49,8 +57,16 @@ export default function UploadFileList({ files, onRemove, isProcessing }: Upload
         switch (file.status) {
             case "indexed":
                 return "text-emerald-500";
-            case "error":
+            case "retrying":
+                return "text-sky-600 dark:text-sky-300";
+            case "upload_error":
+            case "failed":
+            case "orphaned":
                 return "text-destructive";
+            case "processing":
+                return "text-primary";
+            case "pending":
+                return "text-muted-foreground";
             default:
                 return "text-amber-500";
         }
@@ -81,7 +97,7 @@ export default function UploadFileList({ files, onRemove, isProcessing }: Upload
                                     <p className="truncate text-xs font-semibold">{file.name}</p>
                                     <p className="text-[10px] text-muted-foreground uppercase font-mono">{formatSize(file.size)}</p>
                                 </div>
-                                {(file.status === "uploading" || file.status === "queued" || file.status === "processing") && (
+                                {(file.status === "uploading" || file.status === "queued" || file.status === "retrying" || file.status === "processing") && (
                                     <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
                                         <motion.div className="h-full bg-primary" style={{ width: `${file.progress}%` }} />
                                     </div>
@@ -109,6 +125,11 @@ export default function UploadFileList({ files, onRemove, isProcessing }: Upload
                             )}
                             {!file.error && file.statusDetail && file.status !== "indexed" && (
                                 <p className="pl-11 text-[10px] text-muted-foreground">{file.statusDetail}</p>
+                            )}
+                            {file.backendDocumentId && (file.status === "failed" || file.status === "orphaned") && (
+                                <p className="pl-11 text-[10px] text-muted-foreground">
+                                    {t("dashboard.upload.persistedIssueHint")}
+                                </p>
                             )}
                         </motion.div>
                     );

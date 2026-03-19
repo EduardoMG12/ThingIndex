@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -13,6 +14,7 @@ import {
     Coins,
     Cpu,
     Database,
+    Download,
     ExternalLink,
     FileText,
     FolderOpen,
@@ -29,11 +31,13 @@ import {
 import { toast } from "sonner";
 
 import AppShell from "@/components/layout/AppShell";
+import { DangerConfirmModal } from "@/components/ui/danger-confirm-modal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDocuments } from "@/hooks/use-documents";
 import { fetchCollectionContext } from "@/lib/api/collections";
 import type { CollectionContext } from "@/lib/api/contracts/document-context";
 import {
+    downloadDocumentOriginal,
     deleteCollectionDocuments,
     deleteDocument,
     fetchDocumentIndex,
@@ -44,6 +48,7 @@ import {
     type DocumentMonitoringSummary,
     type IndexMonitoring,
 } from "@/lib/api/documents";
+import { getDocumentOperationalIssue, isOrphanedDocument, isPreviewableDocument, type DocumentOperationalIssue } from "@/lib/document-state";
 import { useI18n } from "@/lib/i18n/provider";
 
 const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } };
@@ -267,6 +272,24 @@ function MonitoringSummaryPanel({
                 </div>
             </div>
 
+            <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 p-4">
+                    <p className="text-[10px] uppercase tracking-widest text-sky-700 dark:text-sky-300">Retry automatico</p>
+                    <p className="mt-2 text-lg font-semibold text-foreground">{summary.retrying_documents}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Documentos que falharam, mas ja voltaram para a fila.</p>
+                </div>
+                <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-4">
+                    <p className="text-[10px] uppercase tracking-widest text-destructive">DLQ</p>
+                    <p className="mt-2 text-lg font-semibold text-foreground">{summary.dlq_documents}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Eventos que esgotaram retries e agora exigem intervencao manual.</p>
+                </div>
+                <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-4">
+                    <p className="text-[10px] uppercase tracking-widest text-destructive">Orfaos</p>
+                    <p className="mt-2 text-lg font-semibold text-foreground">{summary.orphaned_documents}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Registros cujo arquivo original nao esta mais acessivel no storage.</p>
+                </div>
+            </div>
+
             <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
                 <div className="rounded-xl border border-border bg-background/60 p-4">
                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Telemetria consolidada</p>
@@ -305,12 +328,59 @@ function MonitoringSummaryPanel({
     );
 }
 
-function isPreviewableDocument(document: Document) {
-    return ["application/pdf", "text/plain"].includes(document.mime_type);
-}
-
 function buildPreviewURL(document: Document) {
     return `/api/documents/${document.id}/preview`;
+}
+
+function buildIssueTone(issue: DocumentOperationalIssue) {
+    if (issue.kind === "orphaned" || issue.kind === "dlq") {
+        return {
+            container: "border-destructive/30 bg-destructive/10 text-destructive",
+            detail: "border-destructive/20 bg-background/70 text-foreground/90",
+        };
+    }
+
+    if (issue.kind === "retrying") {
+        return {
+            container: "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+            detail: "border-sky-500/20 bg-background/70 text-foreground/90",
+        };
+    }
+
+    return {
+        container: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+        detail: "border-amber-500/20 bg-background/70 text-foreground/90",
+    };
+}
+
+function OperationalIssueBanner({
+    issue,
+    compact = false,
+}: {
+    issue: DocumentOperationalIssue;
+    compact?: boolean;
+}) {
+    const tone = buildIssueTone(issue);
+
+    return (
+        <div className={`rounded-xl border p-4 ${tone.container}`}>
+            <div className="flex items-start gap-3">
+                <AlertTriangle className={`mt-0.5 shrink-0 ${compact ? "h-4 w-4" : "h-5 w-5"}`} />
+                <div className="min-w-0">
+                    <p className={`font-semibold ${compact ? "text-sm" : "text-base"}`}>{issue.title}</p>
+                    <p className={`mt-1 leading-relaxed ${compact ? "text-xs" : "text-sm"}`}>{issue.description}</p>
+                    {issue.detail ? (
+                        <div className={`mt-3 rounded-lg border px-3 py-2 text-xs ${tone.detail}`}>
+                            {issue.detail}
+                        </div>
+                    ) : null}
+                    <p className={`mt-3 ${compact ? "text-[11px]" : "text-xs"} text-current/85`}>
+                        {issue.hint}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 function groupDocuments(documents: Document[], locale: string) {
@@ -582,9 +652,23 @@ function IndexStructureView({
 
 function DocumentPreviewPanel({
     document,
+    uploadHref,
+    onRetry,
+    onDownload,
+    onDelete,
+    isRetrying,
+    isDownloading,
+    isDeleting,
     onClose,
 }: {
     document: Document | null;
+    uploadHref: string;
+    onRetry: (document: Document) => void;
+    onDownload: (document: Document) => void;
+    onDelete: (document: Document) => void;
+    isRetrying: boolean;
+    isDownloading: boolean;
+    isDeleting: boolean;
     onClose: () => void;
 }) {
     const [context, setContext] = useState<CollectionContext | null>(null);
@@ -650,6 +734,9 @@ function DocumentPreviewPanel({
     if (!document) {
         return null;
     }
+
+    const issue = getDocumentOperationalIssue(document);
+    const canRenderPreview = isPreviewableDocument(document) && issue?.kind !== "orphaned";
 
     return (
         <div className="fixed inset-0 z-50 flex">
@@ -721,18 +808,80 @@ function DocumentPreviewPanel({
 
                             <TabsContent value="document" className="mt-0 space-y-4">
                                 <div className="flex items-center justify-between">
-                                    <h3 className="text-sm font-semibold">Preview do documento</h3>
-                                    <a
-                                        href={buildPreviewURL(document)}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="inline-flex items-center gap-1 text-[11px] font-medium text-primary"
-                                    >
-                                        Abrir arquivo
-                                        <ExternalLink className="h-3.5 w-3.5" />
-                                    </a>
+                                    <div>
+                                        <h3 className="text-sm font-semibold">Documento original</h3>
+                                        <p className="mt-1 text-xs text-muted-foreground">
+                                            Preview inline e download foram separados para deixar claro quando voce esta inspecionando ou baixando o binario.
+                                        </p>
+                                    </div>
+                                    {canRenderPreview ? (
+                                        <a
+                                            href={buildPreviewURL(document)}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="inline-flex items-center gap-1 text-[11px] font-medium text-primary"
+                                        >
+                                            Abrir preview em nova aba
+                                            <ExternalLink className="h-3.5 w-3.5" />
+                                        </a>
+                                    ) : null}
                                 </div>
-                                <FilePreview document={document} />
+                                {issue ? <OperationalIssueBanner issue={issue} /> : null}
+
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => onDownload(document)}
+                                        disabled={isDownloading}
+                                        className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                                        Baixar original
+                                    </button>
+
+                                    {(document.status === "FAILED" || isOrphanedDocument(document)) ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => onRetry(document)}
+                                            disabled={isRetrying}
+                                            className="inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-amber-300"
+                                        >
+                                            {isRetrying ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
+                                            {isOrphanedDocument(document) ? "Reenfileirar apos restaurar original" : "Reenfileirar indexacao"}
+                                        </button>
+                                    ) : null}
+
+                                    {isOrphanedDocument(document) ? (
+                                        <Link
+                                            href={uploadHref}
+                                            className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/15"
+                                        >
+                                            Abrir dashboard para reupload
+                                            <ExternalLink className="h-4 w-4" />
+                                        </Link>
+                                    ) : null}
+
+                                    {isOrphanedDocument(document) ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => onDelete(document)}
+                                            disabled={isDeleting}
+                                            className="inline-flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive transition hover:bg-destructive/15 disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                            Excluir registro
+                                        </button>
+                                    ) : null}
+                                </div>
+
+                                {canRenderPreview ? <FilePreview document={document} /> : null}
+
+                                {!canRenderPreview && !issue && !isPreviewableDocument(document) ? (
+                                    <div className="rounded-xl border border-border bg-background/60 p-5 text-sm text-muted-foreground">
+                                        Preview visual indisponivel para este tipo de arquivo. Use o download explicito para inspecionar o original fora do navegador.
+                                    </div>
+                                ) : null}
+
                                 {!isPreviewableDocument(document) && (
                                     <p className="text-xs text-muted-foreground">
                                         `html`, `docx`, `xlsx` e formatos similares nao possuem renderizacao nativa segura no navegador sem conversao adicional.
@@ -768,21 +917,29 @@ function DocumentPreviewPanel({
 
 function DocumentCard({
     document,
+    uploadHref,
     onOpenPreview,
+    onDownload,
     onRetry,
     onDelete,
+    isDownloading,
     isRetrying,
     isDeleting,
     locale,
 }: {
     document: Document;
+    uploadHref: string;
     onOpenPreview: (document: Document) => void;
+    onDownload: (document: Document) => void;
     onRetry: (document: Document) => void;
     onDelete: (document: Document) => void;
+    isDownloading: boolean;
     isRetrying: boolean;
     isDeleting: boolean;
     locale: string;
 }) {
+    const issue = getDocumentOperationalIssue(document);
+
     return (
         <div className="rounded-xl border border-border bg-background/70 p-4 shadow-card">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -827,6 +984,23 @@ function DocumentCard({
                 <p>Started: <span className="font-mono text-foreground">{formatDate(document.index_started_at, locale)}</span></p>
             </div>
 
+            {issue ? (
+                <div className="mt-4 border-t border-border pt-4">
+                    <OperationalIssueBanner issue={issue} compact />
+                    {issue.kind === "orphaned" ? (
+                        <div className="mt-3">
+                            <Link
+                                href={uploadHref}
+                                className="inline-flex items-center gap-1 text-[11px] font-medium text-primary"
+                            >
+                                Abrir dashboard para reupload
+                                <ExternalLink className="h-3.5 w-3.5" />
+                            </Link>
+                        </div>
+                    ) : null}
+                </div>
+            ) : null}
+
             <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
                 <button
                     type="button"
@@ -834,8 +1008,18 @@ function DocumentCard({
                     className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary"
                 >
                     <PanelRight className="h-4 w-4" />
-                    Open side preview
+                    Abrir painel do documento
                     <ChevronLeft className="h-4 w-4" />
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => onDownload(document)}
+                    disabled={isDownloading}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                    {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                    Baixar original
                 </button>
 
                 {document.status === "FAILED" ? (
@@ -846,7 +1030,7 @@ function DocumentCard({
                         className="inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-amber-300"
                     >
                         {isRetrying ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
-                        Retry indexing
+                        Reenfileirar indexacao
                     </button>
                 ) : null}
 
@@ -857,7 +1041,7 @@ function DocumentCard({
                     className="inline-flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive transition hover:bg-destructive/15 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                    Delete document
+                    Excluir documento
                 </button>
             </div>
         </div>
@@ -876,104 +1060,21 @@ type PendingDeletion =
         documentCount: number;
       };
 
-function DeletionConfirmModal({
-    pendingDeletion,
-    confirmationValue,
-    onConfirmationChange,
-    onCancel,
-    onConfirm,
-    isDeleting,
-}: {
-    pendingDeletion: PendingDeletion | null;
-    confirmationValue: string;
-    onConfirmationChange: (value: string) => void;
-    onCancel: () => void;
-    onConfirm: () => void;
-    isDeleting: boolean;
-}) {
-    if (!pendingDeletion) {
-        return null;
-    }
-
-    const expectedValue = pendingDeletion.kind === "document"
-        ? pendingDeletion.document.title
-        : pendingDeletion.collectionName;
-    const isValid = confirmationValue.trim() === expectedValue;
-
-    return (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-            <button
-                type="button"
-                onClick={onCancel}
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                aria-label="Fechar confirmacao"
-            />
-
-            <div className="relative z-10 w-full max-w-xl rounded-3xl border border-destructive/30 bg-card p-6 shadow-2xl">
-                <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-destructive/30 bg-destructive/10 text-destructive">
-                        <AlertTriangle className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-destructive">Destructive action</p>
-                        <h3 className="mt-2 text-lg font-semibold">
-                            {pendingDeletion.kind === "document" ? "Excluir documento" : "Excluir documentos da collection"}
-                        </h3>
-                        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                            {pendingDeletion.kind === "document"
-                                ? "Isso remove o arquivo bruto, a indexacao derivada e o registro do dashboard."
-                                : `Isso remove os ${pendingDeletion.documentCount} documento(s) da collection e limpa os dados derivados associados.`}
-                        </p>
-                        <p className="mt-3 text-sm text-foreground/90">
-                            Digite <span className="font-semibold text-destructive">{expectedValue}</span> para confirmar.
-                        </p>
-                    </div>
-                </div>
-
-                <input
-                    value={confirmationValue}
-                    onChange={(event) => onConfirmationChange(event.target.value)}
-                    placeholder={expectedValue}
-                    className="mt-5 w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none transition focus:border-destructive/40"
-                />
-
-                <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                    <button
-                        type="button"
-                        onClick={onCancel}
-                        disabled={isDeleting}
-                        className="inline-flex items-center justify-center rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-60"
-                    >
-                        Cancelar
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onConfirm}
-                        disabled={!isValid || isDeleting}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-destructive/30 bg-destructive px-4 py-2.5 text-sm font-semibold text-destructive-foreground transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                        {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                        Confirmar exclusao
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-}
-
 export default function DocumentsPage() {
-    const { locale } = useI18n();
+    const { locale, href } = useI18n();
     const { documents, isLoading, error, reloadDocuments, setDocuments } = useDocuments();
     const [monitoringSummary, setMonitoringSummary] = useState<DocumentMonitoringSummary | null>(null);
     const [monitoringError, setMonitoringError] = useState<string | null>(null);
     const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
     const [openCollections, setOpenCollections] = useState<Record<string, boolean>>({});
     const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+    const [downloadingDocumentId, setDownloadingDocumentId] = useState<number | null>(null);
     const [retryingDocumentId, setRetryingDocumentId] = useState<number | null>(null);
     const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
     const [deleteConfirmationValue, setDeleteConfirmationValue] = useState("");
     const [deletingTargetKey, setDeletingTargetKey] = useState<string | null>(null);
     const groupedDocuments = groupDocuments(documents, locale);
+    const uploadHref = href("/dashboard");
 
     useEffect(() => {
         const controller = new AbortController();
@@ -996,6 +1097,22 @@ export default function DocumentsPage() {
 
         return () => controller.abort();
     }, []);
+
+    useEffect(() => {
+        if (!selectedDocument) {
+            return;
+        }
+
+        const latestDocument = documents.find((item) => item.id === selectedDocument.id);
+        if (!latestDocument) {
+            setSelectedDocument(null);
+            return;
+        }
+
+        if (latestDocument !== selectedDocument) {
+            setSelectedDocument(latestDocument);
+        }
+    }, [documents, selectedDocument]);
 
     const toggleCategory = (categoryName: string) => {
         setOpenCategories((current) => ({
@@ -1024,8 +1141,35 @@ export default function DocumentsPage() {
             }
 
             await reloadDocuments();
+            toast.success(
+                isOrphanedDocument(document)
+                    ? "Documento reenfileirado. Se o original foi restaurado, o processamento podera seguir."
+                    : "Documento reenfileirado para indexacao."
+            );
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Nao foi possivel reenfileirar o documento.");
         } finally {
             setRetryingDocumentId(null);
+        }
+    };
+
+    const handleDownloadDocument = async (document: Document) => {
+        setDownloadingDocumentId(document.id);
+
+        try {
+            await downloadDocumentOriginal(document);
+            toast.success("Download do original iniciado.");
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Nao foi possivel baixar o documento original.";
+            toast.error(message);
+
+            if (message.toLowerCase().includes("nao foi encontrado")) {
+                void reloadDocuments().catch(() => {
+                    // The primary failure was already surfaced to the user.
+                });
+            }
+        } finally {
+            setDownloadingDocumentId(null);
         }
     };
 
@@ -1106,7 +1250,7 @@ export default function DocumentsPage() {
                     Document<span className="text-primary italic">os</span>
                 </h1>
                 <p className="mt-4 max-w-3xl text-base leading-relaxed text-muted-foreground">
-                    Visualize os arquivos separados por categoria e collection. Cada documento pode ser aberto em um painel lateral grande com preview e estrutura indexada.
+                    Visualize os arquivos separados por categoria e collection. Cada documento agora diferencia preview inline, download do original e estados operacionais como falha de indexacao ou arquivo orfao.
                 </p>
             </motion.div>
 
@@ -1195,12 +1339,12 @@ export default function DocumentsPage() {
 
                                                     return (
                                                         <div key={collectionKey} className="rounded-xl border border-border bg-card/40">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => toggleCollection(collectionKey)}
-                                                                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-                                                            >
-                                                                <div className="min-w-0">
+                                                            <div className="flex items-center justify-between gap-3 px-4 py-3">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => toggleCollection(collectionKey)}
+                                                                    className="min-w-0 flex-1 text-left"
+                                                                >
                                                                     <div className="flex items-center gap-2">
                                                                         {isCollectionOpen ? <ChevronDown className="h-4 w-4 text-foreground" /> : <ChevronRight className="h-4 w-4 text-foreground" />}
                                                                         <FolderOpen className="h-4 w-4 text-primary" />
@@ -1209,29 +1353,18 @@ export default function DocumentsPage() {
                                                                     <p className="mt-1 text-[11px] text-muted-foreground">
                                                                         {collection.documents.length} documento(s)
                                                                     </p>
-                                                                </div>
+                                                                </button>
                                                                 {collection.collectionId ? (
-                                                                    <span
-                                                                        role="button"
-                                                                        tabIndex={0}
-                                                                        onClick={(event) => {
-                                                                            event.stopPropagation();
-                                                                            openCollectionDeletion(collection.collectionId!, collection.name, collection.documents.length);
-                                                                        }}
-                                                                        onKeyDown={(event) => {
-                                                                            if (event.key === "Enter" || event.key === " ") {
-                                                                                event.preventDefault();
-                                                                                event.stopPropagation();
-                                                                                openCollectionDeletion(collection.collectionId!, collection.name, collection.documents.length);
-                                                                            }
-                                                                        }}
-                                                                        className="inline-flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-[11px] font-semibold text-destructive"
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => openCollectionDeletion(collection.collectionId!, collection.name, collection.documents.length)}
+                                                                        className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-[11px] font-semibold text-destructive"
                                                                     >
                                                                         {deletingTargetKey === `collection:${collection.collectionId}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                                                                        Delete collection docs
-                                                                    </span>
+                                                                        Excluir documentos da collection
+                                                                    </button>
                                                                 ) : null}
-                                                            </button>
+                                                            </div>
 
                                                             {isCollectionOpen && (
                                                                 <div className="grid gap-3 border-t border-border p-4">
@@ -1239,9 +1372,12 @@ export default function DocumentsPage() {
                                                                         <DocumentCard
                                                                             key={document.id}
                                                                             document={document}
+                                                                            uploadHref={uploadHref}
                                                                             onOpenPreview={setSelectedDocument}
+                                                                            onDownload={handleDownloadDocument}
                                                                             onRetry={handleRetryDocument}
                                                                             onDelete={openDocumentDeletion}
+                                                                            isDownloading={downloadingDocumentId === document.id}
                                                                             isRetrying={retryingDocumentId === document.id}
                                                                             isDeleting={deletingTargetKey === `document:${document.id}`}
                                                                             locale={locale}
@@ -1277,12 +1413,12 @@ export default function DocumentsPage() {
 
                                                     return (
                                                         <>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => toggleCollection(collectionKey)}
-                                                                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-                                                            >
-                                                                <div className="min-w-0">
+                                                            <div className="flex items-center justify-between gap-3 px-4 py-3">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => toggleCollection(collectionKey)}
+                                                                    className="min-w-0 flex-1 text-left"
+                                                                >
                                                                     <div className="flex items-center gap-2">
                                                                         {isCollectionOpen ? <ChevronDown className="h-4 w-4 text-foreground" /> : <ChevronRight className="h-4 w-4 text-foreground" />}
                                                                         <FolderOpen className="h-4 w-4 text-primary" />
@@ -1291,29 +1427,18 @@ export default function DocumentsPage() {
                                                                     <p className="mt-1 text-[11px] text-muted-foreground">
                                                                         {collection.documents.length} documento(s) sem categoria
                                                                     </p>
-                                                                </div>
+                                                                </button>
                                                                 {collection.collectionId ? (
-                                                                    <span
-                                                                        role="button"
-                                                                        tabIndex={0}
-                                                                        onClick={(event) => {
-                                                                            event.stopPropagation();
-                                                                            openCollectionDeletion(collection.collectionId!, collection.name, collection.documents.length);
-                                                                        }}
-                                                                        onKeyDown={(event) => {
-                                                                            if (event.key === "Enter" || event.key === " ") {
-                                                                                event.preventDefault();
-                                                                                event.stopPropagation();
-                                                                                openCollectionDeletion(collection.collectionId!, collection.name, collection.documents.length);
-                                                                            }
-                                                                        }}
-                                                                        className="inline-flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-[11px] font-semibold text-destructive"
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => openCollectionDeletion(collection.collectionId!, collection.name, collection.documents.length)}
+                                                                        className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-[11px] font-semibold text-destructive"
                                                                     >
                                                                         {deletingTargetKey === `collection:${collection.collectionId}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                                                                        Delete collection docs
-                                                                    </span>
+                                                                        Excluir documentos da collection
+                                                                    </button>
                                                                 ) : null}
-                                                            </button>
+                                                            </div>
 
                                                             {isCollectionOpen && (
                                                                 <div className="grid gap-3 border-t border-border p-4">
@@ -1321,9 +1446,12 @@ export default function DocumentsPage() {
                                                                         <DocumentCard
                                                                             key={document.id}
                                                                             document={document}
+                                                                            uploadHref={uploadHref}
                                                                             onOpenPreview={setSelectedDocument}
+                                                                            onDownload={handleDownloadDocument}
                                                                             onRetry={handleRetryDocument}
                                                                             onDelete={openDocumentDeletion}
+                                                                            isDownloading={downloadingDocumentId === document.id}
                                                                             isRetrying={retryingDocumentId === document.id}
                                                                             isDeleting={deletingTargetKey === `document:${document.id}`}
                                                                             locale={locale}
@@ -1343,9 +1471,12 @@ export default function DocumentsPage() {
                                                     <DocumentCard
                                                         key={document.id}
                                                         document={document}
+                                                        uploadHref={uploadHref}
                                                         onOpenPreview={setSelectedDocument}
+                                                        onDownload={handleDownloadDocument}
                                                         onRetry={handleRetryDocument}
                                                         onDelete={openDocumentDeletion}
+                                                        isDownloading={downloadingDocumentId === document.id}
                                                         isRetrying={retryingDocumentId === document.id}
                                                         isDeleting={deletingTargetKey === `document:${document.id}`}
                                                         locale={locale}
@@ -1361,14 +1492,31 @@ export default function DocumentsPage() {
                 </div>
             </motion.div>
 
-            <DocumentPreviewPanel document={selectedDocument} onClose={() => setSelectedDocument(null)} />
-            <DeletionConfirmModal
-                pendingDeletion={pendingDeletion}
+            <DocumentPreviewPanel
+                document={selectedDocument}
+                uploadHref={uploadHref}
+                onRetry={handleRetryDocument}
+                onDownload={handleDownloadDocument}
+                onDelete={openDocumentDeletion}
+                isRetrying={retryingDocumentId === selectedDocument?.id}
+                isDownloading={downloadingDocumentId === selectedDocument?.id}
+                isDeleting={deletingTargetKey === `document:${selectedDocument?.id ?? ""}`}
+                onClose={() => setSelectedDocument(null)}
+            />
+            <DangerConfirmModal
+                isOpen={pendingDeletion !== null}
+                eyebrow="Acao destrutiva"
+                title={pendingDeletion?.kind === "document" ? "Excluir documento" : "Excluir documentos da collection"}
+                description={pendingDeletion?.kind === "document"
+                    ? "Isso remove o arquivo bruto, a indexacao derivada e o registro do dashboard."
+                    : `Isso remove os ${pendingDeletion?.documentCount ?? 0} documento(s) da collection e limpa os dados derivados associados.`}
+                confirmLabel="Confirmar exclusao"
+                expectedValue={pendingDeletion?.kind === "document" ? pendingDeletion.document.title : pendingDeletion?.collectionName}
                 confirmationValue={deleteConfirmationValue}
                 onConfirmationChange={setDeleteConfirmationValue}
                 onCancel={closeDeletionModal}
                 onConfirm={() => void confirmDeletion()}
-                isDeleting={deletingTargetKey !== null}
+                isPending={deletingTargetKey !== null}
             />
         </AppShell>
     );

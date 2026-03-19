@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useDropzone } from "react-dropzone";
+import { type FileRejection, useDropzone } from "react-dropzone";
 import { ArrowRight, FolderOpen, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -10,15 +10,27 @@ import CategoryCombobox from "@/components/dashboard/CategoryCombobox";
 import CollectionCombobox from "@/components/dashboard/CollectionCombobox";
 import UploadDropzone from "@/components/dashboard/upload/UploadDropzone";
 import UploadFileList from "@/components/dashboard/upload/UploadFileList";
-import { useDocumentUpload } from "@/hooks/use-document-upload";
+import { type DocumentUploadValidationRejection, useDocumentUpload } from "@/hooks/use-document-upload";
 import { useI18n } from "@/lib/i18n/provider";
+import {
+    formatUploadSize,
+    MAX_UPLOAD_SIZE_BYTES,
+    normalizeUploadValidationCode,
+    UPLOAD_ACCEPTED_FILE_TYPES,
+} from "@/lib/upload-policy";
 
 const UploadTab = () => {
-    const { t } = useI18n();
+    const { locale, t } = useI18n();
     const [defaultCategory, setDefaultCategory] = useState("");
     const [defaultCollection, setDefaultCollection] = useState("");
     const { files, isProcessing, addFiles, removeFile, processQueue } = useDocumentUpload();
     const hasFilesWithoutCollection = files.some((file) => !file.collection.trim());
+
+    const reportUploadRejections = (rejections: Array<DocumentUploadValidationRejection | { file: File; code: "unknown" }>) => {
+        for (const rejection of rejections) {
+            toast.error(buildUploadRejectionMessage(rejection.file, rejection.code, t, locale));
+        }
+    };
 
     const onDrop = (accepted: File[]) => {
         if (!defaultCollection.trim()) {
@@ -26,19 +38,27 @@ const UploadTab = () => {
             return;
         }
 
-        addFiles(accepted, {
+        const result = addFiles(accepted, {
             category: defaultCategory,
             collection: defaultCollection,
         });
+        reportUploadRejections(result.rejections);
+    };
+
+    const onDropRejected = (rejections: FileRejection[]) => {
+        reportUploadRejections(rejections.map((rejection) => ({
+            file: rejection.file,
+            code: normalizeUploadValidationCode(rejection.errors[0]?.code),
+        })));
     };
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
+        onDropRejected,
         disabled: isProcessing,
+        maxSize: MAX_UPLOAD_SIZE_BYTES,
         accept: {
-            "application/pdf": [".pdf"],
-            "text/html": [".html", ".htm"],
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+            ...UPLOAD_ACCEPTED_FILE_TYPES,
         },
     });
 
@@ -111,3 +131,26 @@ const UploadTab = () => {
 };
 
 export default UploadTab;
+
+function buildUploadRejectionMessage(
+    file: File,
+    code: "unknown" | DocumentUploadValidationRejection["code"],
+    t: (key: string, variables?: Record<string, string | number>) => string,
+    locale: string
+) {
+    const variables = {
+        name: file.name,
+        maxSize: formatUploadSize(MAX_UPLOAD_SIZE_BYTES, locale),
+    };
+
+    switch (code) {
+        case "file-too-large":
+            return t("dashboard.upload.validation.fileTooLarge", variables);
+        case "file-invalid-type":
+            return t("dashboard.upload.validation.fileInvalidType", variables);
+        case "file-empty":
+            return t("dashboard.upload.validation.fileEmpty", variables);
+        default:
+            return t("dashboard.upload.validation.fileRejected", variables);
+    }
+}
