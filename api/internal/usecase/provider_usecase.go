@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/url"
 	"sort"
 	"strconv"
@@ -679,15 +680,124 @@ func (u *providerUseCase) validateProviderConnection(ctx context.Context, family
 		if err := provider.ValidateStorageConnection(ctx, providerType, credentials, provider.StorageProviderOptions{
 			EndpointValidator: u.endpointValidator,
 		}); err != nil {
-			return domain.ErrProviderCredentialsInvalid
+			return classifyProviderConnectionError(family, providerType, err)
 		}
 	case domain.FamilyLLM:
 		if err := provider.ValidateLLMConnection(ctx, providerType, credentials); err != nil {
-			return domain.ErrProviderCredentialsInvalid
+			return classifyProviderConnectionError(family, providerType, err)
 		}
 	}
 
 	return nil
+}
+
+func classifyProviderConnectionError(family, providerType string, err error) error {
+	if err == nil {
+		return nil
+	}
+
+	switch {
+	case isProviderTimeoutError(err):
+		return fmt.Errorf("%w: %v", domain.ErrProviderConnectionTimeout, err)
+	case isProviderAuthenticationError(err):
+		return fmt.Errorf("%w: %v", domain.ErrProviderAuthenticationFailed, err)
+	case family == domain.FamilyLLM && isProviderModelError(err):
+		return fmt.Errorf("%w: %v", domain.ErrProviderModelInvalid, err)
+	case isProviderEndpointError(err):
+		return fmt.Errorf("%w: %v", domain.ErrProviderEndpointUnavailable, err)
+	default:
+		return fmt.Errorf("%w: %v", domain.ErrProviderConnectionFailed, err)
+	}
+}
+
+func isProviderTimeoutError(err error) bool {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return true
+	}
+
+	lowerErr := strings.ToLower(err.Error())
+	return strings.Contains(lowerErr, "timeout") || strings.Contains(lowerErr, "deadline exceeded")
+}
+
+func isProviderAuthenticationError(err error) bool {
+	lowerErr := strings.ToLower(err.Error())
+	patterns := []string{
+		"invalid api key",
+		"incorrect api key",
+		"unauthorized",
+		"forbidden",
+		"authentication",
+		"auth failed",
+		"access denied",
+		"invalid access key",
+		"signature does not match",
+		"security token",
+		"invalid token",
+		"permission denied",
+	}
+
+	return containsAnyPattern(lowerErr, patterns)
+}
+
+func isProviderModelError(err error) bool {
+	lowerErr := strings.ToLower(err.Error())
+	patterns := []string{
+		"model not found",
+		"unknown model",
+		"invalid model",
+		"unsupported model",
+		"does not exist",
+		"no such model",
+		"model is required",
+	}
+
+	return containsAnyPattern(lowerErr, patterns)
+}
+
+func isProviderEndpointError(err error) bool {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		return true
+	}
+
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return true
+	}
+
+	lowerErr := strings.ToLower(err.Error())
+	patterns := []string{
+		"no such host",
+		"server misbehaving",
+		"connection refused",
+		"network is unreachable",
+		"connection reset by peer",
+		"broken pipe",
+		"eof",
+		"dial tcp",
+		"lookup ",
+		"tls",
+		"x509",
+		"certificate",
+		"failed to resolve",
+	}
+
+	return containsAnyPattern(lowerErr, patterns)
+}
+
+func containsAnyPattern(value string, patterns []string) bool {
+	for _, pattern := range patterns {
+		if strings.Contains(value, pattern) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (u *providerUseCase) validateLLMBaseURL(ctx context.Context, rawURL string) error {

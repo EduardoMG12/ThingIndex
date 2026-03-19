@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -429,6 +430,152 @@ func TestSaveCredentialsPersistsProviderAuditWithoutSecrets(t *testing.T) {
 	}
 	if publicMetadata["model"] != "gpt-4o-mini" {
 		t.Fatalf("expected model metadata, got %#v", publicMetadata)
+	}
+}
+
+func TestTestConnectionClassifiesAuthenticationFailures(t *testing.T) {
+	originalFactory := provider.NewLLMHTTPClientForTests(nil)
+	defer provider.NewLLMHTTPClientForTests(originalFactory)
+
+	provider.NewLLMHTTPClientForTests(func() *http.Client {
+		return &http.Client{
+			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				return &http.Response{
+					StatusCode: http.StatusUnauthorized,
+					Body:       io.NopCloser(strings.NewReader(`{"error":{"message":"invalid api key"}}`)),
+					Header:     make(http.Header),
+				}, nil
+			}),
+		}
+	})
+
+	useCase := &providerUseCase{
+		cfg:               &config.Config{Environment: "development"},
+		endpointValidator: netsec.NewStorageEndpointValidator(true),
+	}
+
+	err := useCase.TestConnection(context.Background(), 1, domain.FamilyLLM, domain.ProviderOpenAI, map[string]string{
+		"api_key": "bad-key",
+		"model":   "gpt-4o-mini",
+	})
+	if !errors.Is(err, domain.ErrProviderAuthenticationFailed) {
+		t.Fatalf("expected authentication failure, got %v", err)
+	}
+}
+
+func TestTestConnectionClassifiesModelFailures(t *testing.T) {
+	originalFactory := provider.NewLLMHTTPClientForTests(nil)
+	defer provider.NewLLMHTTPClientForTests(originalFactory)
+
+	provider.NewLLMHTTPClientForTests(func() *http.Client {
+		return &http.Client{
+			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				return &http.Response{
+					StatusCode: http.StatusBadRequest,
+					Body:       io.NopCloser(strings.NewReader(`{"error":{"message":"model not found"}}`)),
+					Header:     make(http.Header),
+				}, nil
+			}),
+		}
+	})
+
+	useCase := &providerUseCase{
+		cfg:               &config.Config{Environment: "development"},
+		endpointValidator: netsec.NewStorageEndpointValidator(true),
+	}
+
+	err := useCase.TestConnection(context.Background(), 1, domain.FamilyLLM, domain.ProviderOpenAI, map[string]string{
+		"api_key": "secret",
+		"model":   "missing-model",
+	})
+	if !errors.Is(err, domain.ErrProviderModelInvalid) {
+		t.Fatalf("expected invalid model classification, got %v", err)
+	}
+}
+
+func TestTestConnectionClassifiesTimeoutFailures(t *testing.T) {
+	originalFactory := provider.NewLLMHTTPClientForTests(nil)
+	defer provider.NewLLMHTTPClientForTests(originalFactory)
+
+	provider.NewLLMHTTPClientForTests(func() *http.Client {
+		return &http.Client{
+			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				return nil, context.DeadlineExceeded
+			}),
+		}
+	})
+
+	useCase := &providerUseCase{
+		cfg:               &config.Config{Environment: "development"},
+		endpointValidator: netsec.NewStorageEndpointValidator(true),
+	}
+
+	err := useCase.TestConnection(context.Background(), 1, domain.FamilyLLM, domain.ProviderOpenAI, map[string]string{
+		"api_key": "secret",
+		"model":   "gpt-4o-mini",
+	})
+	if !errors.Is(err, domain.ErrProviderConnectionTimeout) {
+		t.Fatalf("expected timeout classification, got %v", err)
+	}
+}
+
+func TestTestConnectionClassifiesEndpointFailures(t *testing.T) {
+	originalFactory := provider.NewLLMHTTPClientForTests(nil)
+	defer provider.NewLLMHTTPClientForTests(originalFactory)
+
+	provider.NewLLMHTTPClientForTests(func() *http.Client {
+		return &http.Client{
+			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				return nil, &url.Error{
+					Op:  "Post",
+					URL: r.URL.String(),
+					Err: errors.New("dial tcp: lookup api.openai.com: no such host"),
+				}
+			}),
+		}
+	})
+
+	useCase := &providerUseCase{
+		cfg:               &config.Config{Environment: "development"},
+		endpointValidator: netsec.NewStorageEndpointValidator(true),
+	}
+
+	err := useCase.TestConnection(context.Background(), 1, domain.FamilyLLM, domain.ProviderOpenAI, map[string]string{
+		"api_key": "secret",
+		"model":   "gpt-4o-mini",
+	})
+	if !errors.Is(err, domain.ErrProviderEndpointUnavailable) {
+		t.Fatalf("expected endpoint failure classification, got %v", err)
+	}
+}
+
+func TestTestConnectionClassifiesGenericProviderFailures(t *testing.T) {
+	originalFactory := provider.NewLLMHTTPClientForTests(nil)
+	defer provider.NewLLMHTTPClientForTests(originalFactory)
+
+	provider.NewLLMHTTPClientForTests(func() *http.Client {
+		return &http.Client{
+			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				return &http.Response{
+					StatusCode: http.StatusInternalServerError,
+					Body:       io.NopCloser(strings.NewReader(`{"error":{"message":"unexpected upstream failure"}}`)),
+					Header:     make(http.Header),
+				}, nil
+			}),
+		}
+	})
+
+	useCase := &providerUseCase{
+		cfg:               &config.Config{Environment: "development"},
+		endpointValidator: netsec.NewStorageEndpointValidator(true),
+	}
+
+	err := useCase.TestConnection(context.Background(), 1, domain.FamilyLLM, domain.ProviderOpenAI, map[string]string{
+		"api_key": "secret",
+		"model":   "gpt-4o-mini",
+	})
+	if !errors.Is(err, domain.ErrProviderConnectionFailed) {
+		t.Fatalf("expected generic provider failure classification, got %v", err)
 	}
 }
 

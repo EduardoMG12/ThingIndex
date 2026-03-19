@@ -96,20 +96,12 @@ func (h *ProviderHandler) TestConnection(c *gin.Context) {
 	}
 
 	if err := h.useCase.TestConnection(c.Request.Context(), userID, req.Family, req.ProviderType, req.Credentials); err != nil {
-		switch {
-		case errors.Is(err, domain.ErrProviderFamilyInvalid):
-			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_family"), nil)
-		case errors.Is(err, domain.ErrProviderTypeInvalid):
-			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_type"), nil)
-		case errors.Is(err, domain.ErrProviderCredentialsInvalid):
-			response.Error(c, http.StatusBadRequest, "error", invalidProviderCredentialsMessage(lang, req.ProviderType, req.Credentials), nil)
-		default:
-			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
-		}
+		status, message := providerConnectionFailureResponse(lang, req.ProviderType, req.Credentials, err)
+		response.Error(c, status, "error", message, nil)
 		return
 	}
 
-	response.Success(c, http.StatusOK, "success", "Conexao com o provider validada com sucesso.", nil)
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "provider.success_connection_test"), nil)
 }
 
 func (h *ProviderHandler) ListModels(c *gin.Context) {
@@ -130,7 +122,7 @@ func (h *ProviderHandler) ListModels(c *gin.Context) {
 		case errors.Is(err, domain.ErrProviderTypeInvalid):
 			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_type"), nil)
 		case errors.Is(err, domain.ErrProviderCredentialsInvalid):
-			response.Error(c, http.StatusBadRequest, "error", invalidProviderModelsMessage(req.ProviderType, req.Credentials), nil)
+			response.Error(c, http.StatusBadRequest, "error", invalidProviderModelsMessage(lang, req.ProviderType, req.Credentials), nil)
 		case errors.Is(err, domain.ErrProviderModelsUnsupported):
 			response.Error(c, http.StatusBadRequest, "error", "A listagem automatica de modelos ainda nao esta disponivel para esse provider.", nil)
 		case errors.Is(err, domain.ErrProviderModelsTimeout):
@@ -285,18 +277,44 @@ func normalizeActivationTarget(target string, family string, enabledForIndexing 
 
 func invalidProviderCredentialsMessage(lang string, providerType string, credentials map[string]string) string {
 	if isLoopbackOllamaBaseURL(providerType, credentials) {
-		return "O Ollama nao esta acessivel em localhost a partir do container da API. Se ele roda na sua maquina host, use http://host.docker.internal:11434/v1."
+		return i18n.T(lang, "provider.error_ollama_localhost")
 	}
 
 	return i18n.T(lang, "provider.error_invalid_credentials")
 }
 
-func invalidProviderModelsMessage(providerType string, credentials map[string]string) string {
+func invalidProviderModelsMessage(lang string, providerType string, credentials map[string]string) string {
 	if isLoopbackOllamaBaseURL(providerType, credentials) {
-		return "Nao foi possivel listar modelos do Ollama via localhost a partir do container da API. Se ele roda na sua maquina host, use http://host.docker.internal:11434/v1."
+		return i18n.T(lang, "provider.error_models_ollama_localhost")
 	}
 
 	return "Nao foi possivel listar modelos para esse provider com a configuracao atual."
+}
+
+func providerConnectionFailureResponse(lang string, providerType string, credentials map[string]string, err error) (int, string) {
+	switch {
+	case errors.Is(err, domain.ErrProviderFamilyInvalid):
+		return http.StatusBadRequest, i18n.T(lang, "provider.error_invalid_family")
+	case errors.Is(err, domain.ErrProviderTypeInvalid):
+		return http.StatusBadRequest, i18n.T(lang, "provider.error_invalid_type")
+	case errors.Is(err, domain.ErrProviderCredentialsInvalid):
+		return http.StatusBadRequest, invalidProviderCredentialsMessage(lang, providerType, credentials)
+	case errors.Is(err, domain.ErrProviderAuthenticationFailed):
+		return http.StatusUnauthorized, i18n.T(lang, "provider.error_auth_failed")
+	case errors.Is(err, domain.ErrProviderModelInvalid):
+		return http.StatusBadRequest, i18n.T(lang, "provider.error_model_invalid")
+	case errors.Is(err, domain.ErrProviderConnectionTimeout):
+		return http.StatusGatewayTimeout, i18n.T(lang, "provider.error_connection_timeout")
+	case errors.Is(err, domain.ErrProviderEndpointUnavailable):
+		if isLoopbackOllamaBaseURL(providerType, credentials) {
+			return http.StatusBadGateway, i18n.T(lang, "provider.error_ollama_localhost")
+		}
+		return http.StatusBadGateway, i18n.T(lang, "provider.error_endpoint_unreachable")
+	case errors.Is(err, domain.ErrProviderConnectionFailed):
+		return http.StatusBadGateway, i18n.T(lang, "provider.error_connection_failed")
+	default:
+		return http.StatusInternalServerError, i18n.T(lang, "error.internal")
+	}
 }
 
 func isLoopbackOllamaBaseURL(providerType string, credentials map[string]string) bool {
