@@ -68,7 +68,7 @@ func (h *ProviderHandler) SaveCredentials(c *gin.Context) {
 		activation.EnabledForChat = *req.EnabledForChat
 	}
 
-	if err := h.useCase.SaveCredentials(c.Request.Context(), userID, req.Family, req.ProviderType, req.Credentials, activation); err != nil {
+	if err := h.useCase.SaveCredentials(withRequestAuditContext(c, userID), userID, req.Family, req.ProviderType, req.Credentials, activation); err != nil {
 		switch {
 		case errors.Is(err, domain.ErrProviderFamilyInvalid):
 			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_family"), nil)
@@ -229,11 +229,11 @@ func (h *ProviderHandler) UpdateProviderState(c *gin.Context) {
 	var err error
 	switch activationTarget {
 	case "STORAGE":
-		err = h.useCase.SetProviderEnabled(c.Request.Context(), userID, domain.FamilyStorage, providerType, enabled)
+		err = h.useCase.SetProviderEnabled(withRequestAuditContext(c, userID), userID, domain.FamilyStorage, providerType, enabled)
 	case "INDEXING":
-		err = h.useCase.SetLLMUsageEnabled(c.Request.Context(), userID, providerType, domain.LLMUsageIndexing, enabled)
+		err = h.useCase.SetLLMUsageEnabled(withRequestAuditContext(c, userID), userID, providerType, domain.LLMUsageIndexing, enabled)
 	case "CHAT":
-		err = h.useCase.SetLLMUsageEnabled(c.Request.Context(), userID, providerType, domain.LLMUsageChat, enabled)
+		err = h.useCase.SetLLMUsageEnabled(withRequestAuditContext(c, userID), userID, providerType, domain.LLMUsageChat, enabled)
 	default:
 		err = domain.ErrProviderFamilyInvalid
 	}

@@ -17,7 +17,7 @@ func NewGormProviderRepository(db *gorm.DB) domain.ProviderRepository {
 	return &gormProviderRepository{db: db}
 }
 
-func (r *gormProviderRepository) SaveConfig(ctx context.Context, config *models.UserProviderConfig) error {
+func (r *gormProviderRepository) SaveConfig(ctx context.Context, config *models.UserProviderConfig, auditEvent *models.ProviderAuditEvent) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		switch config.Family {
 		case domain.FamilyStorage:
@@ -45,7 +45,7 @@ func (r *gormProviderRepository) SaveConfig(ctx context.Context, config *models.
 			}
 		}
 
-		return tx.Clauses(clause.OnConflict{
+		if err := tx.Clauses(clause.OnConflict{
 			Columns: []clause.Column{{Name: "user_id"}, {Name: "provider_type"}},
 			DoUpdates: clause.AssignmentColumns([]string{
 				"family",
@@ -55,8 +55,25 @@ func (r *gormProviderRepository) SaveConfig(ctx context.Context, config *models.
 				"enabled_for_chat",
 				"updated_at",
 			}),
-		}).Create(config).Error
+		}).Create(config).Error; err != nil {
+			return err
+		}
+
+		if auditEvent != nil {
+			auditEvent.ProviderConfigID = &config.ID
+			return tx.Create(auditEvent).Error
+		}
+
+		return nil
 	})
+}
+
+func (r *gormProviderRepository) CreateProviderAuditEvents(ctx context.Context, events []models.ProviderAuditEvent) error {
+	if len(events) == 0 {
+		return nil
+	}
+
+	return r.db.WithContext(ctx).Create(&events).Error
 }
 
 func (r *gormProviderRepository) GetConfig(ctx context.Context, userID uint, providerType string) (*models.UserProviderConfig, error) {
@@ -160,7 +177,7 @@ func (r *gormProviderRepository) ReplaceModelCatalog(ctx context.Context, scopeK
 	})
 }
 
-func (r *gormProviderRepository) SetConfigEnabled(ctx context.Context, userID uint, family, providerType string, enabled bool) error {
+func (r *gormProviderRepository) SetConfigEnabled(ctx context.Context, userID uint, family, providerType string, enabled bool, auditEvent *models.ProviderAuditEvent) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if enabled {
 			if err := tx.Model(&models.UserProviderConfig{}).
@@ -179,11 +196,21 @@ func (r *gormProviderRepository) SetConfigEnabled(ctx context.Context, userID ui
 		if result.RowsAffected == 0 {
 			return gorm.ErrRecordNotFound
 		}
+
+		if auditEvent != nil {
+			var config models.UserProviderConfig
+			if err := tx.Where("user_id = ? AND family = ? AND provider_type = ?", userID, family, providerType).First(&config).Error; err != nil {
+				return err
+			}
+			auditEvent.ProviderConfigID = &config.ID
+			return tx.Create(auditEvent).Error
+		}
+
 		return nil
 	})
 }
 
-func (r *gormProviderRepository) SetLLMConfigUsage(ctx context.Context, userID uint, providerType, usage string, enabled bool) error {
+func (r *gormProviderRepository) SetLLMConfigUsage(ctx context.Context, userID uint, providerType, usage string, enabled bool, auditEvent *models.ProviderAuditEvent) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		column := ""
 		switch usage {
@@ -211,6 +238,15 @@ func (r *gormProviderRepository) SetLLMConfigUsage(ctx context.Context, userID u
 		}
 		if result.RowsAffected == 0 {
 			return gorm.ErrRecordNotFound
+		}
+
+		if auditEvent != nil {
+			var config models.UserProviderConfig
+			if err := tx.Where("user_id = ? AND family = ? AND provider_type = ?", userID, domain.FamilyLLM, providerType).First(&config).Error; err != nil {
+				return err
+			}
+			auditEvent.ProviderConfigID = &config.ID
+			return tx.Create(auditEvent).Error
 		}
 
 		return nil

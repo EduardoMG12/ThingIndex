@@ -28,3 +28,21 @@ type ProviderModelCatalog struct {
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
+
+type ProviderAuditEvent struct {
+	ID               uint           `gorm:"primarykey" json:"id"`
+	UserID           uint           `gorm:"not null;index" json:"user_id"`
+	ProviderConfigID *uint          `gorm:"index" json:"provider_config_id,omitempty"`
+	Family           string         `gorm:"size:20;not null;index" json:"family"`
+	ProviderType     string         `gorm:"size:50;not null;index" json:"provider_type"`
+	ActorType        string         `gorm:"size:32;not null;default:'USER';index" json:"actor_type"`
+	ActorID          *uint          `gorm:"index" json:"actor_id,omitempty"`
+	Action           string         `gorm:"size:64;not null;index" json:"action"`
+	Status           string         `gorm:"size:32;not null;index" json:"status"`
+	CorrelationID    string         `gorm:"size:64;index" json:"correlation_id,omitempty"`
+	Origin           string         `gorm:"size:255;index" json:"origin,omitempty"`
+	Detail           string         `gorm:"type:text" json:"detail,omitempty"`
+	Metadata         map[string]any `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
+	CreatedAt        time.Time      `json:"created_at"`
+	UpdatedAt        time.Time      `json:"updated_at"`
+}

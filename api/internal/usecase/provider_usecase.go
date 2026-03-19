@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"thing-index/internal/config"
@@ -90,6 +91,15 @@ func (u *providerUseCase) SaveCredentials(ctx context.Context, userID uint, fami
 		return err
 	}
 
+	var existingConfig *models.UserProviderConfig
+	existingConfig, err = u.repo.GetConfig(ctx, userID, normalizedProviderType)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		existingConfig = nil
+	}
+
 	if err := u.validateCredentials(ctx, normalizedFamily, normalizedProviderType, credentials); err != nil {
 		return err
 	}
@@ -118,7 +128,21 @@ func (u *providerUseCase) SaveCredentials(ctx context.Context, userID uint, fami
 		config.IsEnabled = true
 	}
 
-	return u.repo.SaveConfig(ctx, config)
+	operation := "CREATED"
+	if existingConfig != nil {
+		operation = "UPDATED"
+	}
+
+	auditEvent := buildProviderAuditEvent(ctx, config, "PROVIDER_CONFIG_SAVE", "SUCCESS", buildProviderConfigAuditDetail(normalizedFamily, normalizedProviderType, operation), map[string]any{
+		"operation":          operation,
+		"credential_fields":  sanitizeProviderCredentialKeys(credentials),
+		"public_metadata":    sanitizeProviderPublicMetadata(normalizedFamily, credentials),
+		"activation_state":   providerActivationMetadata(normalizedFamily, activation),
+		"had_prior_config":   existingConfig != nil,
+		"provider_scope_key": normalizedFamily + ":" + normalizedProviderType,
+	})
+
+	return u.repo.SaveConfig(ctx, config, &auditEvent)
 }
 
 func (u *providerUseCase) TestConnection(ctx context.Context, userID uint, family, providerType string, credentials map[string]string) error {
@@ -274,7 +298,21 @@ func (u *providerUseCase) SetProviderEnabled(ctx context.Context, userID uint, f
 		return err
 	}
 
-	if err := u.repo.SetConfigEnabled(ctx, userID, normalizedFamily, normalizedProviderType, enabled); err != nil {
+	existingConfig, err := u.repo.GetConfig(ctx, userID, normalizedProviderType)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return domain.ErrProviderCredentialsInvalid
+		}
+		return err
+	}
+
+	auditEvent := buildProviderAuditEvent(ctx, existingConfig, "PROVIDER_ACTIVATION_CHANGE", "SUCCESS", fmt.Sprintf("Provider %s %s para storage.", normalizedProviderType, enabledDisabledLabel(enabled)), map[string]any{
+		"activation_target": "STORAGE",
+		"previous_enabled":  existingConfig.IsEnabled,
+		"current_enabled":   enabled,
+	})
+
+	if err := u.repo.SetConfigEnabled(ctx, userID, normalizedFamily, normalizedProviderType, enabled, &auditEvent); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return domain.ErrProviderCredentialsInvalid
 		}
@@ -295,7 +333,26 @@ func (u *providerUseCase) SetLLMUsageEnabled(ctx context.Context, userID uint, p
 		return domain.ErrProviderFamilyInvalid
 	}
 
-	if err := u.repo.SetLLMConfigUsage(ctx, userID, normalizedProviderType, normalizedUsage, enabled); err != nil {
+	existingConfig, err := u.repo.GetConfig(ctx, userID, normalizedProviderType)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return domain.ErrProviderCredentialsInvalid
+		}
+		return err
+	}
+
+	previousEnabled := existingConfig.EnabledForIndexing
+	if normalizedUsage == domain.LLMUsageChat {
+		previousEnabled = existingConfig.EnabledForChat
+	}
+
+	auditEvent := buildProviderAuditEvent(ctx, existingConfig, "PROVIDER_ACTIVATION_CHANGE", "SUCCESS", fmt.Sprintf("Provider %s %s para uso %s.", normalizedProviderType, enabledDisabledLabel(enabled), strings.ToLower(normalizedUsage)), map[string]any{
+		"activation_target": strings.ToLower(normalizedUsage),
+		"previous_enabled":  previousEnabled,
+		"current_enabled":   enabled,
+	})
+
+	if err := u.repo.SetLLMConfigUsage(ctx, userID, normalizedProviderType, normalizedUsage, enabled, &auditEvent); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return domain.ErrProviderCredentialsInvalid
 		}
@@ -303,6 +360,132 @@ func (u *providerUseCase) SetLLMUsageEnabled(ctx context.Context, userID uint, p
 	}
 
 	return nil
+}
+
+func buildProviderAuditEvent(ctx context.Context, config *models.UserProviderConfig, action, status, detail string, metadata map[string]any) models.ProviderAuditEvent {
+	eventMetadata := cloneMetadata(metadata)
+	if eventMetadata == nil {
+		eventMetadata = map[string]any{}
+	}
+
+	actorType := "USER"
+	var actorID *uint
+	var correlationID string
+	var origin string
+
+	if extracted, ok := domain.ExtractAuditContext(ctx); ok {
+		if extracted.ActorType != "" {
+			actorType = extracted.ActorType
+		}
+		actorID = extracted.ActorID
+		correlationID = extracted.CorrelationID
+		origin = extracted.Origin
+		if extracted.RequestMethod != "" {
+			eventMetadata["request_method"] = extracted.RequestMethod
+		}
+		if extracted.RoutePath != "" {
+			eventMetadata["route_path"] = extracted.RoutePath
+		}
+		if extracted.RemoteAddr != "" {
+			eventMetadata["remote_addr"] = extracted.RemoteAddr
+		}
+	}
+
+	event := models.ProviderAuditEvent{
+		ActorType:     actorType,
+		ActorID:       actorID,
+		Action:        action,
+		Status:        status,
+		CorrelationID: correlationID,
+		Origin:        origin,
+		Detail:        detail,
+		Metadata:      eventMetadata,
+	}
+
+	if config != nil {
+		event.UserID = config.UserID
+		event.Family = config.Family
+		event.ProviderType = config.ProviderType
+		if config.ID != 0 {
+			event.ProviderConfigID = &config.ID
+		}
+	}
+
+	return event
+}
+
+func buildProviderConfigAuditDetail(family, providerType, operation string) string {
+	return fmt.Sprintf("Configuracao do provider %s/%s %s com sucesso.", family, providerType, strings.ToLower(operation))
+}
+
+func sanitizeProviderCredentialKeys(credentials map[string]string) []string {
+	keys := make([]string, 0, len(credentials))
+	for key, value := range credentials {
+		if strings.TrimSpace(value) == "" {
+			continue
+		}
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func sanitizeProviderPublicMetadata(family string, credentials map[string]string) map[string]string {
+	publicMetadata := map[string]string{}
+
+	switch family {
+	case domain.FamilyLLM:
+		if model := strings.TrimSpace(credentials["model"]); model != "" {
+			publicMetadata["model"] = model
+		}
+		if baseURL := strings.TrimSpace(credentials["base_url"]); baseURL != "" {
+			publicMetadata["base_url"] = sanitizeProviderURL(baseURL)
+		}
+	case domain.FamilyStorage:
+		if endpoint := strings.TrimSpace(credentials["endpoint"]); endpoint != "" {
+			publicMetadata["endpoint"] = endpoint
+		}
+		if bucket := strings.TrimSpace(credentials["bucket_name"]); bucket != "" {
+			publicMetadata["bucket_name"] = bucket
+		}
+		if region := strings.TrimSpace(credentials["region"]); region != "" {
+			publicMetadata["region"] = region
+		}
+	}
+
+	return publicMetadata
+}
+
+func sanitizeProviderURL(rawURL string) string {
+	parsed, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil {
+		return strings.TrimSpace(rawURL)
+	}
+	parsed.User = nil
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	return parsed.String()
+}
+
+func providerActivationMetadata(family string, activation domain.ProviderActivation) map[string]bool {
+	if family == domain.FamilyStorage {
+		return map[string]bool{
+			"is_enabled": activation.IsEnabled,
+		}
+	}
+
+	return map[string]bool{
+		"enabled_for_indexing": activation.EnabledForIndexing,
+		"enabled_for_chat":     activation.EnabledForChat,
+	}
+}
+
+func enabledDisabledLabel(enabled bool) string {
+	if enabled {
+		return "habilitado"
+	}
+
+	return "desabilitado"
 }
 
 func (u *providerUseCase) ResolveStorage(ctx context.Context, userID uint) (domain.StorageService, error) {

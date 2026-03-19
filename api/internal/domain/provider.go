@@ -33,7 +33,8 @@ const (
 )
 
 type ProviderRepository interface {
-	SaveConfig(ctx context.Context, config *models.UserProviderConfig) error
+	SaveConfig(ctx context.Context, config *models.UserProviderConfig, auditEvent *models.ProviderAuditEvent) error
+	CreateProviderAuditEvents(ctx context.Context, events []models.ProviderAuditEvent) error
 	GetConfig(ctx context.Context, userID uint, providerType string) (*models.UserProviderConfig, error)
 	GetConfigByFamily(ctx context.Context, userID uint, family string) (*models.UserProviderConfig, error)
 	GetConfigByLLMUsage(ctx context.Context, userID uint, usage string) (*models.UserProviderConfig, error)
@@ -41,8 +42,8 @@ type ProviderRepository interface {
 	ListAllConfigs(ctx context.Context) ([]models.UserProviderConfig, error)
 	ListModelCatalog(ctx context.Context, scopeKey, providerType string) ([]models.ProviderModelCatalog, error)
 	ReplaceModelCatalog(ctx context.Context, scopeKey string, userID *uint, providerType string, entries []models.ProviderModelCatalog) error
-	SetConfigEnabled(ctx context.Context, userID uint, family, providerType string, enabled bool) error
-	SetLLMConfigUsage(ctx context.Context, userID uint, providerType, usage string, enabled bool) error
+	SetConfigEnabled(ctx context.Context, userID uint, family, providerType string, enabled bool, auditEvent *models.ProviderAuditEvent) error
+	SetLLMConfigUsage(ctx context.Context, userID uint, providerType, usage string, enabled bool, auditEvent *models.ProviderAuditEvent) error
 	DeleteConfig(ctx context.Context, userID uint, providerType string) error
 }
 

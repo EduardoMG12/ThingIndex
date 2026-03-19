@@ -40,6 +40,7 @@ func Connect() (*gorm.DB, error) {
 		&models.DocumentAuditEvent{},
 		&models.UserProviderConfig{},
 		&models.ProviderModelCatalog{},
+		&models.ProviderAuditEvent{},
 		&models.PricingSource{},
 		&models.ModelPrice{},
 		&models.ModelPriceHistory{},
