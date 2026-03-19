@@ -2,12 +2,16 @@ package db
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"time"
 
 	"thing-index/internal/config"
 	"thing-index/internal/models"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 func Connect() (*gorm.DB, error) {
@@ -20,7 +24,18 @@ func Connect() (*gorm.DB, error) {
 		config.AppConfig.DBSSLMode,
 	)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{TranslateError: true})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		TranslateError: true,
+		Logger: gormlogger.New(
+			log.New(os.Stdout, "\r\n", log.LstdFlags),
+			gormlogger.Config{
+				SlowThreshold:             time.Second,
+				LogLevel:                  gormlogger.Warn,
+				IgnoreRecordNotFoundError: true,
+				Colorful:                  false,
+			},
+		),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("fail to connect to database: %w", err)
 	}
