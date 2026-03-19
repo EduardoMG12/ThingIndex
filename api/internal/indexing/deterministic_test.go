@@ -3,12 +3,13 @@ package indexing
 import (
 	"bytes"
 	"context"
-	"strings"
 	"slices"
+	"strings"
 	"testing"
 
 	"thing-index/internal/models"
 
+	"github.com/ledongthuc/pdf"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -225,6 +226,53 @@ func TestOutlineIdentifiersRespectStorageLimits(t *testing.T) {
 	}
 	if len(nodePath) > maxOutlineNodePathLength {
 		t.Fatalf("node path exceeded limit: got %d", len(nodePath))
+	}
+}
+
+func TestLineFromPDFTextsReconstructsBrokenWords(t *testing.T) {
+	t.Parallel()
+
+	line := lineFromPDFTexts([]pdf.Text{
+		{S: "D", X: 10, W: 4, FontSize: 12},
+		{S: "e", X: 14.2, W: 4, FontSize: 12},
+		{S: "l", X: 18.1, W: 2, FontSize: 12},
+		{S: "e", X: 20.3, W: 4, FontSize: 12},
+		{S: "g", X: 24.4, W: 5, FontSize: 12},
+		{S: "a", X: 29.1, W: 4, FontSize: 12},
+		{S: "c", X: 33.0, W: 4, FontSize: 12},
+		{S: "i", X: 37.1, W: 2, FontSize: 12},
+		{S: "a", X: 39.4, W: 4, FontSize: 12},
+		{S: "G", X: 48, W: 6, FontSize: 12},
+		{S: "e", X: 54.1, W: 4, FontSize: 12},
+		{S: "r", X: 58.1, W: 3, FontSize: 12},
+		{S: "a", X: 61.2, W: 4, FontSize: 12},
+		{S: "l", X: 65.3, W: 2, FontSize: 12},
+	})
+
+	if line != "Delegacia Geral" {
+		t.Fatalf("unexpected reconstructed line: %q", line)
+	}
+}
+
+func TestLineFromPDFTextsPreservesRealSpaces(t *testing.T) {
+	t.Parallel()
+
+	line := lineFromPDFTexts([]pdf.Text{
+		{S: "4", X: 10, W: 5, FontSize: 12},
+		{S: "-", X: 18, W: 3, FontSize: 12},
+		{S: "Un", X: 26, W: 10, FontSize: 12},
+		{S: "id", X: 36.5, W: 8, FontSize: 12},
+		{S: "ad", X: 44.8, W: 8, FontSize: 12},
+		{S: "e", X: 53.1, W: 4, FontSize: 12},
+		{S: "s", X: 57.2, W: 4, FontSize: 12},
+		{S: "P", X: 69, W: 6, FontSize: 12},
+		{S: "o", X: 75.2, W: 5, FontSize: 12},
+		{S: "lic", X: 80.1, W: 11, FontSize: 12},
+		{S: "iais", X: 91.4, W: 13, FontSize: 12},
+	})
+
+	if line != "4 - Unidades Policiais" {
+		t.Fatalf("unexpected reconstructed line: %q", line)
 	}
 }
 

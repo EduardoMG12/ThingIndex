@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"math"
 	"regexp"
 	"sort"
 	"strconv"
@@ -213,13 +214,8 @@ func (i *DeterministicIndexer) indexPDF(documentID uint, data []byte) (domain.In
 			continue
 		}
 
-		rows, rowErr := page.GetTextByRow()
-		if rowErr != nil {
-			return domain.IndexingResult{}, fmt.Errorf("%w: extract pdf rows: %v", domain.ErrDocumentIndexing, rowErr)
-		}
-
 		pageNumber := pageIndex
-		for _, block := range blocksFromPDFRows(rows, &pageNumber) {
+		for _, block := range blocksFromPDFPage(page, &pageNumber) {
 			if looksLikeHeading(block.Content) {
 				currentSectionKey = slugify(block.Content)
 				headings = append(headings, outlineDraft{
@@ -571,8 +567,51 @@ func extractHTMLTable(documentID uint, sequence int, node *html.Node) models.Tab
 	return section
 }
 
-func blocksFromPDFRows(rows pdf.Rows, pageNumber *int) []textBlock {
-	blocks := make([]textBlock, 0, len(rows))
+func blocksFromPDFPage(page pdf.Page, pageNumber *int) []textBlock {
+	content := page.Content()
+	if len(content.Text) == 0 {
+		return nil
+	}
+
+	rowBuckets := make(map[int][]pdf.Text)
+	rowPositions := make([]int, 0)
+	for _, text := range content.Text {
+		if strings.TrimSpace(text.S) == "" {
+			continue
+		}
+
+		key := int(math.Round(text.Y))
+		if _, exists := rowBuckets[key]; !exists {
+			rowPositions = append(rowPositions, key)
+		}
+		rowBuckets[key] = append(rowBuckets[key], text)
+	}
+
+	if len(rowPositions) == 0 {
+		return nil
+	}
+
+	sort.Slice(rowPositions, func(i, j int) bool {
+		return rowPositions[i] > rowPositions[j]
+	})
+
+	lines := make([]string, 0, len(rowPositions))
+	for _, position := range rowPositions {
+		texts := rowBuckets[position]
+		sort.Slice(texts, func(i, j int) bool {
+			if texts[i].X == texts[j].X {
+				return texts[i].Y > texts[j].Y
+			}
+			return texts[i].X < texts[j].X
+		})
+
+		line := lineFromPDFTexts(texts)
+		if line != "" {
+			lines = append(lines, line)
+		}
+	}
+
+	blocks := make([]textBlock, 0, len(lines))
 	lineBuffer := make([]string, 0, 4)
 
 	flush := func() {
@@ -595,8 +634,7 @@ func blocksFromPDFRows(rows pdf.Rows, pageNumber *int) []textBlock {
 		})
 	}
 
-	for _, row := range rows {
-		line := pdfRowToLine(row)
+	for _, line := range lines {
 		if line == "" {
 			flush()
 			continue
@@ -612,19 +650,88 @@ func blocksFromPDFRows(rows pdf.Rows, pageNumber *int) []textBlock {
 	return blocks
 }
 
-func pdfRowToLine(row *pdf.Row) string {
-	if row == nil {
+func lineFromPDFTexts(texts []pdf.Text) string {
+	if len(texts) == 0 {
 		return ""
 	}
 
-	parts := make([]string, 0, len(row.Content))
-	for _, word := range row.Content {
-		text := normalizeText(word.S)
+	var builder strings.Builder
+	lastEndX := 0.0
+	hasContent := false
+	lastText := ""
+
+	for _, fragment := range texts {
+		text := normalizeText(fragment.S)
 		if text != "" {
-			parts = append(parts, text)
+			if hasContent {
+				gap := fragment.X - lastEndX
+				if shouldInsertPDFSpace(gap, lastText, text, fragment) {
+					builder.WriteRune(' ')
+				}
+			}
+
+			builder.WriteString(text)
+			lastEndX = fragment.X + estimatedPDFFragmentWidth(fragment, text)
+			hasContent = true
+			lastText = text
 		}
 	}
-	return normalizeText(strings.Join(parts, " "))
+
+	return normalizeText(builder.String())
+}
+
+func shouldInsertPDFSpace(gap float64, previousText, currentText string, fragment pdf.Text) bool {
+	if gap <= 0 {
+		return false
+	}
+
+	if gap > pdfSpaceThreshold(fragment) {
+		return true
+	}
+
+	if gap > 1.5 && (isStandalonePunctuation(previousText) || isStandalonePunctuation(currentText)) {
+		return true
+	}
+
+	return false
+}
+
+func pdfSpaceThreshold(fragment pdf.Text) float64 {
+	fontSize := fragment.FontSize
+	if fontSize <= 0 {
+		fontSize = 8
+	}
+
+	return math.Max(fontSize*0.3, 1.5)
+}
+
+func estimatedPDFFragmentWidth(fragment pdf.Text, text string) float64 {
+	width := fragment.W
+	if width > 0 {
+		return width
+	}
+
+	runeCount := len([]rune(text))
+	if runeCount == 0 {
+		return 0
+	}
+
+	fontSize := fragment.FontSize
+	if fontSize <= 0 {
+		fontSize = 8
+	}
+
+	return math.Max(fontSize*0.45*float64(runeCount), 1)
+}
+
+func isStandalonePunctuation(text string) bool {
+	runes := []rune(strings.TrimSpace(text))
+	if len(runes) != 1 {
+		return false
+	}
+
+	r := runes[0]
+	return unicode.IsPunct(r) || unicode.IsSymbol(r)
 }
 
 func sectionTitleForKey(headings []outlineDraft, sectionKey string) string {
