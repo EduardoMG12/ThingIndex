@@ -54,6 +54,7 @@ type ProviderUseCase interface {
 	ListModels(ctx context.Context, userID uint, family, providerType string, credentials map[string]string) ([]string, error)
 	GetDecryptedCredentials(ctx context.Context, userID uint, providerType string) (map[string]string, error)
 	ListUserProviders(ctx context.Context, userID uint) ([]models.UserProviderConfig, error)
+	GetProviderRuntimeOverview(ctx context.Context, userID uint) (*ProviderRuntimeOverview, error)
 	ListProviderAuditEvents(ctx context.Context, userID uint, filter ProviderAuditFilter) ([]models.ProviderAuditEvent, error)
 	SyncModelCatalogs(ctx context.Context) error
 	SetProviderEnabled(ctx context.Context, userID uint, family, providerType string, enabled bool) error

@@ -131,6 +131,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 			user.POST("/providers/test", providerHandler.TestConnection)
 			user.POST("/providers/models", providerHandler.ListModels)
 			user.GET("/providers", providerHandler.ListProviders)
+			user.GET("/providers/runtime", providerHandler.ListRuntimeOverview)
 			user.GET("/providers/audit", providerHandler.ListProviderAuditEvents)
 			user.PATCH("/providers/:providerType", providerHandler.UpdateProviderState)
 			user.POST("/pricing-sources", pricingHandler.SaveSource)

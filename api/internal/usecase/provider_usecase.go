@@ -259,6 +259,52 @@ func (u *providerUseCase) ListUserProviders(ctx context.Context, userID uint) ([
 	return u.repo.ListConfigs(ctx, userID)
 }
 
+func (u *providerUseCase) GetProviderRuntimeOverview(ctx context.Context, userID uint) (*domain.ProviderRuntimeOverview, error) {
+	configs, err := u.repo.ListConfigs(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	overview := &domain.ProviderRuntimeOverview{}
+	for i := range configs {
+		config := configs[i]
+		assignment := &domain.ProviderRuntimeAssignment{
+			Family:           config.Family,
+			ProviderType:     config.ProviderType,
+			PublicMetadata:   map[string]string{},
+			UpdatedAt:        config.UpdatedAt,
+			ActivationTarget: "",
+		}
+
+		if credentials, err := u.decryptConfig(&config, userID); err == nil {
+			if publicMetadata := provider.PublicMetadata(config.Family, credentials); publicMetadata != nil {
+				assignment.PublicMetadata = publicMetadata
+			}
+		}
+
+		switch {
+		case config.Family == domain.FamilyStorage && config.IsEnabled:
+			assignment.ActivationTarget = domain.FamilyStorage
+			overview.Storage = assignment
+		case config.Family == domain.FamilyLLM && config.EnabledForIndexing:
+			assignment.ActivationTarget = domain.LLMUsageIndexing
+			overview.Indexing = assignment
+		}
+
+		if config.Family == domain.FamilyLLM && config.EnabledForChat {
+			chatAssignment := assignment
+			if assignment.ActivationTarget == domain.LLMUsageIndexing {
+				cloned := *assignment
+				chatAssignment = &cloned
+			}
+			chatAssignment.ActivationTarget = domain.LLMUsageChat
+			overview.Chat = chatAssignment
+		}
+	}
+
+	return overview, nil
+}
+
 func (u *providerUseCase) ListProviderAuditEvents(ctx context.Context, userID uint, filter domain.ProviderAuditFilter) ([]models.ProviderAuditEvent, error) {
 	filter.Family = strings.ToUpper(strings.TrimSpace(filter.Family))
 	filter.ProviderType = normalizeProviderType(filter.ProviderType)

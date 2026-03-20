@@ -7,6 +7,7 @@ import (
 	"strings"
 	"thing-index/internal/domain"
 	"thing-index/internal/dto"
+	providerpkg "thing-index/internal/pkg/provider"
 	"thing-index/internal/pkg/i18n"
 	"thing-index/internal/pkg/response"
 	"thing-index/internal/pkg/validation"
@@ -157,12 +158,25 @@ func (h *ProviderHandler) ListProviders(c *gin.Context) {
 			continue
 		}
 
-		if publicMetadata := extractPublicMetadata(providers[i].Family, credentials); len(publicMetadata) > 0 {
+		if publicMetadata := providerpkg.PublicMetadata(providers[i].Family, credentials); len(publicMetadata) > 0 {
 			publicMetadataByProvider[providers[i].ProviderType] = publicMetadata
 		}
 	}
 
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "provider.success_list"), dto.ToProviderConfigResponses(providers, publicMetadataByProvider))
+}
+
+func (h *ProviderHandler) ListRuntimeOverview(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	overview, err := h.useCase.GetProviderRuntimeOverview(c.Request.Context(), userID)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", "Runtime ativo de providers carregado com sucesso.", dto.ToProviderRuntimeOverviewResponse(overview))
 }
 
 func (h *ProviderHandler) ListProviderAuditEvents(c *gin.Context) {
@@ -188,27 +202,6 @@ func (h *ProviderHandler) ListProviderAuditEvents(c *gin.Context) {
 
 	response.Success(c, http.StatusOK, "success", "Auditoria de providers carregada com sucesso.", dto.ToProviderAuditEventResponses(events))
 }
-
-func extractPublicMetadata(family string, credentials map[string]string) map[string]string {
-	publicMetadata := make(map[string]string)
-
-	switch strings.ToUpper(strings.TrimSpace(family)) {
-	case domain.FamilyLLM:
-		if model := strings.TrimSpace(credentials["model"]); model != "" {
-			publicMetadata["model"] = model
-		}
-	case domain.FamilyStorage:
-		if bucket := strings.TrimSpace(credentials["bucket_name"]); bucket != "" {
-			publicMetadata["bucket_name"] = bucket
-		}
-		if region := strings.TrimSpace(credentials["region"]); region != "" {
-			publicMetadata["region"] = region
-		}
-	}
-
-	return publicMetadata
-}
-
 func (h *ProviderHandler) UpdateProviderState(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
