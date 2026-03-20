@@ -197,6 +197,26 @@ O backend expõe monitoramento em dois niveis:
 
 ## Testes e verificacoes
 
+Comandos simples a partir da raiz do monorepo:
+
+```bash
+./scripts/test.sh backend-unit
+./scripts/test.sh backend-integration
+./scripts/test.sh backend-e2e
+./scripts/test.sh backend-smoke
+```
+
+Ou, se preferir:
+
+```bash
+make test-backend
+make test-backend-integration
+make test-backend-e2e
+make test-backend-smoke
+```
+
+Comandos diretos dentro de `api/`:
+
 ```bash
 cd api
 go test ./...
@@ -207,6 +227,46 @@ Se o ambiente tiver restricao de escrita no cache padrao do Go, use:
 ```bash
 cd api
 env GOCACHE=/tmp/go-build go test ./...
+```
+
+Integracao real do backend com PostgreSQL, MinIO e RabbitMQ:
+
+```bash
+cd api
+env GOCACHE=/tmp/go-build go test -tags=integration ./...
+```
+
+Esses testes usam `THINGINDEX_TEST_DB_*`, `THINGINDEX_TEST_MINIO_*` e `THINGINDEX_TEST_RABBITMQ_URL` quando definidos. Sem isso, tentam reutilizar a configuracao do `.env` raiz usado pelo `docker compose` local.
+
+Integracao opcional com provider LLM real e processamento documental com IA:
+
+```bash
+cd api
+env GOCACHE=/tmp/go-build go test -tags=integration ./internal/pkg/provider ./internal/processing
+```
+
+Esses testes fazem `skip` por padrao. Para habilitar rodada real, configure no `.env`:
+
+- `THINGINDEX_TEST_LLM_ENABLED=true`
+- `THINGINDEX_TEST_LLM_PROVIDER=OPENAI` ou `OLLAMA`/outro provider suportado
+- `THINGINDEX_TEST_LLM_API_KEY`, `THINGINDEX_TEST_LLM_BASE_URL`, `THINGINDEX_TEST_LLM_MODEL` conforme o provider
+- `THINGINDEX_TEST_LLM_RUN_PROCESSING=true` para exercitar o `DocumentProcessor` com enriquecimento real
+- `THINGINDEX_TEST_LLM_RUN_MODEL_DISCOVERY=true` para exercitar listagem de modelos quando o provider suportar discovery no runtime atual
+
+Os testes tambem aceitam fallbacks por provider, por exemplo `OPENAI_API_KEY`/`OPENAI_MODEL` ou `OLLAMA_BASE_URL`/`OLLAMA_MODEL`, e nunca imprimem o segredo em assertions ou docs.
+
+`e2e` inicial do backend com autenticacao, upload, listagem e leitura do original:
+
+```bash
+cd api
+env GOCACHE=/tmp/go-build go test -tags=e2e ./internal/api -run RoutesE2E
+```
+
+Smoke HTTP das rotas protegidas com middleware real:
+
+```bash
+cd api
+env GOCACHE=/tmp/go-build go test -tags=smoke ./internal/handlers -run RouteSmoke
 ```
 
 ## Limitacoes atuais
