@@ -3,18 +3,22 @@
 import { HelpCircle, Calculator } from "lucide-react";
 import { useI18n } from "@/lib/i18n/provider";
 
-interface CostCalculatorProps {
-    config: {
-        aiProvider: string;
-        contextStore: string;
-        fileCount: number;
-        estimatedTokens: number;
-    };
-}
-
-const CostCalculator = ({ config }: CostCalculatorProps) => {
+const CostCalculator = () => {
     const { t } = useI18n();
-    const estimatedCost = (config.estimatedTokens / 1000) * 0.002;
+    const items = [
+        {
+            label: t("dashboard.cost.providerState"),
+            value: t("dashboard.cost.providerStateValue"),
+        },
+        {
+            label: t("dashboard.cost.storageState"),
+            value: t("dashboard.cost.storageStateValue"),
+        },
+        {
+            label: t("dashboard.cost.estimateState"),
+            value: t("dashboard.cost.estimateStateValue"),
+        },
+    ];
 
     return (
         <div className="surface-elevated rounded-xl border border-border overflow-hidden">
@@ -28,34 +32,19 @@ const CostCalculator = ({ config }: CostCalculatorProps) => {
 
             <div className="p-4 space-y-4">
                 <div className="space-y-2">
-                    <div className="flex justify-between text-[11px]">
-                        <span className="text-muted-foreground">{t("dashboard.cost.llmProvider")}</span>
-                        <span className="font-mono text-foreground">{config.aiProvider}</span>
-                    </div>
-                    <div className="flex justify-between text-[11px]">
-                        <span className="text-muted-foreground">{t("dashboard.cost.contextStore")}</span>
-                        <span className="font-mono text-foreground">{config.contextStore}</span>
-                    </div>
-                    <div className="flex justify-between text-[11px]">
-                        <span className="text-muted-foreground">{t("dashboard.cost.indexedFiles")}</span>
-                        <span className="font-mono text-foreground">{config.fileCount}</span>
-                    </div>
-                    <div className="flex justify-between text-[11px]">
-                        <span className="text-muted-foreground">{t("dashboard.cost.estimatedTokens")}</span>
-                        <span className="font-mono text-foreground">~{config.estimatedTokens.toLocaleString()}</span>
-                    </div>
+                    {items.map((item) => (
+                        <div key={item.label} className="flex justify-between gap-4 text-[11px]">
+                            <span className="text-muted-foreground">{item.label}</span>
+                            <span className="text-right font-mono text-foreground">{item.value}</span>
+                        </div>
+                    ))}
                 </div>
 
                 <div className="h-px bg-border" />
 
                 <div className="bg-primary/5 rounded-lg p-3 border border-primary/10">
-                    <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-foreground">{t("dashboard.cost.estimatedCost")}</span>
-                        <span className="text-sm font-bold text-primary">${estimatedCost.toFixed(4)}</span>
-                    </div>
-                    <p className="mt-1 text-[9px] text-muted-foreground italic">
-                        {t("dashboard.cost.hint")}
-                    </p>
+                    <p className="text-xs font-medium text-foreground">{t("dashboard.cost.summaryTitle")}</p>
+                    <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{t("dashboard.cost.hint")}</p>
                 </div>
             </div>
         </div>

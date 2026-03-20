@@ -65,14 +65,7 @@ export default function DashboardPage() {
                     transition={{ delay: 0.3, duration: 0.4 }}
                     className="space-y-6"
                 >
-                    <CostCalculator
-                        config={{
-                            aiProvider: "Vertex AI / Gemini 1.5",
-                            contextStore: "PostgreSQL + object storage",
-                            fileCount: 3,
-                            estimatedTokens: 24500,
-                        }}
-                    />
+                    <CostCalculator />
 
                     <div className="surface-elevated rounded-xl border border-border p-6 space-y-5">
                         <div className="flex items-center gap-2 text-primary">
@@ -113,9 +106,9 @@ export default function DashboardPage() {
                         </div>
 
                         <div className="pt-2">
-                            <div className="rounded-lg bg-primary/5 p-3 border border-primary/10 flex items-center justify-between">
-                                <span className="text-[10px] font-mono text-primary font-bold">{t("dashboard.guide.accuracy")}</span>
-                                <span className="text-xs font-bold text-primary italic">98.4%</span>
+                            <div className="rounded-lg border border-primary/10 bg-primary/5 p-3">
+                                <span className="text-[10px] font-mono font-bold text-primary">{t("dashboard.guide.accuracy")}</span>
+                                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t("dashboard.guide.accuracyHint")}</p>
                             </div>
                         </div>
                     </div>
