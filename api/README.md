@@ -1,6 +1,6 @@
 # API
 
-O backend do ThingIndex e uma API HTTP em Go responsavel por autenticacao, upload, catalogacao documental, indexacao assincrona, configuracao de providers e recuperacao de contexto relacional.
+O backend do ThingIndex e uma API HTTP em Go responsavel por autenticacao, upload, catalogacao documental, indexacao assincrona, configuracao de providers, recuperacao de contexto relacional e chat grounded por collection.
 
 Ele e o centro operacional do monorepo: recebe uploads, persiste metadados, publica eventos de indexacao, processa enriquecimento opcional com LLM e expõe telemetria documental para o frontend.
 
@@ -20,6 +20,7 @@ O diretório `api/` contém tres executaveis principais:
 - indexacao estrutural assincrona com RabbitMQ;
 - enriquecimento opcional com LLM;
 - recuperacao de contexto consolidado por collection;
+- chat por collection com conversas persistidas e resposta incremental via SSE;
 - exposicao de indice, chunks, monitoramento e score heuristico por documento;
 - agregacao de monitoramento de indexacao por usuario;
 - armazenamento criptografado de credenciais de providers.
@@ -89,7 +90,7 @@ Para funcionamento completo, o backend depende de:
 - MinIO ou storage S3-compatible;
 - RabbitMQ;
 - SMTP para `forgot-password`;
-- provider de LLM configurado por usuario, quando houver enriquecimento.
+- provider de LLM configurado por usuario, quando houver enriquecimento ou chat runtime.
 
 ## Como executar
 
@@ -157,6 +158,15 @@ As configuracoes completas estao documentadas no README raiz, mas as mais import
 - `GET /api/v1/documents/:id/index`
 - `GET /api/v1/documents/monitoring/summary`
 - `GET /api/v1/documents/collections/:id/context`
+
+### Chat
+
+- `POST /api/v1/chat/conversations`
+- `GET /api/v1/chat/conversations`
+- `GET /api/v1/chat/conversations/:id`
+- `PATCH /api/v1/chat/conversations/:id`
+- `DELETE /api/v1/chat/conversations/:id`
+- `POST /api/v1/chat/stream`
 
 ## Seguranca
 
@@ -255,7 +265,7 @@ Esses testes fazem `skip` por padrao. Para habilitar rodada real, configure no `
 
 Os testes tambem aceitam fallbacks por provider, por exemplo `OPENAI_API_KEY`/`OPENAI_MODEL` ou `OLLAMA_BASE_URL`/`OLLAMA_MODEL`, e nunca imprimem o segredo em assertions ou docs.
 
-`e2e` inicial do backend com autenticacao, upload, listagem e leitura do original:
+`e2e` autenticado do backend cobrindo upload, retry, exclusao, documento orfao, providers e chat grounded:
 
 ```bash
 cd api
@@ -273,7 +283,7 @@ env GOCACHE=/tmp/go-build go test -tags=smoke ./internal/handlers -run RouteSmok
 
 - a telemetria de tokens e custo pode ser estimada, dependendo do provider;
 - o score de qualidade da indexacao e heuristico;
-- o chat runtime ainda nao esta implementado no backend;
+- o chat runtime existe, mas depende de provider LLM configurado pelo usuario e ainda nao substitui validacao objetiva de acuracia/citacao para uso de producao;
 - a infraestrutura de rate limit atual e simples e local ao processo;
 - MinIO/S3-compatible e o storage efetivamente consolidado no fluxo atual.
 

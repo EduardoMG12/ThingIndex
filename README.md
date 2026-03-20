@@ -77,7 +77,7 @@ O projeto nasceu em contexto academico, mas foi estruturado com preocupacoes rea
 - Nao depende de banco de grafos para recuperar contexto.
 - Ja possui pipeline assincrono funcional com outbox, RabbitMQ e worker dedicado para indexacao estrutural.
 - Ja possui enriquecimento opcional com LLM para indexacao, incluindo telemetria estimada de tokens, custo e qualidade heuristica por documento.
-- Nao possui chat juridico/QA com LLM em producao.
+- Nao e um assistente juridico/QA pronto para producao; o chat runtime atual e documental, grounded por collection e ainda experimental no escopo do TCC.
 - Nao implementa multiplos storages de forma concreta hoje: o provider de storage efetivamente suportado no runtime atual e **MinIO/S3-compatible**.
 
 ### Importante para quem vier de documentacao antiga
@@ -202,6 +202,7 @@ Essa abordagem evita consultas por documento e mantem a montagem da resposta em 
 - Endpoint de indice por documento com `tree_retrieval`, `index_evaluation` e `monitoring`.
 - Resumo agregado de monitoramento por usuario com custo estimado, tokens, requests, duracao media, score medio e breakdown por modelo.
 - Recuperacao de contexto consolidado de uma collection.
+- Fluxo de chat por collection com conversas persistidas, selecao de fontes e resposta incremental por SSE.
 - Internacionalizacao de mensagens HTTP em portugues e ingles.
 - Criptografia de credenciais de providers por usuario.
 - Provider de storage customizado com resolucao segura de endpoint.
@@ -212,6 +213,7 @@ Essa abordagem evita consultas por documento e mantem a montagem da resposta em 
 - Landing page institucional.
 - Dashboard para autenticacao e operacao do catalogo.
 - Painel de documentos com preview lateral, telemetria de indexacao por documento e resumo agregado de monitoramento.
+- Tela de chat com historico de conversas, referencias de fontes e streaming incremental de resposta grounded por collection.
 - Documentacao visual da proposta e da arquitetura.
 - Configuracao de providers de storage e LLM com papeis separados para indexacao e chat.
 
@@ -700,7 +702,7 @@ pnpm --dir frontend run typecheck
 
 ### Observacao honesta
 
-O projeto ja possui validacao estrutural, testes unitarios no frontend e backend, uma camada inicial de smoke tests `e2e` no frontend, smoke HTTP no backend para rotas protegidas com middleware real, integracao real no backend com PostgreSQL, MinIO, RabbitMQ e cenarios opcionais com provider LLM real, alem de uma primeira bateria `e2e` autenticada do backend com upload documental. A cobertura automatizada ainda precisa crescer, especialmente em mais fluxos autenticados ponta a ponta e no fechamento definitivo do Playwright do frontend.
+O projeto ja possui validacao estrutural, testes unitarios no frontend e backend, smoke `e2e` no frontend, smoke HTTP no backend, integracao real no backend com PostgreSQL, MinIO e RabbitMQ, cenarios opcionais com provider LLM real e uma bateria `e2e` autenticada do backend cobrindo upload, retry, documento orfao, exclusao, configuracao de provider e chat com stream grounded. A frente de testes deixou de ser uma lacuna estrutural; o trabalho restante aqui e expandir cenarios incrementalmente e manter a documentacao alinhada ao runtime atual.
 
 ## 16. Contexto Academico do TCC
 
@@ -720,7 +722,7 @@ Os materiais em `docs/` e `frontend/architecture/` registram essa evolucao e tam
 ## 17. Limitacoes Atuais
 
 - Apenas MinIO/S3-compatible esta implementado de fato como storage provider no fluxo principal.
-- O chat ainda nao esta integrado a um fluxo de assistente em runtime; a UI de chat continua mockada e ainda nao usa streaming incremental.
+- O chat runtime existe com streaming incremental e grounding por collection, mas ainda nao substitui avaliacao juridica, benchmark de citacao ou validacao de acuracia para uso de producao.
 - A estimativa de custo e tokens de LLM e heuristica quando o provider nao devolve usage real.
 - O score de qualidade da indexacao e heuristico; nao substitui avaliacao com ground truth.
 - Nao ha arquivo `LICENSE` publicado ainda.
@@ -730,17 +732,19 @@ Os materiais em `docs/` e `frontend/architecture/` registram essa evolucao e tam
 
 ### Curto prazo
 
-- ampliar testes automatizados do backend;
+- melhorar a operacionalizacao de retry, falhas e DLQ;
 - alinhar toda a documentacao secundaria do monorepo;
-- adicionar fixtures de exemplo para fluxo completo de upload e contexto;
-- melhorar o dashboard documental.
+- explicitar melhor o que e prototipo, funcional e roadmap;
+- fechar checklist objetivo de seguranca e hardening.
 
 ### Medio prazo
 
-- stream real de chat com contexto relacional e resposta incremental;
+- ampliar observabilidade e telemetria operacional;
+- tornar auditoria mais consultavel;
+- fechar i18n inconsistente;
 - ampliar o pipeline assincrono de parsing e extracao;
 - suporte real a mais providers de storage;
-- observabilidade e telemetria.
+- avaliacao objetiva da acuracia de indexacao.
 
 ### Longo prazo / pesquisa
 

@@ -6,6 +6,7 @@ O frontend do ThingIndex e uma aplicacao Next.js 16 responsavel por:
 - configuracao de providers de storage e LLM;
 - upload e navegacao de documentos;
 - visualizacao de colecoes, categorias e contexto;
+- chat grounded por collection com historico persistido e resposta incremental;
 - auditoria visual da indexacao, incluindo monitoramento por documento e resumo agregado.
 
 O app atua como camada de experiencia sobre a API Go do monorepo. Ele nao implementa logica de indexacao no browser; a maior parte das operacoes de negocio e delegada para o backend por rotas `app/api/*` que fazem proxy autenticado.
@@ -52,12 +53,12 @@ src/
   - score heuristico de qualidade;
 - resumo agregado de monitoramento por usuario na tela de documentos;
 - configuracao de providers com separacao entre LLM de indexacao e LLM de chat;
+- fluxo real de chat por collection com conversas persistidas, referencias de fonte e streaming incremental;
 - internacionalizacao em portugues, ingles e espanhol.
 
 ## Limitacoes atuais
 
-- a aba de chat ainda esta mockada e nao conversa com um endpoint real;
-- ainda nao existe stream incremental de resposta no frontend;
+- o chat runtime depende de provider LLM habilitado para chat e ainda precisa de validacao objetiva de acuracia e citacao;
 - o preview inline foi intencionalmente restringido para formatos seguros, evitando execucao de HTML enviado pelo usuario;
 - a maior parte da telemetria vem do backend; o frontend hoje exibe esses dados, mas nao e a origem deles.
 
@@ -146,4 +147,4 @@ Esse desenho reduz acoplamento entre componentes React e detalhes de transporte,
 
 ## Observacao de produto
 
-O frontend atual ja cobre o fluxo principal de autenticacao, upload, organizacao documental e auditoria da indexacao. O proximo salto funcional mais importante nesta camada e substituir o chat simulado por um fluxo real com contexto relacional e resposta incremental.
+O frontend atual ja cobre o fluxo principal de autenticacao, upload, organizacao documental, auditoria da indexacao e um fluxo real de chat por collection com resposta incremental. Os proximos saltos mais uteis nesta camada estao em Storybook, maior clareza operacional da UI e refinamento de UX.
