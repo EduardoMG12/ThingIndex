@@ -20,6 +20,8 @@ type documentUseCaseAuditCaptureStub struct {
 	lastRetryAuditContext            domain.AuditContext
 	lastDeleteAuditContext           domain.AuditContext
 	lastCollectionDeleteAuditContext domain.AuditContext
+	documentContent                  *domain.DocumentContent
+	documentContentErr               error
 	uploadErr                        error
 	uploadCalled                     bool
 	retryCalled                      bool
@@ -71,7 +73,10 @@ func (s *documentUseCaseAuditCaptureStub) GetDocument(context.Context, uint, uin
 }
 
 func (s *documentUseCaseAuditCaptureStub) GetDocumentContent(context.Context, uint, uint) (*domain.DocumentContent, error) {
-	return nil, nil
+	if s.documentContentErr != nil {
+		return nil, s.documentContentErr
+	}
+	return s.documentContent, nil
 }
 
 func (s *documentUseCaseAuditCaptureStub) GetDocumentIndex(context.Context, uint, uint, string) (*domain.DocumentIndex, error) {
@@ -335,5 +340,109 @@ func TestDeleteCollectionDocumentsEndpointAddsAuditContextFromRequest(t *testing
 	}
 	if useCase.lastCollectionDeleteAuditContext.ActorID == nil || *useCase.lastCollectionDeleteAuditContext.ActorID != 17 {
 		t.Fatalf("expected actor id to propagate, got %#v", useCase.lastCollectionDeleteAuditContext)
+	}
+}
+
+func TestGetDocumentContentReturnsGoneForMissingSource(t *testing.T) {
+	t.Parallel()
+
+	gin.SetMode(gin.TestMode)
+	useCase := &documentUseCaseAuditCaptureStub{documentContentErr: domain.ErrDocumentSourceMissing}
+	handler := NewDocumentHandler(useCase, 10<<20)
+
+	router := gin.New()
+	router.Use(middleware.RequestContextMiddleware())
+	router.Use(func(c *gin.Context) {
+		c.Set("language", "pt_BR")
+		c.Set("user_id", uint(17))
+		c.Next()
+	})
+	router.GET("/api/v1/documents/:id/content", handler.GetDocumentContent)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/7/content", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusGone {
+		t.Fatalf("expected 410 response, got %d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "nao foi encontrado no storage") {
+		t.Fatalf("expected orphaned source message, got %q", rec.Body.String())
+	}
+}
+
+func TestGetDocumentContentStreamsInlinePDFResponse(t *testing.T) {
+	t.Parallel()
+
+	gin.SetMode(gin.TestMode)
+	useCase := &documentUseCaseAuditCaptureStub{
+		documentContent: &domain.DocumentContent{
+			Document: &models.Document{
+				ID:       7,
+				Title:    "Contrato.pdf",
+				MimeType: "application/pdf",
+				Size:     12,
+			},
+			Reader: io.NopCloser(strings.NewReader("pdf-content")),
+		},
+	}
+	handler := NewDocumentHandler(useCase, 10<<20)
+
+	router := gin.New()
+	router.Use(middleware.RequestContextMiddleware())
+	router.Use(func(c *gin.Context) {
+		c.Set("language", "pt_BR")
+		c.Set("user_id", uint(17))
+		c.Next()
+	})
+	router.GET("/api/v1/documents/:id/content", handler.GetDocumentContent)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/7/content", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 response, got %d", rec.Code)
+	}
+	if got := rec.Header().Get("Content-Type"); got != "application/pdf" {
+		t.Fatalf("expected pdf content type, got %q", got)
+	}
+	if got := rec.Header().Get("Content-Disposition"); !strings.Contains(got, "inline") || !strings.Contains(got, "Contrato.pdf") {
+		t.Fatalf("expected inline content disposition for pdf, got %q", got)
+	}
+	if rec.Body.String() != "pdf-content" {
+		t.Fatalf("unexpected streamed body: %q", rec.Body.String())
+	}
+}
+
+func TestUploadDocumentEndpointReturnsConflictForUnavailableStorageProvider(t *testing.T) {
+	t.Parallel()
+
+	gin.SetMode(gin.TestMode)
+	useCase := &documentUseCaseAuditCaptureStub{uploadErr: domain.ErrStorageProviderUnavailable}
+	handler := NewDocumentHandler(useCase, 10<<20)
+
+	router := gin.New()
+	router.Use(middleware.RequestContextMiddleware())
+	router.Use(func(c *gin.Context) {
+		c.Set("language", "pt_BR")
+		c.Set("user_id", uint(23))
+		c.Next()
+	})
+	router.POST("/api/v1/documents/upload", handler.Upload)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/documents/upload", strings.NewReader("--x\r\nContent-Disposition: form-data; name=\"title\"\r\n\r\nArquivo\r\n--x\r\nContent-Disposition: form-data; name=\"collection\"\r\n\r\nColecao\r\n--x\r\nContent-Disposition: form-data; name=\"file\"; filename=\"arquivo.pdf\"\r\nContent-Type: application/pdf\r\n\r\n%PDF-1.7\r\n--x--\r\n"))
+	req.Header.Set("Content-Type", "multipart/form-data; boundary=x")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("expected 409 response, got %d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "storage") {
+		t.Fatalf("expected storage provider message, got %q", rec.Body.String())
 	}
 }

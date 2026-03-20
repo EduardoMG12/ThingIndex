@@ -169,16 +169,32 @@ func (r *collectionRepoStub) CountDocuments(context.Context, uint, uint) (int64,
 type storageStub struct {
 	deleteErrByPath map[string]error
 	uploadURL       string
+	uploadCalls     int
+	openErrByPath   map[string]error
+	openBodyByPath  map[string]string
+	existsByPath    map[string]bool
+	existsErrByPath map[string]error
 }
 
 func (s *storageStub) UploadFile(context.Context, io.Reader, int64, string, string) (string, error) {
+	s.uploadCalls++
 	if s.uploadURL != "" {
 		return s.uploadURL, nil
 	}
 	return "", nil
 }
 
-func (s *storageStub) OpenFile(context.Context, string) (io.ReadCloser, error) {
+func (s *storageStub) OpenFile(_ context.Context, objectPath string) (io.ReadCloser, error) {
+	if s.openErrByPath != nil {
+		if err, ok := s.openErrByPath[objectPath]; ok {
+			return nil, err
+		}
+	}
+	if s.openBodyByPath != nil {
+		if body, ok := s.openBodyByPath[objectPath]; ok {
+			return io.NopCloser(strings.NewReader(body)), nil
+		}
+	}
 	return nil, nil
 }
 
@@ -189,7 +205,17 @@ func (s *storageStub) DeleteFile(_ context.Context, objectPath string) error {
 	return s.deleteErrByPath[objectPath]
 }
 
-func (s *storageStub) FileExists(context.Context, string) (bool, error) {
+func (s *storageStub) FileExists(_ context.Context, objectPath string) (bool, error) {
+	if s.existsErrByPath != nil {
+		if err, ok := s.existsErrByPath[objectPath]; ok {
+			return false, err
+		}
+	}
+	if s.existsByPath != nil {
+		if exists, ok := s.existsByPath[objectPath]; ok {
+			return exists, nil
+		}
+	}
 	return false, nil
 }
 
