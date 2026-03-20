@@ -10,7 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import SourceReference, { type Source } from "@/components/chat/SourceReference";
 import SubQueryProgress, { type SubQuery } from "@/components/chat/SubQueryProgress";
+import ProviderRuntimeCallout from "@/components/runtime/ProviderRuntimeCallout";
 import { useCollections } from "@/hooks/use-collections";
+import { useProviderRuntimeOverview } from "@/hooks/use-provider-runtime-overview";
 import {
     createChatConversation,
     fetchChatConversation,
@@ -195,6 +197,11 @@ const ChatTab = ({ className }: { className?: string }) => {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const { collections, isLoading: collectionsLoading } = useCollections();
+    const {
+        overview: providerRuntimeOverview,
+        isLoading: isProviderRuntimeLoading,
+        error: providerRuntimeError,
+    } = useProviderRuntimeOverview();
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -795,6 +802,15 @@ const ChatTab = ({ className }: { className?: string }) => {
                             )}
                         </label>
                     </div>
+                </div>
+
+                <div className="px-4 pb-2 sm:px-7">
+                    <ProviderRuntimeCallout
+                        role="chat"
+                        assignment={providerRuntimeOverview.chat}
+                        isLoading={isProviderRuntimeLoading}
+                        error={providerRuntimeError}
+                    />
                 </div>
 
                 <ScrollArea ref={scrollAreaRef} className="flex-1 px-4 py-5 sm:px-7">

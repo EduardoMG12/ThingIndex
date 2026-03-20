@@ -35,6 +35,14 @@ type ProviderApiRecord = {
     updated_at: string;
 };
 
+type ProviderRuntimeAssignmentApiRecord = {
+    family: ProviderFamily;
+    activation_target: "STORAGE" | "INDEXING" | "CHAT";
+    provider_type: ProviderType;
+    public_metadata?: Record<string, string>;
+    updated_at: string;
+};
+
 export type ProviderConfig = {
     id: number;
     user_id: number;
@@ -46,6 +54,20 @@ export type ProviderConfig = {
     public_metadata: Record<string, string>;
     created_at: string;
     updated_at: string;
+};
+
+export type ProviderRuntimeAssignment = {
+    family: ProviderFamily;
+    activation_target: "STORAGE" | "INDEXING" | "CHAT";
+    provider_type: ProviderType;
+    public_metadata: Record<string, string>;
+    updated_at: string;
+};
+
+export type ProviderRuntimeOverview = {
+    storage: ProviderRuntimeAssignment | null;
+    indexing: ProviderRuntimeAssignment | null;
+    chat: ProviderRuntimeAssignment | null;
 };
 
 function normalizeProvider(record: ProviderApiRecord): ProviderConfig {
@@ -60,6 +82,25 @@ function normalizeProvider(record: ProviderApiRecord): ProviderConfig {
         public_metadata: record.public_metadata ?? {},
         created_at: record.created_at,
         updated_at: record.updated_at,
+    };
+}
+
+function normalizeProviderRuntimeAssignment(record: unknown): ProviderRuntimeAssignment | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const runtimeRecord = record as Partial<ProviderRuntimeAssignmentApiRecord>;
+    if (!runtimeRecord.family || !runtimeRecord.activation_target || !runtimeRecord.provider_type || !runtimeRecord.updated_at) {
+        return null;
+    }
+
+    return {
+        family: runtimeRecord.family,
+        activation_target: runtimeRecord.activation_target,
+        provider_type: runtimeRecord.provider_type,
+        public_metadata: runtimeRecord.public_metadata ?? {},
+        updated_at: runtimeRecord.updated_at,
     };
 }
 
@@ -81,6 +122,41 @@ export async function fetchProviders(signal?: AbortSignal): Promise<ProviderConf
     }
 
     return payload.data.map(normalizeProvider);
+}
+
+export async function fetchProviderRuntimeOverview(signal?: AbortSignal): Promise<ProviderRuntimeOverview> {
+    const response = await fetchWithAuthRedirect("/api/user/providers/runtime", {
+        method: "GET",
+        cache: "no-store",
+        signal,
+    });
+
+    const payload = (await response.json().catch(() => null)) as
+        | ApiSuccessResponse<{
+            storage?: unknown;
+            indexing?: unknown;
+            chat?: unknown;
+        }>
+        | ApiErrorResponse
+        | null;
+
+    if (!response.ok) {
+        throw new Error(payload?.message || "Nao foi possivel carregar o runtime ativo dos providers.");
+    }
+
+    if (!hasResponseData(payload) || !payload.data || typeof payload.data !== "object") {
+        return {
+            storage: null,
+            indexing: null,
+            chat: null,
+        };
+    }
+
+    return {
+        storage: normalizeProviderRuntimeAssignment(payload.data.storage),
+        indexing: normalizeProviderRuntimeAssignment(payload.data.indexing),
+        chat: normalizeProviderRuntimeAssignment(payload.data.chat),
+    };
 }
 
 export async function saveProvider(input: {

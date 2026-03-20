@@ -32,6 +32,24 @@ export const messages: LocaleMessages = {
                 typeToConfirm: "Digite {value} para confirmar.",
             },
         },
+        providerRuntime: {
+            eyebrow: "Runtime ativo",
+            settingsCta: "Revisar nas configuracoes",
+            providerLabel: "Provider",
+            modelLabel: "Modelo",
+            updatedLabel: "Atualizado",
+            notConfiguredLabel: "Nao configurado",
+            chat: {
+                title: "LLM ativa para chat",
+                description: "Este e o provider e o modelo usados agora nas respostas grounded do chat.",
+                missing: "Nenhuma LLM esta ativa para chat. Escolha uma em Configuracoes antes de iniciar uma conversa grounded.",
+            },
+            indexing: {
+                title: "LLM ativa para indexacao",
+                description: "Este e o provider e o modelo usados agora quando novos documentos dependem de enriquecimento e apoio de indexacao.",
+                missing: "Nenhuma LLM esta ativa para indexacao. Escolha uma em Configuracoes antes de enviar documentos que dependem de enriquecimento.",
+            },
+        },
         seo: {
             siteTitle: "ThingIndex",
             siteDescription:
@@ -434,6 +452,24 @@ export const messages: LocaleMessages = {
                 typeToConfirm: "Type {value} to confirm.",
             },
         },
+        providerRuntime: {
+            eyebrow: "Runtime in use",
+            settingsCta: "Review in settings",
+            providerLabel: "Provider",
+            modelLabel: "Model",
+            updatedLabel: "Updated",
+            notConfiguredLabel: "Not configured",
+            chat: {
+                title: "Active chat LLM",
+                description: "This is the provider and model currently used for grounded chat responses.",
+                missing: "No LLM is active for chat. Choose one in Settings before starting a grounded conversation.",
+            },
+            indexing: {
+                title: "Active indexing LLM",
+                description: "This is the provider and model currently used when new documents depend on enrichment and indexing support.",
+                missing: "No LLM is active for indexing. Choose one in Settings before uploading documents that depend on enrichment.",
+            },
+        },
         seo: {
             siteTitle: "ThingIndex",
             siteDescription:
@@ -834,6 +870,24 @@ export const messages: LocaleMessages = {
                 cancelLabel: "Cancelar",
                 inputLabel: "Valor de confirmacion",
                 typeToConfirm: "Escribe {value} para confirmar.",
+            },
+        },
+        providerRuntime: {
+            eyebrow: "Runtime activo",
+            settingsCta: "Revisar en configuración",
+            providerLabel: "Provider",
+            modelLabel: "Modelo",
+            updatedLabel: "Actualizado",
+            notConfiguredLabel: "No configurado",
+            chat: {
+                title: "LLM activa para chat",
+                description: "Este es el provider y el modelo usados ahora en las respuestas grounded del chat.",
+                missing: "No hay ninguna LLM activa para chat. Elige una en Configuración antes de iniciar una conversación grounded.",
+            },
+            indexing: {
+                title: "LLM activa para indexación",
+                description: "Este es el provider y el modelo usados ahora cuando los documentos nuevos dependen de enriquecimiento y apoyo de indexación.",
+                missing: "No hay ninguna LLM activa para indexación. Elige una en Configuración antes de subir documentos que dependen de enriquecimiento.",
             },
         },
         seo: {

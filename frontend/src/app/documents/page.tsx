@@ -31,9 +31,11 @@ import {
 import { toast } from "sonner";
 
 import AppShell from "@/components/layout/AppShell";
+import ProviderRuntimeCallout from "@/components/runtime/ProviderRuntimeCallout";
 import { DangerConfirmModal } from "@/components/ui/danger-confirm-modal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDocuments } from "@/hooks/use-documents";
+import { useProviderRuntimeOverview } from "@/hooks/use-provider-runtime-overview";
 import { fetchCollectionContext } from "@/lib/api/collections";
 import type { CollectionContext } from "@/lib/api/contracts/document-context";
 import {
@@ -1463,6 +1465,11 @@ type PendingDeletion =
 export default function DocumentsPage() {
     const { locale, t, href } = useI18n();
     const { documents, isLoading, error, reloadDocuments, setDocuments } = useDocuments();
+    const {
+        overview: providerRuntimeOverview,
+        isLoading: isProviderRuntimeLoading,
+        error: providerRuntimeError,
+    } = useProviderRuntimeOverview();
     const [monitoringSummary, setMonitoringSummary] = useState<DocumentMonitoringSummary | null>(null);
     const [monitoringError, setMonitoringError] = useState<string | null>(null);
     const [documentAuditEvents, setDocumentAuditEvents] = useState<DocumentAuditEvent[]>([]);
@@ -1698,6 +1705,19 @@ export default function DocumentsPage() {
             <motion.div
                 {...fadeUp}
                 transition={{ delay: 0.1, duration: 0.4 }}
+                className="mb-6"
+            >
+                <ProviderRuntimeCallout
+                    role="indexing"
+                    assignment={providerRuntimeOverview.indexing}
+                    isLoading={isProviderRuntimeLoading}
+                    error={providerRuntimeError}
+                />
+            </motion.div>
+
+            <motion.div
+                {...fadeUp}
+                transition={{ delay: 0.14, duration: 0.4 }}
                 className="surface-elevated rounded-xl border border-border"
             >
                 <div className="flex items-center justify-between border-b border-border px-6 py-4">
