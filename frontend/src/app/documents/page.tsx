@@ -49,6 +49,7 @@ import {
     type DocumentProcessingAttempt,
     type IndexMonitoring,
 } from "@/lib/api/documents";
+import { fetchDocumentAuditEvents, type DocumentAuditEvent } from "@/lib/api/audit";
 import {
     getDocumentOperationalIssue,
     getLatestProcessingAttempt,
@@ -57,6 +58,7 @@ import {
     type DocumentOperationalIssue,
 } from "@/lib/document-state";
 import { useI18n } from "@/lib/i18n/provider";
+import { cn } from "@/lib/utils";
 
 const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } };
 
@@ -141,6 +143,30 @@ function formatDispositionLabel(disposition?: string) {
             return "Falha permanente";
         default:
             return "Sem disposicao";
+    }
+}
+
+function formatDocumentAuditAction(action?: string) {
+    switch (action) {
+        case "DOCUMENT_UPLOAD":
+            return "Upload";
+        case "DOCUMENT_RETRY_INDEX":
+            return "Retry / reindexacao";
+        case "DOCUMENT_DELETE":
+            return "Exclusao";
+        default:
+            return action || "Evento";
+    }
+}
+
+function formatAuditStatus(status?: string) {
+    switch (status) {
+        case "SUCCESS":
+            return "Sucesso";
+        case "FAILED":
+            return "Falha";
+        default:
+            return status || "Desconhecido";
     }
 }
 
@@ -630,6 +656,128 @@ function OperationalQueuePanel({
                     </div>
                 ))}
             </div>
+        </div>
+    );
+}
+
+function DocumentAuditTrailPanel({
+    events,
+    error,
+    actionFilter,
+    statusFilter,
+    onActionFilterChange,
+    onStatusFilterChange,
+    locale,
+}: {
+    events: DocumentAuditEvent[];
+    error: string | null;
+    actionFilter: string;
+    statusFilter: string;
+    onActionFilterChange: (value: string) => void;
+    onStatusFilterChange: (value: string) => void;
+    locale: string;
+}) {
+    const actionOptions = [
+        { value: "ALL", label: "Tudo" },
+        { value: "DOCUMENT_UPLOAD", label: "Uploads" },
+        { value: "DOCUMENT_RETRY_INDEX", label: "Retries" },
+        { value: "DOCUMENT_DELETE", label: "Exclusoes" },
+    ];
+    const statusOptions = [
+        { value: "ALL", label: "Todos os status" },
+        { value: "SUCCESS", label: "Sucesso" },
+        { value: "FAILED", label: "Falha" },
+    ];
+
+    return (
+        <div className="mb-6 rounded-2xl border border-border bg-card/60 p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                    <p className="text-[10px] uppercase tracking-[0.28em] text-primary">Audit Trail</p>
+                    <h2 className="mt-2 text-lg font-semibold">Historico de auditoria documental</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        Leitura consultavel dos uploads, retries e exclusoes com correlacao por request, detalhe e origem.
+                    </p>
+                </div>
+                <div className="flex flex-col gap-3">
+                    <div className="flex flex-wrap gap-2">
+                        {actionOptions.map((option) => (
+                            <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => onActionFilterChange(option.value)}
+                                className={cn(
+                                    "rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors",
+                                    actionFilter === option.value
+                                        ? "border-primary/20 bg-primary/10 text-primary"
+                                        : "border-border bg-background text-muted-foreground"
+                                )}
+                            >
+                                {option.label}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {statusOptions.map((option) => (
+                            <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => onStatusFilterChange(option.value)}
+                                className={cn(
+                                    "rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors",
+                                    statusFilter === option.value
+                                        ? "border-primary/20 bg-primary/10 text-primary"
+                                        : "border-border bg-background text-muted-foreground"
+                                )}
+                            >
+                                {option.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {error ? (
+                <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+                    {error}
+                </div>
+            ) : null}
+
+            {!error && events.length === 0 ? (
+                <div className="mt-4 rounded-xl border border-dashed border-border bg-background/45 p-5 text-sm text-muted-foreground">
+                    Nenhum evento de auditoria encontrado para esse recorte.
+                </div>
+            ) : null}
+
+            {!error && events.length > 0 ? (
+                <div className="mt-4 grid gap-3 xl:grid-cols-2">
+                    {events.map((event) => (
+                        <div key={event.id} className="rounded-xl border border-border bg-background/70 p-4">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-sm font-semibold">{event.title || `Documento #${event.document_id ?? event.id}`}</p>
+                                <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                    {formatDocumentAuditAction(event.action)}
+                                </span>
+                                <span className={cn(
+                                    "rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                                    event.status === "SUCCESS"
+                                        ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                                        : "border-destructive/20 bg-destructive/10 text-destructive"
+                                )}>
+                                    {formatAuditStatus(event.status)}
+                                </span>
+                            </div>
+                            <p className="mt-2 text-sm text-foreground/90">{event.detail || "Sem detalhe registrado."}</p>
+                            <div className="mt-3 grid gap-2 text-[11px] text-muted-foreground md:grid-cols-2">
+                                <p>Quando: <span className="font-mono text-foreground">{formatDate(event.created_at, locale)}</span></p>
+                                <p>Origem: <span className="font-mono text-foreground">{event.origin || "-"}</span></p>
+                                <p>Request: <span className="font-mono text-foreground">{event.correlation_id || "-"}</span></p>
+                                <p>Documento: <span className="font-mono text-foreground">{event.document_id ?? "-"}</span></p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : null}
         </div>
     );
 }
@@ -1317,6 +1465,10 @@ export default function DocumentsPage() {
     const { documents, isLoading, error, reloadDocuments, setDocuments } = useDocuments();
     const [monitoringSummary, setMonitoringSummary] = useState<DocumentMonitoringSummary | null>(null);
     const [monitoringError, setMonitoringError] = useState<string | null>(null);
+    const [documentAuditEvents, setDocumentAuditEvents] = useState<DocumentAuditEvent[]>([]);
+    const [documentAuditError, setDocumentAuditError] = useState<string | null>(null);
+    const [auditActionFilter, setAuditActionFilter] = useState("ALL");
+    const [auditStatusFilter, setAuditStatusFilter] = useState("ALL");
     const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
     const [openCollections, setOpenCollections] = useState<Record<string, boolean>>({});
     const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
@@ -1349,6 +1501,33 @@ export default function DocumentsPage() {
 
         return () => controller.abort();
     }, []);
+
+    useEffect(() => {
+        const controller = new AbortController();
+
+        async function loadDocumentAuditTrail(signal?: AbortSignal) {
+            try {
+                setDocumentAuditError(null);
+                const data = await fetchDocumentAuditEvents({
+                    limit: 18,
+                    action: auditActionFilter === "ALL" ? undefined : auditActionFilter,
+                    status: auditStatusFilter === "ALL" ? undefined : auditStatusFilter,
+                    signal,
+                });
+                setDocumentAuditEvents(data);
+            } catch (err) {
+                if (signal?.aborted) {
+                    return;
+                }
+
+                setDocumentAuditError(err instanceof Error ? err.message : "Nao foi possivel carregar a auditoria documental.");
+            }
+        }
+
+        void loadDocumentAuditTrail(controller.signal);
+
+        return () => controller.abort();
+    }, [auditActionFilter, auditStatusFilter]);
 
     useEffect(() => {
         if (!selectedDocument) {
@@ -1392,7 +1571,7 @@ export default function DocumentsPage() {
                 setSelectedDocument(updatedDocument);
             }
 
-            await reloadDocuments();
+            await refreshAfterMutation();
             toast.success(
                 isOrphanedDocument(document)
                     ? "Documento reenfileirado. Se o original foi restaurado, o processamento podera seguir."
@@ -1449,6 +1628,16 @@ export default function DocumentsPage() {
             reloadDocuments(),
             fetchDocumentMonitoringSummary().then(setMonitoringSummary).catch((err) => {
                 setMonitoringError(err instanceof Error ? err.message : "Nao foi possivel carregar o resumo de monitoramento.");
+            }),
+            fetchDocumentAuditEvents({
+                limit: 18,
+                action: auditActionFilter === "ALL" ? undefined : auditActionFilter,
+                status: auditStatusFilter === "ALL" ? undefined : auditStatusFilter,
+            }).then((items) => {
+                setDocumentAuditEvents(items);
+                setDocumentAuditError(null);
+            }).catch((err) => {
+                setDocumentAuditError(err instanceof Error ? err.message : "Nao foi possivel carregar a auditoria documental.");
             }),
         ]);
     };
@@ -1534,6 +1723,18 @@ export default function DocumentsPage() {
                             onOpenPreview={setSelectedDocument}
                             onRetry={handleRetryDocument}
                             retryingDocumentId={retryingDocumentId}
+                            locale={locale}
+                        />
+                    )}
+
+                    {!isLoading && !error && (
+                        <DocumentAuditTrailPanel
+                            events={documentAuditEvents}
+                            error={documentAuditError}
+                            actionFilter={auditActionFilter}
+                            statusFilter={auditStatusFilter}
+                            onActionFilterChange={setAuditActionFilter}
+                            onStatusFilterChange={setAuditStatusFilter}
                             locale={locale}
                         />
                     )}
