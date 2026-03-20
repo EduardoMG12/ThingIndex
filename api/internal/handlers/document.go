@@ -332,6 +332,38 @@ func (h *DocumentHandler) ListDocuments(c *gin.Context) {
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_documents_list"), dto.ToDocumentsResponse(docs))
 }
 
+func (h *DocumentHandler) ListDocumentAuditEvents(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	limit, ok := parseOptionalLimitQuery(c, 20, "Parametro limit invalido.")
+	if !ok {
+		return
+	}
+	documentID, ok := parseOptionalUintQuery(c, "document_id", i18n.T(lang, "error.invalid_document_id"))
+	if !ok {
+		return
+	}
+	collectionID, ok := parseOptionalUintQuery(c, "collection_id", i18n.T(lang, "error.invalid_collection_id"))
+	if !ok {
+		return
+	}
+
+	events, err := h.useCase.ListDocumentAuditEvents(c.Request.Context(), userID, domain.DocumentAuditFilter{
+		Limit:        limit,
+		Action:       c.Query("action"),
+		Status:       c.Query("status"),
+		DocumentID:   documentID,
+		CollectionID: collectionID,
+	})
+	if err != nil {
+		h.respondInternalError(c, lang)
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", "Auditoria documental carregada com sucesso.", dto.ToDocumentAuditEventResponses(events))
+}
+
 func (h *DocumentHandler) GetDocument(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")

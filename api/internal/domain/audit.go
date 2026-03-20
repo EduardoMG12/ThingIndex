@@ -12,6 +12,22 @@ type AuditContext struct {
 	RemoteAddr    string
 }
 
+type DocumentAuditFilter struct {
+	Limit        int
+	Action       string
+	Status       string
+	DocumentID   *uint
+	CollectionID *uint
+}
+
+type ProviderAuditFilter struct {
+	Limit        int
+	Family       string
+	Status       string
+	Action       string
+	ProviderType string
+}
+
 type auditContextKey struct{}
 
 func WithAuditContext(ctx context.Context, auditCtx AuditContext) context.Context {

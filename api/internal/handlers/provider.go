@@ -165,6 +165,30 @@ func (h *ProviderHandler) ListProviders(c *gin.Context) {
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "provider.success_list"), dto.ToProviderConfigResponses(providers, publicMetadataByProvider))
 }
 
+func (h *ProviderHandler) ListProviderAuditEvents(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	limit, ok := parseOptionalLimitQuery(c, 20, "Parametro limit invalido.")
+	if !ok {
+		return
+	}
+
+	events, err := h.useCase.ListProviderAuditEvents(c.Request.Context(), userID, domain.ProviderAuditFilter{
+		Limit:        limit,
+		Family:       c.Query("family"),
+		Status:       c.Query("status"),
+		Action:       c.Query("action"),
+		ProviderType: c.Query("provider_type"),
+	})
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", "Auditoria de providers carregada com sucesso.", dto.ToProviderAuditEventResponses(events))
+}
+
 func extractPublicMetadata(family string, credentials map[string]string) map[string]string {
 	publicMetadata := make(map[string]string)
 

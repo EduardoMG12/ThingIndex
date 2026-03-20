@@ -259,6 +259,21 @@ func (u *providerUseCase) ListUserProviders(ctx context.Context, userID uint) ([
 	return u.repo.ListConfigs(ctx, userID)
 }
 
+func (u *providerUseCase) ListProviderAuditEvents(ctx context.Context, userID uint, filter domain.ProviderAuditFilter) ([]models.ProviderAuditEvent, error) {
+	filter.Family = strings.ToUpper(strings.TrimSpace(filter.Family))
+	filter.ProviderType = normalizeProviderType(filter.ProviderType)
+	filter.Action = strings.ToUpper(strings.TrimSpace(filter.Action))
+	filter.Status = strings.ToUpper(strings.TrimSpace(filter.Status))
+	if filter.Limit <= 0 {
+		filter.Limit = 20
+	}
+	if filter.Limit > 100 {
+		filter.Limit = 100
+	}
+
+	return u.repo.ListProviderAuditEvents(ctx, userID, filter)
+}
+
 func (u *providerUseCase) SyncModelCatalogs(ctx context.Context) error {
 	for providerType := range publicModelCatalogProviders() {
 		if err := u.syncProviderModelCatalog(ctx, 0, providerType, map[string]string{

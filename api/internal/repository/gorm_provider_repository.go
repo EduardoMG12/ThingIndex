@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"strings"
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
 
@@ -74,6 +75,43 @@ func (r *gormProviderRepository) CreateProviderAuditEvents(ctx context.Context, 
 	}
 
 	return r.db.WithContext(ctx).Create(&events).Error
+}
+
+func (r *gormProviderRepository) ListProviderAuditEvents(ctx context.Context, userID uint, filter domain.ProviderAuditFilter) ([]models.ProviderAuditEvent, error) {
+	var events []models.ProviderAuditEvent
+
+	query := r.db.WithContext(ctx).
+		Where("user_id = ?", userID)
+
+	if family := strings.ToUpper(strings.TrimSpace(filter.Family)); family != "" {
+		query = query.Where("family = ?", family)
+	}
+	if providerType := strings.ToUpper(strings.TrimSpace(filter.ProviderType)); providerType != "" {
+		query = query.Where("provider_type = ?", providerType)
+	}
+	if action := strings.ToUpper(strings.TrimSpace(filter.Action)); action != "" {
+		query = query.Where("action = ?", action)
+	}
+	if status := strings.ToUpper(strings.TrimSpace(filter.Status)); status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	if err := query.
+		Order("created_at DESC, id DESC").
+		Limit(limit).
+		Find(&events).Error; err != nil {
+		return nil, err
+	}
+
+	return events, nil
 }
 
 func (r *gormProviderRepository) GetConfig(ctx context.Context, userID uint, providerType string) (*models.UserProviderConfig, error) {

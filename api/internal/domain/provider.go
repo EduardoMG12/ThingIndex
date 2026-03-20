@@ -35,6 +35,7 @@ const (
 type ProviderRepository interface {
 	SaveConfig(ctx context.Context, config *models.UserProviderConfig, auditEvent *models.ProviderAuditEvent) error
 	CreateProviderAuditEvents(ctx context.Context, events []models.ProviderAuditEvent) error
+	ListProviderAuditEvents(ctx context.Context, userID uint, filter ProviderAuditFilter) ([]models.ProviderAuditEvent, error)
 	GetConfig(ctx context.Context, userID uint, providerType string) (*models.UserProviderConfig, error)
 	GetConfigByFamily(ctx context.Context, userID uint, family string) (*models.UserProviderConfig, error)
 	GetConfigByLLMUsage(ctx context.Context, userID uint, usage string) (*models.UserProviderConfig, error)
@@ -53,6 +54,7 @@ type ProviderUseCase interface {
 	ListModels(ctx context.Context, userID uint, family, providerType string, credentials map[string]string) ([]string, error)
 	GetDecryptedCredentials(ctx context.Context, userID uint, providerType string) (map[string]string, error)
 	ListUserProviders(ctx context.Context, userID uint) ([]models.UserProviderConfig, error)
+	ListProviderAuditEvents(ctx context.Context, userID uint, filter ProviderAuditFilter) ([]models.ProviderAuditEvent, error)
 	SyncModelCatalogs(ctx context.Context) error
 	SetProviderEnabled(ctx context.Context, userID uint, family, providerType string, enabled bool) error
 	SetLLMUsageEnabled(ctx context.Context, userID uint, providerType, usage string, enabled bool) error

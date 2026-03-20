@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"strings"
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
 	"time"
@@ -56,6 +57,43 @@ func (r *GormCatalogDocumentRepository) CreateDocumentAuditEvents(ctx context.Co
 	}
 
 	return r.db.WithContext(ctx).Create(&events).Error
+}
+
+func (r *GormCatalogDocumentRepository) ListDocumentAuditEvents(ctx context.Context, userID uint, filter domain.DocumentAuditFilter) ([]models.DocumentAuditEvent, error) {
+	var events []models.DocumentAuditEvent
+
+	query := r.db.WithContext(ctx).
+		Where("user_id = ?", userID)
+
+	if filter.DocumentID != nil {
+		query = query.Where("document_id = ?", *filter.DocumentID)
+	}
+	if filter.CollectionID != nil {
+		query = query.Where("collection_id = ?", *filter.CollectionID)
+	}
+	if action := strings.ToUpper(strings.TrimSpace(filter.Action)); action != "" {
+		query = query.Where("action = ?", action)
+	}
+	if status := strings.ToUpper(strings.TrimSpace(filter.Status)); status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	if err := query.
+		Order("created_at DESC, id DESC").
+		Limit(limit).
+		Find(&events).Error; err != nil {
+		return nil, err
+	}
+
+	return events, nil
 }
 
 func (r *GormCatalogDocumentRepository) GetDocumentByID(ctx context.Context, id uint, userID uint) (*models.Document, error) {

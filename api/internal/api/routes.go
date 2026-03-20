@@ -131,6 +131,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 			user.POST("/providers/test", providerHandler.TestConnection)
 			user.POST("/providers/models", providerHandler.ListModels)
 			user.GET("/providers", providerHandler.ListProviders)
+			user.GET("/providers/audit", providerHandler.ListProviderAuditEvents)
 			user.PATCH("/providers/:providerType", providerHandler.UpdateProviderState)
 			user.POST("/pricing-sources", pricingHandler.SaveSource)
 			user.GET("/pricing-sources", pricingHandler.ListSources)
@@ -142,6 +143,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		documents.Use(middleware.AuthMiddleware(cfg, authRepo))
 		{
 			documents.POST("/upload", docHandler.Upload)
+			documents.GET("/audit", docHandler.ListDocumentAuditEvents)
 			documents.POST("/collections", docHandler.CreateCollection)
 			documents.GET("/collections", docHandler.ListCollections)
 			documents.GET("/collections/:id/context", docHandler.GetCollectionContext)
