@@ -666,6 +666,8 @@ curl -X GET http://localhost:8000/api/v1/documents/collections/1/context \
 
 O projeto ainda esta em fase de desenvolvimento local. Isso significa que algumas decisoes de infraestrutura continuam orientadas a produtividade de dev, nao a hardening completo de producao distribuida.
 
+Checklist versionada desta frente: `SECURITY.md`.
+
 ## 15. Qualidade de Engenharia
 
 ### Convencoes adotadas
