@@ -5,7 +5,7 @@ vi.mock("@/lib/api/fetch-with-auth-redirect", () => ({
 }));
 
 import { fetchWithAuthRedirect } from "@/lib/api/fetch-with-auth-redirect";
-import { listProviderModels } from "@/lib/api/providers";
+import { fetchProviderRuntimeOverview, listProviderModels } from "@/lib/api/providers";
 
 describe("providers api", () => {
     beforeEach(() => {
@@ -37,5 +37,46 @@ describe("providers api", () => {
 
         expect(vi.mocked(fetchWithAuthRedirect).mock.calls[0]?.[0]).toBe("/api/user/providers/models");
         expect(models).toEqual(["gpt-4o-mini", "gpt-4.1-mini"]);
+    });
+
+    it("loads and normalizes the active provider runtime overview", async () => {
+        vi.mocked(fetchWithAuthRedirect).mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    status: 200,
+                    type: "success",
+                    message: "ok",
+                    data: {
+                        indexing: {
+                            family: "LLM",
+                            activation_target: "INDEXING",
+                            provider_type: "OPENAI",
+                            public_metadata: {
+                                model: "gpt-4o-mini",
+                            },
+                            updated_at: "2026-03-20T12:00:00Z",
+                        },
+                        chat: {
+                            family: "LLM",
+                            activation_target: "CHAT",
+                            provider_type: "OLLAMA",
+                            public_metadata: {
+                                model: "llama3.1:8b",
+                            },
+                            updated_at: "2026-03-20T12:05:00Z",
+                        },
+                    },
+                }),
+                { status: 200, headers: { "Content-Type": "application/json" } }
+            )
+        );
+
+        const overview = await fetchProviderRuntimeOverview();
+
+        expect(vi.mocked(fetchWithAuthRedirect).mock.calls[0]?.[0]).toBe("/api/user/providers/runtime");
+        expect(overview.storage).toBeNull();
+        expect(overview.indexing?.provider_type).toBe("OPENAI");
+        expect(overview.indexing?.public_metadata.model).toBe("gpt-4o-mini");
+        expect(overview.chat?.provider_type).toBe("OLLAMA");
     });
 });
