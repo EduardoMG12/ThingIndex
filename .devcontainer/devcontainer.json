@@ -1,0 +1,42 @@
+{
+  "name": "ThingIndex",
+  "dockerComposeFile": [
+    "../docker-compose.yml",
+    "../docker-compose.dev.yml",
+    "docker-compose.devcontainer.yml"
+  ],
+  "service": "workspace",
+  "workspaceFolder": "/workspace",
+  "runServices": [
+    "db",
+    "minio",
+    "rabbitmq",
+    "api",
+    "indexer",
+    "workspace"
+  ],
+  "shutdownAction": "stopCompose",
+  "overrideCommand": false,
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "forwardPorts": [
+    3000,
+    8000,
+    9001,
+    15672,
+    5434
+  ],
+  "remoteEnv": {
+    "API_INTERNAL_URL": "http://api:8080/api/v1",
+    "NEXT_PUBLIC_API_URL": "http://localhost:8000/api/v1"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.Go",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-playwright.playwright"
+      ]
+    }
+  }
+}
