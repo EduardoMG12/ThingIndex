@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { fetchWithAuthRedirect, UnauthorizedRequestError } from "@/lib/api/fetch-with-auth-redirect";
+import { REQUEST_ID_HEADER_NAME } from "@/lib/api/request-id";
 import { LOCALE_COOKIE_NAME, LOCALE_HEADER_NAME } from "@/lib/i18n/config";
 
 describe("fetch-with-auth-redirect", () => {
@@ -14,6 +15,7 @@ describe("fetch-with-auth-redirect", () => {
     it("forwards the normalized locale in request headers", async () => {
         const fetchMock = vi.mocked(fetch);
         fetchMock.mockResolvedValue(new Response(null, { status: 200 }));
+        vi.spyOn(globalThis.crypto, "randomUUID").mockReturnValue("req-generated-001");
 
         document.cookie = `${LOCALE_COOKIE_NAME}=pt`;
 
@@ -30,6 +32,7 @@ describe("fetch-with-auth-redirect", () => {
         expect(headers.get("Accept-Language")).toBe("pt-BR");
         expect(headers.get(LOCALE_HEADER_NAME)).toBe("pt-BR");
         expect(headers.get("X-Test")).toBe("enabled");
+        expect(headers.get(REQUEST_ID_HEADER_NAME)).toBe("req-generated-001");
     });
 
     it("redirects unauthorized requests to the localized login page", async () => {

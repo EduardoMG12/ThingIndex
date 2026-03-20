@@ -4,6 +4,7 @@ import {
     LOCALE_HEADER_NAME,
     normalizeLocale,
 } from "@/lib/i18n/config";
+import { createRequestId, REQUEST_ID_HEADER_NAME } from "@/lib/api/request-id";
 
 function getClientLocale() {
     if (typeof document === "undefined") {
@@ -46,6 +47,9 @@ export async function fetchWithAuthRedirect(
     const headers = new Headers(init?.headers);
     headers.set("Accept-Language", locale);
     headers.set(LOCALE_HEADER_NAME, locale);
+    if (!headers.has(REQUEST_ID_HEADER_NAME)) {
+        headers.set(REQUEST_ID_HEADER_NAME, createRequestId());
+    }
 
     const response = await fetch(input, {
         ...init,
