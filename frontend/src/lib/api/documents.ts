@@ -37,9 +37,36 @@ type DocumentApiRecord = {
     collection?: string | Record<string, unknown> | null;
     category_id?: number | null;
     category?: Category | null;
+    processing_attempts?: Array<{
+        id?: number;
+        stage?: string;
+        failure_kind?: string;
+        disposition?: string;
+        detail?: string;
+        error_message?: string;
+        retry_count?: number;
+        next_retry_attempt?: number;
+        max_retry_attempts?: number;
+        retry_delay_seconds?: number;
+        created_at?: string;
+    }> | null;
     metadata_pairs?: Array<{ key?: string; value?: string }> | null;
     created_at: string;
     updated_at: string;
+};
+
+export type DocumentProcessingAttempt = {
+    id: number;
+    stage?: string;
+    failure_kind?: string;
+    disposition?: string;
+    detail?: string;
+    error_message?: string;
+    retry_count: number;
+    next_retry_attempt?: number;
+    max_retry_attempts?: number;
+    retry_delay_seconds?: number;
+    created_at: string;
 };
 
 export type Document = {
@@ -61,11 +88,43 @@ export type Document = {
     collection_ref?: CollectionSummary | null;
     category_id?: number | null;
     category?: Category | null;
+    processing_attempts?: DocumentProcessingAttempt[];
     document_summary?: string;
     outline_nodes?: OutlineNode[];
     created_at: string;
     updated_at: string;
 };
+
+function normalizeProcessingAttempts(value: DocumentApiRecord["processing_attempts"]): DocumentProcessingAttempt[] {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value.reduce<DocumentProcessingAttempt[]>((items, attempt, index) => {
+        if (!attempt || typeof attempt.created_at !== "string") {
+            return items;
+        }
+
+        items.push({
+            id: typeof attempt.id === "number" ? attempt.id : index + 1,
+            stage: typeof attempt.stage === "string" ? attempt.stage : undefined,
+            failure_kind: typeof attempt.failure_kind === "string" ? attempt.failure_kind : undefined,
+            disposition: typeof attempt.disposition === "string" ? attempt.disposition : undefined,
+            detail: typeof attempt.detail === "string" ? attempt.detail : undefined,
+            error_message: typeof attempt.error_message === "string" ? attempt.error_message : undefined,
+            retry_count: typeof attempt.retry_count === "number" ? attempt.retry_count : 0,
+            next_retry_attempt:
+                typeof attempt.next_retry_attempt === "number" ? attempt.next_retry_attempt : undefined,
+            max_retry_attempts:
+                typeof attempt.max_retry_attempts === "number" ? attempt.max_retry_attempts : undefined,
+            retry_delay_seconds:
+                typeof attempt.retry_delay_seconds === "number" ? attempt.retry_delay_seconds : undefined,
+            created_at: attempt.created_at,
+        });
+
+        return items;
+    }, []);
+}
 
 function normalizeDocument(record: DocumentApiRecord): Document {
     const collectionRef = normalizeCollectionSummary(record.collection);
@@ -92,6 +151,7 @@ function normalizeDocument(record: DocumentApiRecord): Document {
         collection_ref: collectionRef,
         category_id: record.category_id,
         category: record.category,
+        processing_attempts: normalizeProcessingAttempts(record.processing_attempts),
         document_summary:
             record.metadata_pairs?.find((item) => item?.key === "document_summary")?.value ?? undefined,
         outline_nodes: [],
@@ -396,6 +456,7 @@ type DocumentMonitoringSummaryApiRecord = {
     processing_documents?: number;
     queued_documents?: number;
     failed_documents?: number;
+    permanent_failed_documents?: number;
     retrying_documents?: number;
     orphaned_documents?: number;
     dlq_documents?: number;
@@ -434,6 +495,7 @@ export type DocumentMonitoringSummary = {
     processing_documents: number;
     queued_documents: number;
     failed_documents: number;
+    permanent_failed_documents: number;
     retrying_documents: number;
     orphaned_documents: number;
     dlq_documents: number;
@@ -546,6 +608,8 @@ function normalizeDocumentMonitoringSummary(value: DocumentMonitoringSummaryApiR
         processing_documents: typeof value?.processing_documents === "number" ? value.processing_documents : 0,
         queued_documents: typeof value?.queued_documents === "number" ? value.queued_documents : 0,
         failed_documents: typeof value?.failed_documents === "number" ? value.failed_documents : 0,
+        permanent_failed_documents:
+            typeof value?.permanent_failed_documents === "number" ? value.permanent_failed_documents : 0,
         retrying_documents: typeof value?.retrying_documents === "number" ? value.retrying_documents : 0,
         orphaned_documents: typeof value?.orphaned_documents === "number" ? value.orphaned_documents : 0,
         dlq_documents: typeof value?.dlq_documents === "number" ? value.dlq_documents : 0,

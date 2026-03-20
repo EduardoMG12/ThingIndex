@@ -46,9 +46,16 @@ import {
     type Document,
     type DocumentIndex,
     type DocumentMonitoringSummary,
+    type DocumentProcessingAttempt,
     type IndexMonitoring,
 } from "@/lib/api/documents";
-import { getDocumentOperationalIssue, isOrphanedDocument, isPreviewableDocument, type DocumentOperationalIssue } from "@/lib/document-state";
+import {
+    getDocumentOperationalIssue,
+    getLatestProcessingAttempt,
+    isOrphanedDocument,
+    isPreviewableDocument,
+    type DocumentOperationalIssue,
+} from "@/lib/document-state";
 import { useI18n } from "@/lib/i18n/provider";
 
 const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } };
@@ -109,6 +116,48 @@ function formatStageLabel(stage?: string) {
         .filter(Boolean)
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(" ");
+}
+
+function formatFailureKind(kind?: string) {
+    switch (kind) {
+        case "TRANSIENT":
+            return "Falha transiente";
+        case "PERMANENT":
+            return "Falha permanente";
+        case "SOURCE_MISSING":
+            return "Original ausente";
+        default:
+            return "Falha operacional";
+    }
+}
+
+function formatDispositionLabel(disposition?: string) {
+    switch (disposition) {
+        case "RETRY_SCHEDULED":
+            return "Retry agendado";
+        case "MOVED_TO_DLQ":
+            return "Movido para DLQ";
+        case "FAILED_PERMANENT":
+            return "Falha permanente";
+        default:
+            return "Sem disposicao";
+    }
+}
+
+function formatRetryWindow(attempt?: DocumentProcessingAttempt) {
+    if (!attempt) {
+        return null;
+    }
+
+    if (attempt.next_retry_attempt && attempt.max_retry_attempts) {
+        return `Proxima ${attempt.next_retry_attempt}/${attempt.max_retry_attempts}`;
+    }
+
+    if (attempt.retry_count && attempt.max_retry_attempts) {
+        return `Tentativas ${attempt.retry_count}/${attempt.max_retry_attempts}`;
+    }
+
+    return null;
 }
 
 function MonitoringView({
@@ -272,7 +321,7 @@ function MonitoringSummaryPanel({
                 </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-4">
                 <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 p-4">
                     <p className="text-[10px] uppercase tracking-widest text-sky-700 dark:text-sky-300">Retry automatico</p>
                     <p className="mt-2 text-lg font-semibold text-foreground">{summary.retrying_documents}</p>
@@ -282,6 +331,11 @@ function MonitoringSummaryPanel({
                     <p className="text-[10px] uppercase tracking-widest text-destructive">DLQ</p>
                     <p className="mt-2 text-lg font-semibold text-foreground">{summary.dlq_documents}</p>
                     <p className="mt-1 text-xs text-muted-foreground">Eventos que esgotaram retries e agora exigem intervencao manual.</p>
+                </div>
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4">
+                    <p className="text-[10px] uppercase tracking-widest text-amber-700 dark:text-amber-300">Falha permanente</p>
+                    <p className="mt-2 text-lg font-semibold text-foreground">{summary.permanent_failed_documents}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Falhas classificadas como permanentes, sem retry automatico.</p>
                 </div>
                 <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-4">
                     <p className="text-[10px] uppercase tracking-widest text-destructive">Orfaos</p>
@@ -361,6 +415,7 @@ function OperationalIssueBanner({
     compact?: boolean;
 }) {
     const tone = buildIssueTone(issue);
+    const retryWindow = formatRetryWindow(issue.attempt);
 
     return (
         <div className={`rounded-xl border p-4 ${tone.container}`}>
@@ -369,6 +424,26 @@ function OperationalIssueBanner({
                 <div className="min-w-0">
                     <p className={`font-semibold ${compact ? "text-sm" : "text-base"}`}>{issue.title}</p>
                     <p className={`mt-1 leading-relaxed ${compact ? "text-xs" : "text-sm"}`}>{issue.description}</p>
+                    {issue.attempt ? (
+                        <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+                            <span className={`rounded-full border px-2 py-1 ${tone.detail}`}>
+                                {formatFailureKind(issue.attempt.failure_kind)}
+                            </span>
+                            <span className={`rounded-full border px-2 py-1 ${tone.detail}`}>
+                                {formatDispositionLabel(issue.attempt.disposition)}
+                            </span>
+                            {retryWindow ? (
+                                <span className={`rounded-full border px-2 py-1 ${tone.detail}`}>
+                                    {retryWindow}
+                                </span>
+                            ) : null}
+                            {issue.attempt.stage ? (
+                                <span className={`rounded-full border px-2 py-1 ${tone.detail}`}>
+                                    {formatStageLabel(issue.attempt.stage)}
+                                </span>
+                            ) : null}
+                        </div>
+                    ) : null}
                     {issue.detail ? (
                         <div className={`mt-3 rounded-lg border px-3 py-2 text-xs ${tone.detail}`}>
                             {issue.detail}
@@ -378,6 +453,182 @@ function OperationalIssueBanner({
                         {issue.hint}
                     </p>
                 </div>
+            </div>
+        </div>
+    );
+}
+
+function RecentAttemptsPanel({
+    attempts,
+    locale,
+}: {
+    attempts: DocumentProcessingAttempt[] | undefined;
+    locale: string;
+}) {
+    if (!attempts || attempts.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="rounded-xl border border-border bg-background/60 p-4">
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Historico operacional recente</p>
+            <div className="mt-3 space-y-3">
+                {attempts.slice(0, 4).map((attempt) => (
+                    <div key={attempt.id} className="rounded-lg border border-border bg-card/70 p-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-semibold">{formatFailureKind(attempt.failure_kind)}</span>
+                            <span className="rounded-full border border-border px-2 py-1 text-[10px] font-mono text-muted-foreground">
+                                {formatDispositionLabel(attempt.disposition)}
+                            </span>
+                            {attempt.stage ? (
+                                <span className="rounded-full border border-border px-2 py-1 text-[10px] font-mono text-muted-foreground">
+                                    {formatStageLabel(attempt.stage)}
+                                </span>
+                            ) : null}
+                        </div>
+                        <p className="mt-2 text-xs text-foreground/90">{attempt.error_message || attempt.detail || "-"}</p>
+                        <p className="mt-2 text-[11px] text-muted-foreground">
+                            {formatRetryWindow(attempt) || "Sem nova tentativa automatica"} · {formatDate(attempt.created_at, locale)}
+                        </p>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function OperationalQueuePanel({
+    documents,
+    onOpenPreview,
+    onRetry,
+    retryingDocumentId,
+    locale,
+}: {
+    documents: Document[];
+    onOpenPreview: (document: Document) => void;
+    onRetry: (document: Document) => void;
+    retryingDocumentId: number | null;
+    locale: string;
+}) {
+    const retryScheduled = documents.filter((document) => document.processing_stage === "RETRY_SCHEDULED");
+    const dlqDocuments = documents.filter((document) => document.processing_stage === "MOVED_TO_DLQ");
+    const permanentFailures = documents.filter(
+        (document) =>
+            document.status === "FAILED" &&
+            document.processing_stage !== "MOVED_TO_DLQ" &&
+            document.processing_stage !== "RETRY_SCHEDULED"
+    );
+
+    const sections = [
+        {
+            key: "retry",
+            title: "Retry em andamento",
+            description: "Itens que falharam, mas ainda podem se recuperar automaticamente.",
+            documents: retryScheduled,
+            tone: "border-sky-500/20 bg-sky-500/10",
+        },
+        {
+            key: "dlq",
+            title: "DLQ / intervencao manual",
+            description: "Itens que esgotaram retries e precisam de decisao operacional.",
+            documents: dlqDocuments,
+            tone: "border-destructive/20 bg-destructive/10",
+        },
+        {
+            key: "permanent",
+            title: "Falhas permanentes",
+            description: "Itens classificados como permanentes, sem retry automatico.",
+            documents: permanentFailures,
+            tone: "border-amber-500/20 bg-amber-500/10",
+        },
+    ].filter((section) => section.documents.length > 0);
+
+    if (sections.length === 0) {
+        return null;
+    }
+
+    const gridClassName =
+        sections.length === 1 ? "grid gap-4" : sections.length === 2 ? "grid gap-4 xl:grid-cols-2" : "grid gap-4 xl:grid-cols-3";
+
+    return (
+        <div className="mb-6 rounded-2xl border border-border bg-card/60 p-5">
+            <div className="mb-4">
+                <p className="text-[10px] uppercase tracking-[0.28em] text-primary">Operational Queue</p>
+                <h2 className="mt-2 text-lg font-semibold">Retry, DLQ e falhas operacionais</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                    Painel rapido para inspecionar o motivo da falha, a classificacao e a acao mais provavel por documento.
+                </p>
+            </div>
+
+            <div className={gridClassName}>
+                {sections.map((section) => (
+                    <div key={section.key} className={`rounded-xl border p-4 ${section.tone}`}>
+                        <p className="text-xs font-semibold">{section.title}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{section.description}</p>
+                        <div className="mt-4 space-y-3">
+                            {section.documents.map((document) => {
+                                const attempt = getLatestProcessingAttempt(document);
+                                const issue = getDocumentOperationalIssue(document);
+                                const retryWindowLabel = formatRetryWindow(attempt ?? undefined);
+
+                                return (
+                                    <div key={document.id} className="rounded-lg border border-border/60 bg-background/80 p-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => onOpenPreview(document)}
+                                            className="text-left"
+                                        >
+                                            <p className="text-sm font-semibold text-foreground">{document.title}</p>
+                                            <p className="mt-1 text-[11px] text-muted-foreground">
+                                                {document.collection || "No collection"} · {formatDate(document.updated_at, locale)}
+                                            </p>
+                                        </button>
+                                        <div className="mt-3 flex flex-wrap gap-2 text-[10px]">
+                                            {attempt?.failure_kind ? (
+                                                <span className="rounded-full border border-border px-2 py-1 text-muted-foreground">
+                                                    {formatFailureKind(attempt.failure_kind)}
+                                                </span>
+                                            ) : null}
+                                            {attempt?.disposition ? (
+                                                <span className="rounded-full border border-border px-2 py-1 text-muted-foreground">
+                                                    {formatDispositionLabel(attempt.disposition)}
+                                                </span>
+                                            ) : null}
+                                            {retryWindowLabel ? (
+                                                <span className="rounded-full border border-border px-2 py-1 text-muted-foreground">
+                                                    {retryWindowLabel}
+                                                </span>
+                                            ) : null}
+                                        </div>
+                                        <p className="mt-3 text-xs text-foreground/90">
+                                            {attempt?.error_message || issue?.detail || document.last_processing_error || document.status_detail || "-"}
+                                        </p>
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => onOpenPreview(document)}
+                                                className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-[11px] font-semibold text-primary"
+                                            >
+                                                Abrir painel
+                                            </button>
+                                            {document.status === "FAILED" ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onRetry(document)}
+                                                    disabled={retryingDocumentId === document.id}
+                                                    className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-[11px] font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                                                >
+                                                    {retryingDocumentId === document.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCw className="h-3.5 w-3.5" />}
+                                                    Reenfileirar
+                                                </button>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ))}
             </div>
         </div>
     );
@@ -827,6 +1078,7 @@ function DocumentPreviewPanel({
                                     ) : null}
                                 </div>
                                 {issue ? <OperationalIssueBanner issue={issue} /> : null}
+                                <RecentAttemptsPanel attempts={document.processing_attempts} locale="pt-BR" />
 
                                 <div className="flex flex-wrap gap-2">
                                     <button
@@ -1274,6 +1526,16 @@ export default function DocumentsPage() {
                 <div className="p-6">
                     {!isLoading && !error && monitoringSummary && (
                         <MonitoringSummaryPanel summary={monitoringSummary} />
+                    )}
+
+                    {!isLoading && !error && (
+                        <OperationalQueuePanel
+                            documents={documents}
+                            onOpenPreview={setSelectedDocument}
+                            onRetry={handleRetryDocument}
+                            retryingDocumentId={retryingDocumentId}
+                            locale={locale}
+                        />
                     )}
 
                     {!isLoading && !error && monitoringError && (
