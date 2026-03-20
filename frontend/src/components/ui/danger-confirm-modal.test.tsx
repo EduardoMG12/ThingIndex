@@ -53,10 +53,11 @@ describe("DangerConfirmModal", () => {
 
         render(<ControlledModal onConfirm={onConfirm} />);
 
+        expect(screen.getByRole("dialog", { name: "Delete collection" })).toBeInTheDocument();
         const confirmButton = screen.getByRole("button", { name: "Delete now" });
         expect(confirmButton).toBeDisabled();
 
-        await user.type(screen.getByPlaceholderText("DELETE"), "  DELETE  ");
+        await user.type(screen.getByRole("textbox", { name: "Confirmation value" }), "  DELETE  ");
 
         expect(confirmButton).toBeEnabled();
 
@@ -70,14 +71,25 @@ describe("DangerConfirmModal", () => {
 
         render(<ControlledModal onCancel={onCancel} />);
 
-        await user.click(screen.getByRole("button", { name: "Fechar confirmacao" }));
+        await user.click(screen.getByRole("button", { name: "Close confirmation" }));
         expect(onCancel).toHaveBeenCalledTimes(1);
     });
 
     it("disables both actions while the destructive request is pending", () => {
         render(<ControlledModal isPending />);
 
-        expect(screen.getByRole("button", { name: "Cancelar" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
         expect(screen.getByRole("button", { name: "Delete now" })).toBeDisabled();
+    });
+
+    it("allows closing with Escape when the modal is not pending", async () => {
+        const user = userEvent.setup();
+        const onCancel = vi.fn();
+
+        render(<ControlledModal onCancel={onCancel} />);
+
+        await user.keyboard("{Escape}");
+
+        expect(onCancel).toHaveBeenCalledTimes(1);
     });
 });
