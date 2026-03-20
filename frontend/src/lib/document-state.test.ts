@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Document } from "@/lib/api/documents";
 import {
     getDocumentOperationalIssue,
+    getLatestProcessingAttempt,
     isOrphanedDocument,
     isPreviewableDocument,
 } from "@/lib/document-state";
@@ -55,7 +56,19 @@ describe("document-state", () => {
             createDocument({
                 status: "QUEUED",
                 processing_stage: "RETRY_SCHEDULED",
-                last_processing_error: "temporary network failure",
+                processing_attempts: [
+                    {
+                        id: 5,
+                        stage: "FAILED_PARSING_STRUCTURE",
+                        failure_kind: "TRANSIENT",
+                        disposition: "RETRY_SCHEDULED",
+                        error_message: "temporary network failure",
+                        retry_count: 1,
+                        next_retry_attempt: 2,
+                        max_retry_attempts: 3,
+                        created_at: "2026-03-20T10:00:00Z",
+                    },
+                ],
             })
         );
 
@@ -63,6 +76,10 @@ describe("document-state", () => {
             kind: "retrying",
             title: "Nova tentativa automatica agendada",
             detail: "temporary network failure",
+            attempt: {
+                failure_kind: "TRANSIENT",
+                next_retry_attempt: 2,
+            },
         });
     });
 
@@ -71,14 +88,26 @@ describe("document-state", () => {
             createDocument({
                 status: "FAILED",
                 processing_stage: "MOVED_TO_DLQ",
-                status_detail: "retry budget exhausted",
+                processing_attempts: [
+                    {
+                        id: 7,
+                        stage: "FAILED_RESOLVING_STORAGE",
+                        failure_kind: "TRANSIENT",
+                        disposition: "MOVED_TO_DLQ",
+                        detail: "retry budget exhausted",
+                        error_message: "storage timeout",
+                        retry_count: 3,
+                        max_retry_attempts: 3,
+                        created_at: "2026-03-20T10:05:00Z",
+                    },
+                ],
             })
         );
 
         expect(issue).toMatchObject({
             kind: "dlq",
             title: "Falha esgotou retries e foi para a DLQ",
-            detail: "retry budget exhausted",
+            detail: "storage timeout",
         });
     });
 
@@ -99,5 +128,28 @@ describe("document-state", () => {
 
     it("returns null when there is no operational issue", () => {
         expect(getDocumentOperationalIssue(createDocument())).toBeNull();
+    });
+
+    it("returns the most recent processing attempt when present", () => {
+        const attempt = getLatestProcessingAttempt(
+            createDocument({
+                processing_attempts: [
+                    {
+                        id: 9,
+                        stage: "FAILED_PERSISTING_INDEX",
+                        failure_kind: "PERMANENT",
+                        disposition: "FAILED_PERMANENT",
+                        retry_count: 0,
+                        created_at: "2026-03-20T10:06:00Z",
+                    },
+                ],
+            })
+        );
+
+        expect(attempt).toMatchObject({
+            id: 9,
+            failure_kind: "PERMANENT",
+            disposition: "FAILED_PERMANENT",
+        });
     });
 });

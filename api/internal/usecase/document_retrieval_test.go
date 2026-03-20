@@ -212,6 +212,9 @@ func TestAggregateDocumentMonitoringSummaryAggregatesTelemetry(t *testing.T) {
 	if summary.TotalDocuments != 4 || summary.IndexedDocuments != 1 || summary.FailedDocuments != 1 {
 		t.Fatalf("unexpected document counters: %#v", summary)
 	}
+	if summary.PermanentFailedDocuments != 0 {
+		t.Fatalf("expected no permanent failures in this sample, got %#v", summary)
+	}
 	if summary.QueuedDocuments != 1 || summary.RetryingDocuments != 1 || summary.OrphanedDocuments != 1 || summary.DLQDocuments != 1 {
 		t.Fatalf("unexpected operational counters: %#v", summary)
 	}

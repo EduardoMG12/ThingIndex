@@ -103,6 +103,7 @@ describe("documents api", () => {
             category_id: 4,
             document_summary: "Key commercial clauses",
         });
+        expect(document.processing_attempts).toEqual([]);
         expect(document.collection_ref).toMatchObject({
             id: 9,
             name: "Case A",
@@ -173,6 +174,57 @@ describe("documents api", () => {
             name: "Legacy Collection",
             documentCount: 0,
         });
+    });
+
+    it("normalizes structured processing attempts for operational inspection", async () => {
+        vi.mocked(fetchWithAuthRedirect).mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    status: 200,
+                    type: "success",
+                    message: "ok",
+                    data: [
+                        createDocumentRecord({
+                            status: "FAILED",
+                            processing_stage: "MOVED_TO_DLQ",
+                            processing_attempts: [
+                                {
+                                    id: 41,
+                                    stage: "FAILED_PARSING_STRUCTURE",
+                                    failure_kind: "TRANSIENT",
+                                    disposition: "MOVED_TO_DLQ",
+                                    detail: "Retries exhausted.",
+                                    error_message: "upstream timeout",
+                                    retry_count: 3,
+                                    max_retry_attempts: 3,
+                                    created_at: "2026-03-20T13:00:00Z",
+                                },
+                            ],
+                        }),
+                    ],
+                }),
+                {
+                    status: 200,
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            )
+        );
+
+        const documents = await fetchDocuments();
+
+        expect(documents[0].processing_attempts).toEqual([
+            expect.objectContaining({
+                id: 41,
+                stage: "FAILED_PARSING_STRUCTURE",
+                failure_kind: "TRANSIENT",
+                disposition: "MOVED_TO_DLQ",
+                error_message: "upstream timeout",
+                retry_count: 3,
+                max_retry_attempts: 3,
+            }),
+        ]);
     });
 
     it("returns a zero deletion count when the backend omits the payload", async () => {
@@ -389,6 +441,7 @@ describe("documents api", () => {
             processing_documents: 0,
             queued_documents: 0,
             failed_documents: 0,
+            permanent_failed_documents: 0,
             retrying_documents: 0,
             orphaned_documents: 0,
             dlq_documents: 0,

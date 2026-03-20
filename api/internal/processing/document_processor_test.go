@@ -17,6 +17,7 @@ import (
 type processingRepoStub struct {
 	document      *models.Document
 	updatedStates []domain.DocumentProcessingState
+	attempts      []models.DocumentProcessingAttempt
 	replaceCalls  int
 	replaceErr    error
 	results       []domain.IndexingResult
@@ -31,6 +32,15 @@ func (r *processingRepoStub) GetDocumentByIDForProcessing(context.Context, uint)
 
 func (r *processingRepoStub) UpdateDocumentProcessingState(_ context.Context, _ uint, state domain.DocumentProcessingState) error {
 	r.updatedStates = append(r.updatedStates, state)
+	return nil
+}
+
+func (r *processingRepoStub) CreateProcessingAttempt(_ context.Context, attempt *models.DocumentProcessingAttempt) error {
+	if attempt == nil {
+		return nil
+	}
+
+	r.attempts = append(r.attempts, *attempt)
 	return nil
 }
 
@@ -136,6 +146,12 @@ func TestMarkRetryScheduledPersistsQueuedOperationalState(t *testing.T) {
 	if state.LastError != "parse pdf: broken xref table" {
 		t.Fatalf("expected original processing error to be preserved, got %#v", state)
 	}
+	if len(repo.attempts) != 1 {
+		t.Fatalf("expected one processing attempt, got %d", len(repo.attempts))
+	}
+	if repo.attempts[0].FailureKind != "TRANSIENT" || repo.attempts[0].Disposition != "RETRY_SCHEDULED" {
+		t.Fatalf("unexpected retry attempt metadata: %#v", repo.attempts[0])
+	}
 }
 
 func TestMarkMovedToDLQPersistsFailedOperationalState(t *testing.T) {
@@ -168,6 +184,12 @@ func TestMarkMovedToDLQPersistsFailedOperationalState(t *testing.T) {
 	if !strings.Contains(state.StatusDetail, "3 retry(s)") {
 		t.Fatalf("expected dlq detail to mention retry exhaustion, got %#v", state)
 	}
+	if len(repo.attempts) != 1 {
+		t.Fatalf("expected one processing attempt, got %d", len(repo.attempts))
+	}
+	if repo.attempts[0].FailureKind != "TRANSIENT" || repo.attempts[0].Disposition != "MOVED_TO_DLQ" {
+		t.Fatalf("unexpected dlq attempt metadata: %#v", repo.attempts[0])
+	}
 }
 
 func TestMarkPermanentFailureKeepsOrphanedStateWhenSourceIsMissing(t *testing.T) {
@@ -197,6 +219,12 @@ func TestMarkPermanentFailureKeepsOrphanedStateWhenSourceIsMissing(t *testing.T)
 	}
 	if !strings.Contains(state.StatusDetail, "Nenhuma nova tentativa automatica") {
 		t.Fatalf("expected permanent failure detail to mention no automatic retry, got %#v", state)
+	}
+	if len(repo.attempts) != 1 {
+		t.Fatalf("expected one processing attempt, got %d", len(repo.attempts))
+	}
+	if repo.attempts[0].FailureKind != "SOURCE_MISSING" || repo.attempts[0].Disposition != "FAILED_PERMANENT" {
+		t.Fatalf("unexpected permanent attempt metadata: %#v", repo.attempts[0])
 	}
 }
 
