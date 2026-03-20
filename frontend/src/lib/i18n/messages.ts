@@ -25,6 +25,12 @@ export const messages: LocaleMessages = {
             language: "Idioma",
             skipToContent: "Pular para o conteúdo principal",
             beta: "beta",
+            dangerConfirm: {
+                closeLabel: "Fechar confirmacao",
+                cancelLabel: "Cancelar",
+                inputLabel: "Valor de confirmacao",
+                typeToConfirm: "Digite {value} para confirmar.",
+            },
         },
         seo: {
             siteTitle: "ThingIndex",
@@ -77,6 +83,13 @@ export const messages: LocaleMessages = {
             },
             chat: {
                 empty: "Conversas aparecem aqui.",
+                deleteConversation: {
+                    eyebrow: "Acao destrutiva",
+                    title: "Excluir chat",
+                    titleWithName: "Excluir chat: {title}",
+                    description: "Isso remove a conversa inteira e o historico associado. O fluxo nao pode ser desfeito.",
+                    confirmLabel: "Confirmar exclusao",
+                },
             },
             user: {
                 role: "Plano Explorer",
@@ -322,6 +335,16 @@ export const messages: LocaleMessages = {
             verificationTitle: "Resposta verificável",
             verificationDescription: "Use as referências de fonte e o progresso das etapas para auditar a resposta da LLM e identificar possíveis alucinações.",
         },
+        documentsPage: {
+            deleteModal: {
+                eyebrow: "Acao destrutiva",
+                documentTitle: "Excluir documento",
+                collectionTitle: "Excluir documentos da collection",
+                documentDescription: "Isso remove o arquivo bruto, a indexacao derivada e o registro do dashboard.",
+                collectionDescription: "Isso remove os {count} documento(s) da collection e limpa os dados derivados associados.",
+                confirmLabel: "Confirmar exclusao",
+            },
+        },
         settings: {
             heroEyebrow: "Controle de providers",
             heroTitle: "Configurações de storage e LLM",
@@ -397,6 +420,12 @@ export const messages: LocaleMessages = {
             language: "Language",
             skipToContent: "Skip to main content",
             beta: "beta",
+            dangerConfirm: {
+                closeLabel: "Close confirmation",
+                cancelLabel: "Cancel",
+                inputLabel: "Confirmation value",
+                typeToConfirm: "Type {value} to confirm.",
+            },
         },
         seo: {
             siteTitle: "ThingIndex",
@@ -449,6 +478,13 @@ export const messages: LocaleMessages = {
             },
             chat: {
                 empty: "Conversations appear here.",
+                deleteConversation: {
+                    eyebrow: "Destructive action",
+                    title: "Delete chat",
+                    titleWithName: "Delete chat: {title}",
+                    description: "This removes the entire conversation and its history. The action cannot be undone.",
+                    confirmLabel: "Confirm deletion",
+                },
             },
             user: {
                 role: "Explorer Plan",
@@ -694,6 +730,16 @@ export const messages: LocaleMessages = {
             verificationTitle: "Verifiable answer",
             verificationDescription: "Use source references and step progress to audit the LLM answer and spot possible hallucinations.",
         },
+        documentsPage: {
+            deleteModal: {
+                eyebrow: "Destructive action",
+                documentTitle: "Delete document",
+                collectionTitle: "Delete collection documents",
+                documentDescription: "This removes the raw file, the derived indexing data, and the dashboard record.",
+                collectionDescription: "This removes the {count} document(s) in the collection and clears the related derived data.",
+                confirmLabel: "Confirm deletion",
+            },
+        },
         settings: {
             heroEyebrow: "Provider control",
             heroTitle: "Storage and LLM settings",
@@ -769,6 +815,12 @@ export const messages: LocaleMessages = {
             language: "Idioma",
             skipToContent: "Saltar al contenido principal",
             beta: "beta",
+            dangerConfirm: {
+                closeLabel: "Cerrar confirmacion",
+                cancelLabel: "Cancelar",
+                inputLabel: "Valor de confirmacion",
+                typeToConfirm: "Escribe {value} para confirmar.",
+            },
         },
         seo: {
             siteTitle: "ThingIndex",
@@ -821,6 +873,13 @@ export const messages: LocaleMessages = {
             },
             chat: {
                 empty: "Las conversaciones aparecen aquí.",
+                deleteConversation: {
+                    eyebrow: "Accion destructiva",
+                    title: "Eliminar chat",
+                    titleWithName: "Eliminar chat: {title}",
+                    description: "Esto elimina toda la conversacion y su historial. La accion no se puede deshacer.",
+                    confirmLabel: "Confirmar eliminacion",
+                },
             },
             user: {
                 role: "Plan Explorer",
@@ -1065,6 +1124,16 @@ export const messages: LocaleMessages = {
             collectionsDescription: "Selecciona la collection activa para limitar la búsqueda al contexto ya indexado y recuperar evidencia más consistente.",
             verificationTitle: "Respuesta verificable",
             verificationDescription: "Usa las referencias de fuente y el progreso de etapas para auditar la respuesta de la LLM y detectar posibles alucinaciones.",
+        },
+        documentsPage: {
+            deleteModal: {
+                eyebrow: "Accion destructiva",
+                documentTitle: "Eliminar documento",
+                collectionTitle: "Eliminar documentos de la collection",
+                documentDescription: "Esto elimina el archivo original, los datos derivados de indexacion y el registro del dashboard.",
+                collectionDescription: "Esto elimina los {count} documento(s) de la collection y limpia los datos derivados asociados.",
+                confirmLabel: "Confirmar eliminacion",
+            },
         },
         settings: {
             heroEyebrow: "Control de providers",

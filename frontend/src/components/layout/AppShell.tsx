@@ -344,12 +344,20 @@ const AppShell = ({ children, contentClassName }: AppShellProps) => {
 
             <DangerConfirmModal
                 isOpen={conversationPendingDelete !== null}
-                eyebrow="Acao destrutiva"
-                title={conversationPendingDelete ? `Excluir chat: ${conversationPendingDelete.title}` : "Excluir chat"}
-                description="Isso remove a conversa inteira e o historico associado. O fluxo nao pode ser desfeito."
-                confirmLabel="Confirmar exclusao"
+                eyebrow={t("shell.chat.deleteConversation.eyebrow")}
+                title={conversationPendingDelete
+                    ? t("shell.chat.deleteConversation.titleWithName", { title: conversationPendingDelete.title })
+                    : t("shell.chat.deleteConversation.title")}
+                description={t("shell.chat.deleteConversation.description")}
+                confirmLabel={t("shell.chat.deleteConversation.confirmLabel")}
+                cancelLabel={t("common.dangerConfirm.cancelLabel")}
+                closeLabel={t("common.dangerConfirm.closeLabel")}
                 expectedValue={conversationPendingDelete?.title}
                 confirmationValue={conversationDeleteConfirmationValue}
+                confirmationPrompt={conversationPendingDelete
+                    ? t("common.dangerConfirm.typeToConfirm", { value: conversationPendingDelete.title })
+                    : undefined}
+                inputLabel={t("common.dangerConfirm.inputLabel")}
                 onConfirmationChange={setConversationDeleteConfirmationValue}
                 onCancel={() => {
                     if (isDeletingConversation) {

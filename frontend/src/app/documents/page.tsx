@@ -1061,7 +1061,7 @@ type PendingDeletion =
       };
 
 export default function DocumentsPage() {
-    const { locale, href } = useI18n();
+    const { locale, t, href } = useI18n();
     const { documents, isLoading, error, reloadDocuments, setDocuments } = useDocuments();
     const [monitoringSummary, setMonitoringSummary] = useState<DocumentMonitoringSummary | null>(null);
     const [monitoringError, setMonitoringError] = useState<string | null>(null);
@@ -1505,14 +1505,24 @@ export default function DocumentsPage() {
             />
             <DangerConfirmModal
                 isOpen={pendingDeletion !== null}
-                eyebrow="Acao destrutiva"
-                title={pendingDeletion?.kind === "document" ? "Excluir documento" : "Excluir documentos da collection"}
+                eyebrow={t("documentsPage.deleteModal.eyebrow")}
+                title={pendingDeletion?.kind === "document"
+                    ? t("documentsPage.deleteModal.documentTitle")
+                    : t("documentsPage.deleteModal.collectionTitle")}
                 description={pendingDeletion?.kind === "document"
-                    ? "Isso remove o arquivo bruto, a indexacao derivada e o registro do dashboard."
-                    : `Isso remove os ${pendingDeletion?.documentCount ?? 0} documento(s) da collection e limpa os dados derivados associados.`}
-                confirmLabel="Confirmar exclusao"
+                    ? t("documentsPage.deleteModal.documentDescription")
+                    : t("documentsPage.deleteModal.collectionDescription", { count: pendingDeletion?.documentCount ?? 0 })}
+                confirmLabel={t("documentsPage.deleteModal.confirmLabel")}
+                cancelLabel={t("common.dangerConfirm.cancelLabel")}
+                closeLabel={t("common.dangerConfirm.closeLabel")}
                 expectedValue={pendingDeletion?.kind === "document" ? pendingDeletion.document.title : pendingDeletion?.collectionName}
                 confirmationValue={deleteConfirmationValue}
+                confirmationPrompt={pendingDeletion
+                    ? t("common.dangerConfirm.typeToConfirm", {
+                        value: pendingDeletion.kind === "document" ? pendingDeletion.document.title : pendingDeletion.collectionName,
+                    })
+                    : undefined}
+                inputLabel={t("common.dangerConfirm.inputLabel")}
                 onConfirmationChange={setDeleteConfirmationValue}
                 onCancel={closeDeletionModal}
                 onConfirm={() => void confirmDeletion()}
