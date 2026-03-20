@@ -343,6 +343,57 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 - PostgreSQL
 - MinIO ou outro endpoint MinIO/S3-compatible
 
+### Opcao B: abrir no Dev Container
+
+O repositorio agora inclui configuracao em `.devcontainer/devcontainer.json` para abrir o monorepo com Go, Node.js 20 e `pnpm`, reaproveitando o `docker-compose` existente.
+
+Ao abrir o projeto no Dev Container:
+
+- `db`, `minio`, `rabbitmq`, `api` e `indexer` sobem pelo compose;
+- o `postCreateCommand` executa `go mod download` em `api/` e `pnpm install` em `frontend/`;
+- o frontend pode ser iniciado de dentro do container com `cd frontend && pnpm dev`;
+- a instalacao do browser do Playwright continua explicita via `cd frontend && pnpm run test:e2e:install`.
+- os testes reais opcionais com Ollama do host podem usar `OLLAMA_BASE_URL=http://host.docker.internal:11434/v1`, porque o devcontainer ja expõe `host.docker.internal`.
+
+### Hooks locais
+
+O repositorio agora possui `pre-commit` em `.husky/pre-commit`.
+
+Ele executa checks seletivos antes do commit:
+
+- para mudancas em `api/`: `gofmt` nos arquivos Go staged, depois `go vet ./...` e `go test ./...`;
+- para mudancas relevantes em `frontend/`: `pnpm lint`, `pnpm run typecheck` e `pnpm run test:unit`.
+
+O hook foi pensado para proteger integridade basica do codigo sem tentar rodar `integration` ou `e2e` a cada commit.
+
+### Comandos simples de teste
+
+O repositorio agora expõe comandos curtos na raiz:
+
+```bash
+./scripts/test.sh unit
+./scripts/test.sh backend-integration
+./scripts/test.sh backend-e2e
+./scripts/test.sh frontend-e2e
+./scripts/test.sh all
+```
+
+Se preferir `make`, os atalhos equivalentes tambem existem:
+
+```bash
+make test-unit
+make test-backend-integration
+make test-backend-e2e
+make test-frontend-e2e
+make test-all
+```
+
+Para instalar o browser gerenciado pelo Playwright manualmente:
+
+```bash
+make test-frontend-e2e-install
+```
+
 ## 11. Variaveis de Ambiente
 
 O arquivo `.env.example` foi pensado para **desenvolvimento local**. Em producao, a API faz validacoes adicionais e rejeita configuracoes inseguras.
@@ -367,6 +418,11 @@ O arquivo `.env.example` foi pensado para **desenvolvimento local**. Em producao
 | `MINIO_SECRET_KEY` | `thingindex-local-secret-key` | Secret key do storage padrao |
 | `MINIO_USE_SSL` | `false` | HTTPS no storage padrao |
 | `MINIO_BUCKET_NAME` | `thingindex-docs` | Bucket utilizado pela aplicacao |
+| `THINGINDEX_TEST_DB_*` | vazio ou overrides locais | Overrides opcionais para testes de integracao/e2e do backend |
+| `THINGINDEX_TEST_MINIO_*` | vazio ou overrides locais | Overrides opcionais para testes reais com storage |
+| `THINGINDEX_TEST_RABBITMQ_URL` | vazio ou override local | Override opcional para os testes reais com fila |
+| `THINGINDEX_TEST_LLM_*` | desabilitado por padrao | Habilita testes reais de provider/processing com IA |
+| `OPENAI_*`, `OPENROUTER_*`, `DEEPSEEK_*`, `GEMINI_*`, `CLAUDE_*`, `OLLAMA_*` | provider-specific | Fallbacks de credenciais/modelo para os testes reais de LLM |
 | `MAX_UPLOAD_SIZE_BYTES` | `20971520` | Limite maximo de upload |
 | `RESET_PASSWORD_URL` | `http://localhost:3000/reset-password` | URL base usada no email de reset |
 | `SMTP_SECURITY_MODE` | `none` em dev | `none`, `starttls` ou `tls` |
@@ -625,21 +681,26 @@ O projeto ainda esta em fase de desenvolvimento local. Isso significa que alguma
 Backend:
 
 ```bash
-cd api
-go test ./...
+./scripts/test.sh backend-unit
+./scripts/test.sh backend-integration
+./scripts/test.sh backend-e2e
+./scripts/test.sh backend-smoke
 go vet ./...
 ```
 
 Frontend:
 
 ```bash
-cd frontend
-pnpm lint
+pnpm --dir frontend run lint
+pnpm --dir frontend run typecheck
+./scripts/test.sh frontend-unit
+./scripts/test.sh frontend-e2e
+./scripts/test.sh frontend-smoke
 ```
 
 ### Observacao honesta
 
-O projeto ja possui validacao estrutural, testes unitarios pontuais e verificacoes de compilacao, mas **a cobertura automatizada ainda e limitada**. Para uma etapa seguinte de maturacao open source, vale ampliar testes de integracao e testes de contrato da API.
+O projeto ja possui validacao estrutural, testes unitarios no frontend e backend, uma camada inicial de smoke tests `e2e` no frontend, smoke HTTP no backend para rotas protegidas com middleware real, integracao real no backend com PostgreSQL, MinIO, RabbitMQ e cenarios opcionais com provider LLM real, alem de uma primeira bateria `e2e` autenticada do backend com upload documental. A cobertura automatizada ainda precisa crescer, especialmente em mais fluxos autenticados ponta a ponta e no fechamento definitivo do Playwright do frontend.
 
 ## 16. Contexto Academico do TCC
 
