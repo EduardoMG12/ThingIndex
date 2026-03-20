@@ -412,6 +412,9 @@ func TestGetDocumentContentStreamsInlinePDFResponse(t *testing.T) {
 	if got := rec.Header().Get("Content-Disposition"); !strings.Contains(got, "inline") || !strings.Contains(got, "Contrato.pdf") {
 		t.Fatalf("expected inline content disposition for pdf, got %q", got)
 	}
+	if got := rec.Header().Get("Referrer-Policy"); got != "no-referrer" {
+		t.Fatalf("expected no-referrer policy, got %q", got)
+	}
 	if rec.Body.String() != "pdf-content" {
 		t.Fatalf("unexpected streamed body: %q", rec.Body.String())
 	}

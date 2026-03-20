@@ -387,9 +387,10 @@ func (h *DocumentHandler) GetDocumentContent(c *gin.Context) {
 	}
 
 	c.Header("Content-Type", content.Document.MimeType)
-	c.Header("Content-Disposition", disposition+`; filename="`+content.Document.Title+`"`)
+	c.Header("Content-Disposition", buildSafeContentDisposition(disposition, content.Document.Title))
 	c.Header("Cache-Control", "no-store")
 	c.Header("X-Content-Type-Options", "nosniff")
+	c.Header("Referrer-Policy", "no-referrer")
 	if content.Document.Size > 0 {
 		c.Header("Content-Length", strconv.FormatInt(content.Document.Size, 10))
 	}
