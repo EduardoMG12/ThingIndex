@@ -165,3 +165,41 @@ export async function testProviderConnection(input: {
         throw new Error(payload?.message || "Nao foi possivel testar a conexao do provider.");
     }
 }
+
+export async function listProviderModels(input: {
+    family: ProviderFamily;
+    providerType: ProviderType;
+    credentials: Record<string, string>;
+}): Promise<string[]> {
+    const response = await fetchWithAuthRedirect("/api/user/providers/models", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            family: input.family,
+            provider_type: input.providerType,
+            credentials: input.credentials,
+        }),
+    });
+
+    const payload = (await response.json().catch(() => null)) as
+        | ApiSuccessResponse<{ models?: unknown }>
+        | ApiErrorResponse
+        | null;
+
+    if (!response.ok) {
+        throw new Error(payload?.message || "Nao foi possivel carregar os modelos do provider.");
+    }
+
+    if (!hasResponseData(payload) || !payload.data || !Array.isArray(payload.data.models)) {
+        return [];
+    }
+
+    return payload.data.models.reduce<string[]>((items, model) => {
+        if (typeof model === "string" && model.trim()) {
+            items.push(model.trim());
+        }
+        return items;
+    }, []);
+}

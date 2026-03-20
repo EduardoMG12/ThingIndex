@@ -24,6 +24,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
 import {
     fetchProviders,
+    listProviderModels,
     saveProvider,
     setProviderEnabled,
     testProviderConnection,
@@ -31,6 +32,7 @@ import {
     type ProviderFamily,
     type ProviderType
 } from "@/lib/api/providers";
+import { fetchProviderAuditEvents, type ProviderAuditEvent } from "@/lib/api/audit";
 import {
     fetchPriceHistory,
     fetchPrices,
@@ -84,6 +86,144 @@ function getSavedConfigs(configs: ProviderConfig[], family: ProviderFamily) {
         });
 }
 
+function mergeModelSuggestions(staticSuggestions: string[] = [], discoveredSuggestions: string[] = []) {
+    return [...new Set([...discoveredSuggestions, ...staticSuggestions].map((item) => item.trim()).filter(Boolean))];
+}
+
+function formatProviderAuditAction(action: string) {
+    switch (action) {
+        case "PROVIDER_CONFIG_SAVE":
+            return "Credenciais salvas";
+        case "PROVIDER_ACTIVATION_CHANGE":
+            return "Ativacao alterada";
+        default:
+            return action.replaceAll("_", " ");
+    }
+}
+
+function formatProviderAuditStatus(status: string) {
+    switch (status) {
+        case "SUCCESS":
+            return "Sucesso";
+        case "FAILED":
+            return "Falha";
+        default:
+            return status || "Desconhecido";
+    }
+}
+
+function getProviderReadinessHint(provider: ProviderDefinition) {
+    switch (provider.providerType) {
+        case "GOOGLE_GEMINI":
+        case "CLAUDE":
+            return "Este provider depende de uma bridge OpenAI-compatible. Valide base URL, modelo e autenticação antes de ativá-lo em produção.";
+        case "OPENROUTER":
+            return "Este gateway concentra múltiplos modelos. A descoberta ajuda a verificar quais IDs o runtime consegue enxergar agora.";
+        case "OLLAMA":
+            return "O runtime aceita Ollama local ou cloud. Se existir catálogo em cache, a descoberta pode funcionar mesmo antes de um novo teste completo.";
+        case "AWS_S3":
+        case "CLOUDFLARE_R2":
+        case "DIGITALOCEAN_SPACES":
+        case "WASABI":
+        case "BACKBLAZE_B2":
+            return "O fluxo usa storage S3-compatible. Endpoint, bucket e credenciais precisam estar coerentes para upload, preview e indexação.";
+        default:
+            return "Use o teste de conexão para validar a rota operacional e acompanhe abaixo as mudanças sensíveis salvas nesta conta.";
+    }
+}
+
+function ProviderAuditPanel({
+    family,
+    activeProvider,
+    events,
+    error,
+}: {
+    family: ProviderFamily;
+    activeProvider: ProviderDefinition;
+    events: ProviderAuditEvent[];
+    error: string | null;
+}) {
+    const [scope, setScope] = useState<"ALL" | "ACTIVE">("ALL");
+
+    const visibleEvents = (scope === "ACTIVE"
+        ? events.filter((event) => event.provider_type === activeProvider.providerType)
+        : events
+    ).slice(0, 8);
+
+    return (
+        <Card className="border-border/80 bg-card/70">
+            <CardHeader className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                    <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-primary">Audit Trail</p>
+                        <h3 className="text-lg font-semibold">Mudancas sensiveis de {family === "LLM" ? "LLMs" : "storage"}</h3>
+                        <p className="text-sm text-muted-foreground">
+                            Leitura rapida do que foi salvo ou ativado, com correlacao por request e contexto operacional.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant={scope === "ALL" ? "primary" : "outline"}
+                            onClick={() => setScope("ALL")}
+                        >
+                            Toda a familia
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant={scope === "ACTIVE" ? "primary" : "outline"}
+                            onClick={() => setScope("ACTIVE")}
+                        >
+                            {activeProvider.name}
+                        </Button>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+                {error ? (
+                    <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+                        {error}
+                    </div>
+                ) : null}
+
+                {!error && visibleEvents.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-border bg-background/45 p-5 text-sm text-muted-foreground">
+                        Nenhum evento de auditoria encontrado para este recorte ainda.
+                    </div>
+                ) : null}
+
+                {!error && visibleEvents.map((event) => (
+                    <div key={event.id} className="rounded-2xl border border-border bg-background/60 p-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold">{event.provider_type || family}</p>
+                            <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                {formatProviderAuditAction(event.action)}
+                            </span>
+                            <span className={cn(
+                                "rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                                event.status === "SUCCESS"
+                                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                                    : "border-destructive/20 bg-destructive/10 text-destructive"
+                            )}>
+                                {formatProviderAuditStatus(event.status)}
+                            </span>
+                        </div>
+                        <p className="mt-2 text-sm text-foreground/90">{event.detail || "Sem detalhe registrado."}</p>
+                        <div className="mt-3 grid gap-2 text-[11px] text-muted-foreground md:grid-cols-2">
+                            <p>Quando: <span className="font-mono text-foreground">{formatDateTime(event.created_at)}</span></p>
+                            <p>Origem: <span className="font-mono text-foreground">{event.origin || "-"}</span></p>
+                            <p>Request: <span className="font-mono text-foreground">{event.correlation_id || "-"}</span></p>
+                            <p>Actor: <span className="font-mono text-foreground">{event.actor_type}</span></p>
+                        </div>
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+    );
+}
+
 function FamilySection({
     family,
     providers,
@@ -95,10 +235,15 @@ function FamilySection({
     onFieldChange,
     onLLMSelectionChange,
     onSave,
+    onLoadModels,
     onTestConnection,
     onToggle,
     isPending,
+    isLoadingModels,
     isTestingProvider,
+    discoveredModels,
+    auditEvents,
+    auditError,
 }: {
     family: ProviderFamily;
     providers: ProviderDefinition[];
@@ -110,10 +255,15 @@ function FamilySection({
     onFieldChange: (providerType: ProviderType, key: string, value: string) => void;
     onLLMSelectionChange: (providerType: ProviderType, key: "enabledForIndexing" | "enabledForChat", value: boolean) => void;
     onSave: (provider: ProviderDefinition) => void;
+    onLoadModels: (provider: ProviderDefinition) => void;
     onTestConnection: (provider: ProviderDefinition) => void;
     onToggle: (provider: ProviderDefinition, target: ActivationTarget, enabled: boolean) => void;
     isPending: boolean;
+    isLoadingModels: boolean;
     isTestingProvider: boolean;
+    discoveredModels: Partial<Record<ProviderType, string[]>>;
+    auditEvents: ProviderAuditEvent[];
+    auditError: string | null;
 }) {
     const { t } = useI18n();
     const familyCopy = {
@@ -125,6 +275,8 @@ function FamilySection({
     const activeProvider = providers.find((provider) => provider.providerType === activeProviderType) ?? providers[0];
     const ActiveProviderIcon = activeProvider.icon;
     const savedConfigs = getSavedConfigs(configs, family);
+    const activeConfig = configs.find((config) => config.family === family && config.provider_type === activeProvider.providerType);
+    const discoveredModelsForActiveProvider = discoveredModels[activeProvider.providerType] ?? [];
 
     return (
         <section className="space-y-6">
@@ -238,7 +390,7 @@ function FamilySection({
                                         optional={field.optional}
                                         placeholder={field.placeholder}
                                         value={forms[activeProvider.providerType]?.[field.key] ?? ""}
-                                        suggestions={field.suggestions}
+                                        suggestions={mergeModelSuggestions(field.suggestions, discoveredModelsForActiveProvider)}
                                         onChange={(value) => onFieldChange(activeProvider.providerType, field.key, value)}
                                     />
                                 ) : (
@@ -295,6 +447,60 @@ function FamilySection({
                             ) : null}
 
                             <div className="rounded-2xl border border-border bg-background/60 p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Readiness</p>
+                                        <p className="mt-2 text-sm leading-relaxed text-foreground/85">
+                                            {getProviderReadinessHint(activeProvider)}
+                                        </p>
+                                    </div>
+                                    {family === "LLM" ? (
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => onLoadModels(activeProvider)}
+                                            disabled={isPending || isLoadingModels}
+                                            className="gap-2"
+                                        >
+                                            {isLoadingModels ? <Loader2 className="h-4 w-4 animate-spin" /> : <History className="h-4 w-4" />}
+                                            Carregar modelos
+                                        </Button>
+                                    ) : null}
+                                </div>
+                                <div className="mt-4 grid gap-2 text-xs text-foreground/85 md:grid-cols-2">
+                                    <p>Config salvo: <span className="font-mono text-foreground">{activeConfig ? "true" : "false"}</span></p>
+                                    <p>Provider ativo: <span className="font-mono text-foreground">{family === "STORAGE"
+                                        ? (activeConfig?.is_enabled ? "true" : "false")
+                                        : (activeConfig?.enabled_for_indexing || activeConfig?.enabled_for_chat ? "true" : "false")}</span></p>
+                                    {family === "LLM" ? (
+                                        <p>Modelos carregados: <span className="font-mono text-foreground">{discoveredModelsForActiveProvider.length}</span></p>
+                                    ) : null}
+                                    {family === "LLM" && activeConfig?.public_metadata.model ? (
+                                        <p>Modelo salvo: <span className="font-mono text-foreground">{activeConfig.public_metadata.model}</span></p>
+                                    ) : null}
+                                </div>
+                                {family === "LLM" ? (
+                                    discoveredModelsForActiveProvider.length > 0 ? (
+                                        <div className="mt-4 flex flex-wrap gap-2">
+                                            {discoveredModelsForActiveProvider.slice(0, 10).map((model) => (
+                                                <span
+                                                    key={model}
+                                                    className="rounded-full border border-primary/20 bg-primary/10 px-2 py-1 text-[10px] font-mono text-primary"
+                                                >
+                                                    {model}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="mt-4 text-xs text-muted-foreground">
+                                            Nenhum modelo carregado ainda. Use a descoberta para validar readiness do provider e popular as sugestoes do campo.
+                                        </p>
+                                    )
+                                ) : null}
+                            </div>
+
+                            <div className="rounded-2xl border border-border bg-background/60 p-4">
                                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t("settings.behaviorTitle")}</p>
                                 <p className="mt-2 text-sm leading-relaxed text-foreground/85">
                                     {family === "LLM" ? t("settings.behaviorDescriptionLLM") : t("settings.behaviorDescription")}
@@ -302,7 +508,19 @@ function FamilySection({
                             </div>
                         </div>
 
-                        <div className="grid shrink-0 gap-3 md:grid-cols-2">
+                        <div className={cn("grid shrink-0 gap-3", family === "LLM" ? "md:grid-cols-3" : "md:grid-cols-2")}>
+                            {family === "LLM" ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => onLoadModels(activeProvider)}
+                                    disabled={isPending || isLoadingModels}
+                                    className="gap-2"
+                                >
+                                    {isLoadingModels ? <Loader2 className="h-4 w-4 animate-spin" /> : <History className="h-4 w-4" />}
+                                    Carregar modelos
+                                </Button>
+                            ) : null}
                             <Button
                                 type="button"
                                 variant="outline"
@@ -451,6 +669,13 @@ function FamilySection({
                     )}
                 </CardContent>
             </Card>
+
+            <ProviderAuditPanel
+                family={family}
+                activeProvider={activeProvider}
+                events={auditEvents}
+                error={auditError}
+            />
         </section>
     );
 }
@@ -675,7 +900,11 @@ function PricingSection({
 export default function SettingsPage() {
     const { t } = useI18n();
     const [providers, setProviders] = useState<ProviderConfig[]>([]);
+    const [providerAuditEvents, setProviderAuditEvents] = useState<ProviderAuditEvent[]>([]);
+    const [providerAuditError, setProviderAuditError] = useState<string | null>(null);
+    const [discoveredModels, setDiscoveredModels] = useState<Partial<Record<ProviderType, string[]>>>({});
     const [testingProviderType, setTestingProviderType] = useState<ProviderType | null>(null);
+    const [loadingModelsProviderType, setLoadingModelsProviderType] = useState<ProviderType | null>(null);
     const [forms, setForms] = useState<Record<ProviderType, Record<string, string>>>(getInitialFormState);
     const [llmSelections, setLLMSelections] = useState<LLMSelectionState>(getInitialLLMSelectionState);
     const [activeStorageType, setActiveStorageType] = useState<ProviderType>("MINIO");
@@ -695,13 +924,22 @@ export default function SettingsPage() {
             try {
                 setIsLoading(true);
                 setError(null);
-                const [data, sourceData, priceData, historyData] = await Promise.all([
+                setProviderAuditError(null);
+                const [data, auditResult, sourceData, priceData, historyData] = await Promise.all([
                     fetchProviders(controller.signal),
+                    fetchProviderAuditEvents({ limit: 24, signal: controller.signal })
+                        .then((items) => ({ items, error: null as string | null }))
+                        .catch((err) => ({
+                            items: [] as ProviderAuditEvent[],
+                            error: err instanceof Error ? err.message : "Nao foi possivel carregar a auditoria de providers.",
+                        })),
                     fetchPricingSources(controller.signal),
                     fetchPrices(controller.signal),
                     fetchPriceHistory(100, controller.signal),
                 ]);
                 setProviders(data);
+                setProviderAuditEvents(auditResult.items);
+                setProviderAuditError(auditResult.error);
                 setPricingSources(sourceData);
                 setPrices(priceData);
                 setPriceHistory(historyData);
@@ -736,13 +974,22 @@ export default function SettingsPage() {
     function reloadProviders() {
         startTransition(async () => {
             try {
-                const data = await fetchProviders();
-                const [sourceData, priceData, historyData] = await Promise.all([
+                setProviderAuditError(null);
+                const [data, auditResult, sourceData, priceData, historyData] = await Promise.all([
+                    fetchProviders(),
+                    fetchProviderAuditEvents({ limit: 24 })
+                        .then((items) => ({ items, error: null as string | null }))
+                        .catch((err) => ({
+                            items: [] as ProviderAuditEvent[],
+                            error: err instanceof Error ? err.message : "Nao foi possivel carregar a auditoria de providers.",
+                        })),
                     fetchPricingSources(),
                     fetchPrices(),
                     fetchPriceHistory(100),
                 ]);
                 setProviders(data);
+                setProviderAuditEvents(auditResult.items);
+                setProviderAuditError(auditResult.error);
                 setPricingSources(sourceData);
                 setPrices(priceData);
                 setPriceHistory(historyData);
@@ -813,6 +1060,16 @@ export default function SettingsPage() {
         }));
     }
 
+    function buildCredentials(providerType: ProviderType) {
+        return Object.entries(forms[providerType]).reduce<Record<string, string>>((acc, [key, value]) => {
+            const trimmed = value.trim();
+            if (trimmed) {
+                acc[key] = trimmed;
+            }
+            return acc;
+        }, {});
+    }
+
     function handleSave(provider: ProviderDefinition) {
         if (provider.family === "LLM") {
             const selection = llmSelections[provider.providerType];
@@ -822,13 +1079,7 @@ export default function SettingsPage() {
             }
         }
 
-        const credentials = Object.entries(forms[provider.providerType]).reduce<Record<string, string>>((acc, [key, value]) => {
-            const trimmed = value.trim();
-            if (trimmed) {
-                acc[key] = trimmed;
-            }
-            return acc;
-        }, {});
+        const credentials = buildCredentials(provider.providerType);
 
         startTransition(async () => {
             try {
@@ -841,8 +1092,18 @@ export default function SettingsPage() {
                     enabledForChat: provider.family === "LLM" ? llmSelections[provider.providerType]?.enabledForChat : undefined,
                 });
                 toast.success(t("settings.providerSavedEnabled", { name: provider.name }));
-                const latest = await fetchProviders();
+                const [latest, auditResult] = await Promise.all([
+                    fetchProviders(),
+                    fetchProviderAuditEvents({ limit: 24 })
+                        .then((items) => ({ items, error: null as string | null }))
+                        .catch((err) => ({
+                            items: [] as ProviderAuditEvent[],
+                            error: err instanceof Error ? err.message : "Nao foi possivel carregar a auditoria de providers.",
+                        })),
+                ]);
                 setProviders(latest);
+                setProviderAuditEvents(auditResult.items);
+                setProviderAuditError(auditResult.error);
                 syncLLMSelections(latest);
             } catch (err) {
                 toast.error(err instanceof Error ? err.message : "Nao foi possivel salvar o provider.");
@@ -859,13 +1120,7 @@ export default function SettingsPage() {
             }
         }
 
-        const credentials = Object.entries(forms[provider.providerType]).reduce<Record<string, string>>((acc, [key, value]) => {
-            const trimmed = value.trim();
-            if (trimmed) {
-                acc[key] = trimmed;
-            }
-            return acc;
-        }, {});
+        const credentials = buildCredentials(provider.providerType);
 
         setTestingProviderType(provider.providerType);
 
@@ -881,6 +1136,35 @@ export default function SettingsPage() {
                 toast.error(err instanceof Error ? err.message : "Nao foi possivel testar a conexao do provider.");
             } finally {
                 setTestingProviderType(null);
+            }
+        });
+    }
+
+    function handleLoadModels(provider: ProviderDefinition) {
+        setLoadingModelsProviderType(provider.providerType);
+
+        startTransition(async () => {
+            try {
+                const models = await listProviderModels({
+                    family: provider.family,
+                    providerType: provider.providerType,
+                    credentials: buildCredentials(provider.providerType),
+                });
+
+                setDiscoveredModels((current) => ({
+                    ...current,
+                    [provider.providerType]: models,
+                }));
+
+                toast.success(
+                    models.length > 0
+                        ? `${models.length} modelo(s) carregado(s) para ${provider.name}.`
+                        : `Nenhum modelo retornado para ${provider.name} com a configuracao atual.`
+                );
+            } catch (err) {
+                toast.error(err instanceof Error ? err.message : "Nao foi possivel carregar os modelos do provider.");
+            } finally {
+                setLoadingModelsProviderType(null);
             }
         });
     }
@@ -903,8 +1187,18 @@ export default function SettingsPage() {
                         ? t("settings.providerEnabled", { name: provider.name })
                         : t("settings.providerDisabled", { name: provider.name }));
                 }
-                const latest = await fetchProviders();
+                const [latest, auditResult] = await Promise.all([
+                    fetchProviders(),
+                    fetchProviderAuditEvents({ limit: 24 })
+                        .then((items) => ({ items, error: null as string | null }))
+                        .catch((err) => ({
+                            items: [] as ProviderAuditEvent[],
+                            error: err instanceof Error ? err.message : "Nao foi possivel carregar a auditoria de providers.",
+                        })),
+                ]);
                 setProviders(latest);
+                setProviderAuditEvents(auditResult.items);
+                setProviderAuditError(auditResult.error);
                 syncLLMSelections(latest);
             } catch (err) {
                 toast.error(err instanceof Error ? err.message : "Nao foi possivel atualizar o provider.");
@@ -1003,10 +1297,15 @@ export default function SettingsPage() {
                             onFieldChange={handleFieldChange}
                             onLLMSelectionChange={handleLLMSelectionChange}
                             onSave={handleSave}
+                            onLoadModels={handleLoadModels}
                             onTestConnection={handleTestConnection}
                             onToggle={handleToggle}
                             isPending={isPending}
+                            isLoadingModels={loadingModelsProviderType === activeStorageType}
                             isTestingProvider={testingProviderType === activeStorageType}
+                            discoveredModels={discoveredModels}
+                            auditEvents={providerAuditEvents.filter((event) => event.family === "STORAGE")}
+                            auditError={providerAuditError}
                         />
 
                         <FamilySection
@@ -1020,10 +1319,15 @@ export default function SettingsPage() {
                             onFieldChange={handleFieldChange}
                             onLLMSelectionChange={handleLLMSelectionChange}
                             onSave={handleSave}
+                            onLoadModels={handleLoadModels}
                             onTestConnection={handleTestConnection}
                             onToggle={handleToggle}
                             isPending={isPending}
+                            isLoadingModels={loadingModelsProviderType === activeLLMType}
                             isTestingProvider={testingProviderType === activeLLMType}
+                            discoveredModels={discoveredModels}
+                            auditEvents={providerAuditEvents.filter((event) => event.family === "LLM")}
+                            auditError={providerAuditError}
                         />
 
                         <PricingSection
