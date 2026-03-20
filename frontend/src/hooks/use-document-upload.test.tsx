@@ -126,7 +126,7 @@ describe("useDocumentUpload", () => {
 
     it("surfaces upload failures without dropping the file from the queue", async () => {
         const onFileError = vi.fn();
-        vi.mocked(uploadDocument).mockRejectedValue(new Error("Upload pipeline failed."));
+        vi.mocked(uploadDocument).mockRejectedValue(new Error("Upload pipeline failed. Request ID: req-upload-123"));
 
         const { result } = renderHook(() => useDocumentUpload(), {
             wrapper: createTestWrapper(),
@@ -150,13 +150,13 @@ describe("useDocumentUpload", () => {
             expect(result.current.files[0]).toMatchObject({
                 status: "upload_error",
                 progress: 0,
-                error: "Upload pipeline failed.",
+                error: "Upload pipeline failed. Request ID: req-upload-123",
             });
         });
 
         expect(onFileError).toHaveBeenCalledWith(
             expect.objectContaining({ name: "case.html" }),
-            expect.objectContaining({ message: "Upload pipeline failed." })
+            expect.objectContaining({ message: "Upload pipeline failed. Request ID: req-upload-123" })
         );
     });
 

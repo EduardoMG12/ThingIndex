@@ -113,6 +113,33 @@ describe("documents api", () => {
         });
     });
 
+    it("includes the request id in upload errors so failed uploads can be traced", async () => {
+        vi.mocked(fetchWithAuthRedirect).mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    status: 400,
+                    type: "error",
+                    message: "Tipo de arquivo nao permitido",
+                }),
+                {
+                    status: 400,
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-Request-ID": "req-upload-123",
+                    },
+                }
+            )
+        );
+
+        await expect(
+            uploadDocument({
+                title: "spoofed.pdf",
+                file: new File(["<html></html>"], "spoofed.pdf", { type: "application/pdf" }),
+                collection: "Case A",
+            })
+        ).rejects.toThrow("Tipo de arquivo nao permitido Request ID: req-upload-123");
+    });
+
     it("normalizes fetched document lists, including legacy collection names", async () => {
         vi.mocked(fetchWithAuthRedirect).mockResolvedValue(
             new Response(

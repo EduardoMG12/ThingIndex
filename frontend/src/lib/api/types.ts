@@ -10,6 +10,7 @@ export type ApiErrorResponse = {
     type: string;
     message: string;
     errors?: unknown;
+    request_id?: string;
 };
 
 export function hasResponseData<T>(

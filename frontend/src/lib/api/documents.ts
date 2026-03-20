@@ -3,6 +3,7 @@ import {
     type ApiErrorResponse,
     type ApiSuccessResponse,
 } from "@/lib/api/types";
+import { REQUEST_ID_HEADER_NAME } from "@/lib/api/request-id";
 import type { Category } from "@/lib/api/categories";
 import {
     getCollectionName,
@@ -103,7 +104,7 @@ async function parseDocumentResponse(response: Response, fallbackMessage: string
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<DocumentApiRecord> | ApiErrorResponse | null;
 
     if (!response.ok) {
-        throw new Error(payload?.message || fallbackMessage);
+        throw new Error(buildApiErrorMessage(response, payload, fallbackMessage));
     }
 
     if (!hasResponseData(payload) || !payload.data) {
@@ -111,6 +112,19 @@ async function parseDocumentResponse(response: Response, fallbackMessage: string
     }
 
     return normalizeDocument(payload.data);
+}
+
+function buildApiErrorMessage(
+    response: Response,
+    payload: ApiErrorResponse | ApiSuccessResponse<unknown> | null,
+    fallbackMessage: string
+) {
+    const baseMessage = payload?.message || fallbackMessage;
+    const requestId =
+        response.headers.get(REQUEST_ID_HEADER_NAME) ||
+        (payload && "request_id" in payload && typeof payload.request_id === "string" ? payload.request_id : undefined);
+
+    return requestId ? `${baseMessage} Request ID: ${requestId}` : baseMessage;
 }
 
 export async function uploadDocument(input: {
@@ -162,7 +176,7 @@ export async function fetchDocuments(signal?: AbortSignal): Promise<Document[]> 
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<DocumentApiRecord[]> | ApiErrorResponse | null;
 
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel carregar os documentos.");
+        throw new Error(buildApiErrorMessage(response, payload, "Nao foi possivel carregar os documentos."));
     }
 
     if (!hasResponseData(payload) || !Array.isArray(payload.data)) {
@@ -188,7 +202,7 @@ export async function deleteDocument(documentId: number): Promise<void> {
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<null> | ApiErrorResponse | null;
 
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel excluir o documento.");
+        throw new Error(buildApiErrorMessage(response, payload, "Nao foi possivel excluir o documento."));
     }
 }
 
@@ -200,7 +214,7 @@ export async function deleteCollectionDocuments(collectionId: number): Promise<{
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<{ deleted_documents?: number }> | ApiErrorResponse | null;
 
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel excluir os documentos da collection.");
+        throw new Error(buildApiErrorMessage(response, payload, "Nao foi possivel excluir os documentos da collection."));
     }
 
     if (!hasResponseData(payload) || !payload.data) {
@@ -227,7 +241,7 @@ export async function downloadDocumentOriginal(document: Pick<Document, "id" | "
         : null;
 
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel baixar o documento original.");
+        throw new Error(buildApiErrorMessage(response, payload, "Nao foi possivel baixar o documento original."));
     }
 
     const blob = await response.blob();
