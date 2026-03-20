@@ -81,6 +81,51 @@ Valide o codigo:
 pnpm lint
 ```
 
+Quando houver mudancas relevantes no frontend, o `pre-commit` da raiz tambem executa automaticamente:
+
+```bash
+pnpm lint
+pnpm run typecheck
+pnpm run test:unit
+```
+
+## Testes
+
+Comandos simples a partir da raiz do monorepo:
+
+```bash
+./scripts/test.sh frontend-unit
+./scripts/test.sh frontend-e2e
+./scripts/test.sh frontend-smoke
+```
+
+Ou, se preferir:
+
+```bash
+make test-frontend-unit
+make test-frontend-e2e
+make test-frontend-smoke
+```
+
+Suite unitaria:
+
+```bash
+pnpm run test:unit
+```
+
+Smoke `e2e` com Playwright:
+
+```bash
+pnpm run test:e2e:install
+pnpm run test:e2e
+```
+
+Somente os cenarios marcados como smoke:
+
+```bash
+pnpm run test:smoke
+```
+
 ## Variaveis importantes
 
 | Variavel | Exemplo | Descricao |
