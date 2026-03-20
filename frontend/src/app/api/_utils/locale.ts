@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { REQUEST_ID_HEADER_NAME } from "@/lib/api/request-id";
 
 import {
     DEFAULT_LOCALE,
@@ -31,6 +32,10 @@ export async function createForwardHeaders(
 
     headers.set("Accept-Language", locale);
     headers.set(LOCALE_HEADER_NAME, locale);
+    const requestId = request?.headers.get(REQUEST_ID_HEADER_NAME);
+    if (requestId) {
+        headers.set(REQUEST_ID_HEADER_NAME, requestId);
+    }
 
     if (options?.token) {
         headers.set("Authorization", `Bearer ${options.token}`);
