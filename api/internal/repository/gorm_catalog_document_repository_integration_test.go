@@ -278,6 +278,55 @@ func TestCatalogRepositoryDeleteDocumentsByCollectionRemovesDerivedData(t *testi
 	}
 }
 
+func TestCatalogRepositoryListDocumentAuditEventsAppliesFilters(t *testing.T) {
+	db := openIntegrationDB(t)
+	repo := &GormCatalogDocumentRepository{db: db}
+	ctx := context.Background()
+
+	user := seedIntegrationUser(t, db, "list-document-audit")
+	category := seedIntegrationCategory(t, db, user.ID, "Ops")
+	collection := seedIntegrationCollection(t, db, user.ID, category.ID, "Policies")
+	document := seedIntegrationDocument(t, db, user.ID, category.ID, collection.ID, "policy.pdf")
+	otherDocument := seedIntegrationDocument(t, db, user.ID, category.ID, collection.ID, "archive.pdf")
+
+	mustCreateRecord(t, db, &models.DocumentAuditEvent{
+		UserID:       user.ID,
+		DocumentID:   &document.ID,
+		CollectionID: &collection.ID,
+		Action:       "DOCUMENT_UPLOAD",
+		Status:       "SUCCESS",
+		ActorType:    "USER",
+		Title:        document.Title,
+		Detail:       "uploaded",
+	})
+	mustCreateRecord(t, db, &models.DocumentAuditEvent{
+		UserID:       user.ID,
+		DocumentID:   &otherDocument.ID,
+		CollectionID: &collection.ID,
+		Action:       "DOCUMENT_DELETE",
+		Status:       "FAILED",
+		ActorType:    "USER",
+		Title:        otherDocument.Title,
+		Detail:       "delete failed",
+	})
+
+	events, err := repo.ListDocumentAuditEvents(ctx, user.ID, domain.DocumentAuditFilter{
+		Limit:      10,
+		Action:     "document_upload",
+		Status:     "success",
+		DocumentID: &document.ID,
+	})
+	if err != nil {
+		t.Fatalf("ListDocumentAuditEvents returned error: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected 1 filtered event, got %d", len(events))
+	}
+	if events[0].Title != document.Title || events[0].Action != "DOCUMENT_UPLOAD" {
+		t.Fatalf("unexpected filtered event: %#v", events[0])
+	}
+}
+
 func seedIntegrationUser(t *testing.T, db *gorm.DB, suffix string) models.User {
 	t.Helper()
 

@@ -50,6 +50,10 @@ func (r *documentRepoStub) CreateDocumentAuditEvents(_ context.Context, events [
 	return nil
 }
 
+func (r *documentRepoStub) ListDocumentAuditEvents(_ context.Context, _ uint, _ domain.DocumentAuditFilter) ([]models.DocumentAuditEvent, error) {
+	return r.recordedAuditEvents, nil
+}
+
 func (r *documentRepoStub) GetDocumentByID(context.Context, uint, uint) (*models.Document, error) {
 	if r.document == nil {
 		return nil, domain.ErrDocumentNotFound

@@ -74,6 +74,10 @@ func (r *providerRepoStub) CreateProviderAuditEvents(_ context.Context, events [
 	return nil
 }
 
+func (r *providerRepoStub) ListProviderAuditEvents(_ context.Context, _ uint, _ domain.ProviderAuditFilter) ([]models.ProviderAuditEvent, error) {
+	return r.recordedAudits, nil
+}
+
 func (r *providerRepoStub) GetConfig(_ context.Context, _ uint, providerType string) (*models.UserProviderConfig, error) {
 	if r.configByProvider == nil {
 		return nil, gorm.ErrRecordNotFound

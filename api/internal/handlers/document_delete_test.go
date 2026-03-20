@@ -68,6 +68,18 @@ func (s *documentUseCaseAuditCaptureStub) ListDocuments(context.Context, uint) (
 	return nil, nil
 }
 
+func (s *documentUseCaseAuditCaptureStub) ListDocumentAuditEvents(context.Context, uint, domain.DocumentAuditFilter) ([]models.DocumentAuditEvent, error) {
+	return []models.DocumentAuditEvent{
+		{
+			ID:        1,
+			Action:    "DOCUMENT_UPLOAD",
+			Status:    "SUCCESS",
+			ActorType: "USER",
+			Title:     "Arquivo.pdf",
+		},
+	}, nil
+}
+
 func (s *documentUseCaseAuditCaptureStub) GetDocument(context.Context, uint, uint) (*models.Document, error) {
 	return nil, nil
 }
@@ -447,5 +459,33 @@ func TestUploadDocumentEndpointReturnsConflictForUnavailableStorageProvider(t *t
 	}
 	if !strings.Contains(rec.Body.String(), "storage") {
 		t.Fatalf("expected storage provider message, got %q", rec.Body.String())
+	}
+}
+
+func TestListDocumentAuditEventsEndpointAcceptsFilters(t *testing.T) {
+	t.Parallel()
+
+	gin.SetMode(gin.TestMode)
+	useCase := &documentUseCaseAuditCaptureStub{}
+	handler := NewDocumentHandler(useCase, 10<<20)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("language", "pt_BR")
+		c.Set("user_id", uint(23))
+		c.Next()
+	})
+	router.GET("/api/v1/documents/audit", handler.ListDocumentAuditEvents)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/audit?action=document_upload&status=success&document_id=7&collection_id=3&limit=5", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 response, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "DOCUMENT_UPLOAD") {
+		t.Fatalf("expected document audit payload, got %q", rec.Body.String())
 	}
 }

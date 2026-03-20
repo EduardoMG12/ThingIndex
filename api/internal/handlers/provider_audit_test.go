@@ -43,6 +43,18 @@ func (s *providerUseCaseAuditCaptureStub) ListUserProviders(context.Context, uin
 	return nil, nil
 }
 
+func (s *providerUseCaseAuditCaptureStub) ListProviderAuditEvents(context.Context, uint, domain.ProviderAuditFilter) ([]models.ProviderAuditEvent, error) {
+	return []models.ProviderAuditEvent{
+		{
+			ID:           1,
+			Family:       domain.FamilyLLM,
+			ProviderType: domain.ProviderOpenAI,
+			Action:       "PROVIDER_CONFIG_SAVE",
+			Status:       "SUCCESS",
+		},
+	}, nil
+}
+
 func (s *providerUseCaseAuditCaptureStub) SyncModelCatalogs(context.Context) error {
 	return nil
 }
@@ -216,5 +228,33 @@ func TestTestConnectionEndpointReturnsBadRequestForInvalidModel(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "modelo") {
 		t.Fatalf("expected invalid model message, got %q", rec.Body.String())
+	}
+}
+
+func TestListProviderAuditEventsEndpointAcceptsFilters(t *testing.T) {
+	t.Parallel()
+
+	gin.SetMode(gin.TestMode)
+	useCase := &providerUseCaseAuditCaptureStub{}
+	handler := NewProviderHandler(useCase)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("language", "pt_BR")
+		c.Set("user_id", uint(44))
+		c.Next()
+	})
+	router.GET("/api/v1/user/providers/audit", handler.ListProviderAuditEvents)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/user/providers/audit?family=llm&provider_type=openai&action=provider_config_save&status=success&limit=5", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 response, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "PROVIDER_CONFIG_SAVE") {
+		t.Fatalf("expected provider audit payload, got %q", rec.Body.String())
 	}
 }
