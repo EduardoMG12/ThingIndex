@@ -909,6 +909,9 @@ func aggregateDocumentMonitoringSummary(
 		case domain.DocumentStatusOrphaned:
 			summary.OrphanedDocuments++
 		}
+		if doc.Status == domain.DocumentStatusFailed && doc.ProcessingStage != "MOVED_TO_DLQ" {
+			summary.PermanentFailedDocuments++
+		}
 		if doc.ProcessingStage == "RETRY_SCHEDULED" {
 			summary.RetryingDocuments++
 		}

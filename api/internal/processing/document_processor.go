@@ -10,6 +10,7 @@ import (
 
 	"thing-index/internal/domain"
 	"thing-index/internal/indexing"
+	"thing-index/internal/models"
 	"thing-index/internal/queue"
 )
 
@@ -181,6 +182,10 @@ func (p *DocumentProcessor) MarkRetryScheduled(ctx context.Context, event domain
 	}); err != nil {
 		log.Printf("document processor: failed to persist retry scheduled state for document %d: %v", event.DocumentID, err)
 	}
+
+	if err := p.repo.CreateProcessingAttempt(ctx, buildProcessingAttemptRecord(doc, "RETRY_SCHEDULED", disposition)); err != nil {
+		log.Printf("document processor: failed to persist retry attempt for document %d: %v", event.DocumentID, err)
+	}
 }
 
 func (p *DocumentProcessor) MarkMovedToDLQ(ctx context.Context, event domain.DocumentIndexRequestedEvent, disposition queue.DocumentIndexFailureDisposition) {
@@ -197,6 +202,10 @@ func (p *DocumentProcessor) MarkMovedToDLQ(ctx context.Context, event domain.Doc
 		LastError:    coalesceProcessingError(doc.LastProcessingError, disposition.Err),
 	}); err != nil {
 		log.Printf("document processor: failed to persist dlq state for document %d: %v", event.DocumentID, err)
+	}
+
+	if err := p.repo.CreateProcessingAttempt(ctx, buildProcessingAttemptRecord(doc, "MOVED_TO_DLQ", disposition)); err != nil {
+		log.Printf("document processor: failed to persist dlq attempt for document %d: %v", event.DocumentID, err)
 	}
 }
 
@@ -230,6 +239,10 @@ func (p *DocumentProcessor) MarkPermanentFailure(ctx context.Context, event doma
 		LastError:    coalesceProcessingError(doc.LastProcessingError, disposition.Err),
 	}); err != nil {
 		log.Printf("document processor: failed to persist permanent failure state for document %d: %v", event.DocumentID, err)
+	}
+
+	if err := p.repo.CreateProcessingAttempt(ctx, buildProcessingAttemptRecord(doc, "FAILED_PERMANENT", disposition)); err != nil {
+		log.Printf("document processor: failed to persist permanent attempt for document %d: %v", event.DocumentID, err)
 	}
 }
 
@@ -289,4 +302,51 @@ func coalesceProcessingError(current string, cause error) string {
 		return ""
 	}
 	return cause.Error()
+}
+
+func buildProcessingAttemptRecord(
+	doc *models.Document,
+	dispositionLabel string,
+	disposition queue.DocumentIndexFailureDisposition,
+) *models.DocumentProcessingAttempt {
+	if doc == nil {
+		return nil
+	}
+
+	var detail string
+	switch dispositionLabel {
+	case "RETRY_SCHEDULED":
+		detail = buildRetryScheduledDetail(disposition.NextRetryAttempt, disposition.MaxRetries, disposition.RetryDelay)
+	case "MOVED_TO_DLQ":
+		detail = buildMovedToDLQDetail(disposition.RetryCount)
+	default:
+		detail = buildPermanentFailureDetail(disposition.Err)
+	}
+
+	return &models.DocumentProcessingAttempt{
+		DocumentID:        doc.ID,
+		UserID:            doc.UserID,
+		Stage:             doc.ProcessingStage,
+		FailureKind:       classifyProcessingFailureKind(dispositionLabel, disposition.Err),
+		Disposition:       dispositionLabel,
+		Detail:            detail,
+		ErrorMessage:      coalesceProcessingError(doc.LastProcessingError, disposition.Err),
+		RetryCount:        disposition.RetryCount,
+		NextRetryAttempt:  disposition.NextRetryAttempt,
+		MaxRetryAttempts:  disposition.MaxRetries,
+		RetryDelaySeconds: int(disposition.RetryDelay / time.Second),
+	}
+}
+
+func classifyProcessingFailureKind(dispositionLabel string, err error) string {
+	if errors.Is(err, domain.ErrDocumentSourceMissing) {
+		return "SOURCE_MISSING"
+	}
+
+	switch dispositionLabel {
+	case "RETRY_SCHEDULED", "MOVED_TO_DLQ":
+		return "TRANSIENT"
+	default:
+		return "PERMANENT"
+	}
 }

@@ -68,25 +68,40 @@ type CollectionResponse struct {
 }
 
 type DocumentResponse struct {
-	ID                  uint                `json:"id"`
-	UserID              uint                `json:"user_id"`
-	Title               string              `json:"title"`
-	FileURL             string              `json:"file_url"`
-	FilePath            string              `json:"file_path"`
-	Size                int64               `json:"size"`
-	MimeType            string              `json:"mime_type"`
-	Status              string              `json:"status"`
-	ProcessingStage     string              `json:"processing_stage,omitempty"`
-	StatusDetail        string              `json:"status_detail,omitempty"`
-	IndexStartedAt      *time.Time          `json:"index_started_at,omitempty"`
-	IndexedAt           *time.Time          `json:"indexed_at,omitempty"`
-	LastProcessingError string              `json:"last_processing_error,omitempty"`
-	CollectionID        *uint               `json:"collection_id,omitempty"`
-	Collection          *CollectionResponse `json:"collection,omitempty"`
-	CategoryID          *uint               `json:"category_id,omitempty"`
-	Category            *CategoryResponse   `json:"category,omitempty"`
-	CreatedAt           time.Time           `json:"created_at"`
-	UpdatedAt           time.Time           `json:"updated_at"`
+	ID                  uint                                `json:"id"`
+	UserID              uint                                `json:"user_id"`
+	Title               string                              `json:"title"`
+	FileURL             string                              `json:"file_url"`
+	FilePath            string                              `json:"file_path"`
+	Size                int64                               `json:"size"`
+	MimeType            string                              `json:"mime_type"`
+	Status              string                              `json:"status"`
+	ProcessingStage     string                              `json:"processing_stage,omitempty"`
+	StatusDetail        string                              `json:"status_detail,omitempty"`
+	IndexStartedAt      *time.Time                          `json:"index_started_at,omitempty"`
+	IndexedAt           *time.Time                          `json:"indexed_at,omitempty"`
+	LastProcessingError string                              `json:"last_processing_error,omitempty"`
+	CollectionID        *uint                               `json:"collection_id,omitempty"`
+	Collection          *CollectionResponse                 `json:"collection,omitempty"`
+	CategoryID          *uint                               `json:"category_id,omitempty"`
+	Category            *CategoryResponse                   `json:"category,omitempty"`
+	ProcessingAttempts  []DocumentProcessingAttemptResponse `json:"processing_attempts,omitempty"`
+	CreatedAt           time.Time                           `json:"created_at"`
+	UpdatedAt           time.Time                           `json:"updated_at"`
+}
+
+type DocumentProcessingAttemptResponse struct {
+	ID                uint      `json:"id"`
+	Stage             string    `json:"stage,omitempty"`
+	FailureKind       string    `json:"failure_kind,omitempty"`
+	Disposition       string    `json:"disposition,omitempty"`
+	Detail            string    `json:"detail,omitempty"`
+	ErrorMessage      string    `json:"error_message,omitempty"`
+	RetryCount        int       `json:"retry_count"`
+	NextRetryAttempt  int       `json:"next_retry_attempt,omitempty"`
+	MaxRetryAttempts  int       `json:"max_retry_attempts,omitempty"`
+	RetryDelaySeconds int       `json:"retry_delay_seconds,omitempty"`
+	CreatedAt         time.Time `json:"created_at"`
 }
 
 type ParagraphNodeResponse struct {
@@ -181,25 +196,26 @@ type DocumentIndexResponse struct {
 }
 
 type DocumentMonitoringSummaryResponse struct {
-	TotalDocuments        int                                        `json:"total_documents"`
-	IndexedDocuments      int                                        `json:"indexed_documents"`
-	ProcessingDocuments   int                                        `json:"processing_documents"`
-	QueuedDocuments       int                                        `json:"queued_documents"`
-	FailedDocuments       int                                        `json:"failed_documents"`
-	RetryingDocuments     int                                        `json:"retrying_documents"`
-	OrphanedDocuments     int                                        `json:"orphaned_documents"`
-	DLQDocuments          int                                        `json:"dlq_documents"`
-	DocumentsWithLLM      int                                        `json:"documents_with_llm"`
-	PricingAwareDocuments int                                        `json:"pricing_aware_documents"`
-	TotalLLMRequests      int                                        `json:"total_llm_requests"`
-	TotalInputTokens      int                                        `json:"total_input_tokens"`
-	TotalOutputTokens     int                                        `json:"total_output_tokens"`
-	TotalTokens           int                                        `json:"total_tokens"`
-	TotalEstimatedCostUSD float64                                    `json:"total_estimated_cost_usd"`
-	AverageDurationMs     int64                                      `json:"average_duration_ms"`
-	AverageQualityScore   float64                                    `json:"average_quality_score"`
-	LastCompletedAt       *time.Time                                 `json:"last_completed_at,omitempty"`
-	ModelBreakdown        []DocumentMonitoringModelAggregateResponse `json:"model_breakdown"`
+	TotalDocuments           int                                        `json:"total_documents"`
+	IndexedDocuments         int                                        `json:"indexed_documents"`
+	ProcessingDocuments      int                                        `json:"processing_documents"`
+	QueuedDocuments          int                                        `json:"queued_documents"`
+	FailedDocuments          int                                        `json:"failed_documents"`
+	PermanentFailedDocuments int                                        `json:"permanent_failed_documents"`
+	RetryingDocuments        int                                        `json:"retrying_documents"`
+	OrphanedDocuments        int                                        `json:"orphaned_documents"`
+	DLQDocuments             int                                        `json:"dlq_documents"`
+	DocumentsWithLLM         int                                        `json:"documents_with_llm"`
+	PricingAwareDocuments    int                                        `json:"pricing_aware_documents"`
+	TotalLLMRequests         int                                        `json:"total_llm_requests"`
+	TotalInputTokens         int                                        `json:"total_input_tokens"`
+	TotalOutputTokens        int                                        `json:"total_output_tokens"`
+	TotalTokens              int                                        `json:"total_tokens"`
+	TotalEstimatedCostUSD    float64                                    `json:"total_estimated_cost_usd"`
+	AverageDurationMs        int64                                      `json:"average_duration_ms"`
+	AverageQualityScore      float64                                    `json:"average_quality_score"`
+	LastCompletedAt          *time.Time                                 `json:"last_completed_at,omitempty"`
+	ModelBreakdown           []DocumentMonitoringModelAggregateResponse `json:"model_breakdown"`
 }
 
 type DocumentMonitoringModelAggregateResponse struct {
@@ -404,9 +420,36 @@ func ToDocumentResponse(doc *models.Document) *DocumentResponse {
 		Collection:          ToCollectionResponse(doc.CollectionRef),
 		CategoryID:          categoryID,
 		Category:            ToCategoryResponse(category),
+		ProcessingAttempts:  ToDocumentProcessingAttemptResponses(doc.ProcessingAttempts),
 		CreatedAt:           doc.CreatedAt,
 		UpdatedAt:           doc.UpdatedAt,
 	}
+}
+
+func ToDocumentProcessingAttemptResponses(attempts []models.DocumentProcessingAttempt) []DocumentProcessingAttemptResponse {
+	if len(attempts) == 0 {
+		return nil
+	}
+
+	items := make([]DocumentProcessingAttemptResponse, 0, len(attempts))
+	for i := range attempts {
+		attempt := attempts[i]
+		items = append(items, DocumentProcessingAttemptResponse{
+			ID:                attempt.ID,
+			Stage:             attempt.Stage,
+			FailureKind:       attempt.FailureKind,
+			Disposition:       attempt.Disposition,
+			Detail:            attempt.Detail,
+			ErrorMessage:      attempt.ErrorMessage,
+			RetryCount:        attempt.RetryCount,
+			NextRetryAttempt:  attempt.NextRetryAttempt,
+			MaxRetryAttempts:  attempt.MaxRetryAttempts,
+			RetryDelaySeconds: attempt.RetryDelaySeconds,
+			CreatedAt:         attempt.CreatedAt,
+		})
+	}
+
+	return items
 }
 
 func ToDocumentsResponse(docs []models.Document) []DocumentResponse {
@@ -610,25 +653,26 @@ func ToDocumentMonitoringSummaryResponse(summary *domain.DocumentMonitoringSumma
 	}
 
 	return &DocumentMonitoringSummaryResponse{
-		TotalDocuments:        summary.TotalDocuments,
-		IndexedDocuments:      summary.IndexedDocuments,
-		ProcessingDocuments:   summary.ProcessingDocuments,
-		QueuedDocuments:       summary.QueuedDocuments,
-		FailedDocuments:       summary.FailedDocuments,
-		RetryingDocuments:     summary.RetryingDocuments,
-		OrphanedDocuments:     summary.OrphanedDocuments,
-		DLQDocuments:          summary.DLQDocuments,
-		DocumentsWithLLM:      summary.DocumentsWithLLM,
-		PricingAwareDocuments: summary.PricingAwareDocuments,
-		TotalLLMRequests:      summary.TotalLLMRequests,
-		TotalInputTokens:      summary.TotalInputTokens,
-		TotalOutputTokens:     summary.TotalOutputTokens,
-		TotalTokens:           summary.TotalTokens,
-		TotalEstimatedCostUSD: summary.TotalEstimatedCostUSD,
-		AverageDurationMs:     summary.AverageDurationMs,
-		AverageQualityScore:   summary.AverageQualityScore,
-		LastCompletedAt:       summary.LastCompletedAt,
-		ModelBreakdown:        modelBreakdown,
+		TotalDocuments:           summary.TotalDocuments,
+		IndexedDocuments:         summary.IndexedDocuments,
+		ProcessingDocuments:      summary.ProcessingDocuments,
+		QueuedDocuments:          summary.QueuedDocuments,
+		FailedDocuments:          summary.FailedDocuments,
+		PermanentFailedDocuments: summary.PermanentFailedDocuments,
+		RetryingDocuments:        summary.RetryingDocuments,
+		OrphanedDocuments:        summary.OrphanedDocuments,
+		DLQDocuments:             summary.DLQDocuments,
+		DocumentsWithLLM:         summary.DocumentsWithLLM,
+		PricingAwareDocuments:    summary.PricingAwareDocuments,
+		TotalLLMRequests:         summary.TotalLLMRequests,
+		TotalInputTokens:         summary.TotalInputTokens,
+		TotalOutputTokens:        summary.TotalOutputTokens,
+		TotalTokens:              summary.TotalTokens,
+		TotalEstimatedCostUSD:    summary.TotalEstimatedCostUSD,
+		AverageDurationMs:        summary.AverageDurationMs,
+		AverageQualityScore:      summary.AverageQualityScore,
+		LastCompletedAt:          summary.LastCompletedAt,
+		ModelBreakdown:           modelBreakdown,
 	}
 }
 

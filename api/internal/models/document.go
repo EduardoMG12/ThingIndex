@@ -32,26 +32,27 @@ type Collection struct {
 }
 
 type Document struct {
-	ID                  uint              `gorm:"primarykey" json:"id"`
-	UserID              uint              `gorm:"not null;index" json:"user_id"`
-	Title               string            `gorm:"size:255;not null" json:"title"`
-	FileURL             string            `gorm:"size:512;not null" json:"file_url"`
-	Size                int64             `json:"size"`
-	MimeType            string            `gorm:"size:100" json:"mime_type"`
-	Status              string            `gorm:"size:50;default:'UPLOADED';index" json:"status"`
-	ProcessingStage     string            `gorm:"size:64;default:'QUEUED'" json:"processing_stage,omitempty"`
-	StatusDetail        string            `gorm:"size:255" json:"status_detail,omitempty"`
-	IndexStartedAt      *time.Time        `json:"index_started_at,omitempty"`
-	IndexedAt           *time.Time        `json:"indexed_at,omitempty"`
-	LastProcessingError string            `gorm:"type:text" json:"last_processing_error,omitempty"`
-	Collection          string            `gorm:"column:collection;size:255;index" json:"-"`
-	CollectionID        *uint             `gorm:"index" json:"collection_id,omitempty"`
-	CollectionRef       *Collection       `gorm:"foreignKey:CollectionID" json:"collection,omitempty"`
-	CategoryID          *uint             `gorm:"column:category_id" json:"-"`
-	Category            *DocumentCategory `gorm:"foreignKey:CategoryID" json:"-"`
-	CreatedAt           time.Time         `json:"created_at"`
-	UpdatedAt           time.Time         `json:"updated_at"`
-	DeletedAt           gorm.DeletedAt    `gorm:"index" json:"-"`
+	ID                  uint                        `gorm:"primarykey" json:"id"`
+	UserID              uint                        `gorm:"not null;index" json:"user_id"`
+	Title               string                      `gorm:"size:255;not null" json:"title"`
+	FileURL             string                      `gorm:"size:512;not null" json:"file_url"`
+	Size                int64                       `json:"size"`
+	MimeType            string                      `gorm:"size:100" json:"mime_type"`
+	Status              string                      `gorm:"size:50;default:'UPLOADED';index" json:"status"`
+	ProcessingStage     string                      `gorm:"size:64;default:'QUEUED'" json:"processing_stage,omitempty"`
+	StatusDetail        string                      `gorm:"size:255" json:"status_detail,omitempty"`
+	IndexStartedAt      *time.Time                  `json:"index_started_at,omitempty"`
+	IndexedAt           *time.Time                  `json:"indexed_at,omitempty"`
+	LastProcessingError string                      `gorm:"type:text" json:"last_processing_error,omitempty"`
+	Collection          string                      `gorm:"column:collection;size:255;index" json:"-"`
+	CollectionID        *uint                       `gorm:"index" json:"collection_id,omitempty"`
+	CollectionRef       *Collection                 `gorm:"foreignKey:CollectionID" json:"collection,omitempty"`
+	CategoryID          *uint                       `gorm:"column:category_id" json:"-"`
+	Category            *DocumentCategory           `gorm:"foreignKey:CategoryID" json:"-"`
+	ProcessingAttempts  []DocumentProcessingAttempt `gorm:"foreignKey:DocumentID" json:"-"`
+	CreatedAt           time.Time                   `json:"created_at"`
+	UpdatedAt           time.Time                   `json:"updated_at"`
+	DeletedAt           gorm.DeletedAt              `gorm:"index" json:"-"`
 }
 
 type ParagraphNode struct {
@@ -152,6 +153,25 @@ type OutboxEvent struct {
 	LastError     string         `gorm:"type:text" json:"last_error,omitempty"`
 	CreatedAt     time.Time      `json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`
+}
+
+type DocumentProcessingAttempt struct {
+	ID                uint           `gorm:"primarykey" json:"id"`
+	DocumentID        uint           `gorm:"not null;index:idx_document_processing_attempts_document_created,priority:1" json:"document_id"`
+	Document          *Document      `gorm:"foreignKey:DocumentID" json:"-"`
+	UserID            uint           `gorm:"not null;index" json:"user_id"`
+	Stage             string         `gorm:"size:64;index" json:"stage,omitempty"`
+	FailureKind       string         `gorm:"size:32;index" json:"failure_kind,omitempty"`
+	Disposition       string         `gorm:"size:32;index" json:"disposition,omitempty"`
+	Detail            string         `gorm:"type:text" json:"detail,omitempty"`
+	ErrorMessage      string         `gorm:"type:text" json:"error_message,omitempty"`
+	RetryCount        int            `gorm:"not null;default:0" json:"retry_count"`
+	NextRetryAttempt  int            `gorm:"not null;default:0" json:"next_retry_attempt"`
+	MaxRetryAttempts  int            `gorm:"not null;default:0" json:"max_retry_attempts"`
+	RetryDelaySeconds int            `gorm:"not null;default:0" json:"retry_delay_seconds"`
+	CreatedAt         time.Time      `gorm:"index:idx_document_processing_attempts_document_created,priority:2" json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
+	DeletedAt         gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 type DocumentAuditEvent struct {

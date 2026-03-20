@@ -63,6 +63,9 @@ func (r *GormCatalogDocumentRepository) GetDocumentByID(ctx context.Context, id 
 	if err := r.db.WithContext(ctx).
 		Preload("CollectionRef").
 		Preload("CollectionRef.Category").
+		Preload("ProcessingAttempts", func(db *gorm.DB) *gorm.DB {
+			return db.Order("created_at DESC")
+		}).
 		Where("id = ? AND user_id = ?", id, userID).
 		First(&doc).Error; err != nil {
 		return nil, err
@@ -76,6 +79,9 @@ func (r *GormCatalogDocumentRepository) GetDocumentByIDForProcessing(ctx context
 	if err := r.db.WithContext(ctx).
 		Preload("CollectionRef").
 		Preload("CollectionRef.Category").
+		Preload("ProcessingAttempts", func(db *gorm.DB) *gorm.DB {
+			return db.Order("created_at DESC")
+		}).
 		First(&doc, id).Error; err != nil {
 		return nil, err
 	}
@@ -88,6 +94,9 @@ func (r *GormCatalogDocumentRepository) GetDocumentsByUserID(ctx context.Context
 	if err := r.db.WithContext(ctx).
 		Preload("CollectionRef").
 		Preload("CollectionRef.Category").
+		Preload("ProcessingAttempts", func(db *gorm.DB) *gorm.DB {
+			return db.Order("created_at DESC")
+		}).
 		Where("user_id = ?", userID).
 		Order("created_at DESC").
 		Find(&docs).Error; err != nil {
@@ -102,6 +111,9 @@ func (r *GormCatalogDocumentRepository) GetDocumentsByCategoryID(ctx context.Con
 	if err := r.db.WithContext(ctx).
 		Preload("CollectionRef").
 		Preload("CollectionRef.Category").
+		Preload("ProcessingAttempts", func(db *gorm.DB) *gorm.DB {
+			return db.Order("created_at DESC")
+		}).
 		Joins("JOIN collections ON collections.id = documents.collection_id").
 		Where("documents.user_id = ? AND collections.category_id = ?", userID, categoryID).
 		Order("documents.created_at DESC").
@@ -117,6 +129,9 @@ func (r *GormCatalogDocumentRepository) GetDocumentsByCollectionID(ctx context.C
 	if err := r.db.WithContext(ctx).
 		Preload("CollectionRef").
 		Preload("CollectionRef.Category").
+		Preload("ProcessingAttempts", func(db *gorm.DB) *gorm.DB {
+			return db.Order("created_at DESC")
+		}).
 		Where("user_id = ? AND collection_id = ?", userID, collectionID).
 		Order("created_at DESC").
 		Find(&docs).Error; err != nil {
@@ -140,6 +155,9 @@ func (r *GormCatalogDocumentRepository) RetryDocumentIndexing(ctx context.Contex
 		if err := tx.
 			Preload("CollectionRef").
 			Preload("CollectionRef.Category").
+			Preload("ProcessingAttempts", func(db *gorm.DB) *gorm.DB {
+				return db.Order("created_at DESC")
+			}).
 			Where("id = ? AND user_id = ?", documentID, userID).
 			First(&document).Error; err != nil {
 			return err
@@ -192,6 +210,9 @@ func (r *GormCatalogDocumentRepository) RetryDocumentIndexing(ctx context.Contex
 		return tx.
 			Preload("CollectionRef").
 			Preload("CollectionRef.Category").
+			Preload("ProcessingAttempts", func(db *gorm.DB) *gorm.DB {
+				return db.Order("created_at DESC")
+			}).
 			Where("id = ?", documentID).
 			First(&document).Error
 	})
@@ -209,6 +230,9 @@ func (r *GormCatalogDocumentRepository) MarkDocumentOrphaned(ctx context.Context
 		if err := tx.
 			Preload("CollectionRef").
 			Preload("CollectionRef.Category").
+			Preload("ProcessingAttempts", func(db *gorm.DB) *gorm.DB {
+				return db.Order("created_at DESC")
+			}).
 			Where("id = ? AND user_id = ?", documentID, userID).
 			First(&document).Error; err != nil {
 			return err
@@ -230,6 +254,9 @@ func (r *GormCatalogDocumentRepository) MarkDocumentOrphaned(ctx context.Context
 		return tx.
 			Preload("CollectionRef").
 			Preload("CollectionRef.Category").
+			Preload("ProcessingAttempts", func(db *gorm.DB) *gorm.DB {
+				return db.Order("created_at DESC")
+			}).
 			Where("id = ?", documentID).
 			First(&document).Error
 	})
@@ -313,6 +340,7 @@ func deleteStructuredDocumentData(tx *gorm.DB, documentIDs []uint) error {
 	}
 
 	for _, model := range []any{
+		&models.DocumentProcessingAttempt{},
 		&models.DocumentPage{},
 		&models.ParagraphNode{},
 		&models.TableSection{},

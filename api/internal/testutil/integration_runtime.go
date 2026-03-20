@@ -203,6 +203,7 @@ func migrateIntegrationModels(db *gorm.DB) error {
 		&models.DocumentCategory{},
 		&models.Collection{},
 		&models.Document{},
+		&models.DocumentProcessingAttempt{},
 		&models.DocumentPage{},
 		&models.ParagraphNode{},
 		&models.TableSection{},

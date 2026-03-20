@@ -56,6 +56,14 @@ func (r *gormDocumentProcessingRepository) UpdateDocumentProcessingState(ctx con
 		Updates(updates).Error
 }
 
+func (r *gormDocumentProcessingRepository) CreateProcessingAttempt(ctx context.Context, attempt *models.DocumentProcessingAttempt) error {
+	if attempt == nil {
+		return nil
+	}
+
+	return r.db.WithContext(ctx).Create(attempt).Error
+}
+
 func (r *gormDocumentProcessingRepository) ReplaceIndexingResult(ctx context.Context, documentID uint, result domain.IndexingResult) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Unscoped().Where("document_id = ?", documentID).Delete(&models.DocumentPage{}).Error; err != nil {

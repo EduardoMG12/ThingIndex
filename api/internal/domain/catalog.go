@@ -38,25 +38,26 @@ type DocumentIndex struct {
 }
 
 type DocumentMonitoringSummary struct {
-	TotalDocuments        int
-	IndexedDocuments      int
-	ProcessingDocuments   int
-	QueuedDocuments       int
-	FailedDocuments       int
-	RetryingDocuments     int
-	OrphanedDocuments     int
-	DLQDocuments          int
-	DocumentsWithLLM      int
-	PricingAwareDocuments int
-	TotalLLMRequests      int
-	TotalInputTokens      int
-	TotalOutputTokens     int
-	TotalTokens           int
-	TotalEstimatedCostUSD float64
-	AverageDurationMs     int64
-	AverageQualityScore   float64
-	LastCompletedAt       *time.Time
-	ModelBreakdown        []DocumentMonitoringModelAggregate
+	TotalDocuments           int
+	IndexedDocuments         int
+	ProcessingDocuments      int
+	QueuedDocuments          int
+	FailedDocuments          int
+	PermanentFailedDocuments int
+	RetryingDocuments        int
+	OrphanedDocuments        int
+	DLQDocuments             int
+	DocumentsWithLLM         int
+	PricingAwareDocuments    int
+	TotalLLMRequests         int
+	TotalInputTokens         int
+	TotalOutputTokens        int
+	TotalTokens              int
+	TotalEstimatedCostUSD    float64
+	AverageDurationMs        int64
+	AverageQualityScore      float64
+	LastCompletedAt          *time.Time
+	ModelBreakdown           []DocumentMonitoringModelAggregate
 }
 
 type DocumentMonitoringModelAggregate struct {

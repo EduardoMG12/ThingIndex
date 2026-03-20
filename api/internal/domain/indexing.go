@@ -60,6 +60,7 @@ type OutboxRepository interface {
 type DocumentProcessingRepository interface {
 	GetDocumentByIDForProcessing(ctx context.Context, id uint) (*models.Document, error)
 	UpdateDocumentProcessingState(ctx context.Context, documentID uint, state DocumentProcessingState) error
+	CreateProcessingAttempt(ctx context.Context, attempt *models.DocumentProcessingAttempt) error
 	ReplaceIndexingResult(ctx context.Context, documentID uint, result IndexingResult) error
 }
 
