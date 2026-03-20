@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -80,12 +81,71 @@ func TestValidateUploadStreamRejectsUnsupportedMime(t *testing.T) {
 	}
 }
 
+func TestValidateUploadStreamRejectsSpoofedPDFDeclaration(t *testing.T) {
+	t.Parallel()
+
+	_, _, err := validateUploadStream(strings.NewReader("<html><body>fake pdf</body></html>"), "application/pdf", "contrato.pdf")
+	if !errors.Is(err, domain.ErrDocumentInvalidMime) {
+		t.Fatalf("expected spoofed pdf to be rejected, got %v", err)
+	}
+}
+
+func TestValidateUploadStreamRejectsPlainTextDeclaredAsHTMLWithoutHTMLExtension(t *testing.T) {
+	t.Parallel()
+
+	_, _, err := validateUploadStream(strings.NewReader("apenas texto"), "text/html", "evidencia.txt")
+	if !errors.Is(err, domain.ErrDocumentInvalidMime) {
+		t.Fatalf("expected mismatched html declaration to be rejected, got %v", err)
+	}
+}
+
+func TestValidateUploadStreamRejectsZipDeclaredAsXLSXWithoutSpreadsheetExtension(t *testing.T) {
+	t.Parallel()
+
+	_, _, err := validateUploadStream(bytes.NewReader([]byte("PK\x03\x04xlsx-sample")), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "arquivo.zip")
+	if !errors.Is(err, domain.ErrDocumentInvalidMime) {
+		t.Fatalf("expected xlsx declaration without spreadsheet extension to be rejected, got %v", err)
+	}
+}
+
 func TestValidateUploadStreamRejectsEmptyFile(t *testing.T) {
 	t.Parallel()
 
 	_, _, err := validateUploadStream(strings.NewReader(""), "application/pdf", "vazio.pdf")
 	if !errors.Is(err, domain.ErrFileRequired) {
 		t.Fatalf("expected file required error, got %v", err)
+	}
+}
+
+func TestValidateUploadStreamAcceptsNormalizedMediaTypeParameters(t *testing.T) {
+	t.Parallel()
+
+	reader, contentType, err := validateUploadStream(strings.NewReader("%PDF-1.7 sample"), "application/pdf; charset=binary", "contrato.pdf")
+	if err != nil {
+		t.Fatalf("expected pdf upload with media type parameters to be accepted, got %v", err)
+	}
+	if contentType != "application/pdf" {
+		t.Fatalf("expected normalized application/pdf, got %q", contentType)
+	}
+
+	body, readErr := io.ReadAll(reader)
+	if readErr != nil {
+		t.Fatalf("expected to read validated stream, got %v", readErr)
+	}
+	if string(body) != "%PDF-1.7 sample" {
+		t.Fatalf("expected validated stream to preserve content, got %q", string(body))
+	}
+}
+
+func TestValidateUploadStreamWrapsReaderFailures(t *testing.T) {
+	t.Parallel()
+
+	_, _, err := validateUploadStream(failingReader{err: errors.New("disk read failed")}, "application/pdf", "contrato.pdf")
+	if !errors.Is(err, domain.ErrUploadFailed) {
+		t.Fatalf("expected upload failure classification, got %v", err)
+	}
+	if err == nil || !strings.Contains(err.Error(), "disk read failed") {
+		t.Fatalf("expected wrapped reader failure detail, got %v", err)
 	}
 }
 
@@ -100,4 +160,15 @@ func TestUploadDocumentRejectsOversizedFileBeforeStorage(t *testing.T) {
 	if !errors.Is(err, domain.ErrFileTooLarge) {
 		t.Fatalf("expected file too large error, got %v", err)
 	}
+}
+
+type failingReader struct {
+	err error
+}
+
+func (r failingReader) Read(_ []byte) (int, error) {
+	if r.err == nil {
+		return 0, fmt.Errorf("unexpected nil failingReader error")
+	}
+	return 0, r.err
 }

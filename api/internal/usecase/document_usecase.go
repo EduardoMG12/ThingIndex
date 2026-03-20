@@ -1598,15 +1598,18 @@ func resolveContentType(declaredContentType, sniffedContentType, title string) s
 		if sniffedContentType == declaredContentType {
 			return declaredContentType
 		}
+		return sniffedContentType
 	case "text/html":
 		if (strings.HasPrefix(sniffedContentType, "text/html") || strings.HasPrefix(sniffedContentType, "text/plain")) &&
 			(fileExtension == ".html" || fileExtension == ".htm") {
 			return declaredContentType
 		}
+		return sniffedContentType
 	case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
 		if sniffedContentType == "application/zip" && fileExtension == ".xlsx" {
 			return declaredContentType
 		}
+		return sniffedContentType
 	}
 
 	switch {
@@ -1614,7 +1617,9 @@ func resolveContentType(declaredContentType, sniffedContentType, title string) s
 		return "text/html"
 	case sniffedContentType == "application/pdf":
 		return sniffedContentType
+	case sniffedContentType == "application/zip" && fileExtension == ".xlsx":
+		return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 	default:
-		return declaredContentType
+		return sniffedContentType
 	}
 }
