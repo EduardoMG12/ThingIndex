@@ -43,6 +43,27 @@ func (s *providerUseCaseAuditCaptureStub) ListUserProviders(context.Context, uin
 	return nil, nil
 }
 
+func (s *providerUseCaseAuditCaptureStub) GetProviderRuntimeOverview(context.Context, uint) (*domain.ProviderRuntimeOverview, error) {
+	return &domain.ProviderRuntimeOverview{
+		Indexing: &domain.ProviderRuntimeAssignment{
+			Family:           domain.FamilyLLM,
+			ActivationTarget: domain.LLMUsageIndexing,
+			ProviderType:     domain.ProviderOpenAI,
+			PublicMetadata: map[string]string{
+				"model": "gpt-4o-mini",
+			},
+		},
+		Chat: &domain.ProviderRuntimeAssignment{
+			Family:           domain.FamilyLLM,
+			ActivationTarget: domain.LLMUsageChat,
+			ProviderType:     domain.ProviderOllama,
+			PublicMetadata: map[string]string{
+				"model": "llama3.1:8b",
+			},
+		},
+	}, nil
+}
+
 func (s *providerUseCaseAuditCaptureStub) ListProviderAuditEvents(context.Context, uint, domain.ProviderAuditFilter) ([]models.ProviderAuditEvent, error) {
 	return []models.ProviderAuditEvent{
 		{
@@ -256,5 +277,36 @@ func TestListProviderAuditEventsEndpointAcceptsFilters(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "PROVIDER_CONFIG_SAVE") {
 		t.Fatalf("expected provider audit payload, got %q", rec.Body.String())
+	}
+}
+
+func TestListProviderRuntimeOverviewEndpointReturnsActiveAssignments(t *testing.T) {
+	t.Parallel()
+
+	gin.SetMode(gin.TestMode)
+	useCase := &providerUseCaseAuditCaptureStub{}
+	handler := NewProviderHandler(useCase)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("language", "pt_BR")
+		c.Set("user_id", uint(44))
+		c.Next()
+	})
+	router.GET("/api/v1/user/providers/runtime", handler.ListRuntimeOverview)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/user/providers/runtime", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 response, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"activation_target":"INDEXING"`) {
+		t.Fatalf("expected indexing runtime assignment, got %q", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"provider_type":"OLLAMA"`) {
+		t.Fatalf("expected chat runtime provider payload, got %q", rec.Body.String())
 	}
 }

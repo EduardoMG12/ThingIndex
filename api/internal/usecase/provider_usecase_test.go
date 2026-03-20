@@ -13,6 +13,7 @@ import (
 	"thing-index/internal/config"
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
+	"thing-index/internal/pkg/crypto"
 	"thing-index/internal/pkg/netsec"
 	"thing-index/internal/pkg/provider"
 
@@ -99,7 +100,21 @@ func (r *providerRepoStub) GetConfigByLLMUsage(context.Context, uint, string) (*
 }
 
 func (r *providerRepoStub) ListConfigs(context.Context, uint) ([]models.UserProviderConfig, error) {
-	return nil, nil
+	if len(r.allConfigs) > 0 {
+		return r.allConfigs, nil
+	}
+	if len(r.configByProvider) == 0 {
+		return nil, nil
+	}
+
+	configs := make([]models.UserProviderConfig, 0, len(r.configByProvider))
+	for _, config := range r.configByProvider {
+		if config == nil {
+			continue
+		}
+		configs = append(configs, *config)
+	}
+	return configs, nil
 }
 
 func (r *providerRepoStub) ListAllConfigs(context.Context) ([]models.UserProviderConfig, error) {
@@ -974,5 +989,79 @@ func TestSaveCredentialsPersistsLLMWhenConnectionValidationSucceeds(t *testing.T
 	}
 	if !repo.savedConfigs[0].EnabledForChat {
 		t.Fatal("expected saved config to keep chat activation")
+	}
+}
+
+func TestGetProviderRuntimeOverviewReturnsActiveAssignmentsWithPublicMetadata(t *testing.T) {
+	t.Parallel()
+
+	masterKey := "0123456789abcdef0123456789abcdef"
+	encrypt := func(payload string) string {
+		encrypted, err := crypto.Encrypt(payload, masterKey, 9)
+		if err != nil {
+			t.Fatalf("encrypt credentials: %v", err)
+		}
+		return encrypted
+	}
+
+	repo := &providerRepoStub{
+		allConfigs: []models.UserProviderConfig{
+			{
+				ID:                 1,
+				UserID:             9,
+				Family:             domain.FamilyLLM,
+				ProviderType:       domain.ProviderOpenAI,
+				EncryptedData:      encrypt(`{"api_key":"secret","model":"gpt-4o-mini"}`),
+				EnabledForIndexing: true,
+				UpdatedAt:          time.Date(2026, 3, 20, 9, 0, 0, 0, time.UTC),
+			},
+			{
+				ID:             2,
+				UserID:         9,
+				Family:         domain.FamilyLLM,
+				ProviderType:   domain.ProviderOllama,
+				EncryptedData:  encrypt(`{"model":"llama3.1:8b"}`),
+				EnabledForChat: true,
+				UpdatedAt:      time.Date(2026, 3, 20, 9, 5, 0, 0, time.UTC),
+			},
+			{
+				ID:            3,
+				UserID:        9,
+				Family:        domain.FamilyStorage,
+				ProviderType:  domain.ProviderMinio,
+				EncryptedData: encrypt(`{"endpoint":"minio:9000","access_key":"minio","secret_key":"secret","bucket_name":"docs"}`),
+				IsEnabled:     true,
+				UpdatedAt:     time.Date(2026, 3, 20, 9, 10, 0, 0, time.UTC),
+			},
+		},
+	}
+
+	useCase := &providerUseCase{
+		repo:              repo,
+		cfg:               &config.Config{MasterEncryptionKey: masterKey},
+		endpointValidator: netsec.NewStorageEndpointValidator(true),
+	}
+
+	overview, err := useCase.GetProviderRuntimeOverview(context.Background(), 9)
+	if err != nil {
+		t.Fatalf("expected runtime overview, got %v", err)
+	}
+	if overview.Storage == nil || overview.Storage.ProviderType != domain.ProviderMinio {
+		t.Fatalf("expected active storage assignment, got %#v", overview.Storage)
+	}
+	if overview.Storage.PublicMetadata["bucket_name"] != "docs" {
+		t.Fatalf("expected bucket metadata, got %#v", overview.Storage.PublicMetadata)
+	}
+	if overview.Indexing == nil || overview.Indexing.ProviderType != domain.ProviderOpenAI {
+		t.Fatalf("expected active indexing assignment, got %#v", overview.Indexing)
+	}
+	if overview.Indexing.PublicMetadata["model"] != "gpt-4o-mini" {
+		t.Fatalf("expected indexing model metadata, got %#v", overview.Indexing.PublicMetadata)
+	}
+	if overview.Chat == nil || overview.Chat.ProviderType != domain.ProviderOllama {
+		t.Fatalf("expected active chat assignment, got %#v", overview.Chat)
+	}
+	if overview.Chat.PublicMetadata["model"] != "llama3.1:8b" {
+		t.Fatalf("expected chat model metadata, got %#v", overview.Chat.PublicMetadata)
 	}
 }
