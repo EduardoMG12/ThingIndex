@@ -38,17 +38,43 @@ export type DocumentationEmbedding = {
 };
 
 export const FEATURES: DocumentationFeature[] = [
-    { feature: "Arquitetura", rag: "Monolítica", thingindex: "Microsserviços Event-Driven" },
-    { feature: "Busca", rag: "Apenas Vetorial", thingindex: "Híbrida (Grafo de Conhecimento + Vetores)" },
-    { feature: "Rastreabilidade", rag: "Limitada", thingindex: "Total (Página, Parágrafo, Metadados)" }
+    { feature: "Arquitetura", rag: "Chunk-first ou vector-first", thingindex: "Camadas Go/Next.js com dominio relacional" },
+    { feature: "Recuperacao principal", rag: "Similaridade semantica sobre chunks", thingindex: "Contexto consolidado por collection e estruturas tipadas" },
+    { feature: "Rastreabilidade", rag: "Normalmente centrada no chunk", thingindex: "Documento, collection, metadados e tentativas operacionais" }
 ];
 
 export const MODELS: DocumentationModel[] = [
-    { name: "gpt-4-turbo", provider: "OpenAI", input: "$10.00", output: "$30.00", context: "128k", notes: "Alta qualidade analítica" },
-    { name: "gpt-3.5-turbo", provider: "OpenAI", input: "$0.50", output: "$1.50", context: "16k", notes: "Rápido e barato" }
+    {
+        name: "OpenAI-compatible chat",
+        provider: "OpenAI-compatible",
+        input: "Variavel",
+        output: "Variavel",
+        context: "Provider-defined",
+        notes: "Os custos reais dependem da configuracao do usuario e da sincronizacao de pricing.",
+    },
+    {
+        name: "Ollama local chat",
+        provider: "Ollama",
+        input: "Infra local",
+        output: "Infra local",
+        context: "Modelo local",
+        notes: "Adequado para ambiente self-hosted; custo nao deve ser tratado como tabela fixa do runtime.",
+    }
 ];
 
 export const EMBEDDINGS: DocumentationEmbedding[] = [
-    { name: "text-embedding-3-small", provider: "OpenAI", price: "$0.02", dims: "1536", notes: "Otimizado para custo" },
-    { name: "text-embedding-3-large", provider: "OpenAI", price: "$0.13", dims: "3072", notes: "Alta precisão semântica" }
+    {
+        name: "Trilha vetorial experimental",
+        provider: "Pesquisa",
+        price: "Fora do mainline",
+        dims: "N/A",
+        notes: "Comparacoes vetoriais pertencem ao roadmap academico e nao a navegacao principal atual.",
+    },
+    {
+        name: "Precificacao sincronizada",
+        provider: "Runtime",
+        price: "Dinamica",
+        dims: "N/A",
+        notes: "A verdade operacional sobre custo deve vir de precos sincronizados e uso observado.",
+    }
 ];

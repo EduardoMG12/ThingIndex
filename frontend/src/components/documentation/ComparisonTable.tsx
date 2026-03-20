@@ -9,7 +9,7 @@ export function ComparisonTable() {
                 <thead>
                     <tr className="border-b border-border bg-muted/20">
                         <th className="py-3 pr-4 pl-4 text-left font-semibold text-foreground">Característica</th>
-                        <th className="py-3 px-4 text-left font-semibold text-muted-foreground">RAG Tradicional</th>
+                        <th className="py-3 px-4 text-left font-semibold text-muted-foreground">Baseline comum</th>
                         <th className="py-3 pl-4 pr-4 text-left font-semibold text-primary">ThingIndex</th>
                     </tr>
                 </thead>

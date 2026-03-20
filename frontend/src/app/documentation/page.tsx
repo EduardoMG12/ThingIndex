@@ -44,7 +44,7 @@ export default function DocumentationPage() {
                             current runtime
                         </span>
                         <span className="rounded-full border border-border bg-background/70 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-                            tcc / research / roadmap
+                            research clearly marked
                         </span>
                     </div>
 
@@ -56,7 +56,8 @@ export default function DocumentationPage() {
                     <p className="mt-5 max-w-3xl text-base leading-relaxed text-muted-foreground">
                         O ThingIndex hoje é uma plataforma relacional de inteligência documental. O foco do código atual está
                         em autenticação, upload, organização por categoria e collection, indexação estrutural e recuperação de
-                        contexto em PostgreSQL.
+                        contexto em PostgreSQL. Os materiais secundários de pesquisa continuam existindo, mas agora ficam
+                        separados explicitamente do runtime principal.
                     </p>
 
                     <div className="mt-8 grid gap-4 lg:grid-cols-4">
@@ -178,8 +179,9 @@ export default function DocumentationPage() {
 
                     <Section icon={Workflow} title="Processamento Atual" id="processing" delay={0.25}>
                         <p className="mb-6">
-                            O repositório já contém peças para processamento assíncrono, mas o principal valor atual está em
-                            fechar o ciclo de upload, indexação estrutural e recuperação do contexto salvo.
+                            O repositório já fecha o ciclo principal de upload, processamento assíncrono, indexação estrutural
+                            e recuperação do contexto salvo. O trabalho remanescente aqui é endurecer operação e observabilidade,
+                            não provar que o pipeline existe.
                         </p>
 
                         <div className="space-y-4">
@@ -258,17 +260,18 @@ export default function DocumentationPage() {
 
                     <Section icon={GitBranch} title="Roadmap" id="roadmap" delay={0.55}>
                         <ul className="space-y-3">
-                            <li>Ampliar testes automatizados e fixtures de fluxo completo.</li>
-                            <li>Consolidar workers dedicados e observabilidade do processamento.</li>
-                            <li>Integrar o assistente do dashboard ao contexto real dos documentos.</li>
-                            <li>Continuar comparações acadêmicas com abordagens vetoriais e GraphRAG fora do caminho principal atual.</li>
+                            <li>Fechar checklist objetivo de seguranca, abuso e hardening do runtime atual.</li>
+                            <li>Tornar auditoria, readiness de providers e observabilidade mais consultaveis.</li>
+                            <li>Lapidar i18n restante e a UX do chat grounded e do monitoramento documental.</li>
+                            <li>Manter comparacoes com GraphRAG e abordagens vetoriais como trilhas academicas separadas do produto principal.</li>
                         </ul>
                     </Section>
 
                     <Section icon={ScrollText} title="TCC e Artigo" id="academic" delay={0.6}>
                         <p>
                             O repositório também serve como artefato de pesquisa. A principal exigência aqui é clareza: separar
-                            rigorosamente implementação atual, hipótese de pesquisa e evolução futura.
+                            rigorosamente implementação atual, hipótese de pesquisa e evolução futura. A proposta de continuação
+                            e os roadmaps em <code>docs/</code> devem ser lidos como pesquisa derivada, não como descrição do runtime.
                         </p>
                     </Section>
 
@@ -280,10 +283,18 @@ export default function DocumentationPage() {
                     </Section>
 
                     <Section icon={ScrollText} title="Referências e Materiais" id="references" delay={0.7}>
-                        <p>
-                            O documento principal para visão completa do projeto continua sendo o `README.md` na raiz do
-                            monorepo.
-                        </p>
+                        <div className="space-y-4 text-muted-foreground">
+                            <p>
+                                O documento principal para visão completa do projeto continua sendo o <code>README.md</code> na
+                                raiz do monorepo. A leitura recomendada do repositório agora fica separada em camadas claras.
+                            </p>
+                            <ul className="space-y-3">
+                                <li><strong className="text-foreground">Runtime atual:</strong> README raiz, <code>api/README.md</code>, <code>frontend/README.md</code> e esta página.</li>
+                                <li><strong className="text-foreground">Prontidão atual:</strong> <code>docs/functional-readiness-spec.md</code>.</li>
+                                <li><strong className="text-foreground">Pesquisa e roadmap:</strong> <code>docs/proposta-continuacao-tcc.md</code> e <code>docs/roadmap/</code>, sempre tratados como trilhas acadêmicas.</li>
+                                <li><strong className="text-foreground">Índice das docs secundárias:</strong> <code>docs/README.md</code>.</li>
+                            </ul>
+                        </div>
                     </Section>
                 </div>
             </div>

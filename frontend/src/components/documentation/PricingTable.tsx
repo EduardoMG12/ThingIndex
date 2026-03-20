@@ -8,7 +8,7 @@ export function PricingTable() {
             <div>
                 <h4 className="mb-4 text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
                     <span className="h-1 w-1 rounded-full bg-primary" />
-                    Modelos de Linguagem (por 1M tokens)
+                    Modelos de linguagem e custo operacional
                 </h4>
                 <div className="overflow-x-auto rounded-lg border border-border bg-background/50">
                     <table className="w-full text-[11px]">
@@ -16,8 +16,8 @@ export function PricingTable() {
                             <tr className="border-b border-border bg-muted/20">
                                 <th className="py-3 pr-3 pl-4 text-left font-semibold text-foreground">Modelo</th>
                                 <th className="py-3 px-3 text-left font-semibold text-muted-foreground">Provider</th>
-                                <th className="py-3 px-3 text-right font-semibold text-muted-foreground">Input</th>
-                                <th className="py-3 px-3 text-right font-semibold text-muted-foreground">Output</th>
+                                <th className="py-3 px-3 text-right font-semibold text-muted-foreground">Entrada</th>
+                                <th className="py-3 px-3 text-right font-semibold text-muted-foreground">Saida</th>
                                 <th className="py-3 px-3 text-left font-semibold text-muted-foreground">Contexto</th>
                                 <th className="py-3 pl-3 pr-4 text-left font-semibold text-muted-foreground">Observação</th>
                             </tr>
@@ -41,7 +41,7 @@ export function PricingTable() {
             <div>
                 <h4 className="mb-4 text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
                     <span className="h-1 w-1 rounded-full bg-primary" />
-                    Modelos de Embedding
+                    Vetores e embeddings
                 </h4>
                 <div className="overflow-x-auto rounded-lg border border-border bg-background/50">
                     <table className="w-full text-[11px]">
@@ -49,8 +49,8 @@ export function PricingTable() {
                             <tr className="border-b border-border bg-muted/20">
                                 <th className="py-3 pr-3 pl-4 text-left font-semibold text-foreground">Modelo</th>
                                 <th className="py-3 px-3 text-left font-semibold text-muted-foreground">Provider</th>
-                                <th className="py-3 px-3 text-right font-semibold text-muted-foreground">Preço</th>
-                                <th className="py-3 px-3 text-left font-semibold text-muted-foreground">Dimensões</th>
+                                <th className="py-3 px-3 text-right font-semibold text-muted-foreground">Escopo</th>
+                                <th className="py-3 px-3 text-left font-semibold text-muted-foreground">Dimensoes</th>
                                 <th className="py-3 pl-3 pr-4 text-left font-semibold text-muted-foreground">Obs</th>
                             </tr>
                         </thead>
