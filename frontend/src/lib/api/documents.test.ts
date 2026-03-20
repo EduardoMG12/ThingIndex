@@ -286,6 +286,42 @@ describe("documents api", () => {
         }
     });
 
+    it("sanitizes the downloaded filename before assigning it to the browser anchor", async () => {
+        vi.useFakeTimers();
+
+        try {
+            vi.mocked(fetchWithAuthRedirect).mockResolvedValue(
+                new Response("file-body", {
+                    status: 200,
+                    headers: {
+                        "content-disposition": "attachment; filename*=UTF-8''..%2Fsegredo%0D%0Afinal.pdf",
+                    },
+                })
+            );
+
+            const appendSpy = vi.spyOn(document.body, "appendChild");
+            const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+            const createObjectURLSpy = vi.spyOn(window.URL, "createObjectURL").mockReturnValue("blob:test-download");
+            const revokeObjectURLSpy = vi.spyOn(window.URL, "revokeObjectURL").mockImplementation(() => undefined);
+
+            await downloadDocumentOriginal({
+                id: 7,
+                title: "fallback.pdf",
+            });
+
+            vi.runAllTimers();
+
+            expect(clickSpy).toHaveBeenCalledTimes(1);
+            expect(createObjectURLSpy).toHaveBeenCalledTimes(1);
+            expect(revokeObjectURLSpy).toHaveBeenCalledWith("blob:test-download");
+
+            const anchor = appendSpy.mock.calls[0][0] as HTMLAnchorElement;
+            expect(anchor.download).toBe("segredo final.pdf");
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it("normalizes document index payloads and monitoring metadata", async () => {
         vi.mocked(fetchWithAuthRedirect).mockResolvedValue(
             new Response(

@@ -19,6 +19,7 @@ import {
     type TableSection,
 } from "@/lib/api/contracts/document-context";
 import { fetchWithAuthRedirect } from "@/lib/api/fetch-with-auth-redirect";
+import { extractFilenameFromDisposition } from "@/lib/http/content-disposition";
 
 type DocumentApiRecord = {
     id: number;
@@ -319,33 +320,6 @@ export async function downloadDocumentOriginal(document: Pick<Document, "id" | "
     window.setTimeout(() => {
         window.URL.revokeObjectURL(objectURL);
     }, 0);
-}
-
-function extractFilenameFromDisposition(disposition: string | null, fallback: string) {
-    if (!disposition) {
-        return fallback;
-    }
-
-    const encodedMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-    if (encodedMatch?.[1]) {
-        try {
-            return decodeURIComponent(encodedMatch[1]);
-        } catch {
-            return encodedMatch[1];
-        }
-    }
-
-    const quotedMatch = disposition.match(/filename="([^"]+)"/i);
-    if (quotedMatch?.[1]) {
-        return quotedMatch[1];
-    }
-
-    const plainMatch = disposition.match(/filename=([^;]+)/i);
-    if (plainMatch?.[1]) {
-        return plainMatch[1].trim();
-    }
-
-    return fallback;
 }
 
 type DocumentIndexApiRecord = {

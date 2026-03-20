@@ -3,6 +3,11 @@ import { NextResponse } from "next/server";
 
 import { unauthorizedJson } from "@/app/api/_utils/auth";
 import { createForwardHeaders } from "@/app/api/_utils/locale";
+import {
+    buildContentDispositionHeader,
+    isSafePreviewContentType,
+    normalizeContentType,
+} from "@/lib/http/content-disposition";
 
 const API_URL = process.env.API_INTERNAL_URL || "http://api:8080/api/v1";
 
@@ -51,12 +56,24 @@ export async function proxyDocumentContent(
             return NextResponse.json({ message }, { status: response.status });
         }
 
+        const upstreamContentType = normalizeContentType(response.headers.get("content-type"));
+        if (mode === "preview" && !isSafePreviewContentType(upstreamContentType)) {
+            return renderPreviewFailure("Este tipo de arquivo nao pode ser renderizado inline com seguranca.", 415);
+        }
+
         const headers = new Headers();
-        headers.set("Content-Type", response.headers.get("content-type") || "application/octet-stream");
-        headers.set("Content-Disposition", buildDispositionHeader(mode, response.headers.get("content-disposition")));
+        headers.set("Content-Type", upstreamContentType);
+        headers.set(
+            "Content-Disposition",
+            buildContentDispositionHeader(mode === "preview" ? "inline" : "attachment", response.headers.get("content-disposition"))
+        );
         headers.set("Cache-Control", "no-store");
         headers.set("X-Content-Type-Options", "nosniff");
         headers.set("Referrer-Policy", "no-referrer");
+        headers.set("Cross-Origin-Resource-Policy", "same-origin");
+        if (mode === "preview") {
+            headers.set("X-Frame-Options", "SAMEORIGIN");
+        }
 
         const contentLength = response.headers.get("content-length");
         if (contentLength) {
@@ -79,31 +96,6 @@ export async function proxyDocumentContent(
     }
 }
 
-function buildDispositionHeader(mode: ContentProxyMode, upstreamDisposition: string | null) {
-    const filenameDirective = extractFilenameDirective(upstreamDisposition);
-    const dispositionType = mode === "preview" ? "inline" : "attachment";
-
-    return filenameDirective
-        ? `${dispositionType}; ${filenameDirective}`
-        : `${dispositionType}; filename="documento"`;
-}
-
-function extractFilenameDirective(disposition: string | null) {
-    if (!disposition) {
-        return null;
-    }
-
-    const parts = disposition
-        .split(";")
-        .map((part) => part.trim())
-        .filter(Boolean);
-
-    return parts.find((part) => {
-        const lowerPart = part.toLowerCase();
-        return lowerPart.startsWith("filename=") || lowerPart.startsWith("filename*=");
-    }) ?? null;
-}
-
 function defaultErrorMessage(mode: ContentProxyMode, status: number) {
     if (mode === "download") {
         return "Nao foi possivel baixar o documento original.";
@@ -118,10 +110,18 @@ function defaultErrorMessage(mode: ContentProxyMode, status: number) {
 
 function renderPreviewFailure(message: string, status: number) {
     const escapedMessage = escapeHtml(message);
-    const title = status === 410 ? "Arquivo original indisponivel" : "Preview indisponivel";
-    const helperText = status === 410
-        ? "Reenvie o arquivo para restaurar o original ou exclua o registro desatualizado."
-        : "Tente novamente em instantes ou use o download explicito do original quando disponivel.";
+    const title =
+        status === 410
+            ? "Arquivo original indisponivel"
+            : status === 415
+              ? "Preview bloqueado por seguranca"
+              : "Preview indisponivel";
+    const helperText =
+        status === 410
+            ? "Reenvie o arquivo para restaurar o original ou exclua o registro desatualizado."
+            : status === 415
+              ? "Use o download explicito do original para inspecionar esse formato fora do navegador."
+              : "Tente novamente em instantes ou use o download explicito do original quando disponivel.";
 
     return new NextResponse(
         `<!doctype html>
@@ -210,6 +210,8 @@ function renderPreviewFailure(message: string, status: number) {
                 "Content-Type": "text/html; charset=utf-8",
                 "Cache-Control": "no-store",
                 "X-Content-Type-Options": "nosniff",
+                "Referrer-Policy": "no-referrer",
+                "X-Frame-Options": "SAMEORIGIN",
                 "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox;",
             },
         }
