@@ -146,17 +146,17 @@ func (r *GormCatalogDocumentRepository) RetryDocumentIndexing(ctx context.Contex
 		}
 
 		now := time.Now().UTC()
-		if err := tx.Model(&models.Document{}).
-			Where("id = ?", documentID).
-			Updates(map[string]any{
-				"status":                domain.DocumentStatusQueued,
-				"processing_stage":      "QUEUED",
-				"status_detail":         "Documento reenfileirado para nova tentativa de indexacao.",
-				"last_processing_error": "",
-				"index_started_at":      nil,
-				"indexed_at":            nil,
-				"updated_at":            now,
-			}).Error; err != nil {
+		if err := tx.Exec(
+			`UPDATE documents
+			 SET status = ?, processing_stage = ?, status_detail = ?, last_processing_error = ?, index_started_at = NULL, indexed_at = NULL, updated_at = ?
+			 WHERE id = ?`,
+			domain.DocumentStatusQueued,
+			"QUEUED",
+			"Documento reenfileirado para nova tentativa de indexacao.",
+			"",
+			now,
+			documentID,
+		).Error; err != nil {
 			return err
 		}
 
@@ -188,6 +188,7 @@ func (r *GormCatalogDocumentRepository) RetryDocumentIndexing(ctx context.Contex
 			}
 		}
 
+		document = models.Document{}
 		return tx.
 			Preload("CollectionRef").
 			Preload("CollectionRef.Category").
