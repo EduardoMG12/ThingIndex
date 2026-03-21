@@ -311,9 +311,11 @@ func TestCatalogRepositoryListDocumentAuditEventsAppliesFilters(t *testing.T) {
 	})
 
 	events, err := repo.ListDocumentAuditEvents(ctx, user.ID, domain.DocumentAuditFilter{
-		Limit:      10,
+		AuditPageFilter: domain.AuditPageFilter{
+			Limit:  10,
+			Status: "success",
+		},
 		Action:     "document_upload",
-		Status:     "success",
 		DocumentID: &document.ID,
 	})
 	if err != nil {
@@ -324,6 +326,98 @@ func TestCatalogRepositoryListDocumentAuditEventsAppliesFilters(t *testing.T) {
 	}
 	if events[0].Title != document.Title || events[0].Action != "DOCUMENT_UPLOAD" {
 		t.Fatalf("unexpected filtered event: %#v", events[0])
+	}
+}
+
+func TestCatalogRepositoryQueryDocumentAuditEventsReturnsSummaryAndCursor(t *testing.T) {
+	db := openIntegrationDB(t)
+	repo := &GormCatalogDocumentRepository{db: db}
+	ctx := context.Background()
+
+	user := seedIntegrationUser(t, db, "query-document-audit")
+	category := seedIntegrationCategory(t, db, user.ID, "Ops")
+	collection := seedIntegrationCollection(t, db, user.ID, category.ID, "Policies")
+	document := seedIntegrationDocument(t, db, user.ID, category.ID, collection.ID, "policy.pdf")
+
+	now := time.Now().UTC()
+	actorID := user.ID
+	for index, item := range []struct {
+		action string
+		status string
+		title  string
+		detail string
+	}{
+		{action: "DOCUMENT_UPLOAD", status: "SUCCESS", title: "policy.pdf", detail: "uploaded successfully"},
+		{action: "DOCUMENT_RETRY_INDEX", status: "FAILED", title: "policy.pdf", detail: "retry failed"},
+		{action: "DOCUMENT_DELETE", status: "SUCCESS", title: "policy.pdf", detail: "deleted"},
+	} {
+		createdAt := now.Add(time.Duration(index) * time.Minute)
+		mustCreateRecord(t, db, &models.DocumentAuditEvent{
+			UserID:        user.ID,
+			DocumentID:    &document.ID,
+			CollectionID:  &collection.ID,
+			ActorType:     "USER",
+			ActorID:       &actorID,
+			Action:        item.action,
+			Status:        item.status,
+			CorrelationID: "req-document-query-77",
+			Origin:        "POST /api/v1/documents/upload",
+			Title:         item.title,
+			Detail:        item.detail,
+			CreatedAt:     createdAt,
+			UpdatedAt:     createdAt,
+		})
+	}
+
+	result, err := repo.QueryDocumentAuditEvents(ctx, user.ID, domain.DocumentAuditFilter{
+		AuditPageFilter: domain.AuditPageFilter{
+			Limit:         2,
+			Query:         "policy",
+			ActorType:     "user",
+			ActorID:       &actorID,
+			CorrelationID: "req-document-query-77",
+		},
+		DocumentID: &document.ID,
+	})
+	if err != nil {
+		t.Fatalf("QueryDocumentAuditEvents returned error: %v", err)
+	}
+
+	if len(result.Items) != 2 {
+		t.Fatalf("expected 2 items on first page, got %d", len(result.Items))
+	}
+	if !result.PageInfo.HasNext || result.PageInfo.NextCursor == "" {
+		t.Fatalf("expected next cursor on first page, got %#v", result.PageInfo)
+	}
+	if result.Summary.TotalEvents != 3 {
+		t.Fatalf("expected total events 3, got %d", result.Summary.TotalEvents)
+	}
+	if result.Summary.UniqueDocuments != 1 || result.Summary.UniqueCollections != 1 {
+		t.Fatalf("unexpected document summary: %#v", result.Summary)
+	}
+	if len(result.Summary.ActionBreakdown) == 0 || len(result.Summary.StatusBreakdown) == 0 {
+		t.Fatalf("expected action and status breakdowns, got %#v", result.Summary)
+	}
+
+	nextPage, err := repo.QueryDocumentAuditEvents(ctx, user.ID, domain.DocumentAuditFilter{
+		AuditPageFilter: domain.AuditPageFilter{
+			Limit:         2,
+			Cursor:        result.PageInfo.NextCursor,
+			Query:         "policy",
+			ActorType:     "user",
+			ActorID:       &actorID,
+			CorrelationID: "req-document-query-77",
+		},
+		DocumentID: &document.ID,
+	})
+	if err != nil {
+		t.Fatalf("QueryDocumentAuditEvents second page returned error: %v", err)
+	}
+	if len(nextPage.Items) != 1 {
+		t.Fatalf("expected 1 item on second page, got %d", len(nextPage.Items))
+	}
+	if nextPage.PageInfo.HasNext {
+		t.Fatalf("expected no further pages, got %#v", nextPage.PageInfo)
 	}
 }
 

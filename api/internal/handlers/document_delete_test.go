@@ -20,6 +20,7 @@ type documentUseCaseAuditCaptureStub struct {
 	lastRetryAuditContext            domain.AuditContext
 	lastDeleteAuditContext           domain.AuditContext
 	lastCollectionDeleteAuditContext domain.AuditContext
+	lastAuditFilter                  domain.DocumentAuditFilter
 	documentContent                  *domain.DocumentContent
 	documentContentErr               error
 	uploadErr                        error
@@ -76,6 +77,38 @@ func (s *documentUseCaseAuditCaptureStub) ListDocumentAuditEvents(context.Contex
 			Status:    "SUCCESS",
 			ActorType: "USER",
 			Title:     "Arquivo.pdf",
+		},
+	}, nil
+}
+
+func (s *documentUseCaseAuditCaptureStub) QueryDocumentAuditEvents(_ context.Context, _ uint, filter domain.DocumentAuditFilter) (*domain.DocumentAuditQueryResult, error) {
+	s.lastAuditFilter = filter
+	if filter.Cursor == "not-valid" {
+		return nil, domain.ErrAuditCursorInvalid
+	}
+	return &domain.DocumentAuditQueryResult{
+		Items: []models.DocumentAuditEvent{
+			{
+				ID:            1,
+				Action:        "DOCUMENT_UPLOAD",
+				Status:        "SUCCESS",
+				ActorType:     "USER",
+				Title:         "Arquivo.pdf",
+				CorrelationID: "req-http-upload-001",
+			},
+		},
+		Summary: domain.DocumentAuditSummary{
+			TotalEvents: 1,
+			ActionBreakdown: []domain.AuditCountBucket{
+				{Key: "DOCUMENT_UPLOAD", Count: 1},
+			},
+			StatusBreakdown: []domain.AuditCountBucket{
+				{Key: "SUCCESS", Count: 1},
+			},
+		},
+		PageInfo: domain.AuditPageInfo{
+			Limit:    1,
+			Returned: 1,
 		},
 	}, nil
 }
@@ -477,7 +510,7 @@ func TestListDocumentAuditEventsEndpointAcceptsFilters(t *testing.T) {
 	})
 	router.GET("/api/v1/documents/audit", handler.ListDocumentAuditEvents)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/audit?action=document_upload&status=success&document_id=7&collection_id=3&limit=5", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/audit?action=document_upload&status=success&document_id=7&collection_id=3&actor_type=user&actor_id=9&correlation_id=req-77&q=arquivo&created_from=2026-03-20T10:00:00Z&created_to=2026-03-20T12:00:00Z&limit=5", nil)
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -487,5 +520,45 @@ func TestListDocumentAuditEventsEndpointAcceptsFilters(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "DOCUMENT_UPLOAD") {
 		t.Fatalf("expected document audit payload, got %q", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "\"page_info\"") {
+		t.Fatalf("expected document audit page info, got %q", rec.Body.String())
+	}
+	if useCase.lastAuditFilter.Action != "document_upload" || useCase.lastAuditFilter.DocumentID == nil || *useCase.lastAuditFilter.DocumentID != 7 {
+		t.Fatalf("expected audit filters to propagate, got %#v", useCase.lastAuditFilter)
+	}
+	if useCase.lastAuditFilter.ActorID == nil || *useCase.lastAuditFilter.ActorID != 9 {
+		t.Fatalf("expected actor id filter to propagate, got %#v", useCase.lastAuditFilter)
+	}
+	if useCase.lastAuditFilter.CreatedFrom == nil || useCase.lastAuditFilter.CreatedTo == nil {
+		t.Fatalf("expected created_at range filters to propagate, got %#v", useCase.lastAuditFilter)
+	}
+}
+
+func TestListDocumentAuditEventsEndpointRejectsInvalidCursor(t *testing.T) {
+	t.Parallel()
+
+	gin.SetMode(gin.TestMode)
+	useCase := &documentUseCaseAuditCaptureStub{}
+	handler := NewDocumentHandler(useCase, 10<<20)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("language", "pt_BR")
+		c.Set("user_id", uint(23))
+		c.Next()
+	})
+	router.GET("/api/v1/documents/audit", handler.ListDocumentAuditEvents)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/audit?cursor=not-valid", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 response, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(strings.ToLower(rec.Body.String()), "cursor") {
+		t.Fatalf("expected invalid cursor message, got %q", rec.Body.String())
 	}
 }

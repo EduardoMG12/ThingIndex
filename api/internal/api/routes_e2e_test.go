@@ -260,6 +260,49 @@ func TestRoutesE2EDeleteRemovesDocumentAndSourceObject(t *testing.T) {
 	}
 }
 
+func TestRoutesE2EDocumentAuditEndpointReturnsSummaryAndCursor(t *testing.T) {
+	db := openRoutesE2EDB(t)
+	cfg := newRoutesE2EConfig(t)
+	router := gin.New()
+
+	if err := SetupRoutes(router, db, cfg); err != nil {
+		t.Fatalf("SetupRoutes returned error: %v", err)
+	}
+
+	token, uploadedDocument := registerAndUploadHTMLDocument(t, router)
+
+	retryResponse := performAuthorizedRequest(t, router, http.MethodPost, fmt.Sprintf("/api/v1/documents/%d/retry", uploadedDocument.ID), token, nil, "")
+	if retryResponse.Code != http.StatusOK {
+		t.Fatalf("expected retry status 200, got %d body=%s", retryResponse.Code, retryResponse.Body.String())
+	}
+
+	auditResponse := performAuthorizedRequest(t, router, http.MethodGet, fmt.Sprintf("/api/v1/documents/audit?document_id=%d&limit=1", uploadedDocument.ID), token, nil, "")
+	if auditResponse.Code != http.StatusOK {
+		t.Fatalf("expected document audit status 200, got %d body=%s", auditResponse.Code, auditResponse.Body.String())
+	}
+
+	result := extractDocumentAuditQueryFromResponse(t, auditResponse.Body.Bytes())
+	if len(result.Items) != 1 {
+		t.Fatalf("expected 1 document audit item on first page, got %d", len(result.Items))
+	}
+	if result.Summary.TotalEvents < 2 {
+		t.Fatalf("expected at least 2 document audit events, got %#v", result.Summary)
+	}
+	if !result.PageInfo.HasNext || result.PageInfo.NextCursor == "" {
+		t.Fatalf("expected document audit cursor, got %#v", result.PageInfo)
+	}
+
+	nextPageResponse := performAuthorizedRequest(t, router, http.MethodGet, fmt.Sprintf("/api/v1/documents/audit?document_id=%d&limit=1&cursor=%s", uploadedDocument.ID, result.PageInfo.NextCursor), token, nil, "")
+	if nextPageResponse.Code != http.StatusOK {
+		t.Fatalf("expected second document audit status 200, got %d body=%s", nextPageResponse.Code, nextPageResponse.Body.String())
+	}
+
+	nextPage := extractDocumentAuditQueryFromResponse(t, nextPageResponse.Body.Bytes())
+	if len(nextPage.Items) != 1 {
+		t.Fatalf("expected 1 remaining document audit item, got %d", len(nextPage.Items))
+	}
+}
+
 func TestRoutesE2ERejectsSpoofedDocumentUpload(t *testing.T) {
 	db := openRoutesE2EDB(t)
 	cfg := newRoutesE2EConfig(t)
@@ -560,6 +603,62 @@ func TestRoutesE2EProviderRuntimeOverviewListsActiveAssignments(t *testing.T) {
 	}
 }
 
+func TestRoutesE2EProviderAuditEndpointReturnsSummaryAndCursor(t *testing.T) {
+	db := openRoutesE2EDB(t)
+	cfg := newRoutesE2EConfig(t)
+	router := gin.New()
+
+	if err := SetupRoutes(router, db, cfg); err != nil {
+		t.Fatalf("SetupRoutes returned error: %v", err)
+	}
+
+	token := registerRoutesE2EUser(t, router)
+
+	saveProviderResponse := performJSONRequest(t, router, http.MethodPost, "/api/v1/user/providers", map[string]any{
+		"family":           "LLM",
+		"provider_type":    "OPENAI",
+		"credentials":      map[string]any{"api_key": "routes-e2e-secret", "model": "gpt-4o-mini"},
+		"enabled_for_chat": false,
+	}, token)
+	if saveProviderResponse.Code != http.StatusOK {
+		t.Fatalf("expected provider save status 200, got %d body=%s", saveProviderResponse.Code, saveProviderResponse.Body.String())
+	}
+
+	enableProviderResponse := performJSONRequest(t, router, http.MethodPatch, "/api/v1/user/providers/OPENAI", map[string]any{
+		"activation_target": "CHAT",
+		"enabled":           true,
+	}, token)
+	if enableProviderResponse.Code != http.StatusOK {
+		t.Fatalf("expected provider enable status 200, got %d body=%s", enableProviderResponse.Code, enableProviderResponse.Body.String())
+	}
+
+	auditResponse := performAuthorizedRequest(t, router, http.MethodGet, "/api/v1/user/providers/audit?family=LLM&provider_type=OPENAI&limit=1", token, nil, "")
+	if auditResponse.Code != http.StatusOK {
+		t.Fatalf("expected provider audit status 200, got %d body=%s", auditResponse.Code, auditResponse.Body.String())
+	}
+
+	result := extractProviderAuditQueryFromResponse(t, auditResponse.Body.Bytes())
+	if len(result.Items) != 1 {
+		t.Fatalf("expected 1 provider audit item on first page, got %d", len(result.Items))
+	}
+	if result.Summary.TotalEvents != 2 {
+		t.Fatalf("expected 2 provider audit events, got %#v", result.Summary)
+	}
+	if !result.PageInfo.HasNext || result.PageInfo.NextCursor == "" {
+		t.Fatalf("expected provider audit cursor, got %#v", result.PageInfo)
+	}
+
+	nextPageResponse := performAuthorizedRequest(t, router, http.MethodGet, fmt.Sprintf("/api/v1/user/providers/audit?family=LLM&provider_type=OPENAI&limit=1&cursor=%s", result.PageInfo.NextCursor), token, nil, "")
+	if nextPageResponse.Code != http.StatusOK {
+		t.Fatalf("expected second provider audit status 200, got %d body=%s", nextPageResponse.Code, nextPageResponse.Body.String())
+	}
+
+	nextPage := extractProviderAuditQueryFromResponse(t, nextPageResponse.Body.Bytes())
+	if len(nextPage.Items) != 1 {
+		t.Fatalf("expected 1 remaining provider audit item, got %d", len(nextPage.Items))
+	}
+}
+
 type routesE2EDocument struct {
 	ID     uint   `json:"id"`
 	Title  string `json:"title"`
@@ -612,6 +711,52 @@ type routesE2EResponseEnvelope struct {
 	Type    string          `json:"type"`
 	Message string          `json:"message"`
 	Data    json.RawMessage `json:"data"`
+}
+
+type routesE2EAuditBucket struct {
+	Key   string `json:"key"`
+	Count int64  `json:"count"`
+}
+
+type routesE2EAuditPageInfo struct {
+	Limit      int    `json:"limit"`
+	Returned   int    `json:"returned"`
+	HasNext    bool   `json:"has_next"`
+	NextCursor string `json:"next_cursor"`
+}
+
+type routesE2EDocumentAuditEvent struct {
+	ID         uint   `json:"id"`
+	Action     string `json:"action"`
+	Status     string `json:"status"`
+	DocumentID *uint  `json:"document_id"`
+}
+
+type routesE2EDocumentAuditQueryResponse struct {
+	Items   []routesE2EDocumentAuditEvent `json:"items"`
+	Summary struct {
+		TotalEvents     int64                  `json:"total_events"`
+		ActionBreakdown []routesE2EAuditBucket `json:"action_breakdown"`
+		StatusBreakdown []routesE2EAuditBucket `json:"status_breakdown"`
+	} `json:"summary"`
+	PageInfo routesE2EAuditPageInfo `json:"page_info"`
+}
+
+type routesE2EProviderAuditEvent struct {
+	ID           uint   `json:"id"`
+	Action       string `json:"action"`
+	Status       string `json:"status"`
+	ProviderType string `json:"provider_type"`
+}
+
+type routesE2EProviderAuditQueryResponse struct {
+	Items   []routesE2EProviderAuditEvent `json:"items"`
+	Summary struct {
+		TotalEvents     int64                  `json:"total_events"`
+		ActionBreakdown []routesE2EAuditBucket `json:"action_breakdown"`
+		StatusBreakdown []routesE2EAuditBucket `json:"status_breakdown"`
+	} `json:"summary"`
+	PageInfo routesE2EAuditPageInfo `json:"page_info"`
 }
 
 func performJSONRequest(t *testing.T, router http.Handler, method, path string, payload any, token string) *httptest.ResponseRecorder {
@@ -755,6 +900,32 @@ func extractProviderRuntimeOverviewFromResponse(t *testing.T, body []byte) route
 	}
 	if err := json.Unmarshal(body, &envelope); err != nil {
 		t.Fatalf("Unmarshal provider runtime overview returned error: %v", err)
+	}
+
+	return envelope.Data
+}
+
+func extractDocumentAuditQueryFromResponse(t *testing.T, body []byte) routesE2EDocumentAuditQueryResponse {
+	t.Helper()
+
+	var envelope struct {
+		Data routesE2EDocumentAuditQueryResponse `json:"data"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		t.Fatalf("Unmarshal document audit query response returned error: %v", err)
+	}
+
+	return envelope.Data
+}
+
+func extractProviderAuditQueryFromResponse(t *testing.T, body []byte) routesE2EProviderAuditQueryResponse {
+	t.Helper()
+
+	var envelope struct {
+		Data routesE2EProviderAuditQueryResponse `json:"data"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		t.Fatalf("Unmarshal provider audit query response returned error: %v", err)
 	}
 
 	return envelope.Data
@@ -981,6 +1152,7 @@ func openRoutesE2EDB(t *testing.T) *gorm.DB {
 		&models.DocumentChunk{},
 		&models.DocumentOutlineNode{},
 		&models.OutboxEvent{},
+		&models.DocumentProcessingAttempt{},
 		&models.DocumentAuditEvent{},
 		&models.UserProviderConfig{},
 		&models.ProviderModelCatalog{},

@@ -79,6 +79,19 @@ func (r *providerRepoStub) ListProviderAuditEvents(_ context.Context, _ uint, _ 
 	return r.recordedAudits, nil
 }
 
+func (r *providerRepoStub) QueryProviderAuditEvents(_ context.Context, _ uint, _ domain.ProviderAuditFilter) (*domain.ProviderAuditQueryResult, error) {
+	return &domain.ProviderAuditQueryResult{
+		Items: r.recordedAudits,
+		PageInfo: domain.AuditPageInfo{
+			Limit:    len(r.recordedAudits),
+			Returned: len(r.recordedAudits),
+		},
+		Summary: domain.ProviderAuditSummary{
+			TotalEvents: int64(len(r.recordedAudits)),
+		},
+	}, nil
+}
+
 func (r *providerRepoStub) GetConfig(_ context.Context, _ uint, providerType string) (*models.UserProviderConfig, error) {
 	if r.configByProvider == nil {
 		return nil, gorm.ErrRecordNotFound

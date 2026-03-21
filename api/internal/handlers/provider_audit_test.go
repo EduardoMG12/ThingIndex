@@ -17,6 +17,7 @@ import (
 type providerUseCaseAuditCaptureStub struct {
 	lastSaveAuditContext   domain.AuditContext
 	lastToggleAuditContext domain.AuditContext
+	lastAuditFilter        domain.ProviderAuditFilter
 	testConnectionErr      error
 }
 
@@ -72,6 +73,38 @@ func (s *providerUseCaseAuditCaptureStub) ListProviderAuditEvents(context.Contex
 			ProviderType: domain.ProviderOpenAI,
 			Action:       "PROVIDER_CONFIG_SAVE",
 			Status:       "SUCCESS",
+		},
+	}, nil
+}
+
+func (s *providerUseCaseAuditCaptureStub) QueryProviderAuditEvents(_ context.Context, _ uint, filter domain.ProviderAuditFilter) (*domain.ProviderAuditQueryResult, error) {
+	s.lastAuditFilter = filter
+	if filter.Cursor == "invalid" {
+		return nil, domain.ErrAuditCursorInvalid
+	}
+	return &domain.ProviderAuditQueryResult{
+		Items: []models.ProviderAuditEvent{
+			{
+				ID:            1,
+				Family:        domain.FamilyLLM,
+				ProviderType:  domain.ProviderOpenAI,
+				Action:        "PROVIDER_CONFIG_SAVE",
+				Status:        "SUCCESS",
+				CorrelationID: "req-http-provider-save-001",
+			},
+		},
+		Summary: domain.ProviderAuditSummary{
+			TotalEvents: 1,
+			ActionBreakdown: []domain.AuditCountBucket{
+				{Key: "PROVIDER_CONFIG_SAVE", Count: 1},
+			},
+			StatusBreakdown: []domain.AuditCountBucket{
+				{Key: "SUCCESS", Count: 1},
+			},
+		},
+		PageInfo: domain.AuditPageInfo{
+			Limit:    1,
+			Returned: 1,
 		},
 	}, nil
 }
@@ -267,7 +300,7 @@ func TestListProviderAuditEventsEndpointAcceptsFilters(t *testing.T) {
 	})
 	router.GET("/api/v1/user/providers/audit", handler.ListProviderAuditEvents)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/user/providers/audit?family=llm&provider_type=openai&action=provider_config_save&status=success&limit=5", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/user/providers/audit?family=llm&provider_type=openai&action=provider_config_save&status=success&actor_type=user&actor_id=52&correlation_id=req-provider-77&q=openai&created_from=2026-03-20T10:00:00Z&created_to=2026-03-20T12:00:00Z&limit=5", nil)
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -277,6 +310,40 @@ func TestListProviderAuditEventsEndpointAcceptsFilters(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "PROVIDER_CONFIG_SAVE") {
 		t.Fatalf("expected provider audit payload, got %q", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "\"page_info\"") {
+		t.Fatalf("expected provider audit page info, got %q", rec.Body.String())
+	}
+	if useCase.lastAuditFilter.ProviderType != "openai" || useCase.lastAuditFilter.ActorID == nil || *useCase.lastAuditFilter.ActorID != 52 {
+		t.Fatalf("expected provider audit filters to propagate, got %#v", useCase.lastAuditFilter)
+	}
+}
+
+func TestListProviderAuditEventsEndpointRejectsInvalidCursor(t *testing.T) {
+	t.Parallel()
+
+	gin.SetMode(gin.TestMode)
+	useCase := &providerUseCaseAuditCaptureStub{}
+	handler := NewProviderHandler(useCase)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("language", "pt_BR")
+		c.Set("user_id", uint(44))
+		c.Next()
+	})
+	router.GET("/api/v1/user/providers/audit", handler.ListProviderAuditEvents)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/user/providers/audit?cursor=invalid", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 response, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(strings.ToLower(rec.Body.String()), "cursor") {
+		t.Fatalf("expected invalid cursor message, got %q", rec.Body.String())
 	}
 }
 

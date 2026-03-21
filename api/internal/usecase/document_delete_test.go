@@ -54,6 +54,19 @@ func (r *documentRepoStub) ListDocumentAuditEvents(_ context.Context, _ uint, _ 
 	return r.recordedAuditEvents, nil
 }
 
+func (r *documentRepoStub) QueryDocumentAuditEvents(_ context.Context, _ uint, _ domain.DocumentAuditFilter) (*domain.DocumentAuditQueryResult, error) {
+	return &domain.DocumentAuditQueryResult{
+		Items: r.recordedAuditEvents,
+		PageInfo: domain.AuditPageInfo{
+			Limit:    len(r.recordedAuditEvents),
+			Returned: len(r.recordedAuditEvents),
+		},
+		Summary: domain.DocumentAuditSummary{
+			TotalEvents: int64(len(r.recordedAuditEvents)),
+		},
+	}, nil
+}
+
 func (r *documentRepoStub) GetDocumentByID(context.Context, uint, uint) (*models.Document, error) {
 	if r.document == nil {
 		return nil, domain.ErrDocumentNotFound
