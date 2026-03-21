@@ -15,6 +15,7 @@ import {
     type ProviderDefinition,
 } from "@/components/settings/provider-catalog";
 import AppShell from "@/components/layout/AppShell";
+import ProviderAuditExplorer from "@/components/audit/ProviderAuditExplorer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,6 @@ import {
     type ProviderFamily,
     type ProviderType
 } from "@/lib/api/providers";
-import { fetchProviderAuditEvents, type ProviderAuditEvent } from "@/lib/api/audit";
 import {
     fetchPriceHistory,
     fetchPrices,
@@ -46,6 +46,17 @@ import {
 
 type ActivationTarget = "STORAGE" | "INDEXING" | "CHAT";
 type LLMSelectionState = Record<ProviderType, { enabledForIndexing: boolean; enabledForChat: boolean }>;
+
+function getActiveProviderTypes(data: ProviderConfig[]) {
+    const activeStorage = data.find((provider) => provider.family === "STORAGE" && provider.is_enabled);
+    const activeLLM = data.find((provider) => provider.family === "LLM" && provider.enabled_for_indexing)
+        ?? data.find((provider) => provider.family === "LLM" && provider.enabled_for_chat);
+
+    return {
+        activeStorageType: activeStorage?.provider_type,
+        activeLLMType: activeLLM?.provider_type,
+    };
+}
 
 const FAMILY_COPY: Record<ProviderFamily, { title: string; description: string; icon: typeof Database }> = {
     STORAGE: {
@@ -90,28 +101,6 @@ function mergeModelSuggestions(staticSuggestions: string[] = [], discoveredSugge
     return [...new Set([...discoveredSuggestions, ...staticSuggestions].map((item) => item.trim()).filter(Boolean))];
 }
 
-function formatProviderAuditAction(action: string) {
-    switch (action) {
-        case "PROVIDER_CONFIG_SAVE":
-            return "Credenciais salvas";
-        case "PROVIDER_ACTIVATION_CHANGE":
-            return "Ativacao alterada";
-        default:
-            return action.replaceAll("_", " ");
-    }
-}
-
-function formatProviderAuditStatus(status: string) {
-    switch (status) {
-        case "SUCCESS":
-            return "Sucesso";
-        case "FAILED":
-            return "Falha";
-        default:
-            return status || "Desconhecido";
-    }
-}
-
 function getProviderReadinessHint(provider: ProviderDefinition) {
     switch (provider.providerType) {
         case "GOOGLE_GEMINI":
@@ -132,98 +121,6 @@ function getProviderReadinessHint(provider: ProviderDefinition) {
     }
 }
 
-function ProviderAuditPanel({
-    family,
-    activeProvider,
-    events,
-    error,
-}: {
-    family: ProviderFamily;
-    activeProvider: ProviderDefinition;
-    events: ProviderAuditEvent[];
-    error: string | null;
-}) {
-    const [scope, setScope] = useState<"ALL" | "ACTIVE">("ALL");
-
-    const visibleEvents = (scope === "ACTIVE"
-        ? events.filter((event) => event.provider_type === activeProvider.providerType)
-        : events
-    ).slice(0, 8);
-
-    return (
-        <Card className="border-border/80 bg-card/70">
-            <CardHeader className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                    <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-primary">Audit Trail</p>
-                        <h3 className="text-lg font-semibold">Mudancas sensiveis de {family === "LLM" ? "LLMs" : "storage"}</h3>
-                        <p className="text-sm text-muted-foreground">
-                            Leitura rapida do que foi salvo ou ativado, com correlacao por request e contexto operacional.
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant={scope === "ALL" ? "primary" : "outline"}
-                            onClick={() => setScope("ALL")}
-                        >
-                            Toda a familia
-                        </Button>
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant={scope === "ACTIVE" ? "primary" : "outline"}
-                            onClick={() => setScope("ACTIVE")}
-                        >
-                            {activeProvider.name}
-                        </Button>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-                {error ? (
-                    <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-                        {error}
-                    </div>
-                ) : null}
-
-                {!error && visibleEvents.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-border bg-background/45 p-5 text-sm text-muted-foreground">
-                        Nenhum evento de auditoria encontrado para este recorte ainda.
-                    </div>
-                ) : null}
-
-                {!error && visibleEvents.map((event) => (
-                    <div key={event.id} className="rounded-2xl border border-border bg-background/60 p-4">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm font-semibold">{event.provider_type || family}</p>
-                            <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                {formatProviderAuditAction(event.action)}
-                            </span>
-                            <span className={cn(
-                                "rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
-                                event.status === "SUCCESS"
-                                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-                                    : "border-destructive/20 bg-destructive/10 text-destructive"
-                            )}>
-                                {formatProviderAuditStatus(event.status)}
-                            </span>
-                        </div>
-                        <p className="mt-2 text-sm text-foreground/90">{event.detail || "Sem detalhe registrado."}</p>
-                        <div className="mt-3 grid gap-2 text-[11px] text-muted-foreground md:grid-cols-2">
-                            <p>Quando: <span className="font-mono text-foreground">{formatDateTime(event.created_at)}</span></p>
-                            <p>Origem: <span className="font-mono text-foreground">{event.origin || "-"}</span></p>
-                            <p>Request: <span className="font-mono text-foreground">{event.correlation_id || "-"}</span></p>
-                            <p>Actor: <span className="font-mono text-foreground">{event.actor_type}</span></p>
-                        </div>
-                    </div>
-                ))}
-            </CardContent>
-        </Card>
-    );
-}
-
 function FamilySection({
     family,
     providers,
@@ -242,8 +139,7 @@ function FamilySection({
     isLoadingModels,
     isTestingProvider,
     discoveredModels,
-    auditEvents,
-    auditError,
+    auditReloadToken,
 }: {
     family: ProviderFamily;
     providers: ProviderDefinition[];
@@ -262,10 +158,9 @@ function FamilySection({
     isLoadingModels: boolean;
     isTestingProvider: boolean;
     discoveredModels: Partial<Record<ProviderType, string[]>>;
-    auditEvents: ProviderAuditEvent[];
-    auditError: string | null;
+    auditReloadToken: number;
 }) {
-    const { t } = useI18n();
+    const { locale, t } = useI18n();
     const familyCopy = {
         ...FAMILY_COPY[family],
         title: t(`settings.family.${family}.title`),
@@ -670,11 +565,12 @@ function FamilySection({
                 </CardContent>
             </Card>
 
-            <ProviderAuditPanel
+            <ProviderAuditExplorer
+                locale={locale}
                 family={family}
-                activeProvider={activeProvider}
-                events={auditEvents}
-                error={auditError}
+                activeProviderName={activeProvider.name}
+                activeProviderType={activeProvider.providerType}
+                reloadToken={auditReloadToken}
             />
         </section>
     );
@@ -900,8 +796,7 @@ function PricingSection({
 export default function SettingsPage() {
     const { t } = useI18n();
     const [providers, setProviders] = useState<ProviderConfig[]>([]);
-    const [providerAuditEvents, setProviderAuditEvents] = useState<ProviderAuditEvent[]>([]);
-    const [providerAuditError, setProviderAuditError] = useState<string | null>(null);
+    const [providerAuditReloadToken, setProviderAuditReloadToken] = useState(0);
     const [discoveredModels, setDiscoveredModels] = useState<Partial<Record<ProviderType, string[]>>>({});
     const [testingProviderType, setTestingProviderType] = useState<ProviderType | null>(null);
     const [loadingModelsProviderType, setLoadingModelsProviderType] = useState<ProviderType | null>(null);
@@ -917,6 +812,20 @@ export default function SettingsPage() {
     const [error, setError] = useState<string | null>(null);
     const [isPending, startTransition] = useTransition();
 
+    function applyLoadedProviders(data: ProviderConfig[]) {
+        setProviders(data);
+        syncLLMSelections(data);
+
+        const { activeStorageType, activeLLMType } = getActiveProviderTypes(data);
+
+        if (activeStorageType) {
+            setActiveStorageType(activeStorageType);
+        }
+        if (activeLLMType) {
+            setActiveLLMType(activeLLMType);
+        }
+    }
+
     useEffect(() => {
         const controller = new AbortController();
 
@@ -924,37 +833,25 @@ export default function SettingsPage() {
             try {
                 setIsLoading(true);
                 setError(null);
-                setProviderAuditError(null);
-                const [data, auditResult, sourceData, priceData, historyData] = await Promise.all([
+                const [data, sourceData, priceData, historyData] = await Promise.all([
                     fetchProviders(controller.signal),
-                    fetchProviderAuditEvents({ limit: 24, signal: controller.signal })
-                        .then((items) => ({ items, error: null as string | null }))
-                        .catch((err) => ({
-                            items: [] as ProviderAuditEvent[],
-                            error: err instanceof Error ? err.message : "Nao foi possivel carregar a auditoria de providers.",
-                        })),
                     fetchPricingSources(controller.signal),
                     fetchPrices(controller.signal),
                     fetchPriceHistory(100, controller.signal),
                 ]);
                 setProviders(data);
-                setProviderAuditEvents(auditResult.items);
-                setProviderAuditError(auditResult.error);
+                syncLLMSelections(data);
+
+                const { activeStorageType, activeLLMType } = getActiveProviderTypes(data);
+                if (activeStorageType) {
+                    setActiveStorageType(activeStorageType);
+                }
+                if (activeLLMType) {
+                    setActiveLLMType(activeLLMType);
+                }
                 setPricingSources(sourceData);
                 setPrices(priceData);
                 setPriceHistory(historyData);
-                syncLLMSelections(data);
-
-                const activeStorage = data.find((provider) => provider.family === "STORAGE" && provider.is_enabled);
-                const activeLLM = data.find((provider) => provider.family === "LLM" && provider.enabled_for_indexing)
-                    ?? data.find((provider) => provider.family === "LLM" && provider.enabled_for_chat);
-
-                if (activeStorage) {
-                    setActiveStorageType(activeStorage.provider_type);
-                }
-                if (activeLLM) {
-                    setActiveLLMType(activeLLM.provider_type);
-                }
             } catch (err) {
                 if (controller.signal.aborted) {
                     return;
@@ -974,26 +871,17 @@ export default function SettingsPage() {
     function reloadProviders() {
         startTransition(async () => {
             try {
-                setProviderAuditError(null);
-                const [data, auditResult, sourceData, priceData, historyData] = await Promise.all([
+                const [data, sourceData, priceData, historyData] = await Promise.all([
                     fetchProviders(),
-                    fetchProviderAuditEvents({ limit: 24 })
-                        .then((items) => ({ items, error: null as string | null }))
-                        .catch((err) => ({
-                            items: [] as ProviderAuditEvent[],
-                            error: err instanceof Error ? err.message : "Nao foi possivel carregar a auditoria de providers.",
-                        })),
                     fetchPricingSources(),
                     fetchPrices(),
                     fetchPriceHistory(100),
                 ]);
-                setProviders(data);
-                setProviderAuditEvents(auditResult.items);
-                setProviderAuditError(auditResult.error);
+                applyLoadedProviders(data);
                 setPricingSources(sourceData);
                 setPrices(priceData);
                 setPriceHistory(historyData);
-                syncLLMSelections(data);
+                setProviderAuditReloadToken((current) => current + 1);
             } catch (err) {
                 toast.error(err instanceof Error ? err.message : "Could not refresh providers.");
             }
@@ -1092,19 +980,9 @@ export default function SettingsPage() {
                     enabledForChat: provider.family === "LLM" ? llmSelections[provider.providerType]?.enabledForChat : undefined,
                 });
                 toast.success(t("settings.providerSavedEnabled", { name: provider.name }));
-                const [latest, auditResult] = await Promise.all([
-                    fetchProviders(),
-                    fetchProviderAuditEvents({ limit: 24 })
-                        .then((items) => ({ items, error: null as string | null }))
-                        .catch((err) => ({
-                            items: [] as ProviderAuditEvent[],
-                            error: err instanceof Error ? err.message : "Nao foi possivel carregar a auditoria de providers.",
-                        })),
-                ]);
-                setProviders(latest);
-                setProviderAuditEvents(auditResult.items);
-                setProviderAuditError(auditResult.error);
-                syncLLMSelections(latest);
+                const latest = await fetchProviders();
+                applyLoadedProviders(latest);
+                setProviderAuditReloadToken((current) => current + 1);
             } catch (err) {
                 toast.error(err instanceof Error ? err.message : "Nao foi possivel salvar o provider.");
             }
@@ -1187,19 +1065,9 @@ export default function SettingsPage() {
                         ? t("settings.providerEnabled", { name: provider.name })
                         : t("settings.providerDisabled", { name: provider.name }));
                 }
-                const [latest, auditResult] = await Promise.all([
-                    fetchProviders(),
-                    fetchProviderAuditEvents({ limit: 24 })
-                        .then((items) => ({ items, error: null as string | null }))
-                        .catch((err) => ({
-                            items: [] as ProviderAuditEvent[],
-                            error: err instanceof Error ? err.message : "Nao foi possivel carregar a auditoria de providers.",
-                        })),
-                ]);
-                setProviders(latest);
-                setProviderAuditEvents(auditResult.items);
-                setProviderAuditError(auditResult.error);
-                syncLLMSelections(latest);
+                const latest = await fetchProviders();
+                applyLoadedProviders(latest);
+                setProviderAuditReloadToken((current) => current + 1);
             } catch (err) {
                 toast.error(err instanceof Error ? err.message : "Nao foi possivel atualizar o provider.");
             }
@@ -1304,8 +1172,7 @@ export default function SettingsPage() {
                             isLoadingModels={loadingModelsProviderType === activeStorageType}
                             isTestingProvider={testingProviderType === activeStorageType}
                             discoveredModels={discoveredModels}
-                            auditEvents={providerAuditEvents.filter((event) => event.family === "STORAGE")}
-                            auditError={providerAuditError}
+                            auditReloadToken={providerAuditReloadToken}
                         />
 
                         <FamilySection
@@ -1326,8 +1193,7 @@ export default function SettingsPage() {
                             isLoadingModels={loadingModelsProviderType === activeLLMType}
                             isTestingProvider={testingProviderType === activeLLMType}
                             discoveredModels={discoveredModels}
-                            auditEvents={providerAuditEvents.filter((event) => event.family === "LLM")}
-                            auditError={providerAuditError}
+                            auditReloadToken={providerAuditReloadToken}
                         />
 
                         <PricingSection

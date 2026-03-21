@@ -1,0 +1,439 @@
+"use client";
+
+import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
+import { Clock3, Loader2, RefreshCw, Search, Settings2 } from "lucide-react";
+
+import AuditMetadataList from "@/components/audit/AuditMetadataList";
+import AuditStatusBadge from "@/components/audit/AuditStatusBadge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+    fetchProviderAuditEvents,
+    type ProviderAuditEvent,
+    type ProviderAuditQueryResult,
+} from "@/lib/api/audit";
+import {
+    formatAuditActor,
+    formatAuditDateTime,
+    formatProviderAuditAction,
+    getAuditBucketCount,
+    toRFC3339FromDateTimeLocal,
+} from "@/lib/audit";
+import { cn } from "@/lib/utils";
+
+type ProviderAuditExplorerProps = {
+    locale: string;
+    family: "LLM" | "STORAGE";
+    activeProviderName: string;
+    activeProviderType: string;
+    reloadToken?: number;
+};
+
+type Scope = "ALL" | "ACTIVE";
+
+type ProviderFilters = {
+    scope: Scope;
+    action: string;
+    status: string;
+    query: string;
+    correlationId: string;
+    createdFrom: string;
+    createdTo: string;
+};
+
+const initialFilters: ProviderFilters = {
+    scope: "ALL",
+    action: "ALL",
+    status: "ALL",
+    query: "",
+    correlationId: "",
+    createdFrom: "",
+    createdTo: "",
+};
+
+const emptyResult: ProviderAuditQueryResult = {
+    items: [],
+    summary: {
+        total_events: 0,
+        unique_providers: 0,
+        unique_requests: 0,
+        action_breakdown: [],
+        status_breakdown: [],
+    },
+    page_info: {
+        limit: 0,
+        returned: 0,
+        has_next: false,
+    },
+};
+
+function SummaryCard({
+    label,
+    value,
+    detail,
+}: {
+    label: string;
+    value: string;
+    detail: string;
+}) {
+    return (
+        <div className="rounded-xl border border-border bg-background/60 p-4">
+            <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">{label}</p>
+            <p className="mt-3 text-xl font-semibold">{value}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+        </div>
+    );
+}
+
+function ScopeButton({
+    active,
+    children,
+    onClick,
+}: {
+    active: boolean;
+    children: ReactNode;
+    onClick: () => void;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={cn(
+                "rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors",
+                active
+                    ? "border-primary/20 bg-primary/10 text-primary"
+                    : "border-border bg-background text-muted-foreground"
+            )}
+        >
+            {children}
+        </button>
+    );
+}
+
+function ProviderAuditEventCard({
+    event,
+    locale,
+}: {
+    event: ProviderAuditEvent;
+    locale: string;
+}) {
+    return (
+        <div className="rounded-xl border border-border bg-background/70 p-4">
+            <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-semibold">{event.provider_type || "Provider"}</p>
+                <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {formatProviderAuditAction(event.action)}
+                </span>
+                <AuditStatusBadge status={event.status} />
+            </div>
+
+            <p className="mt-2 text-sm text-foreground/90">{event.detail || "Sem detalhe registrado."}</p>
+
+            <AuditMetadataList metadata={event.metadata} />
+
+            <div className="mt-3 grid gap-2 text-[11px] text-muted-foreground md:grid-cols-2 xl:grid-cols-3">
+                <p>Quando: <span className="font-mono text-foreground">{formatAuditDateTime(event.created_at, locale)}</span></p>
+                <p>Origem: <span className="font-mono text-foreground">{event.origin || "-"}</span></p>
+                <p>Request: <span className="font-mono text-foreground">{event.correlation_id || "-"}</span></p>
+                <p>Actor: <span className="font-mono text-foreground">{formatAuditActor(event.actor_type, event.actor_id)}</span></p>
+                <p>Familia: <span className="font-mono text-foreground">{event.family || "-"}</span></p>
+                <p>Config: <span className="font-mono text-foreground">{event.provider_config_id ?? "-"}</span></p>
+            </div>
+        </div>
+    );
+}
+
+export default function ProviderAuditExplorer({
+    locale,
+    family,
+    activeProviderName,
+    activeProviderType,
+    reloadToken = 0,
+}: ProviderAuditExplorerProps) {
+    const [filters, setFilters] = useState<ProviderFilters>(initialFilters);
+    const [appliedFilters, setAppliedFilters] = useState<ProviderFilters>(initialFilters);
+    const [result, setResult] = useState<ProviderAuditQueryResult>(emptyResult);
+    const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function load() {
+            setIsLoading(true);
+            setError(null);
+
+            try {
+                const nextResult = await fetchProviderAuditEvents({
+                    limit: 10,
+                    family,
+                    providerType: appliedFilters.scope === "ACTIVE" ? activeProviderType : undefined,
+                    query: appliedFilters.query || undefined,
+                    action: appliedFilters.action === "ALL" ? undefined : appliedFilters.action,
+                    status: appliedFilters.status === "ALL" ? undefined : appliedFilters.status,
+                    correlationId: appliedFilters.correlationId || undefined,
+                    createdFrom: toRFC3339FromDateTimeLocal(appliedFilters.createdFrom),
+                    createdTo: toRFC3339FromDateTimeLocal(appliedFilters.createdTo),
+                });
+
+                if (!cancelled) {
+                    setResult(nextResult);
+                }
+            } catch (nextError) {
+                if (!cancelled) {
+                    setError(nextError instanceof Error ? nextError.message : "Nao foi possivel carregar a auditoria de providers.");
+                    setResult(emptyResult);
+                }
+            } finally {
+                if (!cancelled) {
+                    setIsLoading(false);
+                }
+            }
+        }
+
+        void load();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [activeProviderType, appliedFilters, family, reloadToken]);
+
+    async function handleLoadMore() {
+        if (!result.page_info.has_next || !result.page_info.next_cursor) {
+            return;
+        }
+
+        setIsLoadingMore(true);
+        setError(null);
+
+        try {
+            const nextPage = await fetchProviderAuditEvents({
+                limit: 10,
+                cursor: result.page_info.next_cursor,
+                family,
+                providerType: appliedFilters.scope === "ACTIVE" ? activeProviderType : undefined,
+                query: appliedFilters.query || undefined,
+                action: appliedFilters.action === "ALL" ? undefined : appliedFilters.action,
+                status: appliedFilters.status === "ALL" ? undefined : appliedFilters.status,
+                correlationId: appliedFilters.correlationId || undefined,
+                createdFrom: toRFC3339FromDateTimeLocal(appliedFilters.createdFrom),
+                createdTo: toRFC3339FromDateTimeLocal(appliedFilters.createdTo),
+            });
+
+            setResult((current) => ({
+                ...nextPage,
+                items: [...current.items, ...nextPage.items],
+            }));
+        } catch (nextError) {
+            setError(nextError instanceof Error ? nextError.message : "Nao foi possivel carregar mais eventos de auditoria.");
+        } finally {
+            setIsLoadingMore(false);
+        }
+    }
+
+    const failedEvents = getAuditBucketCount(result.summary.status_breakdown, "FAILED");
+    const configSaveEvents = getAuditBucketCount(result.summary.action_breakdown, "PROVIDER_CONFIG_SAVE");
+    const activationEvents = getAuditBucketCount(result.summary.action_breakdown, "PROVIDER_ACTIVATION_CHANGE");
+
+    return (
+        <Card className="border-border/80 bg-card/70">
+            <CardHeader className="space-y-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-primary">Audit Trail</p>
+                        <h3 className="text-lg font-semibold">
+                            Mudancas sensiveis de {family === "LLM" ? "LLMs" : "storage"}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                            Consulta operacional do que foi salvo ou ativado, com resumo agregado e recorte para o provider atualmente em foco.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <ScopeButton active={filters.scope === "ALL"} onClick={() => setFilters((current) => ({ ...current, scope: "ALL" }))}>
+                            Toda a familia
+                        </ScopeButton>
+                        <ScopeButton active={filters.scope === "ACTIVE"} onClick={() => setFilters((current) => ({ ...current, scope: "ACTIVE" }))}>
+                            Ativo: {activeProviderName}
+                        </ScopeButton>
+                    </div>
+                </div>
+            </CardHeader>
+
+            <CardContent className="space-y-6">
+                <form
+                    className="grid gap-4 rounded-2xl border border-border bg-background/55 p-4 lg:grid-cols-2 xl:grid-cols-4"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        setAppliedFilters(filters);
+                    }}
+                >
+                    <div className="space-y-2 xl:col-span-2">
+                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-query`}>Busca operacional</Label>
+                        <div className="relative">
+                            <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                id={`${family.toLowerCase()}-provider-audit-query`}
+                                value={filters.query}
+                                onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))}
+                                className="pl-9"
+                                placeholder="Provider, detalhe, origem ou request id"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-action`}>Acao</Label>
+                        <Input
+                            id={`${family.toLowerCase()}-provider-audit-action`}
+                            list={`${family.toLowerCase()}-provider-audit-actions`}
+                            value={filters.action}
+                            onChange={(event) => setFilters((current) => ({ ...current, action: event.target.value || "ALL" }))}
+                            placeholder="ALL"
+                        />
+                        <datalist id={`${family.toLowerCase()}-provider-audit-actions`}>
+                            <option value="ALL" />
+                            <option value="PROVIDER_CONFIG_SAVE" />
+                            <option value="PROVIDER_ACTIVATION_CHANGE" />
+                        </datalist>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-status`}>Status</Label>
+                        <Input
+                            id={`${family.toLowerCase()}-provider-audit-status`}
+                            list={`${family.toLowerCase()}-provider-audit-statuses`}
+                            value={filters.status}
+                            onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value || "ALL" }))}
+                            placeholder="ALL"
+                        />
+                        <datalist id={`${family.toLowerCase()}-provider-audit-statuses`}>
+                            <option value="ALL" />
+                            <option value="SUCCESS" />
+                            <option value="FAILED" />
+                        </datalist>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-correlation`}>Request ID</Label>
+                        <Input
+                            id={`${family.toLowerCase()}-provider-audit-correlation`}
+                            value={filters.correlationId}
+                            onChange={(event) => setFilters((current) => ({ ...current, correlationId: event.target.value }))}
+                            placeholder="req-..."
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-created-from`}>Criado de</Label>
+                        <Input
+                            id={`${family.toLowerCase()}-provider-audit-created-from`}
+                            type="datetime-local"
+                            value={filters.createdFrom}
+                            onChange={(event) => setFilters((current) => ({ ...current, createdFrom: event.target.value }))}
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-created-to`}>Criado ate</Label>
+                        <Input
+                            id={`${family.toLowerCase()}-provider-audit-created-to`}
+                            type="datetime-local"
+                            value={filters.createdTo}
+                            onChange={(event) => setFilters((current) => ({ ...current, createdTo: event.target.value }))}
+                        />
+                    </div>
+
+                    <div className="flex items-end gap-2 xl:col-span-4">
+                        <Button type="submit" className="gap-2">
+                            <Settings2 className="h-4 w-4" />
+                            Aplicar filtros
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="gap-2"
+                            onClick={() => {
+                                setFilters(initialFilters);
+                                setAppliedFilters(initialFilters);
+                            }}
+                        >
+                            <RefreshCw className="h-4 w-4" />
+                            Limpar
+                        </Button>
+                    </div>
+                </form>
+
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <SummaryCard
+                        label="Eventos"
+                        value={String(result.summary.total_events)}
+                        detail={`${failedEvents} falhas no recorte atual`}
+                    />
+                    <SummaryCard
+                        label="Providers"
+                        value={String(result.summary.unique_providers)}
+                        detail={appliedFilters.scope === "ACTIVE" ? `Escopo atual: ${activeProviderName}` : "Cobertura da familia filtrada"}
+                    />
+                    <SummaryCard
+                        label="Requests"
+                        value={String(result.summary.unique_requests)}
+                        detail="Correlacoes distintas registradas"
+                    />
+                    <SummaryCard
+                        label="Acoes"
+                        value={String(configSaveEvents + activationEvents)}
+                        detail={`${configSaveEvents} saves · ${activationEvents} ativacoes`}
+                    />
+                </div>
+
+                {error ? (
+                    <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+                        {error}
+                    </div>
+                ) : null}
+
+                {isLoading ? (
+                    <div className="flex items-center gap-2 rounded-2xl border border-dashed border-border bg-background/45 p-5 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Carregando auditoria de providers...
+                    </div>
+                ) : null}
+
+                {!isLoading && !error && result.items.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-border bg-background/45 p-5 text-sm text-muted-foreground">
+                        Nenhum evento de auditoria encontrado para este recorte ainda.
+                    </div>
+                ) : null}
+
+                {!isLoading && result.items.length > 0 ? (
+                    <div className="space-y-3">
+                        {result.items.map((event) => (
+                            <ProviderAuditEventCard key={event.id} event={event} locale={locale} />
+                        ))}
+                    </div>
+                ) : null}
+
+                {!isLoading && result.page_info.has_next ? (
+                    <div className="flex justify-center">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                                void handleLoadMore();
+                            }}
+                            disabled={isLoadingMore}
+                            className="gap-2"
+                        >
+                            {isLoadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock3 className="h-4 w-4" />}
+                            Carregar mais eventos
+                        </Button>
+                    </div>
+                ) : null}
+            </CardContent>
+        </Card>
+    );
+}
