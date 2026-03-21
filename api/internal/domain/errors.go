@@ -56,5 +56,7 @@ var (
 	ErrChatConversationDelete       = errors.New("failed to delete chat conversation")
 	ErrChatConversationFind         = errors.New("failed to find chat conversation")
 	ErrChatConversationMessageStore = errors.New("failed to store chat conversation message")
+	ErrAuditCursorInvalid           = errors.New("audit cursor is invalid")
+	ErrAuditTimeRangeInvalid        = errors.New("audit time range is invalid")
 	ErrInternal                     = errors.New("internal server error")
 )

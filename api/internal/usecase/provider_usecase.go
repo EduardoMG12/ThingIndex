@@ -306,18 +306,20 @@ func (u *providerUseCase) GetProviderRuntimeOverview(ctx context.Context, userID
 }
 
 func (u *providerUseCase) ListProviderAuditEvents(ctx context.Context, userID uint, filter domain.ProviderAuditFilter) ([]models.ProviderAuditEvent, error) {
-	filter.Family = strings.ToUpper(strings.TrimSpace(filter.Family))
-	filter.ProviderType = normalizeProviderType(filter.ProviderType)
-	filter.Action = strings.ToUpper(strings.TrimSpace(filter.Action))
-	filter.Status = strings.ToUpper(strings.TrimSpace(filter.Status))
-	if filter.Limit <= 0 {
-		filter.Limit = 20
+	result, err := u.QueryProviderAuditEvents(ctx, userID, filter)
+	if err != nil {
+		return nil, err
 	}
-	if filter.Limit > 100 {
-		filter.Limit = 100
+	return result.Items, nil
+}
+
+func (u *providerUseCase) QueryProviderAuditEvents(ctx context.Context, userID uint, filter domain.ProviderAuditFilter) (*domain.ProviderAuditQueryResult, error) {
+	normalizedFilter, err := normalizeProviderAuditFilter(filter)
+	if err != nil {
+		return nil, err
 	}
 
-	return u.repo.ListProviderAuditEvents(ctx, userID, filter)
+	return u.repo.QueryProviderAuditEvents(ctx, userID, normalizedFilter)
 }
 
 func (u *providerUseCase) SyncModelCatalogs(ctx context.Context) error {

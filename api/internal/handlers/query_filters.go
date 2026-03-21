@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"thing-index/internal/pkg/response"
 
@@ -24,6 +25,22 @@ func parseOptionalUintQuery(c *gin.Context, queryName string, invalidMessage str
 
 	result := uint(parsed)
 	return &result, true
+}
+
+func parseOptionalTimeQuery(c *gin.Context, queryName string, invalidMessage string) (*time.Time, bool) {
+	value := strings.TrimSpace(c.Query(queryName))
+	if value == "" {
+		return nil, true
+	}
+
+	parsed, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "error", invalidMessage, nil)
+		return nil, false
+	}
+
+	parsed = parsed.UTC()
+	return &parsed, true
 }
 
 func parseOptionalLimitQuery(c *gin.Context, defaultLimit int, invalidMessage string) (int, bool) {

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
+	"time"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -78,9 +79,63 @@ func (r *gormProviderRepository) CreateProviderAuditEvents(ctx context.Context, 
 }
 
 func (r *gormProviderRepository) ListProviderAuditEvents(ctx context.Context, userID uint, filter domain.ProviderAuditFilter) ([]models.ProviderAuditEvent, error) {
-	var events []models.ProviderAuditEvent
+	result, err := r.QueryProviderAuditEvents(ctx, userID, filter)
+	if err != nil {
+		return nil, err
+	}
 
+	return result.Items, nil
+}
+
+func (r *gormProviderRepository) QueryProviderAuditEvents(ctx context.Context, userID uint, filter domain.ProviderAuditFilter) (*domain.ProviderAuditQueryResult, error) {
+	itemsQuery, err := r.buildProviderAuditQuery(ctx, userID, filter, true)
+	if err != nil {
+		return nil, err
+	}
+
+	summaryQuery, err := r.buildProviderAuditQuery(ctx, userID, filter, false)
+	if err != nil {
+		return nil, err
+	}
+
+	limit := clampAuditLimit(filter.Limit)
+	var events []models.ProviderAuditEvent
+	if err := itemsQuery.
+		Order("created_at DESC, id DESC").
+		Limit(limit + 1).
+		Find(&events).Error; err != nil {
+		return nil, err
+	}
+
+	pageInfo := domain.AuditPageInfo{
+		Limit: limit,
+	}
+	if len(events) > limit {
+		lastItem := events[limit-1]
+		pageInfo.HasNext = true
+		pageInfo.NextCursor = domain.EncodeAuditCursor(domain.AuditCursor{
+			CreatedAt: lastItem.CreatedAt,
+			ID:        lastItem.ID,
+		})
+		events = events[:limit]
+	}
+	pageInfo.Returned = len(events)
+
+	summary, err := r.buildProviderAuditSummary(summaryQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	return &domain.ProviderAuditQueryResult{
+		Items:    events,
+		Summary:  summary,
+		PageInfo: pageInfo,
+	}, nil
+}
+
+func (r *gormProviderRepository) buildProviderAuditQuery(ctx context.Context, userID uint, filter domain.ProviderAuditFilter, includeCursor bool) (*gorm.DB, error) {
 	query := r.db.WithContext(ctx).
+		Model(&models.ProviderAuditEvent{}).
 		Where("user_id = ?", userID)
 
 	if family := strings.ToUpper(strings.TrimSpace(filter.Family)); family != "" {
@@ -92,26 +147,63 @@ func (r *gormProviderRepository) ListProviderAuditEvents(ctx context.Context, us
 	if action := strings.ToUpper(strings.TrimSpace(filter.Action)); action != "" {
 		query = query.Where("action = ?", action)
 	}
-	if status := strings.ToUpper(strings.TrimSpace(filter.Status)); status != "" {
-		query = query.Where("status = ?", status)
+	if search := escapeLikePattern(filter.Query); search != "" {
+		pattern := "%" + search + "%"
+		query = query.Where(
+			`(
+				LOWER(COALESCE(provider_type, '')) LIKE ? ESCAPE '\' OR
+				LOWER(COALESCE(detail, '')) LIKE ? ESCAPE '\' OR
+				LOWER(COALESCE(origin, '')) LIKE ? ESCAPE '\' OR
+				LOWER(COALESCE(correlation_id, '')) LIKE ? ESCAPE '\'
+			)`,
+			pattern,
+			pattern,
+			pattern,
+			pattern,
+		)
 	}
 
-	limit := filter.Limit
-	if limit <= 0 {
-		limit = 20
-	}
-	if limit > 100 {
-		limit = 100
+	return applyCommonAuditFilters(query, filter.AuditPageFilter, includeCursor)
+}
+
+func (r *gormProviderRepository) buildProviderAuditSummary(query *gorm.DB) (domain.ProviderAuditSummary, error) {
+	type summaryRow struct {
+		TotalEvents     int64
+		UniqueProviders int64
+		UniqueRequests  int64
+		LastEventAt     *time.Time
 	}
 
+	var row summaryRow
 	if err := query.
-		Order("created_at DESC, id DESC").
-		Limit(limit).
-		Find(&events).Error; err != nil {
-		return nil, err
+		Session(&gorm.Session{}).
+		Select(
+			"COUNT(*) AS total_events",
+			"COUNT(DISTINCT provider_type) AS unique_providers",
+			"COUNT(DISTINCT NULLIF(correlation_id, '')) AS unique_requests",
+			"MAX(created_at) AS last_event_at",
+		).
+		Scan(&row).Error; err != nil {
+		return domain.ProviderAuditSummary{}, err
 	}
 
-	return events, nil
+	actionBreakdown, err := loadAuditBuckets(query, "action")
+	if err != nil {
+		return domain.ProviderAuditSummary{}, err
+	}
+	statusBreakdown, err := loadAuditBuckets(query, "status")
+	if err != nil {
+		return domain.ProviderAuditSummary{}, err
+	}
+
+	return domain.ProviderAuditSummary{
+		TotalEvents:     row.TotalEvents,
+		UniqueProviders: row.UniqueProviders,
+		UniqueRequests:  row.UniqueRequests,
+		LastEventAt:     row.LastEventAt,
+		ActionBreakdown: actionBreakdown,
+		StatusBreakdown: statusBreakdown,
+	}, nil
 }
 
 func (r *gormProviderRepository) GetConfig(ctx context.Context, userID uint, providerType string) (*models.UserProviderConfig, error) {

@@ -332,6 +332,28 @@ func (h *DocumentHandler) ListDocuments(c *gin.Context) {
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_documents_list"), dto.ToDocumentsResponse(docs))
 }
 
+// @Summary      Query document audit events
+// @Description  Query document audit events with operational filters, summary and cursor pagination.
+// @Tags         documents
+// @Produce      json
+// @Param        limit query int false "Items per page (max 100)"
+// @Param        cursor query string false "Opaque cursor returned by the previous audit page"
+// @Param        q query string false "Search over title, detail, origin and request correlation"
+// @Param        action query string false "Audit action filter"
+// @Param        status query string false "Audit status filter"
+// @Param        actor_type query string false "Actor type filter"
+// @Param        actor_id query int false "Actor ID filter"
+// @Param        correlation_id query string false "Request correlation ID filter"
+// @Param        document_id query int false "Document ID filter"
+// @Param        collection_id query int false "Collection ID filter"
+// @Param        created_from query string false "Inclusive start timestamp in RFC3339"
+// @Param        created_to query string false "Inclusive end timestamp in RFC3339"
+// @Success      200 {object} response.Response{data=dto.DocumentAuditQueryResponse}
+// @Failure      400 {object} response.Response
+// @Failure      401 {object} response.Response
+// @Failure      500 {object} response.Response
+// @Security     BearerAuth
+// @Router       /documents/audit [get]
 func (h *DocumentHandler) ListDocumentAuditEvents(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
@@ -348,20 +370,48 @@ func (h *DocumentHandler) ListDocumentAuditEvents(c *gin.Context) {
 	if !ok {
 		return
 	}
+	actorID, ok := parseOptionalUintQuery(c, "actor_id", i18n.T(lang, "error.invalid_actor_id"))
+	if !ok {
+		return
+	}
+	createdFrom, ok := parseOptionalTimeQuery(c, "created_from", i18n.T(lang, "error.invalid_created_from"))
+	if !ok {
+		return
+	}
+	createdTo, ok := parseOptionalTimeQuery(c, "created_to", i18n.T(lang, "error.invalid_created_to"))
+	if !ok {
+		return
+	}
 
-	events, err := h.useCase.ListDocumentAuditEvents(c.Request.Context(), userID, domain.DocumentAuditFilter{
-		Limit:        limit,
+	result, err := h.useCase.QueryDocumentAuditEvents(c.Request.Context(), userID, domain.DocumentAuditFilter{
+		AuditPageFilter: domain.AuditPageFilter{
+			Limit:         limit,
+			Cursor:        c.Query("cursor"),
+			Query:         c.Query("q"),
+			Status:        c.Query("status"),
+			ActorType:     c.Query("actor_type"),
+			ActorID:       actorID,
+			CorrelationID: c.Query("correlation_id"),
+			CreatedFrom:   createdFrom,
+			CreatedTo:     createdTo,
+		},
 		Action:       c.Query("action"),
-		Status:       c.Query("status"),
 		DocumentID:   documentID,
 		CollectionID: collectionID,
 	})
 	if err != nil {
-		h.respondInternalError(c, lang)
+		switch {
+		case errors.Is(err, domain.ErrAuditCursorInvalid):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.invalid_audit_cursor"), nil)
+		case errors.Is(err, domain.ErrAuditTimeRangeInvalid):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.invalid_audit_range"), nil)
+		default:
+			h.respondInternalError(c, lang)
+		}
 		return
 	}
 
-	response.Success(c, http.StatusOK, "success", "Auditoria documental carregada com sucesso.", dto.ToDocumentAuditEventResponses(events))
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_audit_query"), dto.ToDocumentAuditQueryResponse(result))
 }
 
 func (h *DocumentHandler) GetDocument(c *gin.Context) {

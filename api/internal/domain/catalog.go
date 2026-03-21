@@ -197,6 +197,7 @@ type CatalogDocumentRepository interface {
 	CreateDocumentWithOutbox(ctx context.Context, doc *models.Document, event *models.OutboxEvent, auditEvent *models.DocumentAuditEvent) error
 	CreateDocumentAuditEvents(ctx context.Context, events []models.DocumentAuditEvent) error
 	ListDocumentAuditEvents(ctx context.Context, userID uint, filter DocumentAuditFilter) ([]models.DocumentAuditEvent, error)
+	QueryDocumentAuditEvents(ctx context.Context, userID uint, filter DocumentAuditFilter) (*DocumentAuditQueryResult, error)
 	GetDocumentByID(ctx context.Context, id uint, userID uint) (*models.Document, error)
 	GetDocumentByIDForProcessing(ctx context.Context, id uint) (*models.Document, error)
 	GetDocumentsByUserID(ctx context.Context, userID uint) ([]models.Document, error)
@@ -238,6 +239,7 @@ type DocumentCatalogUseCase interface {
 	ListCategories(ctx context.Context, userID uint) ([]models.DocumentCategory, error)
 	ListDocuments(ctx context.Context, userID uint) ([]models.Document, error)
 	ListDocumentAuditEvents(ctx context.Context, userID uint, filter DocumentAuditFilter) ([]models.DocumentAuditEvent, error)
+	QueryDocumentAuditEvents(ctx context.Context, userID uint, filter DocumentAuditFilter) (*DocumentAuditQueryResult, error)
 	GetDocument(ctx context.Context, userID, documentID uint) (*models.Document, error)
 	GetDocumentContent(ctx context.Context, userID, documentID uint) (*DocumentContent, error)
 	GetDocumentIndex(ctx context.Context, userID, documentID uint, query string) (*DocumentIndex, error)

@@ -457,16 +457,20 @@ func (u *documentCatalogUseCase) ListDocuments(ctx context.Context, userID uint)
 }
 
 func (u *documentCatalogUseCase) ListDocumentAuditEvents(ctx context.Context, userID uint, filter domain.DocumentAuditFilter) ([]models.DocumentAuditEvent, error) {
-	filter.Action = strings.ToUpper(strings.TrimSpace(filter.Action))
-	filter.Status = strings.ToUpper(strings.TrimSpace(filter.Status))
-	if filter.Limit <= 0 {
-		filter.Limit = 20
+	result, err := u.QueryDocumentAuditEvents(ctx, userID, filter)
+	if err != nil {
+		return nil, err
 	}
-	if filter.Limit > 100 {
-		filter.Limit = 100
+	return result.Items, nil
+}
+
+func (u *documentCatalogUseCase) QueryDocumentAuditEvents(ctx context.Context, userID uint, filter domain.DocumentAuditFilter) (*domain.DocumentAuditQueryResult, error) {
+	normalizedFilter, err := normalizeDocumentAuditFilter(filter)
+	if err != nil {
+		return nil, err
 	}
 
-	return u.documentRepo.ListDocumentAuditEvents(ctx, userID, filter)
+	return u.documentRepo.QueryDocumentAuditEvents(ctx, userID, normalizedFilter)
 }
 
 func (u *documentCatalogUseCase) GetDocument(ctx context.Context, userID, documentID uint) (*models.Document, error) {

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"thing-index/internal/domain"
 	"thing-index/internal/dto"
-	providerpkg "thing-index/internal/pkg/provider"
 	"thing-index/internal/pkg/i18n"
+	providerpkg "thing-index/internal/pkg/provider"
 	"thing-index/internal/pkg/response"
 	"thing-index/internal/pkg/validation"
 
@@ -179,6 +179,28 @@ func (h *ProviderHandler) ListRuntimeOverview(c *gin.Context) {
 	response.Success(c, http.StatusOK, "success", "Runtime ativo de providers carregado com sucesso.", dto.ToProviderRuntimeOverviewResponse(overview))
 }
 
+// @Summary      Query provider audit events
+// @Description  Query provider audit events with operational filters, summary and cursor pagination.
+// @Tags         providers
+// @Produce      json
+// @Param        limit query int false "Items per page (max 100)"
+// @Param        cursor query string false "Opaque cursor returned by the previous audit page"
+// @Param        q query string false "Search over provider type, detail, origin and request correlation"
+// @Param        family query string false "Provider family filter"
+// @Param        provider_type query string false "Provider type filter"
+// @Param        action query string false "Audit action filter"
+// @Param        status query string false "Audit status filter"
+// @Param        actor_type query string false "Actor type filter"
+// @Param        actor_id query int false "Actor ID filter"
+// @Param        correlation_id query string false "Request correlation ID filter"
+// @Param        created_from query string false "Inclusive start timestamp in RFC3339"
+// @Param        created_to query string false "Inclusive end timestamp in RFC3339"
+// @Success      200 {object} response.Response{data=dto.ProviderAuditQueryResponse}
+// @Failure      400 {object} response.Response
+// @Failure      401 {object} response.Response
+// @Failure      500 {object} response.Response
+// @Security     BearerAuth
+// @Router       /user/providers/audit [get]
 func (h *ProviderHandler) ListProviderAuditEvents(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
@@ -187,20 +209,48 @@ func (h *ProviderHandler) ListProviderAuditEvents(c *gin.Context) {
 	if !ok {
 		return
 	}
+	actorID, ok := parseOptionalUintQuery(c, "actor_id", i18n.T(lang, "error.invalid_actor_id"))
+	if !ok {
+		return
+	}
+	createdFrom, ok := parseOptionalTimeQuery(c, "created_from", i18n.T(lang, "error.invalid_created_from"))
+	if !ok {
+		return
+	}
+	createdTo, ok := parseOptionalTimeQuery(c, "created_to", i18n.T(lang, "error.invalid_created_to"))
+	if !ok {
+		return
+	}
 
-	events, err := h.useCase.ListProviderAuditEvents(c.Request.Context(), userID, domain.ProviderAuditFilter{
-		Limit:        limit,
+	result, err := h.useCase.QueryProviderAuditEvents(c.Request.Context(), userID, domain.ProviderAuditFilter{
+		AuditPageFilter: domain.AuditPageFilter{
+			Limit:         limit,
+			Cursor:        c.Query("cursor"),
+			Query:         c.Query("q"),
+			Status:        c.Query("status"),
+			ActorType:     c.Query("actor_type"),
+			ActorID:       actorID,
+			CorrelationID: c.Query("correlation_id"),
+			CreatedFrom:   createdFrom,
+			CreatedTo:     createdTo,
+		},
 		Family:       c.Query("family"),
-		Status:       c.Query("status"),
 		Action:       c.Query("action"),
 		ProviderType: c.Query("provider_type"),
 	})
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
+		switch {
+		case errors.Is(err, domain.ErrAuditCursorInvalid):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.invalid_audit_cursor"), nil)
+		case errors.Is(err, domain.ErrAuditTimeRangeInvalid):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.invalid_audit_range"), nil)
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
+		}
 		return
 	}
 
-	response.Success(c, http.StatusOK, "success", "Auditoria de providers carregada com sucesso.", dto.ToProviderAuditEventResponses(events))
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "provider.success_audit_query"), dto.ToProviderAuditQueryResponse(result))
 }
 func (h *ProviderHandler) UpdateProviderState(c *gin.Context) {
 	lang := c.GetString("language")
