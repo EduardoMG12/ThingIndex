@@ -499,6 +499,7 @@ Erros de validacao retornam `errors` com mensagens sanitizadas e localizadas.
 | --- | --- | --- |
 | `POST` | `/api/v1/user/providers` | Salva credenciais por usuario |
 | `GET` | `/api/v1/user/providers` | Lista configuracoes de provider do usuario |
+| `GET` | `/api/v1/user/providers/audit` | Consulta auditoria de providers com filtros, resumo e cursor |
 | `PATCH` | `/api/v1/user/providers/:providerType` | Ativa/desativa provider ou papel LLM |
 
 ### Rotas autenticadas de documentos
@@ -506,6 +507,7 @@ Erros de validacao retornam `errors` com mensagens sanitizadas e localizadas.
 | Metodo | Rota | Descricao |
 | --- | --- | --- |
 | `POST` | `/api/v1/documents/upload` | Upload de arquivo com `multipart/form-data` |
+| `GET` | `/api/v1/documents/audit` | Consulta auditoria documental com filtros, resumo e cursor |
 | `GET` | `/api/v1/documents/` | Lista documentos do usuario |
 | `GET` | `/api/v1/documents/:id` | Busca documento por ID |
 | `GET` | `/api/v1/documents/:id/content` | Recupera o arquivo bruto do documento |
@@ -549,6 +551,12 @@ Limite padrao de upload:
 
 - Scalar UI: `http://localhost:8000/docs`
 - Swagger JSON: `http://localhost:8000/swagger/doc.json`
+
+Para regenerar a referencia da API depois de alterar annotations:
+
+```bash
+make docs-api
+```
 
 ## 13. Fluxo de Uso Recomendado
 

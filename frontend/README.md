@@ -7,7 +7,7 @@ O frontend do ThingIndex e uma aplicacao Next.js 16 responsavel por:
 - upload e navegacao de documentos;
 - visualizacao de colecoes, categorias e contexto;
 - chat grounded por collection com historico persistido e resposta incremental;
-- auditoria visual da indexacao, incluindo monitoramento por documento e resumo agregado.
+- auditoria consultavel de documentos e providers, com filtros, resumo agregado e paginação incremental.
 
 O app atua como camada de experiencia sobre a API Go do monorepo. Ele nao implementa logica de indexacao no browser; a maior parte das operacoes de negocio e delegada para o backend por rotas `app/api/*` que fazem proxy autenticado.
 
@@ -45,6 +45,8 @@ src/
 - upload de documentos;
 - listagem de categorias, collections e documentos;
 - painel lateral de preview e auditoria da indexacao;
+- explorer de auditoria documental com busca, request id, recorte por documento/collection e carregamento incremental;
+- explorer de auditoria de providers com escopo por familia ou provider ativo;
 - exibicao de monitoramento por documento:
   - status, etapa e duracao;
   - tokens estimados;

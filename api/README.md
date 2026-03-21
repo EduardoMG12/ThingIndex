@@ -147,11 +147,13 @@ As configuracoes completas estao documentadas no README raiz, mas as mais import
 
 - `POST /api/v1/user/providers`
 - `GET /api/v1/user/providers`
+- `GET /api/v1/user/providers/audit`
 - `PATCH /api/v1/user/providers/:providerType`
 
 ### Documentos
 
 - `POST /api/v1/documents/upload`
+- `GET /api/v1/documents/audit`
 - `GET /api/v1/documents/`
 - `GET /api/v1/documents/:id`
 - `GET /api/v1/documents/:id/content`
@@ -205,6 +207,14 @@ O backend expõe monitoramento em dois niveis:
   - score medio;
   - breakdown por modelo.
 
+Tambem expõe trilhas de auditoria consultaveis para documentos e providers, com:
+
+- busca textual;
+- filtro por acao, status, actor e request id;
+- recorte temporal em RFC3339;
+- paginação por cursor;
+- resumo agregado com breakdown por acao e status.
+
 ## Testes e verificacoes
 
 Comandos simples a partir da raiz do monorepo:
@@ -214,6 +224,12 @@ Comandos simples a partir da raiz do monorepo:
 ./scripts/test.sh backend-integration
 ./scripts/test.sh backend-e2e
 ./scripts/test.sh backend-smoke
+```
+
+Para regenerar o Swagger/Scalar depois de alterar annotations:
+
+```bash
+make docs-api
 ```
 
 Ou, se preferir:
