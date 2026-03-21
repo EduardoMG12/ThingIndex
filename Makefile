@@ -1,4 +1,4 @@
-.PHONY: test test-unit test-integration test-e2e test-all \
+.PHONY: test test-unit test-integration test-e2e test-all docs-api \
 	test-backend test-backend-unit test-backend-integration test-backend-e2e test-backend-smoke \
 	test-frontend test-frontend-unit test-frontend-e2e test-frontend-smoke test-frontend-e2e-install
 
@@ -15,6 +15,9 @@ test-e2e:
 
 test-all:
 	./scripts/test.sh all
+
+docs-api:
+	./scripts/generate-api-docs.sh
 
 test-backend:
 	./scripts/test.sh backend-unit

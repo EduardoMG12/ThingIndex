@@ -23,6 +23,11 @@ import (
 // @license.name  Apache 2.0
 // @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
 
+// @securityDefinitions.apikey  BearerAuth
+// @in                          header
+// @name                        Authorization
+// @description                 Use "Bearer <token>".
+
 // @host      localhost:8000
 // @BasePath  /api/v1
 
