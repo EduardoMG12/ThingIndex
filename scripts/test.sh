@@ -18,6 +18,7 @@ Targets:
   backend-e2e           Run backend end-to-end tests
   backend-smoke         Run backend smoke tests
   frontend-unit         Run frontend unit tests
+  frontend-storybook    Run the Storybook build and Storybook smoke tests
   frontend-e2e          Run frontend end-to-end tests
   frontend-smoke        Run frontend smoke tests
   frontend-e2e-install  Install the Playwright Chromium browser
@@ -80,6 +81,11 @@ run_frontend_e2e() {
   pnpm --dir frontend run test:e2e
 }
 
+run_frontend_storybook() {
+  echo "[test] frontend storybook"
+  pnpm --dir frontend run test:storybook
+}
+
 run_frontend_smoke() {
   echo "[test] frontend smoke"
   pnpm --dir frontend run test:smoke
@@ -106,6 +112,9 @@ case "$target" in
     ;;
   frontend-unit)
     run_frontend_unit
+    ;;
+  frontend-storybook)
+    run_frontend_storybook
     ;;
   frontend-e2e)
     run_frontend_e2e
