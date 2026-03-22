@@ -279,9 +279,20 @@ Essa abordagem evita consultas por documento e mantem a montagem da resposta em 
 ### Passo a passo
 
 ```bash
-cp .env.example .env
-docker compose up --build
+./scripts/bootstrap.sh
+./scripts/stack.sh up
+./scripts/doctor.sh
 ```
+
+Se preferir `make`:
+
+```bash
+make bootstrap
+make stack-up
+make doctor
+```
+
+O guia curto de onboarding open source tambem ficou centralizado em `docs/open-source-onboarding.md`.
 
 ### Endpoints locais
 
@@ -293,7 +304,7 @@ docker compose up --build
 | Swagger JSON | `http://localhost:8000/swagger/doc.json` |
 | MinIO API | `http://localhost:9000` |
 | MinIO Console | `http://localhost:9001` |
-| PostgreSQL | `localhost:5433` |
+| PostgreSQL | `localhost:5434` |
 | RabbitMQ Management | `http://localhost:15672` |
 
 ### Observacoes importantes
@@ -301,14 +312,15 @@ docker compose up --build
 - O `docker-compose.yml` sobe RabbitMQ e suporta o pipeline assincrono de indexacao.
 - O fluxo de `forgot-password` exige um servidor SMTP acessivel. O compose atual nao sobe Mailpit/Mailhog por padrao.
 - O frontend consome a API por `NEXT_PUBLIC_API_URL`.
+- Para requests prontas de API, use `examples/http/thingindex-api.http`.
 
 ## 10. Como Executar Manualmente
 
 ### Opcao A: subir apenas a infraestrutura com Docker e rodar app localmente
 
 ```bash
-cp .env.example .env
-docker compose up -d db minio
+./scripts/bootstrap.sh
+./scripts/stack.sh core
 ```
 
 Depois, em terminais separados:
@@ -331,7 +343,7 @@ Se voce rodar a API fora do container, normalmente vai querer ajustar no `.env`:
 ```bash
 PORT=8000
 DB_HOST=localhost
-DB_PORT=5433
+DB_PORT=5434
 MINIO_ENDPOINT=localhost:9000
 API_INTERNAL_URL=http://localhost:8000/api/v1
 NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
@@ -352,7 +364,7 @@ O repositorio agora inclui configuracao em `.devcontainer/devcontainer.json` par
 Ao abrir o projeto no Dev Container:
 
 - `db`, `minio`, `rabbitmq`, `api` e `indexer` sobem pelo compose;
-- o `postCreateCommand` executa `go mod download` em `api/` e `pnpm install` em `frontend/`;
+- o `postCreateCommand` executa `./scripts/bootstrap.sh all` e instala o binario `swag` em `api/`;
 - o frontend pode ser iniciado de dentro do container com `cd frontend && pnpm dev`;
 - o Storybook do frontend pode ser iniciado no container com `cd frontend && pnpm storybook`, com a porta `6006` ja encaminhada;
 - a instalacao do browser do Playwright continua explicita via `cd frontend && pnpm run test:e2e:install`.
@@ -374,6 +386,9 @@ O hook foi pensado para proteger integridade basica do codigo sem tentar rodar `
 O repositorio agora expõe comandos curtos na raiz:
 
 ```bash
+./scripts/bootstrap.sh
+./scripts/stack.sh up
+./scripts/doctor.sh
 ./scripts/test.sh unit
 ./scripts/test.sh backend-integration
 ./scripts/test.sh backend-e2e
@@ -385,6 +400,9 @@ O repositorio agora expõe comandos curtos na raiz:
 Se preferir `make`, os atalhos equivalentes tambem existem:
 
 ```bash
+make bootstrap
+make doctor
+make stack-up
 make test-unit
 make test-backend-integration
 make test-backend-e2e
@@ -399,6 +417,36 @@ Para instalar o browser gerenciado pelo Playwright manualmente:
 make test-frontend-e2e-install
 ```
 
+## Open Source Quickstart
+
+O projeto agora assume explicitamente dois modos de entrada.
+
+### Self-hosted a partir do GitHub
+
+Se a ideia for subir o stack completo localmente:
+
+1. rode `./scripts/bootstrap.sh`;
+2. suba a stack com `./scripts/stack.sh up`;
+3. confirme o ambiente com `./scripts/doctor.sh`;
+4. abra `http://localhost:3000`;
+5. use `http://localhost:8000/docs` ou `http://localhost:8000/swagger/index.html` para a API.
+
+### Consumir uma API ja publicada
+
+Se a API ja estiver online e voce nao precisar subir o monorepo:
+
+1. abra `https://<sua-origin>/docs`;
+2. use `https://<sua-origin>/api/v1` como base HTTP;
+3. use `https://<sua-origin>/swagger/index.html` e `https://<sua-origin>/swagger/doc.json` como fallbacks;
+4. se tiver clonado o repo, altere `@apiHost` em `examples/http/thingindex-api.http`;
+5. opcionalmente valide a deployment com `./scripts/doctor.sh --api-base https://<sua-origin>`.
+
+Materiais de apoio diretos:
+
+- guia curto: `docs/open-source-onboarding.md`;
+- exemplos de request: `examples/http/thingindex-api.http`;
+- contrato OpenAPI: `api/docs/swagger.yaml` e `api/docs/swagger.json`.
+
 ## 11. Variaveis de Ambiente
 
 O arquivo `.env.example` foi pensado para **desenvolvimento local**. Em producao, a API faz validacoes adicionais e rejeita configuracoes inseguras.
@@ -411,7 +459,7 @@ O arquivo `.env.example` foi pensado para **desenvolvimento local**. Em producao
 | `PORT` | `8080` | Porta HTTP da API |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Origins permitidas |
 | `DB_HOST` | `localhost` ou `db` | Host do PostgreSQL |
-| `DB_PORT` | `5433` ou `5432` | Porta do PostgreSQL |
+| `DB_PORT` | `5434` ou `5432` | Porta do PostgreSQL |
 | `DB_USER` | `postgres` | Usuario da API no banco |
 | `DB_PASSWORD` | `postgres` | Senha da API no banco |
 | `DB_NAME` | `thingindex` | Nome do banco |
@@ -555,8 +603,16 @@ Limite padrao de upload:
 
 ### Documentacao interativa
 
-- Scalar UI: `http://localhost:8000/docs`
+- Scalar UI primária: `http://localhost:8000/docs`
+- Swagger UI fallback: `http://localhost:8000/swagger/index.html`
 - Swagger JSON: `http://localhost:8000/swagger/doc.json`
+- Contrato versionado no repositório: `api/docs/swagger.yaml` e `api/docs/swagger.json`
+
+Em deployments publicadas, mantenha os mesmos paths na origin publicada:
+
+- `https://<sua-origin>/docs`
+- `https://<sua-origin>/swagger/index.html`
+- `https://<sua-origin>/swagger/doc.json`
 
 Para regenerar a referencia da API depois de alterar annotations:
 
@@ -565,6 +621,9 @@ make docs-api
 ```
 
 ## 13. Fluxo de Uso Recomendado
+
+Todos os exemplos abaixo funcionam tanto localmente quanto em uma deployment publicada.
+Troque `http://localhost:8000` pela origin publicada quando estiver consumindo a API online.
 
 ### 1. Registrar usuario
 

@@ -88,6 +88,24 @@ pnpm storybook
 
 Esse comando gera o build do Storybook e publica o catalogo em `http://localhost:6006`.
 
+Se voce estiver chegando ao repositório pela primeira vez, o fluxo recomendado continua sendo:
+
+```bash
+./scripts/bootstrap.sh
+./scripts/stack.sh up
+./scripts/doctor.sh
+```
+
+Depois disso, abra a interface em `http://localhost:3000` e a documentação da API em `http://localhost:8000/docs`.
+
+Materiais de apoio imediatos:
+
+- guia curto: `docs/open-source-onboarding.md`
+- requests prontas: `examples/http/thingindex-api.http`
+- contrato versionado: `api/docs/swagger.yaml` e `api/docs/swagger.json`
+
+Se o frontend estiver apontando para uma API já publicada, a documentação de onboarding e a página `/documentation` agora separam explicitamente o fluxo `self-hosted` do fluxo `hosted API`.
+
 Valide o codigo:
 
 ```bash

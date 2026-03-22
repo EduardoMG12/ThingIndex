@@ -115,6 +115,40 @@ cd api
 go run ./cmd/pricing-worker
 ```
 
+## Consumo open source da API
+
+Para explorar a API sem passar primeiro pela interface web:
+
+- Scalar API reference: `http://localhost:8000/docs`
+- Swagger UI fallback: `http://localhost:8000/swagger/index.html`
+- Swagger JSON: `http://localhost:8000/swagger/doc.json`
+- OpenAPI versionada no repo: `docs/swagger.yaml` e `docs/swagger.json`
+
+O endpoint `/docs` e a referencia interativa primaria com Scalar. Quando o embed nao carregar, a propria pagina aponta para o Swagger UI local, para o JSON bruto e para os exemplos versionados do repositório.
+
+Se a API estiver publicada, os mesmos paths continuam válidos na origin da deployment:
+
+- `https://<sua-origin>/docs`
+- `https://<sua-origin>/swagger/index.html`
+- `https://<sua-origin>/swagger/doc.json`
+- `https://<sua-origin>/api/v1`
+
+O arquivo `../examples/http/thingindex-api.http` tambem deixa um fluxo pronto com:
+
+- healthcheck;
+- abertura das docs;
+- registro;
+- login;
+- leitura de collections, documentos e runtime de providers.
+
+Quando o alvo for uma deployment já online, basta trocar `@apiHost` no topo desse arquivo.
+
+Para regenerar a referencia versionada depois de alterar annotations:
+
+```bash
+make docs-api
+```
+
 ## Variaveis relevantes
 
 As configuracoes completas estao documentadas no README raiz, mas as mais importantes para o backend sao:
