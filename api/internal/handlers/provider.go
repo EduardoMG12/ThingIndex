@@ -86,6 +86,20 @@ func (h *ProviderHandler) SaveCredentials(c *gin.Context) {
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "provider.success_save"), nil)
 }
 
+// @Summary      Test provider readiness
+// @Description  Validates the configured provider credentials and returns a readiness report with connectivity checks and optional model discovery details.
+// @Tags         providers
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.ProviderConnectionRequest true "Provider test payload"
+// @Success      200 {object} response.Response{data=dto.ProviderReadinessReportResponse}
+// @Failure      400 {object} response.Response
+// @Failure      401 {object} response.Response
+// @Failure      502 {object} response.Response
+// @Failure      504 {object} response.Response
+// @Failure      500 {object} response.Response
+// @Security     BearerAuth
+// @Router       /user/providers/test [post]
 func (h *ProviderHandler) TestConnection(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
@@ -96,15 +110,30 @@ func (h *ProviderHandler) TestConnection(c *gin.Context) {
 		return
 	}
 
-	if err := h.useCase.TestConnection(c.Request.Context(), userID, req.Family, req.ProviderType, req.Credentials); err != nil {
+	report, err := h.useCase.TestConnection(c.Request.Context(), userID, req.Family, req.ProviderType, req.Credentials)
+	if err != nil {
 		status, message := providerConnectionFailureResponse(lang, req.ProviderType, req.Credentials, err)
 		response.Error(c, status, "error", message, nil)
 		return
 	}
 
-	response.Success(c, http.StatusOK, "success", i18n.T(lang, "provider.success_connection_test"), nil)
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "provider.success_connection_test"), dto.ToProviderReadinessReportResponse(report))
 }
 
+// @Summary      List provider models
+// @Description  Tries to discover available models for the selected LLM provider, using live discovery and cached fallbacks when applicable.
+// @Tags         providers
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.ProviderConnectionRequest true "Provider model-discovery payload"
+// @Success      200 {object} response.Response{data=dto.ProviderModelsResponse}
+// @Failure      400 {object} response.Response
+// @Failure      401 {object} response.Response
+// @Failure      502 {object} response.Response
+// @Failure      504 {object} response.Response
+// @Failure      500 {object} response.Response
+// @Security     BearerAuth
+// @Router       /user/providers/models [post]
 func (h *ProviderHandler) ListModels(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
@@ -136,8 +165,8 @@ func (h *ProviderHandler) ListModels(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, http.StatusOK, "success", "Modelos carregados com sucesso.", gin.H{
-		"models": models,
+	response.Success(c, http.StatusOK, "success", "Modelos carregados com sucesso.", dto.ProviderModelsResponse{
+		Models: models,
 	})
 }
 
@@ -166,6 +195,15 @@ func (h *ProviderHandler) ListProviders(c *gin.Context) {
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "provider.success_list"), dto.ToProviderConfigResponses(providers, publicMetadataByProvider))
 }
 
+// @Summary      Get provider runtime overview
+// @Description  Returns the currently active storage, indexing, and chat providers for the authenticated user.
+// @Tags         providers
+// @Produce      json
+// @Success      200 {object} response.Response{data=dto.ProviderRuntimeOverviewResponse}
+// @Failure      401 {object} response.Response
+// @Failure      500 {object} response.Response
+// @Security     BearerAuth
+// @Router       /user/providers/runtime [get]
 func (h *ProviderHandler) ListRuntimeOverview(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")

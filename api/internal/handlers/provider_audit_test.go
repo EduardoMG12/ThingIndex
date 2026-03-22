@@ -19,6 +19,7 @@ type providerUseCaseAuditCaptureStub struct {
 	lastToggleAuditContext domain.AuditContext
 	lastAuditFilter        domain.ProviderAuditFilter
 	testConnectionErr      error
+	testConnectionReport   *domain.ProviderReadinessReport
 }
 
 func (s *providerUseCaseAuditCaptureStub) SaveCredentials(ctx context.Context, _ uint, _ string, _ string, _ map[string]string, _ domain.ProviderActivation) error {
@@ -28,8 +29,8 @@ func (s *providerUseCaseAuditCaptureStub) SaveCredentials(ctx context.Context, _
 	return nil
 }
 
-func (s *providerUseCaseAuditCaptureStub) TestConnection(context.Context, uint, string, string, map[string]string) error {
-	return s.testConnectionErr
+func (s *providerUseCaseAuditCaptureStub) TestConnection(context.Context, uint, string, string, map[string]string) (*domain.ProviderReadinessReport, error) {
+	return s.testConnectionReport, s.testConnectionErr
 }
 
 func (s *providerUseCaseAuditCaptureStub) ListModels(context.Context, uint, string, string, map[string]string) ([]string, error) {
@@ -222,6 +223,51 @@ func TestTestConnectionEndpointReturnsGatewayTimeoutForProviderTimeout(t *testin
 	}
 	if !strings.Contains(rec.Body.String(), "tempo limite") {
 		t.Fatalf("expected timeout message, got %q", rec.Body.String())
+	}
+}
+
+func TestTestConnectionEndpointReturnsReadinessPayloadOnSuccess(t *testing.T) {
+	t.Parallel()
+
+	gin.SetMode(gin.TestMode)
+	useCase := &providerUseCaseAuditCaptureStub{
+		testConnectionReport: &domain.ProviderReadinessReport{
+			Family:       domain.FamilyLLM,
+			ProviderType: domain.ProviderOpenAI,
+			Status:       domain.ProviderReadinessStatusReady,
+			Checks: []domain.ProviderReadinessCheck{
+				{Code: domain.ProviderReadinessCheckCredentials, Status: domain.ProviderReadinessCheckPassed},
+				{Code: domain.ProviderReadinessCheckConnection, Status: domain.ProviderReadinessCheckPassed},
+				{Code: domain.ProviderReadinessCheckModelDiscovery, Status: domain.ProviderReadinessCheckPassed},
+			},
+			DiscoveredModels: []string{"gpt-4o-mini", "gpt-4.1-mini"},
+		},
+	}
+	handler := NewProviderHandler(useCase)
+
+	router := gin.New()
+	router.Use(middleware.RequestContextMiddleware())
+	router.Use(func(c *gin.Context) {
+		c.Set("language", "pt_BR")
+		c.Set("user_id", uint(44))
+		c.Next()
+	})
+	router.POST("/api/v1/user/providers/test", handler.TestConnection)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/user/providers/test", strings.NewReader(`{"family":"LLM","provider_type":"OPENAI","credentials":{"api_key":"secret","model":"gpt-4o-mini"}}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 response, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"status":"READY"`) {
+		t.Fatalf("expected readiness status in response, got %q", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"discovered_models":["gpt-4o-mini","gpt-4.1-mini"]`) {
+		t.Fatalf("expected discovered models in response, got %q", rec.Body.String())
 	}
 }
 

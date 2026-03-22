@@ -486,7 +486,7 @@ func TestTestConnectionClassifiesAuthenticationFailures(t *testing.T) {
 		endpointValidator: netsec.NewStorageEndpointValidator(true),
 	}
 
-	err := useCase.TestConnection(context.Background(), 1, domain.FamilyLLM, domain.ProviderOpenAI, map[string]string{
+	_, err := useCase.TestConnection(context.Background(), 1, domain.FamilyLLM, domain.ProviderOpenAI, map[string]string{
 		"api_key": "bad-key",
 		"model":   "gpt-4o-mini",
 	})
@@ -516,7 +516,7 @@ func TestTestConnectionClassifiesModelFailures(t *testing.T) {
 		endpointValidator: netsec.NewStorageEndpointValidator(true),
 	}
 
-	err := useCase.TestConnection(context.Background(), 1, domain.FamilyLLM, domain.ProviderOpenAI, map[string]string{
+	_, err := useCase.TestConnection(context.Background(), 1, domain.FamilyLLM, domain.ProviderOpenAI, map[string]string{
 		"api_key": "secret",
 		"model":   "missing-model",
 	})
@@ -542,7 +542,7 @@ func TestTestConnectionClassifiesTimeoutFailures(t *testing.T) {
 		endpointValidator: netsec.NewStorageEndpointValidator(true),
 	}
 
-	err := useCase.TestConnection(context.Background(), 1, domain.FamilyLLM, domain.ProviderOpenAI, map[string]string{
+	_, err := useCase.TestConnection(context.Background(), 1, domain.FamilyLLM, domain.ProviderOpenAI, map[string]string{
 		"api_key": "secret",
 		"model":   "gpt-4o-mini",
 	})
@@ -572,7 +572,7 @@ func TestTestConnectionClassifiesEndpointFailures(t *testing.T) {
 		endpointValidator: netsec.NewStorageEndpointValidator(true),
 	}
 
-	err := useCase.TestConnection(context.Background(), 1, domain.FamilyLLM, domain.ProviderOpenAI, map[string]string{
+	_, err := useCase.TestConnection(context.Background(), 1, domain.FamilyLLM, domain.ProviderOpenAI, map[string]string{
 		"api_key": "secret",
 		"model":   "gpt-4o-mini",
 	})
@@ -602,12 +602,121 @@ func TestTestConnectionClassifiesGenericProviderFailures(t *testing.T) {
 		endpointValidator: netsec.NewStorageEndpointValidator(true),
 	}
 
-	err := useCase.TestConnection(context.Background(), 1, domain.FamilyLLM, domain.ProviderOpenAI, map[string]string{
+	_, err := useCase.TestConnection(context.Background(), 1, domain.FamilyLLM, domain.ProviderOpenAI, map[string]string{
 		"api_key": "secret",
 		"model":   "gpt-4o-mini",
 	})
 	if !errors.Is(err, domain.ErrProviderConnectionFailed) {
 		t.Fatalf("expected generic provider failure classification, got %v", err)
+	}
+}
+
+func TestTestConnectionReturnsReadinessReportWithDiscoveredModels(t *testing.T) {
+	originalFactory := provider.NewLLMHTTPClientForTests(nil)
+	defer provider.NewLLMHTTPClientForTests(originalFactory)
+
+	provider.NewLLMHTTPClientForTests(func() *http.Client {
+		return &http.Client{
+			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				switch r.URL.String() {
+				case "https://api.openai.com/v1/chat/completions":
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       io.NopCloser(strings.NewReader(`{"choices":[{"message":{"role":"assistant","content":"OK"}}]}`)),
+						Header:     make(http.Header),
+					}, nil
+				case "https://api.openai.com/v1/models":
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       io.NopCloser(strings.NewReader(`{"data":[{"id":"gpt-4o-mini"},{"id":"gpt-4.1-mini"}]}`)),
+						Header:     make(http.Header),
+					}, nil
+				default:
+					t.Fatalf("unexpected url %q", r.URL.String())
+					return nil, nil
+				}
+			}),
+		}
+	})
+
+	repo := &providerRepoStub{}
+	useCase := &providerUseCase{
+		repo:              repo,
+		cfg:               &config.Config{Environment: "development"},
+		endpointValidator: netsec.NewStorageEndpointValidator(true),
+	}
+
+	report, err := useCase.TestConnection(context.Background(), 7, domain.FamilyLLM, domain.ProviderOpenAI, map[string]string{
+		"api_key": "secret",
+		"model":   "gpt-4o-mini",
+	})
+	if err != nil {
+		t.Fatalf("expected readiness report, got %v", err)
+	}
+	if report.Status != domain.ProviderReadinessStatusReady {
+		t.Fatalf("expected ready status, got %#v", report)
+	}
+	if len(report.DiscoveredModels) != 2 {
+		t.Fatalf("expected discovered models, got %#v", report.DiscoveredModels)
+	}
+	if len(report.Checks) != 3 || report.Checks[2].Code != domain.ProviderReadinessCheckModelDiscovery || report.Checks[2].Status != domain.ProviderReadinessCheckPassed {
+		t.Fatalf("unexpected readiness checks %#v", report.Checks)
+	}
+
+	items := repo.modelCatalog["USER:7:"+domain.ProviderOpenAI]
+	if len(items) != 2 {
+		t.Fatalf("expected model catalog persistence, got %#v", items)
+	}
+}
+
+func TestTestConnectionReturnsAttentionWhenModelDiscoveryIsUnavailable(t *testing.T) {
+	originalFactory := provider.NewLLMHTTPClientForTests(nil)
+	defer provider.NewLLMHTTPClientForTests(originalFactory)
+
+	provider.NewLLMHTTPClientForTests(func() *http.Client {
+		return &http.Client{
+			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				switch r.URL.String() {
+				case "https://api.openai.com/v1/chat/completions":
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       io.NopCloser(strings.NewReader(`{"choices":[{"message":{"role":"assistant","content":"OK"}}]}`)),
+						Header:     make(http.Header),
+					}, nil
+				case "https://api.openai.com/v1/models":
+					return &http.Response{
+						StatusCode: http.StatusInternalServerError,
+						Body:       io.NopCloser(strings.NewReader(`{"error":{"message":"catalog temporarily unavailable"}}`)),
+						Header:     make(http.Header),
+					}, nil
+				default:
+					t.Fatalf("unexpected url %q", r.URL.String())
+					return nil, nil
+				}
+			}),
+		}
+	})
+
+	useCase := &providerUseCase{
+		cfg:               &config.Config{Environment: "development"},
+		endpointValidator: netsec.NewStorageEndpointValidator(true),
+	}
+
+	report, err := useCase.TestConnection(context.Background(), 1, domain.FamilyLLM, domain.ProviderOpenAI, map[string]string{
+		"api_key": "secret",
+		"model":   "gpt-4o-mini",
+	})
+	if err != nil {
+		t.Fatalf("expected readiness report with attention, got %v", err)
+	}
+	if report.Status != domain.ProviderReadinessStatusAttention {
+		t.Fatalf("expected attention status, got %#v", report)
+	}
+	if len(report.Checks) != 3 || report.Checks[2].Status != domain.ProviderReadinessCheckWarning {
+		t.Fatalf("unexpected readiness checks %#v", report.Checks)
+	}
+	if len(report.DiscoveredModels) != 0 {
+		t.Fatalf("expected no discovered models, got %#v", report.DiscoveredModels)
 	}
 }
 
@@ -835,19 +944,38 @@ func TestListModelsPrefersRemoteLookupWhenDiscoveryOverridesExist(t *testing.T) 
 	}
 }
 
-func TestListModelsReportsUnsupportedProvider(t *testing.T) {
-	t.Parallel()
+func TestListModelsReturnsOpenAICompatibleModels(t *testing.T) {
+	originalFactory := provider.NewLLMHTTPClientForTests(nil)
+	defer provider.NewLLMHTTPClientForTests(originalFactory)
+
+	provider.NewLLMHTTPClientForTests(func() *http.Client {
+		return &http.Client{
+			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				if r.URL.String() != "https://api.openai.com/v1/models" {
+					t.Fatalf("unexpected models endpoint %q", r.URL.String())
+				}
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(strings.NewReader(`{"data":[{"id":"gpt-4o-mini"},{"id":"gpt-4.1-mini"}]}`)),
+					Header:     make(http.Header),
+				}, nil
+			}),
+		}
+	})
 
 	useCase := &providerUseCase{
 		cfg:               &config.Config{Environment: "development"},
 		endpointValidator: netsec.NewStorageEndpointValidator(true),
 	}
 
-	_, err := useCase.ListModels(context.Background(), 1, domain.FamilyLLM, domain.ProviderOpenAI, map[string]string{
+	models, err := useCase.ListModels(context.Background(), 1, domain.FamilyLLM, domain.ProviderOpenAI, map[string]string{
 		"api_key": "secret",
 	})
-	if !errors.Is(err, domain.ErrProviderModelsUnsupported) {
-		t.Fatalf("expected unsupported model discovery error, got %v", err)
+	if err != nil {
+		t.Fatalf("expected openai-compatible discovery to succeed, got %v", err)
+	}
+	if len(models) != 2 || models[0] != "gpt-4o-mini" || models[1] != "gpt-4.1-mini" {
+		t.Fatalf("unexpected models result: %#v", models)
 	}
 }
 

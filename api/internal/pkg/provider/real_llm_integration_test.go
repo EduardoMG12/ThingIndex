@@ -55,8 +55,8 @@ func TestRealLLMValidateConnectionAndGenerateText(t *testing.T) {
 func TestRealLLMModelDiscovery(t *testing.T) {
 	cfg := testutil.RequireRealLLMModelDiscovery(t)
 
-	if cfg.ProviderType != domain.ProviderOllama {
-		t.Skipf("real model discovery test is currently implemented only for %s, got %s", domain.ProviderOllama, cfg.ProviderType)
+	if !SupportsLLMModelDiscovery(cfg.ProviderType) {
+		t.Skipf("real model discovery is not implemented for provider %s", cfg.ProviderType)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

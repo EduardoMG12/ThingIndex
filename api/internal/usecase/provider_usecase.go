@@ -72,6 +72,12 @@ var providerTypeAliases = map[string]string{
 
 const globalModelCatalogScope = "GLOBAL"
 
+type providerModelDiscoveryOptions struct {
+	allowCachedBefore bool
+	allowCachedAfter  bool
+	persistCatalog    bool
+}
+
 type providerUseCase struct {
 	repo              domain.ProviderRepository
 	cfg               *config.Config
@@ -146,21 +152,47 @@ func (u *providerUseCase) SaveCredentials(ctx context.Context, userID uint, fami
 	return u.repo.SaveConfig(ctx, config, &auditEvent)
 }
 
-func (u *providerUseCase) TestConnection(ctx context.Context, userID uint, family, providerType string, credentials map[string]string) error {
+func (u *providerUseCase) TestConnection(ctx context.Context, userID uint, family, providerType string, credentials map[string]string) (*domain.ProviderReadinessReport, error) {
 	normalizedFamily, normalizedProviderType, err := normalizeProviderSelection(family, providerType)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := u.validateCredentials(ctx, normalizedFamily, normalizedProviderType, credentials); err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := u.validateProviderConnection(ctx, normalizedFamily, normalizedProviderType, credentials); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	report := &domain.ProviderReadinessReport{
+		Family:       normalizedFamily,
+		ProviderType: normalizedProviderType,
+		CheckedAt:    time.Now().UTC(),
+		Checks: []domain.ProviderReadinessCheck{
+			{
+				Code:   domain.ProviderReadinessCheckCredentials,
+				Status: domain.ProviderReadinessCheckPassed,
+			},
+			{
+				Code:   domain.ProviderReadinessCheckConnection,
+				Status: domain.ProviderReadinessCheckPassed,
+			},
+		},
+	}
+
+	if normalizedFamily == domain.FamilyLLM {
+		models, discoveryStatus := u.testConnectionModelDiscovery(ctx, userID, normalizedProviderType, credentials)
+		report.DiscoveredModels = models
+		report.Checks = append(report.Checks, domain.ProviderReadinessCheck{
+			Code:   domain.ProviderReadinessCheckModelDiscovery,
+			Status: discoveryStatus,
+		})
+	}
+
+	report.Status = readinessStatusFromChecks(report.Checks)
+	return report, nil
 }
 
 func (u *providerUseCase) ListModels(ctx context.Context, userID uint, family, providerType string, credentials map[string]string) ([]string, error) {
@@ -172,51 +204,18 @@ func (u *providerUseCase) ListModels(ctx context.Context, userID uint, family, p
 		return nil, domain.ErrProviderFamilyInvalid
 	}
 
-	hasDiscoveryOverrides := false
-	for _, key := range []string{"base_url", "api_key", "model"} {
-		if strings.TrimSpace(credentials[key]) != "" {
-			hasDiscoveryOverrides = true
-			break
-		}
-	}
-
-	if !hasDiscoveryOverrides {
-		if cachedModels, err := u.listCachedModels(ctx, userID, normalizedProviderType); err == nil && len(cachedModels) > 0 {
-			return cachedModels, nil
-		}
-	}
-
-	if err := u.validateModelDiscoveryCredentials(ctx, normalizedProviderType, credentials); err != nil {
-		return nil, err
-	}
-
-	discoveryCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
-	defer cancel()
-
-	models, err := provider.ListLLMModels(discoveryCtx, normalizedProviderType, credentials)
-	if err != nil {
-		if cachedModels, cacheErr := u.listCachedModels(ctx, userID, normalizedProviderType); cacheErr == nil && len(cachedModels) > 0 {
-			return cachedModels, nil
-		}
-
-		switch {
-		case errors.Is(err, context.DeadlineExceeded), errors.Is(discoveryCtx.Err(), context.DeadlineExceeded):
-			return nil, domain.ErrProviderModelsTimeout
-		case strings.Contains(strings.ToLower(err.Error()), "not implemented"):
-			return nil, domain.ErrProviderModelsUnsupported
-		default:
-			return nil, fmt.Errorf("%w: %v", domain.ErrProviderModelsUnavailable, err)
-		}
-	}
-
-	if err := u.saveModelCatalog(ctx, userID, normalizedProviderType, models); err != nil {
-		log.Printf("provider model catalog save skipped for provider=%s user=%d: %v", normalizedProviderType, userID, err)
-	}
-
-	return models, nil
+	return u.discoverProviderModels(ctx, userID, normalizedProviderType, credentials, providerModelDiscoveryOptions{
+		allowCachedBefore: true,
+		allowCachedAfter:  true,
+		persistCatalog:    true,
+	})
 }
 
 func (u *providerUseCase) validateModelDiscoveryCredentials(ctx context.Context, providerType string, credentials map[string]string) error {
+	if !provider.SupportsLLMModelDiscovery(providerType) {
+		return domain.ErrProviderModelsUnsupported
+	}
+
 	switch providerType {
 	case domain.ProviderOllama:
 		// Ollama Cloud exposes /api/tags publicly, so model discovery must not require api_key.
@@ -231,6 +230,91 @@ func (u *providerUseCase) validateModelDiscoveryCredentials(ctx context.Context,
 	}
 
 	return nil
+}
+
+func (u *providerUseCase) discoverProviderModels(ctx context.Context, userID uint, providerType string, credentials map[string]string, options providerModelDiscoveryOptions) ([]string, error) {
+	if options.allowCachedBefore && !hasModelDiscoveryOverrides(credentials) {
+		if cachedModels, err := u.listCachedModels(ctx, userID, providerType); err == nil && len(cachedModels) > 0 {
+			return cachedModels, nil
+		}
+	}
+
+	if err := u.validateModelDiscoveryCredentials(ctx, providerType, credentials); err != nil {
+		return nil, err
+	}
+
+	discoveryCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
+	defer cancel()
+
+	models, err := provider.ListLLMModels(discoveryCtx, providerType, credentials)
+	if err != nil {
+		if options.allowCachedAfter {
+			if cachedModels, cacheErr := u.listCachedModels(ctx, userID, providerType); cacheErr == nil && len(cachedModels) > 0 {
+				return cachedModels, nil
+			}
+		}
+
+		switch {
+		case errors.Is(err, context.DeadlineExceeded), errors.Is(discoveryCtx.Err(), context.DeadlineExceeded):
+			return nil, domain.ErrProviderModelsTimeout
+		case strings.Contains(strings.ToLower(err.Error()), "not implemented"):
+			return nil, domain.ErrProviderModelsUnsupported
+		default:
+			return nil, fmt.Errorf("%w: %v", domain.ErrProviderModelsUnavailable, err)
+		}
+	}
+
+	if options.persistCatalog {
+		if err := u.saveModelCatalog(ctx, userID, providerType, models); err != nil {
+			log.Printf("provider model catalog save skipped for provider=%s user=%d: %v", providerType, userID, err)
+		}
+	}
+
+	return models, nil
+}
+
+func (u *providerUseCase) testConnectionModelDiscovery(ctx context.Context, userID uint, providerType string, credentials map[string]string) ([]string, string) {
+	models, err := u.discoverProviderModels(ctx, userID, providerType, credentials, providerModelDiscoveryOptions{
+		allowCachedBefore: false,
+		allowCachedAfter:  false,
+		persistCatalog:    true,
+	})
+	if err == nil {
+		return models, domain.ProviderReadinessCheckPassed
+	}
+
+	switch {
+	case errors.Is(err, domain.ErrProviderModelsUnsupported):
+		return nil, domain.ProviderReadinessCheckUnsupported
+	case errors.Is(err, domain.ErrProviderModelsTimeout), errors.Is(err, domain.ErrProviderModelsUnavailable):
+		return nil, domain.ProviderReadinessCheckWarning
+	default:
+		return nil, domain.ProviderReadinessCheckWarning
+	}
+}
+
+func hasModelDiscoveryOverrides(credentials map[string]string) bool {
+	for _, key := range []string{"base_url", "api_key", "model"} {
+		if strings.TrimSpace(credentials[key]) != "" {
+			return true
+		}
+	}
+
+	return false
+}
+
+func readinessStatusFromChecks(checks []domain.ProviderReadinessCheck) string {
+	status := domain.ProviderReadinessStatusReady
+	for _, check := range checks {
+		switch check.Status {
+		case domain.ProviderReadinessCheckFailed:
+			return domain.ProviderReadinessStatusFailed
+		case domain.ProviderReadinessCheckWarning:
+			status = domain.ProviderReadinessStatusAttention
+		}
+	}
+
+	return status
 }
 
 func (u *providerUseCase) GetDecryptedCredentials(ctx context.Context, userID uint, providerType string) (map[string]string, error) {

@@ -96,6 +96,15 @@ type ollamaTagsResponse struct {
 	} `json:"models"`
 }
 
+type openAIModelsResponse struct {
+	Data []struct {
+		ID string `json:"id"`
+	} `json:"data"`
+	Error *struct {
+		Message string `json:"message"`
+	} `json:"error,omitempty"`
+}
+
 type StorageProviderOptions struct {
 	EndpointValidator *netsec.StorageEndpointValidator
 }
@@ -365,14 +374,33 @@ func ValidateStorageConnection(ctx context.Context, providerType string, credent
 	return err
 }
 
+func SupportsLLMModelDiscovery(providerType string) bool {
+	switch strings.ToUpper(strings.TrimSpace(providerType)) {
+	case domain.ProviderOpenAI,
+		domain.ProviderGemini,
+		domain.ProviderDeepSeek,
+		domain.ProviderGrok,
+		domain.ProviderClaude,
+		domain.ProviderOllama,
+		domain.ProviderOpenRouter:
+		return true
+	default:
+		return false
+	}
+}
+
 func ListLLMModels(ctx context.Context, providerType string, credentials map[string]string) ([]string, error) {
 	normalizedProvider := strings.ToUpper(strings.TrimSpace(providerType))
+
+	if !SupportsLLMModelDiscovery(normalizedProvider) {
+		return nil, fmt.Errorf("model discovery is not implemented for provider %s", normalizedProvider)
+	}
 
 	switch normalizedProvider {
 	case domain.ProviderOllama:
 		return listOllamaModels(ctx, credentials)
 	default:
-		return nil, fmt.Errorf("model discovery is not implemented for provider %s", normalizedProvider)
+		return listOpenAICompatibleModels(ctx, normalizedProvider, credentials)
 	}
 }
 
@@ -427,6 +455,58 @@ func listOllamaModels(ctx context.Context, credentials map[string]string) ([]str
 		}
 		seen[name] = struct{}{}
 		models = append(models, name)
+	}
+
+	return models, nil
+}
+
+func listOpenAICompatibleModels(ctx context.Context, providerType string, credentials map[string]string) ([]string, error) {
+	endpoint, err := llmModelsEndpoint(providerType, credentials)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	if apiKey := strings.TrimSpace(credentials["api_key"]); apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+	}
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := newLLMHTTPClient().Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode >= 400 {
+		return nil, readOpenAIErrorBody(resp.StatusCode, respBody)
+	}
+
+	var payload openAIModelsResponse
+	if err := json.Unmarshal(respBody, &payload); err != nil {
+		return nil, fmt.Errorf("parse llm models response: %w", err)
+	}
+
+	models := make([]string, 0, len(payload.Data))
+	seen := make(map[string]struct{}, len(payload.Data))
+	for _, item := range payload.Data {
+		modelID := strings.TrimSpace(item.ID)
+		if modelID == "" {
+			continue
+		}
+		if _, ok := seen[modelID]; ok {
+			continue
+		}
+		seen[modelID] = struct{}{}
+		models = append(models, modelID)
 	}
 
 	return models, nil
@@ -716,6 +796,27 @@ func readOllamaErrorBody(statusCode int, respBody []byte) error {
 	return fmt.Errorf("ollama request failed with status %d", statusCode)
 }
 
+func readOpenAIErrorBody(statusCode int, respBody []byte) error {
+	var apiErr openAIModelsResponse
+	if err := json.Unmarshal(respBody, &apiErr); err == nil && apiErr.Error != nil && strings.TrimSpace(apiErr.Error.Message) != "" {
+		return errors.New(strings.TrimSpace(apiErr.Error.Message))
+	}
+
+	var completion chatCompletionResponse
+	if err := json.Unmarshal(respBody, &completion); err == nil && completion.Error != nil && strings.TrimSpace(completion.Error.Message) != "" {
+		return errors.New(strings.TrimSpace(completion.Error.Message))
+	}
+
+	var generic map[string]any
+	if err := json.Unmarshal(respBody, &generic); err == nil {
+		if message, ok := generic["message"].(string); ok && strings.TrimSpace(message) != "" {
+			return errors.New(strings.TrimSpace(message))
+		}
+	}
+
+	return fmt.Errorf("llm request failed with status %d", statusCode)
+}
+
 func (c *openAICompatibleLLMClient) ProviderType() string {
 	return c.provider
 }
@@ -782,6 +883,32 @@ func llmEndpointAndModel(providerType string, credentials map[string]string) (st
 	return baseURL + "/chat/completions", model, nil
 }
 
+func llmModelsEndpoint(providerType string, credentials map[string]string) (string, error) {
+	normalizedProvider := strings.ToUpper(strings.TrimSpace(providerType))
+	definition, ok := llmProviderDefinitions[normalizedProvider]
+	if !ok {
+		return "", fmt.Errorf("provider %s is not implemented", normalizedProvider)
+	}
+
+	baseURL := strings.TrimRight(strings.TrimSpace(credentials["base_url"]), "/")
+	if baseURL == "" {
+		if normalizedProvider == domain.ProviderOllama {
+			if strings.TrimSpace(credentials["api_key"]) != "" {
+				baseURL = "https://ollama.com/api"
+			} else {
+				baseURL = "http://localhost:11434/v1"
+			}
+		} else {
+			baseURL = definition.defaultBaseURL
+		}
+	}
+	if baseURL == "" {
+		return "", fmt.Errorf("provider %s requires base_url", normalizedProvider)
+	}
+
+	return openAIModelsEndpoint(baseURL), nil
+}
+
 func ollamaEndpoint(baseURL string) string {
 	trimmed := strings.TrimRight(strings.TrimSpace(baseURL), "/")
 	if trimmed == "" {
@@ -830,6 +957,35 @@ func ollamaTagsEndpoint(baseURL string) string {
 	}
 
 	return trimmed + "/api/tags"
+}
+
+func openAIModelsEndpoint(baseURL string) string {
+	trimmed := strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	if trimmed == "" {
+		return ""
+	}
+
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		if strings.HasSuffix(trimmed, "/chat/completions") {
+			return strings.TrimSuffix(trimmed, "/chat/completions") + "/models"
+		}
+		return trimmed + "/models"
+	}
+
+	path := strings.TrimRight(parsed.Path, "/")
+	switch {
+	case strings.HasSuffix(path, "/chat/completions"):
+		parsed.Path = strings.TrimSuffix(path, "/chat/completions") + "/models"
+	case strings.HasSuffix(path, "/models"):
+		parsed.Path = path
+	case path == "":
+		parsed.Path = "/models"
+	default:
+		parsed.Path = path + "/models"
+	}
+
+	return strings.TrimRight(parsed.String(), "/")
 }
 
 func isOllamaNativeEndpoint(endpoint string) bool {

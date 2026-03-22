@@ -411,6 +411,13 @@ func TestRoutesE2EProviderChatLifecycleAndStreamWithFakeLLM(t *testing.T) {
 	if testConnectionResponse.Code != http.StatusOK {
 		t.Fatalf("expected provider test-connection status 200, got %d body=%s", testConnectionResponse.Code, testConnectionResponse.Body.String())
 	}
+	readiness := extractProviderReadinessFromResponse(t, testConnectionResponse.Body.Bytes())
+	if readiness.Status != domain.ProviderReadinessStatusReady {
+		t.Fatalf("expected ready provider readiness, got %#v", readiness)
+	}
+	if len(readiness.DiscoveredModels) != 2 || readiness.DiscoveredModels[0] != "routes-e2e-model" {
+		t.Fatalf("expected discovered models in readiness report, got %#v", readiness.DiscoveredModels)
+	}
 
 	saveProviderResponse := performJSONRequest(t, router, http.MethodPost, "/api/v1/user/providers", map[string]any{
 		"family":           "LLM",
@@ -683,6 +690,17 @@ type routesE2EProviderRuntimeOverview struct {
 	Chat     *routesE2EProviderRuntimeAssignment `json:"chat"`
 }
 
+type routesE2EProviderReadinessCheck struct {
+	Code   string `json:"code"`
+	Status string `json:"status"`
+}
+
+type routesE2EProviderReadinessReport struct {
+	Status           string                            `json:"status"`
+	Checks           []routesE2EProviderReadinessCheck `json:"checks"`
+	DiscoveredModels []string                          `json:"discovered_models"`
+}
+
 type routesE2EConversation struct {
 	ID           uint   `json:"id"`
 	CollectionID uint   `json:"collection_id"`
@@ -905,6 +923,19 @@ func extractProviderRuntimeOverviewFromResponse(t *testing.T, body []byte) route
 	return envelope.Data
 }
 
+func extractProviderReadinessFromResponse(t *testing.T, body []byte) routesE2EProviderReadinessReport {
+	t.Helper()
+
+	var envelope struct {
+		Data routesE2EProviderReadinessReport `json:"data"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		t.Fatalf("Unmarshal provider readiness response returned error: %v", err)
+	}
+
+	return envelope.Data
+}
+
 func extractDocumentAuditQueryFromResponse(t *testing.T, body []byte) routesE2EDocumentAuditQueryResponse {
 	t.Helper()
 
@@ -1067,44 +1098,55 @@ func newRoutesE2EFakeOpenAICompatibleServer(t *testing.T) *httptest.Server {
 	t.Helper()
 
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/chat/completions" {
-			http.NotFound(w, r)
-			return
-		}
-
-		var payload struct {
-			Stream bool `json:"stream"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		if payload.Stream {
-			w.Header().Set("Content-Type", "text/event-stream")
-			flusher, ok := w.(http.Flusher)
-			if !ok {
-				http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		switch r.URL.Path {
+		case "/chat/completions":
+			var payload struct {
+				Stream bool `json:"stream"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 
-			_, _ = fmt.Fprintf(w, "data: %s\n\n", `{"choices":[{"delta":{"content":"O relatorio mensal deve ser entregue ate o dia 5, e o atendimento emergencial deve ocorrer em ate 4 horas."}}]}`)
-			flusher.Flush()
-			_, _ = fmt.Fprint(w, "data: [DONE]\n\n")
-			flusher.Flush()
-			return
-		}
+			if payload.Stream {
+				w.Header().Set("Content-Type", "text/event-stream")
+				flusher, ok := w.(http.Flusher)
+				if !ok {
+					http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+					return
+				}
 
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"choices": []map[string]any{
-				{
-					"message": map[string]string{
-						"content": "OK",
+				_, _ = fmt.Fprintf(w, "data: %s\n\n", `{"choices":[{"delta":{"content":"O relatorio mensal deve ser entregue ate o dia 5, e o atendimento emergencial deve ocorrer em ate 4 horas."}}]}`)
+				flusher.Flush()
+				_, _ = fmt.Fprint(w, "data: [DONE]\n\n")
+				flusher.Flush()
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"choices": []map[string]any{
+					{
+						"message": map[string]string{
+							"content": "OK",
+						},
 					},
 				},
-			},
-		})
+			})
+			return
+		case "/models":
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"data": []map[string]string{
+					{"id": "routes-e2e-model"},
+					{"id": "routes-e2e-alt-model"},
+				},
+			})
+			return
+		default:
+			http.NotFound(w, r)
+			return
+		}
 	}))
 
 	t.Cleanup(server.Close)

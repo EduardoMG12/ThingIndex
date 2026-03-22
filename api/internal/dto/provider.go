@@ -19,6 +19,16 @@ type ProviderConfigResponse struct {
 	UpdatedAt          time.Time         `json:"updated_at"`
 }
 
+type ProviderConnectionRequest struct {
+	Family       string            `json:"family" example:"LLM"`
+	ProviderType string            `json:"provider_type" example:"OPENAI"`
+	Credentials  map[string]string `json:"credentials"`
+}
+
+type ProviderModelsResponse struct {
+	Models []string `json:"models"`
+}
+
 func ToProviderConfigResponse(config *models.UserProviderConfig, publicMetadata map[string]string) *ProviderConfigResponse {
 	if config == nil {
 		return nil
