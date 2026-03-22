@@ -71,6 +71,58 @@ export type ProviderRuntimeOverview = {
     chat: ProviderRuntimeAssignment | null;
 };
 
+type ProviderSupportCapabilitiesApiRecord = {
+    supports_credential_validation?: boolean;
+    supports_connection_test?: boolean;
+    supports_model_discovery?: boolean;
+    supports_streaming?: boolean;
+    supports_indexing?: boolean;
+    supports_chat?: boolean;
+    supports_optional_live_tests?: boolean;
+    requires_explicit_model?: boolean;
+    requires_explicit_base_url?: boolean;
+    requires_openai_compatible_bridge?: boolean;
+};
+
+type ProviderSupportApiRecord = {
+    family: ProviderFamily;
+    provider_type: ProviderType;
+    display_name: string;
+    support_level: "READY" | "PARTIAL" | "EXPERIMENTAL";
+    transport: "NATIVE_OPENAI" | "NATIVE_OLLAMA" | "OPENAI_COMPATIBLE" | "OPENAI_COMPATIBLE_BRIDGE";
+    summary: string;
+    suggested_base_url?: string;
+    suggested_model?: string;
+    capabilities?: ProviderSupportCapabilitiesApiRecord;
+    notes?: unknown;
+};
+
+export type ProviderSupportCapabilities = {
+    supports_credential_validation: boolean;
+    supports_connection_test: boolean;
+    supports_model_discovery: boolean;
+    supports_streaming: boolean;
+    supports_indexing: boolean;
+    supports_chat: boolean;
+    supports_optional_live_tests: boolean;
+    requires_explicit_model: boolean;
+    requires_explicit_base_url: boolean;
+    requires_openai_compatible_bridge: boolean;
+};
+
+export type ProviderSupport = {
+    family: ProviderFamily;
+    provider_type: ProviderType;
+    display_name: string;
+    support_level: "READY" | "PARTIAL" | "EXPERIMENTAL";
+    transport: "NATIVE_OPENAI" | "NATIVE_OLLAMA" | "OPENAI_COMPATIBLE" | "OPENAI_COMPATIBLE_BRIDGE";
+    summary: string;
+    suggested_base_url: string | null;
+    suggested_model: string | null;
+    capabilities: ProviderSupportCapabilities;
+    notes: string[];
+};
+
 type ProviderReadinessCheckApiRecord = {
     code: string;
     status: string;
@@ -185,6 +237,55 @@ function normalizeProviderReadinessReport(record: unknown): ProviderReadinessRep
     };
 }
 
+function normalizeProviderSupport(record: unknown): ProviderSupport | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const supportRecord = record as Partial<ProviderSupportApiRecord>;
+    if (!supportRecord.family || !supportRecord.provider_type || !supportRecord.display_name || !supportRecord.support_level || !supportRecord.transport || !supportRecord.summary) {
+        return null;
+    }
+
+    const capabilities = supportRecord.capabilities ?? {};
+    const notes = Array.isArray(supportRecord.notes)
+        ? supportRecord.notes.reduce<string[]>((items, note) => {
+            if (typeof note === "string" && note.trim()) {
+                items.push(note.trim());
+            }
+            return items;
+        }, [])
+        : [];
+
+    return {
+        family: supportRecord.family,
+        provider_type: supportRecord.provider_type,
+        display_name: supportRecord.display_name,
+        support_level: supportRecord.support_level,
+        transport: supportRecord.transport,
+        summary: supportRecord.summary,
+        suggested_base_url: typeof supportRecord.suggested_base_url === "string" && supportRecord.suggested_base_url.trim()
+            ? supportRecord.suggested_base_url.trim()
+            : null,
+        suggested_model: typeof supportRecord.suggested_model === "string" && supportRecord.suggested_model.trim()
+            ? supportRecord.suggested_model.trim()
+            : null,
+        capabilities: {
+            supports_credential_validation: Boolean(capabilities.supports_credential_validation),
+            supports_connection_test: Boolean(capabilities.supports_connection_test),
+            supports_model_discovery: Boolean(capabilities.supports_model_discovery),
+            supports_streaming: Boolean(capabilities.supports_streaming),
+            supports_indexing: Boolean(capabilities.supports_indexing),
+            supports_chat: Boolean(capabilities.supports_chat),
+            supports_optional_live_tests: Boolean(capabilities.supports_optional_live_tests),
+            requires_explicit_model: Boolean(capabilities.requires_explicit_model),
+            requires_explicit_base_url: Boolean(capabilities.requires_explicit_base_url),
+            requires_openai_compatible_bridge: Boolean(capabilities.requires_openai_compatible_bridge),
+        },
+        notes,
+    };
+}
+
 export async function fetchProviders(signal?: AbortSignal): Promise<ProviderConfig[]> {
     const response = await fetchWithAuthRedirect("/api/user/providers", {
         method: "GET",
@@ -238,6 +339,37 @@ export async function fetchProviderRuntimeOverview(signal?: AbortSignal): Promis
         indexing: normalizeProviderRuntimeAssignment(payload.data.indexing),
         chat: normalizeProviderRuntimeAssignment(payload.data.chat),
     };
+}
+
+export async function fetchProviderSupportMatrix(
+    options?: {
+        family?: ProviderFamily;
+        signal?: AbortSignal;
+    }
+): Promise<ProviderSupport[]> {
+    const searchParams = new URLSearchParams();
+    if (options?.family) {
+        searchParams.set("family", options.family);
+    }
+
+    const query = searchParams.toString();
+    const response = await fetch(`/api/providers/support${query ? `?${query}` : ""}`, {
+        method: "GET",
+        cache: "no-store",
+        signal: options?.signal,
+    });
+
+    const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<unknown> | ApiErrorResponse | null;
+
+    if (!response.ok) {
+        throw new Error(payload?.message || "Could not load the provider support matrix.");
+    }
+
+    if (!hasResponseData(payload) || !Array.isArray(payload.data)) {
+        return [];
+    }
+
+    return payload.data.map(normalizeProviderSupport).filter((item): item is ProviderSupport => item !== null);
 }
 
 export async function saveProvider(input: {

@@ -5,7 +5,7 @@ vi.mock("@/lib/api/fetch-with-auth-redirect", () => ({
 }));
 
 import { fetchWithAuthRedirect } from "@/lib/api/fetch-with-auth-redirect";
-import { fetchProviderRuntimeOverview, listProviderModels, testProviderConnection } from "@/lib/api/providers";
+import { fetchProviderRuntimeOverview, fetchProviderSupportMatrix, listProviderModels, testProviderConnection } from "@/lib/api/providers";
 
 describe("providers api", () => {
     beforeEach(() => {
@@ -117,5 +117,75 @@ describe("providers api", () => {
         expect(report?.status).toBe("READY");
         expect(report?.checks).toHaveLength(3);
         expect(report?.discovered_models).toEqual(["gpt-4o-mini", "gpt-4.1-mini"]);
+    });
+
+    it("loads and normalizes the provider support matrix", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValue(
+                new Response(
+                    JSON.stringify({
+                        status: 200,
+                        type: "success",
+                        message: "ok",
+                        data: [
+                            {
+                                family: "LLM",
+                                provider_type: "OPENAI",
+                                display_name: "OpenAI",
+                                support_level: "READY",
+                                transport: "NATIVE_OPENAI",
+                                summary: "Ready for the main runtime.",
+                                suggested_base_url: "https://api.openai.com/v1",
+                                suggested_model: "gpt-4o-mini",
+                                capabilities: {
+                                    supports_credential_validation: true,
+                                    supports_connection_test: true,
+                                    supports_model_discovery: true,
+                                    supports_streaming: true,
+                                    supports_indexing: true,
+                                    supports_chat: true,
+                                    supports_optional_live_tests: true,
+                                    requires_explicit_model: false,
+                                    requires_explicit_base_url: false,
+                                    requires_openai_compatible_bridge: false,
+                                },
+                                notes: ["Direct OpenAI path.", "", null],
+                            },
+                        ],
+                    }),
+                    { status: 200, headers: { "Content-Type": "application/json" } }
+                )
+            )
+        );
+
+        const items = await fetchProviderSupportMatrix({ family: "LLM" });
+
+        expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe("/api/providers/support?family=LLM");
+        expect(items).toEqual([
+            {
+                family: "LLM",
+                provider_type: "OPENAI",
+                display_name: "OpenAI",
+                support_level: "READY",
+                transport: "NATIVE_OPENAI",
+                summary: "Ready for the main runtime.",
+                suggested_base_url: "https://api.openai.com/v1",
+                suggested_model: "gpt-4o-mini",
+                capabilities: {
+                    supports_credential_validation: true,
+                    supports_connection_test: true,
+                    supports_model_discovery: true,
+                    supports_streaming: true,
+                    supports_indexing: true,
+                    supports_chat: true,
+                    supports_optional_live_tests: true,
+                    requires_explicit_model: false,
+                    requires_explicit_base_url: false,
+                    requires_openai_compatible_bridge: false,
+                },
+                notes: ["Direct OpenAI path."],
+            },
+        ]);
     });
 });

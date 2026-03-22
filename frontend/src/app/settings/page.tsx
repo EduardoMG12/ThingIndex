@@ -7,6 +7,8 @@ import { toast } from "sonner";
 
 import ProviderModelField from "@/components/settings/ProviderModelField";
 import ProviderReadinessPanel from "@/components/settings/ProviderReadinessPanel";
+import { ProviderSupportBadge } from "@/components/providers/ProviderSupportBadge";
+import { ProviderSupportPanel } from "@/components/providers/ProviderSupportPanel";
 import {
     getInitialFormState,
     getInitialLLMSelectionState,
@@ -26,6 +28,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
 import {
     fetchProviders,
+    fetchProviderSupportMatrix,
     listProviderModels,
     saveProvider,
     setProviderEnabled,
@@ -33,6 +36,7 @@ import {
     type ProviderConfig,
     type ProviderFamily,
     type ProviderReadinessReport,
+    type ProviderSupport,
     type ProviderType
 } from "@/lib/api/providers";
 import {
@@ -123,6 +127,7 @@ function FamilySection({
     discoveredModels,
     readinessReports,
     auditReloadToken,
+    providerSupportByType,
 }: {
     family: ProviderFamily;
     providers: ProviderDefinition[];
@@ -143,6 +148,7 @@ function FamilySection({
     discoveredModels: Partial<Record<ProviderType, string[]>>;
     readinessReports: Partial<Record<ProviderType, ProviderReadinessReport | null>>;
     auditReloadToken: number;
+    providerSupportByType: Partial<Record<ProviderType, ProviderSupport>>;
 }) {
     const { locale, t } = useI18n();
     const familyCopy = {
@@ -153,6 +159,7 @@ function FamilySection({
     const FamilyIcon = familyCopy.icon;
     const activeProvider = providers.find((provider) => provider.providerType === activeProviderType) ?? providers[0];
     const ActiveProviderIcon = activeProvider.icon;
+    const activeProviderSupport = providerSupportByType[activeProvider.providerType] ?? null;
     const savedConfigs = getSavedConfigs(configs, family);
     const discoveredModelsForActiveProvider = discoveredModels[activeProvider.providerType] ?? [];
     const readinessReport = readinessReports[activeProvider.providerType] ?? null;
@@ -185,6 +192,7 @@ function FamilySection({
                     <CardContent className="grid flex-1 auto-rows-max gap-3 overflow-y-auto pr-2 custom-scrollbar">
                         {providers.map((provider) => {
                             const ProviderIcon = provider.icon;
+                            const support = providerSupportByType[provider.providerType] ?? null;
                             const saved = hasSavedConfig(configs, family, provider.providerType);
                             const enabled = family === "STORAGE"
                                 ? isStorageEnabled(configs, provider.providerType)
@@ -218,6 +226,9 @@ function FamilySection({
                                                         <CheckCircle2 className="h-3 w-3" />
                                                         {t("common.saved")}
                                                     </span>
+                                                ) : null}
+                                                {family === "LLM" && support ? (
+                                                    <ProviderSupportBadge level={support.support_level} />
                                                 ) : null}
                                                 {enabled ? (
                                                     <span className="rounded-full border border-primary/20 bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
@@ -260,6 +271,10 @@ function FamilySection({
                     </CardHeader>
                     <CardContent className="flex min-h-0 flex-1 flex-col gap-4">
                         <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+                            {family === "LLM" ? (
+                                <ProviderSupportPanel support={activeProviderSupport} />
+                            ) : null}
+
                             {activeProvider.fields.map((field) => (
                                 field.kind === "model" ? (
                                     <ProviderModelField
@@ -395,6 +410,7 @@ function FamilySection({
                             }
 
                             const ProviderIcon = provider.icon;
+                            const support = providerSupportByType[provider.providerType] ?? null;
 
                             return (
                                 <div
@@ -408,6 +424,9 @@ function FamilySection({
                                         <div>
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <p className="text-sm font-semibold">{provider.name}</p>
+                                                {family === "LLM" && support ? (
+                                                    <ProviderSupportBadge level={support.support_level} />
+                                                ) : null}
                                                 {family === "STORAGE" && config.is_enabled ? (
                                                     <span className="rounded-full border border-primary/20 bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
                                                         {t("common.active")}
@@ -747,9 +766,17 @@ export default function SettingsPage() {
     const [pricingSources, setPricingSources] = useState<PricingSource[]>([]);
     const [prices, setPrices] = useState<ModelPrice[]>([]);
     const [priceHistory, setPriceHistory] = useState<ModelPriceHistory[]>([]);
+    const [providerSupportByType, setProviderSupportByType] = useState<Partial<Record<ProviderType, ProviderSupport>>>({});
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isPending, startTransition] = useTransition();
+
+    function toProviderSupportMap(items: ProviderSupport[]) {
+        return items.reduce<Partial<Record<ProviderType, ProviderSupport>>>((acc, item) => {
+            acc[item.provider_type] = item;
+            return acc;
+        }, {});
+    }
 
     function applyLoadedProviders(data: ProviderConfig[]) {
         setProviders(data);
@@ -772,13 +799,15 @@ export default function SettingsPage() {
             try {
                 setIsLoading(true);
                 setError(null);
-                const [data, sourceData, priceData, historyData] = await Promise.all([
+                const [data, supportData, sourceData, priceData, historyData] = await Promise.all([
                     fetchProviders(controller.signal),
+                    fetchProviderSupportMatrix({ family: "LLM", signal: controller.signal }).catch(() => []),
                     fetchPricingSources(controller.signal),
                     fetchPrices(controller.signal),
                     fetchPriceHistory(100, controller.signal),
                 ]);
                 setProviders(data);
+                setProviderSupportByType(toProviderSupportMap(supportData));
                 syncLLMSelections(data);
 
                 const { activeStorageType, activeLLMType } = getActiveProviderTypes(data);
@@ -810,13 +839,15 @@ export default function SettingsPage() {
     function reloadProviders() {
         startTransition(async () => {
             try {
-                const [data, sourceData, priceData, historyData] = await Promise.all([
+                const [data, supportData, sourceData, priceData, historyData] = await Promise.all([
                     fetchProviders(),
+                    fetchProviderSupportMatrix({ family: "LLM" }).catch(() => []),
                     fetchPricingSources(),
                     fetchPrices(),
                     fetchPriceHistory(100),
                 ]);
                 applyLoadedProviders(data);
+                setProviderSupportByType(toProviderSupportMap(supportData));
                 setPricingSources(sourceData);
                 setPrices(priceData);
                 setPriceHistory(historyData);
@@ -843,23 +874,40 @@ export default function SettingsPage() {
 
     function handleSelectLLMProvider(providerType: ProviderType) {
         setActiveLLMType(providerType);
-
-        if (providerType !== "OLLAMA") {
-            return;
-        }
+        const support = providerSupportByType[providerType] ?? null;
 
         setForms((current) => {
-            const currentBaseURL = current.OLLAMA?.base_url?.trim() ?? "";
-            if (currentBaseURL) {
+            const nextProviderForm = {
+                ...current[providerType],
+            };
+
+            let changed = false;
+
+            if (
+                support?.suggested_base_url &&
+                !nextProviderForm.base_url?.trim() &&
+                (providerType === "OLLAMA" || support.capabilities.requires_explicit_base_url)
+            ) {
+                nextProviderForm.base_url = support.suggested_base_url;
+                changed = true;
+            }
+
+            if (
+                support?.suggested_model &&
+                !nextProviderForm.model?.trim() &&
+                support.capabilities.requires_explicit_model
+            ) {
+                nextProviderForm.model = support.suggested_model;
+                changed = true;
+            }
+
+            if (!changed) {
                 return current;
             }
 
             return {
                 ...current,
-                OLLAMA: {
-                    ...current.OLLAMA,
-                    base_url: "https://ollama.com/v1",
-                },
+                [providerType]: nextProviderForm,
             };
         });
     }
@@ -1123,6 +1171,7 @@ export default function SettingsPage() {
                             discoveredModels={discoveredModels}
                             readinessReports={readinessReports}
                             auditReloadToken={providerAuditReloadToken}
+                            providerSupportByType={providerSupportByType}
                         />
 
                         <FamilySection
@@ -1145,6 +1194,7 @@ export default function SettingsPage() {
                             discoveredModels={discoveredModels}
                             readinessReports={readinessReports}
                             auditReloadToken={providerAuditReloadToken}
+                            providerSupportByType={providerSupportByType}
                         />
 
                         <PricingSection

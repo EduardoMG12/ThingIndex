@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { OpenSourceOnboardingSection } from "@/components/documentation/OpenSourceOnboardingSection";
+import { ProviderSupportSection } from "@/components/documentation/ProviderSupportSection";
 import AppShell from "@/components/layout/AppShell";
 import { Section } from "@/components/documentation/Section";
 import { TableOfContents } from "@/components/documentation/TableOfContents";
@@ -253,10 +254,7 @@ export default function DocumentationPage() {
                     </Section>
 
                     <Section icon={Code2} title="Providers e Portabilidade" id="providers" delay={0.5}>
-                        <p>
-                            Há suporte para configuração de storage e LLM por usuário, com ativação controlada e credenciais
-                            criptografadas. Na prática, o storage MinIO/S3-compatible é o provider mais consolidado hoje.
-                        </p>
+                        <ProviderSupportSection />
                     </Section>
 
                     <Section icon={BookOpen} title="Onboarding Open Source" id="open-source" delay={0.55}>
