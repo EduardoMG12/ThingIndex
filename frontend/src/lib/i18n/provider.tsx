@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 
 import type { AppLocale } from "@/lib/i18n/config";
 import { getLocaleFromPathname, localizePath } from "@/lib/i18n/config";
-import { getMessages, type TranslationTree, type TranslationValue } from "@/lib/i18n/messages";
+import { getMessages, type TranslationTree } from "@/lib/i18n/messages";
+import { translateFromMessages, type TranslationVariables } from "@/lib/i18n/translate";
 
 type I18nContextValue = {
     locale: AppLocale;
@@ -13,15 +14,6 @@ type I18nContextValue = {
 };
 
 const I18nContext = createContext<I18nContextValue | null>(null);
-
-function getValue(messages: TranslationTree, key: string): TranslationValue | undefined {
-    return key.split(".").reduce<TranslationValue | undefined>((acc, part) => {
-        if (!acc || typeof acc === "string") {
-            return undefined;
-        }
-        return acc[part];
-    }, messages);
-}
 
 export function I18nProvider({
     locale,
@@ -43,19 +35,8 @@ export function useI18n() {
         throw new Error("useI18n must be used within I18nProvider");
     }
 
-    const t = useCallback((key: string, variables?: Record<string, string | number>) => {
-        const value = getValue(context.messages, key);
-        if (typeof value !== "string") {
-            return key;
-        }
-
-        if (!variables) {
-            return value;
-        }
-
-        return Object.entries(variables).reduce((result, [name, replacement]) => {
-            return result.replaceAll(`{${name}}`, String(replacement));
-        }, value);
+    const t = useCallback((key: string, variables?: TranslationVariables) => {
+        return translateFromMessages(context.messages, key, variables);
     }, [context.messages]);
 
     const href = useCallback((pathname: string) => {

@@ -3,6 +3,7 @@ import {
     type ApiErrorResponse,
     type ApiSuccessResponse,
 } from "@/lib/api/types";
+import { apiErrorMessage } from "@/lib/api/error";
 import { fetchWithAuthRedirect } from "@/lib/api/fetch-with-auth-redirect";
 
 export type PricingProviderType = "OPENAI" | "GOOGLE_GEMINI" | "DEEP_SEEK" | "OLLAMA";
@@ -70,7 +71,7 @@ export async function fetchPricingSources(signal?: AbortSignal): Promise<Pricing
 
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<PricingSourceApiRecord[]> | ApiErrorResponse | null;
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel carregar as fontes de pricing.");
+        throw new Error(payload?.message || apiErrorMessage("pricing.sources"));
     }
     if (!hasResponseData(payload) || !Array.isArray(payload.data)) {
         return [];
@@ -99,7 +100,7 @@ export async function savePricingSource(input: {
 
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<null> | ApiErrorResponse | null;
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel salvar a fonte de pricing.");
+        throw new Error(payload?.message || apiErrorMessage("pricing.saveSource"));
     }
 }
 
@@ -112,7 +113,7 @@ export async function fetchPrices(signal?: AbortSignal): Promise<ModelPrice[]> {
 
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<ModelPriceApiRecord[]> | ApiErrorResponse | null;
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel carregar os precos.");
+        throw new Error(payload?.message || apiErrorMessage("pricing.list"));
     }
     if (!hasResponseData(payload) || !Array.isArray(payload.data)) {
         return [];
@@ -129,7 +130,7 @@ export async function fetchPriceHistory(limit = 100, signal?: AbortSignal): Prom
 
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<ModelPriceHistoryApiRecord[]> | ApiErrorResponse | null;
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel carregar o historico de precos.");
+        throw new Error(payload?.message || apiErrorMessage("pricing.history"));
     }
     if (!hasResponseData(payload) || !Array.isArray(payload.data)) {
         return [];

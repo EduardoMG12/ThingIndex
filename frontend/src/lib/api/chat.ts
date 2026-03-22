@@ -1,4 +1,5 @@
 import { UnauthorizedRequestError } from "@/lib/api/fetch-with-auth-redirect";
+import { apiErrorMessage } from "@/lib/api/error";
 import {
     hasResponseData,
     type ApiErrorResponse,
@@ -77,7 +78,7 @@ export async function streamCollectionChat(input: StreamInput): Promise<void> {
 
     if (!response.ok || !response.body) {
         const payload = await response.json().catch(() => null) as { message?: string } | null;
-        throw new Error(payload?.message || "Nao foi possivel iniciar o chat.");
+        throw new Error(payload?.message || apiErrorMessage("chat.start"));
     }
 
     const reader = response.body.getReader();
@@ -129,7 +130,7 @@ export async function fetchChatConversations(
 
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<unknown> | ApiErrorResponse | null;
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel carregar as conversas.");
+        throw new Error(payload?.message || apiErrorMessage("chat.list"));
     }
 
     const data = hasResponseData(payload) ? payload.data : null;
@@ -166,12 +167,12 @@ export async function createChatConversation(
 
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<unknown> | ApiErrorResponse | null;
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel criar a conversa.");
+        throw new Error(payload?.message || apiErrorMessage("chat.create"));
     }
 
     const normalized = normalizeConversationSummary(hasResponseData(payload) ? payload.data : null);
     if (!normalized) {
-        throw new Error("Resposta invalida ao criar a conversa.");
+        throw new Error(apiErrorMessage("chat.createInvalid"));
     }
 
     return normalized;
@@ -193,12 +194,12 @@ export async function fetchChatConversation(
 
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<unknown> | ApiErrorResponse | null;
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel carregar a conversa.");
+        throw new Error(payload?.message || apiErrorMessage("chat.fetch"));
     }
 
     const normalized = normalizeConversationDetail(hasResponseData(payload) ? payload.data : null);
     if (!normalized) {
-        throw new Error("Resposta invalida ao carregar a conversa.");
+        throw new Error(apiErrorMessage("chat.fetchInvalid"));
     }
 
     return normalized;
@@ -220,7 +221,7 @@ export async function deleteChatConversation(
 
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<unknown> | ApiErrorResponse | null;
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel remover a conversa.");
+        throw new Error(payload?.message || apiErrorMessage("chat.delete"));
     }
 }
 
@@ -245,12 +246,12 @@ export async function updateChatConversationTitle(
 
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<unknown> | ApiErrorResponse | null;
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel atualizar a conversa.");
+        throw new Error(payload?.message || apiErrorMessage("chat.update"));
     }
 
     const normalized = normalizeConversationSummary(hasResponseData(payload) ? payload.data : null);
     if (!normalized) {
-        throw new Error("Resposta invalida ao atualizar a conversa.");
+        throw new Error(apiErrorMessage("chat.updateInvalid"));
     }
 
     return normalized;

@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
 
-const { cookiesMock, createForwardHeadersMock, unauthorizedJsonMock } = vi.hoisted(() => ({
+const { cookiesMock, createForwardHeadersMock, getRequestLocaleMock, unauthorizedJsonMock } = vi.hoisted(() => ({
     cookiesMock: vi.fn(),
     createForwardHeadersMock: vi.fn(),
+    getRequestLocaleMock: vi.fn(),
     unauthorizedJsonMock: vi.fn(),
 }));
 
@@ -13,6 +14,7 @@ vi.mock("next/headers", () => ({
 
 vi.mock("@/app/api/_utils/locale", () => ({
     createForwardHeaders: createForwardHeadersMock,
+    getRequestLocale: getRequestLocaleMock,
 }));
 
 vi.mock("@/app/api/_utils/auth", () => ({
@@ -29,6 +31,7 @@ describe("content proxy", () => {
             get: () => ({ value: "token-123" }),
         });
         createForwardHeadersMock.mockResolvedValue(new Headers({ Authorization: "Bearer token-123" }));
+        getRequestLocaleMock.mockResolvedValue("pt-BR");
         unauthorizedJsonMock.mockImplementation(() => NextResponse.json({ message: "unauthorized" }, { status: 401 }));
     });
 

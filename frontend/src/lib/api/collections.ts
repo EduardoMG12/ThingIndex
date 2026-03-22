@@ -3,6 +3,7 @@ import {
     type ApiErrorResponse,
     type ApiSuccessResponse,
 } from "@/lib/api/types";
+import { apiErrorMessage } from "@/lib/api/error";
 import {
     normalizeCollectionContext,
     normalizeCollectionSummaries,
@@ -21,7 +22,7 @@ export async function fetchCollections(signal?: AbortSignal): Promise<Collection
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<unknown> | ApiErrorResponse | null;
 
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel carregar as collections.");
+        throw new Error(payload?.message || apiErrorMessage("collections.list"));
     }
 
     return normalizeCollectionSummaries(hasResponseData(payload) ? payload.data : null);
@@ -40,12 +41,12 @@ export async function fetchCollectionContext(
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<unknown> | ApiErrorResponse | null;
 
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel carregar o contexto da collection.");
+        throw new Error(payload?.message || apiErrorMessage("collections.context"));
     }
 
     const normalized = normalizeCollectionContext(hasResponseData(payload) ? payload.data : null);
     if (!normalized) {
-        throw new Error("Resposta invalida ao carregar o contexto da collection.");
+        throw new Error(apiErrorMessage("collections.contextInvalid"));
     }
 
     return normalized;

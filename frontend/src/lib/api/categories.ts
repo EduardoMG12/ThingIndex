@@ -3,6 +3,7 @@ import {
     type ApiErrorResponse,
     type ApiSuccessResponse,
 } from "@/lib/api/types";
+import { apiErrorMessage } from "@/lib/api/error";
 import { fetchWithAuthRedirect } from "@/lib/api/fetch-with-auth-redirect";
 
 export type Category = {
@@ -24,7 +25,7 @@ export async function fetchCategories(signal?: AbortSignal): Promise<Category[]>
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<Category[]> | ApiErrorResponse | null;
 
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel carregar as categorias.");
+        throw new Error(payload?.message || apiErrorMessage("categories.list"));
     }
 
     if (!hasResponseData(payload) || !Array.isArray(payload.data)) {
@@ -46,11 +47,11 @@ export async function createCategory(name: string): Promise<Category> {
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<Category> | ApiErrorResponse | null;
 
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel criar a categoria.");
+        throw new Error(payload?.message || apiErrorMessage("categories.create"));
     }
 
     if (!hasResponseData(payload) || !payload.data) {
-        throw new Error("Resposta invalida ao criar categoria.");
+        throw new Error(apiErrorMessage("categories.createInvalid"));
     }
 
     return payload.data;
@@ -74,11 +75,11 @@ export async function updateCategory(
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<Category> | ApiErrorResponse | null;
 
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel atualizar a categoria.");
+        throw new Error(payload?.message || apiErrorMessage("categories.update"));
     }
 
     if (!hasResponseData(payload) || !payload.data) {
-        throw new Error("Resposta invalida ao atualizar categoria.");
+        throw new Error(apiErrorMessage("categories.updateInvalid"));
     }
 
     return payload.data;

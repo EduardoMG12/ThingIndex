@@ -3,6 +3,7 @@ import {
     type ApiErrorResponse,
     type ApiSuccessResponse,
 } from "@/lib/api/types";
+import { apiErrorMessage } from "@/lib/api/error";
 import { fetchWithAuthRedirect } from "@/lib/api/fetch-with-auth-redirect";
 
 type DocumentAuditEventApiRecord = {
@@ -354,7 +355,7 @@ export async function fetchDocumentAuditEvents(input: {
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<DocumentAuditQueryApiRecord | DocumentAuditEventApiRecord[]> | ApiErrorResponse | null;
 
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel carregar a auditoria documental.");
+        throw new Error(payload?.message || apiErrorMessage("audit.documents"));
     }
 
     if (!hasResponseData(payload)) {
@@ -419,7 +420,7 @@ export async function fetchProviderAuditEvents(input: {
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<ProviderAuditQueryApiRecord | ProviderAuditEventApiRecord[]> | ApiErrorResponse | null;
 
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel carregar a auditoria de providers.");
+        throw new Error(payload?.message || apiErrorMessage("audit.providers"));
     }
 
     if (!hasResponseData(payload)) {

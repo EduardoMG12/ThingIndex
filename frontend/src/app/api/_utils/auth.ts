@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
+
+import { getApiRouteMessage } from "@/app/api/_utils/messages";
 import { REQUEST_ID_HEADER_NAME } from "@/lib/api/request-id";
 
-export function unauthorizedJson(message = "Usuario nao autenticado.") {
-    const response = NextResponse.json({ message }, { status: 401 });
+export async function unauthorizedJson(request?: Request, message?: string) {
+    const resolvedMessage = message ?? await getApiRouteMessage(request, "apiRouteErrors.unauthorized");
+    const response = NextResponse.json({ message: resolvedMessage }, { status: 401 });
     response.cookies.delete("token");
     return response;
 }

@@ -3,6 +3,7 @@ import {
     type ApiErrorResponse,
     type ApiSuccessResponse,
 } from "@/lib/api/types";
+import { apiErrorMessage } from "@/lib/api/error";
 import { fetchWithAuthRedirect } from "@/lib/api/fetch-with-auth-redirect";
 
 export type ProviderFamily = "STORAGE" | "LLM";
@@ -194,7 +195,7 @@ export async function fetchProviders(signal?: AbortSignal): Promise<ProviderConf
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<ProviderApiRecord[]> | ApiErrorResponse | null;
 
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel carregar os providers.");
+        throw new Error(payload?.message || apiErrorMessage("providers.list"));
     }
 
     if (!hasResponseData(payload) || !Array.isArray(payload.data)) {
@@ -221,7 +222,7 @@ export async function fetchProviderRuntimeOverview(signal?: AbortSignal): Promis
         | null;
 
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel carregar o runtime ativo dos providers.");
+        throw new Error(payload?.message || apiErrorMessage("providers.runtime"));
     }
 
     if (!hasResponseData(payload) || !payload.data || typeof payload.data !== "object") {
@@ -265,7 +266,7 @@ export async function saveProvider(input: {
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<null> | ApiErrorResponse | null;
 
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel salvar o provider.");
+        throw new Error(payload?.message || apiErrorMessage("providers.save"));
     }
 }
 
@@ -294,7 +295,7 @@ export async function setProviderEnabled(input: {
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<null> | ApiErrorResponse | null;
 
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel atualizar o provider.");
+        throw new Error(payload?.message || apiErrorMessage("providers.update"));
     }
 }
 
@@ -318,7 +319,7 @@ export async function testProviderConnection(input: {
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<unknown> | ApiErrorResponse | null;
 
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel testar a conexao do provider.");
+        throw new Error(payload?.message || apiErrorMessage("providers.test"));
     }
 
     if (!hasResponseData(payload)) {
@@ -351,7 +352,7 @@ export async function listProviderModels(input: {
         | null;
 
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel carregar os modelos do provider.");
+        throw new Error(payload?.message || apiErrorMessage("providers.models"));
     }
 
     if (!hasResponseData(payload) || !payload.data || !Array.isArray(payload.data.models)) {

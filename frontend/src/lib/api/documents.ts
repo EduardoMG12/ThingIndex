@@ -3,6 +3,7 @@ import {
     type ApiErrorResponse,
     type ApiSuccessResponse,
 } from "@/lib/api/types";
+import { apiErrorMessage } from "@/lib/api/error";
 import { REQUEST_ID_HEADER_NAME } from "@/lib/api/request-id";
 import type { Category } from "@/lib/api/categories";
 import {
@@ -169,7 +170,7 @@ async function parseDocumentResponse(response: Response, fallbackMessage: string
     }
 
     if (!hasResponseData(payload) || !payload.data) {
-        throw new Error("Resposta invalida ao carregar documento.");
+        throw new Error(apiErrorMessage("documents.fetchInvalid"));
     }
 
     return normalizeDocument(payload.data);
@@ -214,7 +215,7 @@ export async function uploadDocument(input: {
         body: formData,
     });
 
-    return parseDocumentResponse(response, "Nao foi possivel enviar o documento.");
+    return parseDocumentResponse(response, apiErrorMessage("documents.upload"));
 }
 
 export async function fetchDocument(documentId: number, signal?: AbortSignal): Promise<Document> {
@@ -224,7 +225,7 @@ export async function fetchDocument(documentId: number, signal?: AbortSignal): P
         signal,
     });
 
-    return parseDocumentResponse(response, "Nao foi possivel carregar o documento.");
+    return parseDocumentResponse(response, apiErrorMessage("documents.fetch"));
 }
 
 export async function fetchDocuments(signal?: AbortSignal): Promise<Document[]> {
@@ -237,7 +238,7 @@ export async function fetchDocuments(signal?: AbortSignal): Promise<Document[]> 
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<DocumentApiRecord[]> | ApiErrorResponse | null;
 
     if (!response.ok) {
-        throw new Error(buildApiErrorMessage(response, payload, "Nao foi possivel carregar os documentos."));
+        throw new Error(buildApiErrorMessage(response, payload, apiErrorMessage("documents.list")));
     }
 
     if (!hasResponseData(payload) || !Array.isArray(payload.data)) {
@@ -252,7 +253,7 @@ export async function retryDocumentIndexing(documentId: number): Promise<Documen
         method: "POST",
     });
 
-    return parseDocumentResponse(response, "Nao foi possivel reenfileirar o documento para indexacao.");
+    return parseDocumentResponse(response, apiErrorMessage("documents.retry"));
 }
 
 export async function deleteDocument(documentId: number): Promise<void> {
@@ -263,7 +264,7 @@ export async function deleteDocument(documentId: number): Promise<void> {
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<null> | ApiErrorResponse | null;
 
     if (!response.ok) {
-        throw new Error(buildApiErrorMessage(response, payload, "Nao foi possivel excluir o documento."));
+        throw new Error(buildApiErrorMessage(response, payload, apiErrorMessage("documents.delete")));
     }
 }
 
@@ -275,7 +276,7 @@ export async function deleteCollectionDocuments(collectionId: number): Promise<{
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<{ deleted_documents?: number }> | ApiErrorResponse | null;
 
     if (!response.ok) {
-        throw new Error(buildApiErrorMessage(response, payload, "Nao foi possivel excluir os documentos da collection."));
+        throw new Error(buildApiErrorMessage(response, payload, apiErrorMessage("documents.deleteCollection")));
     }
 
     if (!hasResponseData(payload) || !payload.data) {
@@ -302,7 +303,7 @@ export async function downloadDocumentOriginal(document: Pick<Document, "id" | "
         : null;
 
     if (!response.ok) {
-        throw new Error(buildApiErrorMessage(response, payload, "Nao foi possivel baixar o documento original."));
+        throw new Error(buildApiErrorMessage(response, payload, apiErrorMessage("documents.download")));
     }
 
     const blob = await response.blob();
@@ -613,11 +614,11 @@ export async function fetchDocumentIndex(documentId: number, signal?: AbortSigna
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<DocumentIndexApiRecord> | ApiErrorResponse | null;
 
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel carregar o indice do documento.");
+        throw new Error(payload?.message || apiErrorMessage("documents.index"));
     }
 
     if (!hasResponseData(payload) || !payload.data) {
-        throw new Error("Resposta invalida ao carregar o indice do documento.");
+        throw new Error(apiErrorMessage("documents.indexInvalid"));
     }
 
     return {
@@ -645,7 +646,7 @@ export async function fetchDocumentMonitoringSummary(signal?: AbortSignal): Prom
         | null;
 
     if (!response.ok) {
-        throw new Error(payload?.message || "Nao foi possivel carregar o resumo de monitoramento.");
+        throw new Error(payload?.message || apiErrorMessage("documents.monitoringSummary"));
     }
 
     if (!hasResponseData(payload) || !payload.data) {

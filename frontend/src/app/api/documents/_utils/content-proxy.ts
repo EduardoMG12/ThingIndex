@@ -2,7 +2,8 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { unauthorizedJson } from "@/app/api/_utils/auth";
-import { createForwardHeaders } from "@/app/api/_utils/locale";
+import { getApiRouteMessage, localizedRouteError } from "@/app/api/_utils/messages";
+import { createForwardHeaders, getRequestLocale } from "@/app/api/_utils/locale";
 import {
     buildContentDispositionHeader,
     isSafePreviewContentType,
@@ -27,7 +28,7 @@ export async function proxyDocumentContent(
     const token = (await cookies()).get("token")?.value;
 
     if (!token) {
-        return unauthorizedJson();
+        return unauthorizedJson(request);
     }
 
     const { id } = await context.params;
@@ -40,17 +41,18 @@ export async function proxyDocumentContent(
         });
 
         if (response.status === 401) {
-            return unauthorizedJson();
+            return unauthorizedJson(request);
         }
 
         if (!response.ok || !response.body) {
+            const fallbackMessage = await defaultErrorMessage(request, mode, response.status);
             const payload = await response.json().catch(() => ({
-                message: defaultErrorMessage(mode, response.status),
+                message: fallbackMessage,
             }));
-            const message = typeof payload?.message === "string" ? payload.message : defaultErrorMessage(mode, response.status);
+            const message = typeof payload?.message === "string" ? payload.message : fallbackMessage;
 
             if (mode === "preview") {
-                return renderPreviewFailure(message, response.status);
+                return renderPreviewFailure(request, message, response.status);
             }
 
             return NextResponse.json({ message }, { status: response.status });
@@ -58,7 +60,11 @@ export async function proxyDocumentContent(
 
         const upstreamContentType = normalizeContentType(response.headers.get("content-type"));
         if (mode === "preview" && !isSafePreviewContentType(upstreamContentType)) {
-            return renderPreviewFailure("Este tipo de arquivo nao pode ser renderizado inline com seguranca.", 415);
+            return renderPreviewFailure(
+                request,
+                await getApiRouteMessage(request, "apiRouteErrors.content.previewUnsafe"),
+                415
+            );
         }
 
         const headers = new Headers();
@@ -86,46 +92,44 @@ export async function proxyDocumentContent(
         });
     } catch {
         if (mode === "preview") {
-            return renderPreviewFailure("Erro ao carregar o preview do documento.", 502);
+            return renderPreviewFailure(request, await getApiRouteMessage(request, "apiRouteErrors.content.previewLoad"), 502);
         }
 
-        return NextResponse.json(
-            { message: "Erro ao baixar o documento original." },
-            { status: 502 }
-        );
+        return localizedRouteError(request, "apiRouteErrors.content.downloadLoad", 502);
     }
 }
 
-function defaultErrorMessage(mode: ContentProxyMode, status: number) {
+async function defaultErrorMessage(request: Request, mode: ContentProxyMode, status: number) {
     if (mode === "download") {
-        return "Nao foi possivel baixar o documento original.";
+        return getApiRouteMessage(request, "apiRouteErrors.content.download");
     }
 
     if (status === 410) {
-        return "O arquivo original nao foi encontrado no storage. O documento esta orfao e precisa de reupload ou exclusao.";
+        return getApiRouteMessage(request, "apiRouteErrors.content.previewMissing");
     }
 
-    return "Nao foi possivel carregar o preview do documento.";
+    return getApiRouteMessage(request, "apiRouteErrors.content.preview");
 }
 
-function renderPreviewFailure(message: string, status: number) {
+async function renderPreviewFailure(request: Request, message: string, status: number) {
     const escapedMessage = escapeHtml(message);
+    const locale = await getRequestLocale(request);
     const title =
         status === 410
-            ? "Arquivo original indisponivel"
+            ? await getApiRouteMessage(request, "apiRouteErrors.content.previewMissingTitle")
             : status === 415
-              ? "Preview bloqueado por seguranca"
-              : "Preview indisponivel";
+              ? await getApiRouteMessage(request, "apiRouteErrors.content.previewUnsafeTitle")
+              : await getApiRouteMessage(request, "apiRouteErrors.content.previewTitle");
     const helperText =
         status === 410
-            ? "Reenvie o arquivo para restaurar o original ou exclua o registro desatualizado."
+            ? await getApiRouteMessage(request, "apiRouteErrors.content.previewMissingHint")
             : status === 415
-              ? "Use o download explicito do original para inspecionar esse formato fora do navegador."
-              : "Tente novamente em instantes ou use o download explicito do original quando disponivel.";
+              ? await getApiRouteMessage(request, "apiRouteErrors.content.previewUnsafeHint")
+              : await getApiRouteMessage(request, "apiRouteErrors.content.previewHint");
 
     return new NextResponse(
         `<!doctype html>
-<html lang="pt-BR">
+<html lang="${locale}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
