@@ -3,6 +3,7 @@ package dto
 import (
 	"time"
 
+	"thing-index/internal/domain"
 	"thing-index/internal/models"
 )
 
@@ -27,6 +28,32 @@ type ProviderConnectionRequest struct {
 
 type ProviderModelsResponse struct {
 	Models []string `json:"models"`
+}
+
+type ProviderSupportCapabilitiesResponse struct {
+	SupportsCredentialValidation   bool `json:"supports_credential_validation"`
+	SupportsConnectionTest         bool `json:"supports_connection_test"`
+	SupportsModelDiscovery         bool `json:"supports_model_discovery"`
+	SupportsStreaming              bool `json:"supports_streaming"`
+	SupportsIndexing               bool `json:"supports_indexing"`
+	SupportsChat                   bool `json:"supports_chat"`
+	SupportsOptionalLiveTests      bool `json:"supports_optional_live_tests"`
+	RequiresExplicitModel          bool `json:"requires_explicit_model"`
+	RequiresExplicitBaseURL        bool `json:"requires_explicit_base_url"`
+	RequiresOpenAICompatibleBridge bool `json:"requires_openai_compatible_bridge"`
+}
+
+type ProviderSupportResponse struct {
+	Family           string                              `json:"family"`
+	ProviderType     string                              `json:"provider_type"`
+	DisplayName      string                              `json:"display_name"`
+	SupportLevel     string                              `json:"support_level"`
+	Transport        string                              `json:"transport"`
+	Summary          string                              `json:"summary"`
+	SuggestedBaseURL string                              `json:"suggested_base_url,omitempty"`
+	SuggestedModel   string                              `json:"suggested_model,omitempty"`
+	Capabilities     ProviderSupportCapabilitiesResponse `json:"capabilities"`
+	Notes            []string                            `json:"notes,omitempty"`
 }
 
 func ToProviderConfigResponse(config *models.UserProviderConfig, publicMetadata map[string]string) *ProviderConfigResponse {
@@ -56,4 +83,38 @@ func ToProviderConfigResponses(configs []models.UserProviderConfig, publicMetada
 		}
 	}
 	return items
+}
+
+func ToProviderSupportResponse(item domain.ProviderSupportEntry) ProviderSupportResponse {
+	return ProviderSupportResponse{
+		Family:           item.Family,
+		ProviderType:     item.ProviderType,
+		DisplayName:      item.DisplayName,
+		SupportLevel:     item.SupportLevel,
+		Transport:        item.Transport,
+		Summary:          item.Summary,
+		SuggestedBaseURL: item.SuggestedBaseURL,
+		SuggestedModel:   item.SuggestedModel,
+		Capabilities: ProviderSupportCapabilitiesResponse{
+			SupportsCredentialValidation:   item.Capabilities.SupportsCredentialValidation,
+			SupportsConnectionTest:         item.Capabilities.SupportsConnectionTest,
+			SupportsModelDiscovery:         item.Capabilities.SupportsModelDiscovery,
+			SupportsStreaming:              item.Capabilities.SupportsStreaming,
+			SupportsIndexing:               item.Capabilities.SupportsIndexing,
+			SupportsChat:                   item.Capabilities.SupportsChat,
+			SupportsOptionalLiveTests:      item.Capabilities.SupportsOptionalLiveTests,
+			RequiresExplicitModel:          item.Capabilities.RequiresExplicitModel,
+			RequiresExplicitBaseURL:        item.Capabilities.RequiresExplicitBaseURL,
+			RequiresOpenAICompatibleBridge: item.Capabilities.RequiresOpenAICompatibleBridge,
+		},
+		Notes: append([]string(nil), item.Notes...),
+	}
+}
+
+func ToProviderSupportResponses(items []domain.ProviderSupportEntry) []ProviderSupportResponse {
+	responses := make([]ProviderSupportResponse, 0, len(items))
+	for _, item := range items {
+		responses = append(responses, ToProviderSupportResponse(item))
+	}
+	return responses
 }

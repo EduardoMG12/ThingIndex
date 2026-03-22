@@ -296,6 +296,54 @@ definitions:
       storage:
         $ref: '#/definitions/dto.ProviderRuntimeAssignmentResponse'
     type: object
+  dto.ProviderSupportCapabilitiesResponse:
+    properties:
+      requires_explicit_base_url:
+        type: boolean
+      requires_explicit_model:
+        type: boolean
+      requires_openai_compatible_bridge:
+        type: boolean
+      supports_chat:
+        type: boolean
+      supports_connection_test:
+        type: boolean
+      supports_credential_validation:
+        type: boolean
+      supports_indexing:
+        type: boolean
+      supports_model_discovery:
+        type: boolean
+      supports_optional_live_tests:
+        type: boolean
+      supports_streaming:
+        type: boolean
+    type: object
+  dto.ProviderSupportResponse:
+    properties:
+      capabilities:
+        $ref: '#/definitions/dto.ProviderSupportCapabilitiesResponse'
+      display_name:
+        type: string
+      family:
+        type: string
+      notes:
+        items:
+          type: string
+        type: array
+      provider_type:
+        type: string
+      suggested_base_url:
+        type: string
+      suggested_model:
+        type: string
+      summary:
+        type: string
+      support_level:
+        type: string
+      transport:
+        type: string
+    type: object
   dto.RegisterRequest:
     properties:
       email:
@@ -339,7 +387,8 @@ info:
     email: support@swagger.io
     name: API Support
     url: http://www.swagger.io/support
-  description: Open-source HTTP API for ThingIndex covering auth, document cataloging, provider configuration, monitoring, and grounded chat.
+  description: Open-source HTTP API for ThingIndex covering auth, document cataloging,
+    provider configuration, monitoring, and grounded chat.
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -588,6 +637,41 @@ paths:
       summary: Get aggregated document monitoring
       tags:
       - documents
+  /providers/support:
+    get:
+      description: Returns the current support classification for provider integrations,
+        including support tier, transport mode and operational notes.
+      parameters:
+      - description: Optional provider family filter. The current public matrix is
+          available for LLM.
+        in: query
+        name: family
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.ProviderSupportResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: List provider support matrix
+      tags:
+      - providers
   /user/providers/audit:
     get:
       description: Query provider audit events with operational filters, summary and

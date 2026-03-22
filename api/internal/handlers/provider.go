@@ -86,6 +86,32 @@ func (h *ProviderHandler) SaveCredentials(c *gin.Context) {
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "provider.success_save"), nil)
 }
 
+// @Summary      List provider support matrix
+// @Description  Returns the current support classification for provider integrations, including support tier, transport mode and operational notes.
+// @Tags         providers
+// @Produce      json
+// @Param        family query string false "Optional provider family filter. The current public matrix is available for LLM."
+// @Success      200 {object} response.Response{data=[]dto.ProviderSupportResponse}
+// @Failure      400 {object} response.Response
+// @Failure      500 {object} response.Response
+// @Router       /providers/support [get]
+func (h *ProviderHandler) ListSupportMatrix(c *gin.Context) {
+	lang := c.GetString("language")
+	family := strings.ToUpper(strings.TrimSpace(c.Query("family")))
+	if family != "" && family != domain.FamilyLLM {
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_family"), nil)
+		return
+	}
+
+	items, err := h.useCase.ListProviderSupportMatrix(c.Request.Context(), family)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", "Matriz de suporte de providers carregada com sucesso.", dto.ToProviderSupportResponses(items))
+}
+
 // @Summary      Test provider readiness
 // @Description  Validates the configured provider credentials and returns a readiness report with connectivity checks and optional model discovery details.
 // @Tags         providers

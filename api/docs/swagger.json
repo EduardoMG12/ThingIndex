@@ -404,6 +404,61 @@
                 }
             }
         },
+        "/providers/support": {
+            "get": {
+                "description": "Returns the current support classification for provider integrations, including support tier, transport mode and operational notes.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "providers"
+                ],
+                "summary": "List provider support matrix",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Optional provider family filter. The current public matrix is available for LLM.",
+                        "name": "family",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.ProviderSupportResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/user/providers/audit": {
             "get": {
                 "security": [
@@ -1193,6 +1248,79 @@
                 },
                 "storage": {
                     "$ref": "#/definitions/dto.ProviderRuntimeAssignmentResponse"
+                }
+            }
+        },
+        "dto.ProviderSupportCapabilitiesResponse": {
+            "type": "object",
+            "properties": {
+                "requires_explicit_base_url": {
+                    "type": "boolean"
+                },
+                "requires_explicit_model": {
+                    "type": "boolean"
+                },
+                "requires_openai_compatible_bridge": {
+                    "type": "boolean"
+                },
+                "supports_chat": {
+                    "type": "boolean"
+                },
+                "supports_connection_test": {
+                    "type": "boolean"
+                },
+                "supports_credential_validation": {
+                    "type": "boolean"
+                },
+                "supports_indexing": {
+                    "type": "boolean"
+                },
+                "supports_model_discovery": {
+                    "type": "boolean"
+                },
+                "supports_optional_live_tests": {
+                    "type": "boolean"
+                },
+                "supports_streaming": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "dto.ProviderSupportResponse": {
+            "type": "object",
+            "properties": {
+                "capabilities": {
+                    "$ref": "#/definitions/dto.ProviderSupportCapabilitiesResponse"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "family": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "provider_type": {
+                    "type": "string"
+                },
+                "suggested_base_url": {
+                    "type": "string"
+                },
+                "suggested_model": {
+                    "type": "string"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "support_level": {
+                    "type": "string"
+                },
+                "transport": {
+                    "type": "string"
                 }
             }
         },

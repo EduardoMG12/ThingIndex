@@ -37,6 +37,29 @@ func (s *providerUseCaseAuditCaptureStub) ListModels(context.Context, uint, stri
 	return nil, nil
 }
 
+func (s *providerUseCaseAuditCaptureStub) ListProviderSupportMatrix(context.Context, string) ([]domain.ProviderSupportEntry, error) {
+	return []domain.ProviderSupportEntry{
+		{
+			Family:       domain.FamilyLLM,
+			ProviderType: domain.ProviderOpenAI,
+			DisplayName:  "OpenAI",
+			SupportLevel: domain.ProviderSupportLevelReady,
+			Transport:    domain.ProviderSupportTransportNativeOpenAI,
+			Summary:      "Ready for the main runtime.",
+			Capabilities: domain.ProviderSupportCapabilities{
+				SupportsCredentialValidation: true,
+				SupportsConnectionTest:       true,
+				SupportsModelDiscovery:       true,
+				SupportsStreaming:            true,
+				SupportsIndexing:             true,
+				SupportsChat:                 true,
+				SupportsOptionalLiveTests:    true,
+			},
+			Notes: []string{"Direct OpenAI path."},
+		},
+	}, nil
+}
+
 func (s *providerUseCaseAuditCaptureStub) GetDecryptedCredentials(context.Context, uint, string) (map[string]string, error) {
 	return nil, nil
 }
@@ -159,6 +182,60 @@ func TestSaveCredentialsEndpointAddsAuditContextFromRequest(t *testing.T) {
 	}
 	if useCase.lastSaveAuditContext.Origin != "POST /api/v1/user/providers" {
 		t.Fatalf("expected save origin to include route, got %#v", useCase.lastSaveAuditContext)
+	}
+}
+
+func TestListSupportMatrixEndpointReturnsSupportPayload(t *testing.T) {
+	t.Parallel()
+
+	gin.SetMode(gin.TestMode)
+	useCase := &providerUseCaseAuditCaptureStub{}
+	handler := NewProviderHandler(useCase)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("language", "pt_BR")
+		c.Next()
+	})
+	router.GET("/api/v1/providers/support", handler.ListSupportMatrix)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/providers/support?family=LLM", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 response, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"provider_type":"OPENAI"`) {
+		t.Fatalf("expected openai support entry, got %q", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"support_level":"READY"`) {
+		t.Fatalf("expected ready support level, got %q", rec.Body.String())
+	}
+}
+
+func TestListSupportMatrixEndpointRejectsUnsupportedFamilies(t *testing.T) {
+	t.Parallel()
+
+	gin.SetMode(gin.TestMode)
+	useCase := &providerUseCaseAuditCaptureStub{}
+	handler := NewProviderHandler(useCase)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("language", "pt_BR")
+		c.Next()
+	})
+	router.GET("/api/v1/providers/support", handler.ListSupportMatrix)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/providers/support?family=STORAGE", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 response, got %d body=%s", rec.Code, rec.Body.String())
 	}
 }
 

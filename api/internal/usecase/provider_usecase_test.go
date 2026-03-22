@@ -1206,3 +1206,62 @@ func TestGetProviderRuntimeOverviewReturnsActiveAssignmentsWithPublicMetadata(t 
 		t.Fatalf("expected chat model metadata, got %#v", overview.Chat.PublicMetadata)
 	}
 }
+
+func TestListProviderSupportMatrixReturnsOrderedLLMEntries(t *testing.T) {
+	t.Parallel()
+
+	useCase := &providerUseCase{}
+
+	items, err := useCase.ListProviderSupportMatrix(context.Background(), domain.FamilyLLM)
+	if err != nil {
+		t.Fatalf("expected support matrix, got %v", err)
+	}
+	if len(items) == 0 {
+		t.Fatal("expected non-empty support matrix")
+	}
+
+	if items[0].SupportLevel != domain.ProviderSupportLevelReady {
+		t.Fatalf("expected ready providers first, got %#v", items[0])
+	}
+
+	var openAI domain.ProviderSupportEntry
+	foundOpenAI := false
+	for _, item := range items {
+		if item.ProviderType == domain.ProviderOpenAI {
+			openAI = item
+			foundOpenAI = true
+			break
+		}
+	}
+	if !foundOpenAI {
+		t.Fatalf("expected openai entry in support matrix: %#v", items)
+	}
+	if !openAI.Capabilities.SupportsModelDiscovery {
+		t.Fatalf("expected openai model discovery capability, got %#v", openAI.Capabilities)
+	}
+	if openAI.Capabilities.RequiresExplicitModel {
+		t.Fatalf("expected openai model to remain optional, got %#v", openAI.Capabilities)
+	}
+	if openAI.SuggestedBaseURL != "https://api.openai.com/v1" {
+		t.Fatalf("unexpected openai suggested base url %q", openAI.SuggestedBaseURL)
+	}
+
+	var gemini domain.ProviderSupportEntry
+	foundGemini := false
+	for _, item := range items {
+		if item.ProviderType == domain.ProviderGemini {
+			gemini = item
+			foundGemini = true
+			break
+		}
+	}
+	if !foundGemini {
+		t.Fatalf("expected gemini entry in support matrix: %#v", items)
+	}
+	if gemini.SupportLevel != domain.ProviderSupportLevelExperimental {
+		t.Fatalf("expected experimental gemini support, got %#v", gemini)
+	}
+	if !gemini.Capabilities.RequiresOpenAICompatibleBridge || !gemini.Capabilities.RequiresExplicitBaseURL {
+		t.Fatalf("expected gemini bridge requirements, got %#v", gemini.Capabilities)
+	}
+}

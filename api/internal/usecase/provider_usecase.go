@@ -211,6 +211,10 @@ func (u *providerUseCase) ListModels(ctx context.Context, userID uint, family, p
 	})
 }
 
+func (u *providerUseCase) ListProviderSupportMatrix(_ context.Context, family string) ([]domain.ProviderSupportEntry, error) {
+	return provider.ListProviderSupportMatrix(family), nil
+}
+
 func (u *providerUseCase) validateModelDiscoveryCredentials(ctx context.Context, providerType string, credentials map[string]string) error {
 	if !provider.SupportsLLMModelDiscovery(providerType) {
 		return domain.ErrProviderModelsUnsupported

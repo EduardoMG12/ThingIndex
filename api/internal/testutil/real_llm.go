@@ -101,6 +101,8 @@ func inferProviderTypeFromEnv() string {
 		return domain.ProviderOpenRouter
 	case strings.TrimSpace(os.Getenv("DEEPSEEK_API_KEY")) != "":
 		return domain.ProviderDeepSeek
+	case strings.TrimSpace(os.Getenv("GROK_API_KEY")) != "":
+		return domain.ProviderGrok
 	case strings.TrimSpace(os.Getenv("GEMINI_API_KEY")) != "":
 		return domain.ProviderGemini
 	case strings.TrimSpace(os.Getenv("CLAUDE_API_KEY")) != "":
@@ -120,6 +122,8 @@ func providerSpecificEnv(providerType, suffix string) string {
 		return os.Getenv("OPENROUTER_" + suffix)
 	case domain.ProviderDeepSeek:
 		return os.Getenv("DEEPSEEK_" + suffix)
+	case domain.ProviderGrok:
+		return os.Getenv("GROK_" + suffix)
 	case domain.ProviderGemini:
 		return os.Getenv("GEMINI_" + suffix)
 	case domain.ProviderClaude:

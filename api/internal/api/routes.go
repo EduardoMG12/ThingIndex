@@ -104,6 +104,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		v1.GET("/health", func(c *gin.Context) {
 			response.Success(c, http.StatusOK, "success", "API Thing-Index no ar! 🚀", nil)
 		})
+		v1.GET("/providers/support", providerHandler.ListSupportMatrix)
 
 		auth := v1.Group("/auth")
 		auth.Use(middleware.RateLimitMiddleware(cfg.AuthRateLimitRequests, cfg.AuthRateLimitWindow))
