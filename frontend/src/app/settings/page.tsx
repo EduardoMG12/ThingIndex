@@ -306,7 +306,7 @@ function FamilySection({
                                                 checked={llmSelections[activeProvider.providerType]?.enabledForIndexing ?? false}
                                                 disabled={isPending}
                                                 onCheckedChange={(checked) => onLLMSelectionChange(activeProvider.providerType, "enabledForIndexing", checked)}
-                                                aria-label={`${activeProvider.name} indexing`}
+                                                aria-label={t("settings.llmSelectForIndexing")}
                                             />
                                         </div>
                                         <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-background/70 px-3 py-2">
@@ -318,7 +318,7 @@ function FamilySection({
                                                 checked={llmSelections[activeProvider.providerType]?.enabledForChat ?? false}
                                                 disabled={isPending}
                                                 onCheckedChange={(checked) => onLLMSelectionChange(activeProvider.providerType, "enabledForChat", checked)}
-                                                aria-label={`${activeProvider.name} chat`}
+                                                aria-label={t("settings.llmSelectForChat")}
                                             />
                                         </div>
                                     </div>
@@ -351,7 +351,7 @@ function FamilySection({
                                     className="gap-2"
                                 >
                                     {isLoadingModels ? <Loader2 className="h-4 w-4 animate-spin" /> : <History className="h-4 w-4" />}
-                                    Carregar modelos
+                                    {t("settings.readiness.loadModels")}
                                 </Button>
                             ) : null}
                             <Button
@@ -795,7 +795,7 @@ export default function SettingsPage() {
                 if (controller.signal.aborted) {
                     return;
                 }
-                setError(err instanceof Error ? err.message : "Nao foi possivel carregar as configuracoes.");
+                setError(err instanceof Error ? err.message : t("settings.errors.load"));
             } finally {
                 if (!controller.signal.aborted) {
                     setIsLoading(false);
@@ -805,7 +805,7 @@ export default function SettingsPage() {
 
         void loadProviders();
         return () => controller.abort();
-    }, []);
+    }, [t]);
 
     function reloadProviders() {
         startTransition(async () => {
@@ -822,7 +822,7 @@ export default function SettingsPage() {
                 setPriceHistory(historyData);
                 setProviderAuditReloadToken((current) => current + 1);
             } catch (err) {
-                toast.error(err instanceof Error ? err.message : "Could not refresh providers.");
+                toast.error(err instanceof Error ? err.message : t("settings.errors.refresh"));
             }
         });
     }
@@ -927,7 +927,7 @@ export default function SettingsPage() {
                 applyLoadedProviders(latest);
                 setProviderAuditReloadToken((current) => current + 1);
             } catch (err) {
-                toast.error(err instanceof Error ? err.message : "Nao foi possivel salvar o provider.");
+                toast.error(err instanceof Error ? err.message : t("settings.errors.saveProvider"));
             }
         });
     }
@@ -960,7 +960,7 @@ export default function SettingsPage() {
                         : t("settings.providerConnectionValidated", { name: provider.name })
                 );
             } catch (err) {
-                toast.error(err instanceof Error ? err.message : "Nao foi possivel testar a conexao do provider.");
+                toast.error(err instanceof Error ? err.message : t("settings.errors.testProvider"));
             } finally {
                 setTestingProviderType(null);
             }
@@ -985,11 +985,11 @@ export default function SettingsPage() {
 
                 toast.success(
                     models.length > 0
-                        ? `${models.length} modelo(s) carregado(s) para ${provider.name}.`
-                        : `Nenhum modelo retornado para ${provider.name} com a configuracao atual.`
+                        ? t("settings.readiness.modelsLoaded", { count: models.length, name: provider.name })
+                        : t("settings.readiness.noModelsReturned", { name: provider.name })
                 );
             } catch (err) {
-                toast.error(err instanceof Error ? err.message : "Nao foi possivel carregar os modelos do provider.");
+                toast.error(err instanceof Error ? err.message : t("settings.errors.loadModels"));
             } finally {
                 setLoadingModelsProviderType(null);
             }
@@ -1018,7 +1018,7 @@ export default function SettingsPage() {
                 applyLoadedProviders(latest);
                 setProviderAuditReloadToken((current) => current + 1);
             } catch (err) {
-                toast.error(err instanceof Error ? err.message : "Nao foi possivel atualizar o provider.");
+                toast.error(err instanceof Error ? err.message : t("settings.errors.updateProvider"));
             }
         });
     }
@@ -1033,7 +1033,7 @@ export default function SettingsPage() {
                     sourceURL: selected.sourceURL,
                     isEnabled: true,
                 });
-                toast.success(`${selected.name} saved.`);
+                toast.success(t("settings.pricing.saved", { name: selected.name }));
                 const [sourceData, priceData, historyData] = await Promise.all([
                     fetchPricingSources(),
                     fetchPrices(),
@@ -1043,7 +1043,7 @@ export default function SettingsPage() {
                 setPrices(priceData);
                 setPriceHistory(historyData);
             } catch (err) {
-                toast.error(err instanceof Error ? err.message : "Nao foi possivel salvar a fonte de pricing.");
+                toast.error(err instanceof Error ? err.message : t("settings.pricing.saveError"));
             }
         });
     }

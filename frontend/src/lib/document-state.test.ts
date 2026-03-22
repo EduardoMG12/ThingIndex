@@ -41,7 +41,8 @@ describe("document-state", () => {
             createDocument({
                 status: "ORPHANED",
                 status_detail: "  original missing from bucket  ",
-            })
+            }),
+            "pt-BR"
         );
 
         expect(issue).toMatchObject({
@@ -69,7 +70,8 @@ describe("document-state", () => {
                         created_at: "2026-03-20T10:00:00Z",
                     },
                 ],
-            })
+            }),
+            "pt-BR"
         );
 
         expect(issue).toMatchObject({
@@ -101,7 +103,8 @@ describe("document-state", () => {
                         created_at: "2026-03-20T10:05:00Z",
                     },
                 ],
-            })
+            }),
+            "pt-BR"
         );
 
         expect(issue).toMatchObject({
@@ -116,7 +119,8 @@ describe("document-state", () => {
             createDocument({
                 status: "FAILED",
                 last_processing_error: "parsing crashed",
-            })
+            }),
+            "pt-BR"
         );
 
         expect(issue).toMatchObject({
@@ -127,7 +131,7 @@ describe("document-state", () => {
     });
 
     it("returns null when there is no operational issue", () => {
-        expect(getDocumentOperationalIssue(createDocument())).toBeNull();
+        expect(getDocumentOperationalIssue(createDocument(), "pt-BR")).toBeNull();
     });
 
     it("returns the most recent processing attempt when present", () => {

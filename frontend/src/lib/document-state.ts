@@ -1,4 +1,6 @@
 import type { Document, DocumentProcessingAttempt } from "@/lib/api/documents";
+import type { AppLocale } from "@/lib/i18n/config";
+import { translate } from "@/lib/i18n/translate";
 
 export type DocumentOperationalIssue =
     | {
@@ -48,7 +50,7 @@ export function getLatestProcessingAttempt(document: Document): DocumentProcessi
         : null;
 }
 
-export function getDocumentOperationalIssue(document: Document): DocumentOperationalIssue | null {
+export function getDocumentOperationalIssue(document: Document, locale: AppLocale): DocumentOperationalIssue | null {
     const latestAttempt = getLatestProcessingAttempt(document);
 
     if (isOrphanedDocument(document)) {
@@ -56,10 +58,10 @@ export function getDocumentOperationalIssue(document: Document): DocumentOperati
 
         return {
             kind: "orphaned",
-            title: "Arquivo original ausente",
-            description: "O registro do documento permanece no catalogo, mas o binario original nao foi encontrado no storage configurado.",
+            title: translate(locale, "documentsPage.issues.orphaned.title"),
+            description: translate(locale, "documentsPage.issues.orphaned.description"),
             detail,
-            hint: "Reenvie o arquivo para restaurar o original, ou exclua o registro se ele nao deve mais existir.",
+            hint: translate(locale, "documentsPage.issues.orphaned.hint"),
             attempt: latestAttempt ?? undefined,
         };
     }
@@ -69,10 +71,10 @@ export function getDocumentOperationalIssue(document: Document): DocumentOperati
 
         return {
             kind: "retrying",
-            title: "Nova tentativa automatica agendada",
-            description: "A ultima tentativa falhou, mas o documento voltou para a fila e sera reprocessado automaticamente.",
+            title: translate(locale, "documentsPage.issues.retrying.title"),
+            description: translate(locale, "documentsPage.issues.retrying.description"),
             detail,
-            hint: "Acompanhe o status antes de reenfileirar manualmente para evitar duplicidade operacional.",
+            hint: translate(locale, "documentsPage.issues.retrying.hint"),
             attempt: latestAttempt ?? undefined,
         };
     }
@@ -82,10 +84,10 @@ export function getDocumentOperationalIssue(document: Document): DocumentOperati
 
         return {
             kind: "dlq",
-            title: "Falha esgotou retries e foi para a DLQ",
-            description: "As tentativas automaticas foram esgotadas e este documento agora exige intervencao manual.",
+            title: translate(locale, "documentsPage.issues.dlq.title"),
+            description: translate(locale, "documentsPage.issues.dlq.description"),
             detail,
-            hint: "Corrija a causa raiz antes de reenfileirar a indexacao.",
+            hint: translate(locale, "documentsPage.issues.dlq.hint"),
             attempt: latestAttempt ?? undefined,
         };
     }
@@ -95,10 +97,10 @@ export function getDocumentOperationalIssue(document: Document): DocumentOperati
 
         return {
             kind: "failed",
-            title: "Falha de processamento",
-            description: "A indexacao nao concluiu e este documento precisa de nova tentativa ou correcao operacional.",
+            title: translate(locale, "documentsPage.issues.failed.title"),
+            description: translate(locale, "documentsPage.issues.failed.description"),
             detail,
-            hint: "Revise o erro abaixo, corrija a causa e reenfileire a indexacao quando fizer sentido.",
+            hint: translate(locale, "documentsPage.issues.failed.hint"),
             attempt: latestAttempt ?? undefined,
         };
     }
