@@ -33,6 +33,7 @@ import { toast } from "sonner";
 import AppShell from "@/components/layout/AppShell";
 import ProviderRuntimeCallout from "@/components/runtime/ProviderRuntimeCallout";
 import DocumentAuditExplorer from "@/components/audit/DocumentAuditExplorer";
+import OperationalObservabilityPanel from "@/components/documents/OperationalObservabilityPanel";
 import { DangerConfirmModal } from "@/components/ui/danger-confirm-modal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDocuments } from "@/hooks/use-documents";
@@ -53,8 +54,11 @@ import {
     type IndexMonitoring,
 } from "@/lib/api/documents";
 import {
+    filterDocumentsByOperationalView,
+    type DocumentOperationalFilter,
+} from "@/lib/document-observability";
+import {
     getDocumentOperationalIssue,
-    getLatestProcessingAttempt,
     isOrphanedDocument,
     isPreviewableDocument,
     type DocumentOperationalIssue,
@@ -581,142 +585,6 @@ function RecentAttemptsPanel({
                         <p className="mt-2 text-[11px] text-muted-foreground">
                             {formatRetryWindow(attempt, t) || t("documentsPage.recentAttempts.noRetryScheduled")} · {formatDate(attempt.created_at, locale)}
                         </p>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-}
-
-function OperationalQueuePanel({
-    documents,
-    onOpenPreview,
-    onRetry,
-    retryingDocumentId,
-}: {
-    documents: Document[];
-    onOpenPreview: (document: Document) => void;
-    onRetry: (document: Document) => void;
-    retryingDocumentId: number | null;
-}) {
-    const { locale, t } = useI18n();
-    const retryScheduled = documents.filter((document) => document.processing_stage === "RETRY_SCHEDULED");
-    const dlqDocuments = documents.filter((document) => document.processing_stage === "MOVED_TO_DLQ");
-    const permanentFailures = documents.filter(
-        (document) =>
-            document.status === "FAILED" &&
-            document.processing_stage !== "MOVED_TO_DLQ" &&
-            document.processing_stage !== "RETRY_SCHEDULED"
-    );
-
-    const sections = [
-        {
-            key: "retry",
-            title: t("documentsPage.queue.retry.title"),
-            description: t("documentsPage.queue.retry.description"),
-            documents: retryScheduled,
-            tone: "border-sky-500/20 bg-sky-500/10",
-        },
-        {
-            key: "dlq",
-            title: t("documentsPage.queue.dlq.title"),
-            description: t("documentsPage.queue.dlq.description"),
-            documents: dlqDocuments,
-            tone: "border-destructive/20 bg-destructive/10",
-        },
-        {
-            key: "permanent",
-            title: t("documentsPage.queue.permanent.title"),
-            description: t("documentsPage.queue.permanent.description"),
-            documents: permanentFailures,
-            tone: "border-amber-500/20 bg-amber-500/10",
-        },
-    ].filter((section) => section.documents.length > 0);
-
-    if (sections.length === 0) {
-        return null;
-    }
-
-    const gridClassName =
-        sections.length === 1 ? "grid gap-4" : sections.length === 2 ? "grid gap-4 xl:grid-cols-2" : "grid gap-4 xl:grid-cols-3";
-
-    return (
-        <div className="mb-6 rounded-2xl border border-border bg-card/60 p-5">
-            <div className="mb-4">
-                <p className="text-[10px] uppercase tracking-[0.28em] text-primary">{t("documentsPage.queue.eyebrow")}</p>
-                <h2 className="mt-2 text-lg font-semibold">{t("documentsPage.queue.title")}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                    {t("documentsPage.queue.description")}
-                </p>
-            </div>
-
-            <div className={gridClassName}>
-                {sections.map((section) => (
-                    <div key={section.key} className={`rounded-xl border p-4 ${section.tone}`}>
-                        <p className="text-xs font-semibold">{section.title}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{section.description}</p>
-                        <div className="mt-4 space-y-3">
-                            {section.documents.map((document) => {
-                                const attempt = getLatestProcessingAttempt(document);
-                                const issue = getDocumentOperationalIssue(document, locale);
-                                const retryWindowLabel = formatRetryWindow(attempt ?? undefined, t);
-
-                                return (
-                                    <div key={document.id} className="rounded-lg border border-border/60 bg-background/80 p-3">
-                                        <button
-                                            type="button"
-                                            onClick={() => onOpenPreview(document)}
-                                            className="text-left"
-                                        >
-                                            <p className="text-sm font-semibold text-foreground">{document.title}</p>
-                                            <p className="mt-1 text-[11px] text-muted-foreground">
-                                                {document.collection || t("documentsPage.collectionFallback")} · {formatDate(document.updated_at, locale)}
-                                            </p>
-                                        </button>
-                                        <div className="mt-3 flex flex-wrap gap-2 text-[10px]">
-                                            {attempt?.failure_kind ? (
-                                                <span className="rounded-full border border-border px-2 py-1 text-muted-foreground">
-                                                    {formatFailureKind(attempt.failure_kind, t)}
-                                                </span>
-                                            ) : null}
-                                            {attempt?.disposition ? (
-                                                <span className="rounded-full border border-border px-2 py-1 text-muted-foreground">
-                                                    {formatDispositionLabel(attempt.disposition, t)}
-                                                </span>
-                                            ) : null}
-                                            {retryWindowLabel ? (
-                                                <span className="rounded-full border border-border px-2 py-1 text-muted-foreground">
-                                                    {retryWindowLabel}
-                                                </span>
-                                            ) : null}
-                                        </div>
-                                        <p className="mt-3 text-xs text-foreground/90">
-                                            {attempt?.error_message || issue?.detail || document.last_processing_error || document.status_detail || "-"}
-                                        </p>
-                                        <div className="mt-3 flex flex-wrap gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => onOpenPreview(document)}
-                                                className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-[11px] font-semibold text-primary"
-                                            >
-                                                {t("documentsPage.actions.openPanel")}
-                                            </button>
-                                            {document.status === "FAILED" ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => onRetry(document)}
-                                                    disabled={retryingDocumentId === document.id}
-                                                    className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-[11px] font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-60"
-                                                >
-                                                    {retryingDocumentId === document.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCw className="h-3.5 w-3.5" />}
-                                                    {t("documentsPage.actions.retry")}
-                                                </button>
-                                            ) : null}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
                     </div>
                 ))}
             </div>
@@ -1433,7 +1301,15 @@ export default function DocumentsPage() {
     const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
     const [deleteConfirmationValue, setDeleteConfirmationValue] = useState("");
     const [deletingTargetKey, setDeletingTargetKey] = useState<string | null>(null);
-    const groupedDocuments = groupDocuments(documents, locale, t("documentsPage.collectionFallback"));
+    const [operationalFilter, setOperationalFilter] = useState<DocumentOperationalFilter>("all");
+    const [operationalSearch, setOperationalSearch] = useState("");
+    const operationalNow = new Date();
+    const scopedDocuments =
+        operationalFilter === "all" && operationalSearch.trim() === ""
+            ? documents
+            : filterDocumentsByOperationalView(documents, operationalFilter, operationalSearch, operationalNow);
+    const isOperationalSliceActive = operationalFilter !== "all" || operationalSearch.trim() !== "";
+    const groupedDocuments = groupDocuments(scopedDocuments, locale, t("documentsPage.collectionFallback"));
     const uploadHref = href("/dashboard");
 
     useEffect(() => {
@@ -1638,7 +1514,14 @@ export default function DocumentsPage() {
                         </div>
                         <div>
                             <h2 className="text-sm font-bold tracking-tight">{t("documentsPage.library.title")}</h2>
-                            <p className="text-xs text-muted-foreground">{t("documentsPage.library.count", { count: documents.length })}</p>
+                            <p className="text-xs text-muted-foreground">
+                                {isOperationalSliceActive
+                                    ? t("documentsPage.library.filteredCount", {
+                                        visible: scopedDocuments.length,
+                                        total: documents.length,
+                                    })
+                                    : t("documentsPage.library.count", { count: documents.length })}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -1648,9 +1531,14 @@ export default function DocumentsPage() {
                         <MonitoringSummaryPanel summary={monitoringSummary} />
                     )}
 
-                    {!isLoading && !error && (
-                        <OperationalQueuePanel
+                    {!isLoading && !error && documents.length > 0 && (
+                        <OperationalObservabilityPanel
                             documents={documents}
+                            summary={monitoringSummary}
+                            activeFilter={operationalFilter}
+                            searchTerm={operationalSearch}
+                            onFilterChange={setOperationalFilter}
+                            onSearchTermChange={setOperationalSearch}
                             onOpenPreview={setSelectedDocument}
                             onRetry={handleRetryDocument}
                             retryingDocumentId={retryingDocumentId}
@@ -1694,7 +1582,46 @@ export default function DocumentsPage() {
                         </div>
                     )}
 
-                    {!isLoading && !error && documents.length > 0 && (
+                    {!isLoading && !error && documents.length > 0 && scopedDocuments.length === 0 && (
+                        <div className="rounded-xl border border-border bg-background/50 p-6 text-center">
+                            <h3 className="text-sm font-semibold">{t("documentsPage.filteredEmpty.title")}</h3>
+                            <p className="mt-2 text-sm text-muted-foreground">
+                                {t("documentsPage.filteredEmpty.description")}
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setOperationalFilter("all");
+                                    setOperationalSearch("");
+                                }}
+                                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary"
+                            >
+                                {t("documentsPage.filteredEmpty.clear")}
+                            </button>
+                        </div>
+                    )}
+
+                    {!isLoading && !error && scopedDocuments.length > 0 && isOperationalSliceActive && (
+                        <div className="grid gap-3">
+                            {scopedDocuments.map((document) => (
+                                <DocumentCard
+                                    key={document.id}
+                                    document={document}
+                                    uploadHref={uploadHref}
+                                    onOpenPreview={setSelectedDocument}
+                                    onDownload={handleDownloadDocument}
+                                    onRetry={handleRetryDocument}
+                                    onDelete={openDocumentDeletion}
+                                    isDownloading={downloadingDocumentId === document.id}
+                                    isRetrying={retryingDocumentId === document.id}
+                                    isDeleting={deletingTargetKey === `document:${document.id}`}
+                                    locale={locale}
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    {!isLoading && !error && scopedDocuments.length > 0 && !isOperationalSliceActive && (
                         <div className="space-y-4">
                             {groupedDocuments.categorized.map((category) => {
                                 const isCategoryOpen = openCategories[category.name] ?? false;
