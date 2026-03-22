@@ -369,6 +369,63 @@ definitions:
     - new_password
     - token
     type: object
+  dto.RuntimeProfileArtifactResponse:
+    properties:
+      kind:
+        type: string
+      label:
+        type: string
+      path:
+        type: string
+      summary:
+        type: string
+    type: object
+  dto.RuntimeProfileAudienceResponse:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    type: object
+  dto.RuntimeProfileResponse:
+    properties:
+      artifact_refs:
+        items:
+          $ref: '#/definitions/dto.RuntimeProfileArtifactResponse'
+        type: array
+      core_problem:
+        type: string
+      current_scope:
+        items:
+          type: string
+        type: array
+      differentiators:
+        items:
+          type: string
+        type: array
+      last_reviewed_on:
+        type: string
+      non_goals:
+        items:
+          type: string
+        type: array
+      primary_use_case:
+        type: string
+      product_name:
+        type: string
+      research_tracks:
+        items:
+          type: string
+        type: array
+      tagline:
+        type: string
+      target_users:
+        items:
+          $ref: '#/definitions/dto.RuntimeProfileAudienceResponse'
+        type: array
+      value_proposition:
+        type: string
+    type: object
   response.Response:
     properties:
       data: {}
@@ -637,6 +694,25 @@ paths:
       summary: Get aggregated document monitoring
       tags:
       - documents
+  /meta/runtime-profile:
+    get:
+      description: Returns the current primary use case, scope, explicit non-goals,
+        and academic/reference artifacts for the main ThingIndex runtime.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.RuntimeProfileResponse'
+              type: object
+      summary: Get runtime profile
+      tags:
+      - meta
   /providers/support:
     get:
       description: Returns the current support classification for provider integrations,

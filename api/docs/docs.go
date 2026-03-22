@@ -411,6 +411,38 @@ const docTemplate = `{
                 }
             }
         },
+        "/meta/runtime-profile": {
+            "get": {
+                "description": "Returns the current primary use case, scope, explicit non-goals, and academic/reference artifacts for the main ThingIndex runtime.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "meta"
+                ],
+                "summary": "Get runtime profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.RuntimeProfileResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/providers/support": {
             "get": {
                 "description": "Returns the current support classification for provider integrations, including support tier, transport mode and operational notes.",
@@ -1363,6 +1395,93 @@ const docTemplate = `{
                     "minLength": 6
                 },
                 "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.RuntimeProfileArtifactResponse": {
+            "type": "object",
+            "properties": {
+                "kind": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "summary": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.RuntimeProfileAudienceResponse": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.RuntimeProfileResponse": {
+            "type": "object",
+            "properties": {
+                "artifact_refs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.RuntimeProfileArtifactResponse"
+                    }
+                },
+                "core_problem": {
+                    "type": "string"
+                },
+                "current_scope": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "differentiators": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "last_reviewed_on": {
+                    "type": "string"
+                },
+                "non_goals": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "primary_use_case": {
+                    "type": "string"
+                },
+                "product_name": {
+                    "type": "string"
+                },
+                "research_tracks": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "tagline": {
+                    "type": "string"
+                },
+                "target_users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.RuntimeProfileAudienceResponse"
+                    }
+                },
+                "value_proposition": {
                     "type": "string"
                 }
             }

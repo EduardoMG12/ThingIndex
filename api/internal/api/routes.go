@@ -65,6 +65,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 	authUseCase := usecase.NewAuthUseCase(authRepo, smtpMailer, cfg)
 
 	authHandler := handlers.NewAuthHandler(authUseCase)
+	metaHandler := handlers.NewMetaHandler()
 
 	providerRepo := repository.NewGormProviderRepository(db)
 	providerUseCase := usecase.NewProviderUseCase(providerRepo, cfg)
@@ -104,6 +105,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		v1.GET("/health", func(c *gin.Context) {
 			response.Success(c, http.StatusOK, "success", "API Thing-Index no ar! 🚀", nil)
 		})
+		v1.GET("/meta/runtime-profile", metaHandler.GetRuntimeProfile)
 		v1.GET("/providers/support", providerHandler.ListSupportMatrix)
 
 		auth := v1.Group("/auth")
