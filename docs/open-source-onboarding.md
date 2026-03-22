@@ -35,6 +35,7 @@ Esse fluxo:
 | Scalar API reference | `http://localhost:8000/docs` |
 | Swagger UI | `http://localhost:8000/swagger/index.html` |
 | Swagger JSON | `http://localhost:8000/swagger/doc.json` |
+| Provider support matrix | `http://localhost:8000/api/v1/providers/support?family=LLM` |
 | MinIO Console | `http://localhost:9001` |
 | RabbitMQ Management | `http://localhost:15672` |
 
@@ -47,6 +48,7 @@ Se a API já estiver online, mantenha os mesmos paths na origin publicada:
 | Scalar API reference | `https://<sua-origin>/docs` |
 | Swagger UI | `https://<sua-origin>/swagger/index.html` |
 | Swagger JSON | `https://<sua-origin>/swagger/doc.json` |
+| Provider support matrix | `https://<sua-origin>/api/v1/providers/support?family=LLM` |
 | API base | `https://<sua-origin>/api/v1` |
 
 Fluxo curto:
@@ -86,7 +88,7 @@ Fluxo curto:
 
 ## Exemplos prontos
 
-- `examples/http/thingindex-api.http` agrupa requests de health, docs, auth e consulta autenticada ao catalogo.
+- `examples/http/thingindex-api.http` agrupa requests de health, docs, matriz publica de suporte a providers, auth e consulta autenticada ao catalogo.
 - A referencia oficial do contrato continua em `api/docs/swagger.yaml`, `api/docs/swagger.json` e nas rotas `/docs` e `/swagger/index.html`.
 - Para regenerar os artefatos versionados depois de mudar annotations do backend, use `make docs-api`.
 
@@ -115,5 +117,6 @@ Fluxo curto:
 ### Quero consumir a API sem abrir a UI
 
 - use `<origin>/docs` para referencia navegavel;
+- use `<origin>/api/v1/providers/support?family=LLM` para consultar o suporte real por provider, inclusive bridge requirements e notas operacionais;
 - use `examples/http/thingindex-api.http` para requests prontas, trocando `@apiHost` quando necessario;
 - use `<origin>/swagger/doc.json` quando precisar integrar ferramentas de OpenAPI.

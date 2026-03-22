@@ -22,6 +22,10 @@ GET {{apiHost}}/docs
 GET {{apiHost}}/swagger/doc.json
 Accept: application/json
 
+### Public LLM provider support matrix
+GET {{apiBase}}/providers/support?family=LLM
+Accept: application/json
+
 ### Register a demo user
 POST {{apiBase}}/auth/register
 Content-Type: application/json

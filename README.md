@@ -475,7 +475,7 @@ O arquivo `.env.example` foi pensado para **desenvolvimento local**. Em producao
 | `THINGINDEX_TEST_MINIO_*` | vazio ou overrides locais | Overrides opcionais para testes reais com storage |
 | `THINGINDEX_TEST_RABBITMQ_URL` | vazio ou override local | Override opcional para os testes reais com fila |
 | `THINGINDEX_TEST_LLM_*` | desabilitado por padrao | Habilita testes reais de provider/processing com IA |
-| `OPENAI_*`, `OPENROUTER_*`, `DEEPSEEK_*`, `GEMINI_*`, `CLAUDE_*`, `OLLAMA_*` | provider-specific | Fallbacks de credenciais/modelo para os testes reais de LLM |
+| `OPENAI_*`, `OPENROUTER_*`, `DEEPSEEK_*`, `GROK_*`, `GEMINI_*`, `CLAUDE_*`, `OLLAMA_*` | provider-specific | Fallbacks de credenciais/modelo para os testes reais de LLM |
 | `MAX_UPLOAD_SIZE_BYTES` | `20971520` | Limite maximo de upload |
 | `RESET_PASSWORD_URL` | `http://localhost:3000/reset-password` | URL base usada no email de reset |
 | `SMTP_SECURITY_MODE` | `none` em dev | `none`, `starttls` ou `tls` |
@@ -539,6 +539,7 @@ Erros de validacao retornam `errors` com mensagens sanitizadas e localizadas.
 | Metodo | Rota | Descricao |
 | --- | --- | --- |
 | `GET` | `/api/v1/health` | Health check simples |
+| `GET` | `/api/v1/providers/support` | Matriz publica do suporte real aos providers LLM |
 | `POST` | `/api/v1/auth/register` | Cadastro de usuario |
 | `POST` | `/api/v1/auth/login` | Login e emissao de JWT |
 | `POST` | `/api/v1/auth/forgot-password` | Solicita reset de senha |
@@ -606,6 +607,7 @@ Limite padrao de upload:
 - Scalar UI primária: `http://localhost:8000/docs`
 - Swagger UI fallback: `http://localhost:8000/swagger/index.html`
 - Swagger JSON: `http://localhost:8000/swagger/doc.json`
+- Matriz publica de providers: `http://localhost:8000/api/v1/providers/support?family=LLM`
 - Contrato versionado no repositório: `api/docs/swagger.yaml` e `api/docs/swagger.json`
 
 Em deployments publicadas, mantenha os mesmos paths na origin publicada:
@@ -613,6 +615,13 @@ Em deployments publicadas, mantenha os mesmos paths na origin publicada:
 - `https://<sua-origin>/docs`
 - `https://<sua-origin>/swagger/index.html`
 - `https://<sua-origin>/swagger/doc.json`
+- `https://<sua-origin>/api/v1/providers/support?family=LLM`
+
+Use a matriz pública de providers para distinguir:
+
+- o que está pronto para o runtime principal;
+- o que usa o caminho compartilhado OpenAI-compatible;
+- o que ainda depende de bridge experimental com `base_url` e `model` explícitos.
 
 Para regenerar a referencia da API depois de alterar annotations:
 

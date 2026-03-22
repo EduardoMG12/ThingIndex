@@ -256,6 +256,7 @@ Tambem expõe trilhas de auditoria consultaveis para documentos e providers, com
 
 Na frente de providers, o backend tambem expõe:
 
+- matriz pública de suporte real por provider LLM em `GET /api/v1/providers/support?family=LLM`;
 - teste de readiness com retorno estruturado por check;
 - discovery de modelos para Ollama e providers OpenAI-compatible suportados no runtime;
 - overview do runtime ativo para storage, indexacao e chat.
@@ -324,7 +325,7 @@ Esses testes fazem `skip` por padrao. Para habilitar rodada real, configure no `
 - `THINGINDEX_TEST_LLM_RUN_PROCESSING=true` para exercitar o `DocumentProcessor` com enriquecimento real
 - `THINGINDEX_TEST_LLM_RUN_MODEL_DISCOVERY=true` para exercitar listagem de modelos quando o provider suportar discovery no runtime atual, incluindo bridges OpenAI-compatible e Ollama
 
-Os testes tambem aceitam fallbacks por provider, por exemplo `OPENAI_API_KEY`/`OPENAI_MODEL` ou `OLLAMA_BASE_URL`/`OLLAMA_MODEL`, e nunca imprimem o segredo em assertions ou docs.
+Os testes tambem aceitam fallbacks por provider, por exemplo `OPENAI_API_KEY`/`OPENAI_MODEL`, `GROK_API_KEY`/`GROK_MODEL` ou `OLLAMA_BASE_URL`/`OLLAMA_MODEL`, e nunca imprimem o segredo em assertions ou docs.
 
 `e2e` autenticado do backend cobrindo upload, retry, exclusao, documento orfao, providers e chat grounded:
 

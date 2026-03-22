@@ -57,6 +57,7 @@ src/
 - resumo agregado de monitoramento por usuario na tela de documentos;
 - configuracao de providers com separacao entre LLM de indexacao e LLM de chat;
 - relatorio visual de readiness na tela de settings com checks de credenciais, conectividade e discovery de modelos;
+- matriz visual do suporte real aos providers LLM na tela de settings e na pagina `/documentation`;
 - fluxo real de chat por collection com conversas persistidas, referencias de fonte e streaming incremental;
 - internacionalizacao em portugues, ingles e espanhol.
 
@@ -103,6 +104,7 @@ Materiais de apoio imediatos:
 - guia curto: `docs/open-source-onboarding.md`
 - requests prontas: `examples/http/thingindex-api.http`
 - contrato versionado: `api/docs/swagger.yaml` e `api/docs/swagger.json`
+- matriz pública de providers: `http://localhost:8000/api/v1/providers/support?family=LLM`
 
 Se o frontend estiver apontando para uma API já publicada, a documentação de onboarding e a página `/documentation` agora separam explicitamente o fluxo `self-hosted` do fluxo `hosted API`.
 
