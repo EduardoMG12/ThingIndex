@@ -63,6 +63,8 @@ describe("audit api", () => {
         const result = await fetchDocumentAuditEvents({
             action: "DOCUMENT_UPLOAD",
             status: "SUCCESS",
+            actorType: "USER",
+            actorId: 9,
             query: "case",
             correlationId: "req-77",
             documentId: 21,
@@ -72,7 +74,7 @@ describe("audit api", () => {
         });
 
         expect(vi.mocked(fetchWithAuthRedirect).mock.calls[0]?.[0]).toBe(
-            "/api/documents/audit?limit=5&cursor=cursor-001&q=case&action=DOCUMENT_UPLOAD&status=SUCCESS&correlation_id=req-77&document_id=21&collection_id=8"
+            "/api/documents/audit?limit=5&cursor=cursor-001&q=case&action=DOCUMENT_UPLOAD&status=SUCCESS&actor_type=USER&actor_id=9&correlation_id=req-77&document_id=21&collection_id=8"
         );
         expect(result).toEqual({
             items: [
@@ -139,11 +141,13 @@ describe("audit api", () => {
             family: "LLM",
             providerType: "OPENAI",
             query: "openai",
+            actorType: "USER",
+            actorId: 52,
             limit: 10,
         });
 
         expect(vi.mocked(fetchWithAuthRedirect).mock.calls[0]?.[0]).toBe(
-            "/api/user/providers/audit?limit=10&q=openai&family=LLM&provider_type=OPENAI"
+            "/api/user/providers/audit?limit=10&q=openai&family=LLM&provider_type=OPENAI&actor_type=USER&actor_id=52"
         );
         expect(result).toEqual({
             items: [
