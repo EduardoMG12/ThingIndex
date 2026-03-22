@@ -148,6 +148,13 @@ As rotas em `src/app/api/*` encapsulam:
 
 Esse desenho reduz acoplamento entre componentes React e detalhes de transporte, e facilita futura evolucao para streaming, cache seletivo e politicas de sessao mais refinadas.
 
+## Convencoes de i18n
+
+- componentes React devem consumir `useI18n()` e evitar strings literais visiveis;
+- modulos fora de React podem usar `src/lib/i18n/translate.ts` para localizar mensagens de runtime e fallbacks;
+- rotas em `src/app/api/*` devem gerar mensagens localizadas na borda, sem empurrar copy fixa para o browser;
+- mensagens operacionais de auditoria, documentos e settings devem nascer por chave, nao por string solta no componente.
+
 ## Observacao de produto
 
 O frontend atual ja cobre o fluxo principal de autenticacao, upload, organizacao documental, auditoria da indexacao e um fluxo real de chat por collection com resposta incremental. Os proximos saltos mais uteis nesta camada estao em Storybook, maior clareza operacional da UI e refinamento de UX.
