@@ -70,6 +70,36 @@ export type ProviderRuntimeOverview = {
     chat: ProviderRuntimeAssignment | null;
 };
 
+type ProviderReadinessCheckApiRecord = {
+    code: string;
+    status: string;
+    metadata?: Record<string, string>;
+};
+
+type ProviderReadinessReportApiRecord = {
+    family: ProviderFamily;
+    provider_type: ProviderType;
+    status: "READY" | "ATTENTION" | "FAILED";
+    checked_at: string;
+    checks?: ProviderReadinessCheckApiRecord[];
+    discovered_models?: unknown;
+};
+
+export type ProviderReadinessCheck = {
+    code: string;
+    status: string;
+    metadata: Record<string, string>;
+};
+
+export type ProviderReadinessReport = {
+    family: ProviderFamily;
+    provider_type: ProviderType;
+    status: "READY" | "ATTENTION" | "FAILED";
+    checked_at: string;
+    checks: ProviderReadinessCheck[];
+    discovered_models: string[];
+};
+
 function normalizeProvider(record: ProviderApiRecord): ProviderConfig {
     return {
         id: record.id,
@@ -101,6 +131,56 @@ function normalizeProviderRuntimeAssignment(record: unknown): ProviderRuntimeAss
         provider_type: runtimeRecord.provider_type,
         public_metadata: runtimeRecord.public_metadata ?? {},
         updated_at: runtimeRecord.updated_at,
+    };
+}
+
+function normalizeProviderReadinessCheck(record: unknown): ProviderReadinessCheck | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const readinessRecord = record as Partial<ProviderReadinessCheckApiRecord>;
+    if (!readinessRecord.code || !readinessRecord.status) {
+        return null;
+    }
+
+    return {
+        code: readinessRecord.code,
+        status: readinessRecord.status,
+        metadata: readinessRecord.metadata ?? {},
+    };
+}
+
+function normalizeProviderReadinessReport(record: unknown): ProviderReadinessReport | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const readinessRecord = record as Partial<ProviderReadinessReportApiRecord>;
+    if (!readinessRecord.family || !readinessRecord.provider_type || !readinessRecord.status || !readinessRecord.checked_at) {
+        return null;
+    }
+
+    const checks = Array.isArray(readinessRecord.checks)
+        ? readinessRecord.checks.map(normalizeProviderReadinessCheck).filter((item): item is ProviderReadinessCheck => item !== null)
+        : [];
+
+    const discovered_models = Array.isArray(readinessRecord.discovered_models)
+        ? readinessRecord.discovered_models.reduce<string[]>((items, model) => {
+            if (typeof model === "string" && model.trim()) {
+                items.push(model.trim());
+            }
+            return items;
+        }, [])
+        : [];
+
+    return {
+        family: readinessRecord.family,
+        provider_type: readinessRecord.provider_type,
+        status: readinessRecord.status,
+        checked_at: readinessRecord.checked_at,
+        checks,
+        discovered_models,
     };
 }
 
@@ -222,7 +302,7 @@ export async function testProviderConnection(input: {
     family: ProviderFamily;
     providerType: ProviderType;
     credentials: Record<string, string>;
-}): Promise<void> {
+}): Promise<ProviderReadinessReport | null> {
     const response = await fetchWithAuthRedirect("/api/user/providers/test", {
         method: "POST",
         headers: {
@@ -235,11 +315,17 @@ export async function testProviderConnection(input: {
         }),
     });
 
-    const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<null> | ApiErrorResponse | null;
+    const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<unknown> | ApiErrorResponse | null;
 
     if (!response.ok) {
         throw new Error(payload?.message || "Nao foi possivel testar a conexao do provider.");
     }
+
+    if (!hasResponseData(payload)) {
+        return null;
+    }
+
+    return normalizeProviderReadinessReport(payload.data);
 }
 
 export async function listProviderModels(input: {

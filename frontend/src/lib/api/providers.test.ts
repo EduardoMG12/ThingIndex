@@ -5,7 +5,7 @@ vi.mock("@/lib/api/fetch-with-auth-redirect", () => ({
 }));
 
 import { fetchWithAuthRedirect } from "@/lib/api/fetch-with-auth-redirect";
-import { fetchProviderRuntimeOverview, listProviderModels } from "@/lib/api/providers";
+import { fetchProviderRuntimeOverview, listProviderModels, testProviderConnection } from "@/lib/api/providers";
 
 describe("providers api", () => {
     beforeEach(() => {
@@ -78,5 +78,44 @@ describe("providers api", () => {
         expect(overview.indexing?.provider_type).toBe("OPENAI");
         expect(overview.indexing?.public_metadata.model).toBe("gpt-4o-mini");
         expect(overview.chat?.provider_type).toBe("OLLAMA");
+    });
+
+    it("loads and normalizes the provider readiness report", async () => {
+        vi.mocked(fetchWithAuthRedirect).mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    status: 200,
+                    type: "success",
+                    message: "ok",
+                    data: {
+                        family: "LLM",
+                        provider_type: "OPENAI",
+                        status: "READY",
+                        checked_at: "2026-03-22T12:00:00Z",
+                        checks: [
+                            { code: "CREDENTIALS", status: "PASSED" },
+                            { code: "CONNECTION", status: "PASSED" },
+                            { code: "MODEL_DISCOVERY", status: "PASSED" },
+                        ],
+                        discovered_models: ["gpt-4o-mini", " gpt-4.1-mini ", ""],
+                    },
+                }),
+                { status: 200, headers: { "Content-Type": "application/json" } }
+            )
+        );
+
+        const report = await testProviderConnection({
+            family: "LLM",
+            providerType: "OPENAI",
+            credentials: {
+                api_key: "secret",
+                model: "gpt-4o-mini",
+            },
+        });
+
+        expect(vi.mocked(fetchWithAuthRedirect).mock.calls[0]?.[0]).toBe("/api/user/providers/test");
+        expect(report?.status).toBe("READY");
+        expect(report?.checks).toHaveLength(3);
+        expect(report?.discovered_models).toEqual(["gpt-4o-mini", "gpt-4.1-mini"]);
     });
 });

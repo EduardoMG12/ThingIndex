@@ -6,6 +6,7 @@ import { Activity, Bot, CheckCircle2, Coins, Database, History, KeyRound, Loader
 import { toast } from "sonner";
 
 import ProviderModelField from "@/components/settings/ProviderModelField";
+import ProviderReadinessPanel from "@/components/settings/ProviderReadinessPanel";
 import {
     getInitialFormState,
     getInitialLLMSelectionState,
@@ -31,6 +32,7 @@ import {
     testProviderConnection,
     type ProviderConfig,
     type ProviderFamily,
+    type ProviderReadinessReport,
     type ProviderType
 } from "@/lib/api/providers";
 import {
@@ -101,26 +103,6 @@ function mergeModelSuggestions(staticSuggestions: string[] = [], discoveredSugge
     return [...new Set([...discoveredSuggestions, ...staticSuggestions].map((item) => item.trim()).filter(Boolean))];
 }
 
-function getProviderReadinessHint(provider: ProviderDefinition) {
-    switch (provider.providerType) {
-        case "GOOGLE_GEMINI":
-        case "CLAUDE":
-            return "Este provider depende de uma bridge OpenAI-compatible. Valide base URL, modelo e autenticação antes de ativá-lo em produção.";
-        case "OPENROUTER":
-            return "Este gateway concentra múltiplos modelos. A descoberta ajuda a verificar quais IDs o runtime consegue enxergar agora.";
-        case "OLLAMA":
-            return "O runtime aceita Ollama local ou cloud. Se existir catálogo em cache, a descoberta pode funcionar mesmo antes de um novo teste completo.";
-        case "AWS_S3":
-        case "CLOUDFLARE_R2":
-        case "DIGITALOCEAN_SPACES":
-        case "WASABI":
-        case "BACKBLAZE_B2":
-            return "O fluxo usa storage S3-compatible. Endpoint, bucket e credenciais precisam estar coerentes para upload, preview e indexação.";
-        default:
-            return "Use o teste de conexão para validar a rota operacional e acompanhe abaixo as mudanças sensíveis salvas nesta conta.";
-    }
-}
-
 function FamilySection({
     family,
     providers,
@@ -139,6 +121,7 @@ function FamilySection({
     isLoadingModels,
     isTestingProvider,
     discoveredModels,
+    readinessReports,
     auditReloadToken,
 }: {
     family: ProviderFamily;
@@ -158,6 +141,7 @@ function FamilySection({
     isLoadingModels: boolean;
     isTestingProvider: boolean;
     discoveredModels: Partial<Record<ProviderType, string[]>>;
+    readinessReports: Partial<Record<ProviderType, ProviderReadinessReport | null>>;
     auditReloadToken: number;
 }) {
     const { locale, t } = useI18n();
@@ -170,8 +154,8 @@ function FamilySection({
     const activeProvider = providers.find((provider) => provider.providerType === activeProviderType) ?? providers[0];
     const ActiveProviderIcon = activeProvider.icon;
     const savedConfigs = getSavedConfigs(configs, family);
-    const activeConfig = configs.find((config) => config.family === family && config.provider_type === activeProvider.providerType);
     const discoveredModelsForActiveProvider = discoveredModels[activeProvider.providerType] ?? [];
+    const readinessReport = readinessReports[activeProvider.providerType] ?? null;
 
     return (
         <section className="space-y-6">
@@ -341,59 +325,13 @@ function FamilySection({
                                 </div>
                             ) : null}
 
-                            <div className="rounded-2xl border border-border bg-background/60 p-4">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Readiness</p>
-                                        <p className="mt-2 text-sm leading-relaxed text-foreground/85">
-                                            {getProviderReadinessHint(activeProvider)}
-                                        </p>
-                                    </div>
-                                    {family === "LLM" ? (
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => onLoadModels(activeProvider)}
-                                            disabled={isPending || isLoadingModels}
-                                            className="gap-2"
-                                        >
-                                            {isLoadingModels ? <Loader2 className="h-4 w-4 animate-spin" /> : <History className="h-4 w-4" />}
-                                            Carregar modelos
-                                        </Button>
-                                    ) : null}
-                                </div>
-                                <div className="mt-4 grid gap-2 text-xs text-foreground/85 md:grid-cols-2">
-                                    <p>Config salvo: <span className="font-mono text-foreground">{activeConfig ? "true" : "false"}</span></p>
-                                    <p>Provider ativo: <span className="font-mono text-foreground">{family === "STORAGE"
-                                        ? (activeConfig?.is_enabled ? "true" : "false")
-                                        : (activeConfig?.enabled_for_indexing || activeConfig?.enabled_for_chat ? "true" : "false")}</span></p>
-                                    {family === "LLM" ? (
-                                        <p>Modelos carregados: <span className="font-mono text-foreground">{discoveredModelsForActiveProvider.length}</span></p>
-                                    ) : null}
-                                    {family === "LLM" && activeConfig?.public_metadata.model ? (
-                                        <p>Modelo salvo: <span className="font-mono text-foreground">{activeConfig.public_metadata.model}</span></p>
-                                    ) : null}
-                                </div>
-                                {family === "LLM" ? (
-                                    discoveredModelsForActiveProvider.length > 0 ? (
-                                        <div className="mt-4 flex flex-wrap gap-2">
-                                            {discoveredModelsForActiveProvider.slice(0, 10).map((model) => (
-                                                <span
-                                                    key={model}
-                                                    className="rounded-full border border-primary/20 bg-primary/10 px-2 py-1 text-[10px] font-mono text-primary"
-                                                >
-                                                    {model}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <p className="mt-4 text-xs text-muted-foreground">
-                                            Nenhum modelo carregado ainda. Use a descoberta para validar readiness do provider e popular as sugestoes do campo.
-                                        </p>
-                                    )
-                                ) : null}
-                            </div>
+                            <ProviderReadinessPanel
+                                provider={activeProvider}
+                                report={readinessReport}
+                                discoveredModels={discoveredModelsForActiveProvider}
+                                isLoadingModels={isPending || isLoadingModels}
+                                onLoadModels={onLoadModels}
+                            />
 
                             <div className="rounded-2xl border border-border bg-background/60 p-4">
                                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t("settings.behaviorTitle")}</p>
@@ -798,6 +736,7 @@ export default function SettingsPage() {
     const [providers, setProviders] = useState<ProviderConfig[]>([]);
     const [providerAuditReloadToken, setProviderAuditReloadToken] = useState(0);
     const [discoveredModels, setDiscoveredModels] = useState<Partial<Record<ProviderType, string[]>>>({});
+    const [readinessReports, setReadinessReports] = useState<Partial<Record<ProviderType, ProviderReadinessReport | null>>>({});
     const [testingProviderType, setTestingProviderType] = useState<ProviderType | null>(null);
     const [loadingModelsProviderType, setLoadingModelsProviderType] = useState<ProviderType | null>(null);
     const [forms, setForms] = useState<Record<ProviderType, Record<string, string>>>(getInitialFormState);
@@ -896,6 +835,10 @@ export default function SettingsPage() {
                 [key]: value,
             },
         }));
+        setReadinessReports((current) => ({
+            ...current,
+            [providerType]: null,
+        }));
     }
 
     function handleSelectLLMProvider(providerType: ProviderType) {
@@ -990,26 +933,32 @@ export default function SettingsPage() {
     }
 
     function handleTestConnection(provider: ProviderDefinition) {
-        if (provider.family === "LLM") {
-            const selection = llmSelections[provider.providerType];
-            if (!selection?.enabledForIndexing && !selection?.enabledForChat) {
-                toast.error(t("settings.llmSelectionRequired"));
-                return;
-            }
-        }
-
         const credentials = buildCredentials(provider.providerType);
 
         setTestingProviderType(provider.providerType);
 
         startTransition(async () => {
             try {
-                await testProviderConnection({
+                const report = await testProviderConnection({
                     family: provider.family,
                     providerType: provider.providerType,
                     credentials,
                 });
-                toast.success(t("settings.providerConnectionValidated", { name: provider.name }));
+                setReadinessReports((current) => ({
+                    ...current,
+                    [provider.providerType]: report,
+                }));
+                if (report?.discovered_models?.length) {
+                    setDiscoveredModels((current) => ({
+                        ...current,
+                        [provider.providerType]: report.discovered_models,
+                    }));
+                }
+                toast.success(
+                    report?.status === "ATTENTION"
+                        ? t("settings.readiness.testedWithAttention", { name: provider.name })
+                        : t("settings.providerConnectionValidated", { name: provider.name })
+                );
             } catch (err) {
                 toast.error(err instanceof Error ? err.message : "Nao foi possivel testar a conexao do provider.");
             } finally {
@@ -1172,6 +1121,7 @@ export default function SettingsPage() {
                             isLoadingModels={loadingModelsProviderType === activeStorageType}
                             isTestingProvider={testingProviderType === activeStorageType}
                             discoveredModels={discoveredModels}
+                            readinessReports={readinessReports}
                             auditReloadToken={providerAuditReloadToken}
                         />
 
@@ -1193,6 +1143,7 @@ export default function SettingsPage() {
                             isLoadingModels={loadingModelsProviderType === activeLLMType}
                             isTestingProvider={testingProviderType === activeLLMType}
                             discoveredModels={discoveredModels}
+                            readinessReports={readinessReports}
                             auditReloadToken={providerAuditReloadToken}
                         />
 
