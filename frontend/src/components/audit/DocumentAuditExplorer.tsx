@@ -1,15 +1,20 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { Clock3, FileSearch, Filter, Loader2, RefreshCw, Search } from "lucide-react";
 
+import AuditMetadataList from "@/components/audit/AuditMetadataList";
+import {
+    AuditAppliedFilters,
+    AuditQuickFilterButton,
+    AuditScopeButton,
+    AuditSummaryCard,
+} from "@/components/audit/AuditExplorerShared";
+import AuditStatusBadge from "@/components/audit/AuditStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import AuditMetadataList from "@/components/audit/AuditMetadataList";
-import AuditStatusBadge from "@/components/audit/AuditStatusBadge";
 import {
     fetchDocumentAuditEvents,
     type DocumentAuditEvent,
@@ -17,12 +22,15 @@ import {
 } from "@/lib/api/audit";
 import {
     formatAuditActor,
+    formatAuditActorType,
     formatAuditDateTime,
+    formatAuditStatus,
     formatDocumentAuditAction,
     getAuditBucketCount,
+    normalizeAuditFilterValue,
+    parseAuditActorId,
     toRFC3339FromDateTimeLocal,
 } from "@/lib/audit";
-import { cn } from "@/lib/utils";
 
 type Scope = "ALL" | "DOCUMENT" | "COLLECTION";
 
@@ -41,6 +49,8 @@ type AuditFilters = {
     scope: Scope;
     action: string;
     status: string;
+    actorType: string;
+    actorId: string;
     query: string;
     correlationId: string;
     createdFrom: string;
@@ -49,8 +59,10 @@ type AuditFilters = {
 
 const initialFilters: AuditFilters = {
     scope: "ALL",
-    action: "ALL",
-    status: "ALL",
+    action: "",
+    status: "",
+    actorType: "",
+    actorId: "",
     query: "",
     correlationId: "",
     createdFrom: "",
@@ -73,49 +85,6 @@ const emptyResult: DocumentAuditQueryResult = {
         has_next: false,
     },
 };
-
-function SummaryCard({
-    label,
-    value,
-    detail,
-}: {
-    label: string;
-    value: string;
-    detail: string;
-}) {
-    return (
-        <div className="rounded-xl border border-border bg-background/60 p-4">
-            <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">{label}</p>
-            <p className="mt-3 text-xl font-semibold">{value}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
-        </div>
-    );
-}
-
-function ScopeButton({
-    active,
-    children,
-    onClick,
-}: {
-    active: boolean;
-    children: ReactNode;
-    onClick: () => void;
-}) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={cn(
-                "rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors",
-                active
-                    ? "border-primary/20 bg-primary/10 text-primary"
-                    : "border-border bg-background text-muted-foreground"
-            )}
-        >
-            {children}
-        </button>
-    );
-}
 
 function DocumentAuditEventCard({
     event,
@@ -162,6 +131,16 @@ export default function DocumentAuditExplorer({
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+    function applyImmediateFilters(partial: Partial<AuditFilters>) {
+        const nextFilters = {
+            ...filters,
+            ...appliedFilters,
+            ...partial,
+        };
+        setFilters(nextFilters);
+        setAppliedFilters(nextFilters);
+    }
+
     useEffect(() => {
         if (filters.scope === "DOCUMENT" && !selectedDocument) {
             setFilters((current) => ({ ...current, scope: "ALL" }));
@@ -189,8 +168,10 @@ export default function DocumentAuditExplorer({
                 const nextResult = await fetchDocumentAuditEvents({
                     limit: 12,
                     query: appliedFilters.query || undefined,
-                    action: appliedFilters.action === "ALL" ? undefined : appliedFilters.action,
-                    status: appliedFilters.status === "ALL" ? undefined : appliedFilters.status,
+                    action: appliedFilters.action || undefined,
+                    status: appliedFilters.status || undefined,
+                    actorType: appliedFilters.actorType || undefined,
+                    actorId: parseAuditActorId(appliedFilters.actorId),
                     correlationId: appliedFilters.correlationId || undefined,
                     documentId: resolvedScope === "DOCUMENT" ? selectedDocument?.id : undefined,
                     collectionId: resolvedScope === "COLLECTION" ? selectedDocument?.collection_id ?? undefined : undefined,
@@ -240,8 +221,10 @@ export default function DocumentAuditExplorer({
                 limit: 12,
                 cursor: result.page_info.next_cursor,
                 query: appliedFilters.query || undefined,
-                action: appliedFilters.action === "ALL" ? undefined : appliedFilters.action,
-                status: appliedFilters.status === "ALL" ? undefined : appliedFilters.status,
+                action: appliedFilters.action || undefined,
+                status: appliedFilters.status || undefined,
+                actorType: appliedFilters.actorType || undefined,
+                actorId: parseAuditActorId(appliedFilters.actorId),
                 correlationId: appliedFilters.correlationId || undefined,
                 documentId: resolvedScope === "DOCUMENT" ? selectedDocument?.id : undefined,
                 collectionId: resolvedScope === "COLLECTION" ? selectedDocument?.collection_id ?? undefined : undefined,
@@ -264,6 +247,72 @@ export default function DocumentAuditExplorer({
     const uploadEvents = getAuditBucketCount(result.summary.action_breakdown, "DOCUMENT_UPLOAD");
     const retryEvents = getAuditBucketCount(result.summary.action_breakdown, "DOCUMENT_RETRY_INDEX");
     const deleteEvents = getAuditBucketCount(result.summary.action_breakdown, "DOCUMENT_DELETE");
+    const appliedActorId = parseAuditActorId(appliedFilters.actorId);
+    const activeFilterItems = [
+        appliedFilters.scope !== "ALL"
+            ? {
+                  key: "scope",
+                  label: "Escopo",
+                  value: appliedFilters.scope === "DOCUMENT" ? "Documento selecionado" : "Collection atual",
+              }
+            : null,
+        appliedFilters.query
+            ? {
+                  key: "query",
+                  label: "Busca",
+                  value: appliedFilters.query,
+              }
+            : null,
+        appliedFilters.action
+            ? {
+                  key: "action",
+                  label: "Acao",
+                  value: formatDocumentAuditAction(appliedFilters.action),
+              }
+            : null,
+        appliedFilters.status
+            ? {
+                  key: "status",
+                  label: "Status",
+                  value: formatAuditStatus(appliedFilters.status),
+              }
+            : null,
+        appliedFilters.actorType
+            ? {
+                  key: "actor-type",
+                  label: "Actor",
+                  value: formatAuditActorType(appliedFilters.actorType),
+              }
+            : null,
+        typeof appliedActorId === "number"
+            ? {
+                  key: "actor-id",
+                  label: "Actor ID",
+                  value: String(appliedActorId),
+              }
+            : null,
+        appliedFilters.correlationId
+            ? {
+                  key: "correlation",
+                  label: "Request",
+                  value: appliedFilters.correlationId,
+              }
+            : null,
+        appliedFilters.createdFrom
+            ? {
+                  key: "created-from",
+                  label: "Criado de",
+                  value: appliedFilters.createdFrom,
+              }
+            : null,
+        appliedFilters.createdTo
+            ? {
+                  key: "created-to",
+                  label: "Criado ate",
+                  value: appliedFilters.createdTo,
+              }
+            : null,
+    ].filter((item): item is { key: string; label: string; value: string } => item !== null);
 
     return (
         <Card className="mb-6 border-border/80 bg-card/70">
@@ -273,22 +322,22 @@ export default function DocumentAuditExplorer({
                         <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-primary">Audit Trail</p>
                         <h2 className="mt-2 text-lg font-semibold">Historico de auditoria documental</h2>
                         <p className="mt-1 text-sm text-muted-foreground">
-                            Consulta operacional dos uploads, retries e exclusoes com request id, origem, recorte por documento e leitura agregada.
+                            Consulta operacional dos uploads, retries e exclusoes com request id, origem, actor e leitura agregada.
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <ScopeButton active={filters.scope === "ALL"} onClick={() => setFilters((current) => ({ ...current, scope: "ALL" }))}>
+                        <AuditScopeButton active={filters.scope === "ALL"} onClick={() => setFilters((current) => ({ ...current, scope: "ALL" }))}>
                             Conta inteira
-                        </ScopeButton>
+                        </AuditScopeButton>
                         {selectedDocument ? (
-                            <ScopeButton active={filters.scope === "DOCUMENT"} onClick={() => setFilters((current) => ({ ...current, scope: "DOCUMENT" }))}>
+                            <AuditScopeButton active={filters.scope === "DOCUMENT"} onClick={() => setFilters((current) => ({ ...current, scope: "DOCUMENT" }))}>
                                 Documento selecionado
-                            </ScopeButton>
+                            </AuditScopeButton>
                         ) : null}
                         {selectedDocument?.collection_id ? (
-                            <ScopeButton active={filters.scope === "COLLECTION"} onClick={() => setFilters((current) => ({ ...current, scope: "COLLECTION" }))}>
+                            <AuditScopeButton active={filters.scope === "COLLECTION"} onClick={() => setFilters((current) => ({ ...current, scope: "COLLECTION" }))}>
                                 Collection atual
-                            </ScopeButton>
+                            </AuditScopeButton>
                         ) : null}
                     </div>
                 </div>
@@ -329,7 +378,7 @@ export default function DocumentAuditExplorer({
                             id="document-audit-action"
                             list="document-audit-actions"
                             value={filters.action}
-                            onChange={(event) => setFilters((current) => ({ ...current, action: event.target.value || "ALL" }))}
+                            onChange={(event) => setFilters((current) => ({ ...current, action: normalizeAuditFilterValue(event.target.value) }))}
                             placeholder="ALL"
                         />
                         <datalist id="document-audit-actions">
@@ -346,7 +395,7 @@ export default function DocumentAuditExplorer({
                             id="document-audit-status"
                             list="document-audit-statuses"
                             value={filters.status}
-                            onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value || "ALL" }))}
+                            onChange={(event) => setFilters((current) => ({ ...current, status: normalizeAuditFilterValue(event.target.value) }))}
                             placeholder="ALL"
                         />
                         <datalist id="document-audit-statuses">
@@ -354,6 +403,37 @@ export default function DocumentAuditExplorer({
                             <option value="SUCCESS" />
                             <option value="FAILED" />
                         </datalist>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="document-audit-actor-type">Actor</Label>
+                        <Input
+                            id="document-audit-actor-type"
+                            list="document-audit-actor-types"
+                            value={filters.actorType}
+                            onChange={(event) => setFilters((current) => ({ ...current, actorType: normalizeAuditFilterValue(event.target.value) }))}
+                            placeholder="ALL"
+                        />
+                        <datalist id="document-audit-actor-types">
+                            <option value="ALL" />
+                            <option value="USER" />
+                            <option value="SYSTEM" />
+                            <option value="SERVICE" />
+                            <option value="WORKER" />
+                        </datalist>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="document-audit-actor-id">Actor ID</Label>
+                        <Input
+                            id="document-audit-actor-id"
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={filters.actorId}
+                            onChange={(event) => setFilters((current) => ({ ...current, actorId: event.target.value }))}
+                            placeholder="9"
+                        />
                     </div>
 
                     <div className="space-y-2">
@@ -406,27 +486,78 @@ export default function DocumentAuditExplorer({
                     </div>
                 </form>
 
+                <AuditAppliedFilters items={activeFilterItems} />
+
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    <SummaryCard
+                    <AuditSummaryCard
                         label="Eventos"
                         value={String(result.summary.total_events)}
                         detail={`${failedEvents} falhas no recorte atual`}
                     />
-                    <SummaryCard
+                    <AuditSummaryCard
                         label="Cobertura"
                         value={String(result.summary.unique_documents)}
                         detail={`${result.summary.unique_collections} collections envolvidas`}
                     />
-                    <SummaryCard
+                    <AuditSummaryCard
                         label="Requests"
                         value={String(result.summary.unique_requests)}
                         detail="Correlacoes distintas registradas"
                     />
-                    <SummaryCard
+                    <AuditSummaryCard
                         label="Ultimo evento"
                         value={formatAuditDateTime(result.summary.last_event_at, locale)}
                         detail={`${uploadEvents} uploads · ${retryEvents} retries · ${deleteEvents} exclusoes`}
                     />
+                </div>
+
+                <div className="rounded-xl border border-border bg-background/45 p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                        Atalhos operacionais
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                        <AuditQuickFilterButton
+                            label="Somente falhas"
+                            count={failedEvents}
+                            active={appliedFilters.status === "FAILED"}
+                            tone="danger"
+                            onClick={() =>
+                                applyImmediateFilters({
+                                    status: appliedFilters.status === "FAILED" ? "" : "FAILED",
+                                })
+                            }
+                        />
+                        <AuditQuickFilterButton
+                            label="Uploads"
+                            count={uploadEvents}
+                            active={appliedFilters.action === "DOCUMENT_UPLOAD"}
+                            onClick={() =>
+                                applyImmediateFilters({
+                                    action: appliedFilters.action === "DOCUMENT_UPLOAD" ? "" : "DOCUMENT_UPLOAD",
+                                })
+                            }
+                        />
+                        <AuditQuickFilterButton
+                            label="Retries"
+                            count={retryEvents}
+                            active={appliedFilters.action === "DOCUMENT_RETRY_INDEX"}
+                            onClick={() =>
+                                applyImmediateFilters({
+                                    action: appliedFilters.action === "DOCUMENT_RETRY_INDEX" ? "" : "DOCUMENT_RETRY_INDEX",
+                                })
+                            }
+                        />
+                        <AuditQuickFilterButton
+                            label="Exclusoes"
+                            count={deleteEvents}
+                            active={appliedFilters.action === "DOCUMENT_DELETE"}
+                            onClick={() =>
+                                applyImmediateFilters({
+                                    action: appliedFilters.action === "DOCUMENT_DELETE" ? "" : "DOCUMENT_DELETE",
+                                })
+                            }
+                        />
+                    </div>
                 </div>
 
                 {error ? (

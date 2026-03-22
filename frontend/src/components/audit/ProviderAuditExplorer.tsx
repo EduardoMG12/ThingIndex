@@ -1,10 +1,15 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { Clock3, Loader2, RefreshCw, Search, Settings2 } from "lucide-react";
 
 import AuditMetadataList from "@/components/audit/AuditMetadataList";
+import {
+    AuditAppliedFilters,
+    AuditQuickFilterButton,
+    AuditScopeButton,
+    AuditSummaryCard,
+} from "@/components/audit/AuditExplorerShared";
 import AuditStatusBadge from "@/components/audit/AuditStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -17,12 +22,15 @@ import {
 } from "@/lib/api/audit";
 import {
     formatAuditActor,
+    formatAuditActorType,
     formatAuditDateTime,
+    formatAuditStatus,
     formatProviderAuditAction,
     getAuditBucketCount,
+    normalizeAuditFilterValue,
+    parseAuditActorId,
     toRFC3339FromDateTimeLocal,
 } from "@/lib/audit";
-import { cn } from "@/lib/utils";
 
 type ProviderAuditExplorerProps = {
     locale: string;
@@ -38,6 +46,8 @@ type ProviderFilters = {
     scope: Scope;
     action: string;
     status: string;
+    actorType: string;
+    actorId: string;
     query: string;
     correlationId: string;
     createdFrom: string;
@@ -46,8 +56,10 @@ type ProviderFilters = {
 
 const initialFilters: ProviderFilters = {
     scope: "ALL",
-    action: "ALL",
-    status: "ALL",
+    action: "",
+    status: "",
+    actorType: "",
+    actorId: "",
     query: "",
     correlationId: "",
     createdFrom: "",
@@ -69,49 +81,6 @@ const emptyResult: ProviderAuditQueryResult = {
         has_next: false,
     },
 };
-
-function SummaryCard({
-    label,
-    value,
-    detail,
-}: {
-    label: string;
-    value: string;
-    detail: string;
-}) {
-    return (
-        <div className="rounded-xl border border-border bg-background/60 p-4">
-            <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">{label}</p>
-            <p className="mt-3 text-xl font-semibold">{value}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
-        </div>
-    );
-}
-
-function ScopeButton({
-    active,
-    children,
-    onClick,
-}: {
-    active: boolean;
-    children: ReactNode;
-    onClick: () => void;
-}) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={cn(
-                "rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors",
-                active
-                    ? "border-primary/20 bg-primary/10 text-primary"
-                    : "border-border bg-background text-muted-foreground"
-            )}
-        >
-            {children}
-        </button>
-    );
-}
 
 function ProviderAuditEventCard({
     event,
@@ -160,6 +129,16 @@ export default function ProviderAuditExplorer({
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+    function applyImmediateFilters(partial: Partial<ProviderFilters>) {
+        const nextFilters = {
+            ...filters,
+            ...appliedFilters,
+            ...partial,
+        };
+        setFilters(nextFilters);
+        setAppliedFilters(nextFilters);
+    }
+
     useEffect(() => {
         let cancelled = false;
 
@@ -173,8 +152,10 @@ export default function ProviderAuditExplorer({
                     family,
                     providerType: appliedFilters.scope === "ACTIVE" ? activeProviderType : undefined,
                     query: appliedFilters.query || undefined,
-                    action: appliedFilters.action === "ALL" ? undefined : appliedFilters.action,
-                    status: appliedFilters.status === "ALL" ? undefined : appliedFilters.status,
+                    action: appliedFilters.action || undefined,
+                    status: appliedFilters.status || undefined,
+                    actorType: appliedFilters.actorType || undefined,
+                    actorId: parseAuditActorId(appliedFilters.actorId),
                     correlationId: appliedFilters.correlationId || undefined,
                     createdFrom: toRFC3339FromDateTimeLocal(appliedFilters.createdFrom),
                     createdTo: toRFC3339FromDateTimeLocal(appliedFilters.createdTo),
@@ -217,8 +198,10 @@ export default function ProviderAuditExplorer({
                 family,
                 providerType: appliedFilters.scope === "ACTIVE" ? activeProviderType : undefined,
                 query: appliedFilters.query || undefined,
-                action: appliedFilters.action === "ALL" ? undefined : appliedFilters.action,
-                status: appliedFilters.status === "ALL" ? undefined : appliedFilters.status,
+                action: appliedFilters.action || undefined,
+                status: appliedFilters.status || undefined,
+                actorType: appliedFilters.actorType || undefined,
+                actorId: parseAuditActorId(appliedFilters.actorId),
                 correlationId: appliedFilters.correlationId || undefined,
                 createdFrom: toRFC3339FromDateTimeLocal(appliedFilters.createdFrom),
                 createdTo: toRFC3339FromDateTimeLocal(appliedFilters.createdTo),
@@ -238,6 +221,77 @@ export default function ProviderAuditExplorer({
     const failedEvents = getAuditBucketCount(result.summary.status_breakdown, "FAILED");
     const configSaveEvents = getAuditBucketCount(result.summary.action_breakdown, "PROVIDER_CONFIG_SAVE");
     const activationEvents = getAuditBucketCount(result.summary.action_breakdown, "PROVIDER_ACTIVATION_CHANGE");
+    const appliedActorId = parseAuditActorId(appliedFilters.actorId);
+    const activeFilterItems = [
+        {
+            key: "family",
+            label: "Familia",
+            value: family,
+        },
+        appliedFilters.scope === "ACTIVE"
+            ? {
+                  key: "scope",
+                  label: "Escopo",
+                  value: activeProviderName,
+              }
+            : null,
+        appliedFilters.query
+            ? {
+                  key: "query",
+                  label: "Busca",
+                  value: appliedFilters.query,
+              }
+            : null,
+        appliedFilters.action
+            ? {
+                  key: "action",
+                  label: "Acao",
+                  value: formatProviderAuditAction(appliedFilters.action),
+              }
+            : null,
+        appliedFilters.status
+            ? {
+                  key: "status",
+                  label: "Status",
+                  value: formatAuditStatus(appliedFilters.status),
+              }
+            : null,
+        appliedFilters.actorType
+            ? {
+                  key: "actor-type",
+                  label: "Actor",
+                  value: formatAuditActorType(appliedFilters.actorType),
+              }
+            : null,
+        typeof appliedActorId === "number"
+            ? {
+                  key: "actor-id",
+                  label: "Actor ID",
+                  value: String(appliedActorId),
+              }
+            : null,
+        appliedFilters.correlationId
+            ? {
+                  key: "correlation",
+                  label: "Request",
+                  value: appliedFilters.correlationId,
+              }
+            : null,
+        appliedFilters.createdFrom
+            ? {
+                  key: "created-from",
+                  label: "Criado de",
+                  value: appliedFilters.createdFrom,
+              }
+            : null,
+        appliedFilters.createdTo
+            ? {
+                  key: "created-to",
+                  label: "Criado ate",
+                  value: appliedFilters.createdTo,
+              }
+            : null,
+    ].filter((item): item is { key: string; label: string; value: string } => item !== null);
 
     return (
         <Card className="border-border/80 bg-card/70">
@@ -249,16 +303,16 @@ export default function ProviderAuditExplorer({
                             Mudancas sensiveis de {family === "LLM" ? "LLMs" : "storage"}
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                            Consulta operacional do que foi salvo ou ativado, com resumo agregado e recorte para o provider atualmente em foco.
+                            Consulta operacional do que foi salvo ou ativado, com leitura agregada, request id, actor e recorte para o provider em foco.
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <ScopeButton active={filters.scope === "ALL"} onClick={() => setFilters((current) => ({ ...current, scope: "ALL" }))}>
+                        <AuditScopeButton active={filters.scope === "ALL"} onClick={() => setFilters((current) => ({ ...current, scope: "ALL" }))}>
                             Toda a familia
-                        </ScopeButton>
-                        <ScopeButton active={filters.scope === "ACTIVE"} onClick={() => setFilters((current) => ({ ...current, scope: "ACTIVE" }))}>
+                        </AuditScopeButton>
+                        <AuditScopeButton active={filters.scope === "ACTIVE"} onClick={() => setFilters((current) => ({ ...current, scope: "ACTIVE" }))}>
                             Ativo: {activeProviderName}
-                        </ScopeButton>
+                        </AuditScopeButton>
                     </div>
                 </div>
             </CardHeader>
@@ -291,7 +345,7 @@ export default function ProviderAuditExplorer({
                             id={`${family.toLowerCase()}-provider-audit-action`}
                             list={`${family.toLowerCase()}-provider-audit-actions`}
                             value={filters.action}
-                            onChange={(event) => setFilters((current) => ({ ...current, action: event.target.value || "ALL" }))}
+                            onChange={(event) => setFilters((current) => ({ ...current, action: normalizeAuditFilterValue(event.target.value) }))}
                             placeholder="ALL"
                         />
                         <datalist id={`${family.toLowerCase()}-provider-audit-actions`}>
@@ -307,7 +361,7 @@ export default function ProviderAuditExplorer({
                             id={`${family.toLowerCase()}-provider-audit-status`}
                             list={`${family.toLowerCase()}-provider-audit-statuses`}
                             value={filters.status}
-                            onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value || "ALL" }))}
+                            onChange={(event) => setFilters((current) => ({ ...current, status: normalizeAuditFilterValue(event.target.value) }))}
                             placeholder="ALL"
                         />
                         <datalist id={`${family.toLowerCase()}-provider-audit-statuses`}>
@@ -315,6 +369,37 @@ export default function ProviderAuditExplorer({
                             <option value="SUCCESS" />
                             <option value="FAILED" />
                         </datalist>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-actor-type`}>Actor</Label>
+                        <Input
+                            id={`${family.toLowerCase()}-provider-audit-actor-type`}
+                            list={`${family.toLowerCase()}-provider-audit-actor-types`}
+                            value={filters.actorType}
+                            onChange={(event) => setFilters((current) => ({ ...current, actorType: normalizeAuditFilterValue(event.target.value) }))}
+                            placeholder="ALL"
+                        />
+                        <datalist id={`${family.toLowerCase()}-provider-audit-actor-types`}>
+                            <option value="ALL" />
+                            <option value="USER" />
+                            <option value="SYSTEM" />
+                            <option value="SERVICE" />
+                            <option value="WORKER" />
+                        </datalist>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-actor-id`}>Actor ID</Label>
+                        <Input
+                            id={`${family.toLowerCase()}-provider-audit-actor-id`}
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={filters.actorId}
+                            onChange={(event) => setFilters((current) => ({ ...current, actorId: event.target.value }))}
+                            placeholder="52"
+                        />
                     </div>
 
                     <div className="space-y-2">
@@ -367,27 +452,68 @@ export default function ProviderAuditExplorer({
                     </div>
                 </form>
 
+                <AuditAppliedFilters items={activeFilterItems} />
+
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    <SummaryCard
+                    <AuditSummaryCard
                         label="Eventos"
                         value={String(result.summary.total_events)}
                         detail={`${failedEvents} falhas no recorte atual`}
                     />
-                    <SummaryCard
+                    <AuditSummaryCard
                         label="Providers"
                         value={String(result.summary.unique_providers)}
                         detail={appliedFilters.scope === "ACTIVE" ? `Escopo atual: ${activeProviderName}` : "Cobertura da familia filtrada"}
                     />
-                    <SummaryCard
+                    <AuditSummaryCard
                         label="Requests"
                         value={String(result.summary.unique_requests)}
                         detail="Correlacoes distintas registradas"
                     />
-                    <SummaryCard
-                        label="Acoes"
-                        value={String(configSaveEvents + activationEvents)}
+                    <AuditSummaryCard
+                        label="Ultimo evento"
+                        value={formatAuditDateTime(result.summary.last_event_at, locale)}
                         detail={`${configSaveEvents} saves · ${activationEvents} ativacoes`}
                     />
+                </div>
+
+                <div className="rounded-xl border border-border bg-background/45 p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                        Atalhos operacionais
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                        <AuditQuickFilterButton
+                            label="Somente falhas"
+                            count={failedEvents}
+                            active={appliedFilters.status === "FAILED"}
+                            tone="danger"
+                            onClick={() =>
+                                applyImmediateFilters({
+                                    status: appliedFilters.status === "FAILED" ? "" : "FAILED",
+                                })
+                            }
+                        />
+                        <AuditQuickFilterButton
+                            label="Config saves"
+                            count={configSaveEvents}
+                            active={appliedFilters.action === "PROVIDER_CONFIG_SAVE"}
+                            onClick={() =>
+                                applyImmediateFilters({
+                                    action: appliedFilters.action === "PROVIDER_CONFIG_SAVE" ? "" : "PROVIDER_CONFIG_SAVE",
+                                })
+                            }
+                        />
+                        <AuditQuickFilterButton
+                            label="Ativacoes"
+                            count={activationEvents}
+                            active={appliedFilters.action === "PROVIDER_ACTIVATION_CHANGE"}
+                            onClick={() =>
+                                applyImmediateFilters({
+                                    action: appliedFilters.action === "PROVIDER_ACTIVATION_CHANGE" ? "" : "PROVIDER_ACTIVATION_CHANGE",
+                                })
+                            }
+                        />
+                    </div>
                 </div>
 
                 {error ? (
