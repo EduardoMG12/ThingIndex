@@ -2,10 +2,16 @@ import { describe, expect, it } from "vitest";
 
 import type { Document } from "@/lib/api/documents";
 import {
+    getDocumentOperationalAgeMinutes,
     getDocumentOperationalIssue,
+    getDocumentOperationalKind,
     getLatestProcessingAttempt,
+    isDocumentProcessingStalled,
+    isDocumentQueueStalled,
     isOrphanedDocument,
     isPreviewableDocument,
+    isRecentOperationalFailure,
+    requiresManualIntervention,
 } from "@/lib/document-state";
 
 function createDocument(overrides: Partial<Document> = {}): Document {
@@ -85,6 +91,36 @@ describe("document-state", () => {
         });
     });
 
+    it("flags stalled processing when the runtime has not advanced for too long", () => {
+        const now = new Date("2026-03-20T11:00:00Z");
+        const document = createDocument({
+            status: "PROCESSING",
+            index_started_at: "2026-03-20T10:20:00Z",
+            updated_at: "2026-03-20T10:20:00Z",
+        });
+
+        expect(isDocumentProcessingStalled(document, now)).toBe(true);
+        expect(getDocumentOperationalKind(document, now)).toBe("stalledProcessing");
+        expect(getDocumentOperationalIssue(document, "en", now)).toMatchObject({
+            kind: "stalledProcessing",
+            title: "Processing appears stalled",
+            ageMinutes: 40,
+        });
+    });
+
+    it("flags queued documents that have been waiting longer than the threshold", () => {
+        const now = new Date("2026-03-20T11:00:00Z");
+        const document = createDocument({
+            status: "QUEUED",
+            processing_stage: "QUEUED",
+            updated_at: "2026-03-20T10:30:00Z",
+        });
+
+        expect(isDocumentQueueStalled(document, now)).toBe(true);
+        expect(getDocumentOperationalKind(document, now)).toBe("stalledQueue");
+        expect(getDocumentOperationalAgeMinutes(document, now)).toBe(30);
+    });
+
     it("builds a dlq issue when retries were exhausted", () => {
         const issue = getDocumentOperationalIssue(
             createDocument({
@@ -128,6 +164,17 @@ describe("document-state", () => {
             title: "Falha de processamento",
             detail: "parsing crashed",
         });
+    });
+
+    it("identifies documents that require manual intervention and recent failures", () => {
+        const now = new Date("2026-03-20T12:00:00Z");
+        const failedDocument = createDocument({
+            status: "FAILED",
+            updated_at: "2026-03-20T11:30:00Z",
+        });
+
+        expect(requiresManualIntervention(failedDocument, now)).toBe(true);
+        expect(isRecentOperationalFailure(failedDocument, now)).toBe(true);
     });
 
     it("returns null when there is no operational issue", () => {

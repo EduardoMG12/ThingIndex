@@ -91,6 +91,9 @@ export const messages: LocaleMessages = {
         apiRouteErrors: {
             unauthorized: "Usuario nao autenticado.",
             proxyResponse: "Nao foi possivel processar a resposta da API.",
+            documents: {
+                monitoringSummary: "Nao foi possivel consultar o resumo de monitoramento.",
+            },
             content: {
                 download: "Nao foi possivel baixar o documento original.",
                 downloadLoad: "Erro ao baixar o documento original.",
@@ -554,11 +557,17 @@ export const messages: LocaleMessages = {
             library: {
                 title: "Biblioteca de documentos",
                 count: "{count} documento(s) indexado(s)",
+                filteredCount: "{visible} de {total} documento(s) no slice operacional",
             },
             loading: "Carregando documentos...",
             empty: {
                 title: "Nenhum documento enviado ainda",
                 description: "Envie arquivos pelo dashboard para que eles aparecam aqui e possam ser auditados por collection, categoria e status.",
+            },
+            filteredEmpty: {
+                title: "Nenhum documento corresponde ao slice atual",
+                description: "Ajuste a busca ou troque o filtro operacional para voltar a enxergar a biblioteca relevante.",
+                clear: "Limpar slice operacional",
             },
             collectionFallback: "Sem collection",
             categoryFallback: "Sem categoria",
@@ -656,6 +665,49 @@ export const messages: LocaleMessages = {
                 modelBreakdownDetail: "{provider} · {documents} docs · {requests} requests",
                 modelBreakdownCost: "{tokens} tokens · {cost}",
                 noModelUsage: "Ainda nao ha uso consolidado de LLM para indexacao nesta conta.",
+            },
+            observability: {
+                eyebrow: "Observabilidade operacional",
+                title: "Monitoramento acionavel",
+                description: "Foque documentos travados, falhas recentes e estados anormais antes que eles virem backlog invisivel.",
+                health: {
+                    nominal: "Fluxo nominal",
+                    attention: "Atencao operacional",
+                    critical: "Atencao critica",
+                },
+                metrics: {
+                    attention: "Documentos com atencao",
+                    attentionDetail: "Qualquer documento fora do fluxo nominal.",
+                    manual: "Intervencao manual",
+                    manualDetail: "Orfaos, falhas permanentes ou itens em DLQ.",
+                    stalled: "Fluxo travado",
+                    stalledDetail: "Processamento ou fila sem progresso acima do limite.",
+                    recentFailures: "Falhas recentes",
+                    recentFailuresDetail: "Eventos anormais vistos na ultima janela operacional.",
+                },
+                snapshot: {
+                    processing: "{count} processando",
+                    queued: "{count} em fila",
+                    retrying: "{count} em retry automatico",
+                    lastCompleted: "Ultima conclusao: {value}",
+                    lastCompletedMissing: "Nenhuma conclusao recente registrada",
+                },
+                sliceTitle: "Slice operacional",
+                searchLabel: "Busca e recorte operacional",
+                searchPlaceholder: "Titulo, collection, categoria, MIME, status ou etapa",
+                filters: {
+                    all: "Tudo",
+                    attention: "Com atencao",
+                    manual: "Intervencao manual",
+                    stalled: "Travados",
+                    retrying: "Retry automatico",
+                    recentFailures: "Falhas recentes",
+                    nominal: "Sem acao necessaria",
+                },
+                watchlistTitle: "Watchlist prioritaria",
+                watchlistDescription: "Os itens abaixo aparecem ordenados por severidade operacional e ultima atividade.",
+                watchlistAge: "{count} min no estado atual",
+                watchlistEmpty: "Nenhum documento anormal nesta fatia. O fluxo atual nao mostra itens prioritarios.",
             },
             queue: {
                 eyebrow: "Fila operacional",
@@ -767,6 +819,16 @@ export const messages: LocaleMessages = {
                     title: "Falha de processamento",
                     description: "A indexacao nao concluiu e este documento precisa de nova tentativa ou correcao operacional.",
                     hint: "Revise o erro abaixo, corrija a causa e reenfileire a indexacao quando fizer sentido.",
+                },
+                stalledProcessing: {
+                    title: "Processamento aparentemente travado",
+                    description: "Este documento permanece processando ha pelo menos {minutes} minuto(s) sem sinal claro de conclusao.",
+                    hint: "Revise logs, provider ativo e fila antes de reenfileirar manualmente.",
+                },
+                stalledQueue: {
+                    title: "Documento parado na fila",
+                    description: "Este documento continua em fila ha pelo menos {minutes} minuto(s) sem avancar para processamento.",
+                    hint: "Valide o worker, a fila e os callbacks antes de considerar uma nova tentativa manual.",
                 },
             },
             deleteModal: {
@@ -969,6 +1031,9 @@ export const messages: LocaleMessages = {
         apiRouteErrors: {
             unauthorized: "User is not authenticated.",
             proxyResponse: "Could not process the API response.",
+            documents: {
+                monitoringSummary: "Could not load the monitoring summary.",
+            },
             content: {
                 download: "Could not download the original document.",
                 downloadLoad: "Error downloading the original document.",
@@ -1432,11 +1497,17 @@ export const messages: LocaleMessages = {
             library: {
                 title: "Document library",
                 count: "{count} indexed document(s)",
+                filteredCount: "{visible} of {total} document(s) in the operational slice",
             },
             loading: "Loading documents...",
             empty: {
                 title: "No documents uploaded yet",
                 description: "Upload files from the dashboard so they appear here and can be audited by collection, category, and status.",
+            },
+            filteredEmpty: {
+                title: "No documents match the current slice",
+                description: "Adjust the search or switch the operational filter to return to the relevant library view.",
+                clear: "Clear operational slice",
             },
             collectionFallback: "No collection",
             categoryFallback: "Uncategorized",
@@ -1534,6 +1605,49 @@ export const messages: LocaleMessages = {
                 modelBreakdownDetail: "{provider} · {documents} docs · {requests} requests",
                 modelBreakdownCost: "{tokens} tokens · {cost}",
                 noModelUsage: "There is no consolidated LLM usage for indexing in this account yet.",
+            },
+            observability: {
+                eyebrow: "Operational observability",
+                title: "Actionable monitoring",
+                description: "Focus stalled documents, recent failures, and abnormal states before they become invisible backlog.",
+                health: {
+                    nominal: "Nominal flow",
+                    attention: "Operational attention",
+                    critical: "Critical attention",
+                },
+                metrics: {
+                    attention: "Documents with attention",
+                    attentionDetail: "Any document outside the nominal flow.",
+                    manual: "Manual intervention",
+                    manualDetail: "Orphaned, permanent failures, or items in the DLQ.",
+                    stalled: "Stalled flow",
+                    stalledDetail: "Queue or processing states without progress beyond the threshold.",
+                    recentFailures: "Recent failures",
+                    recentFailuresDetail: "Abnormal events seen in the latest operational window.",
+                },
+                snapshot: {
+                    processing: "{count} processing",
+                    queued: "{count} queued",
+                    retrying: "{count} on automatic retry",
+                    lastCompleted: "Last completion: {value}",
+                    lastCompletedMissing: "No recent completion recorded",
+                },
+                sliceTitle: "Operational search and slice",
+                searchLabel: "Operational search and slice",
+                searchPlaceholder: "Title, collection, category, MIME, status, or stage",
+                filters: {
+                    all: "Everything",
+                    attention: "Needs attention",
+                    manual: "Manual intervention",
+                    stalled: "Stalled",
+                    retrying: "Automatic retry",
+                    recentFailures: "Recent failures",
+                    nominal: "No action needed",
+                },
+                watchlistTitle: "Priority watchlist",
+                watchlistDescription: "The items below are ordered by operational severity and latest activity.",
+                watchlistAge: "{count} min in the current state",
+                watchlistEmpty: "No abnormal documents in this slice. The current flow does not show priority items.",
             },
             queue: {
                 eyebrow: "Operational queue",
@@ -1645,6 +1759,16 @@ export const messages: LocaleMessages = {
                     title: "Processing failure",
                     description: "Indexing did not complete and this document needs another attempt or an operational correction.",
                     hint: "Review the error below, fix the cause, and requeue indexing when it makes sense.",
+                },
+                stalledProcessing: {
+                    title: "Processing appears stalled",
+                    description: "This document has remained in processing for at least {minutes} minute(s) without a clear completion signal.",
+                    hint: "Review logs, the active provider, and the worker queue before requeueing manually.",
+                },
+                stalledQueue: {
+                    title: "Document stalled in the queue",
+                    description: "This document has remained queued for at least {minutes} minute(s) without advancing to processing.",
+                    hint: "Validate the worker, queue, and callbacks before deciding on a manual retry.",
                 },
             },
             deleteModal: {
@@ -1847,6 +1971,9 @@ export const messages: LocaleMessages = {
         apiRouteErrors: {
             unauthorized: "Usuario no autenticado.",
             proxyResponse: "No se pudo procesar la respuesta de la API.",
+            documents: {
+                monitoringSummary: "No se pudo consultar el resumen de monitoreo.",
+            },
             content: {
                 download: "No se pudo descargar el documento original.",
                 downloadLoad: "Error al descargar el documento original.",
@@ -2310,11 +2437,17 @@ export const messages: LocaleMessages = {
             library: {
                 title: "Biblioteca de documentos",
                 count: "{count} documento(s) indexado(s)",
+                filteredCount: "{visible} de {total} documento(s) en el slice operativo",
             },
             loading: "Cargando documentos...",
             empty: {
                 title: "Todavía no hay documentos cargados",
                 description: "Sube archivos desde el dashboard para que aparezcan aquí y puedan auditarse por collection, categoría y estado.",
+            },
+            filteredEmpty: {
+                title: "Ningún documento coincide con el slice actual",
+                description: "Ajusta la búsqueda o cambia el filtro operativo para volver a la vista relevante de la biblioteca.",
+                clear: "Limpiar slice operativo",
             },
             collectionFallback: "Sin collection",
             categoryFallback: "Sin categoría",
@@ -2412,6 +2545,49 @@ export const messages: LocaleMessages = {
                 modelBreakdownDetail: "{provider} · {documents} docs · {requests} requests",
                 modelBreakdownCost: "{tokens} tokens · {cost}",
                 noModelUsage: "Todavía no hay uso consolidado de LLM para indexación en esta cuenta.",
+            },
+            observability: {
+                eyebrow: "Observabilidad operativa",
+                title: "Monitoreo accionable",
+                description: "Enfoca documentos trabados, fallas recientes y estados anómalos antes de que se conviertan en backlog invisible.",
+                health: {
+                    nominal: "Flujo nominal",
+                    attention: "Atención operativa",
+                    critical: "Atención crítica",
+                },
+                metrics: {
+                    attention: "Documentos con atención",
+                    attentionDetail: "Cualquier documento fuera del flujo nominal.",
+                    manual: "Intervención manual",
+                    manualDetail: "Huérfanos, fallas permanentes o ítems en DLQ.",
+                    stalled: "Flujo trabado",
+                    stalledDetail: "Cola o procesamiento sin progreso por encima del umbral.",
+                    recentFailures: "Fallas recientes",
+                    recentFailuresDetail: "Eventos anómalos vistos en la última ventana operativa.",
+                },
+                snapshot: {
+                    processing: "{count} procesando",
+                    queued: "{count} en cola",
+                    retrying: "{count} en retry automático",
+                    lastCompleted: "Última finalización: {value}",
+                    lastCompletedMissing: "No hay finalización reciente registrada",
+                },
+                sliceTitle: "Slice operativo",
+                searchLabel: "Búsqueda y slice operativo",
+                searchPlaceholder: "Título, collection, categoría, MIME, estado o etapa",
+                filters: {
+                    all: "Todo",
+                    attention: "Con atención",
+                    manual: "Intervención manual",
+                    stalled: "Trabados",
+                    retrying: "Retry automático",
+                    recentFailures: "Fallas recientes",
+                    nominal: "Sin acción necesaria",
+                },
+                watchlistTitle: "Watchlist prioritaria",
+                watchlistDescription: "Los ítems abajo aparecen ordenados por severidad operativa y última actividad.",
+                watchlistAge: "{count} min en el estado actual",
+                watchlistEmpty: "No hay documentos anómalos en este slice. El flujo actual no muestra ítems prioritarios.",
             },
             queue: {
                 eyebrow: "Cola operativa",
@@ -2523,6 +2699,16 @@ export const messages: LocaleMessages = {
                     title: "Falla de procesamiento",
                     description: "La indexación no concluyó y este documento necesita un nuevo intento o una corrección operativa.",
                     hint: "Revisa el error abajo, corrige la causa y reencola la indexación cuando tenga sentido.",
+                },
+                stalledProcessing: {
+                    title: "El procesamiento parece trabado",
+                    description: "Este documento sigue en procesamiento desde hace al menos {minutes} minuto(s) sin una señal clara de finalización.",
+                    hint: "Revisa logs, provider activo y worker antes de reencolar manualmente.",
+                },
+                stalledQueue: {
+                    title: "Documento detenido en la cola",
+                    description: "Este documento sigue en cola desde hace al menos {minutes} minuto(s) sin avanzar a procesamiento.",
+                    hint: "Valida worker, cola y callbacks antes de decidir un retry manual.",
                 },
             },
             deleteModal: {
