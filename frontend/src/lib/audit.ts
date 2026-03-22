@@ -50,16 +50,31 @@ export function getAuditBucketCount(buckets: AuditCountBucket[] | undefined, key
     return buckets?.find((bucket) => bucket.key === key)?.count ?? 0;
 }
 
+export function formatAuditActorType(actorType?: string) {
+    switch (actorType) {
+        case "USER":
+            return "Usuario";
+        case "SYSTEM":
+            return "Sistema";
+        case "SERVICE":
+            return "Servico";
+        case "WORKER":
+            return "Worker";
+        default:
+            return actorType || "-";
+    }
+}
+
 export function formatAuditActor(actorType?: string, actorId?: number) {
     if (!actorType && typeof actorId !== "number") {
         return "-";
     }
 
     if (typeof actorId === "number") {
-        return `${actorType || "ACTOR"} #${actorId}`;
+        return `${formatAuditActorType(actorType)} #${actorId}`;
     }
 
-    return actorType || "-";
+    return formatAuditActorType(actorType);
 }
 
 function stringifyMetadataValue(value: unknown) {
@@ -120,4 +135,27 @@ export function toRFC3339FromDateTimeLocal(value: string) {
     }
 
     return date.toISOString();
+}
+
+export function parseAuditActorId(value: string) {
+    const trimmed = value.trim();
+    if (!trimmed) {
+        return undefined;
+    }
+
+    const parsed = Number.parseInt(trimmed, 10);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+        return undefined;
+    }
+
+    return parsed;
+}
+
+export function normalizeAuditFilterValue(value: string) {
+    const trimmed = value.trim().toUpperCase();
+    if (!trimmed || trimmed === "ALL") {
+        return "";
+    }
+
+    return trimmed;
 }
