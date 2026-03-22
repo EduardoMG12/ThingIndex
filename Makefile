@@ -1,6 +1,27 @@
-.PHONY: test test-unit test-integration test-e2e test-all docs-api \
+.PHONY: bootstrap doctor stack-up stack-core stack-down stack-ps stack-logs test test-unit test-integration test-e2e test-all docs-api \
 	test-backend test-backend-unit test-backend-integration test-backend-e2e test-backend-smoke \
 	test-frontend test-frontend-unit test-frontend-storybook test-frontend-e2e test-frontend-smoke test-frontend-e2e-install
+
+bootstrap:
+	./scripts/bootstrap.sh all
+
+doctor:
+	./scripts/doctor.sh
+
+stack-up:
+	./scripts/stack.sh up
+
+stack-core:
+	./scripts/stack.sh core
+
+stack-down:
+	./scripts/stack.sh down
+
+stack-ps:
+	./scripts/stack.sh ps
+
+stack-logs:
+	./scripts/stack.sh logs
 
 test: test-unit
 
