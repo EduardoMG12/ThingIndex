@@ -84,6 +84,21 @@ O projeto nasceu em contexto academico, mas foi estruturado com preocupacoes rea
 
 Partes do material de pesquisa do repositorio ainda discutem Neo4j, GraphRAG e comparacoes com abordagens vetoriais. Isso faz parte da **linha de pesquisa e do roadmap**, mas **na implementacao atual do backend o contexto e reconstruido estritamente por banco relacional**.
 
+### Foco do produto hoje
+
+O foco declarado do runtime atual e:
+
+- organizar collections documentais auditaveis para times operacionais, juridicos, academicos e de compliance;
+- preservar contexto, estrutura e proveniencia no banco relacional;
+- manter comparacoes com vetores e GraphRAG como trilhas academicas separadas do caminho funcional principal.
+
+Os artefatos versionados que registram esse posicionamento agora sao:
+
+- `rfc/0001-product-focus.md`
+- `article/thingindex-sbc-article.md`
+- `article/sbc_template (1).doc`
+- `docs/proposta-continuacao-tcc.md`
+
 ## 3. Problema e Motivacao
 
 Sistemas documentais costumam falhar em um dos dois extremos:
@@ -539,6 +554,7 @@ Erros de validacao retornam `errors` com mensagens sanitizadas e localizadas.
 | Metodo | Rota | Descricao |
 | --- | --- | --- |
 | `GET` | `/api/v1/health` | Health check simples |
+| `GET` | `/api/v1/meta/runtime-profile` | Perfil publico do foco atual do produto, limites declarados e referencias academicas |
 | `GET` | `/api/v1/providers/support` | Matriz publica do suporte real aos providers LLM |
 | `POST` | `/api/v1/auth/register` | Cadastro de usuario |
 | `POST` | `/api/v1/auth/login` | Login e emissao de JWT |
@@ -607,6 +623,7 @@ Limite padrao de upload:
 - Scalar UI primária: `http://localhost:8000/docs`
 - Swagger UI fallback: `http://localhost:8000/swagger/index.html`
 - Swagger JSON: `http://localhost:8000/swagger/doc.json`
+- Perfil publico do runtime: `http://localhost:8000/api/v1/meta/runtime-profile`
 - Matriz publica de providers: `http://localhost:8000/api/v1/providers/support?family=LLM`
 - Contrato versionado no repositório: `api/docs/swagger.yaml` e `api/docs/swagger.json`
 
@@ -615,6 +632,7 @@ Em deployments publicadas, mantenha os mesmos paths na origin publicada:
 - `https://<sua-origin>/docs`
 - `https://<sua-origin>/swagger/index.html`
 - `https://<sua-origin>/swagger/doc.json`
+- `https://<sua-origin>/api/v1/meta/runtime-profile`
 - `https://<sua-origin>/api/v1/providers/support?family=LLM`
 
 Use a matriz pública de providers para distinguir:
@@ -802,6 +820,13 @@ Em outras palavras, o valor academico aqui nao esta apenas no produto final, mas
 > contexto pode ser preservado e reconstituido por modelagem relacional rigorosa, sem depender obrigatoriamente de RAG ou bancos de grafos desde o primeiro momento.
 
 Os materiais em `docs/` e `frontend/architecture/` registram essa evolucao e tambem apontam caminhos futuros de pesquisa.
+
+Os artefatos academicos versionados desta fase agora ficam em:
+
+- `article/thingindex-sbc-article.md` para o rascunho principal do artigo;
+- `article/sbc_template (1).doc` como referencia de formatacao SBC;
+- `rfc/0001-product-focus.md` para justificar o foco do produto e o recorte do artigo;
+- `docs/proposta-continuacao-tcc.md` para a frente de continuidade experimental.
 
 ## 17. Limitacoes Atuais
 

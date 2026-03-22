@@ -122,6 +122,7 @@ Para explorar a API sem passar primeiro pela interface web:
 - Scalar API reference: `http://localhost:8000/docs`
 - Swagger UI fallback: `http://localhost:8000/swagger/index.html`
 - Swagger JSON: `http://localhost:8000/swagger/doc.json`
+- Runtime profile: `http://localhost:8000/api/v1/meta/runtime-profile`
 - OpenAPI versionada no repo: `docs/swagger.yaml` e `docs/swagger.json`
 
 O endpoint `/docs` e a referencia interativa primaria com Scalar. Quando o embed nao carregar, a propria pagina aponta para o Swagger UI local, para o JSON bruto e para os exemplos versionados do repositório.
@@ -131,11 +132,13 @@ Se a API estiver publicada, os mesmos paths continuam válidos na origin da depl
 - `https://<sua-origin>/docs`
 - `https://<sua-origin>/swagger/index.html`
 - `https://<sua-origin>/swagger/doc.json`
+- `https://<sua-origin>/api/v1/meta/runtime-profile`
 - `https://<sua-origin>/api/v1`
 
 O arquivo `../examples/http/thingindex-api.http` tambem deixa um fluxo pronto com:
 
 - healthcheck;
+- leitura do perfil publico do runtime;
 - abertura das docs;
 - registro;
 - login;
@@ -172,6 +175,7 @@ As configuracoes completas estao documentadas no README raiz, mas as mais import
 
 ### Publicas
 
+- `GET /api/v1/meta/runtime-profile`
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
 - `POST /api/v1/auth/forgot-password`

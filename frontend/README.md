@@ -104,7 +104,10 @@ Materiais de apoio imediatos:
 - guia curto: `docs/open-source-onboarding.md`
 - requests prontas: `examples/http/thingindex-api.http`
 - contrato versionado: `api/docs/swagger.yaml` e `api/docs/swagger.json`
+- perfil publico do runtime: `http://localhost:8000/api/v1/meta/runtime-profile`
 - matriz pública de providers: `http://localhost:8000/api/v1/providers/support?family=LLM`
+- RFC de foco do produto: `rfc/0001-product-focus.md`
+- rascunho do artigo SBC: `article/thingindex-sbc-article.md`
 
 Se o frontend estiver apontando para uma API já publicada, a documentação de onboarding e a página `/documentation` agora separam explicitamente o fluxo `self-hosted` do fluxo `hosted API`.
 
@@ -208,4 +211,4 @@ Esse desenho reduz acoplamento entre componentes React e detalhes de transporte,
 
 ## Observacao de produto
 
-O frontend atual ja cobre o fluxo principal de autenticacao, upload, organizacao documental, auditoria da indexacao, Storybook para catalogo visual e um fluxo real de chat por collection com resposta incremental. Os proximos saltos mais uteis nesta camada estao em onboarding open source, refinamento de UX e limpeza de boilerplate residual.
+O frontend atual ja cobre o fluxo principal de autenticacao, upload, organizacao documental, auditoria da indexacao, Storybook para catalogo visual e um fluxo real de chat por collection com resposta incremental. A landing e a pagina `/documentation` agora tambem refletem explicitamente o foco atual do produto por meio do endpoint publico `GET /api/v1/meta/runtime-profile`, o que ajuda a manter narrativa tecnica, onboarding e material academico sincronizados.
