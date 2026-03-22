@@ -1,0 +1,10 @@
+flowchart TD
+    UI[Frontend Next.js] -->|HTTP JSON / multipart| API[API Go]
+    API -->|ORM + SQL| PG[(PostgreSQL)]
+    API -->|Object storage| MINIO[(MinIO / S3-compatible)]
+    API --> OUTBOX[Outbox]
+    OUTBOX --> RABBIT[(RabbitMQ)]
+    RABBIT --> INDEXER[Indexer worker]
+    INDEXER --> PG
+    INDEXER --> MINIO
+    API --> PROVIDERS[Providers LLM / Storage]

@@ -1,0 +1,10 @@
+erDiagram
+    USER ||--o{ DOCUMENT_CATEGORY : owns
+    USER ||--o{ COLLECTION : owns
+    USER ||--o{ DOCUMENT : owns
+
+    DOCUMENT_CATEGORY ||--o{ COLLECTION : groups
+    COLLECTION ||--o{ DOCUMENT : contains
+    DOCUMENT ||--o{ PARAGRAPH_NODE : extracts
+    DOCUMENT ||--o{ TABLE_SECTION : extracts
+    DOCUMENT ||--o{ METADATA_PAIR : extracts
