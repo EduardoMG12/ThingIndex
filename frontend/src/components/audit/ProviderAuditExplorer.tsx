@@ -31,9 +31,11 @@ import {
     parseAuditActorId,
     toRFC3339FromDateTimeLocal,
 } from "@/lib/audit";
+import type { AppLocale } from "@/lib/i18n/config";
+import { translate } from "@/lib/i18n/translate";
 
 type ProviderAuditExplorerProps = {
-    locale: string;
+    locale: AppLocale;
     family: "LLM" | "STORAGE";
     activeProviderName: string;
     activeProviderType: string;
@@ -87,29 +89,31 @@ function ProviderAuditEventCard({
     locale,
 }: {
     event: ProviderAuditEvent;
-    locale: string;
+    locale: AppLocale;
 }) {
+    const t = (key: string, variables?: Record<string, string | number | boolean>) => translate(locale, key, variables);
+
     return (
         <div className="rounded-xl border border-border bg-background/70 p-4">
             <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-semibold">{event.provider_type || "Provider"}</p>
+                <p className="text-sm font-semibold">{event.provider_type || t("audit.providers.providerFallback")}</p>
                 <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    {formatProviderAuditAction(event.action)}
+                    {formatProviderAuditAction(event.action, locale)}
                 </span>
-                <AuditStatusBadge status={event.status} />
+                <AuditStatusBadge status={event.status} locale={locale} />
             </div>
 
-            <p className="mt-2 text-sm text-foreground/90">{event.detail || "Sem detalhe registrado."}</p>
+            <p className="mt-2 text-sm text-foreground/90">{event.detail || t("audit.common.noDetail")}</p>
 
             <AuditMetadataList metadata={event.metadata} />
 
             <div className="mt-3 grid gap-2 text-[11px] text-muted-foreground md:grid-cols-2 xl:grid-cols-3">
-                <p>Quando: <span className="font-mono text-foreground">{formatAuditDateTime(event.created_at, locale)}</span></p>
-                <p>Origem: <span className="font-mono text-foreground">{event.origin || "-"}</span></p>
-                <p>Request: <span className="font-mono text-foreground">{event.correlation_id || "-"}</span></p>
-                <p>Actor: <span className="font-mono text-foreground">{formatAuditActor(event.actor_type, event.actor_id)}</span></p>
-                <p>Familia: <span className="font-mono text-foreground">{event.family || "-"}</span></p>
-                <p>Config: <span className="font-mono text-foreground">{event.provider_config_id ?? "-"}</span></p>
+                <p>{t("audit.common.when")}: <span className="font-mono text-foreground">{formatAuditDateTime(event.created_at, locale)}</span></p>
+                <p>{t("audit.common.origin")}: <span className="font-mono text-foreground">{event.origin || "-"}</span></p>
+                <p>{t("audit.common.request")}: <span className="font-mono text-foreground">{event.correlation_id || "-"}</span></p>
+                <p>{t("audit.common.actor")}: <span className="font-mono text-foreground">{formatAuditActor(event.actor_type, event.actor_id, locale)}</span></p>
+                <p>{t("audit.common.family")}: <span className="font-mono text-foreground">{event.family || "-"}</span></p>
+                <p>{t("audit.common.config")}: <span className="font-mono text-foreground">{event.provider_config_id ?? "-"}</span></p>
             </div>
         </div>
     );
@@ -122,6 +126,7 @@ export default function ProviderAuditExplorer({
     activeProviderType,
     reloadToken = 0,
 }: ProviderAuditExplorerProps) {
+    const t = (key: string, variables?: Record<string, string | number | boolean>) => translate(locale, key, variables);
     const [filters, setFilters] = useState<ProviderFilters>(initialFilters);
     const [appliedFilters, setAppliedFilters] = useState<ProviderFilters>(initialFilters);
     const [result, setResult] = useState<ProviderAuditQueryResult>(emptyResult);
@@ -166,7 +171,7 @@ export default function ProviderAuditExplorer({
                 }
             } catch (nextError) {
                 if (!cancelled) {
-                    setError(nextError instanceof Error ? nextError.message : "Nao foi possivel carregar a auditoria de providers.");
+                    setError(nextError instanceof Error ? nextError.message : translate(locale, "audit.providers.errors.load"));
                     setResult(emptyResult);
                 }
             } finally {
@@ -181,7 +186,7 @@ export default function ProviderAuditExplorer({
         return () => {
             cancelled = true;
         };
-    }, [activeProviderType, appliedFilters, family, reloadToken]);
+    }, [activeProviderType, appliedFilters, family, locale, reloadToken]);
 
     async function handleLoadMore() {
         if (!result.page_info.has_next || !result.page_info.next_cursor) {
@@ -212,7 +217,7 @@ export default function ProviderAuditExplorer({
                 items: [...current.items, ...nextPage.items],
             }));
         } catch (nextError) {
-            setError(nextError instanceof Error ? nextError.message : "Nao foi possivel carregar mais eventos de auditoria.");
+            setError(nextError instanceof Error ? nextError.message : translate(locale, "audit.providers.errors.loadMore"));
         } finally {
             setIsLoadingMore(false);
         }
@@ -225,69 +230,69 @@ export default function ProviderAuditExplorer({
     const activeFilterItems = [
         {
             key: "family",
-            label: "Familia",
+            label: t("audit.common.family"),
             value: family,
         },
         appliedFilters.scope === "ACTIVE"
             ? {
                   key: "scope",
-                  label: "Escopo",
+                  label: t("audit.common.scope"),
                   value: activeProviderName,
               }
             : null,
         appliedFilters.query
             ? {
                   key: "query",
-                  label: "Busca",
+                  label: t("audit.common.search"),
                   value: appliedFilters.query,
               }
             : null,
         appliedFilters.action
             ? {
                   key: "action",
-                  label: "Acao",
-                  value: formatProviderAuditAction(appliedFilters.action),
+                  label: t("audit.common.action"),
+                  value: formatProviderAuditAction(appliedFilters.action, locale),
               }
             : null,
         appliedFilters.status
             ? {
                   key: "status",
-                  label: "Status",
-                  value: formatAuditStatus(appliedFilters.status),
+                  label: t("audit.common.status"),
+                  value: formatAuditStatus(appliedFilters.status, locale),
               }
             : null,
         appliedFilters.actorType
             ? {
                   key: "actor-type",
-                  label: "Actor",
-                  value: formatAuditActorType(appliedFilters.actorType),
+                  label: t("audit.common.actor"),
+                  value: formatAuditActorType(appliedFilters.actorType, locale),
               }
             : null,
         typeof appliedActorId === "number"
             ? {
                   key: "actor-id",
-                  label: "Actor ID",
+                  label: t("audit.common.actorId"),
                   value: String(appliedActorId),
               }
             : null,
         appliedFilters.correlationId
             ? {
                   key: "correlation",
-                  label: "Request",
+                  label: t("audit.common.request"),
                   value: appliedFilters.correlationId,
               }
             : null,
         appliedFilters.createdFrom
             ? {
                   key: "created-from",
-                  label: "Criado de",
+                  label: t("audit.common.createdFrom"),
                   value: appliedFilters.createdFrom,
               }
             : null,
         appliedFilters.createdTo
             ? {
                   key: "created-to",
-                  label: "Criado ate",
+                  label: t("audit.common.createdTo"),
                   value: appliedFilters.createdTo,
               }
             : null,
@@ -298,20 +303,20 @@ export default function ProviderAuditExplorer({
             <CardHeader className="space-y-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-primary">Audit Trail</p>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-primary">{t("audit.common.eyebrow")}</p>
                         <h3 className="text-lg font-semibold">
-                            Mudancas sensiveis de {family === "LLM" ? "LLMs" : "storage"}
+                            {t("audit.providers.title", { family: family === "LLM" ? "LLMs" : t("audit.providers.storageFamily") })}
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                            Consulta operacional do que foi salvo ou ativado, com leitura agregada, request id, actor e recorte para o provider em foco.
+                            {t("audit.providers.description")}
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <AuditScopeButton active={filters.scope === "ALL"} onClick={() => setFilters((current) => ({ ...current, scope: "ALL" }))}>
-                            Toda a familia
+                            {t("audit.providers.scopeFamily")}
                         </AuditScopeButton>
                         <AuditScopeButton active={filters.scope === "ACTIVE"} onClick={() => setFilters((current) => ({ ...current, scope: "ACTIVE" }))}>
-                            Ativo: {activeProviderName}
+                            {t("audit.providers.scopeActive", { name: activeProviderName })}
                         </AuditScopeButton>
                     </div>
                 </div>
@@ -326,7 +331,7 @@ export default function ProviderAuditExplorer({
                     }}
                 >
                     <div className="space-y-2 xl:col-span-2">
-                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-query`}>Busca operacional</Label>
+                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-query`}>{t("audit.common.search")}</Label>
                         <div className="relative">
                             <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input
@@ -334,13 +339,13 @@ export default function ProviderAuditExplorer({
                                 value={filters.query}
                                 onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))}
                                 className="pl-9"
-                                placeholder="Provider, detalhe, origem ou request id"
+                                placeholder={t("audit.providers.searchPlaceholder")}
                             />
                         </div>
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-action`}>Acao</Label>
+                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-action`}>{t("audit.common.action")}</Label>
                         <Input
                             id={`${family.toLowerCase()}-provider-audit-action`}
                             list={`${family.toLowerCase()}-provider-audit-actions`}
@@ -356,7 +361,7 @@ export default function ProviderAuditExplorer({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-status`}>Status</Label>
+                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-status`}>{t("audit.common.status")}</Label>
                         <Input
                             id={`${family.toLowerCase()}-provider-audit-status`}
                             list={`${family.toLowerCase()}-provider-audit-statuses`}
@@ -372,7 +377,7 @@ export default function ProviderAuditExplorer({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-actor-type`}>Actor</Label>
+                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-actor-type`}>{t("audit.common.actor")}</Label>
                         <Input
                             id={`${family.toLowerCase()}-provider-audit-actor-type`}
                             list={`${family.toLowerCase()}-provider-audit-actor-types`}
@@ -390,7 +395,7 @@ export default function ProviderAuditExplorer({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-actor-id`}>Actor ID</Label>
+                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-actor-id`}>{t("audit.common.actorId")}</Label>
                         <Input
                             id={`${family.toLowerCase()}-provider-audit-actor-id`}
                             type="number"
@@ -403,7 +408,7 @@ export default function ProviderAuditExplorer({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-correlation`}>Request ID</Label>
+                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-correlation`}>{t("audit.common.requestId")}</Label>
                         <Input
                             id={`${family.toLowerCase()}-provider-audit-correlation`}
                             value={filters.correlationId}
@@ -413,7 +418,7 @@ export default function ProviderAuditExplorer({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-created-from`}>Criado de</Label>
+                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-created-from`}>{t("audit.common.createdFrom")}</Label>
                         <Input
                             id={`${family.toLowerCase()}-provider-audit-created-from`}
                             type="datetime-local"
@@ -423,7 +428,7 @@ export default function ProviderAuditExplorer({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-created-to`}>Criado ate</Label>
+                        <Label htmlFor={`${family.toLowerCase()}-provider-audit-created-to`}>{t("audit.common.createdTo")}</Label>
                         <Input
                             id={`${family.toLowerCase()}-provider-audit-created-to`}
                             type="datetime-local"
@@ -435,7 +440,7 @@ export default function ProviderAuditExplorer({
                     <div className="flex items-end gap-2 xl:col-span-4">
                         <Button type="submit" className="gap-2">
                             <Settings2 className="h-4 w-4" />
-                            Aplicar filtros
+                            {t("audit.common.applyFilters")}
                         </Button>
                         <Button
                             type="button"
@@ -447,43 +452,48 @@ export default function ProviderAuditExplorer({
                             }}
                         >
                             <RefreshCw className="h-4 w-4" />
-                            Limpar
+                            {t("audit.common.clear")}
                         </Button>
                     </div>
                 </form>
 
-                <AuditAppliedFilters items={activeFilterItems} />
+                <AuditAppliedFilters items={activeFilterItems} title={t("audit.common.activeFilters")} />
 
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                     <AuditSummaryCard
-                        label="Eventos"
+                        label={t("audit.providers.summary.eventsLabel")}
                         value={String(result.summary.total_events)}
-                        detail={`${failedEvents} falhas no recorte atual`}
+                        detail={t("audit.providers.summary.eventsDetail", { count: failedEvents })}
                     />
                     <AuditSummaryCard
-                        label="Providers"
+                        label={t("audit.providers.summary.providersLabel")}
                         value={String(result.summary.unique_providers)}
-                        detail={appliedFilters.scope === "ACTIVE" ? `Escopo atual: ${activeProviderName}` : "Cobertura da familia filtrada"}
+                        detail={appliedFilters.scope === "ACTIVE"
+                            ? t("audit.providers.summary.providersDetailActive", { name: activeProviderName })
+                            : t("audit.providers.summary.providersDetailFamily")}
                     />
                     <AuditSummaryCard
-                        label="Requests"
+                        label={t("audit.providers.summary.requestsLabel")}
                         value={String(result.summary.unique_requests)}
-                        detail="Correlacoes distintas registradas"
+                        detail={t("audit.providers.summary.requestsDetail")}
                     />
                     <AuditSummaryCard
-                        label="Ultimo evento"
+                        label={t("audit.providers.summary.lastEventLabel")}
                         value={formatAuditDateTime(result.summary.last_event_at, locale)}
-                        detail={`${configSaveEvents} saves · ${activationEvents} ativacoes`}
+                        detail={t("audit.providers.summary.lastEventDetail", {
+                            saves: configSaveEvents,
+                            activations: activationEvents,
+                        })}
                     />
                 </div>
 
                 <div className="rounded-xl border border-border bg-background/45 p-4">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                        Atalhos operacionais
+                        {t("audit.providers.quickFiltersTitle")}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                         <AuditQuickFilterButton
-                            label="Somente falhas"
+                            label={t("audit.common.onlyFailures")}
                             count={failedEvents}
                             active={appliedFilters.status === "FAILED"}
                             tone="danger"
@@ -494,7 +504,7 @@ export default function ProviderAuditExplorer({
                             }
                         />
                         <AuditQuickFilterButton
-                            label="Config saves"
+                            label={t("audit.providers.quickFilters.configSaves")}
                             count={configSaveEvents}
                             active={appliedFilters.action === "PROVIDER_CONFIG_SAVE"}
                             onClick={() =>
@@ -504,7 +514,7 @@ export default function ProviderAuditExplorer({
                             }
                         />
                         <AuditQuickFilterButton
-                            label="Ativacoes"
+                            label={t("audit.providers.quickFilters.activations")}
                             count={activationEvents}
                             active={appliedFilters.action === "PROVIDER_ACTIVATION_CHANGE"}
                             onClick={() =>
@@ -525,13 +535,13 @@ export default function ProviderAuditExplorer({
                 {isLoading ? (
                     <div className="flex items-center gap-2 rounded-2xl border border-dashed border-border bg-background/45 p-5 text-sm text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Carregando auditoria de providers...
+                        {t("audit.providers.loading")}
                     </div>
                 ) : null}
 
                 {!isLoading && !error && result.items.length === 0 ? (
                     <div className="rounded-2xl border border-dashed border-border bg-background/45 p-5 text-sm text-muted-foreground">
-                        Nenhum evento de auditoria encontrado para este recorte ainda.
+                        {t("audit.providers.empty")}
                     </div>
                 ) : null}
 
@@ -555,7 +565,7 @@ export default function ProviderAuditExplorer({
                             className="gap-2"
                         >
                             {isLoadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock3 className="h-4 w-4" />}
-                            Carregar mais eventos
+                            {t("audit.common.loadMore")}
                         </Button>
                     </div>
                 ) : null}

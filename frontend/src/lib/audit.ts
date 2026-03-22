@@ -1,4 +1,6 @@
 import type { AuditCountBucket } from "@/lib/api/audit";
+import type { AppLocale } from "@/lib/i18n/config";
+import { translate } from "@/lib/i18n/translate";
 
 export function formatAuditDateTime(value: string | undefined, locale: string) {
     if (!value) {
@@ -11,38 +13,38 @@ export function formatAuditDateTime(value: string | undefined, locale: string) {
     }).format(new Date(value));
 }
 
-export function formatDocumentAuditAction(action?: string) {
+export function formatDocumentAuditAction(action: string | undefined, locale: AppLocale) {
     switch (action) {
         case "DOCUMENT_UPLOAD":
-            return "Upload";
+            return translate(locale, "audit.actions.documentUpload");
         case "DOCUMENT_RETRY_INDEX":
-            return "Retry / reindexacao";
+            return translate(locale, "audit.actions.documentRetryIndex");
         case "DOCUMENT_DELETE":
-            return "Exclusao";
+            return translate(locale, "audit.actions.documentDelete");
         default:
-            return action || "Evento";
+            return action || translate(locale, "audit.actions.fallback");
     }
 }
 
-export function formatProviderAuditAction(action?: string) {
+export function formatProviderAuditAction(action: string | undefined, locale: AppLocale) {
     switch (action) {
         case "PROVIDER_CONFIG_SAVE":
-            return "Salvar configuracao";
+            return translate(locale, "audit.actions.providerConfigSave");
         case "PROVIDER_ACTIVATION_CHANGE":
-            return "Alterar ativacao";
+            return translate(locale, "audit.actions.providerActivationChange");
         default:
-            return action || "Evento";
+            return action || translate(locale, "audit.actions.fallback");
     }
 }
 
-export function formatAuditStatus(status?: string) {
+export function formatAuditStatus(status: string | undefined, locale: AppLocale) {
     switch (status) {
         case "SUCCESS":
-            return "Sucesso";
+            return translate(locale, "audit.status.success");
         case "FAILED":
-            return "Falha";
+            return translate(locale, "audit.status.failed");
         default:
-            return status || "Desconhecido";
+            return status || translate(locale, "audit.status.unknown");
     }
 }
 
@@ -50,31 +52,31 @@ export function getAuditBucketCount(buckets: AuditCountBucket[] | undefined, key
     return buckets?.find((bucket) => bucket.key === key)?.count ?? 0;
 }
 
-export function formatAuditActorType(actorType?: string) {
+export function formatAuditActorType(actorType: string | undefined, locale: AppLocale) {
     switch (actorType) {
         case "USER":
-            return "Usuario";
+            return translate(locale, "audit.actorType.user");
         case "SYSTEM":
-            return "Sistema";
+            return translate(locale, "audit.actorType.system");
         case "SERVICE":
-            return "Servico";
+            return translate(locale, "audit.actorType.service");
         case "WORKER":
-            return "Worker";
+            return translate(locale, "audit.actorType.worker");
         default:
             return actorType || "-";
     }
 }
 
-export function formatAuditActor(actorType?: string, actorId?: number) {
+export function formatAuditActor(actorType: string | undefined, actorId: number | undefined, locale: AppLocale) {
     if (!actorType && typeof actorId !== "number") {
         return "-";
     }
 
     if (typeof actorId === "number") {
-        return `${formatAuditActorType(actorType)} #${actorId}`;
+        return `${formatAuditActorType(actorType, locale)} #${actorId}`;
     }
 
-    return formatAuditActorType(actorType);
+    return formatAuditActorType(actorType, locale);
 }
 
 function stringifyMetadataValue(value: unknown) {

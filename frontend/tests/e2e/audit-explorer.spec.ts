@@ -178,17 +178,17 @@ test("documents audit explorer applies filters and loads the next page", async (
 
     await page.goto("/en/documents");
 
-    await expect(page.getByText("Historico de auditoria documental")).toBeVisible();
-    await page.getByLabel("Busca operacional").fill("manual");
+    await expect(page.getByText("Document audit history")).toBeVisible();
+    await page.getByLabel("Operational search").fill("manual");
     await page.locator("#document-audit-actor-type").fill("USER");
     await page.locator("#document-audit-actor-id").fill("1");
-    await page.getByRole("button", { name: "Aplicar filtros" }).click();
+    await page.getByRole("button", { name: "Apply filters" }).click();
 
     await expect.poll(() =>
         auditRequests.some((url) => url.includes("q=manual") && url.includes("actor_type=USER") && url.includes("actor_id=1"))
     ).toBeTruthy();
 
-    await page.getByRole("button", { name: "Carregar mais eventos" }).click();
+    await page.getByRole("button", { name: "Load more events" }).click();
     await expect(page.getByText("retry failed")).toBeVisible();
 });
 
@@ -286,12 +286,12 @@ test("provider audit explorer filters by the active provider scope", async ({ co
 
     await page.goto("/en/settings");
 
-    await expect(page.getByText("Mudancas sensiveis de LLMs")).toBeVisible();
-    await page.getByRole("button", { name: "Ativo: OpenAI" }).click();
+    await expect(page.getByText("Sensitive changes for LLMs")).toBeVisible();
+    await page.getByRole("button", { name: "Active: OpenAI" }).click();
     await page.locator("#llm-provider-audit-query").fill("openai");
     await page.locator("#llm-provider-audit-actor-type").fill("USER");
     await page.locator("#llm-provider-audit-actor-id").fill("52");
-    await page.getByRole("button", { name: "Aplicar filtros" }).nth(1).click();
+    await page.getByRole("button", { name: "Apply filters" }).nth(1).click();
 
     await expect.poll(() =>
         auditRequests.some((requestURL) =>

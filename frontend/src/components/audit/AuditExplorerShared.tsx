@@ -50,8 +50,10 @@ export function AuditScopeButton({
 
 export function AuditAppliedFilters({
     items,
+    title,
 }: {
     items: Array<{ key: string; label: string; value: string }>;
+    title: string;
 }) {
     if (items.length === 0) {
         return null;
@@ -60,7 +62,7 @@ export function AuditAppliedFilters({
     return (
         <div className="rounded-xl border border-border bg-background/45 p-4">
             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                Filtros ativos
+                {title}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
                 {items.map((item) => (

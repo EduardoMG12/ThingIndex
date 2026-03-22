@@ -31,11 +31,13 @@ import {
     parseAuditActorId,
     toRFC3339FromDateTimeLocal,
 } from "@/lib/audit";
+import type { AppLocale } from "@/lib/i18n/config";
+import { translate } from "@/lib/i18n/translate";
 
 type Scope = "ALL" | "DOCUMENT" | "COLLECTION";
 
 type DocumentAuditExplorerProps = {
-    locale: string;
+    locale: AppLocale;
     reloadToken?: number;
     selectedDocument?: {
         id: number;
@@ -91,29 +93,31 @@ function DocumentAuditEventCard({
     locale,
 }: {
     event: DocumentAuditEvent;
-    locale: string;
+    locale: AppLocale;
 }) {
+    const t = (key: string, variables?: Record<string, string | number | boolean>) => translate(locale, key, variables);
+
     return (
         <div className="rounded-xl border border-border bg-background/70 p-4">
             <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-semibold">{event.title || `Documento #${event.document_id ?? event.id}`}</p>
+                <p className="text-sm font-semibold">{event.title || t("audit.documents.eventTitleFallback", { id: event.document_id ?? event.id })}</p>
                 <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    {formatDocumentAuditAction(event.action)}
+                    {formatDocumentAuditAction(event.action, locale)}
                 </span>
-                <AuditStatusBadge status={event.status} />
+                <AuditStatusBadge status={event.status} locale={locale} />
             </div>
 
-            <p className="mt-2 text-sm text-foreground/90">{event.detail || "Sem detalhe registrado."}</p>
+            <p className="mt-2 text-sm text-foreground/90">{event.detail || t("audit.common.noDetail")}</p>
 
             <AuditMetadataList metadata={event.metadata} />
 
             <div className="mt-3 grid gap-2 text-[11px] text-muted-foreground md:grid-cols-2 xl:grid-cols-3">
-                <p>Quando: <span className="font-mono text-foreground">{formatAuditDateTime(event.created_at, locale)}</span></p>
-                <p>Origem: <span className="font-mono text-foreground">{event.origin || "-"}</span></p>
-                <p>Request: <span className="font-mono text-foreground">{event.correlation_id || "-"}</span></p>
-                <p>Actor: <span className="font-mono text-foreground">{formatAuditActor(event.actor_type, event.actor_id)}</span></p>
-                <p>Documento: <span className="font-mono text-foreground">{event.document_id ?? "-"}</span></p>
-                <p>Collection: <span className="font-mono text-foreground">{event.collection_id ?? "-"}</span></p>
+                <p>{t("audit.common.when")}: <span className="font-mono text-foreground">{formatAuditDateTime(event.created_at, locale)}</span></p>
+                <p>{t("audit.common.origin")}: <span className="font-mono text-foreground">{event.origin || "-"}</span></p>
+                <p>{t("audit.common.request")}: <span className="font-mono text-foreground">{event.correlation_id || "-"}</span></p>
+                <p>{t("audit.common.actor")}: <span className="font-mono text-foreground">{formatAuditActor(event.actor_type, event.actor_id, locale)}</span></p>
+                <p>{t("audit.common.document")}: <span className="font-mono text-foreground">{event.document_id ?? "-"}</span></p>
+                <p>{t("audit.common.collection")}: <span className="font-mono text-foreground">{event.collection_id ?? "-"}</span></p>
             </div>
         </div>
     );
@@ -124,6 +128,7 @@ export default function DocumentAuditExplorer({
     reloadToken = 0,
     selectedDocument,
 }: DocumentAuditExplorerProps) {
+    const t = (key: string, variables?: Record<string, string | number | boolean>) => translate(locale, key, variables);
     const [filters, setFilters] = useState<AuditFilters>(initialFilters);
     const [appliedFilters, setAppliedFilters] = useState<AuditFilters>(initialFilters);
     const [result, setResult] = useState<DocumentAuditQueryResult>(emptyResult);
@@ -184,7 +189,7 @@ export default function DocumentAuditExplorer({
                 }
             } catch (nextError) {
                 if (!cancelled) {
-                    setError(nextError instanceof Error ? nextError.message : "Nao foi possivel carregar a auditoria documental.");
+                    setError(nextError instanceof Error ? nextError.message : translate(locale, "audit.documents.errors.load"));
                     setResult(emptyResult);
                 }
             } finally {
@@ -199,7 +204,7 @@ export default function DocumentAuditExplorer({
         return () => {
             cancelled = true;
         };
-    }, [appliedFilters, reloadToken, selectedDocument?.collection_id, selectedDocument?.id]);
+    }, [appliedFilters, locale, reloadToken, selectedDocument?.collection_id, selectedDocument?.id]);
 
     async function handleLoadMore() {
         if (!result.page_info.has_next || !result.page_info.next_cursor) {
@@ -237,7 +242,7 @@ export default function DocumentAuditExplorer({
                 items: [...current.items, ...nextPage.items],
             }));
         } catch (nextError) {
-            setError(nextError instanceof Error ? nextError.message : "Nao foi possivel carregar mais eventos de auditoria.");
+            setError(nextError instanceof Error ? nextError.message : translate(locale, "audit.documents.errors.loadMore"));
         } finally {
             setIsLoadingMore(false);
         }
@@ -252,63 +257,65 @@ export default function DocumentAuditExplorer({
         appliedFilters.scope !== "ALL"
             ? {
                   key: "scope",
-                  label: "Escopo",
-                  value: appliedFilters.scope === "DOCUMENT" ? "Documento selecionado" : "Collection atual",
+                  label: t("audit.common.scope"),
+                  value: appliedFilters.scope === "DOCUMENT"
+                      ? t("audit.documents.scopeSelectedDocument")
+                      : t("audit.documents.scopeCurrentCollection"),
               }
             : null,
         appliedFilters.query
             ? {
                   key: "query",
-                  label: "Busca",
+                  label: t("audit.common.search"),
                   value: appliedFilters.query,
               }
             : null,
         appliedFilters.action
             ? {
                   key: "action",
-                  label: "Acao",
-                  value: formatDocumentAuditAction(appliedFilters.action),
+                  label: t("audit.common.action"),
+                  value: formatDocumentAuditAction(appliedFilters.action, locale),
               }
             : null,
         appliedFilters.status
             ? {
                   key: "status",
-                  label: "Status",
-                  value: formatAuditStatus(appliedFilters.status),
+                  label: t("audit.common.status"),
+                  value: formatAuditStatus(appliedFilters.status, locale),
               }
             : null,
         appliedFilters.actorType
             ? {
                   key: "actor-type",
-                  label: "Actor",
-                  value: formatAuditActorType(appliedFilters.actorType),
+                  label: t("audit.common.actor"),
+                  value: formatAuditActorType(appliedFilters.actorType, locale),
               }
             : null,
         typeof appliedActorId === "number"
             ? {
                   key: "actor-id",
-                  label: "Actor ID",
+                  label: t("audit.common.actorId"),
                   value: String(appliedActorId),
               }
             : null,
         appliedFilters.correlationId
             ? {
                   key: "correlation",
-                  label: "Request",
+                  label: t("audit.common.request"),
                   value: appliedFilters.correlationId,
               }
             : null,
         appliedFilters.createdFrom
             ? {
                   key: "created-from",
-                  label: "Criado de",
+                  label: t("audit.common.createdFrom"),
                   value: appliedFilters.createdFrom,
               }
             : null,
         appliedFilters.createdTo
             ? {
                   key: "created-to",
-                  label: "Criado ate",
+                  label: t("audit.common.createdTo"),
                   value: appliedFilters.createdTo,
               }
             : null,
@@ -319,24 +326,24 @@ export default function DocumentAuditExplorer({
             <CardHeader className="space-y-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-primary">Audit Trail</p>
-                        <h2 className="mt-2 text-lg font-semibold">Historico de auditoria documental</h2>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-primary">{t("audit.common.eyebrow")}</p>
+                        <h2 className="mt-2 text-lg font-semibold">{t("audit.documents.title")}</h2>
                         <p className="mt-1 text-sm text-muted-foreground">
-                            Consulta operacional dos uploads, retries e exclusoes com request id, origem, actor e leitura agregada.
+                            {t("audit.documents.description")}
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <AuditScopeButton active={filters.scope === "ALL"} onClick={() => setFilters((current) => ({ ...current, scope: "ALL" }))}>
-                            Conta inteira
+                            {t("audit.documents.scopeAccount")}
                         </AuditScopeButton>
                         {selectedDocument ? (
                             <AuditScopeButton active={filters.scope === "DOCUMENT"} onClick={() => setFilters((current) => ({ ...current, scope: "DOCUMENT" }))}>
-                                Documento selecionado
+                                {t("audit.documents.scopeSelectedDocument")}
                             </AuditScopeButton>
                         ) : null}
                         {selectedDocument?.collection_id ? (
                             <AuditScopeButton active={filters.scope === "COLLECTION"} onClick={() => setFilters((current) => ({ ...current, scope: "COLLECTION" }))}>
-                                Collection atual
+                                {t("audit.documents.scopeCurrentCollection")}
                             </AuditScopeButton>
                         ) : null}
                     </div>
@@ -344,8 +351,10 @@ export default function DocumentAuditExplorer({
 
                 {selectedDocument ? (
                     <div className="rounded-xl border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-foreground/85">
-                        Painel contextual pronto para filtrar por <span className="font-semibold">{selectedDocument.title}</span>
-                        {selectedDocument.collection ? ` na collection ${selectedDocument.collection}.` : "."}
+                        {t("audit.documents.contextReady", { title: selectedDocument.title })}
+                        {selectedDocument.collection
+                            ? ` ${t("audit.documents.contextReadyCollection", { collection: selectedDocument.collection })}`
+                            : "."}
                     </div>
                 ) : null}
             </CardHeader>
@@ -357,9 +366,9 @@ export default function DocumentAuditExplorer({
                         event.preventDefault();
                         setAppliedFilters(filters);
                     }}
-                >
+                    >
                     <div className="space-y-2 xl:col-span-2">
-                        <Label htmlFor="document-audit-query">Busca operacional</Label>
+                        <Label htmlFor="document-audit-query">{t("audit.common.search")}</Label>
                         <div className="relative">
                             <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input
@@ -367,13 +376,13 @@ export default function DocumentAuditExplorer({
                                 value={filters.query}
                                 onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))}
                                 className="pl-9"
-                                placeholder="Titulo, detalhe, origem ou request id"
+                                placeholder={t("audit.documents.searchPlaceholder")}
                             />
                         </div>
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="document-audit-action">Acao</Label>
+                        <Label htmlFor="document-audit-action">{t("audit.common.action")}</Label>
                         <Input
                             id="document-audit-action"
                             list="document-audit-actions"
@@ -390,7 +399,7 @@ export default function DocumentAuditExplorer({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="document-audit-status">Status</Label>
+                        <Label htmlFor="document-audit-status">{t("audit.common.status")}</Label>
                         <Input
                             id="document-audit-status"
                             list="document-audit-statuses"
@@ -406,7 +415,7 @@ export default function DocumentAuditExplorer({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="document-audit-actor-type">Actor</Label>
+                        <Label htmlFor="document-audit-actor-type">{t("audit.common.actor")}</Label>
                         <Input
                             id="document-audit-actor-type"
                             list="document-audit-actor-types"
@@ -424,7 +433,7 @@ export default function DocumentAuditExplorer({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="document-audit-actor-id">Actor ID</Label>
+                        <Label htmlFor="document-audit-actor-id">{t("audit.common.actorId")}</Label>
                         <Input
                             id="document-audit-actor-id"
                             type="number"
@@ -437,7 +446,7 @@ export default function DocumentAuditExplorer({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="document-audit-correlation">Request ID</Label>
+                        <Label htmlFor="document-audit-correlation">{t("audit.common.requestId")}</Label>
                         <Input
                             id="document-audit-correlation"
                             value={filters.correlationId}
@@ -447,7 +456,7 @@ export default function DocumentAuditExplorer({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="document-audit-created-from">Criado de</Label>
+                        <Label htmlFor="document-audit-created-from">{t("audit.common.createdFrom")}</Label>
                         <Input
                             id="document-audit-created-from"
                             type="datetime-local"
@@ -457,7 +466,7 @@ export default function DocumentAuditExplorer({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="document-audit-created-to">Criado ate</Label>
+                        <Label htmlFor="document-audit-created-to">{t("audit.common.createdTo")}</Label>
                         <Input
                             id="document-audit-created-to"
                             type="datetime-local"
@@ -469,7 +478,7 @@ export default function DocumentAuditExplorer({
                     <div className="flex items-end gap-2 xl:col-span-4">
                         <Button type="submit" className="gap-2">
                             <Filter className="h-4 w-4" />
-                            Aplicar filtros
+                            {t("audit.common.applyFilters")}
                         </Button>
                         <Button
                             type="button"
@@ -481,43 +490,47 @@ export default function DocumentAuditExplorer({
                             }}
                         >
                             <RefreshCw className="h-4 w-4" />
-                            Limpar
+                            {t("audit.common.clear")}
                         </Button>
                     </div>
                 </form>
 
-                <AuditAppliedFilters items={activeFilterItems} />
+                <AuditAppliedFilters items={activeFilterItems} title={t("audit.common.activeFilters")} />
 
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                     <AuditSummaryCard
-                        label="Eventos"
+                        label={t("audit.documents.summary.eventsLabel")}
                         value={String(result.summary.total_events)}
-                        detail={`${failedEvents} falhas no recorte atual`}
+                        detail={t("audit.documents.summary.eventsDetail", { count: failedEvents })}
                     />
                     <AuditSummaryCard
-                        label="Cobertura"
+                        label={t("audit.documents.summary.coverageLabel")}
                         value={String(result.summary.unique_documents)}
-                        detail={`${result.summary.unique_collections} collections envolvidas`}
+                        detail={t("audit.documents.summary.coverageDetail", { count: result.summary.unique_collections })}
                     />
                     <AuditSummaryCard
-                        label="Requests"
+                        label={t("audit.documents.summary.requestsLabel")}
                         value={String(result.summary.unique_requests)}
-                        detail="Correlacoes distintas registradas"
+                        detail={t("audit.documents.summary.requestsDetail")}
                     />
                     <AuditSummaryCard
-                        label="Ultimo evento"
+                        label={t("audit.documents.summary.lastEventLabel")}
                         value={formatAuditDateTime(result.summary.last_event_at, locale)}
-                        detail={`${uploadEvents} uploads · ${retryEvents} retries · ${deleteEvents} exclusoes`}
+                        detail={t("audit.documents.summary.lastEventDetail", {
+                            uploads: uploadEvents,
+                            retries: retryEvents,
+                            deletes: deleteEvents,
+                        })}
                     />
                 </div>
 
                 <div className="rounded-xl border border-border bg-background/45 p-4">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                        Atalhos operacionais
+                        {t("audit.documents.quickFiltersTitle")}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                         <AuditQuickFilterButton
-                            label="Somente falhas"
+                            label={t("audit.common.onlyFailures")}
                             count={failedEvents}
                             active={appliedFilters.status === "FAILED"}
                             tone="danger"
@@ -528,7 +541,7 @@ export default function DocumentAuditExplorer({
                             }
                         />
                         <AuditQuickFilterButton
-                            label="Uploads"
+                            label={t("audit.documents.quickFilters.uploads")}
                             count={uploadEvents}
                             active={appliedFilters.action === "DOCUMENT_UPLOAD"}
                             onClick={() =>
@@ -538,7 +551,7 @@ export default function DocumentAuditExplorer({
                             }
                         />
                         <AuditQuickFilterButton
-                            label="Retries"
+                            label={t("audit.documents.quickFilters.retries")}
                             count={retryEvents}
                             active={appliedFilters.action === "DOCUMENT_RETRY_INDEX"}
                             onClick={() =>
@@ -548,7 +561,7 @@ export default function DocumentAuditExplorer({
                             }
                         />
                         <AuditQuickFilterButton
-                            label="Exclusoes"
+                            label={t("audit.documents.quickFilters.deletes")}
                             count={deleteEvents}
                             active={appliedFilters.action === "DOCUMENT_DELETE"}
                             onClick={() =>
@@ -569,13 +582,13 @@ export default function DocumentAuditExplorer({
                 {isLoading ? (
                     <div className="flex items-center gap-2 rounded-xl border border-dashed border-border bg-background/45 p-5 text-sm text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Carregando auditoria documental...
+                        {t("audit.documents.loading")}
                     </div>
                 ) : null}
 
                 {!isLoading && !error && result.items.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-border bg-background/45 p-5 text-sm text-muted-foreground">
-                        Nenhum evento de auditoria encontrado para esse recorte.
+                        {t("audit.documents.empty")}
                     </div>
                 ) : null}
 
@@ -599,7 +612,7 @@ export default function DocumentAuditExplorer({
                             className="gap-2"
                         >
                             {isLoadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock3 className="h-4 w-4" />}
-                            Carregar mais eventos
+                            {t("audit.common.loadMore")}
                         </Button>
                     </div>
                 ) : null}
@@ -607,7 +620,7 @@ export default function DocumentAuditExplorer({
                 {!isLoading && result.items.length > 0 ? (
                     <p className="flex items-center gap-2 text-xs text-muted-foreground">
                         <FileSearch className="h-4 w-4" />
-                        Exibindo {result.items.length} evento(s) no feed atual. O resumo acima considera todo o recorte filtrado, nao apenas a pagina atual.
+                        {t("audit.documents.feedDetail", { count: result.items.length })}
                     </p>
                 ) : null}
             </CardContent>

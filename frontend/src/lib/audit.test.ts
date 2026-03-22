@@ -4,10 +4,12 @@ import { formatAuditActor, formatAuditActorType, parseAuditActorId } from "@/lib
 
 describe("audit helpers", () => {
     it("formats actor labels with localized defaults", () => {
-        expect(formatAuditActorType("USER")).toBe("Usuario");
-        expect(formatAuditActorType("SYSTEM")).toBe("Sistema");
-        expect(formatAuditActor("USER", 7)).toBe("Usuario #7");
-        expect(formatAuditActor("SERVICE")).toBe("Servico");
+        expect(formatAuditActorType("USER", "pt-BR")).toBe("Usuario");
+        expect(formatAuditActorType("SYSTEM", "pt-BR")).toBe("Sistema");
+        expect(formatAuditActor("USER", 7, "pt-BR")).toBe("Usuario #7");
+        expect(formatAuditActor("SERVICE", undefined, "pt-BR")).toBe("Servico");
+        expect(formatAuditActorType("USER", "en")).toBe("User");
+        expect(formatAuditActor("SYSTEM", 3, "en")).toBe("System #3");
     });
 
     it("parses only valid positive actor ids", () => {

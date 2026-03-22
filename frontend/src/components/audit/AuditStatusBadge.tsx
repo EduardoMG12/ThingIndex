@@ -1,9 +1,16 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import type { AppLocale } from "@/lib/i18n/config";
 import { formatAuditStatus } from "@/lib/audit";
 
-export default function AuditStatusBadge({ status }: { status?: string }) {
+export default function AuditStatusBadge({
+    status,
+    locale,
+}: {
+    status?: string;
+    locale: AppLocale;
+}) {
     return (
         <span
             className={cn(
@@ -13,7 +20,7 @@ export default function AuditStatusBadge({ status }: { status?: string }) {
                     : "border-destructive/20 bg-destructive/10 text-destructive"
             )}
         >
-            {formatAuditStatus(status)}
+            {formatAuditStatus(status, locale)}
         </span>
     );
 }
