@@ -12,6 +12,58 @@ function success(data: unknown) {
 test.use({ locale: "en-US" });
 
 test("documentation page exposes the open-source onboarding flow", async ({ page }) => {
+    await page.route("**/api/runtime/profile", async (route) => {
+        await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify(success({
+                product_name: "ThingIndex",
+                tagline: "Relational document intelligence for auditable operational knowledge.",
+                primary_use_case: "Organize collections of operational, compliance, legal, and research documents with typed relational indexing.",
+                core_problem: "Disconnected document tooling makes provenance and context recovery difficult.",
+                value_proposition: "Relational-first context recovery with explicit provenance.",
+                target_users: [
+                    {
+                        name: "Operations and compliance teams",
+                        description: "Need searchable workspaces and explicit provenance.",
+                    },
+                    {
+                        name: "Academic and research environments",
+                        description: "Need inspectable and reproducible runtime behavior.",
+                    },
+                ],
+                current_scope: [
+                    "JWT-authenticated document workspace",
+                    "Structured indexing with typed metadata",
+                ],
+                differentiators: [
+                    "Relational-first context reconstruction instead of vector-first navigation.",
+                ],
+                non_goals: [
+                    "Do not present the main runtime as a generic AI copilot detached from document provenance.",
+                ],
+                research_tracks: [
+                    "Benchmark the relational baseline against vector retrieval.",
+                ],
+                artifact_refs: [
+                    {
+                        label: "Product focus RFC",
+                        path: "rfc/0001-product-focus.md",
+                        kind: "RFC",
+                        summary: "Primary use case and backlog implications.",
+                    },
+                    {
+                        label: "SBC article draft",
+                        path: "article/thingindex-sbc-article.md",
+                        kind: "ARTICLE_DRAFT",
+                        summary: "Versioned article draft.",
+                    },
+                ],
+                last_reviewed_on: "2026-03-22",
+            })),
+        });
+    });
+
     await page.route("**/api/providers/support**", async (route) => {
         await route.fulfill({
             status: 200,
@@ -67,6 +119,11 @@ test("documentation page exposes the open-source onboarding flow", async ({ page
 
     await page.goto("/en/documentation");
 
+    await expect(page.getByRole("heading", { level: 2, name: "Foco do Produto" })).toBeVisible();
+    await expect(page.getByText("/api/v1/meta/runtime-profile", { exact: true })).toBeVisible();
+    await expect(page.getByText(/Operations and compliance teams/i)).toBeVisible();
+    await expect(page.getByText("rfc/0001-product-focus.md", { exact: true })).toBeVisible();
+    await expect(page.getByText("article/thingindex-sbc-article.md", { exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "Onboarding Open Source" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 3, name: "Self-hosted runtime" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 3, name: "Hosted API consumption" })).toBeVisible();

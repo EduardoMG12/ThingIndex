@@ -1,10 +1,10 @@
 import { Navbar } from "@/components/home/Navbar";
 import { Hero } from "@/components/home/Hero";
-import { Metrics } from "@/components/home/Metrics";
 import { Features } from "@/components/home/Features";
 import { HowItWorks } from "@/components/home/HowItWorks";
 import { CTA } from "@/components/home/CTA";
 import { Footer } from "@/components/home/Footer";
+import { ProductFocusStrip } from "@/components/home/ProductFocusStrip";
 
 export const metadata = {
     title: "ThingIndex | Relational Document Intelligence",
@@ -17,7 +17,7 @@ export default function LandingPage() {
             <Navbar />
             <div className="flex flex-col gap-20 pb-20">
                 <Hero />
-                <Metrics />
+                <ProductFocusStrip />
                 <Features />
                 <HowItWorks />
                 <CTA />

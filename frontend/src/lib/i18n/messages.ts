@@ -70,6 +70,7 @@ export const messages: LocaleMessages = {
                 test: "Nao foi possivel testar a conexao do provider.",
                 models: "Nao foi possivel carregar os modelos do provider.",
             },
+            runtimeProfile: "Nao foi possivel carregar o perfil publico do runtime.",
             audit: {
                 documents: "Nao foi possivel carregar a auditoria documental.",
                 providers: "Nao foi possivel carregar a auditoria de providers.",
@@ -244,9 +245,9 @@ export const messages: LocaleMessages = {
                 "Plataforma de inteligência documental relacional com indexação estrutural e recuperação de contexto.",
             pages: {
                 home: {
-                    title: "ThingIndex | Inteligência documental com IA",
+                    title: "ThingIndex | Inteligência documental relacional",
                     description:
-                        "Transforme documentos em conhecimento estruturado com indexação relacional e recuperação de contexto.",
+                        "Organize coleções documentais com contexto auditável, indexação estrutural e recuperação relacional.",
                 },
                 login: {
                     title: "Entrar | ThingIndex",
@@ -313,10 +314,32 @@ export const messages: LocaleMessages = {
                 titleStart: "Transforme documentos em",
                 titleHighlight: "conhecimento estruturado",
                 description:
-                    "Organize documentos com categorias, collections e estruturas indexadas em uma arquitetura relacional auditável.",
+                    "ThingIndex ajuda times operacionais, jurídicos, acadêmicos e de compliance a organizar collections, extrair estrutura e recuperar contexto sem depender de uma stack opaca de RAG.",
                 primaryCta: "Começar agora",
                 secondaryCta: "Ver documentação",
                 terminalTitle: "thingindex context",
+            },
+            focus: {
+                title: "Foco explícito do produto",
+                description: "O runtime principal foi desenhado para workspaces documentais auditáveis. Pesquisa comparativa continua existindo, mas aparece separada do caminho funcional atual.",
+                items: {
+                    useCase: {
+                        title: "Caso de uso principal",
+                        desc: "Organizar collections documentais com contexto recuperável, metadados tipados e trilha operacional verificável.",
+                    },
+                    audience: {
+                        title: "Melhor encaixe hoje",
+                        desc: "Times de operações, compliance, jurídico e pesquisa que precisam de estrutura, proveniência e recuperação repetível.",
+                    },
+                    promise: {
+                        title: "Promessa do produto",
+                        desc: "Indexação relacional first, referências rastreáveis e portabilidade de providers sem reescrever o domínio principal.",
+                    },
+                    researchBoundary: {
+                        title: "Fronteira de pesquisa",
+                        desc: "Comparações com vetores e GraphRAG seguem como extensões acadêmicas isoladas, não como promessa pronta do runtime.",
+                    },
+                },
             },
             metrics: {
                 precision: "mais preciso que RAG tradicional",
@@ -373,7 +396,7 @@ export const messages: LocaleMessages = {
             },
             cta: {
                 title: "Pronto para começar?",
-                description: "Open source e gratuito para self-hosting. Ou use nossa API gerenciada com plano free.",
+                description: "Use o runtime self-hosted com rastreabilidade completa ou consuma a API já publicada com o mesmo contrato público.",
                 primary: "Criar conta grátis",
             },
             footer: {
@@ -1010,6 +1033,7 @@ export const messages: LocaleMessages = {
                 test: "Could not test the provider connection.",
                 models: "Could not load provider models.",
             },
+            runtimeProfile: "Could not load the public runtime profile.",
             audit: {
                 documents: "Could not load the document audit feed.",
                 providers: "Could not load the provider audit feed.",
@@ -1184,9 +1208,9 @@ export const messages: LocaleMessages = {
                 "Relational document intelligence platform with structured indexing and context recovery.",
             pages: {
                 home: {
-                    title: "ThingIndex | AI document intelligence",
+                    title: "ThingIndex | Relational document intelligence",
                     description:
-                        "Turn documents into structured knowledge with relational indexing and context recovery.",
+                        "Organize document collections with auditable context, structured indexing, and relational recovery.",
                 },
                 login: {
                     title: "Login | ThingIndex",
@@ -1253,10 +1277,32 @@ export const messages: LocaleMessages = {
                 titleStart: "Turn documents into",
                 titleHighlight: "structured knowledge",
                 description:
-                    "Organize documents with categories, collections, and indexed structures in an auditable relational architecture.",
+                    "ThingIndex helps operations, legal, compliance, and research teams organize collections, extract structure, and recover context without depending on an opaque RAG-first stack.",
                 primaryCta: "Start now",
                 secondaryCta: "View documentation",
                 terminalTitle: "thingindex context",
+            },
+            focus: {
+                title: "Explicit product focus",
+                description: "The main runtime is designed for auditable document workspaces. Comparative research still exists, but it stays separate from the current functional path.",
+                items: {
+                    useCase: {
+                        title: "Primary use case",
+                        desc: "Organize document collections with recoverable context, typed metadata, and a verifiable operational trail.",
+                    },
+                    audience: {
+                        title: "Best fit today",
+                        desc: "Operations, compliance, legal, and research teams that need structure, provenance, and repeatable retrieval.",
+                    },
+                    promise: {
+                        title: "Product promise",
+                        desc: "Relational-first indexing, traceable references, and provider portability without rewriting the main domain.",
+                    },
+                    researchBoundary: {
+                        title: "Research boundary",
+                        desc: "Vector and GraphRAG comparisons remain isolated academic extensions, not a ready-made claim of the current runtime.",
+                    },
+                },
             },
             metrics: {
                 precision: "more accurate than traditional RAG",
@@ -1313,7 +1359,7 @@ export const messages: LocaleMessages = {
             },
             cta: {
                 title: "Ready to get started?",
-                description: "Open source and free for self-hosting. Or use our managed API with a free plan.",
+                description: "Run the self-hosted stack with full traceability or consume the published API through the same public contract.",
                 primary: "Create free account",
             },
             footer: {
@@ -1950,6 +1996,7 @@ export const messages: LocaleMessages = {
                 test: "No se pudo probar la conexión del provider.",
                 models: "No se pudieron cargar los modelos del provider.",
             },
+            runtimeProfile: "No se pudo cargar el perfil público del runtime.",
             audit: {
                 documents: "No se pudo cargar la auditoría documental.",
                 providers: "No se pudo cargar la auditoría de providers.",
@@ -2124,9 +2171,9 @@ export const messages: LocaleMessages = {
                 "Plataforma de inteligencia documental relacional con indexación estructural y recuperación de contexto.",
             pages: {
                 home: {
-                    title: "ThingIndex | Inteligencia documental con IA",
+                    title: "ThingIndex | Inteligencia documental relacional",
                     description:
-                        "Convierte documentos en conocimiento estructurado con indexación relacional y recuperación de contexto.",
+                        "Organiza colecciones documentales con contexto auditable, indexación estructural y recuperación relacional.",
                 },
                 login: {
                     title: "Iniciar sesión | ThingIndex",
@@ -2193,10 +2240,32 @@ export const messages: LocaleMessages = {
                 titleStart: "Convierte documentos en",
                 titleHighlight: "conocimiento estructurado",
                 description:
-                    "Organiza documentos con categorías, collections y estructuras indexadas en una arquitectura relacional auditable.",
+                    "ThingIndex ayuda a equipos operativos, legales, de compliance y de investigación a organizar collections, extraer estructura y recuperar contexto sin depender de una stack opaca centrada en RAG.",
                 primaryCta: "Empezar ahora",
                 secondaryCta: "Ver documentación",
                 terminalTitle: "thingindex context",
+            },
+            focus: {
+                title: "Foco explícito del producto",
+                description: "El runtime principal fue diseñado para workspaces documentales auditables. La investigación comparativa sigue existiendo, pero separada del camino funcional actual.",
+                items: {
+                    useCase: {
+                        title: "Caso de uso principal",
+                        desc: "Organizar collections documentales con contexto recuperable, metadatos tipados y una traza operativa verificable.",
+                    },
+                    audience: {
+                        title: "Mejor encaje hoy",
+                        desc: "Equipos de operaciones, compliance, legal e investigación que necesitan estructura, procedencia y recuperación repetible.",
+                    },
+                    promise: {
+                        title: "Promesa del producto",
+                        desc: "Indexación relational-first, referencias rastreables y portabilidad de providers sin reescribir el dominio principal.",
+                    },
+                    researchBoundary: {
+                        title: "Frontera de investigación",
+                        desc: "Las comparaciones con vectores y GraphRAG siguen como extensiones académicas aisladas, no como una promesa lista del runtime.",
+                    },
+                },
             },
             metrics: {
                 precision: "más preciso que el RAG tradicional",
@@ -2253,7 +2322,7 @@ export const messages: LocaleMessages = {
             },
             cta: {
                 title: "¿Listo para empezar?",
-                description: "Open source y gratis para self-hosting. O usa nuestra API gestionada con plan free.",
+                description: "Ejecuta la stack self-hosted con trazabilidad completa o consume la API publicada a través del mismo contrato público.",
                 primary: "Crear cuenta gratis",
             },
             footer: {

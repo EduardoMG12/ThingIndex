@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { OpenSourceOnboardingSection } from "@/components/documentation/OpenSourceOnboardingSection";
+import { ProductFocusSection } from "@/components/documentation/ProductFocusSection";
 import { ProviderSupportSection } from "@/components/documentation/ProviderSupportSection";
 import AppShell from "@/components/layout/AppShell";
 import { Section } from "@/components/documentation/Section";
@@ -100,6 +101,10 @@ export default function DocumentationPage() {
                             Isso torna a recuperação mais previsível, a auditoria mais simples e a defesa técnica do TCC mais
                             consistente com o que o repositório realmente entrega hoje.
                         </p>
+                    </Section>
+
+                    <Section icon={Target} title="Foco do Produto" id="product-focus" delay={0.12}>
+                        <ProductFocusSection />
                     </Section>
 
                     <Section icon={BookOpen} title="Princípios de Projeto" id="principles" delay={0.15}>

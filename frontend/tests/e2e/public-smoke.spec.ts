@@ -2,6 +2,12 @@ import { expect, test } from "@playwright/test";
 
 test.use({ locale: "en-US" });
 
+test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+        window.localStorage.setItem("thingindex_last_splash", Date.now().toString());
+    });
+});
+
 test("redirects the bare root to the localized landing page @smoke", async ({ page }) => {
     await page.goto("/");
 
@@ -9,6 +15,8 @@ test("redirects the bare root to the localized landing page @smoke", async ({ pa
     await expect(page.getByRole("link", { name: "Documentation", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: /Login/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /Start free/i })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Explicit product focus" })).toBeVisible();
+    await expect(page.getByText("Primary use case", { exact: true })).toBeVisible();
 });
 
 test("opens the documentation page from the landing navigation @smoke", async ({ page }) => {
@@ -28,7 +36,7 @@ test("opens the documentation page from the landing navigation @smoke", async ({
 test("opens the localized register page from the landing CTA @smoke", async ({ page }) => {
     await page.goto("/en");
 
-    await page.getByRole("link", { name: /Start free/i }).click();
+    await page.getByRole("link", { name: /Start now/i }).click();
 
     await expect(page).toHaveURL(/\/en\/register$/);
     await expect(page.getByRole("button", { name: /Create account/i })).toBeVisible();

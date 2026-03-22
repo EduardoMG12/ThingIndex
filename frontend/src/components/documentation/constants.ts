@@ -1,5 +1,6 @@
 export const TOC = [
   { id: "overview", label: "Visão Geral" },
+  { id: "product-focus", label: "Foco do Produto" },
   { id: "principles", label: "Princípios de Projeto" },
   { id: "architecture", label: "Arquitetura do Sistema" },
   { id: "processing", label: "Processamento Atual" },
