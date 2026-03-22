@@ -14,6 +14,7 @@ import {
     Workflow,
 } from "lucide-react";
 
+import { OpenSourceOnboardingSection } from "@/components/documentation/OpenSourceOnboardingSection";
 import AppShell from "@/components/layout/AppShell";
 import { Section } from "@/components/documentation/Section";
 import { TableOfContents } from "@/components/documentation/TableOfContents";
@@ -258,7 +259,11 @@ export default function DocumentationPage() {
                         </p>
                     </Section>
 
-                    <Section icon={GitBranch} title="Roadmap" id="roadmap" delay={0.55}>
+                    <Section icon={BookOpen} title="Onboarding Open Source" id="open-source" delay={0.55}>
+                        <OpenSourceOnboardingSection apiBaseUrl={process.env.NEXT_PUBLIC_API_URL} />
+                    </Section>
+
+                    <Section icon={GitBranch} title="Roadmap" id="roadmap" delay={0.6}>
                         <ul className="space-y-3">
                             <li>Fechar checklist objetivo de seguranca, abuso e hardening do runtime atual.</li>
                             <li>Tornar auditoria, readiness de providers e observabilidade mais consultaveis.</li>
@@ -267,7 +272,7 @@ export default function DocumentationPage() {
                         </ul>
                     </Section>
 
-                    <Section icon={ScrollText} title="TCC e Artigo" id="academic" delay={0.6}>
+                    <Section icon={ScrollText} title="TCC e Artigo" id="academic" delay={0.65}>
                         <p>
                             O repositório também serve como artefato de pesquisa. A principal exigência aqui é clareza: separar
                             rigorosamente implementação atual, hipótese de pesquisa e evolução futura. A proposta de continuação
@@ -275,14 +280,14 @@ export default function DocumentationPage() {
                         </p>
                     </Section>
 
-                    <Section icon={GitBranch} title="Contribuição" id="contributing" delay={0.65}>
+                    <Section icon={GitBranch} title="Contribuição" id="contributing" delay={0.7}>
                         <p>
                             As contribuições mais úteis agora são pequenas e verificáveis: testes, fixtures, melhorias no
                             dashboard documental e documentação alinhada ao runtime atual.
                         </p>
                     </Section>
 
-                    <Section icon={ScrollText} title="Referências e Materiais" id="references" delay={0.7}>
+                    <Section icon={ScrollText} title="Referências e Materiais" id="references" delay={0.75}>
                         <div className="space-y-4 text-muted-foreground">
                             <p>
                                 O documento principal para visão completa do projeto continua sendo o <code>README.md</code> na

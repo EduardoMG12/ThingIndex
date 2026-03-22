@@ -8,6 +8,7 @@ export const TOC = [
   { id: "security", label: "Segurança e Governança" },
   { id: "deployment", label: "Deploy e Operação" },
   { id: "providers", label: "Providers e Portabilidade" },
+  { id: "open-source", label: "Onboarding Open Source" },
   { id: "roadmap", label: "Roadmap" },
   { id: "academic", label: "TCC e Artigo" },
   { id: "contributing", label: "Contribuição" },
