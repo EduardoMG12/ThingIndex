@@ -498,7 +498,10 @@ Erros de validacao retornam `errors` com mensagens sanitizadas e localizadas.
 | Metodo | Rota | Descricao |
 | --- | --- | --- |
 | `POST` | `/api/v1/user/providers` | Salva credenciais por usuario |
+| `POST` | `/api/v1/user/providers/test` | Executa readiness do provider com checks estruturados |
+| `POST` | `/api/v1/user/providers/models` | Descobre modelos disponiveis para providers LLM suportados |
 | `GET` | `/api/v1/user/providers` | Lista configuracoes de provider do usuario |
+| `GET` | `/api/v1/user/providers/runtime` | Resume os providers ativos para storage, indexacao e chat |
 | `GET` | `/api/v1/user/providers/audit` | Consulta auditoria de providers com filtros, resumo e cursor |
 | `PATCH` | `/api/v1/user/providers/:providerType` | Ativa/desativa provider ou papel LLM |
 

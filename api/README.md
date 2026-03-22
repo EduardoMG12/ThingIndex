@@ -146,7 +146,10 @@ As configuracoes completas estao documentadas no README raiz, mas as mais import
 ### Providers
 
 - `POST /api/v1/user/providers`
+- `POST /api/v1/user/providers/test`
+- `POST /api/v1/user/providers/models`
 - `GET /api/v1/user/providers`
+- `GET /api/v1/user/providers/runtime`
 - `GET /api/v1/user/providers/audit`
 - `PATCH /api/v1/user/providers/:providerType`
 
@@ -215,6 +218,12 @@ Tambem expõe trilhas de auditoria consultaveis para documentos e providers, com
 - paginação por cursor;
 - resumo agregado com breakdown por acao e status.
 
+Na frente de providers, o backend tambem expõe:
+
+- teste de readiness com retorno estruturado por check;
+- discovery de modelos para Ollama e providers OpenAI-compatible suportados no runtime;
+- overview do runtime ativo para storage, indexacao e chat.
+
 ## Testes e verificacoes
 
 Comandos simples a partir da raiz do monorepo:
@@ -277,7 +286,7 @@ Esses testes fazem `skip` por padrao. Para habilitar rodada real, configure no `
 - `THINGINDEX_TEST_LLM_PROVIDER=OPENAI` ou `OLLAMA`/outro provider suportado
 - `THINGINDEX_TEST_LLM_API_KEY`, `THINGINDEX_TEST_LLM_BASE_URL`, `THINGINDEX_TEST_LLM_MODEL` conforme o provider
 - `THINGINDEX_TEST_LLM_RUN_PROCESSING=true` para exercitar o `DocumentProcessor` com enriquecimento real
-- `THINGINDEX_TEST_LLM_RUN_MODEL_DISCOVERY=true` para exercitar listagem de modelos quando o provider suportar discovery no runtime atual
+- `THINGINDEX_TEST_LLM_RUN_MODEL_DISCOVERY=true` para exercitar listagem de modelos quando o provider suportar discovery no runtime atual, incluindo bridges OpenAI-compatible e Ollama
 
 Os testes tambem aceitam fallbacks por provider, por exemplo `OPENAI_API_KEY`/`OPENAI_MODEL` ou `OLLAMA_BASE_URL`/`OLLAMA_MODEL`, e nunca imprimem o segredo em assertions ou docs.
 

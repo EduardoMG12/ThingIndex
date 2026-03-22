@@ -55,6 +55,7 @@ src/
   - score heuristico de qualidade;
 - resumo agregado de monitoramento por usuario na tela de documentos;
 - configuracao de providers com separacao entre LLM de indexacao e LLM de chat;
+- relatorio visual de readiness na tela de settings com checks de credenciais, conectividade e discovery de modelos;
 - fluxo real de chat por collection com conversas persistidas, referencias de fonte e streaming incremental;
 - internacionalizacao em portugues, ingles e espanhol.
 
