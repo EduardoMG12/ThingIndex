@@ -45,8 +45,8 @@ src/
 - upload de documentos;
 - listagem de categorias, collections e documentos;
 - painel lateral de preview e auditoria da indexacao;
-- explorer de auditoria documental com busca, request id, recorte por documento/collection e carregamento incremental;
-- explorer de auditoria de providers com escopo por familia ou provider ativo;
+- explorer de auditoria documental com busca, actor, request id, recorte por documento/collection, atalhos de falha e carregamento incremental;
+- explorer de auditoria de providers com escopo por familia ou provider ativo, filtros operacionais e atalhos para saves, ativacoes e falhas;
 - exibicao de monitoramento por documento:
   - status, etapa e duracao;
   - tokens estimados;
