@@ -109,6 +109,58 @@ func TestRoutesE2ERegisterLoginUploadListAndDownloadContent(t *testing.T) {
 	}
 }
 
+func TestRoutesE2EAPIDocsExposeFallbackReferenceLinks(t *testing.T) {
+	db := openRoutesE2EDB(t)
+	cfg := newRoutesE2EConfig(t)
+	router := gin.New()
+
+	if err := SetupRoutes(router, db, cfg); err != nil {
+		t.Fatalf("SetupRoutes returned error: %v", err)
+	}
+
+	docsResponse := performAuthorizedRequest(t, router, http.MethodGet, "/docs", "", nil, "")
+	if docsResponse.Code != http.StatusOK {
+		t.Fatalf("expected docs status 200, got %d body=%s", docsResponse.Code, docsResponse.Body.String())
+	}
+	if got := docsResponse.Header().Get("Content-Type"); !strings.Contains(got, "text/html") {
+		t.Fatalf("expected docs content type text/html, got %q", got)
+	}
+
+	body := docsResponse.Body.String()
+	for _, expected := range []string{
+		"ThingIndex API Reference",
+		"http://example.com/docs",
+		"http://example.com/swagger/index.html",
+		"http://example.com/swagger/doc.json",
+		"http://example.com/api/v1",
+		"Consume this deployment",
+		"Run locally from GitHub",
+		"api/docs/swagger.yaml",
+		"docs/open-source-onboarding.md",
+		"examples/http/thingindex-api.http",
+	} {
+		if !strings.Contains(body, expected) {
+			t.Fatalf("expected docs page to contain %q", expected)
+		}
+	}
+
+	swaggerUIResponse := performAuthorizedRequest(t, router, http.MethodGet, "/swagger/index.html", "", nil, "")
+	if swaggerUIResponse.Code != http.StatusOK {
+		t.Fatalf("expected swagger ui status 200, got %d body=%s", swaggerUIResponse.Code, swaggerUIResponse.Body.String())
+	}
+	if got := swaggerUIResponse.Header().Get("Content-Type"); !strings.Contains(got, "text/html") {
+		t.Fatalf("expected swagger ui content type text/html, got %q", got)
+	}
+
+	swaggerResponse := performAuthorizedRequest(t, router, http.MethodGet, "/swagger/doc.json", "", nil, "")
+	if swaggerResponse.Code != http.StatusOK {
+		t.Fatalf("expected swagger json status 200, got %d body=%s", swaggerResponse.Code, swaggerResponse.Body.String())
+	}
+	if !strings.Contains(swaggerResponse.Body.String(), `"swagger": "2.0"`) {
+		t.Fatalf("expected swagger json payload, got %s", swaggerResponse.Body.String())
+	}
+}
+
 func TestRoutesE2ERetryRequeuesDocumentAndAppendsOutboxEvent(t *testing.T) {
 	db := openRoutesE2EDB(t)
 	cfg := newRoutesE2EConfig(t)

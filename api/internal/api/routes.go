@@ -90,23 +90,13 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.GET("/docs", func(c *gin.Context) {
-		html := `
-		<!doctype html>
-		<html>
-		  <head>
-		    <title>Thing-Index API Reference</title>
-		    <meta charset="utf-8" />
-		    <meta name="viewport" content="width=device-width, initial-scale=1" />
-		    <style>
-		      body { margin: 0; }
-		    </style>
-		  </head>
-		  <body>
-		    <script id="api-reference" data-url="/swagger/doc.json"></script>
-		    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
-		  </body>
-		</html>`
-		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
+		html, err := renderAPIReferencePage(buildAPIReferencePageData(c.Request))
+		if err != nil {
+			c.String(http.StatusInternalServerError, "failed to build API reference page")
+			return
+		}
+
+		c.Data(http.StatusOK, "text/html; charset=utf-8", html)
 	})
 
 	v1 := router.Group("/api/v1")

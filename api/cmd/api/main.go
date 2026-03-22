@@ -13,7 +13,7 @@ import (
 
 // @title           Thing-Index API
 // @version         1.0
-// @description     API for managing tokens and AI data processing.
+// @description     Open-source HTTP API for ThingIndex covering auth, document cataloging, provider configuration, monitoring, and grounded chat.
 // @termsOfService  http://swagger.io/terms/
 
 // @contact.name   API Support
