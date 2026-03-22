@@ -210,6 +210,8 @@ O backend expõe monitoramento em dois niveis:
   - score medio;
   - breakdown por modelo.
 
+Esse resumo agregado, exposto em `GET /api/v1/documents/monitoring/summary` e documentado no Swagger gerado do projeto, alimenta o painel operacional do frontend para destacar anomalias, filas travadas e falhas recentes de forma acionavel.
+
 Tambem expõe trilhas de auditoria consultaveis para documentos e providers, com:
 
 - busca textual;

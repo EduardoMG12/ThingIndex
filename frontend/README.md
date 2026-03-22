@@ -45,6 +45,7 @@ src/
 - upload de documentos;
 - listagem de categorias, collections e documentos;
 - painel lateral de preview e auditoria da indexacao;
+- painel operacional de documentos com destaque para falhas recentes, estados travados, watchlist prioritaria e slice acionavel da biblioteca;
 - explorer de auditoria documental com busca, actor, request id, recorte por documento/collection, atalhos de falha e carregamento incremental;
 - explorer de auditoria de providers com escopo por familia ou provider ativo, filtros operacionais e atalhos para saves, ativacoes e falhas;
 - exibicao de monitoramento por documento:
@@ -154,6 +155,12 @@ Esse desenho reduz acoplamento entre componentes React e detalhes de transporte,
 - modulos fora de React podem usar `src/lib/i18n/translate.ts` para localizar mensagens de runtime e fallbacks;
 - rotas em `src/app/api/*` devem gerar mensagens localizadas na borda, sem empurrar copy fixa para o browser;
 - mensagens operacionais de auditoria, documentos e settings devem nascer por chave, nao por string solta no componente.
+
+## Observabilidade documental
+
+- a tela `src/app/documents/page.tsx` combina o resumo agregado do backend com heuristicas locais de operacao para destacar documentos travados, retries, DLQ, orfaos e falhas recentes;
+- a heuristica compartilhada mora em `src/lib/document-state.ts` e `src/lib/document-observability.ts`, evitando espalhar classificacao operacional pelo JSX;
+- quando o usuario aplica busca ou slice operacional, a biblioteca troca a hierarquia por uma lista acionavel para inspecao direta dos documentos afetados.
 
 ## Observacao de produto
 

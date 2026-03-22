@@ -506,6 +506,15 @@ func (h *DocumentHandler) GetDocumentIndex(c *gin.Context) {
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_document_get"), dto.ToDocumentIndexResponse(index))
 }
 
+// @Summary      Get aggregated document monitoring
+// @Description  Return the operational monitoring summary for the authenticated user, including queue counters, failure buckets and LLM telemetry aggregates.
+// @Tags         documents
+// @Produce      json
+// @Success      200 {object} response.Response{data=dto.DocumentMonitoringSummaryResponse}
+// @Failure      401 {object} response.Response
+// @Failure      500 {object} response.Response
+// @Security     BearerAuth
+// @Router       /documents/monitoring/summary [get]
 func (h *DocumentHandler) GetDocumentMonitoringSummary(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
