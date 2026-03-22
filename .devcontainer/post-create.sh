@@ -12,6 +12,7 @@ cat <<'EOF'
   frontend: http://localhost:3000
   api: http://localhost:8000
   api docs: http://localhost:8000/docs
+  provider support matrix: http://localhost:8000/api/v1/providers/support?family=LLM
   onboarding guide: docs/open-source-onboarding.md
   request examples: examples/http/thingindex-api.http
 EOF

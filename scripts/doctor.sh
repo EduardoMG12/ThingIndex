@@ -17,7 +17,7 @@ Checks:
   - required local commands for Docker Compose and manual execution
   - presence of .env
   - reachability of frontend when running locally
-  - reachability of API health, Scalar docs, Swagger UI, and Swagger JSON
+  - reachability of API health, Scalar docs, Swagger UI, Swagger JSON, and the public provider support matrix
 
 Behavior:
   - non-strict mode reports unavailable services as warnings
@@ -206,6 +206,7 @@ probe_url "API health" "$api_base/api/v1/health"
 probe_url "Scalar API docs" "$api_base/docs"
 probe_url "Swagger UI" "$api_base/swagger/index.html"
 probe_url "Swagger JSON" "$api_base/swagger/doc.json"
+probe_url "Provider support matrix" "$api_base/api/v1/providers/support?family=LLM"
 
 echo "[doctor] failures=$failures warnings=$warnings"
 
