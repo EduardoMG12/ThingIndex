@@ -354,6 +354,7 @@ Ao abrir o projeto no Dev Container:
 - `db`, `minio`, `rabbitmq`, `api` e `indexer` sobem pelo compose;
 - o `postCreateCommand` executa `go mod download` em `api/` e `pnpm install` em `frontend/`;
 - o frontend pode ser iniciado de dentro do container com `cd frontend && pnpm dev`;
+- o Storybook do frontend pode ser iniciado no container com `cd frontend && pnpm storybook`, com a porta `6006` ja encaminhada;
 - a instalacao do browser do Playwright continua explicita via `cd frontend && pnpm run test:e2e:install`.
 - os testes reais opcionais com Ollama do host podem usar `OLLAMA_BASE_URL=http://host.docker.internal:11434/v1`, porque o devcontainer ja expõe `host.docker.internal`.
 
@@ -376,6 +377,7 @@ O repositorio agora expõe comandos curtos na raiz:
 ./scripts/test.sh unit
 ./scripts/test.sh backend-integration
 ./scripts/test.sh backend-e2e
+./scripts/test.sh frontend-storybook
 ./scripts/test.sh frontend-e2e
 ./scripts/test.sh all
 ```
@@ -386,6 +388,7 @@ Se preferir `make`, os atalhos equivalentes tambem existem:
 make test-unit
 make test-backend-integration
 make test-backend-e2e
+make test-frontend-storybook
 make test-frontend-e2e
 make test-all
 ```

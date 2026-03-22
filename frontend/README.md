@@ -80,6 +80,14 @@ Execute em modo desenvolvimento:
 pnpm dev
 ```
 
+Abra o catalogo visual local:
+
+```bash
+pnpm storybook
+```
+
+Esse comando gera o build do Storybook e publica o catalogo em `http://localhost:6006`.
+
 Valide o codigo:
 
 ```bash
@@ -110,6 +118,7 @@ Ou, se preferir:
 make test-frontend-unit
 make test-frontend-e2e
 make test-frontend-smoke
+make test-frontend-storybook
 ```
 
 Suite unitaria:
@@ -130,6 +139,21 @@ Somente os cenarios marcados como smoke:
 ```bash
 pnpm run test:smoke
 ```
+
+Storybook:
+
+```bash
+pnpm run build:storybook
+pnpm run test:storybook:e2e
+```
+
+## Storybook
+
+- a configuracao mora em `.storybook/` com `@storybook/nextjs-vite`, tema proprio e decorator global de i18n;
+- `pnpm storybook` gera o catalogo e o expõe localmente na porta `6006`, enquanto `pnpm run build:storybook` valida apenas o build estatico;
+- o toolbar permite alternar `en`, `pt-BR` e `es`, o que ajuda a revisar componentes que dependem de traducao;
+- as stories iniciais cobrem primitives de `ui`, runtime/configuracao de providers e observabilidade documental;
+- o smoke browser em `tests/storybook/storybook-smoke.spec.ts` garante que docs e stories centrais sobem e renderizam no build atual.
 
 ## Variaveis importantes
 
@@ -164,4 +188,4 @@ Esse desenho reduz acoplamento entre componentes React e detalhes de transporte,
 
 ## Observacao de produto
 
-O frontend atual ja cobre o fluxo principal de autenticacao, upload, organizacao documental, auditoria da indexacao e um fluxo real de chat por collection com resposta incremental. Os proximos saltos mais uteis nesta camada estao em Storybook, maior clareza operacional da UI e refinamento de UX.
+O frontend atual ja cobre o fluxo principal de autenticacao, upload, organizacao documental, auditoria da indexacao, Storybook para catalogo visual e um fluxo real de chat por collection com resposta incremental. Os proximos saltos mais uteis nesta camada estao em onboarding open source, refinamento de UX e limpeza de boilerplate residual.
