@@ -26,6 +26,7 @@ describe("documentation open-source helpers", () => {
                 expect.objectContaining({ title: "Swagger UI", href: "http://127.0.0.1:8000/swagger/index.html" }),
                 expect.objectContaining({ title: "Storage support matrix", href: "http://127.0.0.1:8000/api/v1/providers/support?family=STORAGE" }),
                 expect.objectContaining({ pathHint: "examples/http/thingindex-api.http" }),
+                expect.objectContaining({ pathHint: "api/cmd/index-import" }),
                 expect.objectContaining({ pathHint: "api/docs/swagger.yaml" }),
             ])
         );
@@ -61,6 +62,7 @@ describe("documentation open-source helpers", () => {
         expect(screen.getByText("LLM support matrix")).toBeInTheDocument();
         expect(screen.getByText("docs/open-source-onboarding.md")).toBeInTheDocument();
         expect(screen.getAllByText("examples/http/thingindex-api.http").length).toBeGreaterThan(0);
+        expect(screen.getByText("api/cmd/index-import")).toBeInTheDocument();
         expect(screen.getAllByText("api/docs/swagger.yaml").length).toBeGreaterThan(0);
     });
 });

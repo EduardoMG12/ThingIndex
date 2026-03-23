@@ -6,11 +6,12 @@ Ele e o centro operacional do monorepo: recebe uploads, persiste metadados, publ
 
 ## Componentes
 
-O diretório `api/` contém tres executaveis principais:
+O diretório `api/` contém quatro executaveis principais:
 
 - `cmd/api`: servidor HTTP principal;
 - `cmd/indexer`: worker de indexacao e dispatcher da outbox;
 - `cmd/pricing-worker`: worker de sincronizacao de precos de modelos.
+- `cmd/index-import`: CLI para importar exports versionados de indice em banco externo.
 
 ## Responsabilidades do backend
 
@@ -22,6 +23,7 @@ O diretório `api/` contém tres executaveis principais:
 - recuperacao de contexto consolidado por collection;
 - chat por collection com conversas persistidas e resposta incremental via SSE;
 - exposicao de indice, chunks, monitoramento e score heuristico por documento;
+- export versionado de indice por documento para reuso externo;
 - agregacao de monitoramento de indexacao por usuario;
 - armazenamento criptografado de credenciais de providers.
 
@@ -43,6 +45,7 @@ api/
 |   |-- api/               # servidor HTTP
 |   |-- indexer/           # worker de indexacao + outbox dispatcher
 |   |-- pricing-worker/    # sincronizacao de precos
+|   |-- index-import/      # importacao de exports de indice em banco externo
 |-- db/                    # conexao e bootstrap de schema
 |-- docs/                  # swagger gerado
 |-- internal/
@@ -115,6 +118,20 @@ go run ./cmd/indexer
 cd api
 go run ./cmd/pricing-worker
 ```
+
+### CLI de importacao de indices
+
+```bash
+cd api
+go run ./cmd/index-import --database-url "postgres://postgres:postgres@localhost:5434/thingindex?sslmode=disable" --path ../tmp/index-exports
+```
+
+Esse fluxo:
+
+- aceita um arquivo `.json` exportado ou um diretório com varios exports;
+- valida o contrato `document_index_export` versionado;
+- cria automaticamente o schema `thingindex_import_*` no banco alvo;
+- sincroniza documentos por `source_key`, atualizando somente quando o payload muda.
 
 ## Consumo open source da API
 
@@ -205,6 +222,7 @@ As configuracoes completas estao documentadas no README raiz, mas as mais import
 - `GET /api/v1/documents/:id`
 - `GET /api/v1/documents/:id/content`
 - `GET /api/v1/documents/:id/index`
+- `GET /api/v1/documents/:id/index/export`
 - `GET /api/v1/documents/monitoring/summary`
 - `GET /api/v1/documents/collections/:id/context`
 

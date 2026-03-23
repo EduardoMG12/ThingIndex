@@ -235,6 +235,7 @@ test("documentation page exposes the open-source onboarding flow", async ({ page
     await expect(page.getByText("http://127.0.0.1:8000/api/v1", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("docs/open-source-onboarding.md", { exact: true })).toBeVisible();
     await expect(page.getByText("examples/http/thingindex-api.http", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("api/cmd/index-import", { exact: true })).toBeVisible();
     await expect(page.getByText("api/docs/swagger.yaml", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Ready", { exact: true })).toHaveCount(2);
     await expect(page.getByText("Experimental", { exact: true })).toHaveCount(2);

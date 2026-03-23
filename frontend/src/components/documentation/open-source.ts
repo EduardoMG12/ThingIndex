@@ -82,6 +82,11 @@ export function getDocumentationResources(apiBaseUrl?: string): DocumentationRes
             pathHint: "examples/http/thingindex-api.http",
         },
         {
+            title: "Index import CLI",
+            description: "Go command that imports versioned document index exports into an external PostgreSQL database with auto-created schema.",
+            pathHint: "api/cmd/index-import",
+        },
+        {
             title: "Versioned OpenAPI contract",
             description: "Repository-tracked YAML/JSON artifacts used by Scalar, Swagger, and external tooling.",
             pathHint: "api/docs/swagger.yaml",
@@ -145,6 +150,7 @@ export function getDocumentationTracks(apiBaseUrl?: string): DocumentationTrack[
             notes: [
                 `Swagger UI fallback: ${apiReferenceBase}/swagger/index.html`,
                 `Raw OpenAPI JSON: ${apiReferenceBase}/swagger/doc.json`,
+                "Export `/documents/:id/index/export` from the UI or API, then import with `go run ./api/cmd/index-import --database-url <dsn> --path ./exports`.",
                 `Optional repo-side diagnosis: ./scripts/doctor.sh --api-base ${apiReferenceBase}`,
             ],
         },

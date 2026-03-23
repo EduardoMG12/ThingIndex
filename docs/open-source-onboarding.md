@@ -94,6 +94,8 @@ Fluxo curto:
 ## Exemplos prontos
 
 - `examples/http/thingindex-api.http` agrupa requests de health, docs, benchmark publico de indexacao, matrizes publicas de suporte a storage/LLM, auth e consulta autenticada ao catalogo.
+- `GET /api/v1/documents/:id/index/export` baixa o artefato versionado `document_index_export` para um documento autenticado.
+- `go run ./api/cmd/index-import --database-url <dsn> --path ./exports` importa esses exports para um banco PostgreSQL externo com schema criado automaticamente.
 - A referencia oficial do contrato continua em `api/docs/swagger.yaml`, `api/docs/swagger.json` e nas rotas `/docs` e `/swagger/index.html`.
 - Para regenerar os artefatos versionados depois de mudar annotations do backend, use `make docs-api`.
 
@@ -131,5 +133,7 @@ Fluxo curto:
 - use `<origin>/api/v1/meta/indexing-benchmark` para consultar a baseline objetiva do indice atual, o corpus controlado e os limites declarados da medicao;
 - use `<origin>/api/v1/providers/support?family=STORAGE` para consultar o suporte real por backend de storage, setup hints e notas operacionais;
 - use `<origin>/api/v1/providers/support?family=LLM` para consultar o suporte real por provider LLM, inclusive bridge requirements e notas operacionais;
+- use `<origin>/api/v1/documents/:id/index/export` para baixar o JSON versionado do indice de um documento autenticado;
+- use `go run ./api/cmd/index-import --database-url <dsn> --path ./exports` para sincronizar esses JSONs em outro banco PostgreSQL;
 - use `examples/http/thingindex-api.http` para requests prontas, trocando `@apiHost` quando necessario;
 - use `<origin>/swagger/doc.json` quando precisar integrar ferramentas de OpenAPI.

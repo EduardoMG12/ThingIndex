@@ -47,6 +47,7 @@ src/
 - upload de documentos;
 - listagem de categorias, collections e documentos;
 - painel lateral de preview e auditoria da indexacao;
+- export versionado do indice documental em JSON a partir do painel de documentos;
 - painel operacional de documentos com leitura executiva, proximas acoes, mapa de anomalias, watchlist prioritaria e slice acionavel da biblioteca;
 - painel de custo no dashboard com estado de confiabilidade, cobertura precificada, limites da estimativa e drivers de custo observados;
 - explorer de auditoria documental com busca, actor, request id, recorte por documento/collection, atalhos de falha e carregamento incremental;
@@ -107,6 +108,7 @@ Materiais de apoio imediatos:
 
 - guia curto: `docs/open-source-onboarding.md`
 - requests prontas: `examples/http/thingindex-api.http`
+- CLI de importacao de indices: `api/cmd/index-import`
 - contrato versionado: `api/docs/swagger.yaml` e `api/docs/swagger.json`
 - perfil publico do runtime: `http://localhost:8000/api/v1/meta/runtime-profile`
 - benchmark publico de indexacao: `http://localhost:8000/api/v1/meta/indexing-benchmark`
@@ -194,7 +196,7 @@ pnpm run build:storybook
 pnpm run test:storybook:e2e
 ```
 
-O `devcontainer` versionado na raiz ja expõe as portas `3000` e `8000` e inclui a extensao do Playwright, entao os cenarios do workspace de chat, da observabilidade documental e da visibilidade de custos podem ser executados nele sem ajuste extra.
+O `devcontainer` versionado na raiz ja expõe as portas `3000` e `8000` e inclui a extensao do Playwright, entao os cenarios do workspace de chat, da observabilidade documental e da visibilidade de custos podem ser executados nele sem ajuste extra. O mesmo ambiente tambem deixa o banco PostgreSQL do Compose acessivel para rodar a CLI `go run ./api/cmd/index-import ...` sem bootstrap adicional.
 
 ## Storybook
 

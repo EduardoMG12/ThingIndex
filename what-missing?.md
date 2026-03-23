@@ -11,11 +11,11 @@
 
 **Contagem atual do backlog:**
 - 32 tasks catalogadas ao todo.
-- 29 tasks ja concluidas no escopo atual: `A0`, `A1`, `A2`, `A3`, `A4`, `B1`, `B2`, `B3`, `B4`, `B5`, `C0`, `C1`, `C2`, `C3`, `D1`, `D2`, `D3`, `D4`, `D5`, `D6`, `E1`, `E2`, `E3`, `E4`, `F1`, `F2`, `F4`, `G1`, `G2`.
-- 3 tasks continuam abertas entre nao implementado, ideia ou questao estrategica.
+- 30 tasks ja concluidas no escopo atual: `A0`, `A1`, `A2`, `A3`, `A4`, `B1`, `B2`, `B3`, `B4`, `B5`, `C0`, `C1`, `C2`, `C3`, `D1`, `D2`, `D3`, `D4`, `D5`, `D6`, `E1`, `E2`, `E3`, `E4`, `E5`, `F1`, `F2`, `F4`, `G1`, `G2`.
+- 2 tasks continuam abertas entre nao implementado, ideia ou questao estrategica.
 - 0 tasks sao realmente de alta necessidade agora.
 - 0 tasks sao importantes, mas nao urgentes.
-- 3 tasks abertas sao mais de roadmap, expansao, manutencao ou valor academico.
+- 2 tasks abertas sao mais de roadmap, expansao, manutencao ou valor academico.
 
 **Leitura rapida:**
 - Nem todas as tasks sao ultra necessarias.
@@ -36,7 +36,6 @@
 
 | ID | Status | Necessidade | Tamanho | Leitura curta |
 | --- | --- | --- | --- | --- |
-| E5 | NAO IMPLEMENTADO | Baixa | Grande | Criar CLI para importar indices em banco externo |
 | F3 | IDEIA CONTINUA | Baixa | Pequeno | Limpar boilerplate e naming excessivo |
 | G3 | BAIXA PRIORIDADE | Baixa | Pequeno | Fazer refinos visuais menores |
 
@@ -590,25 +589,20 @@
 
 ### [E5] CLI para importar indices baixados para banco de dados
 
-**Status:** NAO IMPLEMENTADO
+**Status:** CONCLUIDO NO ESCOPO ATUAL
 
-**Objetivo:**
-- Permitir que qualquer pessoa aponte uma conexao de banco e um path local com os arquivos baixados da nossa pagina.
-- Criar automaticamente as tabelas necessarias para armazenamento dos indices.
-- Inserir ou sincronizar os dados importados no banco sem exigir setup manual de schema.
+**Ja existe:**
+- Rota autenticada `GET /api/v1/documents/:id/index/export` que baixa um artefato versionado `document_index_export` em JSON.
+- Botao na UI de documentos para baixar esse JSON diretamente do painel de indice.
+- Contrato documentado em `Swagger/Scalar`, exemplos HTTP e onboarding open source.
+- CLI `go run ./api/cmd/index-import --database-url <dsn> --path ./exports` para importar um arquivo ou diretorio exportado.
+- Criacao automatica do schema `thingindex_import_*` no banco alvo.
+- Sincronizacao idempotente por `source_key`, com detecção de payload repetido via hash.
+- Cobertura automatizada com testes unitarios, integracao e `e2e` no fluxo de export/import.
 
-**Escopo esperado:**
-- CLI com parametros para `database_url` e `path` do arquivo ou diretorio exportado.
-- Validacao do formato esperado dos arquivos de indice.
-- Criacao automatica de tabelas e indices necessarios no banco alvo.
-- Importacao idempotente ou com estrategia clara de conflito.
-- Logs minimos de execucao com quantidade de registros importados, ignorados e falhos.
-- Documentacao curta com exemplo de uso e pre-requisitos.
-
-**Por que importa:**
-- Facilita distribuicao do valor do projeto para alem da interface web.
-- Reduz friccao para quem quiser reutilizar os dados indexados em outro ambiente.
-- Aumenta o valor open source ao transformar o pipeline em algo reaproveitavel por CLI.
+**Observacao:**
+- O gap deixou de ser estrutural.
+- O que sobra nessa frente passa a ser manutencao normal do contrato versionado e do schema de importacao.
 
 ## 6. Prioridade Media - Documentacao e Consistencia do Repositorio
 
@@ -753,7 +747,6 @@ Estes itens ja existem ao menos em nivel funcional e nao devem voltar como "nao 
 
 ### Fase 2 - Expandir portabilidade e simplificar manutencao
 
-- `E5` Implementar CLI para importar indices em banco externo.
 - `F3` Revisar boilerplate e naming desnecessarios.
 
 ### Fase 3 - Roadmap de expansao e valor academico
@@ -765,8 +758,8 @@ Estes itens ja existem ao menos em nivel funcional e nao devem voltar como "nao 
 Se a pergunta for "quantas tasks existem e quantas sao realmente urgentes":
 
 - Existem 32 tasks catalogadas.
-- 29 ja podem ser tratadas como concluidas no escopo atual.
-- Das 3 abertas, nenhuma permanece como alta necessidade estrutural agora.
+- 30 ja podem ser tratadas como concluidas no escopo atual.
+- Das 2 abertas, nenhuma permanece como alta necessidade estrutural agora.
 
 Se a pergunta for "todas sao ultra necessarias":
 
@@ -776,7 +769,6 @@ Se a pergunta for "todas sao ultra necessarias":
 
 Se a ideia for escolher o proximo passo mais util agora:
 
-- `E5` criar a CLI para importar indices em banco externo.
 - `F3` reduzir boilerplate e naming excessivo enquanto o backlog estrutural esta curto.
 - `G3` deixar como polimento visual opcional para o fim.
 

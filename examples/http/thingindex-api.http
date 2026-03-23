@@ -72,6 +72,11 @@ GET {{apiBase}}/documents/
 Authorization: Bearer {{token}}
 Accept: application/json
 
+### Export one document index as a versioned JSON artifact
+GET {{apiBase}}/documents/1/index/export
+Authorization: Bearer {{token}}
+Accept: application/json
+
 ### Read the active provider runtime overview
 GET {{apiBase}}/user/providers/runtime
 Authorization: Bearer {{token}}
