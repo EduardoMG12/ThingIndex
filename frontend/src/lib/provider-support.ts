@@ -32,10 +32,14 @@ export function formatProviderSupportTransport(transport?: ProviderSupport["tran
             return "Native OpenAI path";
         case "NATIVE_OLLAMA":
             return "Native Ollama path";
+        case "NATIVE_GCS":
+            return "Native Google Cloud Storage path";
         case "OPENAI_COMPATIBLE":
             return "Shared OpenAI-compatible path";
         case "OPENAI_COMPATIBLE_BRIDGE":
             return "OpenAI-compatible bridge";
+        case "S3_COMPATIBLE":
+            return "Shared S3-compatible path";
         default:
             return "Unknown transport";
     }
@@ -43,4 +47,21 @@ export function formatProviderSupportTransport(transport?: ProviderSupport["tran
 
 export function getProviderSupportCapabilityState(value: boolean) {
     return value ? "Yes" : "No";
+}
+
+const SUPPORT_SETUP_LABELS: Record<string, string> = {
+    account_id: "Account ID",
+    base_url: "Base URL",
+    bucket_name: "Bucket",
+    credentials_json: "Credentials JSON",
+    emulator_host: "Emulator host",
+    endpoint: "Endpoint",
+    location: "Location",
+    model: "Model",
+    project_id: "Project ID",
+    region: "Region",
+};
+
+export function formatProviderSupportSetupLabel(key: string) {
+    return SUPPORT_SETUP_LABELS[key] ?? key.replaceAll("_", " ").replace(/\b\w/g, (value) => value.toUpperCase());
 }

@@ -2,12 +2,13 @@
 
 import type { ProviderSupport } from "@/lib/api/providers";
 import {
+    formatProviderSupportSetupLabel,
     formatProviderSupportTransport,
     getProviderSupportCapabilityState,
 } from "@/lib/provider-support";
 import { ProviderSupportBadge } from "@/components/providers/ProviderSupportBadge";
 
-const CAPABILITY_ROWS: Array<{
+const LLM_CAPABILITY_ROWS: Array<{
     key: keyof ProviderSupport["capabilities"];
     label: string;
 }> = [
@@ -18,6 +19,16 @@ const CAPABILITY_ROWS: Array<{
     { key: "requires_explicit_model", label: "Explicit model required" },
     { key: "requires_explicit_base_url", label: "Explicit base URL required" },
     { key: "requires_openai_compatible_bridge", label: "OpenAI-compatible bridge required" },
+];
+
+const STORAGE_CAPABILITY_ROWS: Array<{
+    key: keyof ProviderSupport["capabilities"];
+    label: string;
+}> = [
+    { key: "supports_credential_validation", label: "Credential validation" },
+    { key: "supports_connection_test", label: "Connection test" },
+    { key: "supports_indexing", label: "Document indexing" },
+    { key: "supports_optional_live_tests", label: "Optional live tests" },
 ];
 
 export function ProviderSupportPanel({
@@ -49,17 +60,22 @@ export function ProviderSupportPanel({
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Transport</p>
                     <p className="mt-2 text-sm text-foreground">{formatProviderSupportTransport(support.transport)}</p>
                 </div>
-                <div className="rounded-xl border border-border/80 bg-background/70 px-3 py-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Suggested setup</p>
-                    <div className="mt-2 space-y-1 text-sm text-foreground">
-                        <p>Base URL: <span className="font-medium">{support.suggested_base_url ?? "Fill from your deployment"}</span></p>
-                        <p>Model: <span className="font-medium">{support.suggested_model ?? "Fill from your deployment"}</span></p>
+                {Object.keys(support.suggested_setup).length > 0 ? (
+                    <div className="rounded-xl border border-border/80 bg-background/70 px-3 py-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Suggested setup</p>
+                        <div className="mt-2 space-y-1 text-sm text-foreground">
+                            {Object.entries(support.suggested_setup).map(([key, value]) => (
+                                <p key={key}>
+                                    {formatProviderSupportSetupLabel(key)}: <span className="font-medium">{value}</span>
+                                </p>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                ) : null}
             </div>
 
             <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                {CAPABILITY_ROWS.map((capability) => (
+                {(support.family === "STORAGE" ? STORAGE_CAPABILITY_ROWS : LLM_CAPABILITY_ROWS).map((capability) => (
                     <div
                         key={capability.key}
                         className="rounded-xl border border-border/70 bg-background/70 px-3 py-3"

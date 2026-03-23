@@ -2,7 +2,7 @@
 
 import type { ProviderSupport } from "@/lib/api/providers";
 import { ProviderSupportBadge } from "@/components/providers/ProviderSupportBadge";
-import { formatProviderSupportTransport } from "@/lib/provider-support";
+import { formatProviderSupportSetupLabel, formatProviderSupportTransport } from "@/lib/provider-support";
 
 export function ProviderSupportMatrix({
     items,
@@ -48,10 +48,17 @@ export function ProviderSupportMatrix({
                                 {formatProviderSupportTransport(item.transport)}
                             </td>
                             <td className="px-4 py-4 text-sm text-foreground">
-                                <div className="space-y-1">
-                                    <p>Base URL: <span className="font-medium">{item.suggested_base_url ?? "Bring your own deployment"}</span></p>
-                                    <p>Model: <span className="font-medium">{item.suggested_model ?? "Bring your own deployment"}</span></p>
-                                </div>
+                                {Object.keys(item.suggested_setup).length > 0 ? (
+                                    <div className="space-y-1">
+                                        {Object.entries(item.suggested_setup).map(([key, value]) => (
+                                            <p key={key}>
+                                                {formatProviderSupportSetupLabel(key)}: <span className="font-medium">{value}</span>
+                                            </p>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <span className="text-muted-foreground">Bring your own deployment</span>
+                                )}
                             </td>
                             <td className="px-4 py-4">
                                 <ul className="space-y-2 text-xs leading-relaxed text-muted-foreground">

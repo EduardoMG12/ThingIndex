@@ -24,6 +24,7 @@ describe("documentation open-source helpers", () => {
             expect.arrayContaining([
                 expect.objectContaining({ title: "Scalar API reference", href: "http://127.0.0.1:8000/docs" }),
                 expect.objectContaining({ title: "Swagger UI", href: "http://127.0.0.1:8000/swagger/index.html" }),
+                expect.objectContaining({ title: "Storage support matrix", href: "http://127.0.0.1:8000/api/v1/providers/support?family=STORAGE" }),
                 expect.objectContaining({ pathHint: "examples/http/thingindex-api.http" }),
                 expect.objectContaining({ pathHint: "api/docs/swagger.yaml" }),
             ])
@@ -50,12 +51,14 @@ describe("documentation open-source helpers", () => {
     it("renders the open-source onboarding section with both entry paths and references", () => {
         render(<OpenSourceOnboardingSection apiBaseUrl="http://127.0.0.1:8000/api/v1" />);
 
-        expect(screen.getAllByRole("link", { name: /Open link/i })).toHaveLength(3);
+        expect(screen.getAllByRole("link", { name: /Open link/i })).toHaveLength(5);
         expect(screen.getByRole("heading", { level: 3, name: "Self-hosted runtime" })).toBeInTheDocument();
         expect(screen.getByRole("heading", { level: 3, name: "Hosted API consumption" })).toBeInTheDocument();
         expect(screen.getByText("./scripts/bootstrap.sh")).toBeInTheDocument();
         expect(screen.getAllByText("http://127.0.0.1:8000/docs").length).toBeGreaterThan(0);
         expect(screen.getAllByText("http://127.0.0.1:8000/api/v1").length).toBeGreaterThan(0);
+        expect(screen.getByText("Storage support matrix")).toBeInTheDocument();
+        expect(screen.getByText("LLM support matrix")).toBeInTheDocument();
         expect(screen.getByText("docs/open-source-onboarding.md")).toBeInTheDocument();
         expect(screen.getAllByText("examples/http/thingindex-api.http").length).toBeGreaterThan(0);
         expect(screen.getAllByText("api/docs/swagger.yaml").length).toBeGreaterThan(0);

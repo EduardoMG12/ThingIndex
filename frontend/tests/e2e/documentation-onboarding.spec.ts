@@ -70,14 +70,41 @@ test("documentation page exposes the open-source onboarding flow", async ({ page
             contentType: "application/json",
             body: JSON.stringify(success([
                 {
+                    family: "STORAGE",
+                    provider_type: "GCP_STORAGE",
+                    display_name: "Google Cloud Storage",
+                    support_level: "READY",
+                    transport: "NATIVE_GCS",
+                    summary: "Ready for the main runtime.",
+                    suggested_setup: {
+                        project_id: "thingindex-dev",
+                        bucket_name: "thingindex-docs",
+                    },
+                    capabilities: {
+                        supports_credential_validation: true,
+                        supports_connection_test: true,
+                        supports_model_discovery: false,
+                        supports_streaming: false,
+                        supports_indexing: true,
+                        supports_chat: false,
+                        supports_optional_live_tests: true,
+                        requires_explicit_model: false,
+                        requires_explicit_base_url: false,
+                        requires_openai_compatible_bridge: false,
+                    },
+                    notes: ["Supports service-account JSON or emulator_host."],
+                },
+                {
                     family: "LLM",
                     provider_type: "OPENAI",
                     display_name: "OpenAI",
                     support_level: "READY",
                     transport: "NATIVE_OPENAI",
                     summary: "Ready for the main runtime.",
-                    suggested_base_url: "https://api.openai.com/v1",
-                    suggested_model: "gpt-4o-mini",
+                    suggested_setup: {
+                        base_url: "https://api.openai.com/v1",
+                        model: "gpt-4o-mini",
+                    },
                     capabilities: {
                         supports_credential_validation: true,
                         supports_connection_test: true,
@@ -99,6 +126,10 @@ test("documentation page exposes the open-source onboarding flow", async ({ page
                     support_level: "EXPERIMENTAL",
                     transport: "OPENAI_COMPATIBLE_BRIDGE",
                     summary: "Experimental bridge-only support.",
+                    suggested_setup: {
+                        base_url: "Bring your bridge URL",
+                        model: "gemini-2.5-flash",
+                    },
                     capabilities: {
                         supports_credential_validation: true,
                         supports_connection_test: true,
@@ -205,9 +236,9 @@ test("documentation page exposes the open-source onboarding flow", async ({ page
     await expect(page.getByText("docs/open-source-onboarding.md", { exact: true })).toBeVisible();
     await expect(page.getByText("examples/http/thingindex-api.http", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("api/docs/swagger.yaml", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("Ready", { exact: true })).toBeVisible();
-    await expect(page.getByText("Experimental", { exact: true })).toBeVisible();
-    await expect(page.getByText("Google Gemini", { exact: true })).toBeVisible();
+    await expect(page.getByText("Ready", { exact: true })).toHaveCount(2);
+    await expect(page.getByText("Experimental", { exact: true })).toHaveCount(2);
+    await expect(page.getByText("Google Gemini", { exact: true }).first()).toBeVisible();
 
     await expect(page.getByRole("link", { name: "Open link" }).first()).toHaveAttribute("href", /127\.0\.0\.1:8000/);
     await expect(page.getByRole("link", { name: "Open link" }).nth(1)).toHaveAttribute("href", "http://127.0.0.1:8000/swagger/index.html");

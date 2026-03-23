@@ -30,14 +30,41 @@ test("shows provider readiness details after a successful connection test", asyn
             contentType: "application/json",
             body: JSON.stringify(success([
                 {
+                    family: "STORAGE",
+                    provider_type: "GCP_STORAGE",
+                    display_name: "Google Cloud Storage",
+                    support_level: "READY",
+                    transport: "NATIVE_GCS",
+                    summary: "Ready for the main runtime with native Google Cloud Storage support.",
+                    suggested_setup: {
+                        project_id: "thingindex-dev",
+                        bucket_name: "thingindex-docs",
+                    },
+                    capabilities: {
+                        supports_credential_validation: true,
+                        supports_connection_test: true,
+                        supports_model_discovery: false,
+                        supports_streaming: false,
+                        supports_indexing: true,
+                        supports_chat: false,
+                        supports_optional_live_tests: true,
+                        requires_explicit_model: false,
+                        requires_explicit_base_url: false,
+                        requires_openai_compatible_bridge: false,
+                    },
+                    notes: ["Supports service-account JSON or emulator_host."],
+                },
+                {
                     family: "LLM",
                     provider_type: "OPENAI",
                     display_name: "OpenAI",
                     support_level: "READY",
                     transport: "NATIVE_OPENAI",
                     summary: "Ready for the main runtime with direct OpenAI defaults.",
-                    suggested_base_url: "https://api.openai.com/v1",
-                    suggested_model: "gpt-4o-mini",
+                    suggested_setup: {
+                        base_url: "https://api.openai.com/v1",
+                        model: "gpt-4o-mini",
+                    },
                     capabilities: {
                         supports_credential_validation: true,
                         supports_connection_test: true,
@@ -59,6 +86,10 @@ test("shows provider readiness details after a successful connection test", asyn
                     support_level: "EXPERIMENTAL",
                     transport: "OPENAI_COMPATIBLE_BRIDGE",
                     summary: "Experimental bridge-only support.",
+                    suggested_setup: {
+                        base_url: "Bring your bridge URL",
+                        model: "gemini-2.5-flash",
+                    },
                     capabilities: {
                         supports_credential_validation: true,
                         supports_connection_test: true,
@@ -187,4 +218,8 @@ test("shows provider readiness details after a successful connection test", asyn
     await expect(page.getByText("Ready", { exact: true })).toBeVisible();
     await expect(page.getByText(/Validated live connectivity and model discovery for OpenAI/i)).toBeVisible();
     await expect(page.getByText("gpt-4.1-mini", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "Google Cloud Storage" }).click();
+    await expect(page.getByText("Native Google Cloud Storage path", { exact: true })).toBeVisible();
+    await expect(page.getByText("Supports service-account JSON or emulator_host.")).toBeVisible();
 });

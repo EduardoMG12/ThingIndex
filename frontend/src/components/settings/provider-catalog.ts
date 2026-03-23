@@ -7,7 +7,7 @@ export type ProviderField = {
     key: string;
     label: string;
     placeholder: string;
-    type?: "text" | "password";
+    type?: "text" | "password" | "textarea";
     optional?: boolean;
     kind?: "text" | "model";
     suggestions?: string[];
@@ -176,6 +176,22 @@ export const PROVIDERS: ProviderDefinition[] = [
             { key: "access_key", label: "Access key", placeholder: "B2 key ID" },
             { key: "secret_key", label: "Secret key", placeholder: "B2 application key", type: "password" },
             { key: "bucket_name", label: "Bucket name", placeholder: "thingindex-docs" },
+        ],
+    },
+    {
+        family: "STORAGE",
+        providerType: "GCP_STORAGE",
+        name: "Google Cloud Storage",
+        tagline: "Native GCS buckets and emulator support",
+        description: "Use a native Google Cloud Storage bucket with project, bucket, optional location, service-account JSON or a local emulator host for development.",
+        icon: ShieldCheck,
+        accentClass: "from-emerald-500/20 via-teal-500/10 to-transparent",
+        fields: [
+            { key: "project_id", label: "Project ID", placeholder: "thingindex-dev" },
+            { key: "bucket_name", label: "Bucket name", placeholder: "thingindex-docs" },
+            { key: "location", label: "Location", placeholder: "us-central1", optional: true },
+            { key: "credentials_json", label: "Service account JSON", placeholder: "{\"type\":\"service_account\",...}", type: "textarea", optional: true },
+            { key: "emulator_host", label: "Emulator host", placeholder: "127.0.0.1:4443", optional: true },
         ],
     },
     {

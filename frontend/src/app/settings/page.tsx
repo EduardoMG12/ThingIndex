@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { useI18n } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
 import {
@@ -227,7 +228,7 @@ function FamilySection({
                                                         {t("common.saved")}
                                                     </span>
                                                 ) : null}
-                                                {family === "LLM" && support ? (
+                                                {support ? (
                                                     <ProviderSupportBadge level={support.support_level} />
                                                 ) : null}
                                                 {enabled ? (
@@ -271,7 +272,7 @@ function FamilySection({
                     </CardHeader>
                     <CardContent className="flex min-h-0 flex-1 flex-col gap-4">
                         <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
-                            {family === "LLM" ? (
+                            {activeProviderSupport ? (
                                 <ProviderSupportPanel support={activeProviderSupport} />
                             ) : null}
 
@@ -295,14 +296,24 @@ function FamilySection({
                                                 <span className="ml-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{t("common.optional")}</span>
                                             ) : null}
                                         </Label>
-                                        <Input
-                                            id={`${activeProvider.providerType}-${field.key}`}
-                                            type={field.type || "text"}
-                                            value={forms[activeProvider.providerType]?.[field.key] ?? ""}
-                                            onChange={(event) => onFieldChange(activeProvider.providerType, field.key, event.target.value)}
-                                            placeholder={field.placeholder}
-                                            autoComplete="off"
-                                        />
+                                        {field.type === "textarea" ? (
+                                            <Textarea
+                                                id={`${activeProvider.providerType}-${field.key}`}
+                                                value={forms[activeProvider.providerType]?.[field.key] ?? ""}
+                                                onChange={(event) => onFieldChange(activeProvider.providerType, field.key, event.target.value)}
+                                                placeholder={field.placeholder}
+                                                rows={6}
+                                            />
+                                        ) : (
+                                            <Input
+                                                id={`${activeProvider.providerType}-${field.key}`}
+                                                type={field.type || "text"}
+                                                value={forms[activeProvider.providerType]?.[field.key] ?? ""}
+                                                onChange={(event) => onFieldChange(activeProvider.providerType, field.key, event.target.value)}
+                                                placeholder={field.placeholder}
+                                                autoComplete="off"
+                                            />
+                                        )}
                                     </div>
                                 )
                             ))}
@@ -424,7 +435,7 @@ function FamilySection({
                                         <div>
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <p className="text-sm font-semibold">{provider.name}</p>
-                                                {family === "LLM" && support ? (
+                                                {support ? (
                                                     <ProviderSupportBadge level={support.support_level} />
                                                 ) : null}
                                                 {family === "STORAGE" && config.is_enabled ? (
@@ -778,6 +789,15 @@ export default function SettingsPage() {
         }, {});
     }
 
+    async function loadAllProviderSupport(signal?: AbortSignal) {
+        const [storageSupport, llmSupport] = await Promise.all([
+            fetchProviderSupportMatrix({ family: "STORAGE", signal }).catch(() => []),
+            fetchProviderSupportMatrix({ family: "LLM", signal }).catch(() => []),
+        ]);
+
+        return [...storageSupport, ...llmSupport];
+    }
+
     function applyLoadedProviders(data: ProviderConfig[]) {
         setProviders(data);
         syncLLMSelections(data);
@@ -801,7 +821,7 @@ export default function SettingsPage() {
                 setError(null);
                 const [data, supportData, sourceData, priceData, historyData] = await Promise.all([
                     fetchProviders(controller.signal),
-                    fetchProviderSupportMatrix({ family: "LLM", signal: controller.signal }).catch(() => []),
+                    loadAllProviderSupport(controller.signal),
                     fetchPricingSources(controller.signal),
                     fetchPrices(controller.signal),
                     fetchPriceHistory(100, controller.signal),
@@ -841,7 +861,7 @@ export default function SettingsPage() {
             try {
                 const [data, supportData, sourceData, priceData, historyData] = await Promise.all([
                     fetchProviders(),
-                    fetchProviderSupportMatrix({ family: "LLM" }).catch(() => []),
+                    loadAllProviderSupport(),
                     fetchPricingSources(),
                     fetchPrices(),
                     fetchPriceHistory(100),
@@ -884,20 +904,20 @@ export default function SettingsPage() {
             let changed = false;
 
             if (
-                support?.suggested_base_url &&
+                support?.suggested_setup.base_url &&
                 !nextProviderForm.base_url?.trim() &&
                 (providerType === "OLLAMA" || support.capabilities.requires_explicit_base_url)
             ) {
-                nextProviderForm.base_url = support.suggested_base_url;
+                nextProviderForm.base_url = support.suggested_setup.base_url;
                 changed = true;
             }
 
             if (
-                support?.suggested_model &&
+                support?.suggested_setup.model &&
                 !nextProviderForm.model?.trim() &&
                 support.capabilities.requires_explicit_model
             ) {
-                nextProviderForm.model = support.suggested_model;
+                nextProviderForm.model = support.suggested_setup.model;
                 changed = true;
             }
 

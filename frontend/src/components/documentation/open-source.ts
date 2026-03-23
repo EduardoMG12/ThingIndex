@@ -67,8 +67,18 @@ export function getDocumentationResources(apiBaseUrl?: string): DocumentationRes
             href: `${apiReferenceBase}/swagger/doc.json`,
         },
         {
+            title: "Storage support matrix",
+            description: "Public support classification for storage backends, setup hints, and operational notes.",
+            href: `${apiReferenceBase}/api/v1/providers/support?family=STORAGE`,
+        },
+        {
+            title: "LLM support matrix",
+            description: "Public support classification for LLM providers, bridge requirements, and runtime notes.",
+            href: `${apiReferenceBase}/api/v1/providers/support?family=LLM`,
+        },
+        {
             title: "HTTP request examples",
-            description: "Reusable requests for health, auth, collections, documents, and runtime overview.",
+            description: "Reusable requests for health, auth, collections, documents, runtime overview, and provider support.",
             pathHint: "examples/http/thingindex-api.http",
         },
         {
