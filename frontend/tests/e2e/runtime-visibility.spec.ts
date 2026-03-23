@@ -68,6 +68,7 @@ test("shows the active chat runtime in the main chat flow @smoke", async ({ cont
     await page.goto("/en/chat");
 
     await expect(page.getByRole("heading", { name: "Active chat LLM" })).toBeVisible();
+    await expect(page.getByTestId("provider-brand-OLLAMA").first()).toBeVisible();
     await expect(page.getByText("Ollama", { exact: true })).toBeVisible();
     await expect(page.getByText("llama3.1:8b", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: /Review in settings/i })).toBeVisible();
@@ -121,6 +122,7 @@ test("shows the active indexing runtime in the main documents flow @smoke", asyn
     await page.goto("/en/documents");
 
     await expect(page.getByRole("heading", { name: "Active indexing LLM" })).toBeVisible();
+    await expect(page.getByTestId("provider-brand-OPENAI").first()).toBeVisible();
     await expect(page.getByText("OpenAI", { exact: true })).toBeVisible();
     await expect(page.getByText("gpt-4o-mini", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: /Review in settings/i })).toBeVisible();

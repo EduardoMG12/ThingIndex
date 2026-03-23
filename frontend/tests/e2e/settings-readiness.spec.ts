@@ -211,6 +211,7 @@ test("shows provider readiness details after a successful connection test", asyn
     await page.goto("/en/settings");
 
     await expect(page.getByText("Provider readiness").first()).toBeVisible();
+    await expect(page.getByTestId("provider-brand-OPENAI").first()).toBeVisible();
     await expect(page.getByText("Ready for main runtime").first()).toBeVisible();
     await expect(page.getByText("Native OpenAI path", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Test connection" }).nth(1).click();
@@ -220,6 +221,7 @@ test("shows provider readiness details after a successful connection test", asyn
     await expect(page.getByText("gpt-4.1-mini", { exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "Google Cloud Storage" }).click();
+    await expect(page.getByTestId("provider-brand-GCP_STORAGE").first()).toBeVisible();
     await expect(page.getByText("Native Google Cloud Storage path", { exact: true })).toBeVisible();
     await expect(page.getByText("Supports service-account JSON or emulator_host.")).toBeVisible();
 });

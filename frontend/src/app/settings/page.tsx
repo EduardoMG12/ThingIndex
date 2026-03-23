@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import ProviderModelField from "@/components/settings/ProviderModelField";
 import ProviderReadinessPanel from "@/components/settings/ProviderReadinessPanel";
+import { ProviderBrandMark } from "@/components/providers/ProviderBrandMark";
 import { ProviderSupportBadge } from "@/components/providers/ProviderSupportBadge";
 import { ProviderSupportPanel } from "@/components/providers/ProviderSupportPanel";
 import {
@@ -159,7 +160,6 @@ function FamilySection({
     };
     const FamilyIcon = familyCopy.icon;
     const activeProvider = providers.find((provider) => provider.providerType === activeProviderType) ?? providers[0];
-    const ActiveProviderIcon = activeProvider.icon;
     const activeProviderSupport = providerSupportByType[activeProvider.providerType] ?? null;
     const savedConfigs = getSavedConfigs(configs, family);
     const discoveredModelsForActiveProvider = discoveredModels[activeProvider.providerType] ?? [];
@@ -192,7 +192,6 @@ function FamilySection({
                     </CardHeader>
                     <CardContent className="grid flex-1 auto-rows-max gap-3 overflow-y-auto pr-2 custom-scrollbar">
                         {providers.map((provider) => {
-                            const ProviderIcon = provider.icon;
                             const support = providerSupportByType[provider.providerType] ?? null;
                             const saved = hasSavedConfig(configs, family, provider.providerType);
                             const enabled = family === "STORAGE"
@@ -216,9 +215,7 @@ function FamilySection({
                                 >
                                     <div className={cn("absolute inset-0 bg-gradient-to-br opacity-100", provider.accentClass)} />
                                     <div className="relative flex items-start gap-3">
-                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-background/80">
-                                            <ProviderIcon className="h-4.5 w-4.5 text-primary" />
-                                        </div>
+                                        <ProviderBrandMark providerType={provider.providerType} size="sm" />
                                         <div className="min-w-0">
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <h4 className="text-sm font-semibold">{provider.name}</h4>
@@ -260,9 +257,7 @@ function FamilySection({
                 <Card glow className="flex h-[680px] flex-col border-primary/15 bg-card/85">
                     <CardHeader className="space-y-3">
                         <div className="flex items-center gap-3">
-                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/20 bg-background/70">
-                                <ActiveProviderIcon className="h-5 w-5 text-primary" />
-                            </div>
+                            <ProviderBrandMark providerType={activeProvider.providerType} size="md" />
                             <div>
                                 <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-primary">{t("settings.steps.fill")}</p>
                                 <h3 className="mt-1 text-lg font-semibold">{activeProvider.name}</h3>
@@ -420,7 +415,6 @@ function FamilySection({
                                 return null;
                             }
 
-                            const ProviderIcon = provider.icon;
                             const support = providerSupportByType[provider.providerType] ?? null;
 
                             return (
@@ -429,9 +423,7 @@ function FamilySection({
                                     className="flex flex-col gap-4 rounded-2xl border border-border bg-background/60 p-4 md:flex-row md:items-center md:justify-between"
                                 >
                                     <div className="flex items-start gap-3">
-                                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-background/80">
-                                            <ProviderIcon className="h-4.5 w-4.5 text-primary" />
-                                        </div>
+                                        <ProviderBrandMark providerType={provider.providerType} size="sm" />
                                         <div>
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <p className="text-sm font-semibold">{provider.name}</p>
@@ -621,8 +613,13 @@ function PricingSection({
                                     provider.providerType === selectedProvider ? "border-primary/50 bg-primary/10" : "border-border bg-background/55 hover:border-primary/20"
                                 )}
                             >
-                                <p className="text-sm font-semibold">{provider.name}</p>
-                                <p className="mt-2 break-all text-xs text-muted-foreground">{provider.sourceURL}</p>
+                                <div className="flex items-start gap-3">
+                                    <ProviderBrandMark providerType={provider.providerType} size="sm" />
+                                    <div>
+                                        <p className="text-sm font-semibold">{provider.name}</p>
+                                        <p className="mt-2 break-all text-xs text-muted-foreground">{provider.sourceURL}</p>
+                                    </div>
+                                </div>
                             </button>
                         ))}
 
