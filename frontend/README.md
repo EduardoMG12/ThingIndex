@@ -110,7 +110,8 @@ Materiais de apoio imediatos:
 - contrato versionado: `api/docs/swagger.yaml` e `api/docs/swagger.json`
 - perfil publico do runtime: `http://localhost:8000/api/v1/meta/runtime-profile`
 - benchmark publico de indexacao: `http://localhost:8000/api/v1/meta/indexing-benchmark`
-- matriz pública de providers: `http://localhost:8000/api/v1/providers/support?family=LLM`
+- matriz pública de storage: `http://localhost:8000/api/v1/providers/support?family=STORAGE`
+- matriz pública de LLM: `http://localhost:8000/api/v1/providers/support?family=LLM`
 - RFC de foco do produto: `rfc/0001-product-focus.md`
 - workspace academico: `docs/article/README.md`
 

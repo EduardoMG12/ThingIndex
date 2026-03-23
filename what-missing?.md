@@ -11,11 +11,11 @@
 
 **Contagem atual do backlog:**
 - 32 tasks catalogadas ao todo.
-- 28 tasks ja concluidas no escopo atual: `A0`, `A1`, `A2`, `A3`, `A4`, `B1`, `B2`, `B3`, `B4`, `B5`, `C0`, `C1`, `C2`, `C3`, `D1`, `D2`, `D3`, `D4`, `D5`, `D6`, `E2`, `E3`, `E4`, `F1`, `F2`, `F4`, `G1`, `G2`.
-- 4 tasks continuam abertas entre nao implementado, ideia ou questao estrategica.
+- 29 tasks ja concluidas no escopo atual: `A0`, `A1`, `A2`, `A3`, `A4`, `B1`, `B2`, `B3`, `B4`, `B5`, `C0`, `C1`, `C2`, `C3`, `D1`, `D2`, `D3`, `D4`, `D5`, `D6`, `E1`, `E2`, `E3`, `E4`, `F1`, `F2`, `F4`, `G1`, `G2`.
+- 3 tasks continuam abertas entre nao implementado, ideia ou questao estrategica.
 - 0 tasks sao realmente de alta necessidade agora.
 - 0 tasks sao importantes, mas nao urgentes.
-- 4 tasks abertas sao mais de roadmap, expansao, manutencao ou valor academico.
+- 3 tasks abertas sao mais de roadmap, expansao, manutencao ou valor academico.
 
 **Leitura rapida:**
 - Nem todas as tasks sao ultra necessarias.
@@ -36,7 +36,6 @@
 
 | ID | Status | Necessidade | Tamanho | Leitura curta |
 | --- | --- | --- | --- | --- |
-| E1 | NAO IMPLEMENTADO | Baixa | Grande | Implementar storages alem de MinIO/S3-compatible |
 | E5 | NAO IMPLEMENTADO | Baixa | Grande | Criar CLI para importar indices em banco externo |
 | F3 | IDEIA CONTINUA | Baixa | Pequeno | Limpar boilerplate e naming excessivo |
 | G3 | BAIXA PRIORIDADE | Baixa | Pequeno | Fazer refinos visuais menores |
@@ -65,6 +64,7 @@
 | D4 | Legibilidade e experiencia do chat | Concluido no escopo atual |
 | D5 | Pagina de custo e leitura de pricing | Concluido no escopo atual |
 | D6 | Pagina de monitoramento documental | Concluido no escopo atual |
+| E1 | Storages alem do MinIO/S3-compatible original | Concluido no escopo atual |
 | E2 | Revisao real do suporte aos outros providers de LLM | Concluido no escopo atual |
 | E3 | Consumo open source da API e do projeto | Concluido no escopo atual |
 | E4 | Onboarding para agentes e automacao | Concluido no escopo atual |
@@ -517,17 +517,21 @@
 
 ### [E1] Implementar de fato os outros storages
 
-**Status:** NAO IMPLEMENTADO no runtime principal
+**Status:** CONCLUIDO NO ESCOPO ATUAL
 
 **Ja existe:**
 - Arquitetura preparada para provider de storage.
 - MinIO / S3-compatible consolidado.
-
-**Falta:**
-- Implementacoes concretas adicionais realmente exercitadas no runtime.
+- Bootstrap do runtime principal desacoplado do hardcode de MinIO via `STORAGE_PROVIDER`.
+- Suporte nativo a `GCP_STORAGE` com `project_id`, `bucket_name`, `location`, `credentials_json` e `emulator_host`.
+- Matriz publica de suporte real para storages em `GET /api/v1/providers/support?family=STORAGE`, com setup hints e notas operacionais.
+- UI de settings e `/documentation` atualizadas para expor suporte real de storage, inclusive `Google Cloud Storage`.
+- `docker-compose`, devcontainer e `.env.example` preparados para `gcs-emulator`.
+- Cobertura automatizada em unit, integration, docs e `e2e`, incluindo round-trip real contra emulator.
 
 **Observacao:**
-- Importante para produto open source, mas nao vem antes de fechar confiabilidade e fluxos principais.
+- O gap estrutural deixou de ser "storage adicional apenas no discurso" e passou a ficar fechado no runtime real.
+- Novos providers de storage alem de `MINIO` e `GCP_STORAGE` agora entram como manutencao incremental sobre a arquitetura ja desacoplada.
 
 ### [E2] Revisao real do suporte aos outros providers de LLM
 
@@ -729,6 +733,7 @@ Estes itens ja existem ao menos em nivel funcional e nao devem voltar como "nao 
 - DLQ basica.
 - Botao de retry / reindexacao de documento.
 - Bateria automatizada com `unit`, `integration`, `e2e` e `smoke` documentada por comandos unificados.
+- Suporte nativo a `GCP_STORAGE` no runtime principal, com bootstrap desacoplado do MinIO hardcoded.
 - Suporte a varios providers de LLM no catalogo estrutural do projeto.
 - Suporte a Ollama com token opcional em cenarios compativeis.
 - Pagina de monitoramento documental com telemetria relevante.
@@ -748,7 +753,6 @@ Estes itens ja existem ao menos em nivel funcional e nao devem voltar como "nao 
 
 ### Fase 2 - Expandir portabilidade e simplificar manutencao
 
-- `E1` Implementar novos storages.
 - `E5` Implementar CLI para importar indices em banco externo.
 - `F3` Revisar boilerplate e naming desnecessarios.
 
@@ -761,8 +765,8 @@ Estes itens ja existem ao menos em nivel funcional e nao devem voltar como "nao 
 Se a pergunta for "quantas tasks existem e quantas sao realmente urgentes":
 
 - Existem 32 tasks catalogadas.
-- 28 ja podem ser tratadas como concluidas no escopo atual.
-- Das 4 abertas, nenhuma permanece como alta necessidade estrutural agora.
+- 29 ja podem ser tratadas como concluidas no escopo atual.
+- Das 3 abertas, nenhuma permanece como alta necessidade estrutural agora.
 
 Se a pergunta for "todas sao ultra necessarias":
 
@@ -772,9 +776,9 @@ Se a pergunta for "todas sao ultra necessarias":
 
 Se a ideia for escolher o proximo passo mais util agora:
 
-- `E1` implementar storages adicionais para reduzir dependencia pratica do stack S3-compatible.
 - `E5` criar a CLI para importar indices em banco externo.
 - `F3` reduzir boilerplate e naming excessivo enquanto o backlog estrutural esta curto.
+- `G3` deixar como polimento visual opcional para o fim.
 
 Se a ideia for enxergar melhor o backlog:
 

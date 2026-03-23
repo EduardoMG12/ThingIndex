@@ -78,7 +78,7 @@ O projeto nasceu em contexto academico, mas foi estruturado com preocupacoes rea
 - Ja possui pipeline assincrono funcional com outbox, RabbitMQ e worker dedicado para indexacao estrutural.
 - Ja possui enriquecimento opcional com LLM para indexacao, incluindo telemetria estimada de tokens, custo e qualidade heuristica por documento.
 - Nao e um assistente juridico/QA pronto para producao; o chat runtime atual e documental, grounded por collection e ainda experimental no escopo do TCC.
-- Nao implementa multiplos storages de forma concreta hoje: o provider de storage efetivamente suportado no runtime atual e **MinIO/S3-compatible**.
+- O runtime agora suporta **MinIO/S3-compatible** e **Google Cloud Storage nativo**, com matriz pública de suporte para separar caminhos prontos, compartilhados e incrementais.
 
 ### Importante para quem vier de documentacao antiga
 
@@ -210,7 +210,7 @@ Essa abordagem evita consultas por documento e mantem a montagem da resposta em 
 - Cadastro, login e reset de senha com JWT.
 - Revogacao de sessoes antigas apos reset de senha.
 - Upload de documentos com validacao de tamanho e MIME.
-- Persistencia de uploads em MinIO/S3-compatible.
+- Persistencia de uploads em MinIO/S3-compatible e Google Cloud Storage nativo.
 - CRUD parcial de categorias e collections.
 - Persistencia de documentos com vinculacao obrigatoria a `collection`.
 - Persistencia de estruturas extraidas em tabelas tipadas.
@@ -320,6 +320,7 @@ O guia curto de onboarding open source tambem ficou centralizado em `docs/open-s
 | Swagger JSON | `http://localhost:8000/swagger/doc.json` |
 | MinIO API | `http://localhost:9000` |
 | MinIO Console | `http://localhost:9001` |
+| GCS Emulator | `http://localhost:4443` |
 | PostgreSQL | `localhost:5434` |
 | RabbitMQ Management | `http://localhost:15672` |
 
@@ -371,7 +372,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 - Node.js `20+`
 - `pnpm`
 - PostgreSQL
-- MinIO ou outro endpoint MinIO/S3-compatible
+- MinIO, outro endpoint S3-compatible ou Google Cloud Storage
 
 ### Opcao B: abrir no Dev Container
 
@@ -482,13 +483,20 @@ O arquivo `.env.example` foi pensado para **desenvolvimento local**. Em producao
 | `DB_SSLMODE` | `disable` | SSL mode do driver Postgres |
 | `JWT_SECRET` | valor local forte | Chave de assinatura JWT |
 | `MASTER_ENCRYPTION_KEY` | valor local forte | Chave mestre para criptografia de credenciais |
+| `STORAGE_PROVIDER` | `MINIO` | Provider de storage padrão do runtime (`MINIO` ou `GCP_STORAGE`) |
 | `MINIO_ENDPOINT` | `minio:9000` ou `localhost:9000` | Endpoint do storage |
 | `MINIO_ACCESS_KEY` | `thingindex-local-access-key` | Access key do storage padrao |
 | `MINIO_SECRET_KEY` | `thingindex-local-secret-key` | Secret key do storage padrao |
 | `MINIO_USE_SSL` | `false` | HTTPS no storage padrao |
 | `MINIO_BUCKET_NAME` | `thingindex-docs` | Bucket utilizado pela aplicacao |
+| `GCP_STORAGE_PROJECT_ID` | `thingindex-dev` | Projeto usado no bootstrap nativo de GCS |
+| `GCP_STORAGE_BUCKET_NAME` | `thingindex-docs` | Bucket usado no bootstrap nativo de GCS |
+| `GCP_STORAGE_LOCATION` | `us-central1` | Location opcional do bucket GCS |
+| `GCP_STORAGE_CREDENTIALS_JSON` | vazio | JSON de service account para buckets GCS reais |
+| `GCP_STORAGE_EMULATOR_HOST` | vazio ou `127.0.0.1:4443` | Host do emulator GCS para desenvolvimento |
 | `THINGINDEX_TEST_DB_*` | vazio ou overrides locais | Overrides opcionais para testes de integracao/e2e do backend |
 | `THINGINDEX_TEST_MINIO_*` | vazio ou overrides locais | Overrides opcionais para testes reais com storage |
+| `THINGINDEX_TEST_GCP_*` | vazio ou overrides locais | Overrides opcionais para testes de integracao do GCS |
 | `THINGINDEX_TEST_RABBITMQ_URL` | vazio ou override local | Override opcional para os testes reais com fila |
 | `THINGINDEX_TEST_LLM_*` | desabilitado por padrao | Habilita testes reais de provider/processing com IA |
 | `OPENAI_*`, `OPENROUTER_*`, `DEEPSEEK_*`, `GROK_*`, `GEMINI_*`, `CLAUDE_*`, `OLLAMA_*` | provider-specific | Fallbacks de credenciais/modelo para os testes reais de LLM |
@@ -625,7 +633,8 @@ Limite padrao de upload:
 - Swagger UI fallback: `http://localhost:8000/swagger/index.html`
 - Swagger JSON: `http://localhost:8000/swagger/doc.json`
 - Perfil publico do runtime: `http://localhost:8000/api/v1/meta/runtime-profile`
-- Matriz publica de providers: `http://localhost:8000/api/v1/providers/support?family=LLM`
+- Matriz publica de storage: `http://localhost:8000/api/v1/providers/support?family=STORAGE`
+- Matriz publica de LLM: `http://localhost:8000/api/v1/providers/support?family=LLM`
 - Contrato versionado no repositório: `api/docs/swagger.yaml` e `api/docs/swagger.json`
 
 Em deployments publicadas, mantenha os mesmos paths na origin publicada:
@@ -634,10 +643,12 @@ Em deployments publicadas, mantenha os mesmos paths na origin publicada:
 - `https://<sua-origin>/swagger/index.html`
 - `https://<sua-origin>/swagger/doc.json`
 - `https://<sua-origin>/api/v1/meta/runtime-profile`
+- `https://<sua-origin>/api/v1/providers/support?family=STORAGE`
 - `https://<sua-origin>/api/v1/providers/support?family=LLM`
 
-Use a matriz pública de providers para distinguir:
+Use as matrizes públicas de providers para distinguir:
 
+- o que está pronto para storage nativo ou S3-compatible;
 - o que está pronto para o runtime principal;
 - o que usa o caminho compartilhado OpenAI-compatible;
 - o que ainda depende de bridge experimental com `base_url` e `model` explícitos.
@@ -832,7 +843,7 @@ Os artefatos academicos versionados desta fase agora ficam em:
 
 ## 17. Limitacoes Atuais
 
-- Apenas MinIO/S3-compatible esta implementado de fato como storage provider no fluxo principal.
+- O storage padrão do runtime continua simples por design, mas agora pode ser inicializado com `MINIO` ou `GCP_STORAGE`.
 - O chat runtime existe com streaming incremental e grounding por collection, mas ainda nao substitui avaliacao juridica, benchmark de citacao ou validacao de acuracia para uso de producao.
 - A estimativa de custo e tokens de LLM e heuristica quando o provider nao devolve usage real.
 - O score de qualidade da indexacao e heuristico; ele agora deve ser lido junto do benchmark publico em `GET /api/v1/meta/indexing-benchmark`, nao como ground truth isolado.

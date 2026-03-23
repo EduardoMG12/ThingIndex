@@ -35,9 +35,11 @@ Esse fluxo:
 | Scalar API reference | `http://localhost:8000/docs` |
 | Swagger UI | `http://localhost:8000/swagger/index.html` |
 | Swagger JSON | `http://localhost:8000/swagger/doc.json` |
-| Provider support matrix | `http://localhost:8000/api/v1/providers/support?family=LLM` |
+| Storage support matrix | `http://localhost:8000/api/v1/providers/support?family=STORAGE` |
+| LLM support matrix | `http://localhost:8000/api/v1/providers/support?family=LLM` |
 | Indexing benchmark | `http://localhost:8000/api/v1/meta/indexing-benchmark` |
 | MinIO Console | `http://localhost:9001` |
+| GCS Emulator | `http://localhost:4443` |
 | RabbitMQ Management | `http://localhost:15672` |
 
 ## Entrada B - Consumir uma API ja publicada
@@ -49,7 +51,8 @@ Se a API já estiver online, mantenha os mesmos paths na origin publicada:
 | Scalar API reference | `https://<sua-origin>/docs` |
 | Swagger UI | `https://<sua-origin>/swagger/index.html` |
 | Swagger JSON | `https://<sua-origin>/swagger/doc.json` |
-| Provider support matrix | `https://<sua-origin>/api/v1/providers/support?family=LLM` |
+| Storage support matrix | `https://<sua-origin>/api/v1/providers/support?family=STORAGE` |
+| LLM support matrix | `https://<sua-origin>/api/v1/providers/support?family=LLM` |
 | Indexing benchmark | `https://<sua-origin>/api/v1/meta/indexing-benchmark` |
 | API base | `https://<sua-origin>/api/v1` |
 
@@ -90,7 +93,7 @@ Fluxo curto:
 
 ## Exemplos prontos
 
-- `examples/http/thingindex-api.http` agrupa requests de health, docs, benchmark publico de indexacao, matriz publica de suporte a providers, auth e consulta autenticada ao catalogo.
+- `examples/http/thingindex-api.http` agrupa requests de health, docs, benchmark publico de indexacao, matrizes publicas de suporte a storage/LLM, auth e consulta autenticada ao catalogo.
 - A referencia oficial do contrato continua em `api/docs/swagger.yaml`, `api/docs/swagger.json` e nas rotas `/docs` e `/swagger/index.html`.
 - Para regenerar os artefatos versionados depois de mudar annotations do backend, use `make docs-api`.
 
@@ -116,10 +119,17 @@ Fluxo curto:
 - no Compose, mantenha `MINIO_ENDPOINT=minio:9000`;
 - no host, use `MINIO_ENDPOINT=localhost:9000`.
 
+### Quero validar Google Cloud Storage no runtime local
+
+- para testes locais com o emulator incluido na stack, use `GCP_STORAGE_EMULATOR_HOST=127.0.0.1:4443` no host;
+- dentro do devcontainer, o emulator fica disponivel em `gcs-emulator:4443`;
+- para buckets reais, preencha `GCP_STORAGE_PROJECT_ID`, `GCP_STORAGE_BUCKET_NAME` e `GCP_STORAGE_CREDENTIALS_JSON`.
+
 ### Quero consumir a API sem abrir a UI
 
 - use `<origin>/docs` para referencia navegavel;
 - use `<origin>/api/v1/meta/indexing-benchmark` para consultar a baseline objetiva do indice atual, o corpus controlado e os limites declarados da medicao;
-- use `<origin>/api/v1/providers/support?family=LLM` para consultar o suporte real por provider, inclusive bridge requirements e notas operacionais;
+- use `<origin>/api/v1/providers/support?family=STORAGE` para consultar o suporte real por backend de storage, setup hints e notas operacionais;
+- use `<origin>/api/v1/providers/support?family=LLM` para consultar o suporte real por provider LLM, inclusive bridge requirements e notas operacionais;
 - use `examples/http/thingindex-api.http` para requests prontas, trocando `@apiHost` quando necessario;
 - use `<origin>/swagger/doc.json` quando precisar integrar ferramentas de OpenAPI.

@@ -30,6 +30,10 @@ Accept: application/json
 GET {{apiBase}}/meta/indexing-benchmark
 Accept: application/json
 
+### Public storage provider support matrix
+GET {{apiBase}}/providers/support?family=STORAGE
+Accept: application/json
+
 ### Public LLM provider support matrix
 GET {{apiBase}}/providers/support?family=LLM
 Accept: application/json

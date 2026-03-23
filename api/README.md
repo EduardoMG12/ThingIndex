@@ -16,7 +16,7 @@ O diretório `api/` contém tres executaveis principais:
 
 - cadastro, login, reset de senha e emissao de JWT;
 - CRUD de categorias e collections;
-- upload de documentos e persistencia de arquivos em MinIO/S3-compatible;
+- upload de documentos e persistencia de arquivos em MinIO/S3-compatible ou Google Cloud Storage nativo;
 - indexacao estrutural assincrona com RabbitMQ;
 - enriquecimento opcional com LLM;
 - recuperacao de contexto consolidado por collection;
@@ -33,6 +33,7 @@ O diretório `api/` contém tres executaveis principais:
 - PostgreSQL 16
 - RabbitMQ
 - MinIO
+- Google Cloud Storage nativo no runtime e emulator local para integracao
 
 ## Estrutura relevante
 
@@ -166,7 +167,9 @@ As configuracoes completas estao documentadas no README raiz, mas as mais import
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_SSLMODE` | Conexao com PostgreSQL |
 | `JWT_SECRET` | Assinatura de JWT |
 | `MASTER_ENCRYPTION_KEY` | Chave mestre para criptografia de providers |
-| `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET_NAME` | Storage padrao |
+| `STORAGE_PROVIDER` | Provider de storage padrao do runtime (`MINIO` ou `GCP_STORAGE`) |
+| `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET_NAME` | Bootstrap do storage MinIO/S3-compatible |
+| `GCP_STORAGE_PROJECT_ID`, `GCP_STORAGE_BUCKET_NAME`, `GCP_STORAGE_CREDENTIALS_JSON`, `GCP_STORAGE_EMULATOR_HOST` | Bootstrap do storage GCS nativo |
 | `RABBITMQ_URL` | Broker para indexacao assincrona |
 | `DOCUMENT_INDEX_*` | Exchanges, filas e retries da indexacao |
 | `OUTBOX_POLL_INTERVAL_SECONDS`, `OUTBOX_BATCH_SIZE` | Parametros do dispatcher |
@@ -263,6 +266,7 @@ Tambem expõe trilhas de auditoria consultaveis para documentos e providers, com
 
 Na frente de providers, o backend tambem expõe:
 
+- matriz pública de suporte real por storage em `GET /api/v1/providers/support?family=STORAGE`;
 - matriz pública de suporte real por provider LLM em `GET /api/v1/providers/support?family=LLM`;
 - teste de readiness com retorno estruturado por check;
 - discovery de modelos para Ollama e providers OpenAI-compatible suportados no runtime;
@@ -308,14 +312,14 @@ cd api
 env GOCACHE=/tmp/go-build go test ./...
 ```
 
-Integracao real do backend com PostgreSQL, MinIO e RabbitMQ:
+Integracao real do backend com PostgreSQL, MinIO, GCS emulator e RabbitMQ:
 
 ```bash
 cd api
 env GOCACHE=/tmp/go-build go test -tags=integration ./...
 ```
 
-Esses testes usam `THINGINDEX_TEST_DB_*`, `THINGINDEX_TEST_MINIO_*` e `THINGINDEX_TEST_RABBITMQ_URL` quando definidos. Sem isso, tentam reutilizar a configuracao do `.env` raiz usado pelo `docker compose` local.
+Esses testes usam `THINGINDEX_TEST_DB_*`, `THINGINDEX_TEST_MINIO_*`, `THINGINDEX_TEST_GCP_*` e `THINGINDEX_TEST_RABBITMQ_URL` quando definidos. Sem isso, tentam reutilizar a configuracao do `.env` raiz usado pelo `docker compose` local.
 
 Integracao opcional com provider LLM real e processamento documental com IA:
 
@@ -354,7 +358,7 @@ env GOCACHE=/tmp/go-build go test -tags=smoke ./internal/handlers -run RouteSmok
 - o score de qualidade da indexacao e heuristico e deve ser interpretado junto do benchmark publico em `GET /api/v1/meta/indexing-benchmark`;
 - o chat runtime existe, mas depende de provider LLM configurado pelo usuario e ainda nao substitui validacao objetiva de acuracia/citacao para uso de producao;
 - a infraestrutura de rate limit atual e simples e local ao processo;
-- MinIO/S3-compatible e o storage efetivamente consolidado no fluxo atual.
+- o runtime de storage agora cobre MinIO/S3-compatible e Google Cloud Storage nativo; os demais providers cloud seguem o caminho compartilhado S3-compatible e devem ser validados no deployment alvo.
 
 ## Relacao com o README raiz
 
