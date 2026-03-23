@@ -36,6 +36,7 @@ func TestRenderAPIReferencePageIncludesHostedAndSelfHostedPaths(t *testing.T) {
 		"http://example.com/swagger/doc.json",
 		"http://example.com/api/v1",
 		"http://example.com/api/v1/meta/runtime-profile",
+		"http://example.com/api/v1/meta/indexing-benchmark",
 		"http://example.com/api/v1/providers/support?family=LLM",
 		"Consume this deployment",
 		"Run locally from GitHub",

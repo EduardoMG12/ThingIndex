@@ -69,7 +69,7 @@ func CurrentRuntimeProfile() RuntimeProfile {
 			"Do not collapse research experiments into the mainline architecture without isolated evaluation",
 		},
 		ResearchTracks: []string{
-			"Benchmark the relational baseline against vector retrieval with a controlled dataset",
+			"Expand the controlled indexing benchmark to compare the relational baseline against vector retrieval",
 			"Evaluate GraphRAG as an isolated experimental extension instead of a core dependency",
 			"Strengthen grounded chat with measurable citation quality, accuracy, and latency metrics",
 		},
@@ -81,16 +81,22 @@ func CurrentRuntimeProfile() RuntimeProfile {
 				Summary: "Defines the primary use case, target users, explicit non-goals, and backlog implications.",
 			},
 			{
-				Label:   "SBC article draft",
-				Path:    "article/thingindex-sbc-article.md",
-				Kind:    "ARTICLE_DRAFT",
-				Summary: "Versioned article draft aligned with the current runtime and the SBC template structure.",
-			},
-			{
 				Label:   "SBC template reference",
-				Path:    "article/sbc_template (1).doc",
+				Path:    "docs/article/sbc_template (1).doc",
 				Kind:    "ARTICLE_TEMPLATE",
 				Summary: "Original SBC Word template kept as the formatting reference for the final submission file.",
+			},
+			{
+				Label:   "Academic workspace",
+				Path:    "docs/article/README.md",
+				Kind:    "ARTICLE_WORKSPACE",
+				Summary: "Workspace notes and figure sources used to prepare the final SBC submission artifact outside the main runtime history.",
+			},
+			{
+				Label:   "Indexing benchmark corpus",
+				Path:    "api/internal/usecase/testdata/indexing-benchmark/corpus.json",
+				Kind:    "BENCHMARK_CORPUS",
+				Summary: "Controlled corpus and exact-match expectations used by the public indexing benchmark endpoint.",
 			},
 			{
 				Label:   "Academic continuation proposal",

@@ -8,18 +8,19 @@ import (
 )
 
 type apiReferencePageData struct {
-	CurrentOrigin      string
-	CurrentAPIBase     string
-	RuntimeProfileURL  string
-	ProviderSupportURL string
-	ScalarURL          string
-	SwaggerUIURL       string
-	SwaggerJSONURL     string
-	SwaggerYAMLRef     string
-	OnboardingRef      string
-	ExamplesRef        string
-	LocalFrontendUI    string
-	LocalAPIBase       string
+	CurrentOrigin        string
+	CurrentAPIBase       string
+	RuntimeProfileURL    string
+	IndexingBenchmarkURL string
+	ProviderSupportURL   string
+	ScalarURL            string
+	SwaggerUIURL         string
+	SwaggerJSONURL       string
+	SwaggerYAMLRef       string
+	OnboardingRef        string
+	ExamplesRef          string
+	LocalFrontendUI      string
+	LocalAPIBase         string
 }
 
 var apiReferencePageTemplate = template.Must(template.New("api-reference").Parse(`<!doctype html>
@@ -178,6 +179,11 @@ var apiReferencePageTemplate = template.Must(template.New("api-reference").Parse
             <p><a href="{{.RuntimeProfileURL}}">{{.RuntimeProfileURL}}</a></p>
           </article>
           <article class="resource-card">
+            <h2>Indexing benchmark</h2>
+            <p>Controlled corpus, exact-match metrics, and interpretation notes for the current indexing baseline.</p>
+            <p><a href="{{.IndexingBenchmarkURL}}">{{.IndexingBenchmarkURL}}</a></p>
+          </article>
+          <article class="resource-card">
             <h2>Repository references</h2>
             <p>See <code>{{.ExamplesRef}}</code> for ready-made requests and <code>{{.SwaggerYAMLRef}}</code> for the versioned contract.</p>
           </article>
@@ -196,6 +202,7 @@ var apiReferencePageTemplate = template.Must(template.New("api-reference").Parse
               <li>Scalar docs: <code>{{.ScalarURL}}</code></li>
               <li>Swagger UI fallback: <code>{{.SwaggerUIURL}}</code></li>
               <li>Runtime profile: <code>{{.RuntimeProfileURL}}</code></li>
+              <li>Indexing benchmark: <code>{{.IndexingBenchmarkURL}}</code></li>
               <li>Provider support matrix: <code>{{.ProviderSupportURL}}</code></li>
             </ul>
           </article>
@@ -265,18 +272,19 @@ func buildAPIReferencePageData(r *http.Request) apiReferencePageData {
 	currentOrigin := strings.TrimRight(resolveAPIReferenceOrigin(r), "/")
 
 	return apiReferencePageData{
-		CurrentOrigin:      currentOrigin,
-		CurrentAPIBase:     currentOrigin + "/api/v1",
-		RuntimeProfileURL:  currentOrigin + "/api/v1/meta/runtime-profile",
-		ProviderSupportURL: currentOrigin + "/api/v1/providers/support?family=LLM",
-		ScalarURL:          currentOrigin + "/docs",
-		SwaggerUIURL:       currentOrigin + "/swagger/index.html",
-		SwaggerJSONURL:     currentOrigin + "/swagger/doc.json",
-		SwaggerYAMLRef:     "api/docs/swagger.yaml",
-		OnboardingRef:      "docs/open-source-onboarding.md",
-		ExamplesRef:        "examples/http/thingindex-api.http",
-		LocalFrontendUI:    "http://localhost:3000",
-		LocalAPIBase:       "http://localhost:8000/api/v1",
+		CurrentOrigin:        currentOrigin,
+		CurrentAPIBase:       currentOrigin + "/api/v1",
+		RuntimeProfileURL:    currentOrigin + "/api/v1/meta/runtime-profile",
+		IndexingBenchmarkURL: currentOrigin + "/api/v1/meta/indexing-benchmark",
+		ProviderSupportURL:   currentOrigin + "/api/v1/providers/support?family=LLM",
+		ScalarURL:            currentOrigin + "/docs",
+		SwaggerUIURL:         currentOrigin + "/swagger/index.html",
+		SwaggerJSONURL:       currentOrigin + "/swagger/doc.json",
+		SwaggerYAMLRef:       "api/docs/swagger.yaml",
+		OnboardingRef:        "docs/open-source-onboarding.md",
+		ExamplesRef:          "examples/http/thingindex-api.http",
+		LocalFrontendUI:      "http://localhost:3000",
+		LocalAPIBase:         "http://localhost:8000/api/v1",
 	}
 }
 

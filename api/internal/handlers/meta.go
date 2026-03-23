@@ -10,10 +10,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type MetaHandler struct{}
+type MetaHandler struct {
+	benchmarkProvider domain.IndexingBenchmarkProvider
+}
 
-func NewMetaHandler() *MetaHandler {
-	return &MetaHandler{}
+func NewMetaHandler(benchmarkProvider domain.IndexingBenchmarkProvider) *MetaHandler {
+	return &MetaHandler{
+		benchmarkProvider: benchmarkProvider,
+	}
 }
 
 // @Summary      Get runtime profile
@@ -30,5 +34,34 @@ func (h *MetaHandler) GetRuntimeProfile(c *gin.Context) {
 		"success",
 		i18n.T(lang, "meta.success_runtime_profile"),
 		dto.ToRuntimeProfileResponse(domain.CurrentRuntimeProfile()),
+	)
+}
+
+// @Summary      Get indexing benchmark baseline
+// @Description  Returns the controlled corpus, exact-match benchmark metrics, and interpretation guidance for the current relational indexing baseline.
+// @Tags         meta
+// @Produce      json
+// @Success      200 {object} response.Response{data=dto.IndexingBenchmarkReportResponse}
+// @Failure      500 {object} response.Response
+// @Router       /meta/indexing-benchmark [get]
+func (h *MetaHandler) GetIndexingBenchmark(c *gin.Context) {
+	lang := c.GetString("language")
+	if h.benchmarkProvider == nil {
+		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
+		return
+	}
+
+	report, err := h.benchmarkProvider.GetPublicIndexingBenchmark(c.Request.Context())
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
+		return
+	}
+
+	response.Success(
+		c,
+		http.StatusOK,
+		"success",
+		i18n.T(lang, "meta.success_indexing_benchmark"),
+		dto.ToIndexingBenchmarkReportResponse(report),
 	)
 }

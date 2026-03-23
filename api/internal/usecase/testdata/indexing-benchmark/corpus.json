@@ -1,0 +1,94 @@
+{
+  "version": "2026-03-relational-baseline-v1",
+  "last_reviewed_on": "2026-03-22",
+  "documents": [
+    {
+      "id": "service-agreement",
+      "title": "Master Service Agreement",
+      "mime_type": "text/plain",
+      "focus": "Payment deadlines, onboarding scope, and service-level commitments.",
+      "content": "MASTER SERVICE AGREEMENT\n\n1 Scope\nThe platform subscription covers onboarding support, workspace access, and monthly operational review meetings.\n\n2 Payment Terms\nInvoices must be paid within 15 days of receipt. Late payment pauses new onboarding requests after written notice.\n\n3 Service Levels\nPriority one incidents require an initial response within 30 minutes and executive escalation within 2 hours.",
+      "expected_outline_titles": [
+        "MASTER SERVICE AGREEMENT",
+        "1 Scope",
+        "2 Payment Terms",
+        "3 Service Levels"
+      ],
+      "expected_table_count": 0,
+      "document_queries": [
+        {
+          "id": "service-payment-deadline",
+          "query": "payment deadline invoice receipt",
+          "expected_top_node_title": "2 Payment Terms",
+          "expected_top_page_number": 1
+        }
+      ]
+    },
+    {
+      "id": "incident-playbook",
+      "title": "Incident Response Playbook",
+      "mime_type": "text/plain",
+      "focus": "Escalation flow, bridge ownership, and retention of response evidence.",
+      "content": "INCIDENT RESPONSE PLAYBOOK\n\n1 Severity Model\nSeverity one incidents affect all customers and require immediate triage.\n\n2 Escalation\nSeverity one incidents require a bridge commander within 10 minutes and executive notification within 30 minutes.\n\n3 Evidence Retention\nChat transcripts, incident timelines, and postmortem approvals are retained for 7 years.",
+      "expected_outline_titles": [
+        "INCIDENT RESPONSE PLAYBOOK",
+        "1 Severity Model",
+        "2 Escalation",
+        "3 Evidence Retention"
+      ],
+      "expected_table_count": 0,
+      "document_queries": [
+        {
+          "id": "incident-bridge-commander",
+          "query": "bridge commander severity one",
+          "expected_top_node_title": "2 Escalation",
+          "expected_top_page_number": 1
+        }
+      ]
+    },
+    {
+      "id": "retention-policy",
+      "title": "Data Retention Policy",
+      "mime_type": "text/html",
+      "focus": "Retention schedule and deletion workflow for operational records.",
+      "content": "<html><body><h1>DATA RETENTION POLICY</h1><h2>Retention Schedule</h2><p>Customer invoices are retained for 5 years.</p><table><tr><th>Artifact</th><th>Retention</th></tr><tr><td>Access logs</td><td>90 days</td></tr><tr><td>Security incidents</td><td>7 years</td></tr></table><h2>Deletion Workflow</h2><p>Deletion requests are reviewed weekly and require dual approval.</p></body></html>",
+      "expected_outline_titles": [
+        "DATA RETENTION POLICY",
+        "Retention Schedule",
+        "Deletion Workflow"
+      ],
+      "expected_table_count": 1,
+      "document_queries": [
+        {
+          "id": "retention-security-incidents",
+          "query": "security incidents retention schedule",
+          "expected_top_node_title": "Retention Schedule",
+          "expected_top_page_number": 1
+        },
+        {
+          "id": "retention-deletion-workflow",
+          "query": "deletion requests dual approval",
+          "expected_top_node_title": "Deletion Workflow",
+          "expected_top_page_number": 1
+        }
+      ]
+    }
+  ],
+  "collection_queries": [
+    {
+      "id": "collection-payment-pause",
+      "query": "late payment onboarding notice",
+      "expected_top_document_id": "service-agreement"
+    },
+    {
+      "id": "collection-bridge-notification",
+      "query": "bridge commander executive notification",
+      "expected_top_document_id": "incident-playbook"
+    },
+    {
+      "id": "collection-security-retention",
+      "query": "security incidents seven years",
+      "expected_top_document_id": "retention-policy"
+    }
+  ]
+}

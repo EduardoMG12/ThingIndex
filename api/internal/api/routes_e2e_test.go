@@ -134,6 +134,7 @@ func TestRoutesE2EAPIDocsExposeFallbackReferenceLinks(t *testing.T) {
 		"http://example.com/swagger/doc.json",
 		"http://example.com/api/v1",
 		"http://example.com/api/v1/meta/runtime-profile",
+		"http://example.com/api/v1/meta/indexing-benchmark",
 		"http://example.com/api/v1/providers/support?family=LLM",
 		"Consume this deployment",
 		"Run locally from GitHub",
@@ -182,11 +183,42 @@ func TestRoutesE2ERuntimeProfileIsPublicAndDocumented(t *testing.T) {
 		`"product_name":"ThingIndex"`,
 		`"primary_use_case":"Organize collections of operational, compliance, legal, and research documents`,
 		`"path":"rfc/0001-product-focus.md"`,
-		`"path":"article/thingindex-sbc-article.md"`,
+		`"path":"docs/article/README.md"`,
+		`"path":"api/internal/usecase/testdata/indexing-benchmark/corpus.json"`,
 		`"last_reviewed_on":"2026-03-22"`,
 	} {
 		if !strings.Contains(body, expected) {
 			t.Fatalf("expected runtime profile body to contain %q, got %s", expected, body)
+		}
+	}
+}
+
+func TestRoutesE2EIndexingBenchmarkIsPublicAndDocumented(t *testing.T) {
+	db := openRoutesE2EDB(t)
+	cfg := newRoutesE2EConfig(t)
+	router := gin.New()
+
+	if err := SetupRoutes(router, db, cfg); err != nil {
+		t.Fatalf("SetupRoutes returned error: %v", err)
+	}
+
+	response := performAuthorizedRequest(t, router, http.MethodGet, "/api/v1/meta/indexing-benchmark", "", nil, "")
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected indexing benchmark status 200, got %d body=%s", response.Code, response.Body.String())
+	}
+
+	body := response.Body.String()
+	for _, expected := range []string{
+		`"dataset_version":"2026-03-relational-baseline-v1"`,
+		`"corpus_source_path":"internal/usecase/testdata/indexing-benchmark/corpus.json"`,
+		`"structure_pass_rate":33.33333333333333`,
+		`"exact_match_accuracy":28.57142857142857`,
+		`"collection_document_top1_accuracy":66.66666666666666`,
+		`"scope":"DOCUMENT_TREE"`,
+		`"scope":"COLLECTION"`,
+	} {
+		if !strings.Contains(body, expected) {
+			t.Fatalf("expected indexing benchmark body to contain %q, got %s", expected, body)
 		}
 	}
 }
