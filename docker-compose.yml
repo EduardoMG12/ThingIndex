@@ -26,6 +26,14 @@ services:
     volumes:
       - minio_data:/data
 
+  gcs-emulator:
+    image: fsouza/fake-gcs-server:1.53.1
+    command: -scheme http
+    ports:
+      - "4443:4443"
+    volumes:
+      - gcs_emulator_data:/data
+
   api:
     build:
       context: ./api
@@ -119,6 +127,7 @@ services:
       - pgdata:/var/lib/postgresql/data
 
 volumes:
+  gcs_emulator_data:
   minio_data:
   rabbitmq_data:
   frontend_node_modules:
