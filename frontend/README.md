@@ -5,6 +5,7 @@ O frontend do ThingIndex e uma aplicacao Next.js 16 responsavel por:
 - autenticacao do usuario;
 - configuracao de providers de storage e LLM;
 - upload e navegacao de documentos;
+- visibilidade de custos e pricing baseada em telemetria real;
 - visualizacao de colecoes, categorias e contexto;
 - chat grounded por collection com historico persistido e resposta incremental;
 - auditoria consultavel de documentos e providers, com filtros, resumo agregado e paginação incremental.
@@ -35,6 +36,7 @@ src/
 - landing page institucional;
 - login e registro;
 - dashboard com abas de upload, documentos, chat e custo;
+- dashboard com leitura executiva de custos baseada em runtime, pricing sincronizado e telemetria documental;
 - tela de configuracao de providers;
 - documentacao visual da arquitetura.
 
@@ -46,6 +48,7 @@ src/
 - listagem de categorias, collections e documentos;
 - painel lateral de preview e auditoria da indexacao;
 - painel operacional de documentos com leitura executiva, proximas acoes, mapa de anomalias, watchlist prioritaria e slice acionavel da biblioteca;
+- painel de custo no dashboard com estado de confiabilidade, cobertura precificada, limites da estimativa e drivers de custo observados;
 - explorer de auditoria documental com busca, actor, request id, recorte por documento/collection, atalhos de falha e carregamento incremental;
 - explorer de auditoria de providers com escopo por familia ou provider ativo, filtros operacionais e atalhos para saves, ativacoes e falhas;
 - exibicao de monitoramento por documento:
@@ -171,6 +174,12 @@ Fluxo dedicado da observabilidade documental:
 pnpm run test:e2e -- tests/e2e/document-observability.spec.ts
 ```
 
+Fluxo dedicado da visibilidade de custos:
+
+```bash
+pnpm run test:e2e -- tests/e2e/dashboard-cost-visibility.spec.ts
+```
+
 Somente os cenarios marcados como smoke:
 
 ```bash
@@ -184,7 +193,7 @@ pnpm run build:storybook
 pnpm run test:storybook:e2e
 ```
 
-O `devcontainer` versionado na raiz ja expõe as portas `3000` e `8000` e inclui a extensao do Playwright, entao os cenarios do workspace de chat e da observabilidade documental podem ser executados nele sem ajuste extra.
+O `devcontainer` versionado na raiz ja expõe as portas `3000` e `8000` e inclui a extensao do Playwright, entao os cenarios do workspace de chat, da observabilidade documental e da visibilidade de custos podem ser executados nele sem ajuste extra.
 
 ## Storybook
 
@@ -225,6 +234,12 @@ Esse desenho reduz acoplamento entre componentes React e detalhes de transporte,
 - a experiencia agora separa leitura executiva, proximas acoes operacionais, mapa de anomalias e watchlist prioritaria para reduzir a leitura "card por card";
 - a heuristica compartilhada mora em `src/lib/document-state.ts` e `src/lib/document-observability.ts`, evitando espalhar classificacao operacional pelo JSX;
 - quando o usuario aplica busca ou slice operacional, a biblioteca troca a hierarquia por uma lista acionavel para inspecao direta dos documentos afetados.
+
+## Visibilidade de custos
+
+- o card `src/components/dashboard/CostCalculator.tsx` agora cruza runtime ativo, fontes de pricing sincronizadas e telemetria documental antes de exibir qualquer leitura de custo;
+- a heuristica compartilhada mora em `src/lib/cost-visibility.ts` e o carregamento em `src/hooks/use-cost-visibility.ts`, evitando regras de confiabilidade espalhadas pelo JSX;
+- a estimativa atual cobre apenas indexacao documental observada; chat grounded, providers sem pricing sincronizado e mudancas futuras de tabela ficam explicitamente fora da conta.
 
 ## Observacao de produto
 

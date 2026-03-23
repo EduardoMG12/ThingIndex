@@ -189,8 +189,9 @@ export default function DocumentationPage() {
                         <p className="mb-6">
                             O repositório já fecha o ciclo principal de upload, processamento assíncrono, indexação estrutural
                             e recuperação do contexto salvo. A tela documental já expõe leitura executiva, mapa de anomalias
-                            e próximos passos operacionais; o trabalho remanescente agora é expandir portabilidade e lapidar
-                            pricing, não provar que o pipeline existe.
+                            e próximos passos operacionais, enquanto o dashboard já cruza pricing sincronizado com telemetria
+                            real para leitura honesta de custos. O trabalho remanescente agora é expandir portabilidade e
+                            simplificar manutenção, não provar que o pipeline existe.
                         </p>
 
                         <div className="space-y-4">
@@ -275,7 +276,6 @@ export default function DocumentationPage() {
                     <Section icon={GitBranch} title="Roadmap" id="roadmap" delay={0.6}>
                         <ul className="space-y-3">
                             <li>Expandir storages realmente exercitados e publicar a CLI para importacao de indices externos.</li>
-                            <li>Refinar a leitura de custos e manter a UX alinhada ao nivel real de maturidade do runtime.</li>
                             <li>Reduzir boilerplate, naming excessivo e polimentos visuais menores sem inflar o escopo principal.</li>
                             <li>Manter comparacoes com GraphRAG e abordagens vetoriais como trilhas academicas separadas do produto principal.</li>
                         </ul>
