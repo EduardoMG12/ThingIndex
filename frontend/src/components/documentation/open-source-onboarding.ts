@@ -1,25 +1,25 @@
-export type DocumentationResource = {
+export type OpenSourceOnboardingResource = {
     title: string;
     description: string;
     href?: string;
     pathHint?: string;
 };
 
-export type DocumentationStep = {
+export type OpenSourceOnboardingStep = {
     title: string;
     command: string;
     detail: string;
 };
 
-export type DocumentationTrack = {
+export type OpenSourceOnboardingTrack = {
     badge: string;
     title: string;
     description: string;
-    steps: DocumentationStep[];
+    steps: OpenSourceOnboardingStep[];
     notes: string[];
 };
 
-export type DocumentationTroubleshootingItem = {
+export type OpenSourceTroubleshootingItem = {
     title: string;
     detail: string;
 };
@@ -37,7 +37,7 @@ export function resolveHostedAPIBase(apiBaseUrl?: string): string {
     return `${resolveApiReferenceBase(apiBaseUrl)}/api/v1`;
 }
 
-export function getDocumentationResources(apiBaseUrl?: string): DocumentationResource[] {
+export function getDocumentationResources(apiBaseUrl?: string): OpenSourceOnboardingResource[] {
     const apiReferenceBase = resolveApiReferenceBase(apiBaseUrl);
 
     return [
@@ -94,7 +94,7 @@ export function getDocumentationResources(apiBaseUrl?: string): DocumentationRes
     ];
 }
 
-export function getDocumentationTracks(apiBaseUrl?: string): DocumentationTrack[] {
+export function getDocumentationTracks(apiBaseUrl?: string): OpenSourceOnboardingTrack[] {
     const apiReferenceBase = resolveApiReferenceBase(apiBaseUrl);
     const hostedAPIBase = resolveHostedAPIBase(apiBaseUrl);
 
@@ -157,7 +157,7 @@ export function getDocumentationTracks(apiBaseUrl?: string): DocumentationTrack[
     ];
 }
 
-export const DOCUMENTATION_TROUBLESHOOTING_ITEMS: DocumentationTroubleshootingItem[] = [
+export const OPEN_SOURCE_TROUBLESHOOTING_ITEMS: OpenSourceTroubleshootingItem[] = [
     {
         title: "API docs did not load",
         detail: "Open /docs first, then fall back to /swagger/index.html or /swagger/doc.json on the same origin when Scalar is unavailable.",

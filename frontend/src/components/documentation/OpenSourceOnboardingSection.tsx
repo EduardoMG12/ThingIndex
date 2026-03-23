@@ -1,10 +1,10 @@
 import { ExternalLink, Globe2, TerminalSquare, Wrench } from "lucide-react";
 
 import {
-    DOCUMENTATION_TROUBLESHOOTING_ITEMS,
+    OPEN_SOURCE_TROUBLESHOOTING_ITEMS,
     getDocumentationResources,
     getDocumentationTracks,
-} from "@/components/documentation/open-source";
+} from "@/components/documentation/open-source-onboarding";
 
 export function OpenSourceOnboardingSection({
     apiBaseUrl,
@@ -98,7 +98,7 @@ export function OpenSourceOnboardingSection({
                     Troubleshooting
                 </div>
                 <div className="mt-4 grid gap-4 xl:grid-cols-2">
-                    {DOCUMENTATION_TROUBLESHOOTING_ITEMS.map((item) => (
+                    {OPEN_SOURCE_TROUBLESHOOTING_ITEMS.map((item) => (
                         <div key={item.title} className="rounded-xl border border-border bg-card px-4 py-4">
                             <h4 className="text-sm font-semibold text-foreground">{item.title}</h4>
                             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.detail}</p>

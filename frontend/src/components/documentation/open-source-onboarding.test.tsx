@@ -7,9 +7,9 @@ import {
     getDocumentationTracks,
     resolveApiReferenceBase,
     resolveHostedAPIBase,
-} from "@/components/documentation/open-source";
+} from "@/components/documentation/open-source-onboarding";
 
-describe("documentation open-source helpers", () => {
+describe("documentation open-source onboarding helpers", () => {
     it("normalizes the public api base for docs endpoints", () => {
         expect(resolveApiReferenceBase("http://127.0.0.1:8000/api/v1")).toBe("http://127.0.0.1:8000");
         expect(resolveApiReferenceBase("http://localhost:8000/api/v1/")).toBe("http://localhost:8000");

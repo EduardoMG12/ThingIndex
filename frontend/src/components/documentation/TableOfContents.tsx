@@ -1,33 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { TOC } from "./constants";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
+
+import { DOCUMENTATION_TABLE_OF_CONTENTS } from "@/components/documentation/constants";
 
 export function TableOfContents() {
-    const [expandedToc, setExpandedToc] = useState(true);
+    const [isExpanded, setIsExpanded] = useState(true);
 
     return (
         <div className="sticky top-20 surface-elevated rounded-xl border border-border bg-card p-5 shadow-sm">
             <button
-                onClick={() => setExpandedToc(!expandedToc)}
-                className="flex w-full items-center justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-4 hover:text-primary transition-colors"
+                type="button"
+                onClick={() => setIsExpanded((current) => !current)}
+                className="mb-4 flex w-full items-center justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-primary"
             >
-                <span className="flex items-center gap-2">
-                    Navegação
-                </span>
-                {expandedToc ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                <span className="flex items-center gap-2">Navegação</span>
+                {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
             </button>
             <AnimatePresence>
-                {expandedToc && (
+                {isExpanded && (
                     <motion.ul
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         className="space-y-1 overflow-hidden"
                     >
-                        {TOC.map((item) => (
+                        {DOCUMENTATION_TABLE_OF_CONTENTS.map((item) => (
                             <li key={item.id}>
                                 <a
                                     href={`#${item.id}`}
