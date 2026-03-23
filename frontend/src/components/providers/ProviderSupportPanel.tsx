@@ -47,6 +47,8 @@ export function ProviderSupportPanel({
         );
     }
 
+    const suggestedSetup = support.suggested_setup ?? {};
+
     return (
         <div className="rounded-2xl border border-border bg-background/60 p-4">
             <div className="flex flex-wrap items-center gap-2">
@@ -60,11 +62,11 @@ export function ProviderSupportPanel({
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Transport</p>
                     <p className="mt-2 text-sm text-foreground">{formatProviderSupportTransport(support.transport)}</p>
                 </div>
-                {Object.keys(support.suggested_setup).length > 0 ? (
+                {Object.keys(suggestedSetup).length > 0 ? (
                     <div className="rounded-xl border border-border/80 bg-background/70 px-3 py-3">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Suggested setup</p>
                         <div className="mt-2 space-y-1 text-sm text-foreground">
-                            {Object.entries(support.suggested_setup).map(([key, value]) => (
+                            {Object.entries(suggestedSetup).map(([key, value]) => (
                                 <p key={key}>
                                     {formatProviderSupportSetupLabel(key)}: <span className="font-medium">{value}</span>
                                 </p>
