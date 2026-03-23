@@ -300,12 +300,26 @@ Essa abordagem evita consultas por documento e mantem a montagem da resposta em 
 ./scripts/doctor.sh
 ```
 
+Para subir com hot reload no backend (`api` e `indexer` via `air`) mantendo o frontend em modo dev:
+
+```bash
+./scripts/stack.sh dev
+```
+
+No modo `dev`, o script preaquece e monta o cache Go do host antes de subir `api` e `indexer`, reduzindo a chance de o backend ficar preso baixando modulos dentro do Docker.
+
 Se preferir `make`:
 
 ```bash
 make bootstrap
 make stack-up
 make doctor
+```
+
+Atalho equivalente para hot reload:
+
+```bash
+make stack-dev
 ```
 
 O guia curto de onboarding open source tambem ficou centralizado em `docs/open-source-onboarding.md`.
@@ -327,6 +341,8 @@ O guia curto de onboarding open source tambem ficou centralizado em `docs/open-s
 ### Observacoes importantes
 
 - O `docker-compose.yml` sobe RabbitMQ e suporta o pipeline assincrono de indexacao.
+- O modo `dev` combina `docker-compose.yml` com `docker-compose.dev.yml` e ativa hot reload para `api` e `indexer`.
+- O modo `dev` resolve e monta o `GOMODCACHE` e o `GOCACHE` do host para evitar depender de download de modulos no boot da API.
 - O fluxo de `forgot-password` exige um servidor SMTP acessivel. O compose atual nao sobe Mailpit/Mailhog por padrao.
 - O frontend consome a API por `NEXT_PUBLIC_API_URL`.
 - Para requests prontas de API, use `examples/http/thingindex-api.http`.
@@ -420,6 +436,7 @@ Se preferir `make`, os atalhos equivalentes tambem existem:
 make bootstrap
 make doctor
 make stack-up
+make stack-dev
 make test-unit
 make test-backend-integration
 make test-backend-e2e

@@ -31,6 +31,7 @@ parsed_data/
 
 # Logs
 *.log
+.cache/
 
 comandos_neo4j.md
 what-missing?.md
