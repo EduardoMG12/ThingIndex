@@ -11,17 +11,17 @@
 
 **Contagem atual do backlog:**
 - 32 tasks catalogadas ao todo.
-- 26 tasks ja concluidas no escopo atual: `A0`, `A1`, `A2`, `A3`, `A4`, `B1`, `B2`, `B3`, `B4`, `B5`, `C0`, `C1`, `C2`, `C3`, `D1`, `D2`, `D3`, `D4`, `E2`, `E3`, `E4`, `F1`, `F2`, `F4`, `G1`, `G2`.
-- 6 tasks continuam abertas entre parcial, nao implementado, ideia ou questao estrategica.
+- 27 tasks ja concluidas no escopo atual: `A0`, `A1`, `A2`, `A3`, `A4`, `B1`, `B2`, `B3`, `B4`, `B5`, `C0`, `C1`, `C2`, `C3`, `D1`, `D2`, `D3`, `D4`, `D6`, `E2`, `E3`, `E4`, `F1`, `F2`, `F4`, `G1`, `G2`.
+- 5 tasks continuam abertas entre parcial, nao implementado, ideia ou questao estrategica.
 - 0 tasks sao realmente de alta necessidade agora.
 - 0 tasks sao importantes, mas nao urgentes.
-- 6 tasks abertas sao mais de roadmap, expansao, UX fina ou valor academico.
+- 5 tasks abertas sao mais de roadmap, expansao, UX fina ou valor academico.
 
 **Leitura rapida:**
 - Nem todas as tasks sao ultra necessarias.
 - As frentes de consumo open source e onboarding deixaram de ser lacuna estrutural e sairam da fila principal.
 - O foco do produto, o pacote academico inicial e a baseline objetiva de indexacao deixaram de ser lacunas estruturais.
-- O backlog mais util agora comeca pelos refinamentos de UX e leitura operacional do produto atual.
+- O backlog mais util agora comeca pelo refinamento de custos e segue por portabilidade e manutencao.
 - As tasks de IA mais ambiciosas, novos storages, CLI, refinos visuais e material academico agregam valor, mas nao bloqueiam o produto principal.
 
 **Legenda usada abaixo:**
@@ -36,7 +36,6 @@
 
 | ID | Status | Necessidade | Tamanho | Leitura curta |
 | --- | --- | --- | --- | --- |
-| D6 | PARCIAL | Baixa | Pequeno | Melhorar pagina de monitoramento documental |
 | D5 | PARCIAL | Baixa | Pequeno | Melhorar pagina de custos |
 | E1 | NAO IMPLEMENTADO | Baixa | Grande | Implementar storages alem de MinIO/S3-compatible |
 | E5 | NAO IMPLEMENTADO | Baixa | Grande | Criar CLI para importar indices em banco externo |
@@ -65,6 +64,7 @@
 | D2 | Observabilidade operacional mais madura | Concluido no escopo atual |
 | D3 | Feedback mais claro na UI sobre configuracao ativa de LLM | Concluido no escopo atual |
 | D4 | Legibilidade e experiencia do chat | Concluido no escopo atual |
+| D6 | Pagina de monitoramento documental | Concluido no escopo atual |
 | E2 | Revisao real do suporte aos outros providers de LLM | Concluido no escopo atual |
 | E3 | Consumo open source da API e do projeto | Concluido no escopo atual |
 | E4 | Onboarding para agentes e automacao | Concluido no escopo atual |
@@ -177,7 +177,7 @@
 - Melhora auditoria, validacao e debug.
 
 **Observacao:**
-- Refinos adicionais de UX entram melhor em `D6`.
+- Refinos adicionais de UX foram absorvidos em `D6`.
 - Eventuais ajustes extras de headers e hardening continuam melhor classificados em `C1`.
 
 ### [A3] Documento orfao com UX operacional melhor
@@ -196,7 +196,7 @@
 - O estado orfao deixou de ser apenas tecnico e passou a virar fluxo operacional claro.
 
 **Observacao:**
-- Refinos adicionais de apresentacao entram melhor em `D6`.
+- Refinos adicionais de apresentacao foram absorvidos em `D6`.
 
 ### [A4] Padronizacao das confirmacoes destrutivas restantes
 
@@ -261,7 +261,7 @@
 
 **Observacao:**
 - A trilha deixou de ser apenas minima.
-- O foco agora ja pode sair de auditoria basica e ir para refinamentos de UX e leitura operacional, como `D5` e `D6`.
+- O foco agora ja pode sair de auditoria basica e ir para refinamentos restantes de UX fina e leitura de custos, como `D5`.
 
 ### [B3] Healthcheck de provider mais completo e mais legivel
 
@@ -489,15 +489,19 @@
 
 ### [D6] Melhorar a pagina de monitoramento documental
 
-**Status:** PARCIAL
+**Status:** CONCLUIDO NO ESCOPO ATUAL
 
 **Ja existe:**
 - Telemetria ampla por documento e resumo agregado.
+- Leitura executiva consolidada no topo do painel.
+- Proximas acoes operacionais transformadas em recortes acionaveis.
+- Mapa de anomalias por tipo com hints e foco rapido.
+- Watchlist prioritaria com orientacao operacional mais explicita.
+- Cobertura automatizada em unit, Storybook interaction e `e2e`.
 
-**Falta:**
-- Lapidar apresentacao.
-- Facilitar leitura executiva.
-- Destacar anomalias e proximas acoes.
+**Por que importa:**
+- A pagina deixou de ser apenas um conjunto de cards e passou a orientar decisao operacional.
+- O operador agora enxerga prioridade, anomalia e proxima acao sem precisar interpretar toda a biblioteca manualmente.
 
 ## 5. Prioridade Media - Portabilidade e Ecossistema
 
@@ -730,7 +734,6 @@ Estes itens ja existem ao menos em nivel funcional e nao devem voltar como "nao 
 
 ### Fase 1 - Consolidar qualidade percebida do produto
 
-- `D6` Refinar pagina de monitoramento.
 - `D5` Refinar pagina de custo.
 
 ### Fase 2 - Expandir portabilidade e simplificar manutencao
@@ -748,8 +751,8 @@ Estes itens ja existem ao menos em nivel funcional e nao devem voltar como "nao 
 Se a pergunta for "quantas tasks existem e quantas sao realmente urgentes":
 
 - Existem 32 tasks catalogadas.
-- 26 ja podem ser tratadas como concluidas no escopo atual.
-- Das 6 abertas, nenhuma permanece como alta necessidade estrutural agora.
+- 27 ja podem ser tratadas como concluidas no escopo atual.
+- Das 5 abertas, nenhuma permanece como alta necessidade estrutural agora.
 
 Se a pergunta for "todas sao ultra necessarias":
 
@@ -759,9 +762,9 @@ Se a pergunta for "todas sao ultra necessarias":
 
 Se a ideia for escolher o proximo passo mais util agora:
 
-- `D6` melhorar a leitura operacional do monitoramento documental.
 - `D5` deixar a pagina de custo mais honesta e legivel.
 - `E1` implementar storages adicionais quando a fila curta de UX estiver fechada.
+- `E5` criar a CLI para importar indices em banco externo.
 
 Se a ideia for enxergar melhor o backlog:
 
