@@ -123,6 +123,7 @@ Para explorar a API sem passar primeiro pela interface web:
 - Swagger UI fallback: `http://localhost:8000/swagger/index.html`
 - Swagger JSON: `http://localhost:8000/swagger/doc.json`
 - Runtime profile: `http://localhost:8000/api/v1/meta/runtime-profile`
+- Indexing benchmark: `http://localhost:8000/api/v1/meta/indexing-benchmark`
 - OpenAPI versionada no repo: `docs/swagger.yaml` e `docs/swagger.json`
 
 O endpoint `/docs` e a referencia interativa primaria com Scalar. Quando o embed nao carregar, a propria pagina aponta para o Swagger UI local, para o JSON bruto e para os exemplos versionados do repositório.
@@ -133,12 +134,14 @@ Se a API estiver publicada, os mesmos paths continuam válidos na origin da depl
 - `https://<sua-origin>/swagger/index.html`
 - `https://<sua-origin>/swagger/doc.json`
 - `https://<sua-origin>/api/v1/meta/runtime-profile`
+- `https://<sua-origin>/api/v1/meta/indexing-benchmark`
 - `https://<sua-origin>/api/v1`
 
 O arquivo `../examples/http/thingindex-api.http` tambem deixa um fluxo pronto com:
 
 - healthcheck;
 - leitura do perfil publico do runtime;
+- leitura do benchmark publico de indexacao;
 - abertura das docs;
 - registro;
 - login;
@@ -348,7 +351,7 @@ env GOCACHE=/tmp/go-build go test -tags=smoke ./internal/handlers -run RouteSmok
 ## Limitacoes atuais
 
 - a telemetria de tokens e custo pode ser estimada, dependendo do provider;
-- o score de qualidade da indexacao e heuristico;
+- o score de qualidade da indexacao e heuristico e deve ser interpretado junto do benchmark publico em `GET /api/v1/meta/indexing-benchmark`;
 - o chat runtime existe, mas depende de provider LLM configurado pelo usuario e ainda nao substitui validacao objetiva de acuracia/citacao para uso de producao;
 - a infraestrutura de rate limit atual e simples e local ao processo;
 - MinIO/S3-compatible e o storage efetivamente consolidado no fluxo atual.

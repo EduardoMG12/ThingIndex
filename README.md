@@ -95,8 +95,9 @@ O foco declarado do runtime atual e:
 Os artefatos versionados que registram esse posicionamento agora sao:
 
 - `rfc/0001-product-focus.md`
-- `article/thingindex-sbc-article.md`
-- `article/sbc_template (1).doc`
+- `docs/article/README.md`
+- `docs/article/sbc_template (1).doc`
+- `api/internal/usecase/testdata/indexing-benchmark/corpus.json`
 - `docs/proposta-continuacao-tcc.md`
 
 ## 3. Problema e Motivacao
@@ -823,9 +824,10 @@ Os materiais em `docs/` e `frontend/architecture/` registram essa evolucao e tam
 
 Os artefatos academicos versionados desta fase agora ficam em:
 
-- `article/thingindex-sbc-article.md` para o rascunho principal do artigo;
-- `article/sbc_template (1).doc` como referencia de formatacao SBC;
+- `docs/article/README.md` para o workspace academico e as referencias de figuras;
+- `docs/article/sbc_template (1).doc` como referencia de formatacao SBC;
 - `rfc/0001-product-focus.md` para justificar o foco do produto e o recorte do artigo;
+- `api/internal/usecase/testdata/indexing-benchmark/corpus.json` para o corpus controlado da baseline de indexacao;
 - `docs/proposta-continuacao-tcc.md` para a frente de continuidade experimental.
 
 ## 17. Limitacoes Atuais
@@ -833,7 +835,7 @@ Os artefatos academicos versionados desta fase agora ficam em:
 - Apenas MinIO/S3-compatible esta implementado de fato como storage provider no fluxo principal.
 - O chat runtime existe com streaming incremental e grounding por collection, mas ainda nao substitui avaliacao juridica, benchmark de citacao ou validacao de acuracia para uso de producao.
 - A estimativa de custo e tokens de LLM e heuristica quando o provider nao devolve usage real.
-- O score de qualidade da indexacao e heuristico; nao substitui avaliacao com ground truth.
+- O score de qualidade da indexacao e heuristico; ele agora deve ser lido junto do benchmark publico em `GET /api/v1/meta/indexing-benchmark`, nao como ground truth isolado.
 - Nao ha arquivo `LICENSE` publicado ainda.
 - Algumas docs antigas do repositorio ainda refletem a fase de pesquisa em grafos e precisam ser lidas com contexto.
 
@@ -853,7 +855,7 @@ Os artefatos academicos versionados desta fase agora ficam em:
 - fechar i18n inconsistente;
 - ampliar o pipeline assincrono de parsing e extracao;
 - suporte real a mais providers de storage;
-- avaliacao objetiva da acuracia de indexacao.
+- expandir o benchmark de indexacao para corpus maiores e cenarios de citacao grounded.
 
 ### Longo prazo / pesquisa
 

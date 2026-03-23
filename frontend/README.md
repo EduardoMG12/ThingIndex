@@ -63,9 +63,10 @@ src/
 
 ## Limitacoes atuais
 
-- o chat runtime depende de provider LLM habilitado para chat e ainda precisa de validacao objetiva de acuracia e citacao;
+- o chat runtime depende de provider LLM habilitado para chat e ainda precisa de validacao objetiva de acuracia e citacao para uso mais forte;
 - o preview inline foi intencionalmente restringido para formatos seguros, evitando execucao de HTML enviado pelo usuario;
-- a maior parte da telemetria vem do backend; o frontend hoje exibe esses dados, mas nao e a origem deles.
+- a maior parte da telemetria vem do backend; o frontend hoje exibe esses dados, mas nao e a origem deles;
+- o score heuristico de qualidade exibido na tela de documentos deve ser lido junto do benchmark publico de indexacao, nao como ground truth.
 
 ## Desenvolvimento local
 
@@ -105,9 +106,10 @@ Materiais de apoio imediatos:
 - requests prontas: `examples/http/thingindex-api.http`
 - contrato versionado: `api/docs/swagger.yaml` e `api/docs/swagger.json`
 - perfil publico do runtime: `http://localhost:8000/api/v1/meta/runtime-profile`
+- benchmark publico de indexacao: `http://localhost:8000/api/v1/meta/indexing-benchmark`
 - matriz pública de providers: `http://localhost:8000/api/v1/providers/support?family=LLM`
 - RFC de foco do produto: `rfc/0001-product-focus.md`
-- rascunho do artigo SBC: `article/thingindex-sbc-article.md`
+- workspace academico: `docs/article/README.md`
 
 Se o frontend estiver apontando para uma API já publicada, a documentação de onboarding e a página `/documentation` agora separam explicitamente o fluxo `self-hosted` do fluxo `hosted API`.
 

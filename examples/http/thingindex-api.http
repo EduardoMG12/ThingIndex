@@ -26,6 +26,10 @@ Accept: application/json
 GET {{apiBase}}/meta/runtime-profile
 Accept: application/json
 
+### Public indexing benchmark
+GET {{apiBase}}/meta/indexing-benchmark
+Accept: application/json
+
 ### Public LLM provider support matrix
 GET {{apiBase}}/providers/support?family=LLM
 Accept: application/json
