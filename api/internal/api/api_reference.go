@@ -12,7 +12,8 @@ type apiReferencePageData struct {
 	CurrentAPIBase       string
 	RuntimeProfileURL    string
 	IndexingBenchmarkURL string
-	ProviderSupportURL   string
+	StorageSupportURL    string
+	LLMSupportURL        string
 	ScalarURL            string
 	SwaggerUIURL         string
 	SwaggerJSONURL       string
@@ -170,8 +171,11 @@ var apiReferencePageTemplate = template.Must(template.New("api-reference").Parse
           </article>
           <article class="resource-card">
             <h2>Provider support matrix</h2>
-            <p>Current support tiers, bridge requirements and operational notes for LLM providers.</p>
-            <p><a href="{{.ProviderSupportURL}}">{{.ProviderSupportURL}}</a></p>
+            <p>Current support tiers, setup hints and operational notes for storage and LLM providers.</p>
+            <ul>
+              <li><a href="{{.StorageSupportURL}}">{{.StorageSupportURL}}</a></li>
+              <li><a href="{{.LLMSupportURL}}">{{.LLMSupportURL}}</a></li>
+            </ul>
           </article>
           <article class="resource-card">
             <h2>Runtime profile</h2>
@@ -203,7 +207,8 @@ var apiReferencePageTemplate = template.Must(template.New("api-reference").Parse
               <li>Swagger UI fallback: <code>{{.SwaggerUIURL}}</code></li>
               <li>Runtime profile: <code>{{.RuntimeProfileURL}}</code></li>
               <li>Indexing benchmark: <code>{{.IndexingBenchmarkURL}}</code></li>
-              <li>Provider support matrix: <code>{{.ProviderSupportURL}}</code></li>
+              <li>Storage support matrix: <code>{{.StorageSupportURL}}</code></li>
+              <li>LLM support matrix: <code>{{.LLMSupportURL}}</code></li>
             </ul>
           </article>
           <article class="resource-card">
@@ -276,7 +281,8 @@ func buildAPIReferencePageData(r *http.Request) apiReferencePageData {
 		CurrentAPIBase:       currentOrigin + "/api/v1",
 		RuntimeProfileURL:    currentOrigin + "/api/v1/meta/runtime-profile",
 		IndexingBenchmarkURL: currentOrigin + "/api/v1/meta/indexing-benchmark",
-		ProviderSupportURL:   currentOrigin + "/api/v1/providers/support?family=LLM",
+		StorageSupportURL:    currentOrigin + "/api/v1/providers/support?family=STORAGE",
+		LLMSupportURL:        currentOrigin + "/api/v1/providers/support?family=LLM",
 		ScalarURL:            currentOrigin + "/docs",
 		SwaggerUIURL:         currentOrigin + "/swagger/index.html",
 		SwaggerJSONURL:       currentOrigin + "/swagger/doc.json",

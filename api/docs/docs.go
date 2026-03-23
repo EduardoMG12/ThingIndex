@@ -886,7 +886,7 @@ const docTemplate = `{
         },
         "/providers/support": {
             "get": {
-                "description": "Returns the current support classification for provider integrations, including support tier, transport mode and operational notes.",
+                "description": "Returns the current support classification for provider integrations, including support tier, transport mode, setup hints and operational notes.",
                 "produces": [
                     "application/json"
                 ],
@@ -897,7 +897,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Optional provider family filter. The current public matrix is available for LLM.",
+                        "description": "Optional provider family filter. Supported values: STORAGE, LLM.",
                         "name": "family",
                         "in": "query"
                     }
@@ -2499,11 +2499,11 @@ const docTemplate = `{
                 "provider_type": {
                     "type": "string"
                 },
-                "suggested_base_url": {
-                    "type": "string"
-                },
-                "suggested_model": {
-                    "type": "string"
+                "suggested_setup": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
                 },
                 "summary": {
                     "type": "string"

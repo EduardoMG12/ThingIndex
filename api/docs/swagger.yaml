@@ -651,10 +651,10 @@ definitions:
         type: array
       provider_type:
         type: string
-      suggested_base_url:
-        type: string
-      suggested_model:
-        type: string
+      suggested_setup:
+        additionalProperties:
+          type: string
+        type: object
       summary:
         type: string
       support_level:
@@ -1331,10 +1331,10 @@ paths:
   /providers/support:
     get:
       description: Returns the current support classification for provider integrations,
-        including support tier, transport mode and operational notes.
+        including support tier, transport mode, setup hints and operational notes.
       parameters:
-      - description: Optional provider family filter. The current public matrix is
-          available for LLM.
+      - description: 'Optional provider family filter. Supported values: STORAGE,
+          LLM.'
         in: query
         name: family
         type: string

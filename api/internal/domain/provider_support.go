@@ -7,8 +7,10 @@ const (
 
 	ProviderSupportTransportNativeOpenAI         = "NATIVE_OPENAI"
 	ProviderSupportTransportNativeOllama         = "NATIVE_OLLAMA"
+	ProviderSupportTransportNativeGCS            = "NATIVE_GCS"
 	ProviderSupportTransportOpenAICompatible     = "OPENAI_COMPATIBLE"
 	ProviderSupportTransportOpenAICompatibleShim = "OPENAI_COMPATIBLE_BRIDGE"
+	ProviderSupportTransportS3Compatible         = "S3_COMPATIBLE"
 )
 
 type ProviderSupportCapabilities struct {
@@ -25,14 +27,13 @@ type ProviderSupportCapabilities struct {
 }
 
 type ProviderSupportEntry struct {
-	Family           string                      `json:"family"`
-	ProviderType     string                      `json:"provider_type"`
-	DisplayName      string                      `json:"display_name"`
-	SupportLevel     string                      `json:"support_level"`
-	Transport        string                      `json:"transport"`
-	Summary          string                      `json:"summary"`
-	SuggestedBaseURL string                      `json:"suggested_base_url,omitempty"`
-	SuggestedModel   string                      `json:"suggested_model,omitempty"`
-	Capabilities     ProviderSupportCapabilities `json:"capabilities"`
-	Notes            []string                    `json:"notes,omitempty"`
+	Family         string                      `json:"family"`
+	ProviderType   string                      `json:"provider_type"`
+	DisplayName    string                      `json:"display_name"`
+	SupportLevel   string                      `json:"support_level"`
+	Transport      string                      `json:"transport"`
+	Summary        string                      `json:"summary"`
+	SuggestedSetup map[string]string           `json:"suggested_setup,omitempty"`
+	Capabilities   ProviderSupportCapabilities `json:"capabilities"`
+	Notes          []string                    `json:"notes,omitempty"`
 }
