@@ -204,7 +204,7 @@ const AppShell = ({ children, contentClassName }: AppShellProps) => {
                                                 className="mb-2 flex w-full items-center gap-2 rounded-lg bg-primary/10 px-2.5 py-2 text-left text-[11px] font-medium text-primary transition-colors hover:bg-primary/15"
                                             >
                                                 <MessageSquarePlus className="h-3.5 w-3.5" />
-                                                Novo chat
+                                                {t("dashboard.chat.newConversation")}
                                             </button>
                                             <ScrollArea className="max-h-48">
                                                 <div className="space-y-1 pr-2">
