@@ -1,18 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
+import { DocumentationMetricCard } from "@/components/documentation/DocumentationMetricCard";
+import { DocumentationStatusMessage } from "@/components/documentation/DocumentationStatusMessage";
+import { useDocumentationResource } from "@/components/documentation/useDocumentationResource";
 import {
     fetchIndexingBenchmark,
     type IndexingBenchmarkCase,
     type IndexingBenchmarkReport,
 } from "@/lib/api/indexing-benchmark";
 
-function formatPercent(value: number) {
+function formatBenchmarkPercentage(value: number) {
     return `${value.toFixed(1)}%`;
 }
 
-function caseExpectation(item: IndexingBenchmarkCase) {
+function formatExpectedBenchmarkMatch(item: IndexingBenchmarkCase) {
     if (item.scope === "COLLECTION") {
         return item.expected_document_title;
     }
@@ -24,7 +25,7 @@ function caseExpectation(item: IndexingBenchmarkCase) {
     return parts.filter(Boolean).join(" · ");
 }
 
-function caseActual(item: IndexingBenchmarkCase) {
+function formatActualBenchmarkMatch(item: IndexingBenchmarkCase) {
     if (item.scope === "COLLECTION") {
         return item.actual_document_title || "No ranked document";
     }
@@ -37,33 +38,14 @@ function caseActual(item: IndexingBenchmarkCase) {
 }
 
 export function IndexingBenchmarkSection() {
-    const [report, setReport] = useState<IndexingBenchmarkReport | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        const controller = new AbortController();
-
-        async function load() {
-            try {
-                setIsLoading(true);
-                setError(null);
-                setReport(await fetchIndexingBenchmark(controller.signal));
-            } catch (err) {
-                if (controller.signal.aborted) {
-                    return;
-                }
-                setError(err instanceof Error ? err.message : "Could not load the public indexing benchmark.");
-            } finally {
-                if (!controller.signal.aborted) {
-                    setIsLoading(false);
-                }
-            }
-        }
-
-        void load();
-        return () => controller.abort();
-    }, []);
+    const {
+        resource: report,
+        isLoading,
+        error,
+    } = useDocumentationResource<IndexingBenchmarkReport | null>(
+        fetchIndexingBenchmark,
+        "Could not load the public indexing benchmark."
+    );
 
     return (
         <div className="space-y-5">
@@ -74,31 +56,29 @@ export function IndexingBenchmarkSection() {
             </p>
 
             {isLoading ? (
-                <div className="rounded-xl border border-border bg-background/50 p-5 text-sm text-muted-foreground">
+                <DocumentationStatusMessage>
                     Carregando benchmark público de indexação...
-                </div>
+                </DocumentationStatusMessage>
             ) : error ? (
-                <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-5 text-sm text-destructive">
-                    {error}
-                </div>
+                <DocumentationStatusMessage tone="error">{error}</DocumentationStatusMessage>
             ) : report ? (
                 <>
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                         {[
                             {
                                 label: "Exact match",
-                                value: formatPercent(report.metrics.exact_match_accuracy),
+                                value: formatBenchmarkPercentage(report.metrics.exact_match_accuracy),
                                 detail: `${report.metrics.document_queries + report.metrics.collection_queries} casos controlados`,
                             },
                             {
                                 label: "Node top-1",
-                                value: formatPercent(report.metrics.tree_node_top1_accuracy),
-                                detail: `Recall@3 ${formatPercent(report.metrics.tree_node_recall_at_3)}`,
+                                value: formatBenchmarkPercentage(report.metrics.tree_node_top1_accuracy),
+                                detail: `Recall@3 ${formatBenchmarkPercentage(report.metrics.tree_node_recall_at_3)}`,
                             },
                             {
                                 label: "Collection top-1",
-                                value: formatPercent(report.metrics.collection_document_top1_accuracy),
-                                detail: `Recall@3 ${formatPercent(report.metrics.collection_document_recall_at_3)}`,
+                                value: formatBenchmarkPercentage(report.metrics.collection_document_top1_accuracy),
+                                detail: `Recall@3 ${formatBenchmarkPercentage(report.metrics.collection_document_recall_at_3)}`,
                             },
                             {
                                 label: "Avg heuristic",
@@ -106,11 +86,12 @@ export function IndexingBenchmarkSection() {
                                 detail: `Range ${report.metrics.minimum_heuristic_score.toFixed(1)}-${report.metrics.maximum_heuristic_score.toFixed(1)}`,
                             },
                         ].map((item) => (
-                            <div key={item.label} className="rounded-xl border border-border bg-background/50 p-4">
-                                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{item.label}</p>
-                                <p className="mt-2 text-2xl font-semibold text-foreground">{item.value}</p>
-                                <p className="mt-1 text-sm text-muted-foreground">{item.detail}</p>
-                            </div>
+                            <DocumentationMetricCard
+                                key={item.label}
+                                label={item.label}
+                                value={item.value}
+                                detail={item.detail}
+                            />
                         ))}
                     </div>
 
@@ -200,11 +181,11 @@ export function IndexingBenchmarkSection() {
                                     <div className="mt-3 grid gap-3 md:grid-cols-2">
                                         <div>
                                             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Expected</p>
-                                            <p className="mt-1 text-sm text-foreground">{caseExpectation(item)}</p>
+                                            <p className="mt-1 text-sm text-foreground">{formatExpectedBenchmarkMatch(item)}</p>
                                         </div>
                                         <div>
                                             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Actual</p>
-                                            <p className="mt-1 text-sm text-foreground">{caseActual(item)}</p>
+                                            <p className="mt-1 text-sm text-foreground">{formatActualBenchmarkMatch(item)}</p>
                                         </div>
                                     </div>
                                 </div>

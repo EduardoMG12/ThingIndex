@@ -1,37 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
+import { DocumentationMetricCard } from "@/components/documentation/DocumentationMetricCard";
+import { DocumentationStatusMessage } from "@/components/documentation/DocumentationStatusMessage";
+import { useDocumentationResource } from "@/components/documentation/useDocumentationResource";
 import { fetchRuntimeProfile, type RuntimeProfile } from "@/lib/api/runtime-profile";
 
 export function ProductFocusSection() {
-    const [profile, setProfile] = useState<RuntimeProfile | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        const controller = new AbortController();
-
-        async function load() {
-            try {
-                setIsLoading(true);
-                setError(null);
-                setProfile(await fetchRuntimeProfile(controller.signal));
-            } catch (err) {
-                if (controller.signal.aborted) {
-                    return;
-                }
-                setError(err instanceof Error ? err.message : "Could not load the runtime profile.");
-            } finally {
-                if (!controller.signal.aborted) {
-                    setIsLoading(false);
-                }
-            }
-        }
-
-        void load();
-        return () => controller.abort();
-    }, []);
+    const {
+        resource: profile,
+        isLoading,
+        error,
+    } = useDocumentationResource<RuntimeProfile | null>(
+        fetchRuntimeProfile,
+        "Could not load the runtime profile."
+    );
 
     return (
         <div className="space-y-5">
@@ -42,13 +24,11 @@ export function ProductFocusSection() {
             </p>
 
             {isLoading ? (
-                <div className="rounded-xl border border-border bg-background/50 p-5 text-sm text-muted-foreground">
+                <DocumentationStatusMessage>
                     Carregando perfil público do runtime...
-                </div>
+                </DocumentationStatusMessage>
             ) : error ? (
-                <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-5 text-sm text-destructive">
-                    {error}
-                </div>
+                <DocumentationStatusMessage tone="error">{error}</DocumentationStatusMessage>
             ) : profile ? (
                 <>
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -58,11 +38,14 @@ export function ProductFocusSection() {
                             { label: "Problema central", value: "Contexto e proveniência", detail: profile.core_problem },
                             { label: "Última revisão", value: profile.last_reviewed_on, detail: "Snapshot público do runtime atual" },
                         ].map((item) => (
-                            <div key={item.label} className="rounded-xl border border-border bg-background/50 p-4">
-                                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">{item.label}</p>
-                                <p className="mt-2 text-sm font-semibold leading-relaxed text-foreground">{item.value}</p>
-                                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.detail}</p>
-                            </div>
+                            <DocumentationMetricCard
+                                key={item.label}
+                                label={item.label}
+                                value={item.value}
+                                detail={item.detail}
+                                valueClassName="text-sm font-semibold leading-relaxed"
+                                detailClassName="mt-2 leading-relaxed"
+                            />
                         ))}
                     </div>
 

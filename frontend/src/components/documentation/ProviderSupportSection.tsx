@@ -1,48 +1,56 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
+import { DocumentationMetricCard } from "@/components/documentation/DocumentationMetricCard";
+import { DocumentationStatusMessage } from "@/components/documentation/DocumentationStatusMessage";
+import { useDocumentationResource } from "@/components/documentation/useDocumentationResource";
 import { ProviderSupportMatrix } from "@/components/providers/ProviderSupportMatrix";
 import { fetchProviderSupportMatrix, type ProviderSupport } from "@/lib/api/providers";
 
-function countByLevel(items: ProviderSupport[], level: ProviderSupport["support_level"]) {
+type DocumentationProviderSupportSnapshot = {
+    storageItems: ProviderSupport[];
+    llmItems: ProviderSupport[];
+};
+
+const PROVIDER_SUPPORT_GROUPS = [
+    {
+        key: "storage",
+        title: "Storage runtime support",
+        description: "Concrete storage backends available for uploads, previews, downloads and indexing.",
+    },
+    {
+        key: "llm",
+        title: "LLM runtime support",
+        description: "Inference paths available for indexing enrichment, model discovery and grounded chat.",
+    },
+] as const;
+
+async function fetchDocumentationProviderSupport(
+    signal: AbortSignal
+): Promise<DocumentationProviderSupportSnapshot> {
+    const [storageItems, llmItems] = await Promise.all([
+        fetchProviderSupportMatrix({ family: "STORAGE", signal }),
+        fetchProviderSupportMatrix({ family: "LLM", signal }),
+    ]);
+
+    return { storageItems, llmItems };
+}
+
+function countProvidersBySupportLevel(
+    items: ProviderSupport[],
+    level: ProviderSupport["support_level"]
+) {
     return items.filter((item) => item.support_level === level).length;
 }
 
 export function ProviderSupportSection() {
-    const [storageItems, setStorageItems] = useState<ProviderSupport[]>([]);
-    const [llmItems, setLLMItems] = useState<ProviderSupport[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        const controller = new AbortController();
-
-        async function load() {
-            try {
-                setIsLoading(true);
-                setError(null);
-                const [storage, llm] = await Promise.all([
-                    fetchProviderSupportMatrix({ family: "STORAGE", signal: controller.signal }),
-                    fetchProviderSupportMatrix({ family: "LLM", signal: controller.signal }),
-                ]);
-                setStorageItems(storage);
-                setLLMItems(llm);
-            } catch (err) {
-                if (controller.signal.aborted) {
-                    return;
-                }
-                setError(err instanceof Error ? err.message : "Could not load the provider support matrix.");
-            } finally {
-                if (!controller.signal.aborted) {
-                    setIsLoading(false);
-                }
-            }
-        }
-
-        void load();
-        return () => controller.abort();
-    }, []);
+    const {
+        resource,
+        isLoading,
+        error,
+    } = useDocumentationResource<DocumentationProviderSupportSnapshot>(
+        fetchDocumentationProviderSupport,
+        "Could not load the provider support matrix."
+    );
 
     return (
         <div className="space-y-5">
@@ -53,50 +61,42 @@ export function ProviderSupportSection() {
             </p>
 
             {isLoading ? (
-                <div className="rounded-xl border border-border bg-background/50 p-5 text-sm text-muted-foreground">
+                <DocumentationStatusMessage>
                     Loading provider support matrix...
-                </div>
+                </DocumentationStatusMessage>
             ) : error ? (
-                <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-5 text-sm text-destructive">
-                    {error}
-                </div>
+                <DocumentationStatusMessage tone="error">{error}</DocumentationStatusMessage>
             ) : (
                 <div className="space-y-8">
-                    {[
-                        {
-                            title: "Storage runtime support",
-                            description: "Concrete storage backends available for uploads, previews, downloads and indexing.",
-                            items: storageItems,
-                        },
-                        {
-                            title: "LLM runtime support",
-                            description: "Inference paths available for indexing enrichment, model discovery and grounded chat.",
-                            items: llmItems,
-                        },
-                    ].map((section) => (
-                        <div key={section.title} className="space-y-4">
-                            <div>
-                                <h3 className="text-lg font-semibold text-foreground">{section.title}</h3>
-                                <p className="mt-1 text-sm text-muted-foreground">{section.description}</p>
-                            </div>
+                    {PROVIDER_SUPPORT_GROUPS.map((section) => {
+                        const items = section.key === "storage" ? resource?.storageItems ?? [] : resource?.llmItems ?? [];
 
-                            <div className="grid gap-4 md:grid-cols-3">
-                                {[
-                                    { label: "Ready", value: countByLevel(section.items, "READY"), detail: "Main runtime paths" },
-                                    { label: "Partial", value: countByLevel(section.items, "PARTIAL"), detail: "Shared adapter support" },
-                                    { label: "Experimental", value: countByLevel(section.items, "EXPERIMENTAL"), detail: "Bridge-only paths" },
-                                ].map((item) => (
-                                    <div key={`${section.title}-${item.label}`} className="rounded-xl border border-border bg-background/50 p-4">
-                                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{item.label}</p>
-                                        <p className="mt-2 text-2xl font-semibold text-foreground">{item.value}</p>
-                                        <p className="mt-1 text-sm text-muted-foreground">{item.detail}</p>
-                                    </div>
-                                ))}
-                            </div>
+                        return (
+                            <div key={section.title} className="space-y-4">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-foreground">{section.title}</h3>
+                                    <p className="mt-1 text-sm text-muted-foreground">{section.description}</p>
+                                </div>
 
-                            <ProviderSupportMatrix items={section.items} />
-                        </div>
-                    ))}
+                                <div className="grid gap-4 md:grid-cols-3">
+                                    {[
+                                        { label: "Ready", value: countProvidersBySupportLevel(items, "READY"), detail: "Main runtime paths" },
+                                        { label: "Partial", value: countProvidersBySupportLevel(items, "PARTIAL"), detail: "Shared adapter support" },
+                                        { label: "Experimental", value: countProvidersBySupportLevel(items, "EXPERIMENTAL"), detail: "Bridge-only paths" },
+                                    ].map((item) => (
+                                        <DocumentationMetricCard
+                                            key={`${section.title}-${item.label}`}
+                                            label={item.label}
+                                            value={item.value}
+                                            detail={item.detail}
+                                        />
+                                    ))}
+                                </div>
+
+                                <ProviderSupportMatrix items={items} />
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </div>
