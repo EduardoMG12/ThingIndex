@@ -13,9 +13,11 @@ cat <<'EOF'
   api: http://localhost:8000
   api docs: http://localhost:8000/docs
   runtime profile: http://localhost:8000/api/v1/meta/runtime-profile
+  indexing benchmark: http://localhost:8000/api/v1/meta/indexing-benchmark
   provider support matrix: http://localhost:8000/api/v1/providers/support?family=LLM
   onboarding guide: docs/open-source-onboarding.md
   product focus RFC: rfc/0001-product-focus.md
-  SBC article draft: article/thingindex-sbc-article.md
+  academic workspace: docs/article/README.md
+  benchmark runner: ./scripts/indexing-benchmark.sh
   request examples: examples/http/thingindex-api.http
 EOF

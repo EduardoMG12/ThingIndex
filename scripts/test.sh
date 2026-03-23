@@ -14,6 +14,7 @@ Usage:
 Targets:
   unit                  Run backend unit tests and frontend unit tests
   backend-unit          Run backend unit tests
+  backend-benchmark     Run the indexing benchmark unit suite
   backend-integration   Run backend integration tests
   backend-e2e           Run backend end-to-end tests
   backend-smoke         Run backend smoke tests
@@ -47,6 +48,14 @@ run_backend_integration() {
   (
     cd api
     env GOCACHE="$GOCACHE_DIR" go test -tags=integration ./...
+  )
+}
+
+run_backend_benchmark() {
+  echo "[test] backend indexing benchmark"
+  (
+    cd api
+    env GOCACHE="$GOCACHE_DIR" go test ./internal/usecase -run IndexingBenchmark
   )
 }
 
@@ -100,6 +109,9 @@ case "$target" in
     ;;
   backend-unit)
     run_backend_unit
+    ;;
+  backend-benchmark)
+    run_backend_benchmark
     ;;
   backend-integration|integration)
     run_backend_integration

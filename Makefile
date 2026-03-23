@@ -1,5 +1,5 @@
-.PHONY: bootstrap doctor stack-up stack-core stack-down stack-ps stack-logs test test-unit test-integration test-e2e test-all docs-api \
-	test-backend test-backend-unit test-backend-integration test-backend-e2e test-backend-smoke \
+.PHONY: bootstrap doctor stack-up stack-core stack-down stack-ps stack-logs test test-unit test-integration test-e2e test-all docs-api benchmark-indexing \
+	test-backend test-backend-unit test-backend-benchmark test-backend-integration test-backend-e2e test-backend-smoke \
 	test-frontend test-frontend-unit test-frontend-storybook test-frontend-e2e test-frontend-smoke test-frontend-e2e-install
 
 bootstrap:
@@ -40,11 +40,17 @@ test-all:
 docs-api:
 	./scripts/generate-api-docs.sh
 
+benchmark-indexing:
+	./scripts/indexing-benchmark.sh
+
 test-backend:
 	./scripts/test.sh backend-unit
 
 test-backend-unit:
 	./scripts/test.sh backend-unit
+
+test-backend-benchmark:
+	./scripts/test.sh backend-benchmark
 
 test-backend-integration:
 	./scripts/test.sh backend-integration

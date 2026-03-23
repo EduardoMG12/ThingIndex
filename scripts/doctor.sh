@@ -16,8 +16,9 @@ Usage:
 Checks:
   - required local commands for Docker Compose and manual execution
   - presence of .env
+  - presence of the indexing benchmark runner and benchmark corpus
   - reachability of frontend when running locally
-  - reachability of API health, Scalar docs, Swagger UI, Swagger JSON, the public runtime profile, and the public provider support matrix
+  - reachability of API health, Scalar docs, Swagger UI, Swagger JSON, the public runtime profile, the public indexing benchmark, and the public provider support matrix
 
 Behavior:
   - non-strict mode reports unavailable services as warnings
@@ -189,6 +190,8 @@ check_file "docs/open-source-onboarding.md" "Open-source onboarding guide"
 check_file "examples/http/thingindex-api.http" "HTTP request examples"
 check_file "api/docs/swagger.yaml" "Versioned OpenAPI YAML"
 check_file "api/docs/swagger.json" "Versioned OpenAPI JSON"
+check_file "scripts/indexing-benchmark.sh" "Indexing benchmark runner"
+check_file "api/internal/usecase/testdata/indexing-benchmark/corpus.json" "Indexing benchmark corpus"
 
 if [[ -f "$ENV_FILE" ]]; then
   pass ".env is present"
@@ -207,6 +210,7 @@ probe_url "Scalar API docs" "$api_base/docs"
 probe_url "Swagger UI" "$api_base/swagger/index.html"
 probe_url "Swagger JSON" "$api_base/swagger/doc.json"
 probe_url "Runtime profile" "$api_base/api/v1/meta/runtime-profile"
+probe_url "Indexing benchmark" "$api_base/api/v1/meta/indexing-benchmark"
 probe_url "Provider support matrix" "$api_base/api/v1/providers/support?family=LLM"
 
 echo "[doctor] failures=$failures warnings=$warnings"

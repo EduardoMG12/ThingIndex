@@ -35,7 +35,7 @@ done
 if [[ ${#STAGED_GO_FILES[@]} -gt 0 ]]; then
   echo "[pre-commit] formatando arquivos Go staged"
   gofmt -w "${STAGED_GO_FILES[@]}"
-  git add "${STAGED_GO_FILES[@]}"
+  git add -u "${STAGED_GO_FILES[@]}"
 fi
 
 if [[ $HAS_BACKEND_CHANGES -eq 1 ]]; then
