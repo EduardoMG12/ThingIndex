@@ -50,8 +50,8 @@ describe("ProviderSupportSection", () => {
             .mockResolvedValueOnce([
                 {
                     family: "LLM",
-                    provider_type: "OPENAI_COMPATIBLE",
-                    display_name: "OpenAI Compatible",
+                    provider_type: "GOOGLE_GEMINI",
+                    display_name: "Google Gemini",
                     support_level: "PARTIAL",
                     transport: "OPENAI_BRIDGE",
                     summary: "Available behind an OpenAI-compatible bridge.",
@@ -109,8 +109,10 @@ describe("ProviderSupportSection", () => {
             signal: expect.any(AbortSignal),
         });
         expect(screen.getByRole("heading", { level: 3, name: "LLM runtime support" })).toBeInTheDocument();
+        expect(screen.getByTestId("provider-brand-MINIO")).toBeInTheDocument();
+        expect(screen.getByTestId("provider-brand-GOOGLE_GEMINI")).toBeInTheDocument();
         expect(screen.getByText("MinIO")).toBeInTheDocument();
-        expect(screen.getByText("OpenAI Compatible")).toBeInTheDocument();
+        expect(screen.getByText("Google Gemini")).toBeInTheDocument();
         expect(screen.getByText("Ollama")).toBeInTheDocument();
         expect(screen.getAllByText("Ready", { exact: true }).length).toBeGreaterThan(0);
         expect(screen.getAllByText("Partial", { exact: true }).length).toBeGreaterThan(0);

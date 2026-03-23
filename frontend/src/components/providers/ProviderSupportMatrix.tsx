@@ -1,6 +1,7 @@
 "use client";
 
 import type { ProviderSupport } from "@/lib/api/providers";
+import { ProviderBrandMark } from "@/components/providers/ProviderBrandMark";
 import { ProviderSupportBadge } from "@/components/providers/ProviderSupportBadge";
 import { formatProviderSupportSetupLabel, formatProviderSupportTransport } from "@/lib/provider-support";
 
@@ -36,9 +37,12 @@ export function ProviderSupportMatrix({
                         return (
                             <tr key={item.provider_type} className="align-top">
                                 <td className="px-4 py-4">
-                                    <div>
-                                        <p className="font-semibold text-foreground">{item.display_name}</p>
-                                        <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">{item.provider_type}</p>
+                                    <div className="flex items-center gap-3">
+                                        <ProviderBrandMark providerType={item.provider_type} size="sm" />
+                                        <div>
+                                            <p className="font-semibold text-foreground">{item.display_name}</p>
+                                            <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">{item.provider_type}</p>
+                                        </div>
                                     </div>
                                 </td>
                                 <td className="px-4 py-4">

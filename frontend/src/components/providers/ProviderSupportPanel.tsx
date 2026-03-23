@@ -1,6 +1,7 @@
 "use client";
 
 import type { ProviderSupport } from "@/lib/api/providers";
+import { ProviderBrandMark } from "@/components/providers/ProviderBrandMark";
 import {
     formatProviderSupportSetupLabel,
     formatProviderSupportTransport,
@@ -51,9 +52,18 @@ export function ProviderSupportPanel({
 
     return (
         <div className="rounded-2xl border border-border bg-background/60 p-4">
-            <div className="flex flex-wrap items-center gap-2">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Real support level</p>
-                <ProviderSupportBadge level={support.support_level} />
+            <div className="flex items-start gap-3">
+                <ProviderBrandMark providerType={support.provider_type} size="sm" />
+                <div className="min-w-0 flex-1 space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Runtime support profile</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-foreground">{support.display_name}</p>
+                        <code className="rounded-full border border-border bg-background/80 px-2 py-0.5 text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground">
+                            {support.provider_type}
+                        </code>
+                        <ProviderSupportBadge level={support.support_level} />
+                    </div>
+                </div>
             </div>
             <p className="mt-3 text-sm leading-relaxed text-foreground/85">{support.summary}</p>
 

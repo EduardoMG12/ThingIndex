@@ -35,7 +35,8 @@ describe("ProviderSupportPanel", () => {
             />
         );
 
-        expect(screen.getByText("Real support level")).toBeInTheDocument();
+        expect(screen.getByText("Runtime support profile")).toBeInTheDocument();
+        expect(screen.getByTestId("provider-brand-OPENAI")).toBeInTheDocument();
         expect(screen.getByText("Ready for main runtime")).toBeInTheDocument();
         expect(screen.getByText("Native OpenAI path")).toBeInTheDocument();
         expect(screen.getByText("https://api.openai.com/v1")).toBeInTheDocument();
@@ -74,6 +75,7 @@ describe("ProviderSupportPanel", () => {
             />
         );
 
+        expect(screen.getByTestId("provider-brand-GCP_STORAGE")).toBeInTheDocument();
         expect(screen.getByText("Native Google Cloud Storage path")).toBeInTheDocument();
         expect(screen.getByText("Credential validation")).toBeInTheDocument();
         expect(screen.getByText("Project ID:")).toBeInTheDocument();
