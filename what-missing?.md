@@ -11,17 +11,17 @@
 
 **Contagem atual do backlog:**
 - 32 tasks catalogadas ao todo.
-- 27 tasks ja concluidas no escopo atual: `A0`, `A1`, `A2`, `A3`, `A4`, `B1`, `B2`, `B3`, `B4`, `B5`, `C0`, `C1`, `C2`, `C3`, `D1`, `D2`, `D3`, `D4`, `D6`, `E2`, `E3`, `E4`, `F1`, `F2`, `F4`, `G1`, `G2`.
-- 5 tasks continuam abertas entre parcial, nao implementado, ideia ou questao estrategica.
+- 28 tasks ja concluidas no escopo atual: `A0`, `A1`, `A2`, `A3`, `A4`, `B1`, `B2`, `B3`, `B4`, `B5`, `C0`, `C1`, `C2`, `C3`, `D1`, `D2`, `D3`, `D4`, `D5`, `D6`, `E2`, `E3`, `E4`, `F1`, `F2`, `F4`, `G1`, `G2`.
+- 4 tasks continuam abertas entre nao implementado, ideia ou questao estrategica.
 - 0 tasks sao realmente de alta necessidade agora.
 - 0 tasks sao importantes, mas nao urgentes.
-- 5 tasks abertas sao mais de roadmap, expansao, UX fina ou valor academico.
+- 4 tasks abertas sao mais de roadmap, expansao, manutencao ou valor academico.
 
 **Leitura rapida:**
 - Nem todas as tasks sao ultra necessarias.
 - As frentes de consumo open source e onboarding deixaram de ser lacuna estrutural e sairam da fila principal.
 - O foco do produto, o pacote academico inicial e a baseline objetiva de indexacao deixaram de ser lacunas estruturais.
-- O backlog mais util agora comeca pelo refinamento de custos e segue por portabilidade e manutencao.
+- A leitura de custos deixou de ser lacuna estrutural e o backlog mais util agora comeca por portabilidade e manutencao.
 - As tasks de IA mais ambiciosas, novos storages, CLI, refinos visuais e material academico agregam valor, mas nao bloqueiam o produto principal.
 
 **Legenda usada abaixo:**
@@ -36,7 +36,6 @@
 
 | ID | Status | Necessidade | Tamanho | Leitura curta |
 | --- | --- | --- | --- | --- |
-| D5 | PARCIAL | Baixa | Pequeno | Melhorar pagina de custos |
 | E1 | NAO IMPLEMENTADO | Baixa | Grande | Implementar storages alem de MinIO/S3-compatible |
 | E5 | NAO IMPLEMENTADO | Baixa | Grande | Criar CLI para importar indices em banco externo |
 | F3 | IDEIA CONTINUA | Baixa | Pequeno | Limpar boilerplate e naming excessivo |
@@ -64,6 +63,7 @@
 | D2 | Observabilidade operacional mais madura | Concluido no escopo atual |
 | D3 | Feedback mais claro na UI sobre configuracao ativa de LLM | Concluido no escopo atual |
 | D4 | Legibilidade e experiencia do chat | Concluido no escopo atual |
+| D5 | Pagina de custo e leitura de pricing | Concluido no escopo atual |
 | D6 | Pagina de monitoramento documental | Concluido no escopo atual |
 | E2 | Revisao real do suporte aos outros providers de LLM | Concluido no escopo atual |
 | E3 | Consumo open source da API e do projeto | Concluido no escopo atual |
@@ -261,7 +261,7 @@
 
 **Observacao:**
 - A trilha deixou de ser apenas minima.
-- O foco agora ja pode sair de auditoria basica e ir para refinamentos restantes de UX fina e leitura de custos, como `D5`.
+- O foco agora ja pode sair de auditoria basica e ir para portabilidade e manutencao incremental, sem lacuna estrutural nessa frente.
 
 ### [B3] Healthcheck de provider mais completo e mais legivel
 
@@ -478,14 +478,24 @@
 
 ### [D5] Melhorar a pagina de custo e a leitura de pricing
 
-**Status:** PARCIAL
+**Status:** CONCLUIDO NO ESCOPO ATUAL
 
 **Ja existe:**
-- Estimativas e pagina de custos.
+- Card de custo reestruturado como painel executivo, sem placeholders fixos ou telemetria artificial.
+- Leitura explicita de confiabilidade entre `setup`, `cobertura parcial` e `estimativa confiavel`.
+- Cruzamento entre runtime ativo, fontes oficiais de pricing sincronizadas e telemetria documental observada antes de exibir leitura de custo.
+- Comunicacao clara sobre origem do numero, o que entra no calculo e o que fica de fora da estimativa.
+- Lista de saude das fontes de pricing com status, ultima sincronizacao, quantidade de precos e erro mais recente.
+- Drivers de custo observados por modelo, vindos da telemetria real de indexacao.
+- Cobertura automatizada em unit e `e2e`, alem de documentacao do fluxo no README do frontend e na pagina `/documentation`.
+- Contrato OpenAPI/Scalar do backend anotado para as rotas de pricing consumidas pelo frontend.
 
-**Falta:**
-- Refinamento visual.
-- Comunicacao melhor sobre origem, limite e confiabilidade das estimativas.
+**Por que importa:**
+- A tela deixou de sugerir um numero solto e passou a comunicar maturidade, cobertura e limite operacional da estimativa.
+- Isso reduz percepcao enganosa de custo e fortalece a honestidade tecnica do produto.
+
+**Observacao:**
+- O que sobra aqui vira manutencao incremental de copy, UX e evolucao futura do runtime de pricing, nao backlog estrutural.
 
 ### [D6] Melhorar a pagina de monitoramento documental
 
@@ -734,7 +744,7 @@ Estes itens ja existem ao menos em nivel funcional e nao devem voltar como "nao 
 
 ### Fase 1 - Consolidar qualidade percebida do produto
 
-- `D5` Refinar pagina de custo.
+- Nenhuma task aberta restante nesta fase.
 
 ### Fase 2 - Expandir portabilidade e simplificar manutencao
 
@@ -751,8 +761,8 @@ Estes itens ja existem ao menos em nivel funcional e nao devem voltar como "nao 
 Se a pergunta for "quantas tasks existem e quantas sao realmente urgentes":
 
 - Existem 32 tasks catalogadas.
-- 27 ja podem ser tratadas como concluidas no escopo atual.
-- Das 5 abertas, nenhuma permanece como alta necessidade estrutural agora.
+- 28 ja podem ser tratadas como concluidas no escopo atual.
+- Das 4 abertas, nenhuma permanece como alta necessidade estrutural agora.
 
 Se a pergunta for "todas sao ultra necessarias":
 
@@ -762,9 +772,9 @@ Se a pergunta for "todas sao ultra necessarias":
 
 Se a ideia for escolher o proximo passo mais util agora:
 
-- `D5` deixar a pagina de custo mais honesta e legivel.
-- `E1` implementar storages adicionais quando a fila curta de UX estiver fechada.
+- `E1` implementar storages adicionais para reduzir dependencia pratica do stack S3-compatible.
 - `E5` criar a CLI para importar indices em banco externo.
+- `F3` reduzir boilerplate e naming excessivo enquanto o backlog estrutural esta curto.
 
 Se a ideia for enxergar melhor o backlog:
 
