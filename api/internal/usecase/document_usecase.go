@@ -1237,12 +1237,22 @@ func buildIndexEvaluation(metadataPairs []models.MetadataPair, nodes []models.Do
 		}
 	}
 
+	coverageRatio := parseFloatMetric(pairMap["tree_coverage_ratio"])
+	if coverageRatio == 0 {
+		coverageRatio = estimateCoverageRatioFromNodes(nodes)
+	}
+
+	maxDepth := parseIntMetric(pairMap["tree_max_depth"], 0)
+	if maxDepth == 0 {
+		maxDepth = estimateTreeDepth(nodes)
+	}
+
 	evaluation := &domain.IndexEvaluationResult{
-		CoverageRatio:      parseFloatMetric(pairMap["tree_coverage_ratio"]),
+		CoverageRatio:      coverageRatio,
 		TotalNodes:         parseIntMetric(pairMap["tree_total_nodes"], len(nodes)),
 		LowConfidenceNodes: parseIntMetric(pairMap["tree_low_confidence_nodes"], 0),
 		OversizedNodes:     parseIntMetric(pairMap["tree_oversized_nodes"], 0),
-		MaxDepth:           parseIntMetric(pairMap["tree_max_depth"], 0),
+		MaxDepth:           maxDepth,
 	}
 	evaluation.RetrievalReady = evaluation.CoverageRatio >= 0.6 && evaluation.TotalNodes > 0
 	return evaluation
@@ -1482,6 +1492,61 @@ func parseTimeMetric(value string) *time.Time {
 		return nil
 	}
 	return &parsed
+}
+
+func estimateCoverageRatioFromNodes(nodes []models.DocumentOutlineNode) float64 {
+	if len(nodes) == 0 {
+		return 0
+	}
+
+	coveredPages := make(map[int]struct{}, len(nodes))
+	minPage := 0
+	maxPage := 0
+
+	for _, node := range nodes {
+		if node.StartPage == nil || node.EndPage == nil {
+			continue
+		}
+
+		start := *node.StartPage
+		end := *node.EndPage
+		if start <= 0 || end <= 0 {
+			continue
+		}
+		if end < start {
+			start, end = end, start
+		}
+		if minPage == 0 || start < minPage {
+			minPage = start
+		}
+		if end > maxPage {
+			maxPage = end
+		}
+		for page := start; page <= end; page++ {
+			coveredPages[page] = struct{}{}
+		}
+	}
+
+	if minPage == 0 || maxPage == 0 {
+		return 1
+	}
+
+	totalPages := maxPage - minPage + 1
+	if totalPages <= 0 {
+		return 0
+	}
+
+	return float64(len(coveredPages)) / float64(totalPages)
+}
+
+func estimateTreeDepth(nodes []models.DocumentOutlineNode) int {
+	maxDepth := 0
+	for _, node := range nodes {
+		if node.Level > maxDepth {
+			maxDepth = node.Level
+		}
+	}
+	return maxDepth
 }
 
 func metadataIntValue(metadata map[string]any, key string) int {

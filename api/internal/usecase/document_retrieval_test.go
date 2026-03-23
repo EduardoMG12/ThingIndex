@@ -106,6 +106,42 @@ func BenchmarkBuildIndexEvaluation(b *testing.B) {
 	}
 }
 
+func TestBuildIndexEvaluationFallsBackToNodeCoverageWhenTreeMetadataIsMissing(t *testing.T) {
+	t.Parallel()
+
+	pageOne := 1
+	pageTwo := 2
+	evaluation := buildIndexEvaluation(nil, []models.DocumentOutlineNode{
+		{
+			NodeID:    "root",
+			Title:     "Contrato",
+			Level:     1,
+			StartPage: &pageOne,
+			EndPage:   &pageTwo,
+		},
+		{
+			NodeID:    "payment",
+			Title:     "Payment Terms",
+			Level:     2,
+			StartPage: &pageOne,
+			EndPage:   &pageOne,
+		},
+	})
+
+	if evaluation == nil {
+		t.Fatal("expected evaluation result")
+	}
+	if evaluation.CoverageRatio != 1 {
+		t.Fatalf("expected fallback coverage ratio 1, got %f", evaluation.CoverageRatio)
+	}
+	if evaluation.MaxDepth != 2 {
+		t.Fatalf("expected fallback max depth 2, got %d", evaluation.MaxDepth)
+	}
+	if !evaluation.RetrievalReady {
+		t.Fatalf("expected retrieval ready evaluation, got %#v", evaluation)
+	}
+}
+
 func TestBuildIndexMonitoringBuildsTelemetrySnapshot(t *testing.T) {
 	t.Parallel()
 
