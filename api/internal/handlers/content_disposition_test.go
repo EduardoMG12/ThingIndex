@@ -47,3 +47,25 @@ func TestBuildSafeContentDispositionNormalizesUnexpectedDisposition(t *testing.T
 		t.Fatalf("expected path traversal markers to be removed, got %q", got)
 	}
 }
+
+func TestBuildDocumentIndexExportFilenameStripsOriginalExtension(t *testing.T) {
+	t.Parallel()
+
+	got := buildDocumentIndexExportFilename("Contrato final.pdf")
+	want := "Contrato final.thingindex-index.json"
+
+	if got != want {
+		t.Fatalf("expected export filename %q, got %q", want, got)
+	}
+}
+
+func TestBuildDocumentIndexExportFilenameFallsBackWhenSanitizedTitleIsEmpty(t *testing.T) {
+	t.Parallel()
+
+	got := buildDocumentIndexExportFilename("..\r\n")
+	want := "documento.thingindex-index.json"
+
+	if got != want {
+		t.Fatalf("expected fallback export filename %q, got %q", want, got)
+	}
+}

@@ -151,6 +151,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 			documents.POST("/:id/retry", docHandler.RetryIndexing)
 			documents.DELETE("/:id", docHandler.DeleteDocument)
 			documents.GET("/monitoring/summary", docHandler.GetDocumentMonitoringSummary)
+			documents.GET("/:id/index/export", docHandler.ExportDocumentIndex)
 			documents.GET("/:id/index", docHandler.GetDocumentIndex)
 			documents.GET("/:id", docHandler.GetDocument)
 			documents.GET("/", docHandler.ListDocuments)

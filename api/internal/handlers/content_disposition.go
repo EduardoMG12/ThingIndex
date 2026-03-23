@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"mime"
+	"path"
 	"strings"
 )
 
@@ -21,6 +22,20 @@ func buildSafeContentDisposition(disposition, filename string) string {
 	}
 
 	return mediaType
+}
+
+func buildDocumentIndexExportFilename(title string) string {
+	safeTitle := sanitizeContentDispositionFilename(title)
+	ext := path.Ext(safeTitle)
+	if ext != "" {
+		safeTitle = strings.TrimSuffix(safeTitle, ext)
+		safeTitle = strings.TrimSpace(safeTitle)
+	}
+	if safeTitle == "" {
+		safeTitle = fallbackDownloadFilename
+	}
+
+	return safeTitle + ".thingindex-index.json"
 }
 
 func sanitizeContentDispositionFilename(value string) string {

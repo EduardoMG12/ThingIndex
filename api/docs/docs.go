@@ -814,6 +814,140 @@ const docTemplate = `{
                 }
             }
         },
+        "/documents/{id}/index": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Return the persisted structural index for a document owned by the authenticated user, including pages, paragraphs, tables, metadata, chunks, outline, evaluation, and monitoring.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Get document index",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Document ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Optional retrieval query evaluated over the persisted outline and page summaries",
+                        "name": "q",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.DocumentIndexResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/documents/{id}/index/export": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Download the versioned ` + "`" + `document_index_export` + "`" + ` JSON artifact for a document owned by the authenticated user. This artifact is consumed by the index import CLI.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Export document index",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Document ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/indexio.DocumentIndexExportEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/meta/indexing-benchmark": {
             "get": {
                 "description": "Returns the controlled corpus, exact-match benchmark metrics, and interpretation guidance for the current relational indexing baseline.",
@@ -1541,6 +1675,29 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.CategoryResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "dto.ChatConversationDetailResponse": {
             "type": "object",
             "properties": {
@@ -1667,6 +1824,39 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.CollectionResponse": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "$ref": "#/definitions/dto.CategoryResponse"
+                },
+                "category_id": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "document_count": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "dto.CreateChatConversationRequest": {
             "type": "object",
             "required": [
@@ -1780,6 +1970,98 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.DocumentChunkResponse": {
+            "type": "object",
+            "properties": {
+                "chunk_type": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "document_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "sequence_order": {
+                    "type": "integer"
+                },
+                "source_paragraph_end": {
+                    "type": "integer"
+                },
+                "source_paragraph_start": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "token_estimate": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.DocumentIndexResponse": {
+            "type": "object",
+            "properties": {
+                "chunks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.DocumentChunkResponse"
+                    }
+                },
+                "document": {
+                    "$ref": "#/definitions/dto.DocumentResponse"
+                },
+                "document_pages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.DocumentPageResponse"
+                    }
+                },
+                "document_summary": {
+                    "type": "string"
+                },
+                "index_evaluation": {
+                    "$ref": "#/definitions/dto.IndexEvaluationResponse"
+                },
+                "metadata_pairs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.MetadataPairResponse"
+                    }
+                },
+                "monitoring": {
+                    "$ref": "#/definitions/dto.IndexMonitoringResponse"
+                },
+                "outline_nodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.OutlineNodeResponse"
+                    }
+                },
+                "paragraph_nodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ParagraphNodeResponse"
+                    }
+                },
+                "table_sections": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.TableSectionResponse"
+                    }
+                },
+                "tree_retrieval": {
+                    "$ref": "#/definitions/dto.TreeRetrievalResponse"
+                }
+            }
+        },
         "dto.DocumentMonitoringModelAggregateResponse": {
             "type": "object",
             "properties": {
@@ -1871,6 +2153,139 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.DocumentPageResponse": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "document_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "page_number": {
+                    "type": "integer"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "token_estimate": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.DocumentProcessingAttemptResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "detail": {
+                    "type": "string"
+                },
+                "disposition": {
+                    "type": "string"
+                },
+                "error_message": {
+                    "type": "string"
+                },
+                "failure_kind": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "max_retry_attempts": {
+                    "type": "integer"
+                },
+                "next_retry_attempt": {
+                    "type": "integer"
+                },
+                "retry_count": {
+                    "type": "integer"
+                },
+                "retry_delay_seconds": {
+                    "type": "integer"
+                },
+                "stage": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.DocumentResponse": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "$ref": "#/definitions/dto.CategoryResponse"
+                },
+                "category_id": {
+                    "type": "integer"
+                },
+                "collection": {
+                    "$ref": "#/definitions/dto.CollectionResponse"
+                },
+                "collection_id": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "file_path": {
+                    "type": "string"
+                },
+                "file_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "index_started_at": {
+                    "type": "string"
+                },
+                "indexed_at": {
+                    "type": "string"
+                },
+                "last_processing_error": {
+                    "type": "string"
+                },
+                "mime_type": {
+                    "type": "string"
+                },
+                "processing_attempts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.DocumentProcessingAttemptResponse"
+                    }
+                },
+                "processing_stage": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "status_detail": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "dto.ForgotPasswordRequest": {
             "type": "object",
             "required": [
@@ -1879,6 +2294,76 @@ const docTemplate = `{
             "properties": {
                 "email": {
                     "type": "string"
+                }
+            }
+        },
+        "dto.IndexEvaluationResponse": {
+            "type": "object",
+            "properties": {
+                "coverage_ratio": {
+                    "type": "number"
+                },
+                "low_confidence_nodes": {
+                    "type": "integer"
+                },
+                "max_depth": {
+                    "type": "integer"
+                },
+                "oversized_nodes": {
+                    "type": "integer"
+                },
+                "retrieval_ready": {
+                    "type": "boolean"
+                },
+                "total_nodes": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.IndexMonitoringResponse": {
+            "type": "object",
+            "properties": {
+                "chunk_strategy_version": {
+                    "type": "string"
+                },
+                "completed_at": {
+                    "type": "string"
+                },
+                "duration_ms": {
+                    "type": "integer"
+                },
+                "enrichment_status": {
+                    "type": "string"
+                },
+                "estimated_quality_score": {
+                    "type": "number"
+                },
+                "llm": {
+                    "$ref": "#/definitions/dto.LLMMonitoringResponse"
+                },
+                "pipeline_version": {
+                    "type": "string"
+                },
+                "prompt_profile_version": {
+                    "type": "string"
+                },
+                "stage": {
+                    "type": "string"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "status_detail": {
+                    "type": "string"
+                },
+                "tree_builder": {
+                    "type": "string"
+                },
+                "tree_verification_passed": {
+                    "type": "boolean"
                 }
             }
         },
@@ -2082,6 +2567,41 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.LLMMonitoringResponse": {
+            "type": "object",
+            "properties": {
+                "estimated_input_tokens": {
+                    "type": "integer"
+                },
+                "estimated_output_tokens": {
+                    "type": "integer"
+                },
+                "estimated_total_tokens": {
+                    "type": "integer"
+                },
+                "input_cost_usd": {
+                    "type": "number"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "output_cost_usd": {
+                    "type": "number"
+                },
+                "pricing_available": {
+                    "type": "boolean"
+                },
+                "provider_type": {
+                    "type": "string"
+                },
+                "request_count": {
+                    "type": "integer"
+                },
+                "total_cost_usd": {
+                    "type": "number"
+                }
+            }
+        },
         "dto.LoginRequest": {
             "type": "object",
             "required": [
@@ -2095,6 +2615,26 @@ const docTemplate = `{
                 "password": {
                     "type": "string",
                     "minLength": 6
+                }
+            }
+        },
+        "dto.MetadataPairResponse": {
+            "type": "object",
+            "properties": {
+                "document_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "sequence_order": {
+                    "type": "integer"
+                },
+                "value": {
+                    "type": "string"
                 }
             }
         },
@@ -2189,6 +2729,75 @@ const docTemplate = `{
                 },
                 "unit": {
                     "type": "string"
+                }
+            }
+        },
+        "dto.OutlineNodeResponse": {
+            "type": "object",
+            "properties": {
+                "document_id": {
+                    "type": "integer"
+                },
+                "end_page": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "level": {
+                    "type": "integer"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "node_id": {
+                    "type": "string"
+                },
+                "node_path": {
+                    "type": "string"
+                },
+                "parent_id": {
+                    "type": "integer"
+                },
+                "sequence_order": {
+                    "type": "integer"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "start_page": {
+                    "type": "integer"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ParagraphNodeResponse": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "document_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "page_number": {
+                    "type": "integer"
+                },
+                "sequence_order": {
+                    "type": "integer"
                 }
             }
         },
@@ -2660,6 +3269,140 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.TableSectionResponse": {
+            "type": "object",
+            "properties": {
+                "document_id": {
+                    "type": "integer"
+                },
+                "headers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "rows": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "sequence_order": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.TreeRetrievalNodeHitResponse": {
+            "type": "object",
+            "properties": {
+                "end_page": {
+                    "type": "integer"
+                },
+                "node_id": {
+                    "type": "string"
+                },
+                "score": {
+                    "type": "integer"
+                },
+                "sequence_order": {
+                    "type": "integer"
+                },
+                "start_page": {
+                    "type": "integer"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.TreeRetrievalPageHitResponse": {
+            "type": "object",
+            "properties": {
+                "page_number": {
+                    "type": "integer"
+                },
+                "score": {
+                    "type": "integer"
+                },
+                "snippet": {
+                    "type": "string"
+                },
+                "summary": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.TreeRetrievalResponse": {
+            "type": "object",
+            "properties": {
+                "node_hits": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.TreeRetrievalNodeHitResponse"
+                    }
+                },
+                "page_hits": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.TreeRetrievalPageHitResponse"
+                    }
+                },
+                "query": {
+                    "type": "string"
+                },
+                "strategy": {
+                    "type": "string"
+                },
+                "traversal_steps": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.TreeTraversalStepResponse"
+                    }
+                },
+                "used_tree": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "dto.TreeTraversalStepResponse": {
+            "type": "object",
+            "properties": {
+                "end_page": {
+                    "type": "integer"
+                },
+                "level": {
+                    "type": "integer"
+                },
+                "node_id": {
+                    "type": "string"
+                },
+                "score": {
+                    "type": "integer"
+                },
+                "start_page": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.UpdateChatConversationRequest": {
             "type": "object",
             "required": [
@@ -2669,6 +3412,52 @@ const docTemplate = `{
                 "title": {
                     "type": "string",
                     "maxLength": 255
+                }
+            }
+        },
+        "indexio.DocumentIndexExportEnvelope": {
+            "type": "object",
+            "properties": {
+                "document_index": {
+                    "$ref": "#/definitions/dto.DocumentIndexResponse"
+                },
+                "exported_at": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "source": {
+                    "$ref": "#/definitions/indexio.DocumentIndexExportSource"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "indexio.DocumentIndexExportSource": {
+            "type": "object",
+            "properties": {
+                "document_id": {
+                    "type": "integer"
+                },
+                "document_title": {
+                    "type": "string"
+                },
+                "export_route": {
+                    "type": "string"
+                },
+                "mime_type": {
+                    "type": "string"
+                },
+                "origin": {
+                    "type": "string"
+                },
+                "product": {
+                    "type": "string"
+                },
+                "source_key": {
+                    "type": "string"
                 }
             }
         },

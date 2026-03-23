@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"thing-index/internal/domain"
 	"thing-index/internal/dto"
+	"thing-index/internal/indexio"
 	"thing-index/internal/models"
 	"thing-index/internal/pkg/i18n"
 	"thing-index/internal/pkg/response"
@@ -483,6 +485,19 @@ func (h *DocumentHandler) GetDocumentContent(c *gin.Context) {
 	}
 }
 
+// @Summary      Get document index
+// @Description  Return the persisted structural index for a document owned by the authenticated user, including pages, paragraphs, tables, metadata, chunks, outline, evaluation, and monitoring.
+// @Tags         documents
+// @Produce      json
+// @Param        id path int true "Document ID"
+// @Param        q query string false "Optional retrieval query evaluated over the persisted outline and page summaries"
+// @Success      200 {object} response.Response{data=dto.DocumentIndexResponse}
+// @Failure      400 {object} response.Response
+// @Failure      401 {object} response.Response
+// @Failure      404 {object} response.Response
+// @Failure      500 {object} response.Response
+// @Security     BearerAuth
+// @Router       /documents/{id}/index [get]
 func (h *DocumentHandler) GetDocumentIndex(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
@@ -506,6 +521,54 @@ func (h *DocumentHandler) GetDocumentIndex(c *gin.Context) {
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_document_get"), dto.ToDocumentIndexResponse(index))
 }
 
+// @Summary      Export document index
+// @Description  Download the versioned `document_index_export` JSON artifact for a document owned by the authenticated user. This artifact is consumed by the index import CLI.
+// @Tags         documents
+// @Produce      json
+// @Param        id path int true "Document ID"
+// @Success      200 {object} indexio.DocumentIndexExportEnvelope
+// @Failure      400 {object} response.Response
+// @Failure      401 {object} response.Response
+// @Failure      404 {object} response.Response
+// @Failure      500 {object} response.Response
+// @Security     BearerAuth
+// @Router       /documents/{id}/index/export [get]
+func (h *DocumentHandler) ExportDocumentIndex(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	documentID, ok := parseUintParam(c, "id", i18n.T(lang, "error.invalid_document_id"))
+	if !ok {
+		return
+	}
+
+	index, err := h.useCase.GetDocumentIndex(c.Request.Context(), userID, documentID, "")
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrDocumentNotFound):
+			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
+		default:
+			h.respondInternalError(c, lang)
+		}
+		return
+	}
+
+	indexResponse := dto.ToDocumentIndexResponse(index)
+	exported := indexio.NewDocumentIndexExport(resolveDocumentIndexExportOrigin(c), indexResponse, time.Now().UTC())
+	if exported == nil {
+		h.respondInternalError(c, lang)
+		return
+	}
+
+	filename := buildDocumentIndexExportFilename(indexResponse.Document.Title)
+	c.Header("Content-Type", "application/json; charset=utf-8")
+	c.Header("Content-Disposition", buildSafeContentDisposition("attachment", filename))
+	c.Header("Cache-Control", "no-store")
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Header("Referrer-Policy", "no-referrer")
+	c.JSON(http.StatusOK, exported)
+}
+
 // @Summary      Get aggregated document monitoring
 // @Description  Return the operational monitoring summary for the authenticated user, including queue counters, failure buckets and LLM telemetry aggregates.
 // @Tags         documents
@@ -526,6 +589,29 @@ func (h *DocumentHandler) GetDocumentMonitoringSummary(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_documents_list"), dto.ToDocumentMonitoringSummaryResponse(summary))
+}
+
+func resolveDocumentIndexExportOrigin(c *gin.Context) string {
+	for _, candidate := range []string{
+		c.GetHeader(indexio.DocumentIndexExportOriginHeader),
+		c.GetHeader("Origin"),
+	} {
+		if normalized := indexio.NormalizeExportOrigin(candidate); normalized != "" {
+			return normalized
+		}
+	}
+
+	host := strings.TrimSpace(c.Request.Host)
+	if host == "" {
+		return ""
+	}
+
+	scheme := "http"
+	if c.Request.TLS != nil || strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Forwarded-Proto")), "https") {
+		scheme = "https"
+	}
+
+	return indexio.NormalizeExportOrigin(scheme + "://" + host)
 }
 
 func (h *DocumentHandler) ListDocumentsByCategory(c *gin.Context) {
