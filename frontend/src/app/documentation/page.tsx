@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { OpenSourceOnboardingSection } from "@/components/documentation/OpenSourceOnboardingSection";
+import { IndexingBenchmarkSection } from "@/components/documentation/IndexingBenchmarkSection";
 import { ProductFocusSection } from "@/components/documentation/ProductFocusSection";
 import { ProviderSupportSection } from "@/components/documentation/ProviderSupportSection";
 import AppShell from "@/components/layout/AppShell";
@@ -241,6 +242,10 @@ export default function DocumentationPage() {
                             busca os documentos relacionados, agrega estruturas tipadas por lote e devolve uma visão consolidada
                             sem depender de similaridade vetorial para a navegação principal.
                         </p>
+                    </Section>
+
+                    <Section icon={Target} title="Benchmark de Indexação" id="indexing-benchmark" delay={0.38}>
+                        <IndexingBenchmarkSection />
                     </Section>
 
                     <Section icon={ShieldCheck} title="Segurança e Governança" id="security" delay={0.4}>

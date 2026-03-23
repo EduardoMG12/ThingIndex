@@ -71,6 +71,7 @@ export const messages: LocaleMessages = {
                 models: "Nao foi possivel carregar os modelos do provider.",
             },
             runtimeProfile: "Nao foi possivel carregar o perfil publico do runtime.",
+            indexingBenchmark: "Nao foi possivel carregar o benchmark publico de indexacao.",
             audit: {
                 documents: "Nao foi possivel carregar a auditoria documental.",
                 providers: "Nao foi possivel carregar a auditoria de providers.",
@@ -1034,6 +1035,7 @@ export const messages: LocaleMessages = {
                 models: "Could not load provider models.",
             },
             runtimeProfile: "Could not load the public runtime profile.",
+            indexingBenchmark: "Could not load the public indexing benchmark.",
             audit: {
                 documents: "Could not load the document audit feed.",
                 providers: "Could not load the provider audit feed.",
@@ -1997,6 +1999,7 @@ export const messages: LocaleMessages = {
                 models: "No se pudieron cargar los modelos del provider.",
             },
             runtimeProfile: "No se pudo cargar el perfil público del runtime.",
+            indexingBenchmark: "No se pudo cargar el benchmark público de indexación.",
             audit: {
                 documents: "No se pudo cargar la auditoría documental.",
                 providers: "No se pudo cargar la auditoría de providers.",

@@ -6,6 +6,7 @@ export const TOC = [
   { id: "processing", label: "Processamento Atual" },
   { id: "data-model", label: "Modelo de Dados" },
   { id: "retrieval", label: "Recuperação de Contexto" },
+  { id: "indexing-benchmark", label: "Benchmark de Indexação" },
   { id: "security", label: "Segurança e Governança" },
   { id: "deployment", label: "Deploy e Operação" },
   { id: "providers", label: "Providers e Portabilidade" },
