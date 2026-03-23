@@ -159,6 +159,12 @@ pnpm run test:e2e:install
 pnpm run test:e2e
 ```
 
+Fluxo dedicado do chat:
+
+```bash
+pnpm run test:e2e -- tests/e2e/chat-workspace.spec.ts
+```
+
 Somente os cenarios marcados como smoke:
 
 ```bash
@@ -171,6 +177,8 @@ Storybook:
 pnpm run build:storybook
 pnpm run test:storybook:e2e
 ```
+
+O `devcontainer` versionado na raiz ja expõe as portas `3000` e `8000` e inclui a extensao do Playwright, entao os cenarios do workspace de chat podem ser executados nele sem ajuste extra.
 
 ## Storybook
 
