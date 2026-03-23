@@ -387,6 +387,97 @@ definitions:
     - email
     - password
     type: object
+  dto.ModelPriceHistoryResponse:
+    properties:
+      cached_input_cost_per_million_usd:
+        type: number
+      captured_at:
+        type: string
+      context_cost_per_million_usd:
+        type: number
+      currency:
+        type: string
+      flat_price_usd:
+        type: number
+      id:
+        type: integer
+      input_cost_per_million_usd:
+        type: number
+      model_key:
+        type: string
+      model_name:
+        type: string
+      output_cost_per_million_usd:
+        type: number
+      price_notes:
+        type: string
+      pricing_source_id:
+        type: integer
+      provider_type:
+        type: string
+      unit:
+        type: string
+    type: object
+  dto.ModelPriceResponse:
+    properties:
+      cached_input_cost_per_million_usd:
+        type: number
+      context_cost_per_million_usd:
+        type: number
+      currency:
+        type: string
+      flat_price_usd:
+        type: number
+      id:
+        type: integer
+      input_cost_per_million_usd:
+        type: number
+      last_synced_at:
+        type: string
+      model_key:
+        type: string
+      model_name:
+        type: string
+      output_cost_per_million_usd:
+        type: number
+      price_notes:
+        type: string
+      pricing_source_id:
+        type: integer
+      provider_type:
+        type: string
+      unit:
+        type: string
+    type: object
+  dto.PricingSourceResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      is_enabled:
+        type: boolean
+      last_price_count:
+        type: integer
+      last_sync_duration_ms:
+        type: integer
+      last_sync_error:
+        type: string
+      last_sync_status:
+        type: string
+      last_synced_at:
+        type: string
+      name:
+        type: string
+      provider_type:
+        type: string
+      source_url:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
   dto.ProviderAuditEventResponse:
     properties:
       action:
@@ -652,6 +743,20 @@ definitions:
         type: array
       value_proposition:
         type: string
+    type: object
+  dto.SavePricingSourceRequest:
+    properties:
+      is_enabled:
+        type: boolean
+      name:
+        type: string
+      provider_type:
+        type: string
+      source_url:
+        type: string
+    required:
+    - provider_type
+    - source_url
     type: object
   dto.UpdateChatConversationRequest:
     properties:
@@ -1258,6 +1363,146 @@ paths:
       summary: List provider support matrix
       tags:
       - providers
+  /user/prices:
+    get:
+      description: Return the latest synced pricing snapshot for the authenticated
+        user across all configured pricing sources.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.ModelPriceResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: List current model prices
+      tags:
+      - pricing
+  /user/prices/history:
+    get:
+      description: Return the recent price history captured from synced pricing sources
+        for the authenticated user.
+      parameters:
+      - description: Maximum number of history rows to return
+        in: query
+        minimum: 1
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.ModelPriceHistoryResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: List model price history
+      tags:
+      - pricing
+  /user/pricing-sources:
+    get:
+      description: Return the saved pricing source URLs and the latest sync status
+        for the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.PricingSourceResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: List pricing sources
+      tags:
+      - pricing
+    post:
+      consumes:
+      - application/json
+      description: Register or update an official pricing source URL so the pricing
+        worker can sync model prices for the authenticated user.
+      parameters:
+      - description: Pricing source payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SavePricingSourceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.PricingSourceResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Save pricing source
+      tags:
+      - pricing
   /user/providers/audit:
     get:
       description: Query provider audit events with operational filters, summary and

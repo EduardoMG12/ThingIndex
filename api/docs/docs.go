@@ -939,6 +939,238 @@ const docTemplate = `{
                 }
             }
         },
+        "/user/prices": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Return the latest synced pricing snapshot for the authenticated user across all configured pricing sources.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pricing"
+                ],
+                "summary": "List current model prices",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.ModelPriceResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/prices/history": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Return the recent price history captured from synced pricing sources for the authenticated user.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pricing"
+                ],
+                "summary": "List model price history",
+                "parameters": [
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Maximum number of history rows to return",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.ModelPriceHistoryResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/pricing-sources": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Return the saved pricing source URLs and the latest sync status for the authenticated user.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pricing"
+                ],
+                "summary": "List pricing sources",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.PricingSourceResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Register or update an official pricing source URL so the pricing worker can sync model prices for the authenticated user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "pricing"
+                ],
+                "summary": "Save pricing source",
+                "parameters": [
+                    {
+                        "description": "Pricing source payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SavePricingSourceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.PricingSourceResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/user/providers/audit": {
             "get": {
                 "security": [
@@ -1866,6 +2098,144 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.ModelPriceHistoryResponse": {
+            "type": "object",
+            "properties": {
+                "cached_input_cost_per_million_usd": {
+                    "type": "number"
+                },
+                "captured_at": {
+                    "type": "string"
+                },
+                "context_cost_per_million_usd": {
+                    "type": "number"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "flat_price_usd": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "input_cost_per_million_usd": {
+                    "type": "number"
+                },
+                "model_key": {
+                    "type": "string"
+                },
+                "model_name": {
+                    "type": "string"
+                },
+                "output_cost_per_million_usd": {
+                    "type": "number"
+                },
+                "price_notes": {
+                    "type": "string"
+                },
+                "pricing_source_id": {
+                    "type": "integer"
+                },
+                "provider_type": {
+                    "type": "string"
+                },
+                "unit": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ModelPriceResponse": {
+            "type": "object",
+            "properties": {
+                "cached_input_cost_per_million_usd": {
+                    "type": "number"
+                },
+                "context_cost_per_million_usd": {
+                    "type": "number"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "flat_price_usd": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "input_cost_per_million_usd": {
+                    "type": "number"
+                },
+                "last_synced_at": {
+                    "type": "string"
+                },
+                "model_key": {
+                    "type": "string"
+                },
+                "model_name": {
+                    "type": "string"
+                },
+                "output_cost_per_million_usd": {
+                    "type": "number"
+                },
+                "price_notes": {
+                    "type": "string"
+                },
+                "pricing_source_id": {
+                    "type": "integer"
+                },
+                "provider_type": {
+                    "type": "string"
+                },
+                "unit": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.PricingSourceResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_enabled": {
+                    "type": "boolean"
+                },
+                "last_price_count": {
+                    "type": "integer"
+                },
+                "last_sync_duration_ms": {
+                    "type": "integer"
+                },
+                "last_sync_error": {
+                    "type": "string"
+                },
+                "last_sync_status": {
+                    "type": "string"
+                },
+                "last_synced_at": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "provider_type": {
+                    "type": "string"
+                },
+                "source_url": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "dto.ProviderAuditEventResponse": {
             "type": "object",
             "properties": {
@@ -2265,6 +2635,27 @@ const docTemplate = `{
                     }
                 },
                 "value_proposition": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.SavePricingSourceRequest": {
+            "type": "object",
+            "required": [
+                "provider_type",
+                "source_url"
+            ],
+            "properties": {
+                "is_enabled": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "provider_type": {
+                    "type": "string"
+                },
+                "source_url": {
                     "type": "string"
                 }
             }
