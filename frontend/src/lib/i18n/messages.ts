@@ -723,6 +723,43 @@ export const messages: LocaleMessages = {
                 eyebrow: "Observabilidade operacional",
                 title: "Monitoramento acionavel",
                 description: "Foque documentos travados, falhas recentes e estados anormais antes que eles virem backlog invisivel.",
+                briefing: {
+                    title: "Leitura executiva",
+                    description: "Converta a telemetria atual em um proximo passo operacional antes de abrir a biblioteca inteira.",
+                    activeHeadline: "{count} documento(s) exigem acao nesta janela operacional.",
+                    nominalHeadline: "O fluxo documental atual esta dentro das faixas esperadas.",
+                    focusLabel: "Foco principal",
+                    openPriority: "Abrir documento prioritario",
+                },
+                actionPlan: {
+                    title: "Proximas acoes operacionais",
+                    description: "Cada trilha abaixo transforma os estados anormais em um recorte pronto para triagem.",
+                    focus: "Focar este recorte",
+                    focusTarget: "Focar: {target}",
+                    documentsLabel: "Documentos em foco",
+                    items: {
+                        manual: {
+                            title: "Resolver bloqueios manuais",
+                            description: "{count} documento(s) ja nao devem se recuperar sozinhos e pedem decisao operacional.",
+                        },
+                        stalled: {
+                            title: "Destravar o fluxo",
+                            description: "{count} documento(s) estao presos em fila ou processamento acima do limite esperado.",
+                        },
+                        recentFailures: {
+                            title: "Revisar falhas recentes",
+                            description: "{count} evento(s) anormais foram vistos na janela operacional mais recente.",
+                        },
+                        retrying: {
+                            title: "Acompanhar retries automaticos",
+                            description: "{count} documento(s) estao se recuperando automaticamente e devem ser observados antes de nova acao manual.",
+                        },
+                        nominal: {
+                            title: "Manter o fluxo nominal",
+                            description: "{count} documento(s) estao dentro do fluxo esperado e sem acao imediata.",
+                        },
+                    },
+                },
                 health: {
                     nominal: "Fluxo nominal",
                     attention: "Atencao operacional",
@@ -748,6 +785,7 @@ export const messages: LocaleMessages = {
                 sliceTitle: "Slice operacional",
                 searchLabel: "Busca e recorte operacional",
                 searchPlaceholder: "Titulo, collection, categoria, MIME, status ou etapa",
+                sliceClear: "Limpar recorte operacional",
                 filters: {
                     all: "Tudo",
                     attention: "Com atencao",
@@ -756,6 +794,22 @@ export const messages: LocaleMessages = {
                     retrying: "Retry automatico",
                     recentFailures: "Falhas recentes",
                     nominal: "Sem acao necessaria",
+                },
+                anomalies: {
+                    title: "Mapa de anomalias",
+                    description: "Agrupe os estados anormais por tipo para enxergar concentracao, idade e resposta esperada.",
+                    nextAction: "Proxima acao",
+                    documentsLabel: "Exemplos afetados",
+                    oldestAge: "Item mais antigo ha {count} min",
+                    empty: "Nenhuma anomalia detectada. O pipeline atual nao mostra clusters operacionais fora do normal.",
+                    kinds: {
+                        orphaned: "Originais ausentes",
+                        retrying: "Retries automaticos",
+                        dlq: "Bloqueios em DLQ",
+                        failed: "Falhas de processamento",
+                        stalledProcessing: "Processamento travado",
+                        stalledQueue: "Fila sem progresso",
+                    },
                 },
                 watchlistTitle: "Watchlist prioritaria",
                 watchlistDescription: "Os itens abaixo aparecem ordenados por severidade operacional e ultima atividade.",
@@ -1716,6 +1770,43 @@ export const messages: LocaleMessages = {
                 eyebrow: "Operational observability",
                 title: "Actionable monitoring",
                 description: "Focus stalled documents, recent failures, and abnormal states before they become invisible backlog.",
+                briefing: {
+                    title: "Executive brief",
+                    description: "Turn the current telemetry into the next operational move before opening the entire library.",
+                    activeHeadline: "{count} document(s) require action in the current operational window.",
+                    nominalHeadline: "The current document flow is operating within the expected thresholds.",
+                    focusLabel: "Primary focus",
+                    openPriority: "Open priority document",
+                },
+                actionPlan: {
+                    title: "Next operational actions",
+                    description: "Each lane below turns abnormal states into a ready-to-triage slice.",
+                    focus: "Focus this slice",
+                    focusTarget: "Focus: {target}",
+                    documentsLabel: "Documents in focus",
+                    items: {
+                        manual: {
+                            title: "Resolve manual blockers",
+                            description: "{count} document(s) are no longer expected to self-recover and need an operational decision.",
+                        },
+                        stalled: {
+                            title: "Unblock the flow",
+                            description: "{count} document(s) are stuck in queue or processing beyond the expected threshold.",
+                        },
+                        recentFailures: {
+                            title: "Review recent failures",
+                            description: "{count} abnormal event(s) appeared in the latest operational window.",
+                        },
+                        retrying: {
+                            title: "Track automatic retries",
+                            description: "{count} document(s) are recovering automatically and should be watched before another manual action.",
+                        },
+                        nominal: {
+                            title: "Keep the nominal flow",
+                            description: "{count} document(s) are inside the expected flow with no immediate action required.",
+                        },
+                    },
+                },
                 health: {
                     nominal: "Nominal flow",
                     attention: "Operational attention",
@@ -1741,6 +1832,7 @@ export const messages: LocaleMessages = {
                 sliceTitle: "Operational search and slice",
                 searchLabel: "Operational search and slice",
                 searchPlaceholder: "Title, collection, category, MIME, status, or stage",
+                sliceClear: "Clear operational slice",
                 filters: {
                     all: "Everything",
                     attention: "Needs attention",
@@ -1749,6 +1841,22 @@ export const messages: LocaleMessages = {
                     retrying: "Automatic retry",
                     recentFailures: "Recent failures",
                     nominal: "No action needed",
+                },
+                anomalies: {
+                    title: "Anomaly map",
+                    description: "Group abnormal states by type so the operator can see concentration, age, and expected response.",
+                    nextAction: "Next action",
+                    documentsLabel: "Affected examples",
+                    oldestAge: "Oldest item for {count} min",
+                    empty: "No anomalies detected. The current pipeline does not expose abnormal operational clusters.",
+                    kinds: {
+                        orphaned: "Missing originals",
+                        retrying: "Automatic retries",
+                        dlq: "DLQ blockers",
+                        failed: "Processing failures",
+                        stalledProcessing: "Stalled processing",
+                        stalledQueue: "Queued without progress",
+                    },
                 },
                 watchlistTitle: "Priority watchlist",
                 watchlistDescription: "The items below are ordered by operational severity and latest activity.",
@@ -2709,6 +2817,43 @@ export const messages: LocaleMessages = {
                 eyebrow: "Observabilidad operativa",
                 title: "Monitoreo accionable",
                 description: "Enfoca documentos trabados, fallas recientes y estados anómalos antes de que se conviertan en backlog invisible.",
+                briefing: {
+                    title: "Lectura ejecutiva",
+                    description: "Convierte la telemetría actual en el próximo movimiento operativo antes de abrir toda la biblioteca.",
+                    activeHeadline: "{count} documento(s) requieren acción en esta ventana operativa.",
+                    nominalHeadline: "El flujo documental actual está dentro de los umbrales esperados.",
+                    focusLabel: "Foco principal",
+                    openPriority: "Abrir documento prioritario",
+                },
+                actionPlan: {
+                    title: "Próximas acciones operativas",
+                    description: "Cada carril abajo convierte estados anómalos en un slice listo para triage.",
+                    focus: "Enfocar este slice",
+                    focusTarget: "Enfocar: {target}",
+                    documentsLabel: "Documentos en foco",
+                    items: {
+                        manual: {
+                            title: "Resolver bloqueos manuales",
+                            description: "{count} documento(s) ya no deberían recuperarse solos y necesitan una decisión operativa.",
+                        },
+                        stalled: {
+                            title: "Destrabar el flujo",
+                            description: "{count} documento(s) están atascados en cola o procesamiento por encima del umbral esperado.",
+                        },
+                        recentFailures: {
+                            title: "Revisar fallas recientes",
+                            description: "{count} evento(s) anómalos aparecieron en la ventana operativa más reciente.",
+                        },
+                        retrying: {
+                            title: "Seguir retries automáticos",
+                            description: "{count} documento(s) se están recuperando automáticamente y deben observarse antes de otra acción manual.",
+                        },
+                        nominal: {
+                            title: "Mantener el flujo nominal",
+                            description: "{count} documento(s) están dentro del flujo esperado y sin acción inmediata.",
+                        },
+                    },
+                },
                 health: {
                     nominal: "Flujo nominal",
                     attention: "Atención operativa",
@@ -2734,6 +2879,7 @@ export const messages: LocaleMessages = {
                 sliceTitle: "Slice operativo",
                 searchLabel: "Búsqueda y slice operativo",
                 searchPlaceholder: "Título, collection, categoría, MIME, estado o etapa",
+                sliceClear: "Limpiar slice operativo",
                 filters: {
                     all: "Todo",
                     attention: "Con atención",
@@ -2742,6 +2888,22 @@ export const messages: LocaleMessages = {
                     retrying: "Retry automático",
                     recentFailures: "Fallas recientes",
                     nominal: "Sin acción necesaria",
+                },
+                anomalies: {
+                    title: "Mapa de anomalías",
+                    description: "Agrupa los estados anómalos por tipo para ver concentración, antigüedad y respuesta esperada.",
+                    nextAction: "Próxima acción",
+                    documentsLabel: "Ejemplos afectados",
+                    oldestAge: "Ítem más antiguo hace {count} min",
+                    empty: "No se detectaron anomalías. El pipeline actual no muestra clusters operativos fuera de lo normal.",
+                    kinds: {
+                        orphaned: "Originales ausentes",
+                        retrying: "Retries automáticos",
+                        dlq: "Bloqueos en DLQ",
+                        failed: "Fallas de procesamiento",
+                        stalledProcessing: "Procesamiento trabado",
+                        stalledQueue: "Cola sin progreso",
+                    },
                 },
                 watchlistTitle: "Watchlist prioritaria",
                 watchlistDescription: "Los ítems abajo aparecen ordenados por severidad operativa y última actividad.",

@@ -19,6 +19,7 @@ export const DOCUMENT_OPERATIONAL_FILTERS = [
 
 export type DocumentOperationalFilter = (typeof DOCUMENT_OPERATIONAL_FILTERS)[number];
 export type DocumentOperationalHealth = "nominal" | "attention" | "critical";
+export type DocumentOperationalActionKey = "manual" | "stalled" | "recentFailures" | "retrying" | "nominal";
 
 export type DocumentOperationalHighlight = {
     document: Document;
@@ -38,6 +39,32 @@ export type DocumentOperationalSnapshot = {
     };
     health: DocumentOperationalHealth;
     highlights: DocumentOperationalHighlight[];
+};
+
+export type DocumentOperationalActionSummary = {
+    key: DocumentOperationalActionKey;
+    filter: DocumentOperationalFilter;
+    severity: DocumentOperationalHealth;
+    count: number;
+    documentIds: number[];
+    sampleTitles: string[];
+};
+
+export type DocumentOperationalAnomalySummary = {
+    kind: DocumentOperationalKind;
+    filter: DocumentOperationalFilter;
+    severity: DocumentOperationalHealth;
+    count: number;
+    oldestAgeMinutes?: number;
+    documentIds: number[];
+    sampleTitles: string[];
+};
+
+export type DocumentOperationalOverview = {
+    snapshot: DocumentOperationalSnapshot;
+    actions: DocumentOperationalActionSummary[];
+    anomalies: DocumentOperationalAnomalySummary[];
+    primaryAction: DocumentOperationalActionSummary;
 };
 
 export function createDocumentOperationalSnapshot(documents: Document[], now = new Date()): DocumentOperationalSnapshot {
@@ -143,6 +170,88 @@ export function matchesDocumentOperationalFilter(
     }
 }
 
+export function createDocumentOperationalOverview(documents: Document[], now = new Date()): DocumentOperationalOverview {
+    const snapshot = createDocumentOperationalSnapshot(documents, now);
+    const anomalyGroups = new Map<DocumentOperationalKind, Document[]>();
+    const anomalyOldestAgeMinutes = new Map<DocumentOperationalKind, number>();
+    const actionGroups: Record<DocumentOperationalActionKey, Document[]> = {
+        manual: [],
+        stalled: [],
+        recentFailures: [],
+        retrying: [],
+        nominal: [],
+    };
+
+    for (const document of documents) {
+        const kind = getDocumentOperationalKind(document, now);
+        if (!kind) {
+            actionGroups.nominal.push(document);
+            continue;
+        }
+
+        const groupedDocuments = anomalyGroups.get(kind);
+        if (groupedDocuments) {
+            groupedDocuments.push(document);
+        } else {
+            anomalyGroups.set(kind, [document]);
+        }
+
+        const ageMinutes = getDocumentOperationalAgeMinutes(document, now);
+        if (ageMinutes !== null) {
+            anomalyOldestAgeMinutes.set(kind, Math.max(anomalyOldestAgeMinutes.get(kind) ?? 0, ageMinutes));
+        }
+
+        if (requiresManualIntervention(document, now)) {
+            actionGroups.manual.push(document);
+        }
+        if (kind === "stalledProcessing" || kind === "stalledQueue") {
+            actionGroups.stalled.push(document);
+        }
+        if (isRecentOperationalFailure(document, now)) {
+            actionGroups.recentFailures.push(document);
+        }
+        if (kind === "retrying") {
+            actionGroups.retrying.push(document);
+        }
+    }
+
+    const actions = [
+        createActionSummary("manual", actionGroups.manual, now),
+        createActionSummary("stalled", actionGroups.stalled, now),
+        createActionSummary("recentFailures", actionGroups.recentFailures, now),
+        createActionSummary("retrying", actionGroups.retrying, now),
+    ].filter((value): value is DocumentOperationalActionSummary => value !== null);
+
+    if (actions.length === 0) {
+        actions.push(createNominalActionSummary(actionGroups.nominal, now));
+    }
+
+    const anomalies = Array.from(anomalyGroups.entries())
+        .map(([kind, items]) => createAnomalySummary(kind, items, anomalyOldestAgeMinutes.get(kind), now))
+        .sort(compareAnomalies);
+
+    return {
+        snapshot,
+        actions,
+        anomalies,
+        primaryAction: actions[0],
+    };
+}
+
+export function getDocumentOperationalFilterForKind(kind: DocumentOperationalKind): DocumentOperationalFilter {
+    switch (kind) {
+        case "orphaned":
+        case "dlq":
+        case "failed":
+            return "manual";
+        case "stalledProcessing":
+        case "stalledQueue":
+            return "stalled";
+        case "retrying":
+            return "retrying";
+    }
+}
+
 function matchesDocumentQuery(document: Document, normalizedQuery: string) {
     const haystack = [
         document.title,
@@ -182,6 +291,73 @@ function compareOperationalHighlights(left: DocumentOperationalHighlight, right:
 
 function getOperationalSeverityWeight(document: Document, now: Date) {
     return getKindSeverityWeight(getDocumentOperationalKind(document, now));
+}
+
+function createActionSummary(
+    key: Exclude<DocumentOperationalActionKey, "nominal">,
+    documents: Document[],
+    now: Date
+): DocumentOperationalActionSummary | null {
+    if (documents.length === 0) {
+        return null;
+    }
+
+    return {
+        key,
+        filter: key,
+        severity: key === "retrying" || key === "recentFailures" ? "attention" : "critical",
+        count: documents.length,
+        documentIds: documents.map((document) => document.id),
+        sampleTitles: createSampleTitles(documents, now),
+    };
+}
+
+function createNominalActionSummary(documents: Document[], now: Date): DocumentOperationalActionSummary {
+    return {
+        key: "nominal",
+        filter: "nominal",
+        severity: "nominal",
+        count: documents.length,
+        documentIds: documents.map((document) => document.id),
+        sampleTitles: createSampleTitles(documents, now),
+    };
+}
+
+function createAnomalySummary(
+    kind: DocumentOperationalKind,
+    documents: Document[],
+    oldestAgeMinutes: number | undefined,
+    now: Date
+): DocumentOperationalAnomalySummary {
+    return {
+        kind,
+        filter: getDocumentOperationalFilterForKind(kind),
+        severity: kind === "retrying" ? "attention" : "critical",
+        count: documents.length,
+        oldestAgeMinutes,
+        documentIds: documents.map((document) => document.id),
+        sampleTitles: createSampleTitles(documents, now),
+    };
+}
+
+function createSampleTitles(documents: Document[], now: Date) {
+    return [...documents]
+        .sort(compareDocumentsByOperationalPriority(now))
+        .slice(0, 3)
+        .map((document) => document.title);
+}
+
+function compareAnomalies(left: DocumentOperationalAnomalySummary, right: DocumentOperationalAnomalySummary) {
+    const severityDiff = getKindSeverityWeight(left.kind) - getKindSeverityWeight(right.kind);
+    if (severityDiff !== 0) {
+        return severityDiff;
+    }
+
+    if (left.count !== right.count) {
+        return right.count - left.count;
+    }
+
+    return (right.oldestAgeMinutes ?? 0) - (left.oldestAgeMinutes ?? 0);
 }
 
 function getKindSeverityWeight(kind: DocumentOperationalKind | null) {
