@@ -41,6 +41,7 @@ import { useProviderRuntimeOverview } from "@/hooks/use-provider-runtime-overvie
 import { fetchCollectionContext } from "@/lib/api/collections";
 import type { CollectionContext } from "@/lib/api/contracts/document-context";
 import {
+    downloadDocumentIndexExport,
     downloadDocumentOriginal,
     deleteCollectionDocuments,
     deleteDocument,
@@ -872,9 +873,11 @@ function DocumentPreviewPanel({
     uploadHref,
     onRetry,
     onDownload,
+    onDownloadIndexExport,
     onDelete,
     isRetrying,
     isDownloading,
+    isExportingIndex,
     isDeleting,
     onClose,
 }: {
@@ -882,9 +885,11 @@ function DocumentPreviewPanel({
     uploadHref: string;
     onRetry: (document: Document) => void;
     onDownload: (document: Document) => void;
+    onDownloadIndexExport: (document: Document) => void;
     onDelete: (document: Document) => void;
     isRetrying: boolean;
     isDownloading: boolean;
+    isExportingIndex: boolean;
     isDeleting: boolean;
     onClose: () => void;
 }) {
@@ -1111,6 +1116,24 @@ function DocumentPreviewPanel({
                             </TabsContent>
 
                             <TabsContent value="index" className="mt-0 space-y-4">
+                                <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border bg-background/60 p-4">
+                                    <div className="space-y-1">
+                                        <h3 className="text-sm font-semibold">{t("documentsPage.index.exportTitle")}</h3>
+                                        <p className="max-w-xl text-xs text-muted-foreground">
+                                            {t("documentsPage.index.exportHint")}
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => onDownloadIndexExport(document)}
+                                        disabled={isExportingIndex}
+                                        className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {isExportingIndex ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                                        {t("documentsPage.actions.downloadIndexExport")}
+                                    </button>
+                                </div>
+
                                 {isLoading && (
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -1297,6 +1320,7 @@ export default function DocumentsPage() {
     const [openCollections, setOpenCollections] = useState<Record<string, boolean>>({});
     const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
     const [downloadingDocumentId, setDownloadingDocumentId] = useState<number | null>(null);
+    const [exportingIndexDocumentId, setExportingIndexDocumentId] = useState<number | null>(null);
     const [retryingDocumentId, setRetryingDocumentId] = useState<number | null>(null);
     const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
     const [deleteConfirmationValue, setDeleteConfirmationValue] = useState("");
@@ -1406,6 +1430,19 @@ export default function DocumentsPage() {
             }
         } finally {
             setDownloadingDocumentId(null);
+        }
+    };
+
+    const handleDownloadDocumentIndexExport = async (document: Document) => {
+        setExportingIndexDocumentId(document.id);
+
+        try {
+            await downloadDocumentIndexExport(document);
+            toast.success(t("documentsPage.toast.indexExportStarted"));
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : t("documentsPage.errors.indexExport"));
+        } finally {
+            setExportingIndexDocumentId(null);
         }
     };
 
@@ -1813,9 +1850,11 @@ export default function DocumentsPage() {
                 uploadHref={uploadHref}
                 onRetry={handleRetryDocument}
                 onDownload={handleDownloadDocument}
+                onDownloadIndexExport={handleDownloadDocumentIndexExport}
                 onDelete={openDocumentDeletion}
                 isRetrying={retryingDocumentId === selectedDocument?.id}
                 isDownloading={downloadingDocumentId === selectedDocument?.id}
+                isExportingIndex={exportingIndexDocumentId === selectedDocument?.id}
                 isDeleting={deletingTargetKey === `document:${selectedDocument?.id ?? ""}`}
                 onClose={() => setSelectedDocument(null)}
             />

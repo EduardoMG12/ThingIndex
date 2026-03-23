@@ -7,6 +7,7 @@ vi.mock("@/lib/api/fetch-with-auth-redirect", () => ({
 import { fetchWithAuthRedirect } from "@/lib/api/fetch-with-auth-redirect";
 import {
     deleteCollectionDocuments,
+    downloadDocumentIndexExport,
     downloadDocumentOriginal,
     fetchDocumentIndex,
     fetchDocumentMonitoringSummary,
@@ -317,6 +318,42 @@ describe("documents api", () => {
 
             const anchor = appendSpy.mock.calls[0][0] as HTMLAnchorElement;
             expect(anchor.download).toBe("segredo final.pdf");
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("downloads the index export artifact using the attachment filename", async () => {
+        vi.useFakeTimers();
+
+        try {
+            vi.mocked(fetchWithAuthRedirect).mockResolvedValue(
+                new Response('{"kind":"document_index_export"}', {
+                    status: 200,
+                    headers: {
+                        "content-disposition": "attachment; filename*=UTF-8''Contrato%20final.thingindex-index.json",
+                    },
+                })
+            );
+
+            const appendSpy = vi.spyOn(document.body, "appendChild");
+            const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+            const createObjectURLSpy = vi.spyOn(window.URL, "createObjectURL").mockReturnValue("blob:test-index-export");
+            const revokeObjectURLSpy = vi.spyOn(window.URL, "revokeObjectURL").mockImplementation(() => undefined);
+
+            await downloadDocumentIndexExport({
+                id: 7,
+                title: "fallback.pdf",
+            });
+
+            vi.runAllTimers();
+
+            expect(clickSpy).toHaveBeenCalledTimes(1);
+            expect(createObjectURLSpy).toHaveBeenCalledTimes(1);
+            expect(revokeObjectURLSpy).toHaveBeenCalledWith("blob:test-index-export");
+
+            const anchor = appendSpy.mock.calls[0][0] as HTMLAnchorElement;
+            expect(anchor.download).toBe("Contrato final.thingindex-index.json");
         } finally {
             vi.useRealTimers();
         }

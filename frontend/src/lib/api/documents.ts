@@ -288,12 +288,12 @@ export async function deleteCollectionDocuments(collectionId: number): Promise<{
     };
 }
 
-export async function downloadDocumentOriginal(document: Pick<Document, "id" | "title">): Promise<void> {
+async function downloadBlobFromRoute(routePath: string, fallbackFilename: string, fallbackMessage: string): Promise<void> {
     if (typeof window === "undefined") {
         throw new Error("Download disponivel apenas no navegador.");
     }
 
-    const response = await fetchWithAuthRedirect(`/api/documents/${document.id}/download`, {
+    const response = await fetchWithAuthRedirect(routePath, {
         method: "GET",
         cache: "no-store",
     });
@@ -303,7 +303,7 @@ export async function downloadDocumentOriginal(document: Pick<Document, "id" | "
         : null;
 
     if (!response.ok) {
-        throw new Error(buildApiErrorMessage(response, payload, apiErrorMessage("documents.download")));
+        throw new Error(buildApiErrorMessage(response, payload, fallbackMessage));
     }
 
     const blob = await response.blob();
@@ -311,7 +311,7 @@ export async function downloadDocumentOriginal(document: Pick<Document, "id" | "
     const anchor = window.document.createElement("a");
 
     anchor.href = objectURL;
-    anchor.download = extractFilenameFromDisposition(response.headers.get("content-disposition"), document.title);
+    anchor.download = extractFilenameFromDisposition(response.headers.get("content-disposition"), fallbackFilename);
     anchor.rel = "noopener";
 
     window.document.body.appendChild(anchor);
@@ -321,6 +321,22 @@ export async function downloadDocumentOriginal(document: Pick<Document, "id" | "
     window.setTimeout(() => {
         window.URL.revokeObjectURL(objectURL);
     }, 0);
+}
+
+export async function downloadDocumentOriginal(document: Pick<Document, "id" | "title">): Promise<void> {
+    await downloadBlobFromRoute(
+        `/api/documents/${document.id}/download`,
+        document.title,
+        apiErrorMessage("documents.download")
+    );
+}
+
+export async function downloadDocumentIndexExport(document: Pick<Document, "id" | "title">): Promise<void> {
+    await downloadBlobFromRoute(
+        `/api/documents/${document.id}/index/export`,
+        `${document.title}.thingindex-index.json`,
+        apiErrorMessage("documents.indexExport")
+    );
 }
 
 type DocumentIndexApiRecord = {
