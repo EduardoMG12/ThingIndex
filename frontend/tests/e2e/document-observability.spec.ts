@@ -150,11 +150,15 @@ test("documents observability panel highlights attention slices and filters the 
     await page.goto("/en/documents");
 
     await expect(page.getByRole("heading", { name: "Actionable monitoring" })).toBeVisible();
-    await expect(page.getByText("Critical attention")).toBeVisible();
-    await expect(page.getByText("Orphaned invoice.pdf")).toBeVisible();
-    await expect(page.getByText("Stalled parser.pdf")).toBeVisible();
+    await expect(page.getByText("Executive brief")).toBeVisible();
+    await expect(page.getByText("Next operational actions")).toBeVisible();
+    await expect(page.getByText("Anomaly map")).toBeVisible();
+    await expect(page.getByText("Orphaned invoice.pdf", { exact: true })).toBeVisible();
+    await expect(page.getByText("Stalled parser.pdf", { exact: true })).toBeVisible();
+    await expect(page.getByText("Missing originals", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open priority document" })).toBeVisible();
 
-    await page.getByRole("button", { name: /Stalled/i }).click();
+    await page.getByRole("button", { name: "Focus: Unblock the flow" }).click();
 
     await expect(page.getByText("1 of 3 document(s) in the operational slice")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Stalled parser.pdf" })).toBeVisible();
@@ -163,6 +167,6 @@ test("documents observability panel highlights attention slices and filters the 
     await page.getByLabel("Operational search and slice").fill("healthy");
     await expect(page.getByRole("heading", { name: "No documents match the current slice" })).toBeVisible();
 
-    await page.getByRole("button", { name: "Clear operational slice" }).click();
+    await page.getByRole("button", { name: "Clear operational slice" }).first().click();
     await expect(page.getByText("3 indexed document(s)")).toBeVisible();
 });

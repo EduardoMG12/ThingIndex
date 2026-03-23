@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Document } from "@/lib/api/documents";
 import {
+    createDocumentOperationalOverview,
     createDocumentOperationalSnapshot,
     filterDocumentsByOperationalView,
     matchesDocumentOperationalFilter,
@@ -112,5 +113,83 @@ describe("document-observability", () => {
         expect(
             filterDocumentsByOperationalView(documents, "nominal", "healthy", now).map((item) => item.id)
         ).toEqual([2]);
+    });
+
+    it("builds an executive overview with prioritized actions and grouped anomalies", () => {
+        const now = new Date("2026-03-20T12:00:00Z");
+        const documents = [
+            createDocument({
+                id: 1,
+                title: "Orphaned invoice.pdf",
+                status: "ORPHANED",
+                updated_at: "2026-03-20T11:40:00Z",
+            }),
+            createDocument({
+                id: 2,
+                title: "Stalled parser.pdf",
+                status: "PROCESSING",
+                processing_stage: "PROCESSING",
+                index_started_at: "2026-03-20T10:00:00Z",
+                updated_at: "2026-03-20T10:00:00Z",
+            }),
+            createDocument({
+                id: 3,
+                title: "Retry report.pdf",
+                status: "QUEUED",
+                processing_stage: "RETRY_SCHEDULED",
+                updated_at: "2026-03-20T11:50:00Z",
+            }),
+            createDocument({
+                id: 4,
+                title: "Healthy guide.pdf",
+                status: "INDEXED",
+                updated_at: "2026-03-20T11:55:00Z",
+            }),
+        ];
+
+        const overview = createDocumentOperationalOverview(documents, now);
+
+        expect(overview.primaryAction).toMatchObject({
+            key: "manual",
+            filter: "manual",
+            severity: "critical",
+            count: 1,
+        });
+        expect(overview.actions.map((item) => item.key)).toEqual([
+            "manual",
+            "stalled",
+            "recentFailures",
+            "retrying",
+        ]);
+        expect(overview.anomalies.map((item) => item.kind)).toEqual([
+            "orphaned",
+            "stalledProcessing",
+            "retrying",
+        ]);
+        expect(overview.anomalies[0]).toMatchObject({
+            filter: "manual",
+            oldestAgeMinutes: 20,
+            sampleTitles: ["Orphaned invoice.pdf"],
+        });
+    });
+
+    it("falls back to a nominal executive action when no anomaly exists", () => {
+        const now = new Date("2026-03-20T12:00:00Z");
+        const overview = createDocumentOperationalOverview([
+            createDocument({
+                id: 1,
+                title: "Healthy guide.pdf",
+                status: "INDEXED",
+                updated_at: "2026-03-20T11:55:00Z",
+            }),
+        ], now);
+
+        expect(overview.primaryAction).toMatchObject({
+            key: "nominal",
+            filter: "nominal",
+            severity: "nominal",
+            count: 1,
+        });
+        expect(overview.anomalies).toEqual([]);
     });
 });

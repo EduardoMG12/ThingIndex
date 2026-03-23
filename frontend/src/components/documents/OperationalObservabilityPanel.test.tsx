@@ -17,12 +17,13 @@ function createDocument(overrides: Record<string, unknown> = {}) {
         status: "INDEXED",
         created_at: "2026-03-19T00:00:00Z",
         updated_at: "2026-03-19T00:00:00Z",
+        processing_attempts: [],
         ...overrides,
     };
 }
 
 describe("OperationalObservabilityPanel", () => {
-    it("renders a critical operational summary and the watchlist", () => {
+    it("renders the executive overview, anomaly map, and watchlist hints", () => {
         render(
             <OperationalObservabilityPanel
                 documents={[
@@ -73,12 +74,56 @@ describe("OperationalObservabilityPanel", () => {
         );
 
         expect(screen.getByRole("heading", { name: "Actionable monitoring" })).toBeInTheDocument();
-        expect(screen.getByText("Critical attention")).toBeInTheDocument();
-        expect(screen.getByText("Orphaned.pdf")).toBeInTheDocument();
-        expect(screen.getByText("Original file missing")).toBeInTheDocument();
+        expect(screen.getByText("Executive brief")).toBeInTheDocument();
+        expect(screen.getByText("Next operational actions")).toBeInTheDocument();
+        expect(screen.getByText("Anomaly map")).toBeInTheDocument();
+        expect(screen.getByText("Missing originals")).toBeInTheDocument();
+        expect(screen.getByText("Open priority document")).toBeInTheDocument();
+        expect(
+            screen.getAllByText("Reupload the file to restore the original, or delete the record if it should no longer exist.")
+        ).toHaveLength(2);
     });
 
-    it("forwards search and filter interactions", async () => {
+    it("lets the operator focus a slice, clear it, and open the priority document", async () => {
+        const user = userEvent.setup();
+        const onFilterChange = vi.fn();
+        const onSearchTermChange = vi.fn();
+        const onOpenPreview = vi.fn();
+
+        const orphanedDocument = createDocument({
+            id: 10,
+            title: "Orphaned.pdf",
+            status: "ORPHANED",
+            updated_at: "2026-03-20T11:45:00Z",
+        });
+
+        render(
+            <OperationalObservabilityPanel
+                documents={[orphanedDocument, createDocument({ id: 11, title: "Healthy.pdf" })]}
+                summary={null}
+                activeFilter="manual"
+                searchTerm="ops"
+                onFilterChange={onFilterChange}
+                onSearchTermChange={onSearchTermChange}
+                onOpenPreview={onOpenPreview}
+                onRetry={vi.fn()}
+                retryingDocumentId={null}
+            />,
+            { wrapper: createTestWrapper("en") }
+        );
+
+        await user.click(screen.getAllByRole("button", { name: "Focus: Resolve manual blockers" })[0]);
+        expect(onFilterChange).toHaveBeenCalledWith("manual");
+        expect(onSearchTermChange).toHaveBeenCalledWith("");
+
+        await user.click(screen.getAllByRole("button", { name: "Clear operational slice" })[0]);
+        expect(onFilterChange).toHaveBeenCalledWith("all");
+
+        await user.click(screen.getByRole("button", { name: "Open priority document" }));
+        expect(onOpenPreview).toHaveBeenCalledWith(orphanedDocument);
+    });
+
+    it("forwards manual search and filter interactions", async () => {
         const user = userEvent.setup();
         const onFilterChange = vi.fn();
         const onSearchTermChange = vi.fn();

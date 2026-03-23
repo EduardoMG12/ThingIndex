@@ -146,6 +146,8 @@ export const Default: Story = {
         const canvas = within(canvasElement);
 
         await expect(canvas.getByText("Actionable monitoring")).toBeVisible();
+        await expect(canvas.getByText("Executive brief")).toBeVisible();
+        await expect(canvas.getByText("Anomaly map")).toBeVisible();
         await userEvent.click(canvas.getByRole("button", { name: /Needs attention/i }));
         await expect(canvas.getByRole("button", { name: /Needs attention/i })).toHaveAttribute("aria-pressed", "true");
         await userEvent.type(canvas.getByLabelText("Operational search and slice"), "healthy");
