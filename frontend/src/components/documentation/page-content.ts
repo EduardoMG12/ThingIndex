@@ -92,8 +92,8 @@ export const DOCUMENTATION_PROCESSING_STEPS = [
 ];
 
 export const DOCUMENTATION_ROADMAP_ITEMS = [
-    "Encerrar os refinamentos visuais menores que restaram no backlog.",
-    "Tratar novos ajustes de naming e boilerplate como manutenção normal, não como uma trilha estrutural aberta.",
+    "Nenhuma task aberta no backlog principal neste momento.",
+    "Novos polimentos visuais entram como manutenção incremental, não como uma fase estrutural do produto.",
     "Manter comparações com GraphRAG e abordagens vetoriais como trilhas acadêmicas separadas do produto principal.",
 ];
 

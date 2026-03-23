@@ -182,9 +182,9 @@ describe("DocumentationPage", () => {
         expect(screen.getByTestId("app-shell")).toBeInTheDocument();
         expect(screen.getByText("Catálogo documental relacional")).toBeInTheDocument();
         expect(screen.getByText("Thin HTTP boundary")).toBeInTheDocument();
-        expect(screen.getByText("Encerrar os refinamentos visuais menores que restaram no backlog.")).toBeInTheDocument();
+        expect(screen.getByText("Nenhuma task aberta no backlog principal neste momento.")).toBeInTheDocument();
         expect(
-            screen.getByText("Tratar novos ajustes de naming e boilerplate como manutenção normal, não como uma trilha estrutural aberta.")
+            screen.getByText("Novos polimentos visuais entram como manutenção incremental, não como uma fase estrutural do produto.")
         ).toBeInTheDocument();
         expect(screen.getByText("docs/proposta-continuacao-tcc.md")).toBeInTheDocument();
         expect(screen.getByText("docs/README.md")).toBeInTheDocument();

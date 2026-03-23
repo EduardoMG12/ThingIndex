@@ -11,18 +11,18 @@
 
 **Contagem atual do backlog:**
 - 32 tasks catalogadas ao todo.
-- 31 tasks ja concluidas no escopo atual: `A0`, `A1`, `A2`, `A3`, `A4`, `B1`, `B2`, `B3`, `B4`, `B5`, `C0`, `C1`, `C2`, `C3`, `D1`, `D2`, `D3`, `D4`, `D5`, `D6`, `E1`, `E2`, `E3`, `E4`, `E5`, `F1`, `F2`, `F3`, `F4`, `G1`, `G2`.
-- 1 task continua aberta entre nao implementado, ideia ou questao estrategica.
+- 32 tasks ja concluidas no escopo atual: `A0`, `A1`, `A2`, `A3`, `A4`, `B1`, `B2`, `B3`, `B4`, `B5`, `C0`, `C1`, `C2`, `C3`, `D1`, `D2`, `D3`, `D4`, `D5`, `D6`, `E1`, `E2`, `E3`, `E4`, `E5`, `F1`, `F2`, `F3`, `F4`, `G1`, `G2`, `G3`.
+- 0 tasks continuam abertas entre nao implementado, ideia ou questao estrategica.
 - 0 tasks sao realmente de alta necessidade agora.
 - 0 tasks sao importantes, mas nao urgentes.
-- 1 task aberta e mais de roadmap, expansao, manutencao ou valor academico.
+- 0 tasks abertas restaram como roadmap, expansao, manutencao ou valor academico.
 
 **Leitura rapida:**
 - Nem todas as tasks sao ultra necessarias.
 - As frentes de consumo open source e onboarding deixaram de ser lacuna estrutural e sairam da fila principal.
 - O foco do produto, o pacote academico inicial e a baseline objetiva de indexacao deixaram de ser lacunas estruturais.
-- A leitura de custos deixou de ser lacuna estrutural e o backlog restante ficou reduzido a polimento visual e manutencao normal.
-- O que sobra agora agrega acabamento e apresentacao, mas nao bloqueia o produto principal.
+- A leitura de custos deixou de ser lacuna estrutural e o backlog principal agora esta zerado.
+- O que sobra daqui para frente passa a ser manutencao incremental normal, nao task estrutural aberta.
 
 **Legenda usada abaixo:**
 - `Necessidade Alta`: reduz risco, corrige percepcao enganosa, fecha comportamento essencial ou endurece o produto.
@@ -34,9 +34,7 @@
 
 ### Tabela-resumo das tasks abertas
 
-| ID | Status | Necessidade | Tamanho | Leitura curta |
-| --- | --- | --- | --- | --- |
-| G3 | BAIXA PRIORIDADE | Baixa | Pequeno | Fazer refinos visuais menores |
+- Nenhuma task aberta no backlog principal neste momento.
 
 ### Tarefas ja concluidas e que nao devem poluir a fila principal
 
@@ -705,11 +703,17 @@
 
 ### [G3] Refinos visuais menores
 
-**Status:** BAIXA PRIORIDADE
+**Status:** CONCLUIDO NO ESCOPO ATUAL
 
-**Exemplos:**
-- Icones de IAs.
-- Pequenos polimentos cosmeticos.
+**Ja existe:**
+- Brand marks visuais para providers aplicados de forma consistente em settings, runtime ativo, support matrix, support panel e readiness.
+- Polimento dos cards de provider com identidade mais clara, monogramas, gradientes e hierarquia visual mais estável no fluxo de seleção e revisão.
+- Robustez mantida com `ProviderBrandMark` desacoplado e branding centralizado por `providerType`, sem espalhar mapeamentos visuais pelo app.
+- Cobertura automatizada adicional com testes unitários do brand mark, atualização dos testes de components e `e2e` cobrindo documentação, settings e runtime com a identidade visual aplicada.
+
+**Observacao:**
+- O que sobra agora é manutenção estética incremental normal.
+- O backlog principal não tem mais item aberto depois deste fechamento.
 
 ## 8. Itens Que Ja Nao Devem Ficar Como "Faltando"
 
@@ -756,15 +760,15 @@ Estes itens ja existem ao menos em nivel funcional e nao devem voltar como "nao 
 
 ### Fase 3 - Roadmap de expansao e valor academico
 
-- `G3` Aplicar polimentos visuais menores.
+- Nenhuma task aberta restante nesta fase.
 
 ## 10. Resumo Curto
 
 Se a pergunta for "quantas tasks existem e quantas sao realmente urgentes":
 
 - Existem 32 tasks catalogadas.
-- 31 ja podem ser tratadas como concluidas no escopo atual.
-- Da 1 aberta, nenhuma permanece como alta necessidade estrutural agora.
+- 32 ja podem ser tratadas como concluidas no escopo atual.
+- Nenhuma permanece aberta como alta necessidade estrutural agora.
 
 Se a pergunta for "todas sao ultra necessarias":
 
@@ -774,7 +778,8 @@ Se a pergunta for "todas sao ultra necessarias":
 
 Se a ideia for escolher o proximo passo mais util agora:
 
-- `G3` deixar como polimento visual opcional para o fim.
+- Nao existe task aberta obrigatoria agora.
+- O proximo passo passa a ser manutencao incremental ou nova frente de roadmap, se fizer sentido abrir uma.
 
 Se a ideia for enxergar melhor o backlog:
 

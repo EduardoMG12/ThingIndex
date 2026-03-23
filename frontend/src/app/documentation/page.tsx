@@ -162,8 +162,8 @@ export default function DocumentationPage() {
                             O repositório já fecha o ciclo principal de upload, processamento assíncrono, indexação estrutural
                             e recuperação do contexto salvo. A tela documental já expõe leitura executiva, mapa de anomalias
                             e próximos passos operacionais, enquanto o dashboard já cruza pricing sincronizado com telemetria
-                            real para leitura honesta de custos. O trabalho remanescente agora é polimento visual e
-                            manutenção incremental, não provar que o pipeline existe.
+                            real para leitura honesta de custos. O backlog principal agora está fechado; o que sobra é
+                            manutenção incremental e pesquisa derivada, não provar que o pipeline existe.
                         </p>
 
                         <div className="space-y-4">
