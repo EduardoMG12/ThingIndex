@@ -226,6 +226,409 @@
                 }
             }
         },
+        "/chat/conversations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List saved chat conversations for the authenticated user inside one collection.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "summary": "List chat conversations",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Collection ID",
+                        "name": "collection_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.ChatConversationResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a persisted chat conversation scoped to one collection before starting the grounded response stream.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "summary": "Create chat conversation",
+                "parameters": [
+                    {
+                        "description": "Conversation payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateChatConversationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.ChatConversationResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/chat/conversations/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Fetch one persisted chat conversation and the grounded messages already stored for it.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "summary": "Get chat conversation",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Conversation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.ChatConversationDetailResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete one persisted chat conversation and its grounded message history.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "summary": "Delete chat conversation",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Conversation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Rename one persisted chat conversation.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "summary": "Update chat conversation title",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Conversation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Conversation update payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateChatConversationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.ChatConversationResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/chat/stream": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Start a grounded chat response for one persisted conversation and stream stage, source, delta, done, and error events over SSE.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "chat"
+                ],
+                "summary": "Stream grounded chat response",
+                "parameters": [
+                    {
+                        "description": "Chat stream payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ChatStreamRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Server-sent events stream",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/documents/audit": {
             "get": {
                 "security": [
@@ -393,6 +796,44 @@
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/meta/indexing-benchmark": {
+            "get": {
+                "description": "Returns the controlled corpus, exact-match benchmark metrics, and interpretation guidance for the current relational indexing baseline.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "meta"
+                ],
+                "summary": "Get indexing benchmark baseline",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.IndexingBenchmarkReportResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "500": {
@@ -861,6 +1302,148 @@
                 }
             }
         },
+        "dto.ChatConversationDetailResponse": {
+            "type": "object",
+            "properties": {
+                "conversation": {
+                    "$ref": "#/definitions/dto.ChatConversationResponse"
+                },
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ChatConversationMessageResponse"
+                    }
+                }
+            }
+        },
+        "dto.ChatConversationMessageResponse": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "sources": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ChatSourceResponse"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ChatConversationResponse": {
+            "type": "object",
+            "properties": {
+                "collection_id": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "last_message_at": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ChatMessageRequest": {
+            "type": "object",
+            "required": [
+                "content",
+                "role"
+            ],
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string",
+                    "enum": [
+                        "user",
+                        "assistant"
+                    ]
+                }
+            }
+        },
+        "dto.ChatSourceResponse": {
+            "type": "object",
+            "properties": {
+                "doc_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "snippet": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ChatStreamRequest": {
+            "type": "object",
+            "required": [
+                "collection_id",
+                "conversation_id",
+                "prompt"
+            ],
+            "properties": {
+                "collection_id": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "conversation_id": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "history": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ChatMessageRequest"
+                    }
+                },
+                "prompt": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.CreateChatConversationRequest": {
+            "type": "object",
+            "required": [
+                "collection_id"
+            ],
+            "properties": {
+                "collection_id": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 255
+                }
+            }
+        },
         "dto.DocumentAuditEventResponse": {
             "type": "object",
             "properties": {
@@ -1056,6 +1639,206 @@
             ],
             "properties": {
                 "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.IndexingBenchmarkCaseResultResponse": {
+            "type": "object",
+            "properties": {
+                "actual_document_title": {
+                    "type": "string"
+                },
+                "actual_node_title": {
+                    "type": "string"
+                },
+                "actual_page_number": {
+                    "type": "integer"
+                },
+                "document_in_top_3": {
+                    "type": "boolean"
+                },
+                "document_matched": {
+                    "type": "boolean"
+                },
+                "document_title": {
+                    "type": "string"
+                },
+                "expected_document_title": {
+                    "type": "string"
+                },
+                "expected_node_title": {
+                    "type": "string"
+                },
+                "expected_page_number": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "node_in_top_3": {
+                    "type": "boolean"
+                },
+                "node_matched": {
+                    "type": "boolean"
+                },
+                "page_in_top_3": {
+                    "type": "boolean"
+                },
+                "page_matched": {
+                    "type": "boolean"
+                },
+                "passed": {
+                    "type": "boolean"
+                },
+                "query": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.IndexingBenchmarkCorpusDocumentResponse": {
+            "type": "object",
+            "properties": {
+                "expected_outline_titles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "expected_table_count": {
+                    "type": "integer"
+                },
+                "focus": {
+                    "type": "string"
+                },
+                "heuristic_quality_score": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "mime_type": {
+                    "type": "string"
+                },
+                "outline_node_count": {
+                    "type": "integer"
+                },
+                "query_count": {
+                    "type": "integer"
+                },
+                "retrieval_ready": {
+                    "type": "boolean"
+                },
+                "structure_passed": {
+                    "type": "boolean"
+                },
+                "table_count": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.IndexingBenchmarkMetricsResponse": {
+            "type": "object",
+            "properties": {
+                "average_heuristic_score": {
+                    "type": "number"
+                },
+                "collection_document_recall_at_3": {
+                    "type": "number"
+                },
+                "collection_document_top1_accuracy": {
+                    "type": "number"
+                },
+                "collection_queries": {
+                    "type": "integer"
+                },
+                "corpus_documents": {
+                    "type": "integer"
+                },
+                "document_queries": {
+                    "type": "integer"
+                },
+                "exact_match_accuracy": {
+                    "type": "number"
+                },
+                "maximum_heuristic_score": {
+                    "type": "number"
+                },
+                "minimum_heuristic_score": {
+                    "type": "number"
+                },
+                "structure_pass_rate": {
+                    "type": "number"
+                },
+                "tree_node_recall_at_3": {
+                    "type": "number"
+                },
+                "tree_node_top1_accuracy": {
+                    "type": "number"
+                },
+                "tree_page_recall_at_3": {
+                    "type": "number"
+                },
+                "tree_page_top1_accuracy": {
+                    "type": "number"
+                }
+            }
+        },
+        "dto.IndexingBenchmarkReportResponse": {
+            "type": "object",
+            "properties": {
+                "cases": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.IndexingBenchmarkCaseResultResponse"
+                    }
+                },
+                "corpus": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.IndexingBenchmarkCorpusDocumentResponse"
+                    }
+                },
+                "corpus_source_path": {
+                    "type": "string"
+                },
+                "dataset_version": {
+                    "type": "string"
+                },
+                "heuristic_quality_note": {
+                    "type": "string"
+                },
+                "last_reviewed_on": {
+                    "type": "string"
+                },
+                "limitations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "methodology": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "metrics": {
+                    "$ref": "#/definitions/dto.IndexingBenchmarkMetricsResponse"
+                },
+                "pass_criteria": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "summary": {
                     "type": "string"
                 }
             }
@@ -1476,6 +2259,18 @@
                 },
                 "value_proposition": {
                     "type": "string"
+                }
+            }
+        },
+        "dto.UpdateChatConversationRequest": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "maxLength": 255
                 }
             }
         },

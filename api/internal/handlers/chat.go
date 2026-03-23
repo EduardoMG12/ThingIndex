@@ -25,6 +25,19 @@ func NewChatHandler(useCase domain.ChatUseCase) *ChatHandler {
 	return &ChatHandler{useCase: useCase}
 }
 
+// @Summary      Create chat conversation
+// @Description  Create a persisted chat conversation scoped to one collection before starting the grounded response stream.
+// @Tags         chat
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.CreateChatConversationRequest true "Conversation payload"
+// @Success      201 {object} response.Response{data=dto.ChatConversationResponse}
+// @Failure      400 {object} response.Response
+// @Failure      401 {object} response.Response
+// @Failure      404 {object} response.Response
+// @Failure      500 {object} response.Response
+// @Security     BearerAuth
+// @Router       /chat/conversations [post]
 func (h *ChatHandler) CreateConversation(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
@@ -51,6 +64,17 @@ func (h *ChatHandler) CreateConversation(c *gin.Context) {
 	response.Success(c, http.StatusCreated, "success", i18n.T(lang, "chat.success_conversation_create"), dto.ToChatConversationResponse(conversation))
 }
 
+// @Summary      List chat conversations
+// @Description  List saved chat conversations for the authenticated user inside one collection.
+// @Tags         chat
+// @Produce      json
+// @Param        collection_id query int true "Collection ID"
+// @Success      200 {object} response.Response{data=[]dto.ChatConversationResponse}
+// @Failure      400 {object} response.Response
+// @Failure      401 {object} response.Response
+// @Failure      500 {object} response.Response
+// @Security     BearerAuth
+// @Router       /chat/conversations [get]
 func (h *ChatHandler) ListConversations(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
@@ -70,6 +94,18 @@ func (h *ChatHandler) ListConversations(c *gin.Context) {
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "chat.success_conversations_list"), dto.ToChatConversationResponses(conversations))
 }
 
+// @Summary      Get chat conversation
+// @Description  Fetch one persisted chat conversation and the grounded messages already stored for it.
+// @Tags         chat
+// @Produce      json
+// @Param        id path int true "Conversation ID"
+// @Success      200 {object} response.Response{data=dto.ChatConversationDetailResponse}
+// @Failure      400 {object} response.Response
+// @Failure      401 {object} response.Response
+// @Failure      404 {object} response.Response
+// @Failure      500 {object} response.Response
+// @Security     BearerAuth
+// @Router       /chat/conversations/{id} [get]
 func (h *ChatHandler) GetConversation(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
@@ -97,6 +133,20 @@ func (h *ChatHandler) GetConversation(c *gin.Context) {
 	})
 }
 
+// @Summary      Update chat conversation title
+// @Description  Rename one persisted chat conversation.
+// @Tags         chat
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "Conversation ID"
+// @Param        request body dto.UpdateChatConversationRequest true "Conversation update payload"
+// @Success      200 {object} response.Response{data=dto.ChatConversationResponse}
+// @Failure      400 {object} response.Response
+// @Failure      401 {object} response.Response
+// @Failure      404 {object} response.Response
+// @Failure      500 {object} response.Response
+// @Security     BearerAuth
+// @Router       /chat/conversations/{id} [patch]
 func (h *ChatHandler) UpdateConversation(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
@@ -129,6 +179,18 @@ func (h *ChatHandler) UpdateConversation(c *gin.Context) {
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "common.saved"), dto.ToChatConversationResponse(conversation))
 }
 
+// @Summary      Delete chat conversation
+// @Description  Delete one persisted chat conversation and its grounded message history.
+// @Tags         chat
+// @Produce      json
+// @Param        id path int true "Conversation ID"
+// @Success      200 {object} response.Response
+// @Failure      400 {object} response.Response
+// @Failure      401 {object} response.Response
+// @Failure      404 {object} response.Response
+// @Failure      500 {object} response.Response
+// @Security     BearerAuth
+// @Router       /chat/conversations/{id} [delete]
 func (h *ChatHandler) DeleteConversation(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")
@@ -153,6 +215,18 @@ func (h *ChatHandler) DeleteConversation(c *gin.Context) {
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "chat.success_conversation_delete"), nil)
 }
 
+// @Summary      Stream grounded chat response
+// @Description  Start a grounded chat response for one persisted conversation and stream stage, source, delta, done, and error events over SSE.
+// @Tags         chat
+// @Accept       json
+// @Produce      text/event-stream
+// @Param        request body dto.ChatStreamRequest true "Chat stream payload"
+// @Success      200 {string} string "Server-sent events stream"
+// @Failure      400 {object} response.Response
+// @Failure      401 {object} response.Response
+// @Failure      500 {object} response.Response
+// @Security     BearerAuth
+// @Router       /chat/stream [post]
 func (h *ChatHandler) StreamCollectionChat(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")

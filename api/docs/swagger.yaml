@@ -18,6 +18,101 @@ definitions:
       returned:
         type: integer
     type: object
+  dto.ChatConversationDetailResponse:
+    properties:
+      conversation:
+        $ref: '#/definitions/dto.ChatConversationResponse'
+      messages:
+        items:
+          $ref: '#/definitions/dto.ChatConversationMessageResponse'
+        type: array
+    type: object
+  dto.ChatConversationMessageResponse:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      role:
+        type: string
+      sources:
+        items:
+          $ref: '#/definitions/dto.ChatSourceResponse'
+        type: array
+      updated_at:
+        type: string
+    type: object
+  dto.ChatConversationResponse:
+    properties:
+      collection_id:
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: integer
+      last_message_at:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  dto.ChatMessageRequest:
+    properties:
+      content:
+        type: string
+      role:
+        enum:
+        - user
+        - assistant
+        type: string
+    required:
+    - content
+    - role
+    type: object
+  dto.ChatSourceResponse:
+    properties:
+      doc_name:
+        type: string
+      id:
+        type: string
+      page:
+        type: integer
+      snippet:
+        type: string
+    type: object
+  dto.ChatStreamRequest:
+    properties:
+      collection_id:
+        minimum: 1
+        type: integer
+      conversation_id:
+        minimum: 1
+        type: integer
+      history:
+        items:
+          $ref: '#/definitions/dto.ChatMessageRequest'
+        type: array
+      prompt:
+        type: string
+    required:
+    - collection_id
+    - conversation_id
+    - prompt
+    type: object
+  dto.CreateChatConversationRequest:
+    properties:
+      collection_id:
+        minimum: 1
+        type: integer
+      title:
+        maxLength: 255
+        type: string
+    required:
+    - collection_id
+    type: object
   dto.DocumentAuditEventResponse:
     properties:
       action:
@@ -148,6 +243,138 @@ definitions:
         type: string
     required:
     - email
+    type: object
+  dto.IndexingBenchmarkCaseResultResponse:
+    properties:
+      actual_document_title:
+        type: string
+      actual_node_title:
+        type: string
+      actual_page_number:
+        type: integer
+      document_in_top_3:
+        type: boolean
+      document_matched:
+        type: boolean
+      document_title:
+        type: string
+      expected_document_title:
+        type: string
+      expected_node_title:
+        type: string
+      expected_page_number:
+        type: integer
+      id:
+        type: string
+      node_in_top_3:
+        type: boolean
+      node_matched:
+        type: boolean
+      page_in_top_3:
+        type: boolean
+      page_matched:
+        type: boolean
+      passed:
+        type: boolean
+      query:
+        type: string
+      scope:
+        type: string
+    type: object
+  dto.IndexingBenchmarkCorpusDocumentResponse:
+    properties:
+      expected_outline_titles:
+        items:
+          type: string
+        type: array
+      expected_table_count:
+        type: integer
+      focus:
+        type: string
+      heuristic_quality_score:
+        type: number
+      id:
+        type: string
+      mime_type:
+        type: string
+      outline_node_count:
+        type: integer
+      query_count:
+        type: integer
+      retrieval_ready:
+        type: boolean
+      structure_passed:
+        type: boolean
+      table_count:
+        type: integer
+      title:
+        type: string
+    type: object
+  dto.IndexingBenchmarkMetricsResponse:
+    properties:
+      average_heuristic_score:
+        type: number
+      collection_document_recall_at_3:
+        type: number
+      collection_document_top1_accuracy:
+        type: number
+      collection_queries:
+        type: integer
+      corpus_documents:
+        type: integer
+      document_queries:
+        type: integer
+      exact_match_accuracy:
+        type: number
+      maximum_heuristic_score:
+        type: number
+      minimum_heuristic_score:
+        type: number
+      structure_pass_rate:
+        type: number
+      tree_node_recall_at_3:
+        type: number
+      tree_node_top1_accuracy:
+        type: number
+      tree_page_recall_at_3:
+        type: number
+      tree_page_top1_accuracy:
+        type: number
+    type: object
+  dto.IndexingBenchmarkReportResponse:
+    properties:
+      cases:
+        items:
+          $ref: '#/definitions/dto.IndexingBenchmarkCaseResultResponse'
+        type: array
+      corpus:
+        items:
+          $ref: '#/definitions/dto.IndexingBenchmarkCorpusDocumentResponse'
+        type: array
+      corpus_source_path:
+        type: string
+      dataset_version:
+        type: string
+      heuristic_quality_note:
+        type: string
+      last_reviewed_on:
+        type: string
+      limitations:
+        items:
+          type: string
+        type: array
+      methodology:
+        items:
+          type: string
+        type: array
+      metrics:
+        $ref: '#/definitions/dto.IndexingBenchmarkMetricsResponse'
+      pass_criteria:
+        items:
+          type: string
+        type: array
+      summary:
+        type: string
     type: object
   dto.LoginRequest:
     properties:
@@ -426,6 +653,14 @@ definitions:
       value_proposition:
         type: string
     type: object
+  dto.UpdateChatConversationRequest:
+    properties:
+      title:
+        maxLength: 255
+        type: string
+    required:
+    - title
+    type: object
   response.Response:
     properties:
       data: {}
@@ -583,6 +818,258 @@ paths:
       summary: Reset password
       tags:
       - auth
+  /chat/conversations:
+    get:
+      description: List saved chat conversations for the authenticated user inside
+        one collection.
+      parameters:
+      - description: Collection ID
+        in: query
+        name: collection_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.ChatConversationResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: List chat conversations
+      tags:
+      - chat
+    post:
+      consumes:
+      - application/json
+      description: Create a persisted chat conversation scoped to one collection before
+        starting the grounded response stream.
+      parameters:
+      - description: Conversation payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateChatConversationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ChatConversationResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Create chat conversation
+      tags:
+      - chat
+  /chat/conversations/{id}:
+    delete:
+      description: Delete one persisted chat conversation and its grounded message
+        history.
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Delete chat conversation
+      tags:
+      - chat
+    get:
+      description: Fetch one persisted chat conversation and the grounded messages
+        already stored for it.
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ChatConversationDetailResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get chat conversation
+      tags:
+      - chat
+    patch:
+      consumes:
+      - application/json
+      description: Rename one persisted chat conversation.
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Conversation update payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateChatConversationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ChatConversationResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update chat conversation title
+      tags:
+      - chat
+  /chat/stream:
+    post:
+      consumes:
+      - application/json
+      description: Start a grounded chat response for one persisted conversation and
+        stream stage, source, delta, done, and error events over SSE.
+      parameters:
+      - description: Chat stream payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ChatStreamRequest'
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: Server-sent events stream
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Stream grounded chat response
+      tags:
+      - chat
   /documents/audit:
     get:
       description: Query document audit events with operational filters, summary and
@@ -694,6 +1181,29 @@ paths:
       summary: Get aggregated document monitoring
       tags:
       - documents
+  /meta/indexing-benchmark:
+    get:
+      description: Returns the controlled corpus, exact-match benchmark metrics, and
+        interpretation guidance for the current relational indexing baseline.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.IndexingBenchmarkReportResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get indexing benchmark baseline
+      tags:
+      - meta
   /meta/runtime-profile:
     get:
       description: Returns the current primary use case, scope, explicit non-goals,
