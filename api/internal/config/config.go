@@ -42,29 +42,35 @@ type Config struct {
 	ResetPasswordURL string
 
 	// Storage config
-	MinioEndpoint            string
-	MinioAccessKey           string
-	MinioSecretKey           string
-	MinioUseSSL              string
-	MinioBucketName          string
-	RabbitMQURL              string
-	DocumentIndexExchange    string
-	DocumentIndexQueue       string
-	DocumentIndexRoutingKey  string
-	DocumentIndexRetryQueue  string
-	DocumentIndexDLQ         string
-	OutboxPollInterval       time.Duration
-	OutboxBatchSize          int
-	ConsumerPrefetchCount    int
-	DocumentIndexRetryDelay  time.Duration
-	DocumentIndexMaxRetries  int
-	PricingSyncInterval      time.Duration
-	ModelCatalogSyncInterval time.Duration
-	MaxUploadSizeBytes       int64
-	MasterEncryptionKey      string
-	ServerReadTimeout        time.Duration
-	ServerWriteTimeout       time.Duration
-	ServerIdleTimeout        time.Duration
+	StorageProvider           string
+	MinioEndpoint             string
+	MinioAccessKey            string
+	MinioSecretKey            string
+	MinioUseSSL               string
+	MinioBucketName           string
+	GCPStorageProjectID       string
+	GCPStorageBucketName      string
+	GCPStorageLocation        string
+	GCPStorageCredentialsJSON string
+	GCPStorageEmulatorHost    string
+	RabbitMQURL               string
+	DocumentIndexExchange     string
+	DocumentIndexQueue        string
+	DocumentIndexRoutingKey   string
+	DocumentIndexRetryQueue   string
+	DocumentIndexDLQ          string
+	OutboxPollInterval        time.Duration
+	OutboxBatchSize           int
+	ConsumerPrefetchCount     int
+	DocumentIndexRetryDelay   time.Duration
+	DocumentIndexMaxRetries   int
+	PricingSyncInterval       time.Duration
+	ModelCatalogSyncInterval  time.Duration
+	MaxUploadSizeBytes        int64
+	MasterEncryptionKey       string
+	ServerReadTimeout         time.Duration
+	ServerWriteTimeout        time.Duration
+	ServerIdleTimeout         time.Duration
 }
 
 var AppConfig *Config
@@ -116,11 +122,17 @@ func Load() {
 		SMTPPass:                     getEnv("SMTP_PASS", ""),
 		SMTPFrom:                     getEnv("SMTP_FROM", "no-reply@thingindex.com"),
 		ResetPasswordURL:             getEnv("RESET_PASSWORD_URL", "http://localhost:3000/reset-password"),
+		StorageProvider:              getEnv("STORAGE_PROVIDER", "MINIO"),
 		MinioEndpoint:                getEnv("MINIO_ENDPOINT", "localhost:9000"),
 		MinioAccessKey:               getEnv("MINIO_ACCESS_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMinioKey)),
 		MinioSecretKey:               getEnv("MINIO_SECRET_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMinioSec)),
 		MinioUseSSL:                  getEnv("MINIO_USE_SSL", "false"),
 		MinioBucketName:              getEnv("MINIO_BUCKET_NAME", "thingindex-docs"),
+		GCPStorageProjectID:          getEnv("GCP_STORAGE_PROJECT_ID", ""),
+		GCPStorageBucketName:         getEnv("GCP_STORAGE_BUCKET_NAME", "thingindex-docs"),
+		GCPStorageLocation:           getEnv("GCP_STORAGE_LOCATION", ""),
+		GCPStorageCredentialsJSON:    getEnv("GCP_STORAGE_CREDENTIALS_JSON", ""),
+		GCPStorageEmulatorHost:       getEnv("GCP_STORAGE_EMULATOR_HOST", ""),
 		RabbitMQURL:                  getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
 		DocumentIndexExchange:        getEnv("DOCUMENT_INDEX_EXCHANGE", "thingindex.document.index"),
 		DocumentIndexQueue:           getEnv("DOCUMENT_INDEX_QUEUE", "thingindex.document.index.queue"),
@@ -207,12 +219,6 @@ func (c *Config) Validate() error {
 	if strings.TrimSpace(c.MasterEncryptionKey) == "" {
 		missing = append(missing, "MASTER_ENCRYPTION_KEY")
 	}
-	if strings.TrimSpace(c.MinioAccessKey) == "" {
-		missing = append(missing, "MINIO_ACCESS_KEY")
-	}
-	if strings.TrimSpace(c.MinioSecretKey) == "" {
-		missing = append(missing, "MINIO_SECRET_KEY")
-	}
 	if strings.TrimSpace(c.DBSSLMode) == "" {
 		missing = append(missing, "DB_SSLMODE")
 	}
@@ -271,6 +277,9 @@ func (c *Config) Validate() error {
 	if c.ServerReadTimeout <= 0 || c.ServerWriteTimeout <= 0 || c.ServerIdleTimeout <= 0 {
 		return errors.New("server timeout values must be greater than zero")
 	}
+	if err := c.validateDefaultStorageConfiguration(); err != nil {
+		return err
+	}
 	if err := c.validateResetPasswordURL(); err != nil {
 		return err
 	}
@@ -295,11 +304,13 @@ func (c *Config) Validate() error {
 	if c.MasterEncryptionKey == defaultDevelopmentMaster {
 		insecure = append(insecure, "MASTER_ENCRYPTION_KEY")
 	}
-	if c.MinioAccessKey == defaultDevelopmentMinioKey {
-		insecure = append(insecure, "MINIO_ACCESS_KEY")
-	}
-	if c.MinioSecretKey == defaultDevelopmentMinioSec {
-		insecure = append(insecure, "MINIO_SECRET_KEY")
+	if strings.EqualFold(c.DefaultStorageProviderType(), "MINIO") {
+		if c.MinioAccessKey == defaultDevelopmentMinioKey {
+			insecure = append(insecure, "MINIO_ACCESS_KEY")
+		}
+		if c.MinioSecretKey == defaultDevelopmentMinioSec {
+			insecure = append(insecure, "MINIO_SECRET_KEY")
+		}
 	}
 	if strings.EqualFold(c.DBSSLMode, "disable") {
 		insecure = append(insecure, "DB_SSLMODE")

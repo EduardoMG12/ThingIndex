@@ -10,8 +10,8 @@ import (
 	"thing-index/internal/domain"
 	"thing-index/internal/handlers"
 	"thing-index/internal/mailer"
+	providerpkg "thing-index/internal/pkg/provider"
 	"thing-index/internal/pkg/response"
-	"thing-index/internal/pkg/storage"
 	"thing-index/internal/repository"
 	"thing-index/internal/usecase"
 	"time"
@@ -41,15 +41,9 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		AllowCredentials: true,
 	}))
 
-	minioStorage, err := storage.NewMinioStorage(
-		cfg.MinioEndpoint,
-		cfg.MinioAccessKey,
-		cfg.MinioSecretKey,
-		cfg.MinioBucketName,
-		cfg.MinioUseSSL == "true",
-	)
+	defaultStorage, err := providerpkg.NewDefaultStorageProvider(cfg)
 	if err != nil {
-		return fmt.Errorf("failed to initialize minio storage: %w", err)
+		return fmt.Errorf("failed to initialize default storage provider: %w", err)
 	}
 
 	authRepo := repository.NewGormAuthRepository(db)
@@ -82,7 +76,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		documentRepo,
 		structuredDataRepo,
 		collectionContextRepo,
-		minioStorage,
+		defaultStorage,
 		providerUseCase,
 		cfg.MaxUploadSizeBytes,
 	)

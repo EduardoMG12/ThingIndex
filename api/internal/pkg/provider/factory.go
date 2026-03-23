@@ -219,6 +219,8 @@ func NewStorageProvider(providerType string, credentials map[string]string, opti
 		return buildS3CompatibleStorage(normalizedProvider, credentials, options)
 	case domain.ProviderB2:
 		return buildS3CompatibleStorage(normalizedProvider, credentials, options)
+	case domain.ProviderGCPStorage:
+		return buildGCSStorage(credentials)
 	default:
 		return nil, fmt.Errorf("storage provider %s is not implemented", normalizedProvider)
 	}
@@ -230,7 +232,20 @@ func buildS3CompatibleStorage(providerType string, credentials map[string]string
 		return nil, err
 	}
 
+	if options.EndpointValidator == nil {
+		return storage.NewMinioStorage(endpoint, accessKey, secretKey, bucketName, useSSL)
+	}
+
 	return storage.NewValidatedMinioStorage(endpoint, accessKey, secretKey, bucketName, useSSL, options.EndpointValidator)
+}
+
+func buildGCSStorage(credentials map[string]string) (domain.StorageService, error) {
+	projectID, bucketName, location, credentialsJSON, emulatorHost, err := resolveGCSConfig(credentials)
+	if err != nil {
+		return nil, err
+	}
+
+	return storage.NewGCSStorage(projectID, bucketName, location, credentialsJSON, emulatorHost)
 }
 
 func resolveS3CompatibleConfig(providerType string, credentials map[string]string) (string, string, string, string, bool, error) {
@@ -292,6 +307,23 @@ func resolveS3CompatibleConfig(providerType string, credentials map[string]strin
 	default:
 		return "", "", "", "", false, fmt.Errorf("storage provider %s is not implemented", providerType)
 	}
+}
+
+func resolveGCSConfig(credentials map[string]string) (string, string, string, string, string, error) {
+	projectID := strings.TrimSpace(credentials["project_id"])
+	bucketName := strings.TrimSpace(credentials["bucket_name"])
+	location := strings.TrimSpace(credentials["location"])
+	credentialsJSON := strings.TrimSpace(credentials["credentials_json"])
+	emulatorHost := strings.TrimSpace(credentials["emulator_host"])
+
+	if projectID == "" || bucketName == "" {
+		return "", "", "", "", "", errors.New("missing required gcs credentials")
+	}
+	if credentialsJSON == "" && emulatorHost == "" {
+		return "", "", "", "", "", errors.New("missing required gcs credentials")
+	}
+
+	return projectID, bucketName, location, credentialsJSON, emulatorHost, nil
 }
 
 func (c *openAICompatibleLLMClient) GenerateText(ctx context.Context, systemPrompt, userPrompt string) (string, error) {

@@ -10,7 +10,7 @@ import (
 	"thing-index/db"
 	"thing-index/internal/config"
 	"thing-index/internal/indexing"
-	"thing-index/internal/pkg/storage"
+	providerpkg "thing-index/internal/pkg/provider"
 	"thing-index/internal/processing"
 	"thing-index/internal/queue"
 	"thing-index/internal/repository"
@@ -35,15 +35,9 @@ func main() {
 		defer sqlDB.Close()
 	}
 
-	minioStorage, err := storage.NewMinioStorage(
-		config.AppConfig.MinioEndpoint,
-		config.AppConfig.MinioAccessKey,
-		config.AppConfig.MinioSecretKey,
-		config.AppConfig.MinioBucketName,
-		config.AppConfig.MinioUseSSL == "true",
-	)
+	defaultStorage, err := providerpkg.NewDefaultStorageProvider(config.AppConfig)
 	if err != nil {
-		log.Fatalf("failed to initialize minio storage: %v", err)
+		log.Fatalf("failed to initialize default storage provider: %v", err)
 	}
 
 	providerRepo := repository.NewGormProviderRepository(database)
@@ -53,7 +47,7 @@ func main() {
 	processingRepo := repository.NewGormDocumentProcessingRepository(database)
 	indexer := indexing.NewDeterministicIndexer()
 	enricher := indexing.NewLLMEnricher()
-	processor := processing.NewDocumentProcessor(processingRepo, minioStorage, providerService, indexer, providerService, enricher)
+	processor := processing.NewDocumentProcessor(processingRepo, defaultStorage, providerService, indexer, providerService, enricher)
 
 	publisher, err := queue.NewRabbitMQPublisher(config.AppConfig)
 	if err != nil {

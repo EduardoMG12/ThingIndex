@@ -166,3 +166,41 @@ func TestOpenAIModelsEndpointNormalizesChatCompletionsURL(t *testing.T) {
 		t.Fatalf("unexpected endpoint %q", endpoint)
 	}
 }
+
+func TestResolveGCSConfigAcceptsEmulatorHostWithoutCredentialsJSON(t *testing.T) {
+	t.Parallel()
+
+	projectID, bucketName, location, credentialsJSON, emulatorHost, err := resolveGCSConfig(map[string]string{
+		"project_id":    "thingindex-dev",
+		"bucket_name":   "thingindex-docs",
+		"location":      "us-central1",
+		"emulator_host": "127.0.0.1:4443",
+	})
+	if err != nil {
+		t.Fatalf("expected gcs config to resolve, got %v", err)
+	}
+	if projectID != "thingindex-dev" || bucketName != "thingindex-docs" {
+		t.Fatalf("unexpected gcs config: project=%q bucket=%q", projectID, bucketName)
+	}
+	if location != "us-central1" {
+		t.Fatalf("expected location to be preserved, got %q", location)
+	}
+	if credentialsJSON != "" {
+		t.Fatalf("expected empty credentials json, got %q", credentialsJSON)
+	}
+	if emulatorHost != "127.0.0.1:4443" {
+		t.Fatalf("unexpected emulator host %q", emulatorHost)
+	}
+}
+
+func TestResolveGCSConfigRejectsMissingCredentialsAndEmulatorHost(t *testing.T) {
+	t.Parallel()
+
+	_, _, _, _, _, err := resolveGCSConfig(map[string]string{
+		"project_id":  "thingindex-dev",
+		"bucket_name": "thingindex-docs",
+	})
+	if err == nil {
+		t.Fatal("expected missing gcs credentials to be rejected")
+	}
+}
