@@ -11,18 +11,18 @@
 
 **Contagem atual do backlog:**
 - 32 tasks catalogadas ao todo.
-- 30 tasks ja concluidas no escopo atual: `A0`, `A1`, `A2`, `A3`, `A4`, `B1`, `B2`, `B3`, `B4`, `B5`, `C0`, `C1`, `C2`, `C3`, `D1`, `D2`, `D3`, `D4`, `D5`, `D6`, `E1`, `E2`, `E3`, `E4`, `E5`, `F1`, `F2`, `F4`, `G1`, `G2`.
-- 2 tasks continuam abertas entre nao implementado, ideia ou questao estrategica.
+- 31 tasks ja concluidas no escopo atual: `A0`, `A1`, `A2`, `A3`, `A4`, `B1`, `B2`, `B3`, `B4`, `B5`, `C0`, `C1`, `C2`, `C3`, `D1`, `D2`, `D3`, `D4`, `D5`, `D6`, `E1`, `E2`, `E3`, `E4`, `E5`, `F1`, `F2`, `F3`, `F4`, `G1`, `G2`.
+- 1 task continua aberta entre nao implementado, ideia ou questao estrategica.
 - 0 tasks sao realmente de alta necessidade agora.
 - 0 tasks sao importantes, mas nao urgentes.
-- 2 tasks abertas sao mais de roadmap, expansao, manutencao ou valor academico.
+- 1 task aberta e mais de roadmap, expansao, manutencao ou valor academico.
 
 **Leitura rapida:**
 - Nem todas as tasks sao ultra necessarias.
 - As frentes de consumo open source e onboarding deixaram de ser lacuna estrutural e sairam da fila principal.
 - O foco do produto, o pacote academico inicial e a baseline objetiva de indexacao deixaram de ser lacunas estruturais.
-- A leitura de custos deixou de ser lacuna estrutural e o backlog mais util agora comeca por portabilidade e manutencao.
-- As tasks de IA mais ambiciosas, novos storages, CLI, refinos visuais e material academico agregam valor, mas nao bloqueiam o produto principal.
+- A leitura de custos deixou de ser lacuna estrutural e o backlog restante ficou reduzido a polimento visual e manutencao normal.
+- O que sobra agora agrega acabamento e apresentacao, mas nao bloqueia o produto principal.
 
 **Legenda usada abaixo:**
 - `Necessidade Alta`: reduz risco, corrige percepcao enganosa, fecha comportamento essencial ou endurece o produto.
@@ -36,7 +36,6 @@
 
 | ID | Status | Necessidade | Tamanho | Leitura curta |
 | --- | --- | --- | --- | --- |
-| F3 | IDEIA CONTINUA | Baixa | Pequeno | Limpar boilerplate e naming excessivo |
 | G3 | BAIXA PRIORIDADE | Baixa | Pequeno | Fazer refinos visuais menores |
 
 ### Tarefas ja concluidas e que nao devem poluir a fila principal
@@ -642,12 +641,18 @@
 
 ### [F3] Revisar boilerplate, naming e componentes genericos demais
 
-**Status:** IDEIA CONTINUA
+**Status:** CONCLUIDO NO ESCOPO ATUAL
 
-**Reescrita melhor:**
-- Revisar partes repetitivas ou com cara de scaffolding.
-- Simplificar naming, comentarios e componentes desnecessarios.
-- Manter apenas abstracoes que agregam manutencao real.
+**Ja existe:**
+- Modulo de documentacao do frontend limpo com naming mais explicito, incluindo renomeacao de `Section` para `DocumentationSection` e de helpers open source para nomes diretamente ligados ao onboarding.
+- Hook especifico `useDocumentationResource` para remover boilerplate repetido de `fetch`, `loading`, `erro` e `abort` nas secoes remotas da documentacao.
+- Componentes pequenos e orientados ao dominio para estado e metricas, evitando markup repetido sem reintroduzir abstracoes genericas demais.
+- Conteudo estatico da pagina de documentacao extraido para constantes versionadas, reduzindo ruido e facilitando manutencao do roadmap e das referencias.
+- Cobertura automatizada adicional com testes unitarios do hook, testes das secoes de providers e teste de integracao da pagina de documentacao, alem do `e2e` atualizado.
+
+**Observacao:**
+- O ganho aqui deixou de ser backlog estrutural.
+- Novos ajustes de naming e boilerplate passam a ser manutencao incremental normal.
 
 ### [F4] Instalar e estruturar Storybook para os componentes do frontend
 
@@ -747,7 +752,7 @@ Estes itens ja existem ao menos em nivel funcional e nao devem voltar como "nao 
 
 ### Fase 2 - Expandir portabilidade e simplificar manutencao
 
-- `F3` Revisar boilerplate e naming desnecessarios.
+- Nenhuma task aberta restante nesta fase.
 
 ### Fase 3 - Roadmap de expansao e valor academico
 
@@ -758,8 +763,8 @@ Estes itens ja existem ao menos em nivel funcional e nao devem voltar como "nao 
 Se a pergunta for "quantas tasks existem e quantas sao realmente urgentes":
 
 - Existem 32 tasks catalogadas.
-- 30 ja podem ser tratadas como concluidas no escopo atual.
-- Das 2 abertas, nenhuma permanece como alta necessidade estrutural agora.
+- 31 ja podem ser tratadas como concluidas no escopo atual.
+- Da 1 aberta, nenhuma permanece como alta necessidade estrutural agora.
 
 Se a pergunta for "todas sao ultra necessarias":
 
@@ -769,7 +774,6 @@ Se a pergunta for "todas sao ultra necessarias":
 
 Se a ideia for escolher o proximo passo mais util agora:
 
-- `F3` reduzir boilerplate e naming excessivo enquanto o backlog estrutural esta curto.
 - `G3` deixar como polimento visual opcional para o fim.
 
 Se a ideia for enxergar melhor o backlog:
