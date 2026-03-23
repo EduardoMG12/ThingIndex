@@ -45,7 +45,7 @@ src/
 - upload de documentos;
 - listagem de categorias, collections e documentos;
 - painel lateral de preview e auditoria da indexacao;
-- painel operacional de documentos com destaque para falhas recentes, estados travados, watchlist prioritaria e slice acionavel da biblioteca;
+- painel operacional de documentos com leitura executiva, proximas acoes, mapa de anomalias, watchlist prioritaria e slice acionavel da biblioteca;
 - explorer de auditoria documental com busca, actor, request id, recorte por documento/collection, atalhos de falha e carregamento incremental;
 - explorer de auditoria de providers com escopo por familia ou provider ativo, filtros operacionais e atalhos para saves, ativacoes e falhas;
 - exibicao de monitoramento por documento:
@@ -165,6 +165,12 @@ Fluxo dedicado do chat:
 pnpm run test:e2e -- tests/e2e/chat-workspace.spec.ts
 ```
 
+Fluxo dedicado da observabilidade documental:
+
+```bash
+pnpm run test:e2e -- tests/e2e/document-observability.spec.ts
+```
+
 Somente os cenarios marcados como smoke:
 
 ```bash
@@ -178,7 +184,7 @@ pnpm run build:storybook
 pnpm run test:storybook:e2e
 ```
 
-O `devcontainer` versionado na raiz ja expõe as portas `3000` e `8000` e inclui a extensao do Playwright, entao os cenarios do workspace de chat podem ser executados nele sem ajuste extra.
+O `devcontainer` versionado na raiz ja expõe as portas `3000` e `8000` e inclui a extensao do Playwright, entao os cenarios do workspace de chat e da observabilidade documental podem ser executados nele sem ajuste extra.
 
 ## Storybook
 
@@ -216,6 +222,7 @@ Esse desenho reduz acoplamento entre componentes React e detalhes de transporte,
 ## Observabilidade documental
 
 - a tela `src/app/documents/page.tsx` combina o resumo agregado do backend com heuristicas locais de operacao para destacar documentos travados, retries, DLQ, orfaos e falhas recentes;
+- a experiencia agora separa leitura executiva, proximas acoes operacionais, mapa de anomalias e watchlist prioritaria para reduzir a leitura "card por card";
 - a heuristica compartilhada mora em `src/lib/document-state.ts` e `src/lib/document-observability.ts`, evitando espalhar classificacao operacional pelo JSX;
 - quando o usuario aplica busca ou slice operacional, a biblioteca troca a hierarquia por uma lista acionavel para inspecao direta dos documentos afetados.
 

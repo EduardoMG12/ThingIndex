@@ -188,8 +188,9 @@ export default function DocumentationPage() {
                     <Section icon={Workflow} title="Processamento Atual" id="processing" delay={0.25}>
                         <p className="mb-6">
                             O repositório já fecha o ciclo principal de upload, processamento assíncrono, indexação estrutural
-                            e recuperação do contexto salvo. O trabalho remanescente aqui é endurecer operação e observabilidade,
-                            não provar que o pipeline existe.
+                            e recuperação do contexto salvo. A tela documental já expõe leitura executiva, mapa de anomalias
+                            e próximos passos operacionais; o trabalho remanescente agora é expandir portabilidade e lapidar
+                            pricing, não provar que o pipeline existe.
                         </p>
 
                         <div className="space-y-4">
@@ -273,9 +274,9 @@ export default function DocumentationPage() {
 
                     <Section icon={GitBranch} title="Roadmap" id="roadmap" delay={0.6}>
                         <ul className="space-y-3">
-                            <li>Fechar checklist objetivo de seguranca, abuso e hardening do runtime atual.</li>
-                            <li>Tornar auditoria, readiness de providers e observabilidade mais consultaveis.</li>
-                            <li>Lapidar i18n restante e a UX do chat grounded e do monitoramento documental.</li>
+                            <li>Expandir storages realmente exercitados e publicar a CLI para importacao de indices externos.</li>
+                            <li>Refinar a leitura de custos e manter a UX alinhada ao nivel real de maturidade do runtime.</li>
+                            <li>Reduzir boilerplate, naming excessivo e polimentos visuais menores sem inflar o escopo principal.</li>
                             <li>Manter comparacoes com GraphRAG e abordagens vetoriais como trilhas academicas separadas do produto principal.</li>
                         </ul>
                     </Section>
