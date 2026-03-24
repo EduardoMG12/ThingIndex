@@ -29,7 +29,7 @@ export function DocumentationSection({
             id={id}
             {...documentationSectionAnimation}
             transition={{ delay, duration: 0.5 }}
-            className="surface-card overflow-hidden rounded-lg border border-border bg-card"
+            className="surface-card scroll-mt-24 overflow-hidden rounded-lg border border-border bg-card"
         >
             <div className="border-b border-border bg-muted/30 px-6 py-4">
                 <div className="flex items-center gap-2.5">
@@ -39,7 +39,7 @@ export function DocumentationSection({
                     <h2 className="font-display text-base font-bold text-foreground">{title}</h2>
                 </div>
             </div>
-            <div className="px-6 py-5 text-sm leading-relaxed text-muted-foreground">{children}</div>
+            <div className="min-w-0 px-6 py-5 text-sm leading-relaxed text-muted-foreground">{children}</div>
         </motion.section>
     );
 }

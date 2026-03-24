@@ -1,21 +1,10 @@
-export const DOCUMENTATION_TABLE_OF_CONTENTS = [
-    { id: "overview", label: "Visão Geral" },
-    { id: "product-focus", label: "Foco do Produto" },
-    { id: "principles", label: "Princípios de Projeto" },
-    { id: "architecture", label: "Arquitetura do Sistema" },
-    { id: "processing", label: "Processamento Atual" },
-    { id: "data-model", label: "Modelo de Dados" },
-    { id: "retrieval", label: "Recuperação de Contexto" },
-    { id: "indexing-benchmark", label: "Benchmark de Indexação" },
-    { id: "security", label: "Segurança e Governança" },
-    { id: "deployment", label: "Deploy e Operação" },
-    { id: "providers", label: "Providers e Portabilidade" },
-    { id: "open-source", label: "Onboarding Open Source" },
-    { id: "roadmap", label: "Roadmap" },
-    { id: "academic", label: "TCC e Artigo" },
-    { id: "contributing", label: "Contribuição" },
-    { id: "references", label: "Referências e Materiais" },
-];
+import type { AppLocale } from "@/lib/i18n/config";
+
+import { getDocumentationPageContent, type DocumentationTocItem } from "@/components/documentation/page-content";
+
+export function getDocumentationTableOfContents(locale: AppLocale): DocumentationTocItem[] {
+    return getDocumentationPageContent(locale).toc;
+}
 
 export type DocumentationFeature = {
     feature: string;
