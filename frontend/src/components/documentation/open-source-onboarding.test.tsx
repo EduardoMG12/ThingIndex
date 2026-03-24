@@ -8,6 +8,7 @@ import {
     resolveApiReferenceBase,
     resolveHostedAPIBase,
 } from "@/components/documentation/open-source-onboarding";
+import { createTestWrapper } from "@/test/test-utils";
 
 describe("documentation open-source onboarding helpers", () => {
     it("normalizes the public api base for docs endpoints", () => {
@@ -50,7 +51,9 @@ describe("documentation open-source onboarding helpers", () => {
     });
 
     it("renders the open-source onboarding section with both entry paths and references", () => {
-        render(<OpenSourceOnboardingSection apiBaseUrl="http://127.0.0.1:8000/api/v1" />);
+        render(<OpenSourceOnboardingSection apiBaseUrl="http://127.0.0.1:8000/api/v1" />, {
+            wrapper: createTestWrapper(),
+        });
 
         expect(screen.getAllByRole("link", { name: /Open link/i })).toHaveLength(5);
         expect(screen.getByRole("heading", { level: 3, name: "Self-hosted runtime" })).toBeInTheDocument();

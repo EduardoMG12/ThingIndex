@@ -12,86 +12,127 @@ export function ProviderSupportMatrix({
     items: ProviderSupport[];
 }) {
     const { locale } = useI18n();
+    const copy = locale === "pt-BR"
+        ? {
+            unavailable: "A matriz de suporte dos provedores não está disponível agora.",
+            headers: {
+                provider: "Provedor",
+                support: "Suporte",
+                transport: "Transporte",
+                setup: "Configuração sugerida",
+                notes: "Notas operacionais",
+            },
+            setupFallback: "Use sua própria implantação",
+        }
+        : locale === "es"
+            ? {
+                unavailable: "La matriz de soporte de providers no está disponible ahora.",
+                headers: {
+                    provider: "Provider",
+                    support: "Soporte",
+                    transport: "Transporte",
+                    setup: "Setup sugerido",
+                    notes: "Notas operativas",
+                },
+                setupFallback: "Usa tu propio despliegue",
+            }
+            : {
+                unavailable: "The provider support matrix is unavailable right now.",
+                headers: {
+                    provider: "Provider",
+                    support: "Support",
+                    transport: "Transport",
+                    setup: "Suggested setup",
+                    notes: "Operational notes",
+                },
+                setupFallback: "Bring your own deployment",
+            };
+    const responsiveCellClass = "grid gap-2 rounded-xl border border-border/60 bg-background/70 px-4 py-3 before:block before:text-[10px] before:font-bold before:uppercase before:tracking-[0.18em] before:text-muted-foreground before:content-[attr(data-label)] 2xl:table-cell 2xl:rounded-none 2xl:border-0 2xl:bg-transparent 2xl:px-4 2xl:py-4 2xl:align-top 2xl:before:content-none";
 
     if (items.length === 0) {
         return (
             <div className="rounded-xl border border-border bg-background/50 p-5 text-sm text-muted-foreground">
-                {locale === "pt-BR"
-                    ? "A matriz de suporte dos providers não está disponível agora."
-                    : locale === "es"
-                        ? "La matriz de soporte de providers no está disponible ahora."
-                        : "The provider support matrix is unavailable right now."}
+                {copy.unavailable}
             </div>
         );
     }
 
     return (
-        <div className="overflow-x-auto rounded-xl border border-border bg-background/50">
-            <table className="w-full min-w-[900px] text-left text-sm">
-                <thead className="border-b border-border bg-muted/20">
-                    <tr>
-                        <th className="px-4 py-3 font-semibold text-foreground">{locale === "pt-BR" ? "Provider" : locale === "es" ? "Provider" : "Provider"}</th>
-                        <th className="px-4 py-3 font-semibold text-foreground">{locale === "pt-BR" ? "Suporte" : locale === "es" ? "Soporte" : "Support"}</th>
-                        <th className="px-4 py-3 font-semibold text-foreground">{locale === "pt-BR" ? "Transporte" : locale === "es" ? "Transporte" : "Transport"}</th>
-                        <th className="px-4 py-3 font-semibold text-foreground">{locale === "pt-BR" ? "Setup sugerido" : locale === "es" ? "Setup sugerido" : "Suggested setup"}</th>
-                        <th className="px-4 py-3 font-semibold text-foreground">{locale === "pt-BR" ? "Notas operacionais" : locale === "es" ? "Notas operativas" : "Operational notes"}</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                    {items.map((item) => {
-                        const suggestedSetup = item.suggested_setup ?? {};
+        <div className="overflow-hidden rounded-xl border border-border bg-background/50">
+            <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left text-sm 2xl:min-w-[1180px] 2xl:table-fixed">
+                    <colgroup className="hidden 2xl:table-column-group">
+                        <col className="2xl:w-[18%]" />
+                        <col className="2xl:w-[20%]" />
+                        <col className="2xl:w-[15%]" />
+                        <col className="2xl:w-[23%]" />
+                        <col className="2xl:w-[24%]" />
+                    </colgroup>
+                    <thead className="hidden border-b border-border bg-muted/20 2xl:table-header-group">
+                        <tr>
+                            <th className="px-4 py-3 font-semibold text-foreground">{copy.headers.provider}</th>
+                            <th className="px-4 py-3 font-semibold text-foreground">{copy.headers.support}</th>
+                            <th className="px-4 py-3 font-semibold text-foreground">{copy.headers.transport}</th>
+                            <th className="px-4 py-3 font-semibold text-foreground">{copy.headers.setup}</th>
+                            <th className="px-4 py-3 font-semibold text-foreground">{copy.headers.notes}</th>
+                        </tr>
+                    </thead>
+                    <tbody className="grid gap-4 p-4 2xl:table-row-group 2xl:divide-y 2xl:divide-border/60 2xl:p-0">
+                        {items.map((item) => {
+                            const suggestedSetup = item.suggested_setup ?? {};
+                            const suggestedSetupEntries = Object.entries(suggestedSetup);
 
-                        return (
-                            <tr key={item.provider_type} className="align-top">
-                                <td className="px-4 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <ProviderBrandMark providerType={item.provider_type} size="sm" />
-                                        <div>
-                                            <p className="font-semibold text-foreground">{item.display_name}</p>
-                                            <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">{item.provider_type}</p>
+                            return (
+                                <tr
+                                    key={item.provider_type}
+                                    className="grid gap-4 rounded-2xl border border-border/70 bg-card/60 p-4 shadow-[0_20px_40px_-28px_rgba(0,0,0,0.6)] 2xl:table-row 2xl:rounded-none 2xl:border-0 2xl:bg-transparent 2xl:p-0 2xl:shadow-none"
+                                >
+                                    <td data-label={copy.headers.provider} className={responsiveCellClass}>
+                                        <div className="flex items-center gap-3">
+                                            <ProviderBrandMark providerType={item.provider_type} size="sm" />
+                                            <div>
+                                                <p className="font-semibold text-foreground">{item.display_name}</p>
+                                                <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">{item.provider_type}</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                </td>
-                                <td className="px-4 py-4">
-                                    <div className="space-y-2">
-                                        <ProviderSupportBadge level={item.support_level} />
-                                        <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">{item.summary}</p>
-                                    </div>
-                                </td>
-                                <td className="px-4 py-4 text-sm text-foreground">
-                                    {formatProviderSupportTransport(locale, item.transport)}
-                                </td>
-                                <td className="px-4 py-4 text-sm text-foreground">
-                                    {Object.keys(suggestedSetup).length > 0 ? (
-                                        <div className="space-y-1">
-                                            {Object.entries(suggestedSetup).map(([key, value]) => (
-                                                <p key={key}>
-                                                    {formatProviderSupportSetupLabel(locale, key)}: <span className="font-medium">{value}</span>
-                                                </p>
+                                    </td>
+                                    <td data-label={copy.headers.support} className={responsiveCellClass}>
+                                        <div className="space-y-2">
+                                            <ProviderSupportBadge level={item.support_level} className="w-max" />
+                                            <p className="max-w-sm text-xs leading-relaxed text-muted-foreground">{item.summary}</p>
+                                        </div>
+                                    </td>
+                                    <td data-label={copy.headers.transport} className={responsiveCellClass}>
+                                        {formatProviderSupportTransport(locale, item.transport)}
+                                    </td>
+                                    <td data-label={copy.headers.setup} className={responsiveCellClass}>
+                                        {suggestedSetupEntries.length > 0 ? (
+                                            <div className="space-y-2 text-sm text-foreground">
+                                                {suggestedSetupEntries.map(([key, value]) => (
+                                                    <p key={key} className="leading-relaxed">
+                                                        {formatProviderSupportSetupLabel(locale, key)}: <span className="font-medium break-all">{String(value)}</span>
+                                                    </p>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <span className="text-sm text-muted-foreground">
+                                                {copy.setupFallback}
+                                            </span>
+                                        )}
+                                    </td>
+                                    <td data-label={copy.headers.notes} className={responsiveCellClass}>
+                                        <ul className="space-y-2 list-disc pl-4 text-xs leading-relaxed text-muted-foreground marker:text-muted-foreground/60">
+                                            {item.notes.map((note) => (
+                                                <li key={note}>{note}</li>
                                             ))}
-                                        </div>
-                                    ) : (
-                                        <span className="text-muted-foreground">
-                                            {locale === "pt-BR"
-                                                ? "Use seu próprio deployment"
-                                                : locale === "es"
-                                                    ? "Usa tu propio despliegue"
-                                                    : "Bring your own deployment"}
-                                        </span>
-                                    )}
-                                </td>
-                                <td className="px-4 py-4">
-                                    <ul className="space-y-2 text-xs leading-relaxed text-muted-foreground">
-                                        {item.notes.map((note) => (
-                                            <li key={note}>{note}</li>
-                                        ))}
-                                    </ul>
-                                </td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
+                                        </ul>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
