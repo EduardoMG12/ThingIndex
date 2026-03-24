@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { LogOut, User, Settings, LayoutDashboard, Database, BookOpen, MessageSquare, ChevronDown, ChevronRight, Pencil, Check, X, MessageSquarePlus, Trash2, Coins } from "lucide-react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { Camera, Loader2, LogOut, Settings, LayoutDashboard, Database, BookOpen, MessageSquare, ChevronDown, ChevronRight, Pencil, Check, X, MessageSquarePlus, Trash2, Coins } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { logout } from "@/components/auth/actions";
@@ -13,6 +14,8 @@ import { DangerConfirmModal } from "@/components/ui/danger-confirm-modal";
 import { useI18n } from "@/lib/i18n/provider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { deleteChatConversation, updateChatConversationTitle, type ChatConversationSummary } from "@/lib/api/chat";
+import { fetchCurrentUser, type CurrentUser, updateCurrentUserProfile } from "@/lib/api/current-user";
+import { toast } from "sonner";
 
 type ChatSidebarSyncDetail = {
     selectedCollectionId: number | null;
@@ -23,6 +26,24 @@ type ChatSidebarSyncDetail = {
 interface AppShellProps {
     children: React.ReactNode;
     contentClassName?: string;
+}
+
+function getUserInitials(user: CurrentUser | null, fallbackLabel: string) {
+    const source = user?.name?.trim() || user?.email?.trim() || fallbackLabel;
+    const parts = source
+        .split(/\s+/)
+        .map((part) => part.trim())
+        .filter(Boolean);
+
+    if (parts.length === 0) {
+        return "TI";
+    }
+
+    if (parts.length === 1) {
+        return parts[0].slice(0, 2).toUpperCase();
+    }
+
+    return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
 }
 
 const AppShell = ({ children, contentClassName }: AppShellProps) => {
@@ -41,6 +62,15 @@ const AppShell = ({ children, contentClassName }: AppShellProps) => {
     const [conversationPendingDelete, setConversationPendingDelete] = useState<ChatConversationSummary | null>(null);
     const [conversationDeleteConfirmationValue, setConversationDeleteConfirmationValue] = useState("");
     const [isDeletingConversation, setIsDeletingConversation] = useState(false);
+    const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+    const [isCurrentUserLoading, setIsCurrentUserLoading] = useState(true);
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [profileNameDraft, setProfileNameDraft] = useState("");
+    const [profileAvatarFile, setProfileAvatarFile] = useState<File | null>(null);
+    const [profileAvatarPreviewUrl, setProfileAvatarPreviewUrl] = useState<string | null>(null);
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
+    const [hasAvatarLoadError, setHasAvatarLoadError] = useState(false);
+    const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
     const navItems = [
         { label: t("shell.nav.dashboard"), icon: LayoutDashboard, href: href("/dashboard") },
@@ -73,6 +103,98 @@ const AppShell = ({ children, contentClassName }: AppShellProps) => {
             window.removeEventListener("thingindex:chat-sidebar-sync", handleSync as EventListener);
         };
     }, [isChatRoute]);
+
+    useEffect(() => {
+        const controller = new AbortController();
+
+        async function loadCurrentUser() {
+            try {
+                setIsCurrentUserLoading(true);
+                const nextUser = await fetchCurrentUser(controller.signal);
+                setCurrentUser(nextUser);
+            } catch {
+                if (!controller.signal.aborted) {
+                    setCurrentUser(null);
+                }
+            } finally {
+                if (!controller.signal.aborted) {
+                    setIsCurrentUserLoading(false);
+                }
+            }
+        }
+
+        void loadCurrentUser();
+
+        return () => controller.abort();
+    }, []);
+
+    useEffect(() => {
+        if (!isEditingProfile) {
+            setProfileNameDraft(currentUser?.name ?? "");
+        }
+    }, [currentUser, isEditingProfile]);
+
+    const displayedAvatarSrc = profileAvatarPreviewUrl || (currentUser?.avatarUrl ? `/api/user/me/avatar${currentUser.updatedAt ? `?updatedAt=${encodeURIComponent(currentUser.updatedAt)}` : ""}` : null);
+
+    useEffect(() => {
+        setHasAvatarLoadError(false);
+    }, [displayedAvatarSrc]);
+
+    const userName = currentUser?.name?.trim() || currentUser?.email?.trim() || t("shell.user.accountFallback");
+    const userDetail = currentUser?.email?.trim() || t("shell.user.sessionFallback");
+    const userInitials = getUserInitials(currentUser, t("shell.user.accountFallback"));
+    const hasProfileChanges =
+        profileNameDraft.trim() !== (currentUser?.name?.trim() || "") ||
+        profileAvatarFile !== null;
+
+    const resetProfileEditor = () => {
+        if (profileAvatarPreviewUrl?.startsWith("blob:")) {
+            URL.revokeObjectURL(profileAvatarPreviewUrl);
+        }
+        setIsEditingProfile(false);
+        setProfileAvatarFile(null);
+        setProfileAvatarPreviewUrl(null);
+        setProfileNameDraft(currentUser?.name ?? "");
+    };
+
+    const handleProfileAvatarSelection = (event: ChangeEvent<HTMLInputElement>) => {
+        const nextFile = event.target.files?.[0] ?? null;
+
+        if (profileAvatarPreviewUrl?.startsWith("blob:")) {
+            URL.revokeObjectURL(profileAvatarPreviewUrl);
+        }
+
+        if (!nextFile) {
+            setProfileAvatarFile(null);
+            setProfileAvatarPreviewUrl(null);
+            return;
+        }
+
+        setProfileAvatarFile(nextFile);
+        setProfileAvatarPreviewUrl(URL.createObjectURL(nextFile));
+        event.target.value = "";
+    };
+
+    const handleSaveProfile = async () => {
+        if (!hasProfileChanges || !profileNameDraft.trim() || isSavingProfile) {
+            return;
+        }
+
+        setIsSavingProfile(true);
+        try {
+            const updatedUser = await updateCurrentUserProfile({
+                name: profileNameDraft.trim(),
+                avatar: profileAvatarFile,
+            });
+            setCurrentUser(updatedUser);
+            resetProfileEditor();
+            toast.success(t("shell.user.updateSuccess"));
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : t("shell.user.updateError"));
+        } finally {
+            setIsSavingProfile(false);
+        }
+    };
 
     const handleChatSectionClick = () => {
         if (isChatRoute) {
@@ -325,13 +447,117 @@ const AppShell = ({ children, contentClassName }: AppShellProps) => {
                 </nav>
 
                 <div className="p-4 border-t border-border space-y-2">
-                    <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-secondary/30 border border-border">
-                        <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
-                            <User className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold truncate leading-none">Eduardo MG</p>
-                            <p className="text-[10px] text-muted-foreground truncate uppercase mt-1">{t("shell.user.role")}</p>
+                    <div className="rounded-lg bg-secondary/30 border border-border px-3 py-3">
+                        <div className="flex items-start gap-3">
+                            <div className="relative shrink-0">
+                                {displayedAvatarSrc && !hasAvatarLoadError ? (
+                                    <Image
+                                        src={displayedAvatarSrc}
+                                        alt={userName}
+                                        width={40}
+                                        height={40}
+                                        unoptimized
+                                        className="h-10 w-10 rounded-full object-cover border border-border"
+                                        onError={() => setHasAvatarLoadError(true)}
+                                    />
+                                ) : (
+                                    <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center border border-primary/15">
+                                        <span className="text-[11px] font-bold uppercase tracking-wide text-primary">{userInitials}</span>
+                                    </div>
+                                )}
+                                {isEditingProfile ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => avatarInputRef.current?.click()}
+                                        className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:text-foreground"
+                                        aria-label={t("shell.user.changePhoto")}
+                                    >
+                                        <Camera className="h-3 w-3" />
+                                    </button>
+                                ) : null}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                                {isCurrentUserLoading ? (
+                                    <>
+                                        <div className="h-3 w-24 rounded bg-muted animate-pulse" />
+                                        <div className="mt-2 h-2.5 w-28 rounded bg-muted animate-pulse" />
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <p className="text-xs font-semibold truncate leading-none">{userName}</p>
+                                                <p className="text-[10px] text-muted-foreground truncate mt-1">{userDetail}</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsEditingProfile(true)}
+                                                className="rounded-md p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                                aria-label={t("shell.user.edit")}
+                                            >
+                                                <Pencil className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+
+                                        {isEditingProfile ? (
+                                            <div className="mt-3 space-y-3">
+                                                <input
+                                                    ref={avatarInputRef}
+                                                    type="file"
+                                                    accept="image/png,image/jpeg,image/webp"
+                                                    className="hidden"
+                                                    onChange={handleProfileAvatarSelection}
+                                                />
+                                                <div className="space-y-1">
+                                                    <label htmlFor="shell-user-name" className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                                                        {t("shell.user.nameLabel")}
+                                                    </label>
+                                                    <input
+                                                        id="shell-user-name"
+                                                        value={profileNameDraft}
+                                                        onChange={(event) => setProfileNameDraft(event.target.value)}
+                                                        className="w-full rounded-md border border-border bg-background px-2.5 py-2 text-xs text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                    />
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => avatarInputRef.current?.click()}
+                                                        className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-2 text-[11px] font-medium text-foreground transition hover:bg-muted"
+                                                    >
+                                                        <Camera className="h-3.5 w-3.5" />
+                                                        {t("shell.user.changePhoto")}
+                                                    </button>
+                                                    <span className="text-[10px] text-muted-foreground">
+                                                        {profileAvatarFile?.name || t("shell.user.photoHint")}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-end gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={resetProfileEditor}
+                                                        disabled={isSavingProfile}
+                                                        className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-2 text-[11px] font-medium text-muted-foreground transition hover:bg-muted disabled:opacity-60"
+                                                    >
+                                                        <X className="h-3.5 w-3.5" />
+                                                        {t("shell.user.cancel")}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => void handleSaveProfile()}
+                                                        disabled={!hasProfileChanges || !profileNameDraft.trim() || isSavingProfile}
+                                                        className="inline-flex items-center gap-2 rounded-md border border-primary/20 bg-primary/10 px-2.5 py-2 text-[11px] font-medium text-primary transition hover:bg-primary/15 disabled:opacity-60"
+                                                    >
+                                                        {isSavingProfile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                                                        {t("shell.user.save")}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : null}
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
                     <form action={logout}>
