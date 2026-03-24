@@ -273,6 +273,10 @@ export const messages: LocaleMessages = {
                     title: "Documentos | ThingIndex",
                     description: "Explore previews, outlines e estruturas indexadas dos seus documentos processados.",
                 },
+                costVisibility: {
+                    title: "Visibilidade de custos | ThingIndex",
+                    description: "Acompanhe a estimativa operacional de custos com base em runtime ativo, pricing sincronizado e telemetria real.",
+                },
                 documentation: {
                     title: "Documentação | ThingIndex",
                     description: "Conheça a arquitetura relacional e os fundamentos técnicos do ThingIndex.",
@@ -289,6 +293,7 @@ export const messages: LocaleMessages = {
                 dashboard: "Dashboard",
                 chat: "Chat",
                 documents: "Documentos",
+                futureFeature: "Feature futura",
                 documentation: "Documentação",
                 settings: "Configurações",
             },
@@ -319,29 +324,38 @@ export const messages: LocaleMessages = {
                 titleHighlight: "conhecimento estruturado",
                 description:
                     "ThingIndex ajuda times operacionais, jurídicos, acadêmicos e de compliance a organizar collections, extrair estrutura e recuperar contexto sem depender de uma stack opaca de RAG.",
-                primaryCta: "Começar agora",
-                secondaryCta: "Ver documentação",
+                primaryCta: "Criar conta grátis",
+                secondaryCta: "Ler documentação",
                 terminalTitle: "thingindex context",
             },
             focus: {
-                title: "Foco explícito do produto",
-                description: "O runtime principal foi desenhado para workspaces documentais auditáveis. Pesquisa comparativa continua existindo, mas aparece separada do caminho funcional atual.",
+                eyebrow: "Posicionamento atual",
+                title: "Onde o ThingIndex ajuda mais",
+                description: "A proposta aqui é direta: organizar documentos, preservar contexto e facilitar a revisão. Esta seção resume o que a plataforma já entrega sem promessas vagas.",
                 items: {
                     useCase: {
-                        title: "Caso de uso principal",
-                        desc: "Organizar collections documentais com contexto recuperável, metadados tipados e trilha operacional verificável.",
+                        eyebrow: "Base documental",
+                        title: "Organizar documentos com estrutura",
+                        desc: "Centralize arquivos em collections, mantenha metadados úteis e navegue pelo conteúdo com mais contexto.",
+                        note: "Collections, categorias e contexto recuperável",
                     },
                     audience: {
-                        title: "Melhor encaixe hoje",
-                        desc: "Times de operações, compliance, jurídico e pesquisa que precisam de estrutura, proveniência e recuperação repetível.",
+                        eyebrow: "Perfil de uso",
+                        title: "Para quem faz sentido",
+                        desc: "Equipes de operações, jurídico, compliance e pesquisa que lidam com volume documental e revisão frequente.",
+                        note: "Melhor quando a revisão precisa ser recorrente",
                     },
                     promise: {
-                        title: "Promessa do produto",
-                        desc: "Indexação relacional first, referências rastreáveis e portabilidade de providers sem reescrever o domínio principal.",
+                        eyebrow: "Rastreabilidade",
+                        title: "Consulta com rastreabilidade",
+                        desc: "Cada documento indexado mantém estrutura e referências para facilitar revisão, auditoria e recuperação de contexto.",
+                        note: "Da ingestão até a consulta com estrutura preservada",
                     },
                     researchBoundary: {
-                        title: "Fronteira de pesquisa",
-                        desc: "Comparações com vetores e GraphRAG seguem como extensões acadêmicas isoladas, não como promessa pronta do runtime.",
+                        eyebrow: "Arquitetura",
+                        title: "Evolução controlada",
+                        desc: "A arquitetura permite testar novos providers e fluxos sem desmontar o núcleo de organização documental.",
+                        note: "Expansão sem reescrever o núcleo do produto",
                     },
                 },
             },
@@ -382,19 +396,23 @@ export const messages: LocaleMessages = {
                 },
             },
             howItWorks: {
-                title: "Como funciona",
+                title: "Do arquivo ao contexto",
+                description: "O fluxo principal foi desenhado para preservar estrutura, contexto e rastreabilidade desde o upload até a consulta.",
                 steps: {
                     upload: {
-                        title: "Upload e organização",
+                        eyebrow: "Entrada",
+                        title: "Upload com organização",
                         desc: "Envie PDFs, HTML ou Excel e associe cada arquivo a categoria e collection.",
                     },
                     pipeline: {
-                        title: "Indexação estrutural",
-                        desc: "O backend persiste outline, parágrafos, tabelas e metadados para navegação e contexto.",
+                        eyebrow: "Estrutura",
+                        title: "Indexação rastreável",
+                        desc: "O backend persiste outline, parágrafos, tabelas e metadados para navegação, auditoria e reconstrução de contexto.",
                     },
                     query: {
-                        title: "Consulta de contexto",
-                        desc: "Navegue por collections e reconstrua o contexto consolidado de múltiplos documentos.",
+                        eyebrow: "Consulta",
+                        title: "Contexto pronto para revisão",
+                        desc: "Navegue por collections e reconstrua o contexto consolidado de múltiplos documentos com mais previsibilidade.",
                     },
                 },
             },
@@ -572,24 +590,24 @@ export const messages: LocaleMessages = {
             },
             cost: {
                 title: "Visibilidade de custos",
-                heading: "Estimativa operacional de pricing",
+                heading: "Estimativa operacional de custos",
                 description: "Leia custo como sinal operacional do pipeline indexado. A confiabilidade depende de precos sincronizados, provider ativo e uso realmente observado.",
                 executiveTitle: "Leitura executiva",
                 health: {
                     badge: {
                         trusted: "Estimativa confiavel",
                         partial: "Cobertura parcial",
-                        setup: "Setup de pricing pendente",
+                        setup: "Pricing pendente",
                     },
                     title: {
                         trusted: "Os custos observados ja podem ser lidos com boa confiabilidade.",
                         partial: "Ja existe telemetria util, mas a cobertura de pricing ainda nao esta completa.",
-                        setup: "Ainda nao ha base suficiente para tratar custo como sinal operacional confiavel.",
+                        setup: "Ainda nao ha base para confiar na estimativa de custo.",
                     },
                     description: {
                         trusted: "O runtime de indexacao ja encontrou precos sincronizados e documentos com telemetria precificada.",
                         partial: "Existe provider ativo, fontes salvas ou uso observado, mas parte dos documentos ou providers ainda esta fora da cobertura.",
-                        setup: "Cadastre fontes oficiais de pricing, aguarde a sincronizacao e gere uso real antes de confiar na estimativa.",
+                        setup: "Cadastre fontes oficiais, aguarde a sincronizacao e gere uso real para ativar a leitura de custo.",
                     },
                 },
                 metrics: {
@@ -660,6 +678,10 @@ export const messages: LocaleMessages = {
                 accuracy: "Validacao da resposta",
                 accuracyHint: "Confirme a resposta pelas fontes citadas. Este painel nao exibe um score fixo.",
             },
+        },
+        futureFeaturePage: {
+            eyebrow: "Feature futura",
+            description: "Esta area separa a leitura operacional de custos do dashboard principal e concentra a cobertura de pricing em uma pagina dedicada.",
         },
         chatPage: {
             eyebrow: "Consulta contextual",
@@ -1396,6 +1418,10 @@ export const messages: LocaleMessages = {
                     title: "Documents | ThingIndex",
                     description: "Explore previews, outlines, and indexed structures for your processed documents.",
                 },
+                costVisibility: {
+                    title: "Cost visibility | ThingIndex",
+                    description: "Track the operational cost estimate using active runtime data, synced pricing, and real telemetry.",
+                },
                 documentation: {
                     title: "Documentation | ThingIndex",
                     description: "Explore the relational architecture and technical foundations behind ThingIndex.",
@@ -1412,6 +1438,7 @@ export const messages: LocaleMessages = {
                 dashboard: "Dashboard",
                 chat: "Chat",
                 documents: "Documents",
+                futureFeature: "Future feature",
                 documentation: "Documentation",
                 settings: "Settings",
             },
@@ -1442,29 +1469,38 @@ export const messages: LocaleMessages = {
                 titleHighlight: "structured knowledge",
                 description:
                     "ThingIndex helps operations, legal, compliance, and research teams organize collections, extract structure, and recover context without depending on an opaque RAG-first stack.",
-                primaryCta: "Start now",
-                secondaryCta: "View documentation",
+                primaryCta: "Create free account",
+                secondaryCta: "Read documentation",
                 terminalTitle: "thingindex context",
             },
             focus: {
-                title: "Explicit product focus",
-                description: "The main runtime is designed for auditable document workspaces. Comparative research still exists, but it stays separate from the current functional path.",
+                eyebrow: "Current positioning",
+                title: "Where ThingIndex helps most",
+                description: "The pitch here is straightforward: organize documents, preserve context, and make review easier. This section summarizes what the platform already delivers without vague claims.",
                 items: {
                     useCase: {
-                        title: "Primary use case",
-                        desc: "Organize document collections with recoverable context, typed metadata, and a verifiable operational trail.",
+                        eyebrow: "Document base",
+                        title: "Organize documents with structure",
+                        desc: "Centralize files in collections, keep useful metadata, and navigate content with more context.",
+                        note: "Collections, categories, and recoverable context",
                     },
                     audience: {
-                        title: "Best fit today",
-                        desc: "Operations, compliance, legal, and research teams that need structure, provenance, and repeatable retrieval.",
+                        eyebrow: "Usage profile",
+                        title: "Who it fits best",
+                        desc: "Operations, legal, compliance, and research teams dealing with heavy document volume and frequent review.",
+                        note: "Best when review needs to happen repeatedly",
                     },
                     promise: {
-                        title: "Product promise",
-                        desc: "Relational-first indexing, traceable references, and provider portability without rewriting the main domain.",
+                        eyebrow: "Traceability",
+                        title: "Traceable retrieval",
+                        desc: "Each indexed document keeps structure and references available for review, audit, and context recovery.",
+                        note: "Structure preserved from ingestion to retrieval",
                     },
                     researchBoundary: {
-                        title: "Research boundary",
-                        desc: "Vector and GraphRAG comparisons remain isolated academic extensions, not a ready-made claim of the current runtime.",
+                        eyebrow: "Architecture",
+                        title: "Controlled evolution",
+                        desc: "The architecture lets you test new providers and flows without tearing apart the core document workflow.",
+                        note: "Expansion without rewriting the core product",
                     },
                 },
             },
@@ -1505,19 +1541,23 @@ export const messages: LocaleMessages = {
                 },
             },
             howItWorks: {
-                title: "How it works",
+                title: "From file to context",
+                description: "The main flow is designed to preserve structure, context, and traceability from upload to retrieval.",
                 steps: {
                     upload: {
-                        title: "Upload and organize",
+                        eyebrow: "Input",
+                        title: "Upload with organization",
                         desc: "Upload PDFs, HTML, or Excel files and assign each one to a category and collection.",
                     },
                     pipeline: {
-                        title: "Structured indexing",
-                        desc: "The backend persists outlines, paragraphs, tables, and metadata for navigation and context.",
+                        eyebrow: "Structure",
+                        title: "Traceable indexing",
+                        desc: "The backend persists outlines, paragraphs, tables, and metadata for navigation, audit, and context reconstruction.",
                     },
                     query: {
-                        title: "Context query",
-                        desc: "Browse collections and rebuild consolidated context across multiple documents.",
+                        eyebrow: "Retrieval",
+                        title: "Context ready for review",
+                        desc: "Browse collections and rebuild consolidated context across multiple documents with more predictability.",
                     },
                 },
             },
@@ -1695,7 +1735,7 @@ export const messages: LocaleMessages = {
             },
             cost: {
                 title: "Cost visibility",
-                heading: "Operational pricing estimate",
+                heading: "Operational cost estimate",
                 description: "Read cost as an operational signal for the indexed pipeline. Reliability depends on synced prices, the active provider, and genuinely observed usage.",
                 executiveTitle: "Executive brief",
                 health: {
@@ -1707,12 +1747,12 @@ export const messages: LocaleMessages = {
                     title: {
                         trusted: "Observed costs can already be read with solid confidence.",
                         partial: "There is useful telemetry already, but pricing coverage is still incomplete.",
-                        setup: "There is not enough ground yet to treat cost as a reliable operational signal.",
+                        setup: "There is not enough basis yet to trust the cost estimate.",
                     },
                     description: {
                         trusted: "The indexing runtime already has synced prices and pricing-aware document telemetry.",
                         partial: "There is an active provider, saved sources, or observed usage, but some providers or documents still fall outside coverage.",
-                        setup: "Register official pricing sources, wait for sync, and generate real usage before trusting the estimate.",
+                        setup: "Register official sources, wait for sync, and generate real usage before reading cost as a signal.",
                     },
                 },
                 metrics: {
@@ -1783,6 +1823,10 @@ export const messages: LocaleMessages = {
                 accuracy: "Answer validation",
                 accuracyHint: "Check cited sources before trusting the response. This panel does not show a fixed score.",
             },
+        },
+        futureFeaturePage: {
+            eyebrow: "Future feature",
+            description: "This area pulls operational cost reading out of the main dashboard and keeps pricing coverage in a dedicated page.",
         },
         chatPage: {
             eyebrow: "Context query",
@@ -2519,6 +2563,10 @@ export const messages: LocaleMessages = {
                     title: "Documentos | ThingIndex",
                     description: "Explora previews, outlines y estructuras indexadas de tus documentos procesados.",
                 },
+                costVisibility: {
+                    title: "Visibilidad de costos | ThingIndex",
+                    description: "Sigue la estimación operativa de costos con base en el runtime activo, pricing sincronizado y telemetría real.",
+                },
                 documentation: {
                     title: "Documentación | ThingIndex",
                     description: "Conoce la arquitectura relacional y los fundamentos técnicos de ThingIndex.",
@@ -2535,6 +2583,7 @@ export const messages: LocaleMessages = {
                 dashboard: "Dashboard",
                 chat: "Chat",
                 documents: "Documentos",
+                futureFeature: "Feature futura",
                 documentation: "Documentación",
                 settings: "Configuración",
             },
@@ -2565,29 +2614,38 @@ export const messages: LocaleMessages = {
                 titleHighlight: "conocimiento estructurado",
                 description:
                     "ThingIndex ayuda a equipos operativos, legales, de compliance y de investigación a organizar collections, extraer estructura y recuperar contexto sin depender de una stack opaca centrada en RAG.",
-                primaryCta: "Empezar ahora",
-                secondaryCta: "Ver documentación",
+                primaryCta: "Crear cuenta gratis",
+                secondaryCta: "Leer documentación",
                 terminalTitle: "thingindex context",
             },
             focus: {
-                title: "Foco explícito del producto",
-                description: "El runtime principal fue diseñado para workspaces documentales auditables. La investigación comparativa sigue existiendo, pero separada del camino funcional actual.",
+                eyebrow: "Posicionamiento actual",
+                title: "Dónde ThingIndex ayuda más",
+                description: "La propuesta aquí es directa: organizar documentos, preservar contexto y facilitar la revisión. Esta sección resume lo que la plataforma ya entrega sin promesas vagas.",
                 items: {
                     useCase: {
-                        title: "Caso de uso principal",
-                        desc: "Organizar collections documentales con contexto recuperable, metadatos tipados y una traza operativa verificable.",
+                        eyebrow: "Base documental",
+                        title: "Organizar documentos con estructura",
+                        desc: "Centraliza archivos en collections, conserva metadatos útiles y navega el contenido con más contexto.",
+                        note: "Collections, categorías y contexto recuperable",
                     },
                     audience: {
-                        title: "Mejor encaje hoy",
-                        desc: "Equipos de operaciones, compliance, legal e investigación que necesitan estructura, procedencia y recuperación repetible.",
+                        eyebrow: "Perfil de uso",
+                        title: "Para quién encaja mejor",
+                        desc: "Equipos de operaciones, legal, compliance e investigación que trabajan con mucho volumen documental y revisión frecuente.",
+                        note: "Encaja mejor cuando la revisión es recurrente",
                     },
                     promise: {
-                        title: "Promesa del producto",
-                        desc: "Indexación relational-first, referencias rastreables y portabilidad de providers sin reescribir el dominio principal.",
+                        eyebrow: "Trazabilidad",
+                        title: "Consulta rastreable",
+                        desc: "Cada documento indexado mantiene estructura y referencias para facilitar revisión, auditoría y recuperación de contexto.",
+                        note: "Estructura preservada desde la ingesta hasta la consulta",
                     },
                     researchBoundary: {
-                        title: "Frontera de investigación",
-                        desc: "Las comparaciones con vectores y GraphRAG siguen como extensiones académicas aisladas, no como una promesa lista del runtime.",
+                        eyebrow: "Arquitectura",
+                        title: "Evolución controlada",
+                        desc: "La arquitectura permite probar nuevos providers y flujos sin desmontar el núcleo del trabajo documental.",
+                        note: "Expansión sin reescribir el núcleo del producto",
                     },
                 },
             },
@@ -2628,19 +2686,23 @@ export const messages: LocaleMessages = {
                 },
             },
             howItWorks: {
-                title: "Cómo funciona",
+                title: "Del archivo al contexto",
+                description: "El flujo principal está diseñado para preservar estructura, contexto y trazabilidad desde la carga hasta la consulta.",
                 steps: {
                     upload: {
-                        title: "Carga y organización",
+                        eyebrow: "Entrada",
+                        title: "Carga con organización",
                         desc: "Sube archivos PDF, HTML o Excel y asigna cada uno a una categoría y collection.",
                     },
                     pipeline: {
-                        title: "Indexación estructural",
-                        desc: "El backend persiste outline, párrafos, tablas y metadatos para navegación y contexto.",
+                        eyebrow: "Estructura",
+                        title: "Indexación rastreable",
+                        desc: "El backend persiste outline, párrafos, tablas y metadatos para navegación, auditoría y reconstrucción de contexto.",
                     },
                     query: {
-                        title: "Consulta de contexto",
-                        desc: "Navega por collections y reconstruye contexto consolidado entre varios documentos.",
+                        eyebrow: "Consulta",
+                        title: "Contexto listo para revisión",
+                        desc: "Navega por collections y reconstruye contexto consolidado entre varios documentos con más previsibilidad.",
                     },
                 },
             },
@@ -2818,7 +2880,7 @@ export const messages: LocaleMessages = {
             },
             cost: {
                 title: "Visibilidad de costos",
-                heading: "Estimación operativa de pricing",
+                heading: "Estimación operativa de costos",
                 description: "Lee el costo como señal operativa del pipeline indexado. La confiabilidad depende de precios sincronizados, provider activo y uso realmente observado.",
                 executiveTitle: "Lectura ejecutiva",
                 health: {
@@ -2830,12 +2892,12 @@ export const messages: LocaleMessages = {
                     title: {
                         trusted: "Los costos observados ya pueden leerse con buena confiabilidad.",
                         partial: "Ya existe telemetría útil, pero la cobertura de pricing todavía no está completa.",
-                        setup: "Todavía no hay base suficiente para tratar el costo como señal operativa confiable.",
+                        setup: "Todavía no hay base para confiar en la estimación de costo.",
                     },
                     description: {
                         trusted: "El runtime de indexación ya encontró precios sincronizados y documentos con telemetría precificada.",
                         partial: "Existe provider activo, fuentes guardadas o uso observado, pero parte de los documentos o providers todavía queda fuera de cobertura.",
-                        setup: "Registra fuentes oficiales de pricing, espera la sincronización y genera uso real antes de confiar en la estimación.",
+                        setup: "Registra fuentes oficiales, espera la sincronización y genera uso real para activar la lectura de costo.",
                     },
                 },
                 metrics: {
@@ -2906,6 +2968,10 @@ export const messages: LocaleMessages = {
                 accuracy: "Validacion de la respuesta",
                 accuracyHint: "Confirma la respuesta con las fuentes citadas. Este panel no muestra un score fijo.",
             },
+        },
+        futureFeaturePage: {
+            eyebrow: "Feature futura",
+            description: "Esta área separa la lectura operativa de costos del dashboard principal y concentra la cobertura de pricing en una página dedicada.",
         },
         chatPage: {
             eyebrow: "Consulta contextual",

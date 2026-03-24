@@ -48,7 +48,7 @@ const CostCalculator = () => {
             ) : (
                 <div className="space-y-5 p-5">
                     <CostExecutiveSummary overview={overview} />
-                    <div className="grid gap-4 xl:grid-cols-[1.03fr_0.97fr]">
+                    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
                         <CostTrustBoundary error={panelError} />
                         <PricingSourceHealthList sources={overview.sourceStatuses} />
                     </div>
@@ -79,7 +79,7 @@ function CostCalculatorSkeleton() {
                 </div>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[1.03fr_0.97fr]">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
                 {Array.from({ length: 2 }).map((_, index) => (
                     <div key={index} className="rounded-2xl border border-border bg-background/60 p-5">
                         <div className="h-3 w-32 animate-pulse rounded-full bg-muted" />
