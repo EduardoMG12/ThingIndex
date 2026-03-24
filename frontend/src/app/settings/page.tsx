@@ -527,7 +527,7 @@ export default function SettingsPage() {
     const [activeLLMType, setActiveLLMType] = useState<ProviderType>("OPENAI");
     const [providerSupportByType, setProviderSupportByType] = useState<Partial<Record<ProviderType, ProviderSupport>>>({});
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [loadWarning, setLoadWarning] = useState<string | null>(null);
     const [isPending, startTransition] = useTransition();
 
     function toProviderSupportMap(items: ProviderSupport[]) {
@@ -547,6 +547,7 @@ export default function SettingsPage() {
     }
 
     function applyLoadedProviders(data: ProviderConfig[]) {
+        setLoadWarning(null);
         setProviders(data);
         syncLLMSelections(data);
 
@@ -566,27 +567,40 @@ export default function SettingsPage() {
         async function loadProviders() {
             try {
                 setIsLoading(true);
-                setError(null);
-                const [data, supportData] = await Promise.all([
+                setLoadWarning(null);
+                const [providersResult, supportData] = await Promise.allSettled([
                     fetchProviders(controller.signal),
                     loadAllProviderSupport(controller.signal),
                 ]);
-                setProviders(data);
-                setProviderSupportByType(toProviderSupportMap(supportData));
-                syncLLMSelections(data);
 
-                const { activeStorageType, activeLLMType } = getActiveProviderTypes(data);
-                if (activeStorageType) {
-                    setActiveStorageType(activeStorageType);
+                if (supportData.status === "fulfilled") {
+                    setProviderSupportByType(toProviderSupportMap(supportData.value));
+                } else {
+                    setProviderSupportByType({});
                 }
-                if (activeLLMType) {
-                    setActiveLLMType(activeLLMType);
+
+                if (providersResult.status === "fulfilled") {
+                    setLoadWarning(null);
+                    setProviders(providersResult.value);
+                    syncLLMSelections(providersResult.value);
+
+                    const { activeStorageType, activeLLMType } = getActiveProviderTypes(providersResult.value);
+                    if (activeStorageType) {
+                        setActiveStorageType(activeStorageType);
+                    }
+                    if (activeLLMType) {
+                        setActiveLLMType(activeLLMType);
+                    }
+                } else {
+                    setProviders([]);
+                    syncLLMSelections([]);
+                    setLoadWarning(t("settings.partialLoadWarning"));
                 }
             } catch (err) {
                 if (controller.signal.aborted) {
                     return;
                 }
-                setError(err instanceof Error ? err.message : t("settings.errors.load"));
+                setLoadWarning(err instanceof Error ? err.message : t("settings.errors.load"));
             } finally {
                 if (!controller.signal.aborted) {
                     setIsLoading(false);
@@ -607,7 +621,9 @@ export default function SettingsPage() {
                 ]);
                 applyLoadedProviders(data);
                 setProviderSupportByType(toProviderSupportMap(supportData));
+                setLoadWarning(null);
             } catch (err) {
+                setLoadWarning(t("settings.partialLoadWarning"));
                 toast.error(err instanceof Error ? err.message : t("settings.errors.refresh"));
             }
         });
@@ -871,13 +887,13 @@ export default function SettingsPage() {
                     </div>
                 ) : null}
 
-                {!isLoading && error ? (
-                    <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-5 text-sm text-destructive">
-                        {error}
+                {!isLoading && loadWarning ? (
+                    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-200">
+                        {loadWarning}
                     </div>
                 ) : null}
 
-                {!isLoading && !error ? (
+                {!isLoading ? (
                     <div className="space-y-10">
                         <FamilySection
                             family="STORAGE"

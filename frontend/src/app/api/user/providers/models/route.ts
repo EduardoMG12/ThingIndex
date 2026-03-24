@@ -3,8 +3,7 @@ import { NextResponse } from "next/server";
 
 import { proxyJsonWithAuthCleanup, unauthorizedJson } from "@/app/api/_utils/auth";
 import { createForwardHeaders } from "@/app/api/_utils/locale";
-
-const API_URL = process.env.API_INTERNAL_URL || "http://api:8080/api/v1";
+import { fetchApiUpstream } from "@/app/api/_utils/upstream";
 
 export async function POST(request: Request) {
     const token = (await cookies()).get("token")?.value;
@@ -16,7 +15,7 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => null);
 
     try {
-        const response = await fetch(`${API_URL}/user/providers/models`, {
+        const response = await fetchApiUpstream("/user/providers/models", {
             method: "POST",
             headers: await createForwardHeaders(request, { token, contentType: "application/json" }),
             body: JSON.stringify(body ?? {}),

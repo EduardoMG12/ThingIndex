@@ -25,6 +25,8 @@ import (
 	"gorm.io/gorm"
 )
 
+var newDefaultStorageProvider = providerpkg.NewDefaultStorageProvider
+
 func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 	if err := router.SetTrustedProxies(cfg.TrustedProxyList()); err != nil {
 		return fmt.Errorf("failed to configure trusted proxies: %w", err)
@@ -41,9 +43,10 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		AllowCredentials: true,
 	}))
 
-	defaultStorage, err := providerpkg.NewDefaultStorageProvider(cfg)
+	defaultStorage, err := newDefaultStorageProvider(cfg)
 	if err != nil {
-		return fmt.Errorf("failed to initialize default storage provider: %w", err)
+		log.Printf("warning: failed to initialize default storage provider, continuing with unavailable storage: %v", err)
+		defaultStorage = newUnavailableStorage(err)
 	}
 
 	authRepo := repository.NewGormAuthRepository(db)

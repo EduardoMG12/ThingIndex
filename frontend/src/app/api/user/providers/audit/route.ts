@@ -3,8 +3,7 @@ import { NextResponse } from "next/server";
 
 import { proxyJsonWithAuthCleanup, unauthorizedJson } from "@/app/api/_utils/auth";
 import { createForwardHeaders } from "@/app/api/_utils/locale";
-
-const API_URL = process.env.API_INTERNAL_URL || "http://api:8080/api/v1";
+import { fetchApiUpstream } from "@/app/api/_utils/upstream";
 
 export async function GET(request: Request) {
     const token = (await cookies()).get("token")?.value;
@@ -15,7 +14,7 @@ export async function GET(request: Request) {
 
     try {
         const incomingURL = new URL(request.url);
-        const response = await fetch(`${API_URL}/user/providers/audit${incomingURL.search}`, {
+        const response = await fetchApiUpstream(`/user/providers/audit${incomingURL.search}`, {
             method: "GET",
             headers: await createForwardHeaders(request, { token }),
             cache: "no-store",

@@ -504,6 +504,7 @@ export const messages: LocaleMessages = {
                 selectOrTypeCollection: "Selecione ou digite uma collection",
                 loadingCollections: "Carregando collections...",
                 noCollections: "Nenhuma collection encontrada. Pressione Enter para usar uma nova.",
+                collectionLoadError: "Nao foi possivel carregar as collections existentes. Voce ainda pode digitar uma nova ou tentar atualizar.",
                 collectionHint: "O campo aceita uma collection nova e o dropdown exibe os agrupamentos relacionais já catalogados.",
                 processingFailed: "Falha ao indexar documento.",
                 stillIndexing: "Documento ainda esta sendo indexado.",
@@ -1139,6 +1140,8 @@ export const messages: LocaleMessages = {
             toggleModelSuggestions: "Alternar sugestões de modelo",
             noSuggestedModels: "Nenhum modelo sugerido corresponde a esta busca. Continue digitando para usar um ID customizado.",
             loading: "Carregando configurações de providers...",
+            partialLoadWarning:
+                "Nao foi possivel consultar as configuracoes salvas agora. A tela continua disponivel para revisar providers, mas os estados ativos podem estar desatualizados ate a API responder.",
             errors: {
                 load: "Nao foi possivel carregar as configuracoes.",
                 refresh: "Nao foi possivel atualizar a visao de providers.",
@@ -1649,6 +1652,7 @@ export const messages: LocaleMessages = {
                 selectOrTypeCollection: "Select or type a collection",
                 loadingCollections: "Loading collections...",
                 noCollections: "No collections found. Press Enter to use a new one.",
+                collectionLoadError: "Could not load existing collections. You can still type a new one or refresh the list.",
                 collectionHint: "This field accepts a new collection and shows existing relational groupings in the dropdown.",
                 processingFailed: "Failed to index the document.",
                 stillIndexing: "The document is still being indexed.",
@@ -2284,6 +2288,8 @@ export const messages: LocaleMessages = {
             toggleModelSuggestions: "Toggle model suggestions",
             noSuggestedModels: "No suggested models match this search. Keep typing to use a custom model ID.",
             loading: "Loading provider settings...",
+            partialLoadWarning:
+                "Saved provider settings could not be loaded right now. You can still review providers here, but active states may be stale until the API responds again.",
             errors: {
                 load: "Could not load settings.",
                 refresh: "Could not refresh providers.",
@@ -2794,6 +2800,7 @@ export const messages: LocaleMessages = {
                 selectOrTypeCollection: "Selecciona o escribe una collection",
                 loadingCollections: "Cargando collections...",
                 noCollections: "No se encontraron collections. Presiona Enter para usar una nueva.",
+                collectionLoadError: "No fue posible cargar las collections existentes. Aun puedes escribir una nueva o volver a actualizar.",
                 collectionHint: "El campo acepta una collection nueva y el dropdown muestra agrupaciones relacionales ya catalogadas.",
                 processingFailed: "No fue posible indexar el documento.",
                 stillIndexing: "El documento sigue en indexacion.",
@@ -3429,6 +3436,8 @@ export const messages: LocaleMessages = {
             toggleModelSuggestions: "Alternar sugerencias de modelo",
             noSuggestedModels: "Ningún modelo sugerido coincide con esta búsqueda. Sigue escribiendo para usar un identificador personalizado.",
             loading: "Cargando configuración de providers...",
+            partialLoadWarning:
+                "No se pudieron consultar las configuraciones guardadas en este momento. Aun puedes revisar los providers aqui, pero los estados activos pueden estar desactualizados hasta que la API responda otra vez.",
             errors: {
                 load: "No se pudo cargar la configuración.",
                 refresh: "No se pudieron actualizar los providers.",

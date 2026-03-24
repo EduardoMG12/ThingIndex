@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"thing-index/db"
+	internalapi "thing-index/internal/api"
 	"thing-index/internal/config"
 	"thing-index/internal/indexing"
 	providerpkg "thing-index/internal/pkg/provider"
@@ -37,7 +38,8 @@ func main() {
 
 	defaultStorage, err := providerpkg.NewDefaultStorageProvider(config.AppConfig)
 	if err != nil {
-		log.Fatalf("failed to initialize default storage provider: %v", err)
+		log.Printf("warning: failed to initialize default storage provider, continuing with unavailable storage: %v", err)
+		defaultStorage = internalapi.NewUnavailableStorageForIndexer(err)
 	}
 
 	providerRepo := repository.NewGormProviderRepository(database)
