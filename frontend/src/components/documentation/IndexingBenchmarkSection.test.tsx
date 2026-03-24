@@ -1,6 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { createTestWrapper } from "@/test/test-utils";
+
 const { fetchIndexingBenchmarkMock } = vi.hoisted(() => ({
     fetchIndexingBenchmarkMock: vi.fn(),
 }));
@@ -77,10 +79,12 @@ describe("IndexingBenchmarkSection", () => {
             ],
         });
 
-        render(<IndexingBenchmarkSection />);
+        render(<IndexingBenchmarkSection />, {
+            wrapper: createTestWrapper(),
+        });
 
         await waitFor(() => {
-            expect(screen.getByText("7 casos controlados")).toBeInTheDocument();
+            expect(screen.getByText("7 controlled cases")).toBeInTheDocument();
         });
 
         expect(screen.getByText("/api/v1/meta/indexing-benchmark")).toBeInTheDocument();
@@ -88,6 +92,7 @@ describe("IndexingBenchmarkSection", () => {
         expect(screen.getAllByText("Master Service Agreement")).toHaveLength(2);
         expect(screen.getByText("payment deadline invoice receipt")).toBeInTheDocument();
         expect(screen.getByText("28.6%")).toBeInTheDocument();
+        expect(screen.getByText("Assessed cases")).toBeInTheDocument();
         expect(screen.getByText("Heuristic is operational only.")).toBeInTheDocument();
     });
 });
