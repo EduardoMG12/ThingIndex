@@ -125,6 +125,10 @@ func (u *authUseCase) ResetPassword(ctx context.Context, token, newPassword stri
 	return u.repo.UpdateUser(ctx, user)
 }
 
+func (u *authUseCase) GetCurrentUser(ctx context.Context, userID uint) (*models.User, error) {
+	return u.repo.GetUserByID(ctx, userID)
+}
+
 func (u *authUseCase) issueToken(userID uint) (string, error) {
 	now := time.Now()
 	claims := authClaims{

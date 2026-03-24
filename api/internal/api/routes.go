@@ -119,6 +119,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		user := v1.Group("/user")
 		user.Use(middleware.AuthMiddleware(cfg, authRepo))
 		{
+			user.GET("/me", authHandler.Me)
 			user.POST("/providers", providerHandler.SaveCredentials)
 			user.POST("/providers/test", providerHandler.TestConnection)
 			user.POST("/providers/models", providerHandler.ListModels)

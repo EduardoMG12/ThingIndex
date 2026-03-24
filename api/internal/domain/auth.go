@@ -22,4 +22,5 @@ type AuthUseCase interface {
 	Login(ctx context.Context, email, password string) (string, error)
 	ForgotPassword(ctx context.Context, email string) error
 	ResetPassword(ctx context.Context, token, newPassword string) error
+	GetCurrentUser(ctx context.Context, userID uint) (*models.User, error)
 }

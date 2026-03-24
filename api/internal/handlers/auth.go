@@ -88,6 +88,35 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "auth.success_login"), gin.H{"token": token})
 }
 
+// Me godoc
+// @Summary      Get authenticated user
+// @Description  Return the authenticated user profile for the current token
+// @Tags         auth
+// @Produce      json
+// @Success      200 {object} response.Response{data=dto.UserResponse}
+// @Failure      401 {object} response.Response
+// @Failure      500 {object} response.Response
+// @Security     BearerAuth
+// @Router       /user/me [get]
+func (h *AuthHandler) Me(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	user, err := h.useCase.GetCurrentUser(c.Request.Context(), userID)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "auth.success_me"), dto.UserResponse{
+		ID:        user.ID,
+		Name:      user.Name,
+		Email:     user.Email,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+	})
+}
+
 // ForgotPassword godoc
 // @Summary      Forgot password
 // @Description  Send a reset password link to the user's email
