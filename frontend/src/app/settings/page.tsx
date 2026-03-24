@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { motion } from "framer-motion";
-import { Activity, Bot, CheckCircle2, Database, History, KeyRound, Loader2, ServerCog, ShieldCheck } from "lucide-react";
+import { Activity, Bot, Database, History, KeyRound, Loader2, ServerCog, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import ProviderModelField from "@/components/settings/ProviderModelField";
@@ -142,26 +142,40 @@ function FamilySection({
     const savedConfigs = getSavedConfigs(configs, family);
     const discoveredModelsForActiveProvider = discoveredModels[activeProvider.providerType] ?? [];
     const readinessReport = readinessReports[activeProvider.providerType] ?? null;
-    const supportDisclosureTitle = locale === "pt-BR"
-        ? "Perfil avançado do runtime"
-        : locale === "es"
-            ? "Perfil avanzado del runtime"
-            : "Advanced runtime profile";
-    const supportDisclosureDescription = locale === "pt-BR"
-        ? "Abra este bloco para revisar compatibilidade, transporte e configuração sugerida do provider."
-        : locale === "es"
-            ? "Abre este bloque para revisar compatibilidad, transporte y configuración sugerida del provider."
-            : "Open this block to review compatibility, transport, and the provider suggested setup.";
+    const savedConfigCountLabel = new Intl.NumberFormat(locale).format(savedConfigs.length);
+
+    function getProviderStatusLine(providerType: ProviderType) {
+        const items: string[] = [];
+
+        if (hasSavedConfig(configs, family, providerType)) {
+            items.push(t("common.saved"));
+        }
+
+        if (family === "STORAGE") {
+            if (isStorageEnabled(configs, providerType)) {
+                items.push(t("common.active"));
+            }
+        } else {
+            if (isLLMEnabledForIndexing(configs, providerType)) {
+                items.push(t("settings.llmIndexingLabel"));
+            }
+            if (isLLMEnabledForChat(configs, providerType)) {
+                items.push(t("settings.llmChatLabel"));
+            }
+        }
+
+        return items.join(" · ");
+    }
 
     return (
-        <section className="space-y-6">
+        <section className="space-y-5">
             <div className="flex items-start justify-between gap-4">
                 <div>
                     <div className="mb-2 flex items-center gap-2">
                         <FamilyIcon className="h-4 w-4 text-primary" />
                         <span className="text-[10px] font-bold uppercase tracking-[0.28em] text-primary">{familyCopy.title}</span>
                     </div>
-                    <h2 className="text-2xl font-semibold tracking-tight">{familyCopy.title}</h2>
+                    <h2 className="text-xl font-semibold tracking-tight">{familyCopy.title}</h2>
                     <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{familyCopy.description}</p>
                 </div>
                 <div className="rounded-full border border-border bg-background/70 px-3 py-1 text-[10px] font-mono uppercase tracking-[0.24em] text-muted-foreground">
@@ -169,71 +183,51 @@ function FamilySection({
                 </div>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-                <Card className="flex h-[680px] flex-col border-border/80 bg-card/75">
-                    <CardHeader className="space-y-3">
+            <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+                <Card className="border-border/80 bg-card/70 xl:sticky xl:top-6 xl:self-start">
+                    <CardHeader className="space-y-2">
                         <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-primary">{t("settings.steps.select")}</p>
-                        <h3 className="text-lg font-semibold">{family === "LLM" ? t("settings.selectTitleLLM") : t("settings.selectTitleStorage")}</h3>
+                        <h3 className="text-base font-semibold">{family === "LLM" ? t("settings.selectTitleLLM") : t("settings.selectTitleStorage")}</h3>
                         <p className="text-sm text-muted-foreground">
                             {t("settings.selectDescription")}
                         </p>
                     </CardHeader>
-                    <CardContent className="grid flex-1 auto-rows-max gap-3 overflow-y-auto pr-2 custom-scrollbar">
+                    <CardContent className="space-y-2">
                         {providers.map((provider) => {
                             const support = providerSupportByType[provider.providerType] ?? null;
-                            const saved = hasSavedConfig(configs, family, provider.providerType);
-                            const enabled = family === "STORAGE"
-                                ? isStorageEnabled(configs, provider.providerType)
-                                : isLLMEnabledForIndexing(configs, provider.providerType) || isLLMEnabledForChat(configs, provider.providerType);
                             const selected = activeProviderType === provider.providerType;
-                            const llmIndexingActive = family === "LLM" && isLLMEnabledForIndexing(configs, provider.providerType);
-                            const llmChatActive = family === "LLM" && isLLMEnabledForChat(configs, provider.providerType);
+                            const providerStatusLine = getProviderStatusLine(provider.providerType);
 
                             return (
                                 <motion.button
                                     key={provider.providerType}
                                     type="button"
-                                    whileHover={{ y: -2 }}
+                                    whileHover={{ y: -1 }}
                                     whileTap={{ scale: 0.995 }}
                                     onClick={() => onSelect(provider.providerType)}
                                     className={cn(
-                                        "relative overflow-hidden rounded-2xl border p-4 text-left transition-colors",
-                                        selected ? "border-primary/50 bg-primary/10" : "border-border bg-background/55 hover:border-primary/20"
+                                        "w-full rounded-xl border px-3 py-3 text-left transition-colors",
+                                        selected ? "border-primary/45 bg-primary/10" : "border-border bg-background/55 hover:border-primary/20"
                                     )}
                                 >
-                                    <div className={cn("absolute inset-0 bg-gradient-to-br opacity-100", provider.accentClass)} />
-                                    <div className="relative flex items-start gap-3">
+                                    <div className="flex min-w-0 items-start gap-3">
                                         <ProviderBrandMark providerType={provider.providerType} size="sm" />
-                                        <div className="min-w-0">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <h4 className="text-sm font-semibold">{provider.name}</h4>
-                                                {saved ? (
-                                                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
-                                                        <CheckCircle2 className="h-3 w-3" />
-                                                        {t("common.saved")}
-                                                    </span>
-                                                ) : null}
-                                                {support ? (
-                                                    <ProviderSupportBadge level={support.support_level} />
-                                                ) : null}
-                                                {enabled ? (
-                                                    <span className="rounded-full border border-primary/20 bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
-                                                        {t("common.active")}
-                                                    </span>
-                                                ) : null}
-                                                {llmIndexingActive ? (
-                                                    <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-sky-300">
-                                                        {t("settings.llmIndexingLabel")}
-                                                    </span>
-                                                ) : null}
-                                                {llmChatActive ? (
-                                                    <span className="rounded-full border border-fuchsia-500/20 bg-fuchsia-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-fuchsia-300">
-                                                        {t("settings.llmChatLabel")}
-                                                    </span>
-                                                ) : null}
-                                            </div>
-                                            <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{provider.tagline}</p>
-                                            <p className="mt-2 text-sm leading-relaxed text-foreground/80">{provider.description}</p>
+                                        <div className="min-w-0 flex-1">
+                                            <h4 className="truncate text-sm font-semibold">{provider.name}</h4>
+                                            <p className="mt-1 truncate text-xs text-muted-foreground">{provider.tagline}</p>
+
+                                            {support ? (
+                                                <div className="mt-2">
+                                                    <ProviderSupportBadge
+                                                        level={support.support_level}
+                                                        className="max-w-full whitespace-normal text-left leading-4"
+                                                    />
+                                                </div>
+                                            ) : null}
+
+                                            {providerStatusLine ? (
+                                                <p className="mt-2 text-[11px] text-muted-foreground">{providerStatusLine}</p>
+                                            ) : null}
                                         </div>
                                     </div>
                                 </motion.button>
@@ -242,31 +236,32 @@ function FamilySection({
                     </CardContent>
                 </Card>
 
-                <Card glow className="flex h-[680px] flex-col border-primary/15 bg-card/85">
-                    <CardHeader className="space-y-3">
+                <Card glow className="border-primary/15 bg-card/80">
+                    <CardHeader className="space-y-4">
                         <div className="flex items-center gap-3">
                             <ProviderBrandMark providerType={activeProvider.providerType} size="md" />
                             <div>
                                 <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-primary">{t("settings.steps.fill")}</p>
                                 <h3 className="mt-1 text-lg font-semibold">{activeProvider.name}</h3>
+                                <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{activeProvider.tagline}</p>
                             </div>
                         </div>
                         <p className="text-sm leading-relaxed text-muted-foreground">{activeProvider.description}</p>
                     </CardHeader>
-                    <CardContent className="flex min-h-0 flex-1 flex-col gap-4">
-                        <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+                    <CardContent className="space-y-4">
+                        <div className="space-y-4">
                             <details className="group rounded-2xl border border-border bg-background/60 p-4">
                                 <summary className="flex cursor-pointer list-none items-start justify-between gap-4">
                                     <div>
                                         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                                            {supportDisclosureTitle}
+                                            {t("settings.runtimeProfileTitle")}
                                         </p>
-                                        <p className="mt-2 text-sm leading-relaxed text-foreground/85">
-                                            {supportDisclosureDescription}
+                                        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                                            {t("settings.runtimeProfileDescription")}
                                         </p>
                                     </div>
                                     <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground transition group-open:text-primary">
-                                        {locale === "pt-BR" ? "Abrir" : locale === "es" ? "Abrir" : "Open"}
+                                        {t("common.open")}
                                     </span>
                                 </summary>
                                 <div className="mt-4">
@@ -319,7 +314,7 @@ function FamilySection({
                             {family === "LLM" ? (
                                 <div className="rounded-2xl border border-border bg-background/60 p-4">
                                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t("settings.llmTargetsTitle")}</p>
-                                    <p className="mt-2 text-sm leading-relaxed text-foreground/85">{t("settings.llmTargetsDescription")}</p>
+                                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t("settings.llmTargetsDescription")}</p>
                                     <div className="mt-4 space-y-3">
                                         <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-background/70 px-3 py-2">
                                             <div>
@@ -349,23 +344,37 @@ function FamilySection({
                                 </div>
                             ) : null}
 
-                            <ProviderReadinessPanel
-                                provider={activeProvider}
-                                report={readinessReport}
-                                discoveredModels={discoveredModelsForActiveProvider}
-                                isLoadingModels={isPending || isLoadingModels}
-                                onLoadModels={onLoadModels}
-                            />
-
-                            <div className="rounded-2xl border border-border bg-background/60 p-4">
-                                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t("settings.behaviorTitle")}</p>
-                                <p className="mt-2 text-sm leading-relaxed text-foreground/85">
-                                    {family === "LLM" ? t("settings.behaviorDescriptionLLM") : t("settings.behaviorDescription")}
-                                </p>
-                            </div>
+                            <details className="group rounded-2xl border border-border bg-background/60 p-4">
+                                <summary className="flex cursor-pointer list-none items-start justify-between gap-4">
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                                            {t("settings.readinessDisclosureTitle")}
+                                        </p>
+                                        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                                            {t("settings.readinessDisclosureDescription")}
+                                        </p>
+                                    </div>
+                                    <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground transition group-open:text-primary">
+                                        {t("common.open")}
+                                    </span>
+                                </summary>
+                                <div className="mt-4">
+                                    <ProviderReadinessPanel
+                                        provider={activeProvider}
+                                        report={readinessReport}
+                                        discoveredModels={discoveredModelsForActiveProvider}
+                                        isLoadingModels={isPending || isLoadingModels}
+                                        onLoadModels={onLoadModels}
+                                    />
+                                </div>
+                            </details>
                         </div>
 
-                        <div className={cn("grid shrink-0 gap-3", family === "LLM" ? "md:grid-cols-3" : "md:grid-cols-2")}>
+                        <p className="text-xs leading-relaxed text-muted-foreground">
+                            {family === "LLM" ? t("settings.behaviorDescriptionLLM") : t("settings.behaviorDescription")}
+                        </p>
+
+                        <div className={cn("grid gap-3", family === "LLM" ? "md:grid-cols-3" : "md:grid-cols-2")}>
                             {family === "LLM" ? (
                                 <Button
                                     type="button"
@@ -402,15 +411,25 @@ function FamilySection({
                 </Card>
             </div>
 
-            <Card className="border-border/80 bg-card/70">
-                <CardHeader className="space-y-3">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-primary">{t("settings.steps.saved")}</p>
-                    <h3 className="text-lg font-semibold">{family === "LLM" ? t("settings.savedTitleLLM") : t("settings.savedTitleStorage")}</h3>
-                    <p className="text-sm text-muted-foreground">
-                        {t("settings.savedDescription")}
-                    </p>
-                </CardHeader>
-                <CardContent className="grid auto-rows-max gap-3 md:max-h-[320px] md:overflow-y-auto md:pr-2 custom-scrollbar">
+            <details className="group rounded-2xl border border-border/80 bg-card/70">
+                <summary className="flex cursor-pointer list-none items-start justify-between gap-4 p-6">
+                    <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-primary">{t("settings.steps.saved")}</p>
+                        <h3 className="mt-2 text-lg font-semibold">{family === "LLM" ? t("settings.savedTitleLLM") : t("settings.savedTitleStorage")}</h3>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                            {t("settings.savedDescription")}
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-semibold text-foreground">
+                            {savedConfigCountLabel}
+                        </span>
+                        <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground transition group-open:text-primary">
+                            {t("common.open")}
+                        </span>
+                    </div>
+                </summary>
+                <div className="grid auto-rows-max gap-3 border-t border-border/70 p-6 md:max-h-[320px] md:overflow-y-auto md:pr-4 custom-scrollbar">
                     {savedConfigs.length > 0 ? (
                         savedConfigs.map((config) => {
                             const provider = providers.find((item) => item.providerType === config.provider_type);
@@ -453,9 +472,6 @@ function FamilySection({
                                                     </span>
                                                 ) : null}
                                             </div>
-                                            <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                                                {provider.tagline}
-                                            </p>
                                             {family === "LLM" && config.public_metadata.model ? (
                                                 <p className="mt-2 text-xs text-foreground/80">
                                                     {t("settings.savedModelLabel")}: <span className="font-medium text-foreground">{config.public_metadata.model}</span>
@@ -531,8 +547,8 @@ function FamilySection({
                             {family === "LLM" ? t("settings.emptyLLM") : t("settings.emptyStorage")}
                         </div>
                     )}
-                </CardContent>
-            </Card>
+                </div>
+            </details>
         </section>
     );
 }
@@ -567,8 +583,28 @@ export default function SettingsPage() {
     const activeIndexingConfig = providers.find((provider) => provider.family === "LLM" && provider.enabled_for_indexing) ?? null;
     const activeChatConfig = providers.find((provider) => provider.family === "LLM" && provider.enabled_for_chat) ?? null;
     const savedProviderCount = providers.length;
-    const savedStorageCount = providers.filter((provider) => provider.family === "STORAGE").length;
-    const savedLLMCount = providers.filter((provider) => provider.family === "LLM").length;
+    const overviewItems = [
+        {
+            label: t("settings.summary.storage"),
+            value: findProviderLabel(activeStorageConfig?.provider_type) ?? t("common.inactive"),
+            accentClass: "bg-emerald-400",
+        },
+        {
+            label: t("settings.summary.indexing"),
+            value: findProviderLabel(activeIndexingConfig?.provider_type) ?? t("common.inactive"),
+            accentClass: "bg-sky-400",
+        },
+        {
+            label: t("settings.summary.chat"),
+            value: findProviderLabel(activeChatConfig?.provider_type) ?? t("common.inactive"),
+            accentClass: "bg-fuchsia-400",
+        },
+        {
+            label: t("settings.summary.saved"),
+            value: new Intl.NumberFormat(locale).format(savedProviderCount),
+            accentClass: "bg-amber-400",
+        },
+    ];
 
     function findProviderLabel(providerType?: ProviderType | null) {
         return localizedProviders.find((provider) => provider.providerType === providerType)?.name ?? providerType ?? null;
@@ -891,14 +927,14 @@ export default function SettingsPage() {
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.35 }}
-                    className="relative overflow-hidden rounded-[28px] border border-primary/15 bg-card/80 p-8 shadow-card"
+                    className="relative overflow-hidden rounded-[28px] border border-primary/15 bg-card/80 p-6 shadow-card lg:p-7"
                 >
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(245,166,35,0.16),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(82,168,255,0.1),transparent_28%)]" />
-                    <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                             <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary">{t("settings.heroEyebrow")}</p>
                             <h1 className="mt-3 text-3xl font-semibold tracking-tight">{t("settings.heroTitle")}</h1>
-                            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+                            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
                                 {t("settings.heroDescription")}
                             </p>
                         </div>
@@ -909,55 +945,24 @@ export default function SettingsPage() {
                         </Button>
                     </div>
 
-                    <div className="relative mt-6 flex max-w-2xl items-start gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-emerald-500/20 bg-background/70">
-                            <ShieldCheck className="h-5 w-5 text-emerald-400" />
-                        </div>
-                        <div>
-                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
-                                {t("settings.securityTitle")}
-                            </p>
-                            <p className="mt-1 text-sm leading-relaxed text-foreground/85">
-                                {t("settings.securityDescription")}
-                            </p>
-                        </div>
+                    <div className="relative mt-5 flex flex-wrap gap-2">
+                        {overviewItems.map((item) => (
+                            <div
+                                key={item.label}
+                                className="min-w-[156px] rounded-2xl border border-border/80 bg-background/60 px-4 py-3"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span className={cn("h-2 w-2 rounded-full", item.accentClass)} />
+                                    <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
+                                </div>
+                                <p className="mt-2 text-base font-semibold text-foreground">{item.value}</p>
+                            </div>
+                        ))}
                     </div>
 
-                    <div className="relative mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t("settings.family.STORAGE.title")}</p>
-                            <p className="mt-2 text-lg font-semibold text-foreground">
-                                {findProviderLabel(activeStorageConfig?.provider_type) ?? t("common.inactive")}
-                            </p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                                {activeStorageConfig ? t("common.active") : t("common.inactive")}
-                            </p>
-                        </div>
-                        <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t("settings.llmIndexingLabel")}</p>
-                            <p className="mt-2 text-lg font-semibold text-foreground">
-                                {findProviderLabel(activeIndexingConfig?.provider_type) ?? t("common.inactive")}
-                            </p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                                {activeIndexingConfig ? t("common.active") : t("common.inactive")}
-                            </p>
-                        </div>
-                        <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t("settings.llmChatLabel")}</p>
-                            <p className="mt-2 text-lg font-semibold text-foreground">
-                                {findProviderLabel(activeChatConfig?.provider_type) ?? t("common.inactive")}
-                            </p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                                {activeChatConfig ? t("common.active") : t("common.inactive")}
-                            </p>
-                        </div>
-                        <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t("common.saved")}</p>
-                            <p className="mt-2 text-lg font-semibold text-foreground">{savedProviderCount}</p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                                {savedStorageCount} {t("settings.family.STORAGE.title")} · {savedLLMCount} {t("settings.family.LLM.title")}
-                            </p>
-                        </div>
+                    <div className="relative mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+                        <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-400" />
+                        <p>{t("settings.securityInline")}</p>
                     </div>
                 </motion.section>
 
@@ -979,11 +984,7 @@ export default function SettingsPage() {
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                             <div className="max-w-2xl">
                                 <p className="text-sm text-muted-foreground">
-                                    {locale === "pt-BR"
-                                        ? "Revise uma família por vez para reduzir ruído visual e concentrar credenciais, diagnóstico e ativações no mesmo fluxo."
-                                        : locale === "es"
-                                            ? "Revisa una familia por vez para reducir ruido visual y concentrar credenciales, diagnóstico y activaciones en el mismo flujo."
-                                            : "Review one family at a time to reduce visual noise and keep credentials, readiness, and activation in the same flow."}
+                                    {t("settings.familyFocusHint")}
                                 </p>
                             </div>
                             <TabsList className="h-auto flex-wrap justify-start gap-2 bg-transparent p-0">
