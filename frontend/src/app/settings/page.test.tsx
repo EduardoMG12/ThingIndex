@@ -93,8 +93,7 @@ describe("SettingsPage", () => {
 
         expect(screen.getByTestId("app-shell")).toBeInTheDocument();
         expect(screen.getByRole("heading", { level: 2, name: "Storage provider" })).toBeInTheDocument();
-        expect(screen.getByRole("heading", { level: 2, name: "LLM provider" })).toBeInTheDocument();
+        expect(screen.getByRole("tab", { name: "LLM provider" })).toBeInTheDocument();
         expect(screen.getByText("MinIO")).toBeInTheDocument();
-        expect(screen.getAllByText("OpenAI").length).toBeGreaterThan(0);
     });
 });

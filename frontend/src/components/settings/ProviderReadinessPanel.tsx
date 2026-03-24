@@ -10,6 +10,7 @@ import {
     getProviderReadinessCheckClass,
     getProviderReadinessCheckLabel,
     getProviderReadinessCheckMessage,
+    getProviderReadinessCheckStatusLabel,
     getProviderReadinessStatusClass,
     getProviderReadinessStatusLabel,
     getProviderReadinessSummary,
@@ -98,7 +99,7 @@ export default function ProviderReadinessPanel({
                                     {getProviderReadinessCheckLabel(t, check)}
                                 </p>
                                 <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                                    {check.status}
+                                    {getProviderReadinessCheckStatusLabel(locale, check.status)}
                                 </span>
                             </div>
                             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">

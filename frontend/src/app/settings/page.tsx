@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { motion } from "framer-motion";
 import { Activity, Bot, CheckCircle2, Database, History, KeyRound, Loader2, ServerCog, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
@@ -13,7 +13,7 @@ import { ProviderSupportPanel } from "@/components/providers/ProviderSupportPane
 import {
     getInitialFormState,
     getInitialLLMSelectionState,
-    getProvidersByFamily,
+    getLocalizedProviders,
     PROVIDERS,
     type ProviderDefinition,
 } from "@/components/settings/provider-catalog";
@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useI18n } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
@@ -54,18 +55,10 @@ function getActiveProviderTypes(data: ProviderConfig[]) {
     };
 }
 
-const FAMILY_COPY: Record<ProviderFamily, { title: string; description: string; icon: typeof Database }> = {
-    STORAGE: {
-        title: "Storage Provider",
-        description: "Exactly one storage backend can stay enabled at a time for uploads, previews and indexing.",
-        icon: Database,
-    },
-    LLM: {
-        title: "LLM Provider",
-        description: "Exactly one LLM can stay enabled at a time for enrichment and reasoning workloads.",
-        icon: Bot,
-    },
-}
+const FAMILY_ICON: Record<ProviderFamily, typeof Database> = {
+    STORAGE: Database,
+    LLM: Bot,
+};
 
 function hasSavedConfig(configs: ProviderConfig[], family: ProviderFamily, providerType: ProviderType) {
     return configs.some((config) => config.family === family && config.provider_type === providerType);
@@ -138,18 +131,27 @@ function FamilySection({
     readinessReports: Partial<Record<ProviderType, ProviderReadinessReport | null>>;
     providerSupportByType: Partial<Record<ProviderType, ProviderSupport>>;
 }) {
-    const { t } = useI18n();
+    const { locale, t } = useI18n();
     const familyCopy = {
-        ...FAMILY_COPY[family],
         title: t(`settings.family.${family}.title`),
         description: t(`settings.family.${family}.description`),
     };
-    const FamilyIcon = familyCopy.icon;
+    const FamilyIcon = FAMILY_ICON[family];
     const activeProvider = providers.find((provider) => provider.providerType === activeProviderType) ?? providers[0];
     const activeProviderSupport = providerSupportByType[activeProvider.providerType] ?? null;
     const savedConfigs = getSavedConfigs(configs, family);
     const discoveredModelsForActiveProvider = discoveredModels[activeProvider.providerType] ?? [];
     const readinessReport = readinessReports[activeProvider.providerType] ?? null;
+    const supportDisclosureTitle = locale === "pt-BR"
+        ? "Perfil avançado do runtime"
+        : locale === "es"
+            ? "Perfil avanzado del runtime"
+            : "Advanced runtime profile";
+    const supportDisclosureDescription = locale === "pt-BR"
+        ? "Abra este bloco para revisar compatibilidade, transporte e configuração sugerida do provider."
+        : locale === "es"
+            ? "Abre este bloque para revisar compatibilidad, transporte y configuración sugerida del provider."
+            : "Open this block to review compatibility, transport, and the provider suggested setup.";
 
     return (
         <section className="space-y-6">
@@ -253,9 +255,24 @@ function FamilySection({
                     </CardHeader>
                     <CardContent className="flex min-h-0 flex-1 flex-col gap-4">
                         <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
-                            {activeProviderSupport ? (
-                                <ProviderSupportPanel support={activeProviderSupport} />
-                            ) : null}
+                            <details className="group rounded-2xl border border-border bg-background/60 p-4">
+                                <summary className="flex cursor-pointer list-none items-start justify-between gap-4">
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                                            {supportDisclosureTitle}
+                                        </p>
+                                        <p className="mt-2 text-sm leading-relaxed text-foreground/85">
+                                            {supportDisclosureDescription}
+                                        </p>
+                                    </div>
+                                    <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground transition group-open:text-primary">
+                                        {locale === "pt-BR" ? "Abrir" : locale === "es" ? "Abrir" : "Open"}
+                                    </span>
+                                </summary>
+                                <div className="mt-4">
+                                    <ProviderSupportPanel support={activeProviderSupport} />
+                                </div>
+                            </details>
 
                             {activeProvider.fields.map((field) => (
                                 field.kind === "model" ? (
@@ -463,7 +480,13 @@ function FamilySection({
                                                 checked={config.is_enabled}
                                                 disabled={isPending}
                                                 onCheckedChange={(checked) => onToggle(provider, "STORAGE", checked)}
-                                                aria-label={`Toggle ${provider.name}`}
+                                                aria-label={
+                                                    locale === "pt-BR"
+                                                        ? `Alternar ativação de ${provider.name}`
+                                                        : locale === "es"
+                                                            ? `Cambiar activación de ${provider.name}`
+                                                            : `Toggle ${provider.name} activation`
+                                                }
                                             />
                                         </div>
                                     ) : (
@@ -515,7 +538,7 @@ function FamilySection({
 }
 
 export default function SettingsPage() {
-    const { t } = useI18n();
+    const { locale, t } = useI18n();
     const [providers, setProviders] = useState<ProviderConfig[]>([]);
     const [discoveredModels, setDiscoveredModels] = useState<Partial<Record<ProviderType, string[]>>>({});
     const [readinessReports, setReadinessReports] = useState<Partial<Record<ProviderType, ProviderReadinessReport | null>>>({});
@@ -525,10 +548,31 @@ export default function SettingsPage() {
     const [llmSelections, setLLMSelections] = useState<LLMSelectionState>(getInitialLLMSelectionState);
     const [activeStorageType, setActiveStorageType] = useState<ProviderType>("MINIO");
     const [activeLLMType, setActiveLLMType] = useState<ProviderType>("OPENAI");
+    const [visibleFamily, setVisibleFamily] = useState<ProviderFamily>("STORAGE");
     const [providerSupportByType, setProviderSupportByType] = useState<Partial<Record<ProviderType, ProviderSupport>>>({});
     const [isLoading, setIsLoading] = useState(true);
     const [loadWarning, setLoadWarning] = useState<string | null>(null);
     const [isPending, startTransition] = useTransition();
+    const localizedProviders = useMemo(() => getLocalizedProviders(locale), [locale]);
+    const storageProviders = useMemo(
+        () => localizedProviders.filter((provider) => provider.family === "STORAGE"),
+        [localizedProviders]
+    );
+    const llmProviders = useMemo(
+        () => localizedProviders.filter((provider) => provider.family === "LLM"),
+        [localizedProviders]
+    );
+
+    const activeStorageConfig = providers.find((provider) => provider.family === "STORAGE" && provider.is_enabled) ?? null;
+    const activeIndexingConfig = providers.find((provider) => provider.family === "LLM" && provider.enabled_for_indexing) ?? null;
+    const activeChatConfig = providers.find((provider) => provider.family === "LLM" && provider.enabled_for_chat) ?? null;
+    const savedProviderCount = providers.length;
+    const savedStorageCount = providers.filter((provider) => provider.family === "STORAGE").length;
+    const savedLLMCount = providers.filter((provider) => provider.family === "LLM").length;
+
+    function findProviderLabel(providerType?: ProviderType | null) {
+        return localizedProviders.find((provider) => provider.providerType === providerType)?.name ?? providerType ?? null;
+    }
 
     function toProviderSupportMap(items: ProviderSupport[]) {
         return items.reduce<Partial<Record<ProviderType, ProviderSupport>>>((acc, item) => {
@@ -878,6 +922,43 @@ export default function SettingsPage() {
                             </p>
                         </div>
                     </div>
+
+                    <div className="relative mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                        <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t("settings.family.STORAGE.title")}</p>
+                            <p className="mt-2 text-lg font-semibold text-foreground">
+                                {findProviderLabel(activeStorageConfig?.provider_type) ?? t("common.inactive")}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                {activeStorageConfig ? t("common.active") : t("common.inactive")}
+                            </p>
+                        </div>
+                        <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t("settings.llmIndexingLabel")}</p>
+                            <p className="mt-2 text-lg font-semibold text-foreground">
+                                {findProviderLabel(activeIndexingConfig?.provider_type) ?? t("common.inactive")}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                {activeIndexingConfig ? t("common.active") : t("common.inactive")}
+                            </p>
+                        </div>
+                        <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t("settings.llmChatLabel")}</p>
+                            <p className="mt-2 text-lg font-semibold text-foreground">
+                                {findProviderLabel(activeChatConfig?.provider_type) ?? t("common.inactive")}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                {activeChatConfig ? t("common.active") : t("common.inactive")}
+                            </p>
+                        </div>
+                        <div className="rounded-2xl border border-border/80 bg-background/60 p-4">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t("common.saved")}</p>
+                            <p className="mt-2 text-lg font-semibold text-foreground">{savedProviderCount}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                {savedStorageCount} {t("settings.family.STORAGE.title")} · {savedLLMCount} {t("settings.family.LLM.title")}
+                            </p>
+                        </div>
+                    </div>
                 </motion.section>
 
                 {isLoading ? (
@@ -894,51 +975,81 @@ export default function SettingsPage() {
                 ) : null}
 
                 {!isLoading ? (
-                    <div className="space-y-10">
-                        <FamilySection
-                            family="STORAGE"
-                            providers={getProvidersByFamily("STORAGE")}
-                            configs={providers}
-                            activeProviderType={activeStorageType}
-                            onSelect={setActiveStorageType}
-                            forms={forms}
-                            llmSelections={llmSelections}
-                            onFieldChange={handleFieldChange}
-                            onLLMSelectionChange={handleLLMSelectionChange}
-                            onSave={handleSave}
-                            onLoadModels={handleLoadModels}
-                            onTestConnection={handleTestConnection}
-                            onToggle={handleToggle}
-                            isPending={isPending}
-                            isLoadingModels={loadingModelsProviderType === activeStorageType}
-                            isTestingProvider={testingProviderType === activeStorageType}
-                            discoveredModels={discoveredModels}
-                            readinessReports={readinessReports}
-                            providerSupportByType={providerSupportByType}
-                        />
+                    <Tabs value={visibleFamily} onValueChange={(value) => setVisibleFamily(value as ProviderFamily)} className="w-full">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="max-w-2xl">
+                                <p className="text-sm text-muted-foreground">
+                                    {locale === "pt-BR"
+                                        ? "Revise uma família por vez para reduzir ruído visual e concentrar credenciais, diagnóstico e ativações no mesmo fluxo."
+                                        : locale === "es"
+                                            ? "Revisa una familia por vez para reducir ruido visual y concentrar credenciales, diagnóstico y activaciones en el mismo flujo."
+                                            : "Review one family at a time to reduce visual noise and keep credentials, readiness, and activation in the same flow."}
+                                </p>
+                            </div>
+                            <TabsList className="h-auto flex-wrap justify-start gap-2 bg-transparent p-0">
+                                <TabsTrigger
+                                    value="STORAGE"
+                                    className="rounded-full border border-border bg-background/70 px-4 py-2 text-xs uppercase tracking-[0.18em] data-[state=active]:border-primary/40 data-[state=active]:bg-primary/12 data-[state=active]:text-primary"
+                                >
+                                    {t("settings.family.STORAGE.title")}
+                                </TabsTrigger>
+                                <TabsTrigger
+                                    value="LLM"
+                                    className="rounded-full border border-border bg-background/70 px-4 py-2 text-xs uppercase tracking-[0.18em] data-[state=active]:border-primary/40 data-[state=active]:bg-primary/12 data-[state=active]:text-primary"
+                                >
+                                    {t("settings.family.LLM.title")}
+                                </TabsTrigger>
+                            </TabsList>
+                        </div>
 
-                        <FamilySection
-                            family="LLM"
-                            providers={getProvidersByFamily("LLM")}
-                            configs={providers}
-                            activeProviderType={activeLLMType}
-                            onSelect={handleSelectLLMProvider}
-                            forms={forms}
-                            llmSelections={llmSelections}
-                            onFieldChange={handleFieldChange}
-                            onLLMSelectionChange={handleLLMSelectionChange}
-                            onSave={handleSave}
-                            onLoadModels={handleLoadModels}
-                            onTestConnection={handleTestConnection}
-                            onToggle={handleToggle}
-                            isPending={isPending}
-                            isLoadingModels={loadingModelsProviderType === activeLLMType}
-                            isTestingProvider={testingProviderType === activeLLMType}
-                            discoveredModels={discoveredModels}
-                            readinessReports={readinessReports}
-                            providerSupportByType={providerSupportByType}
-                        />
-                    </div>
+                        <TabsContent value="STORAGE" className="mt-6">
+                            <FamilySection
+                                family="STORAGE"
+                                providers={storageProviders}
+                                configs={providers}
+                                activeProviderType={activeStorageType}
+                                onSelect={setActiveStorageType}
+                                forms={forms}
+                                llmSelections={llmSelections}
+                                onFieldChange={handleFieldChange}
+                                onLLMSelectionChange={handleLLMSelectionChange}
+                                onSave={handleSave}
+                                onLoadModels={handleLoadModels}
+                                onTestConnection={handleTestConnection}
+                                onToggle={handleToggle}
+                                isPending={isPending}
+                                isLoadingModels={loadingModelsProviderType === activeStorageType}
+                                isTestingProvider={testingProviderType === activeStorageType}
+                                discoveredModels={discoveredModels}
+                                readinessReports={readinessReports}
+                                providerSupportByType={providerSupportByType}
+                            />
+                        </TabsContent>
+
+                        <TabsContent value="LLM" className="mt-6">
+                            <FamilySection
+                                family="LLM"
+                                providers={llmProviders}
+                                configs={providers}
+                                activeProviderType={activeLLMType}
+                                onSelect={handleSelectLLMProvider}
+                                forms={forms}
+                                llmSelections={llmSelections}
+                                onFieldChange={handleFieldChange}
+                                onLLMSelectionChange={handleLLMSelectionChange}
+                                onSave={handleSave}
+                                onLoadModels={handleLoadModels}
+                                onTestConnection={handleTestConnection}
+                                onToggle={handleToggle}
+                                isPending={isPending}
+                                isLoadingModels={loadingModelsProviderType === activeLLMType}
+                                isTestingProvider={testingProviderType === activeLLMType}
+                                discoveredModels={discoveredModels}
+                                readinessReports={readinessReports}
+                                providerSupportByType={providerSupportByType}
+                            />
+                        </TabsContent>
+                    </Tabs>
                 ) : null}
             </div>
         </AppShell>

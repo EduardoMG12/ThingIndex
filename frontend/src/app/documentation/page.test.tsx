@@ -3,6 +3,8 @@ import type { PropsWithChildren } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { createTestWrapper } from "@/test/test-utils";
+
 const {
     fetchRuntimeProfileMock,
     fetchIndexingBenchmarkMock,
@@ -173,7 +175,7 @@ describe("DocumentationPage", () => {
                 },
             ]);
 
-        render(<DocumentationPage />);
+        render(<DocumentationPage />, { wrapper: createTestWrapper("pt-BR") });
 
         await waitFor(() => {
             expect(screen.getByRole("heading", { level: 2, name: "Foco do Produto" })).toBeInTheDocument();

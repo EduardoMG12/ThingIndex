@@ -3,6 +3,7 @@
 import type { ProviderSupport } from "@/lib/api/providers";
 import { ProviderBrandMark } from "@/components/providers/ProviderBrandMark";
 import { ProviderSupportBadge } from "@/components/providers/ProviderSupportBadge";
+import { useI18n } from "@/lib/i18n/provider";
 import { formatProviderSupportSetupLabel, formatProviderSupportTransport } from "@/lib/provider-support";
 
 export function ProviderSupportMatrix({
@@ -10,10 +11,16 @@ export function ProviderSupportMatrix({
 }: {
     items: ProviderSupport[];
 }) {
+    const { locale } = useI18n();
+
     if (items.length === 0) {
         return (
             <div className="rounded-xl border border-border bg-background/50 p-5 text-sm text-muted-foreground">
-                The provider support matrix is unavailable right now.
+                {locale === "pt-BR"
+                    ? "A matriz de suporte dos providers não está disponível agora."
+                    : locale === "es"
+                        ? "La matriz de soporte de providers no está disponible ahora."
+                        : "The provider support matrix is unavailable right now."}
             </div>
         );
     }
@@ -23,11 +30,11 @@ export function ProviderSupportMatrix({
             <table className="w-full min-w-[900px] text-left text-sm">
                 <thead className="border-b border-border bg-muted/20">
                     <tr>
-                        <th className="px-4 py-3 font-semibold text-foreground">Provider</th>
-                        <th className="px-4 py-3 font-semibold text-foreground">Support</th>
-                        <th className="px-4 py-3 font-semibold text-foreground">Transport</th>
-                        <th className="px-4 py-3 font-semibold text-foreground">Suggested setup</th>
-                        <th className="px-4 py-3 font-semibold text-foreground">Operational notes</th>
+                        <th className="px-4 py-3 font-semibold text-foreground">{locale === "pt-BR" ? "Provider" : locale === "es" ? "Provider" : "Provider"}</th>
+                        <th className="px-4 py-3 font-semibold text-foreground">{locale === "pt-BR" ? "Suporte" : locale === "es" ? "Soporte" : "Support"}</th>
+                        <th className="px-4 py-3 font-semibold text-foreground">{locale === "pt-BR" ? "Transporte" : locale === "es" ? "Transporte" : "Transport"}</th>
+                        <th className="px-4 py-3 font-semibold text-foreground">{locale === "pt-BR" ? "Setup sugerido" : locale === "es" ? "Setup sugerido" : "Suggested setup"}</th>
+                        <th className="px-4 py-3 font-semibold text-foreground">{locale === "pt-BR" ? "Notas operacionais" : locale === "es" ? "Notas operativas" : "Operational notes"}</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
@@ -52,19 +59,25 @@ export function ProviderSupportMatrix({
                                     </div>
                                 </td>
                                 <td className="px-4 py-4 text-sm text-foreground">
-                                    {formatProviderSupportTransport(item.transport)}
+                                    {formatProviderSupportTransport(locale, item.transport)}
                                 </td>
                                 <td className="px-4 py-4 text-sm text-foreground">
                                     {Object.keys(suggestedSetup).length > 0 ? (
                                         <div className="space-y-1">
                                             {Object.entries(suggestedSetup).map(([key, value]) => (
                                                 <p key={key}>
-                                                    {formatProviderSupportSetupLabel(key)}: <span className="font-medium">{value}</span>
+                                                    {formatProviderSupportSetupLabel(locale, key)}: <span className="font-medium">{value}</span>
                                                 </p>
                                             ))}
                                         </div>
                                     ) : (
-                                        <span className="text-muted-foreground">Bring your own deployment</span>
+                                        <span className="text-muted-foreground">
+                                            {locale === "pt-BR"
+                                                ? "Use seu próprio deployment"
+                                                : locale === "es"
+                                                    ? "Usa tu propio despliegue"
+                                                    : "Bring your own deployment"}
+                                        </span>
                                     )}
                                 </td>
                                 <td className="px-4 py-4">

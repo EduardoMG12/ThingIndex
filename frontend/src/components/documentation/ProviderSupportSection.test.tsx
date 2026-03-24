@@ -1,6 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createTestWrapper } from "@/test/test-utils";
+
 const { fetchProviderSupportMatrixMock } = vi.hoisted(() => ({
     fetchProviderSupportMatrixMock: vi.fn(),
 }));
@@ -94,7 +96,7 @@ describe("ProviderSupportSection", () => {
                 },
             ]);
 
-        render(<ProviderSupportSection />);
+        render(<ProviderSupportSection />, { wrapper: createTestWrapper() });
 
         await waitFor(() => {
             expect(screen.getByRole("heading", { level: 3, name: "Storage runtime support" })).toBeInTheDocument();

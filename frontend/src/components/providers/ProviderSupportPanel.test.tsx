@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { ProviderSupportPanel } from "@/components/providers/ProviderSupportPanel";
+import { createTestWrapper } from "@/test/test-utils";
 
 describe("ProviderSupportPanel", () => {
     it("renders support tier, setup hints and operational notes", () => {
@@ -32,7 +33,8 @@ describe("ProviderSupportPanel", () => {
                     },
                     notes: ["Direct OpenAI path."],
                 }}
-            />
+            />,
+            { wrapper: createTestWrapper() }
         );
 
         expect(screen.getByText("Runtime support profile")).toBeInTheDocument();
@@ -72,7 +74,8 @@ describe("ProviderSupportPanel", () => {
                     },
                     notes: ["Supports service-account JSON or emulator_host."],
                 }}
-            />
+            />,
+            { wrapper: createTestWrapper() }
         );
 
         expect(screen.getByTestId("provider-brand-GCP_STORAGE")).toBeInTheDocument();
