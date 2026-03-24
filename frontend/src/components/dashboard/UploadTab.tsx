@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import CategoryCombobox from "@/components/dashboard/CategoryCombobox";
 import CollectionCombobox from "@/components/dashboard/CollectionCombobox";
+import DashboardQuickGuide from "@/components/dashboard/DashboardQuickGuide";
 import UploadDropzone from "@/components/dashboard/upload/UploadDropzone";
 import UploadFileList from "@/components/dashboard/upload/UploadFileList";
 import { type DocumentUploadValidationRejection, useDocumentUpload } from "@/hooks/use-document-upload";
@@ -97,12 +98,15 @@ const UploadTab = () => {
             </div>
 
             <div className="p-4 space-y-4">
-                <UploadDropzone
-                    getRootProps={getRootProps}
-                    getInputProps={getInputProps}
-                    isDragActive={isDragActive}
-                    disabled={isProcessing}
-                />
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.85fr)] lg:items-stretch">
+                    <UploadDropzone
+                        getRootProps={getRootProps}
+                        getInputProps={getInputProps}
+                        isDragActive={isDragActive}
+                        disabled={isProcessing}
+                    />
+                    <DashboardQuickGuide className="h-full" />
+                </div>
 
                 <UploadFileList files={files} isProcessing={isProcessing} onRemove={removeFile} />
 
