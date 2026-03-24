@@ -1,12 +1,16 @@
 package usecase
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"io"
+	"net/http"
 	"strings"
 	"time"
 
@@ -15,6 +19,7 @@ import (
 	"thing-index/internal/models"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -25,16 +30,26 @@ type authClaims struct {
 }
 
 type authUseCase struct {
-	repo   domain.AuthRepository
-	mailer domain.Mailer
-	cfg    *config.Config
+	repo    domain.AuthRepository
+	mailer  domain.Mailer
+	storage domain.StorageService
+	cfg     *config.Config
 }
 
-func NewAuthUseCase(repo domain.AuthRepository, mailer domain.Mailer, cfg *config.Config) domain.AuthUseCase {
+const maxAvatarSizeBytes int64 = 5 * 1024 * 1024
+
+var allowedAvatarMimeTypes = map[string]struct{}{
+	"image/jpeg": {},
+	"image/png":  {},
+	"image/webp": {},
+}
+
+func NewAuthUseCase(repo domain.AuthRepository, mailer domain.Mailer, storage domain.StorageService, cfg *config.Config) domain.AuthUseCase {
 	return &authUseCase{
-		repo:   repo,
-		mailer: mailer,
-		cfg:    cfg,
+		repo:    repo,
+		mailer:  mailer,
+		storage: storage,
+		cfg:     cfg,
 	}
 }
 
@@ -129,6 +144,60 @@ func (u *authUseCase) GetCurrentUser(ctx context.Context, userID uint) (*models.
 	return u.repo.GetUserByID(ctx, userID)
 }
 
+func (u *authUseCase) UpdateCurrentUserProfile(ctx context.Context, userID uint, input domain.UpdateCurrentUserProfileInput) (*models.User, error) {
+	user, err := u.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	currentAvatarURL := strings.TrimSpace(user.AvatarURL)
+	newAvatarURL := currentAvatarURL
+	uploadedAvatarURL := ""
+
+	if input.Name != nil {
+		trimmedName := strings.TrimSpace(*input.Name)
+		if trimmedName == "" {
+			return nil, domain.ErrUserNameRequired
+		}
+		user.Name = trimmedName
+	}
+
+	if input.Avatar != nil {
+		if input.Avatar.Size <= 0 {
+			return nil, domain.ErrFileRequired
+		}
+		if input.Avatar.Size > maxAvatarSizeBytes {
+			return nil, domain.ErrFileTooLarge
+		}
+
+		validatedReader, resolvedContentType, err := validateAvatarUpload(input.Avatar.File, input.Avatar.ContentType)
+		if err != nil {
+			return nil, err
+		}
+
+		objectName := buildAvatarObjectName(userID, resolvedContentType)
+		uploadedAvatarURL, err = u.storage.UploadFile(ctx, validatedReader, input.Avatar.Size, resolvedContentType, objectName)
+		if err != nil {
+			return nil, err
+		}
+		newAvatarURL = uploadedAvatarURL
+		user.AvatarURL = newAvatarURL
+	}
+
+	if err := u.repo.UpdateUser(ctx, user); err != nil {
+		if uploadedAvatarURL != "" {
+			_ = u.storage.DeleteFile(ctx, uploadedAvatarURL)
+		}
+		return nil, err
+	}
+
+	if uploadedAvatarURL != "" && currentAvatarURL != "" && currentAvatarURL != uploadedAvatarURL {
+		_ = u.storage.DeleteFile(ctx, currentAvatarURL)
+	}
+
+	return user, nil
+}
+
 func (u *authUseCase) issueToken(userID uint) (string, error) {
 	now := time.Now()
 	claims := authClaims{
@@ -160,4 +229,46 @@ func generateResetToken() (string, string, error) {
 func hashResetToken(token string) string {
 	sum := sha256.Sum256([]byte(strings.TrimSpace(token)))
 	return hex.EncodeToString(sum[:])
+}
+
+func validateAvatarUpload(file io.Reader, declaredContentType string) (io.Reader, string, error) {
+	head := make([]byte, 512)
+	readBytes, readErr := io.ReadFull(file, head)
+	if readErr != nil && !errors.Is(readErr, io.ErrUnexpectedEOF) && !errors.Is(readErr, io.EOF) {
+		return nil, "", fmt.Errorf("%w: %v", domain.ErrUploadFailed, readErr)
+	}
+	if readBytes == 0 {
+		return nil, "", domain.ErrFileRequired
+	}
+
+	sniffedContentType := http.DetectContentType(head[:readBytes])
+	resolvedContentType := normalizeMediaType(declaredContentType)
+	if resolvedContentType == "" {
+		resolvedContentType = sniffedContentType
+	}
+	if _, ok := allowedAvatarMimeTypes[resolvedContentType]; !ok {
+		if _, sniffedOk := allowedAvatarMimeTypes[sniffedContentType]; !sniffedOk {
+			return nil, "", domain.ErrUserAvatarInvalidMime
+		}
+		resolvedContentType = sniffedContentType
+	}
+
+	return io.MultiReader(bytes.NewReader(head[:readBytes]), file), resolvedContentType, nil
+}
+
+func buildAvatarObjectName(userID uint, contentType string) string {
+	return fmt.Sprintf("avatars/%d/%d_%s%s", userID, time.Now().Unix(), uuid.NewString()[:8], avatarExtension(contentType))
+}
+
+func avatarExtension(contentType string) string {
+	switch contentType {
+	case "image/jpeg":
+		return ".jpg"
+	case "image/png":
+		return ".png"
+	case "image/webp":
+		return ".webp"
+	default:
+		return ".bin"
+	}
 }

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"thing-index/internal/domain"
 	"thing-index/internal/dto"
@@ -14,10 +15,11 @@ import (
 
 type AuthHandler struct {
 	useCase domain.AuthUseCase
+	storage domain.StorageService
 }
 
-func NewAuthHandler(useCase domain.AuthUseCase) *AuthHandler {
-	return &AuthHandler{useCase: useCase}
+func NewAuthHandler(useCase domain.AuthUseCase, storage domain.StorageService) *AuthHandler {
+	return &AuthHandler{useCase: useCase, storage: storage}
 }
 
 // Register godoc
@@ -112,9 +114,132 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		ID:        user.ID,
 		Name:      user.Name,
 		Email:     user.Email,
+		AvatarURL: user.AvatarURL,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 	})
+}
+
+// UpdateMe godoc
+// @Summary      Update authenticated user
+// @Description  Update the authenticated user name and optional avatar image
+// @Tags         auth
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        name formData string false "Updated user name"
+// @Param        avatar formData file false "Avatar image (jpeg, png, webp)"
+// @Success      200 {object} response.Response{data=dto.UserResponse}
+// @Failure      400 {object} response.Response
+// @Failure      401 {object} response.Response
+// @Failure      500 {object} response.Response
+// @Security     BearerAuth
+// @Router       /user/me [put]
+func (h *AuthHandler) UpdateMe(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	var input domain.UpdateCurrentUserProfileInput
+
+	if name := c.PostForm("name"); name != "" {
+		input.Name = &name
+	}
+
+	fileHeader, err := c.FormFile("avatar")
+	if err != nil && !errors.Is(err, http.ErrMissingFile) {
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), nil)
+		return
+	}
+
+	if fileHeader != nil {
+		openedFile, openErr := fileHeader.Open()
+		if openErr != nil {
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), nil)
+			return
+		}
+		defer openedFile.Close()
+
+		input.Avatar = &domain.UserProfileAvatarInput{
+			File:        openedFile,
+			Size:        fileHeader.Size,
+			ContentType: fileHeader.Header.Get("Content-Type"),
+			Filename:    fileHeader.Filename,
+		}
+	}
+
+	if input.Name == nil && input.Avatar == nil {
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "user.error_update_empty"), nil)
+		return
+	}
+
+	user, updateErr := h.useCase.UpdateCurrentUserProfile(c.Request.Context(), userID, input)
+	if updateErr != nil {
+		switch {
+		case errors.Is(updateErr, domain.ErrUserNameRequired):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "user.error_name_required"), nil)
+		case errors.Is(updateErr, domain.ErrUserAvatarInvalidMime):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "user.error_avatar_invalid_mime"), nil)
+		case errors.Is(updateErr, domain.ErrFileTooLarge):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "user.error_avatar_too_large"), nil)
+		case errors.Is(updateErr, domain.ErrFileRequired):
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "user.error_avatar_missing"), nil)
+		default:
+			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "user.error_update_profile"), nil)
+		}
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "user.success_profile_update"), dto.UserResponse{
+		ID:        user.ID,
+		Name:      user.Name,
+		Email:     user.Email,
+		AvatarURL: user.AvatarURL,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+	})
+}
+
+// GetMyAvatar godoc
+// @Summary      Get authenticated user avatar
+// @Description  Stream the authenticated user avatar image if configured
+// @Tags         auth
+// @Produce      octet-stream
+// @Success      200 {file} binary
+// @Failure      401 {object} response.Response
+// @Failure      404 {object} response.Response
+// @Failure      500 {object} response.Response
+// @Security     BearerAuth
+// @Router       /user/me/avatar [get]
+func (h *AuthHandler) GetMyAvatar(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	user, err := h.useCase.GetCurrentUser(c.Request.Context(), userID)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
+		return
+	}
+
+	if user.AvatarURL == "" {
+		response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "user.error_avatar_not_found"), nil)
+		return
+	}
+
+	reader, err := h.storage.OpenFile(c.Request.Context(), user.AvatarURL)
+	if err != nil {
+		response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "user.error_avatar_not_found"), nil)
+		return
+	}
+	defer reader.Close()
+
+	payload, err := io.ReadAll(reader)
+	if err != nil || len(payload) == 0 {
+		response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
+		return
+	}
+
+	c.Header("Cache-Control", "no-store")
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Data(http.StatusOK, http.DetectContentType(payload), payload)
 }
 
 // ForgotPassword godoc

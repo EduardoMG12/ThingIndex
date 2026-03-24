@@ -2,8 +2,21 @@ package domain
 
 import (
 	"context"
+	"io"
 	"thing-index/internal/models"
 )
+
+type UserProfileAvatarInput struct {
+	File        io.Reader
+	Size        int64
+	ContentType string
+	Filename    string
+}
+
+type UpdateCurrentUserProfileInput struct {
+	Name   *string
+	Avatar *UserProfileAvatarInput
+}
 
 type AuthRepository interface {
 	GetUserByID(ctx context.Context, userID uint) (*models.User, error)
@@ -23,4 +36,5 @@ type AuthUseCase interface {
 	ForgotPassword(ctx context.Context, email string) error
 	ResetPassword(ctx context.Context, token, newPassword string) error
 	GetCurrentUser(ctx context.Context, userID uint) (*models.User, error)
+	UpdateCurrentUserProfile(ctx context.Context, userID uint, input UpdateCurrentUserProfileInput) (*models.User, error)
 }

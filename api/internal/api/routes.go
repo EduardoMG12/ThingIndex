@@ -59,9 +59,9 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 
 	smtpMailer := mailer.NewSMTPMailer(cfg)
 
-	authUseCase := usecase.NewAuthUseCase(authRepo, smtpMailer, cfg)
+	authUseCase := usecase.NewAuthUseCase(authRepo, smtpMailer, defaultStorage, cfg)
 
-	authHandler := handlers.NewAuthHandler(authUseCase)
+	authHandler := handlers.NewAuthHandler(authUseCase, defaultStorage)
 	benchmarkProvider := usecase.NewIndexingBenchmarkProvider()
 	metaHandler := handlers.NewMetaHandler(benchmarkProvider)
 
@@ -120,6 +120,8 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		user.Use(middleware.AuthMiddleware(cfg, authRepo))
 		{
 			user.GET("/me", authHandler.Me)
+			user.GET("/me/avatar", authHandler.GetMyAvatar)
+			user.PUT("/me", authHandler.UpdateMe)
 			user.POST("/providers", providerHandler.SaveCredentials)
 			user.POST("/providers/test", providerHandler.TestConnection)
 			user.POST("/providers/models", providerHandler.ListModels)
