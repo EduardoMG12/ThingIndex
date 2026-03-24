@@ -55,6 +55,7 @@ import {
     type IndexMonitoring,
 } from "@/lib/api/documents";
 import {
+    createDocumentOperationalOverview,
     filterDocumentsByOperationalView,
     type DocumentOperationalFilter,
 } from "@/lib/document-observability";
@@ -1225,8 +1226,6 @@ function DocumentCard({
             <div className="mt-4 grid gap-2 border-t border-border pt-4 text-[11px] text-muted-foreground md:grid-cols-2">
                 <p>{t("documentsPage.card.createdAt")}: <span className="font-mono text-foreground">{formatDate(document.created_at, locale)}</span></p>
                 <p>{t("documentsPage.card.updatedAt")}: <span className="font-mono text-foreground">{formatDate(document.updated_at, locale)}</span></p>
-                <p>{t("documentsPage.card.stage")}: <span className="font-mono text-foreground">{formatStageLabel(document.processing_stage, t)}</span></p>
-                <p>{t("documentsPage.card.startedAt")}: <span className="font-mono text-foreground">{formatDate(document.index_started_at, locale)}</span></p>
             </div>
 
             {issue ? (
@@ -1305,6 +1304,142 @@ type PendingDeletion =
         documentCount: number;
       };
 
+type DocumentsWorkspaceTab = "library" | "operations" | "audit";
+
+function LibraryControlPanel({
+    activeFilter,
+    searchTerm,
+    filterCounts,
+    visibleDocuments,
+    totalDocuments,
+    categoriesCount,
+    collectionsCount,
+    attentionCount,
+    onFilterChange,
+    onSearchTermChange,
+    onClearSlice,
+}: {
+    activeFilter: DocumentOperationalFilter;
+    searchTerm: string;
+    filterCounts: Record<DocumentOperationalFilter, number>;
+    visibleDocuments: number;
+    totalDocuments: number;
+    categoriesCount: number;
+    collectionsCount: number;
+    attentionCount: number;
+    onFilterChange: (filter: DocumentOperationalFilter) => void;
+    onSearchTermChange: (value: string) => void;
+    onClearSlice: () => void;
+}) {
+    const { t } = useI18n();
+    const isSliceActive = activeFilter !== "all" || searchTerm.trim() !== "";
+    const filters: Array<{ key: DocumentOperationalFilter; label: string }> = [
+        { key: "all", label: t("documentsPage.observability.filters.all") },
+        { key: "attention", label: t("documentsPage.observability.filters.attention") },
+        { key: "manual", label: t("documentsPage.observability.filters.manual") },
+        { key: "stalled", label: t("documentsPage.observability.filters.stalled") },
+        { key: "retrying", label: t("documentsPage.observability.filters.retrying") },
+        { key: "recentFailures", label: t("documentsPage.observability.filters.recentFailures") },
+        { key: "nominal", label: t("documentsPage.observability.filters.nominal") },
+    ];
+
+    return (
+        <aside className="rounded-2xl border border-border bg-background/60 p-5 xl:sticky xl:top-6">
+            <div>
+                <p className="text-[10px] uppercase tracking-[0.28em] text-primary">
+                    {t("documentsPage.workspace.tabs.library")}
+                </p>
+                <h3 className="mt-2 text-base font-semibold">{t("documentsPage.library.organizeTitle")}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                    {t("documentsPage.library.organizeDescription")}
+                </p>
+            </div>
+
+            <div className="mt-5">
+                <label htmlFor="documents-library-search" className="text-xs font-medium text-foreground">
+                    {t("documentsPage.observability.searchLabel")}
+                </label>
+                <input
+                    id="documents-library-search"
+                    type="search"
+                    value={searchTerm}
+                    onChange={(event) => onSearchTermChange(event.target.value)}
+                    placeholder={t("documentsPage.observability.searchPlaceholder")}
+                    className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+            </div>
+
+            <div className="mt-5 space-y-2">
+                {filters.map((filter) => (
+                    <button
+                        key={filter.key}
+                        type="button"
+                        onClick={() => onFilterChange(filter.key)}
+                        aria-pressed={activeFilter === filter.key}
+                        className={`flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left transition ${
+                            activeFilter === filter.key
+                                ? "border-primary/30 bg-primary/10 text-primary"
+                                : "border-border bg-card/60 text-foreground hover:bg-muted"
+                        }`}
+                    >
+                        <span className="text-xs font-semibold">{filter.label}</span>
+                        <span className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] font-bold">
+                            {filterCounts[filter.key]}
+                        </span>
+                    </button>
+                ))}
+            </div>
+
+            {isSliceActive ? (
+                <div className="mt-5 rounded-xl border border-primary/20 bg-primary/10 p-4">
+                    <p className="text-[10px] uppercase tracking-widest text-primary">
+                        {t("documentsPage.library.activeSliceTitle")}
+                    </p>
+                    <p className="mt-2 text-sm text-foreground">
+                        {t("documentsPage.library.filteredCount", {
+                            visible: visibleDocuments,
+                            total: totalDocuments,
+                        })}
+                    </p>
+                    <button
+                        type="button"
+                        onClick={onClearSlice}
+                        className="mt-3 inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-background px-3 py-2 text-xs font-semibold text-primary transition hover:bg-muted"
+                    >
+                        {t("documentsPage.filteredEmpty.clear")}
+                    </button>
+                </div>
+            ) : null}
+
+            <div className="mt-5">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                    {t("documentsPage.library.inventoryTitle")}
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+                    <div className="rounded-xl border border-border bg-card/60 p-4">
+                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                            {t("documentsPage.library.categoriesStat")}
+                        </p>
+                        <p className="mt-2 text-lg font-semibold">{categoriesCount}</p>
+                    </div>
+                    <div className="rounded-xl border border-border bg-card/60 p-4">
+                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                            {t("documentsPage.library.collectionsStat")}
+                        </p>
+                        <p className="mt-2 text-lg font-semibold">{collectionsCount}</p>
+                    </div>
+                    <div className="rounded-xl border border-border bg-card/60 p-4">
+                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                            {t("documentsPage.library.attentionStat")}
+                        </p>
+                        <p className="mt-2 text-lg font-semibold">{attentionCount}</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    );
+}
+
 export default function DocumentsPage() {
     const { locale, t, href } = useI18n();
     const { documents, isLoading, error, reloadDocuments, setDocuments } = useDocuments();
@@ -1327,13 +1462,41 @@ export default function DocumentsPage() {
     const [deletingTargetKey, setDeletingTargetKey] = useState<string | null>(null);
     const [operationalFilter, setOperationalFilter] = useState<DocumentOperationalFilter>("all");
     const [operationalSearch, setOperationalSearch] = useState("");
+    const [workspaceTab, setWorkspaceTab] = useState<DocumentsWorkspaceTab>("library");
     const operationalNow = new Date();
+    const operationalOverview = createDocumentOperationalOverview(documents, operationalNow);
     const scopedDocuments =
         operationalFilter === "all" && operationalSearch.trim() === ""
             ? documents
             : filterDocumentsByOperationalView(documents, operationalFilter, operationalSearch, operationalNow);
     const isOperationalSliceActive = operationalFilter !== "all" || operationalSearch.trim() !== "";
     const groupedDocuments = groupDocuments(scopedDocuments, locale, t("documentsPage.collectionFallback"));
+    const categoriesCount = new Set(
+        documents
+            .map((document) => document.category?.name?.trim())
+            .filter((name): name is string => Boolean(name))
+    ).size;
+    const collectionsCount = new Set(
+        documents
+            .map((document) =>
+                document.collection_id ? `id:${document.collection_id}` : document.collection?.trim() ? `name:${document.collection.trim()}` : null
+            )
+            .filter((value): value is string => Boolean(value))
+    ).size;
+    const filterCounts: Record<DocumentOperationalFilter, number> = {
+        all: operationalOverview.snapshot.counts.total,
+        attention: operationalOverview.snapshot.counts.attention,
+        manual: operationalOverview.snapshot.counts.manual,
+        stalled: operationalOverview.snapshot.counts.stalled,
+        retrying: operationalOverview.snapshot.counts.retrying,
+        recentFailures: operationalOverview.snapshot.counts.recentFailures,
+        nominal: operationalOverview.snapshot.counts.nominal,
+    };
+    const workspaceDescription = {
+        library: t("documentsPage.workspace.descriptions.library"),
+        operations: t("documentsPage.workspace.descriptions.operations"),
+        audit: t("documentsPage.workspace.descriptions.audit"),
+    } satisfies Record<DocumentsWorkspaceTab, string>;
     const uploadHref = href("/dashboard");
 
     useEffect(() => {
@@ -1465,6 +1628,11 @@ export default function DocumentsPage() {
         setDeleteConfirmationValue("");
     };
 
+    const clearOperationalSlice = () => {
+        setOperationalFilter("all");
+        setOperationalSearch("");
+    };
+
     const refreshAfterMutation = async () => {
         await Promise.all([
             reloadDocuments(),
@@ -1550,178 +1718,294 @@ export default function DocumentsPage() {
                             <Database className="h-5 w-5" />
                         </div>
                         <div>
-                            <h2 className="text-sm font-bold tracking-tight">{t("documentsPage.library.title")}</h2>
+                            <h2 className="text-sm font-bold tracking-tight">{t("documentsPage.workspace.title")}</h2>
                             <p className="text-xs text-muted-foreground">
-                                {isOperationalSliceActive
-                                    ? t("documentsPage.library.filteredCount", {
-                                        visible: scopedDocuments.length,
-                                        total: documents.length,
-                                    })
-                                    : t("documentsPage.library.count", { count: documents.length })}
+                                {t("documentsPage.library.count", { count: documents.length })}
                             </p>
                         </div>
                     </div>
                 </div>
 
                 <div className="p-6">
-                    {!isLoading && !error && monitoringSummary && (
-                        <MonitoringSummaryPanel summary={monitoringSummary} />
-                    )}
+                    <Tabs value={workspaceTab} onValueChange={(value) => setWorkspaceTab(value as DocumentsWorkspaceTab)} className="w-full">
+                        <div className="mb-6 flex flex-col gap-4 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
+                            <div className="max-w-2xl">
+                                <TabsList className="h-auto flex-wrap justify-start gap-2 bg-transparent p-0">
+                                    <TabsTrigger
+                                        value="library"
+                                        className="rounded-full border border-border bg-background px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground data-[state=active]:border-primary/20 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none"
+                                    >
+                                        {t("documentsPage.workspace.tabs.library")}
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="operations"
+                                        className="rounded-full border border-border bg-background px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground data-[state=active]:border-primary/20 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none"
+                                    >
+                                        {t("documentsPage.workspace.tabs.operations")}
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="audit"
+                                        className="rounded-full border border-border bg-background px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-muted-foreground data-[state=active]:border-primary/20 data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none"
+                                    >
+                                        {t("documentsPage.workspace.tabs.audit")}
+                                    </TabsTrigger>
+                                </TabsList>
+                                <p className="mt-3 text-sm text-muted-foreground">
+                                    {workspaceDescription[workspaceTab]}
+                                </p>
+                            </div>
 
-                    {!isLoading && !error && documents.length > 0 && (
-                        <OperationalObservabilityPanel
-                            documents={documents}
-                            summary={monitoringSummary}
-                            activeFilter={operationalFilter}
-                            searchTerm={operationalSearch}
-                            onFilterChange={setOperationalFilter}
-                            onSearchTermChange={setOperationalSearch}
-                            onOpenPreview={setSelectedDocument}
-                            onRetry={handleRetryDocument}
-                            retryingDocumentId={retryingDocumentId}
-                        />
-                    )}
-
-                    {!isLoading && !error && (
-                        <DocumentAuditExplorer
-                            locale={locale}
-                            reloadToken={documentAuditReloadToken}
-                            selectedDocument={selectedDocument}
-                        />
-                    )}
-
-                    {!isLoading && !error && monitoringError && (
-                        <div className="mb-6 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-                            {monitoringError}
+                            {isOperationalSliceActive && workspaceTab !== "operations" ? (
+                                <button
+                                    type="button"
+                                    onClick={clearOperationalSlice}
+                                    className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/15"
+                                >
+                                    {t("documentsPage.filteredEmpty.clear")}
+                                </button>
+                            ) : null}
                         </div>
-                    )}
 
-                    {isLoading && (
-                        <div className="flex min-h-64 items-center justify-center gap-3 text-sm text-muted-foreground">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            {t("documentsPage.loading")}
-                        </div>
-                    )}
+                        <TabsContent value="library" className="mt-0">
+                            {isLoading && (
+                                <div className="flex min-h-64 items-center justify-center gap-3 text-sm text-muted-foreground">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    {t("documentsPage.loading")}
+                                </div>
+                            )}
 
-                    {!isLoading && error && (
-                        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-                            {error}
-                        </div>
-                    )}
+                            {!isLoading && error && (
+                                <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+                                    {error}
+                                </div>
+                            )}
 
-                    {!isLoading && !error && documents.length === 0 && (
-                        <div className="flex min-h-64 flex-col items-center justify-center text-center">
-                            <FileText className="mb-4 h-10 w-10 text-muted-foreground" />
-                            <h3 className="text-sm font-semibold">{t("documentsPage.empty.title")}</h3>
-                            <p className="mt-2 max-w-md text-xs leading-relaxed text-muted-foreground">
-                                {t("documentsPage.empty.description")}
-                            </p>
-                        </div>
-                    )}
+                            {!isLoading && !error && documents.length === 0 && (
+                                <div className="flex min-h-64 flex-col items-center justify-center text-center">
+                                    <FileText className="mb-4 h-10 w-10 text-muted-foreground" />
+                                    <h3 className="text-sm font-semibold">{t("documentsPage.empty.title")}</h3>
+                                    <p className="mt-2 max-w-md text-xs leading-relaxed text-muted-foreground">
+                                        {t("documentsPage.empty.description")}
+                                    </p>
+                                </div>
+                            )}
 
-                    {!isLoading && !error && documents.length > 0 && scopedDocuments.length === 0 && (
-                        <div className="rounded-xl border border-border bg-background/50 p-6 text-center">
-                            <h3 className="text-sm font-semibold">{t("documentsPage.filteredEmpty.title")}</h3>
-                            <p className="mt-2 text-sm text-muted-foreground">
-                                {t("documentsPage.filteredEmpty.description")}
-                            </p>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setOperationalFilter("all");
-                                    setOperationalSearch("");
-                                }}
-                                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary"
-                            >
-                                {t("documentsPage.filteredEmpty.clear")}
-                            </button>
-                        </div>
-                    )}
+                            {!isLoading && !error && documents.length > 0 && (
+                                <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+                                    <LibraryControlPanel
+                                        activeFilter={operationalFilter}
+                                        searchTerm={operationalSearch}
+                                        filterCounts={filterCounts}
+                                        visibleDocuments={scopedDocuments.length}
+                                        totalDocuments={documents.length}
+                                        categoriesCount={categoriesCount}
+                                        collectionsCount={collectionsCount}
+                                        attentionCount={operationalOverview.snapshot.counts.attention}
+                                        onFilterChange={setOperationalFilter}
+                                        onSearchTermChange={setOperationalSearch}
+                                        onClearSlice={clearOperationalSlice}
+                                    />
 
-                    {!isLoading && !error && scopedDocuments.length > 0 && isOperationalSliceActive && (
-                        <div className="grid gap-3">
-                            {scopedDocuments.map((document) => (
-                                <DocumentCard
-                                    key={document.id}
-                                    document={document}
-                                    uploadHref={uploadHref}
-                                    onOpenPreview={setSelectedDocument}
-                                    onDownload={handleDownloadDocument}
-                                    onRetry={handleRetryDocument}
-                                    onDelete={openDocumentDeletion}
-                                    isDownloading={downloadingDocumentId === document.id}
-                                    isRetrying={retryingDocumentId === document.id}
-                                    isDeleting={deletingTargetKey === `document:${document.id}`}
-                                    locale={locale}
-                                />
-                            ))}
-                        </div>
-                    )}
-
-                    {!isLoading && !error && scopedDocuments.length > 0 && !isOperationalSliceActive && (
-                        <div className="space-y-4">
-                            {groupedDocuments.categorized.map((category) => {
-                                const isCategoryOpen = openCategories[category.name] ?? false;
-
-                                return (
-                                    <div key={category.name} className="rounded-xl border border-border bg-background/40">
-                                        <button
-                                            type="button"
-                                            onClick={() => toggleCategory(category.name)}
-                                            className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left"
-                                        >
-                                            <div className="min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                    {isCategoryOpen ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-primary" />}
-                                                    <span className="text-sm font-semibold">{category.name}</span>
-                                                </div>
-                                                <p className="mt-1 text-[11px] text-muted-foreground">
-                                                    {t("documentsPage.category.collectionsCount", { count: category.collections.length })}
+                                    <div className="min-w-0">
+                                        {scopedDocuments.length === 0 && (
+                                            <div className="rounded-xl border border-border bg-background/50 p-6 text-center">
+                                                <h3 className="text-sm font-semibold">{t("documentsPage.filteredEmpty.title")}</h3>
+                                                <p className="mt-2 text-sm text-muted-foreground">
+                                                    {t("documentsPage.filteredEmpty.description")}
                                                 </p>
+                                                <button
+                                                    type="button"
+                                                    onClick={clearOperationalSlice}
+                                                    className="mt-4 inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary"
+                                                >
+                                                    {t("documentsPage.filteredEmpty.clear")}
+                                                </button>
                                             </div>
-                                            <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">
-                                                {t("documentsPage.category.badge")}
-                                            </span>
-                                        </button>
+                                        )}
 
-                                        {isCategoryOpen && (
-                                            <div className="space-y-3 border-t border-border p-4">
-                                                {category.collections.map((collection) => {
-                                                    const collectionKey = `${category.name}::${collection.name}`;
-                                                    const isCollectionOpen = openCollections[collectionKey] ?? false;
+                                        {scopedDocuments.length > 0 && isOperationalSliceActive && (
+                                            <div className="grid gap-3">
+                                                {scopedDocuments.map((document) => (
+                                                    <DocumentCard
+                                                        key={document.id}
+                                                        document={document}
+                                                        uploadHref={uploadHref}
+                                                        onOpenPreview={setSelectedDocument}
+                                                        onDownload={handleDownloadDocument}
+                                                        onRetry={handleRetryDocument}
+                                                        onDelete={openDocumentDeletion}
+                                                        isDownloading={downloadingDocumentId === document.id}
+                                                        isRetrying={retryingDocumentId === document.id}
+                                                        isDeleting={deletingTargetKey === `document:${document.id}`}
+                                                        locale={locale}
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {scopedDocuments.length > 0 && !isOperationalSliceActive && (
+                                            <div className="space-y-4">
+                                                {groupedDocuments.categorized.map((category) => {
+                                                    const isCategoryOpen = openCategories[category.name] ?? false;
 
                                                     return (
-                                                        <div key={collectionKey} className="rounded-xl border border-border bg-card/40">
-                                                            <div className="flex items-center justify-between gap-3 px-4 py-3">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => toggleCollection(collectionKey)}
-                                                                    className="min-w-0 flex-1 text-left"
-                                                                >
+                                                        <div key={category.name} className="rounded-xl border border-border bg-background/40">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => toggleCategory(category.name)}
+                                                                className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left"
+                                                            >
+                                                                <div className="min-w-0">
                                                                     <div className="flex items-center gap-2">
-                                                                        {isCollectionOpen ? <ChevronDown className="h-4 w-4 text-foreground" /> : <ChevronRight className="h-4 w-4 text-foreground" />}
-                                                                        <FolderOpen className="h-4 w-4 text-primary" />
-                                                                        <span className="truncate text-sm font-medium">{collection.name}</span>
+                                                                        {isCategoryOpen ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className="h-4 w-4 text-primary" />}
+                                                                        <span className="text-sm font-semibold">{category.name}</span>
                                                                     </div>
                                                                     <p className="mt-1 text-[11px] text-muted-foreground">
-                                                                        {t("documentsPage.collection.documentsCount", { count: collection.documents.length })}
+                                                                        {t("documentsPage.category.collectionsCount", { count: category.collections.length })}
                                                                     </p>
-                                                                </button>
-                                                                {collection.collectionId ? (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => openCollectionDeletion(collection.collectionId!, collection.name, collection.documents.length)}
-                                                                        className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-[11px] font-semibold text-destructive"
-                                                                    >
-                                                                        {deletingTargetKey === `collection:${collection.collectionId}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                                                                        {t("documentsPage.actions.deleteCollectionDocuments")}
-                                                                    </button>
-                                                                ) : null}
-                                                            </div>
+                                                                </div>
+                                                                <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">
+                                                                    {t("documentsPage.category.badge")}
+                                                                </span>
+                                                            </button>
 
-                                                            {isCollectionOpen && (
-                                                                <div className="grid gap-3 border-t border-border p-4">
-                                                                    {collection.documents.map((document) => (
+                                                            {isCategoryOpen && (
+                                                                <div className="space-y-3 border-t border-border p-4">
+                                                                    {category.collections.map((collection) => {
+                                                                        const collectionKey = `${category.name}::${collection.name}`;
+                                                                        const isCollectionOpen = openCollections[collectionKey] ?? false;
+
+                                                                        return (
+                                                                            <div key={collectionKey} className="rounded-xl border border-border bg-card/40">
+                                                                                <div className="flex items-center justify-between gap-3 px-4 py-3">
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => toggleCollection(collectionKey)}
+                                                                                        className="min-w-0 flex-1 text-left"
+                                                                                    >
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            {isCollectionOpen ? <ChevronDown className="h-4 w-4 text-foreground" /> : <ChevronRight className="h-4 w-4 text-foreground" />}
+                                                                                            <FolderOpen className="h-4 w-4 text-primary" />
+                                                                                            <span className="truncate text-sm font-medium">{collection.name}</span>
+                                                                                        </div>
+                                                                                        <p className="mt-1 text-[11px] text-muted-foreground">
+                                                                                            {t("documentsPage.collection.documentsCount", { count: collection.documents.length })}
+                                                                                        </p>
+                                                                                    </button>
+                                                                                    {collection.collectionId ? (
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={() => openCollectionDeletion(collection.collectionId!, collection.name, collection.documents.length)}
+                                                                                            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-[11px] font-semibold text-destructive"
+                                                                                        >
+                                                                                            {deletingTargetKey === `collection:${collection.collectionId}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                                                                                            {t("documentsPage.actions.deleteCollectionDocuments")}
+                                                                                        </button>
+                                                                                    ) : null}
+                                                                                </div>
+
+                                                                                {isCollectionOpen && (
+                                                                                    <div className="grid gap-3 border-t border-border p-4">
+                                                                                        {collection.documents.map((document) => (
+                                                                                            <DocumentCard
+                                                                                                key={document.id}
+                                                                                                document={document}
+                                                                                                uploadHref={uploadHref}
+                                                                                                onOpenPreview={setSelectedDocument}
+                                                                                                onDownload={handleDownloadDocument}
+                                                                                                onRetry={handleRetryDocument}
+                                                                                                onDelete={openDocumentDeletion}
+                                                                                                isDownloading={downloadingDocumentId === document.id}
+                                                                                                isRetrying={retryingDocumentId === document.id}
+                                                                                                isDeleting={deletingTargetKey === `document:${document.id}`}
+                                                                                                locale={locale}
+                                                                                            />
+                                                                                        ))}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+
+                                                {(groupedDocuments.uncategorizedByCollection.length > 0 ||
+                                                    groupedDocuments.uncategorizedWithoutCollection.length > 0) && (
+                                                    <div className="rounded-xl border border-dashed border-border bg-background/30 p-4">
+                                                        <div className="mb-4">
+                                                            <h3 className="text-sm font-semibold">{t("documentsPage.uncategorized.title")}</h3>
+                                                            <p className="mt-1 text-[11px] text-muted-foreground">
+                                                                {t("documentsPage.uncategorized.description")}
+                                                            </p>
+                                                        </div>
+
+                                                        <div className="space-y-4">
+                                                            {groupedDocuments.uncategorizedByCollection.map((collection) => (
+                                                                <div key={`uncategorized-${collection.name}`} className="rounded-xl border border-border bg-card/40">
+                                                                    {(() => {
+                                                                        const collectionKey = `uncategorized::${collection.name}`;
+                                                                        const isCollectionOpen = openCollections[collectionKey] ?? false;
+
+                                                                        return (
+                                                                            <>
+                                                                                <div className="flex items-center justify-between gap-3 px-4 py-3">
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => toggleCollection(collectionKey)}
+                                                                                        className="min-w-0 flex-1 text-left"
+                                                                                    >
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            {isCollectionOpen ? <ChevronDown className="h-4 w-4 text-foreground" /> : <ChevronRight className="h-4 w-4 text-foreground" />}
+                                                                                            <FolderOpen className="h-4 w-4 text-primary" />
+                                                                                            <span className="truncate text-sm font-medium">{collection.name}</span>
+                                                                                        </div>
+                                                                                        <p className="mt-1 text-[11px] text-muted-foreground">
+                                                                                            {t("documentsPage.uncategorized.documentsCount", { count: collection.documents.length })}
+                                                                                        </p>
+                                                                                    </button>
+                                                                                    {collection.collectionId ? (
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={() => openCollectionDeletion(collection.collectionId!, collection.name, collection.documents.length)}
+                                                                                            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-[11px] font-semibold text-destructive"
+                                                                                        >
+                                                                                            {deletingTargetKey === `collection:${collection.collectionId}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                                                                                            {t("documentsPage.actions.deleteCollectionDocuments")}
+                                                                                        </button>
+                                                                                    ) : null}
+                                                                                </div>
+
+                                                                                {isCollectionOpen && (
+                                                                                    <div className="grid gap-3 border-t border-border p-4">
+                                                                                        {collection.documents.map((document) => (
+                                                                                            <DocumentCard
+                                                                                                key={document.id}
+                                                                                                document={document}
+                                                                                                uploadHref={uploadHref}
+                                                                                                onOpenPreview={setSelectedDocument}
+                                                                                                onDownload={handleDownloadDocument}
+                                                                                                onRetry={handleRetryDocument}
+                                                                                                onDelete={openDocumentDeletion}
+                                                                                                isDownloading={downloadingDocumentId === document.id}
+                                                                                                isRetrying={retryingDocumentId === document.id}
+                                                                                                isDeleting={deletingTargetKey === `document:${document.id}`}
+                                                                                                locale={locale}
+                                                                                            />
+                                                                                        ))}
+                                                                                    </div>
+                                                                                )}
+                                                                            </>
+                                                                        );
+                                                                    })()}
+                                                                </div>
+                                                            ))}
+
+                                                            {groupedDocuments.uncategorizedWithoutCollection.length > 0 && (
+                                                                <div className="grid gap-3">
+                                                                    {groupedDocuments.uncategorizedWithoutCollection.map((document) => (
                                                                         <DocumentCard
                                                                             key={document.id}
                                                                             document={document}
@@ -1739,109 +2023,79 @@ export default function DocumentsPage() {
                                                                 </div>
                                                             )}
                                                         </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-
-                            {(groupedDocuments.uncategorizedByCollection.length > 0 ||
-                                groupedDocuments.uncategorizedWithoutCollection.length > 0) && (
-                                <div className="rounded-xl border border-dashed border-border bg-background/30 p-4">
-                                    <div className="mb-4">
-                                        <h3 className="text-sm font-semibold">{t("documentsPage.uncategorized.title")}</h3>
-                                        <p className="mt-1 text-[11px] text-muted-foreground">
-                                            {t("documentsPage.uncategorized.description")}
-                                        </p>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        {groupedDocuments.uncategorizedByCollection.map((collection) => (
-                                            <div key={`uncategorized-${collection.name}`} className="rounded-xl border border-border bg-card/40">
-                                                {(() => {
-                                                    const collectionKey = `uncategorized::${collection.name}`;
-                                                    const isCollectionOpen = openCollections[collectionKey] ?? false;
-
-                                                    return (
-                                                        <>
-                                                            <div className="flex items-center justify-between gap-3 px-4 py-3">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => toggleCollection(collectionKey)}
-                                                                    className="min-w-0 flex-1 text-left"
-                                                                >
-                                                                    <div className="flex items-center gap-2">
-                                                                        {isCollectionOpen ? <ChevronDown className="h-4 w-4 text-foreground" /> : <ChevronRight className="h-4 w-4 text-foreground" />}
-                                                                        <FolderOpen className="h-4 w-4 text-primary" />
-                                                                        <span className="truncate text-sm font-medium">{collection.name}</span>
-                                                                    </div>
-                                                                    <p className="mt-1 text-[11px] text-muted-foreground">
-                                                                        {t("documentsPage.uncategorized.documentsCount", { count: collection.documents.length })}
-                                                                    </p>
-                                                                </button>
-                                                                {collection.collectionId ? (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => openCollectionDeletion(collection.collectionId!, collection.name, collection.documents.length)}
-                                                                        className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-[11px] font-semibold text-destructive"
-                                                                    >
-                                                                        {deletingTargetKey === `collection:${collection.collectionId}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                                                                        {t("documentsPage.actions.deleteCollectionDocuments")}
-                                                                    </button>
-                                                                ) : null}
-                                                            </div>
-
-                                                            {isCollectionOpen && (
-                                                                <div className="grid gap-3 border-t border-border p-4">
-                                                                    {collection.documents.map((document) => (
-                                                                        <DocumentCard
-                                                                            key={document.id}
-                                                                            document={document}
-                                                                            uploadHref={uploadHref}
-                                                                            onOpenPreview={setSelectedDocument}
-                                                                            onDownload={handleDownloadDocument}
-                                                                            onRetry={handleRetryDocument}
-                                                                            onDelete={openDocumentDeletion}
-                                                                            isDownloading={downloadingDocumentId === document.id}
-                                                                            isRetrying={retryingDocumentId === document.id}
-                                                                            isDeleting={deletingTargetKey === `document:${document.id}`}
-                                                                            locale={locale}
-                                                                        />
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        </>
-                                                    );
-                                                })()}
-                                            </div>
-                                        ))}
-
-                                        {groupedDocuments.uncategorizedWithoutCollection.length > 0 && (
-                                            <div className="grid gap-3">
-                                                {groupedDocuments.uncategorizedWithoutCollection.map((document) => (
-                                                    <DocumentCard
-                                                        key={document.id}
-                                                        document={document}
-                                                        uploadHref={uploadHref}
-                                                        onOpenPreview={setSelectedDocument}
-                                                        onDownload={handleDownloadDocument}
-                                                        onRetry={handleRetryDocument}
-                                                        onDelete={openDocumentDeletion}
-                                                        isDownloading={downloadingDocumentId === document.id}
-                                                        isRetrying={retryingDocumentId === document.id}
-                                                        isDeleting={deletingTargetKey === `document:${document.id}`}
-                                                        locale={locale}
-                                                    />
-                                                ))}
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>
                                 </div>
                             )}
-                        </div>
-                    )}
+                        </TabsContent>
+
+                        <TabsContent value="operations" className="mt-0 space-y-6">
+                            <ProviderRuntimeCallout
+                                role="indexing"
+                                assignment={providerRuntimeOverview.indexing}
+                                isLoading={isProviderRuntimeLoading}
+                                error={providerRuntimeError}
+                            />
+
+                            {monitoringError && (
+                                <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+                                    {monitoringError}
+                                </div>
+                            )}
+
+                            {isLoading && (
+                                <div className="flex min-h-64 items-center justify-center gap-3 text-sm text-muted-foreground">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    {t("documentsPage.loading")}
+                                </div>
+                            )}
+
+                            {!isLoading && error && (
+                                <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+                                    {error}
+                                </div>
+                            )}
+
+                            {!isLoading && !error && documents.length === 0 && (
+                                <div className="flex min-h-48 flex-col items-center justify-center rounded-xl border border-border bg-background/40 px-6 text-center">
+                                    <FileText className="mb-4 h-10 w-10 text-muted-foreground" />
+                                    <h3 className="text-sm font-semibold">{t("documentsPage.empty.title")}</h3>
+                                    <p className="mt-2 max-w-md text-xs leading-relaxed text-muted-foreground">
+                                        {t("documentsPage.empty.description")}
+                                    </p>
+                                </div>
+                            )}
+
+                            {!isLoading && !error && monitoringSummary && (
+                                <MonitoringSummaryPanel summary={monitoringSummary} />
+                            )}
+
+                            {!isLoading && !error && documents.length > 0 && (
+                                <OperationalObservabilityPanel
+                                    documents={documents}
+                                    summary={monitoringSummary}
+                                    activeFilter={operationalFilter}
+                                    searchTerm={operationalSearch}
+                                    onFilterChange={setOperationalFilter}
+                                    onSearchTermChange={setOperationalSearch}
+                                    onOpenPreview={setSelectedDocument}
+                                    onRetry={handleRetryDocument}
+                                    retryingDocumentId={retryingDocumentId}
+                                />
+                            )}
+                        </TabsContent>
+
+                        <TabsContent value="audit" className="mt-0">
+                            <DocumentAuditExplorer
+                                locale={locale}
+                                reloadToken={documentAuditReloadToken}
+                                selectedDocument={selectedDocument}
+                            />
+                        </TabsContent>
+                    </Tabs>
                 </div>
             </motion.div>
 
