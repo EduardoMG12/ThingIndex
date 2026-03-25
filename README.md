@@ -414,6 +414,8 @@ Ele executa checks seletivos antes do commit:
 
 O hook foi pensado para proteger integridade basica do codigo sem tentar rodar `integration` ou `e2e` a cada commit.
 
+Se quiser incluir um smoke real de indexacao com LLM no `pre-commit`, defina `THINGINDEX_PRECOMMIT_REAL_LLM=true` no `.env` local. Nesse modo, mudancas em `api/` tambem executam `./scripts/test.sh backend-real-llm`.
+
 ### Comandos simples de teste
 
 O repositorio agora expõe comandos curtos na raiz:
@@ -424,6 +426,7 @@ O repositorio agora expõe comandos curtos na raiz:
 ./scripts/doctor.sh
 ./scripts/test.sh unit
 ./scripts/test.sh backend-integration
+./scripts/test.sh backend-real-llm
 ./scripts/test.sh backend-e2e
 ./scripts/test.sh frontend-storybook
 ./scripts/test.sh frontend-e2e
@@ -515,6 +518,7 @@ O arquivo `.env.example` foi pensado para **desenvolvimento local**. Em producao
 | `THINGINDEX_TEST_MINIO_*` | vazio ou overrides locais | Overrides opcionais para testes reais com storage |
 | `THINGINDEX_TEST_GCP_*` | vazio ou overrides locais | Overrides opcionais para testes de integracao do GCS |
 | `THINGINDEX_TEST_RABBITMQ_URL` | vazio ou override local | Override opcional para os testes reais com fila |
+| `THINGINDEX_PRECOMMIT_REAL_LLM` | `false` | Quando `true`, inclui o smoke real de indexacao com LLM no `pre-commit` para mudancas em `api/` |
 | `THINGINDEX_TEST_LLM_*` | desabilitado por padrao | Habilita testes reais de provider/processing com IA |
 | `OPENAI_*`, `OPENROUTER_*`, `DEEPSEEK_*`, `GROK_*`, `GEMINI_*`, `CLAUDE_*`, `OLLAMA_*` | provider-specific | Fallbacks de credenciais/modelo para os testes reais de LLM |
 | `MAX_UPLOAD_SIZE_BYTES` | `20971520` | Limite maximo de upload |

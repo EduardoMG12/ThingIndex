@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -108,6 +109,12 @@ type openAIModelsResponse struct {
 type StorageProviderOptions struct {
 	EndpointValidator *netsec.StorageEndpointValidator
 }
+
+const defaultLLMGenerationTemperature = 0.0
+const defaultLLMStreamingTemperature = 0.2
+const llmValidationTimeout = 45 * time.Second
+const maxLLMInfraAttempts = 2
+const llmInfraRetryDelay = 250 * time.Millisecond
 
 type llmProviderDefinition struct {
 	defaultBaseURL   string
@@ -333,7 +340,7 @@ func (c *openAICompatibleLLMClient) GenerateText(ctx context.Context, systemProm
 			{Role: "system", Content: systemPrompt},
 			{Role: "user", Content: userPrompt},
 		},
-		Temperature: 0.2,
+		Temperature: defaultLLMGenerationTemperature,
 	}
 
 	completion, err := c.createChatCompletion(ctx, payload)
@@ -354,38 +361,22 @@ func ValidateLLMConnection(ctx context.Context, providerType string, credentials
 		return err
 	}
 
-	timeoutCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
+	var lastErr error
+	for attempt := 1; attempt <= maxLLMInfraAttempts; attempt++ {
+		timeoutCtx, cancel := context.WithTimeout(ctx, llmValidationTimeout)
+		err = validateLLMConnectionOnce(timeoutCtx, service)
+		cancel()
+		if err == nil {
+			return nil
+		}
 
-	switch client := service.(type) {
-	case *openAICompatibleLLMClient:
-		_, err = client.createChatCompletion(timeoutCtx, chatCompletionRequest{
-			Model: client.model,
-			Messages: []chatCompletionMessage{
-				{Role: "system", Content: "Reply with OK."},
-				{Role: "user", Content: "ping"},
-			},
-			Temperature: 0,
-			MaxTokens:   1,
-		})
-		return err
-	case *ollamaNativeLLMClient:
-		_, err = client.createChat(timeoutCtx, ollamaChatRequest{
-			Model: client.model,
-			Messages: []chatCompletionMessage{
-				{Role: "system", Content: "Reply with OK."},
-				{Role: "user", Content: "ping"},
-			},
-			Stream: false,
-			Options: &ollamaChatOptions{
-				Temperature: floatPtr(0),
-				NumPredict:  intPtr(1),
-			},
-		})
-		return err
-	default:
-		return errors.New("llm validation is not supported for this provider")
+		lastErr = err
+		if ctx.Err() != nil || !isRetriableLLMInfraError(err) || attempt == maxLLMInfraAttempts || !waitForLLMInfraRetry(ctx) {
+			break
+		}
 	}
+
+	return lastErr
 }
 
 func ValidateStorageConnection(ctx context.Context, providerType string, credentials map[string]string, options StorageProviderOptions) error {
@@ -428,12 +419,29 @@ func ListLLMModels(ctx context.Context, providerType string, credentials map[str
 		return nil, fmt.Errorf("model discovery is not implemented for provider %s", normalizedProvider)
 	}
 
-	switch normalizedProvider {
-	case domain.ProviderOllama:
-		return listOllamaModels(ctx, credentials)
-	default:
-		return listOpenAICompatibleModels(ctx, normalizedProvider, credentials)
+	var (
+		models  []string
+		lastErr error
+	)
+
+	for attempt := 1; attempt <= maxLLMInfraAttempts; attempt++ {
+		switch normalizedProvider {
+		case domain.ProviderOllama:
+			models, lastErr = listOllamaModels(ctx, credentials)
+		default:
+			models, lastErr = listOpenAICompatibleModels(ctx, normalizedProvider, credentials)
+		}
+
+		if lastErr == nil {
+			return models, nil
+		}
+
+		if ctx.Err() != nil || !isRetriableLLMInfraError(lastErr) || attempt == maxLLMInfraAttempts || !waitForLLMInfraRetry(ctx) {
+			break
+		}
 	}
+
+	return nil, lastErr
 }
 
 func listOllamaModels(ctx context.Context, credentials map[string]string) ([]string, error) {
@@ -592,7 +600,7 @@ func (c *openAICompatibleLLMClient) StreamText(ctx context.Context, systemPrompt
 			{Role: "system", Content: systemPrompt},
 			{Role: "user", Content: userPrompt},
 		},
-		Temperature: 0.2,
+		Temperature: defaultLLMStreamingTemperature,
 		Stream:      true,
 	}
 
@@ -678,7 +686,7 @@ func (c *ollamaNativeLLMClient) GenerateText(ctx context.Context, systemPrompt, 
 		},
 		Stream: false,
 		Options: &ollamaChatOptions{
-			Temperature: floatPtr(0.2),
+			Temperature: floatPtr(defaultLLMGenerationTemperature),
 		},
 	})
 	if err != nil {
@@ -700,7 +708,7 @@ func (c *ollamaNativeLLMClient) StreamText(ctx context.Context, systemPrompt, us
 		},
 		Stream: true,
 		Options: &ollamaChatOptions{
-			Temperature: floatPtr(0.2),
+			Temperature: floatPtr(defaultLLMStreamingTemperature),
 		},
 	})
 	if err != nil {
@@ -1036,6 +1044,90 @@ func floatPtr(value float64) *float64 {
 
 func intPtr(value int) *int {
 	return &value
+}
+
+func validateLLMConnectionOnce(ctx context.Context, service domain.LLMService) error {
+	switch client := service.(type) {
+	case *openAICompatibleLLMClient:
+		_, err := client.createChatCompletion(ctx, chatCompletionRequest{
+			Model: client.model,
+			Messages: []chatCompletionMessage{
+				{Role: "system", Content: "Reply with OK."},
+				{Role: "user", Content: "ping"},
+			},
+			Temperature: 0,
+			MaxTokens:   1,
+		})
+		return err
+	case *ollamaNativeLLMClient:
+		_, err := client.createChat(ctx, ollamaChatRequest{
+			Model: client.model,
+			Messages: []chatCompletionMessage{
+				{Role: "system", Content: "Reply with OK."},
+				{Role: "user", Content: "ping"},
+			},
+			Stream: false,
+			Options: &ollamaChatOptions{
+				Temperature: floatPtr(0),
+				NumPredict:  intPtr(1),
+			},
+		})
+		return err
+	default:
+		return errors.New("llm validation is not supported for this provider")
+	}
+}
+
+func isRetriableLLMInfraError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+
+	var networkErr net.Error
+	if errors.As(err, &networkErr) && (networkErr.Timeout() || isTemporaryNetError(networkErr)) {
+		return true
+	}
+
+	message := strings.ToLower(strings.TrimSpace(err.Error()))
+	patterns := []string{
+		"deadline exceeded",
+		"timeout",
+		"i/o timeout",
+		"temporary failure in name resolution",
+		"tls handshake timeout",
+	}
+	for _, pattern := range patterns {
+		if strings.Contains(message, pattern) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func isTemporaryNetError(err net.Error) bool {
+	type temporaryError interface {
+		Temporary() bool
+	}
+
+	temporaryErr, ok := err.(temporaryError)
+	return ok && temporaryErr.Temporary()
+}
+
+func waitForLLMInfraRetry(ctx context.Context) bool {
+	timer := time.NewTimer(llmInfraRetryDelay)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
+	}
 }
 
 func llmPricingProfile(providerType, model string, credentials map[string]string) (domain.LLMPricing, bool) {

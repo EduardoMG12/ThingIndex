@@ -122,9 +122,9 @@ type DocumentChunk struct {
 
 type DocumentOutlineNode struct {
 	ID            uint                 `gorm:"primarykey" json:"id"`
-	DocumentID    uint                 `gorm:"not null;index;uniqueIndex:idx_outline_nodes_document_sequence" json:"document_id"`
+	DocumentID    uint                 `gorm:"not null;index;uniqueIndex:idx_outline_nodes_document_sequence,priority:1;uniqueIndex:idx_outline_nodes_document_node,priority:1" json:"document_id"`
 	SequenceOrder int                  `gorm:"not null;uniqueIndex:idx_outline_nodes_document_sequence" json:"sequence_order"`
-	NodeID        string               `gorm:"size:128;not null;uniqueIndex:idx_outline_nodes_document_node" json:"node_id"`
+	NodeID        string               `gorm:"size:128;not null;uniqueIndex:idx_outline_nodes_document_node,priority:2" json:"node_id"`
 	ParentID      *uint                `gorm:"index" json:"parent_id,omitempty"`
 	Parent        *DocumentOutlineNode `gorm:"foreignKey:ParentID" json:"-"`
 	Level         int                  `gorm:"not null" json:"level"`

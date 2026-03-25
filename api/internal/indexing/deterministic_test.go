@@ -276,6 +276,74 @@ func TestLineFromPDFTextsPreservesRealSpaces(t *testing.T) {
 	}
 }
 
+func TestLooksLikePDFHeadingRejectsLowSignalAndFieldLikeBlocks(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		text string
+		want bool
+	}{
+		{text: "DECISÃO", want: true},
+		{text: "CERTIDÃO", want: true},
+		{text: "OFÍCIO REQUISITÓRIO", want: true},
+		{text: "PROCESSAMENTO", want: true},
+		{text: "P", want: false},
+		{text: "4", want: false},
+		{text: "395478", want: false},
+		{text: "o T", want: false},
+		{text: "25 33", want: false},
+		{text: "Advogado(a):", want: false},
+		{text: "Ó rgão:", want: false},
+		{text: "sp1jefaz@tjsp.jus.br", want: false},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.text, func(t *testing.T) {
+			t.Parallel()
+
+			if got := looksLikePDFHeading(tc.text); got != tc.want {
+				t.Fatalf("looksLikePDFHeading(%q) = %v, want %v", tc.text, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestCountPDFBlockPageOccurrencesCountsPagesOnlyOnce(t *testing.T) {
+	t.Parallel()
+
+	pageBlocks := [][]textBlock{
+		{
+			{Content: "TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO"},
+			{Content: "TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO"},
+			{Content: "DECISÃO"},
+		},
+		{
+			{Content: "TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO"},
+			{Content: "DECISÃO"},
+		},
+		{
+			{Content: "TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO"},
+			{Content: "CERTIDÃO"},
+		},
+	}
+
+	occurrences := countPDFBlockPageOccurrences(pageBlocks)
+
+	if got := occurrences["TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO"]; got != 3 {
+		t.Fatalf("unexpected repeated heading count: got %d want 3", got)
+	}
+	if got := occurrences["DECISÃO"]; got != 2 {
+		t.Fatalf("unexpected section count: got %d want 2", got)
+	}
+	if !shouldSuppressRepeatedPDFHeading("TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO", occurrences) {
+		t.Fatalf("expected tribunal heading to be suppressed when repeated across pages")
+	}
+	if shouldSuppressRepeatedPDFHeading("DECISÃO", occurrences) {
+		t.Fatalf("did not expect decision heading to be suppressed with only two page occurrences")
+	}
+}
+
 func assertMetadataValue(t *testing.T, pairs []models.MetadataPair, key, want string) {
 	t.Helper()
 

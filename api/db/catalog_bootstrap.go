@@ -14,6 +14,10 @@ func ensureDocumentCatalog(db *gorm.DB) error {
 		return err
 	}
 
+	if err := ensureDocumentOutlineNodeSchema(db); err != nil {
+		return err
+	}
+
 	if err := backfillCategoryNormalizedNames(db); err != nil {
 		return err
 	}
@@ -35,6 +39,24 @@ func ensureDocumentCatalog(db *gorm.DB) error {
 	}
 
 	return nil
+}
+
+func ensureDocumentOutlineNodeSchema(db *gorm.DB) error {
+	indexDefinition, err := indexDefinition(db, "idx_outline_nodes_document_node")
+	if err != nil {
+		return err
+	}
+	if indexDefinitionContains(indexDefinition, "create unique index", "document_outline_nodes", "(document_id, node_id)") {
+		return nil
+	}
+
+	if err := dropLegacyIndexIfExists(db, "idx_outline_nodes_document_node"); err != nil {
+		return err
+	}
+
+	return db.Exec(
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_outline_nodes_document_node ON document_outline_nodes (document_id, node_id)",
+	).Error
 }
 
 func ensureCatalogNormalizedNamesNotNull(db *gorm.DB) error {

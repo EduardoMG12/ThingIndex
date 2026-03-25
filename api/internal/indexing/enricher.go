@@ -69,7 +69,7 @@ func (e *LLMEnricher) Enrich(ctx context.Context, llm domain.LLMService, doc *mo
 
 	synopsis, err := e.generateDocumentSynopsis(ctx, llm, contextBlock)
 	if err != nil {
-		return result, err
+		synopsis = buildFallbackDocumentSynopsis(doc, updated)
 	}
 	applyDocumentSynopsis(&updated, documentID, synopsis)
 
@@ -82,6 +82,7 @@ func (e *LLMEnricher) Enrich(ctx context.Context, llm domain.LLMService, doc *mo
 	if err == nil {
 		applyPageSummaries(&updated, pageSummaries)
 	}
+	fillMissingPageSummaries(&updated)
 
 	retrievalSignals, err := e.generateRetrievalSignals(ctx, llm, contextBlock)
 	if err == nil {
@@ -169,7 +170,78 @@ func parseLLMJSON(raw string, target any) error {
 	cleaned = strings.TrimSuffix(cleaned, "```")
 	cleaned = strings.TrimSpace(cleaned)
 
-	return json.Unmarshal([]byte(cleaned), target)
+	if err := json.Unmarshal([]byte(cleaned), target); err == nil {
+		return nil
+	}
+
+	extracted := extractJSONEnvelope(cleaned)
+	if extracted == "" {
+		return json.Unmarshal([]byte(cleaned), target)
+	}
+
+	return json.Unmarshal([]byte(extracted), target)
+}
+
+func extractJSONEnvelope(raw string) string {
+	start := -1
+	for idx, r := range raw {
+		if r == '{' || r == '[' {
+			start = idx
+			break
+		}
+	}
+	if start < 0 {
+		return ""
+	}
+
+	var (
+		depth       int
+		inString    bool
+		escapeNext  bool
+		openingRune rune
+		closingRune rune
+	)
+
+	for idx, r := range raw[start:] {
+		absoluteIdx := start + idx
+		if openingRune == 0 {
+			openingRune = r
+			if openingRune == '{' {
+				closingRune = '}'
+			} else {
+				closingRune = ']'
+			}
+		}
+
+		if inString {
+			if escapeNext {
+				escapeNext = false
+				continue
+			}
+			if r == '\\' {
+				escapeNext = true
+				continue
+			}
+			if r == '"' {
+				inString = false
+			}
+			continue
+		}
+
+		switch r {
+		case '"':
+			inString = true
+		case openingRune:
+			depth++
+		case closingRune:
+			depth--
+			if depth == 0 {
+				return strings.TrimSpace(raw[start : absoluteIdx+1])
+			}
+		}
+	}
+
+	return ""
 }
 
 func applyDocumentSynopsis(result *domain.IndexingResult, documentID uint, payload documentSynopsisResponse) {
@@ -184,6 +256,25 @@ func applyDocumentSynopsis(result *domain.IndexingResult, documentID uint, paylo
 	}
 
 	appendMetadataIfPresent(result, documentID, "document_purpose", payload.DocumentPurpose)
+}
+
+func buildFallbackDocumentSynopsis(doc *models.Document, result domain.IndexingResult) documentSynopsisResponse {
+	summary := firstNonEmptyNonBlank(
+		firstNonEmptyPageContent(result.DocumentPages),
+		firstNonEmptyParagraphContent(result.ParagraphNodes),
+		titleFromDocument(doc),
+	)
+	purpose := firstNonEmptyNonBlank(
+		firstNonEmptyOutlineTitle(result.OutlineNodes),
+		summary,
+		titleFromDocument(doc),
+	)
+
+	return documentSynopsisResponse{
+		DocumentSummary: clampText(summary, 800),
+		DocumentPurpose: clampText(purpose, 400),
+		Keywords:        fallbackSynopsisKeywords(doc, result),
+	}
 }
 
 func applyOutlineNodeSummaries(result *domain.IndexingResult, payload sectionSummaryResponse) {
@@ -220,6 +311,81 @@ func applyPageSummaries(result *domain.IndexingResult, payload pageSummaryRespon
 			break
 		}
 	}
+}
+
+func fillMissingPageSummaries(result *domain.IndexingResult) {
+	if result == nil {
+		return
+	}
+
+	for idx := range result.DocumentPages {
+		if strings.TrimSpace(result.DocumentPages[idx].Summary) != "" {
+			continue
+		}
+		result.DocumentPages[idx].Summary = fallbackPageSummary(result.DocumentPages[idx].Content)
+	}
+}
+
+func fallbackPageSummary(content string) string {
+	return clampText(content, 320)
+}
+
+func fallbackSynopsisKeywords(doc *models.Document, result domain.IndexingResult) []string {
+	candidates := []string{}
+
+	if title := strings.TrimSpace(titleFromDocument(doc)); title != "" {
+		candidates = append(candidates, title)
+	}
+	for _, node := range result.OutlineNodes {
+		if title := strings.TrimSpace(node.Title); title != "" {
+			candidates = append(candidates, title)
+		}
+	}
+
+	return sanitizeStringList(candidates, 8, 80)
+}
+
+func firstNonEmptyPageContent(pages []models.DocumentPage) string {
+	for _, page := range pages {
+		if value := strings.TrimSpace(page.Content); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func firstNonEmptyParagraphContent(paragraphs []models.ParagraphNode) string {
+	for _, paragraph := range paragraphs {
+		if value := strings.TrimSpace(paragraph.Content); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func firstNonEmptyOutlineTitle(nodes []models.DocumentOutlineNode) string {
+	for _, node := range nodes {
+		if value := strings.TrimSpace(node.Title); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func titleFromDocument(doc *models.Document) string {
+	if doc == nil {
+		return ""
+	}
+	return strings.TrimSpace(doc.Title)
+}
+
+func firstNonEmptyNonBlank(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
 }
 
 func applyRetrievalSignals(result *domain.IndexingResult, documentID uint, payload retrievalSignalsResponse) {

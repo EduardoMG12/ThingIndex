@@ -207,6 +207,7 @@ func (i *DeterministicIndexer) indexPDF(documentID uint, data []byte) (domain.In
 	headings := make([]outlineDraft, 0)
 	paragraphs := make([]textBlock, 0)
 	currentSectionKey := ""
+	pageBlocks := make([][]textBlock, 0, pdfReader.NumPage())
 
 	for pageIndex := 1; pageIndex <= pdfReader.NumPage(); pageIndex++ {
 		page := pdfReader.Page(pageIndex)
@@ -215,12 +216,31 @@ func (i *DeterministicIndexer) indexPDF(documentID uint, data []byte) (domain.In
 		}
 
 		pageNumber := pageIndex
-		for _, block := range blocksFromPDFPage(page, &pageNumber) {
-			if looksLikeHeading(block.Content) {
-				currentSectionKey = slugify(block.Content)
+		pageBlocks = append(pageBlocks, blocksFromPDFPage(page, &pageNumber))
+	}
+
+	pageOccurrences := countPDFBlockPageOccurrences(pageBlocks)
+	emittedRepeatedPDFHeadings := make(map[string]struct{})
+
+	for _, blocks := range pageBlocks {
+		for _, block := range blocks {
+			content := strings.TrimSpace(block.Content)
+			if content == "" || isLowSignalPDFText(content) {
+				continue
+			}
+
+			if looksLikePDFHeading(content) {
+				if shouldSuppressRepeatedPDFHeading(content, pageOccurrences) {
+					if _, seen := emittedRepeatedPDFHeadings[content]; seen {
+						continue
+					}
+					emittedRepeatedPDFHeadings[content] = struct{}{}
+				}
+
+				currentSectionKey = slugify(content)
 				headings = append(headings, outlineDraft{
-					Level:          inferHeadingLevel(block.Content),
-					Title:          block.Content,
+					Level:          inferHeadingLevel(content),
+					Title:          content,
 					PageNumber:     block.PageNumber,
 					ParagraphStart: len(paragraphs),
 					SectionKey:     currentSectionKey,
@@ -229,6 +249,7 @@ func (i *DeterministicIndexer) indexPDF(documentID uint, data []byte) (domain.In
 			}
 
 			block.SectionKey = currentSectionKey
+			block.Content = content
 			paragraphs = append(paragraphs, block)
 		}
 	}
@@ -781,6 +802,134 @@ func looksLikeHeading(text string) bool {
 		return true
 	}
 	return len(strings.Fields(text)) <= 10 && isMostlyTitleCase(text)
+}
+
+func looksLikePDFHeading(text string) bool {
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" || !looksLikeHeading(trimmed) {
+		return false
+	}
+	if isLowSignalPDFText(trimmed) || looksLikePDFFieldLine(trimmed) {
+		return false
+	}
+	return true
+}
+
+func looksLikePDFFieldLine(text string) bool {
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" {
+		return false
+	}
+	if numberedHeadingPattern.MatchString(trimmed) {
+		return false
+	}
+	if strings.HasSuffix(trimmed, ":") {
+		return true
+	}
+	if strings.Contains(trimmed, "@") {
+		return true
+	}
+	return strings.Count(trimmed, ":") >= 1
+}
+
+func isLowSignalPDFText(text string) bool {
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" {
+		return true
+	}
+	if numberedHeadingPattern.MatchString(trimmed) {
+		remainder := strings.TrimSpace(numberedHeadingPattern.ReplaceAllString(trimmed, ""))
+		return !containsLetter(remainder)
+	}
+
+	words := strings.Fields(trimmed)
+	if len(words) == 0 {
+		return true
+	}
+
+	letters := 0
+	digits := 0
+	meaningfulWords := 0
+	shortWords := 0
+
+	for _, word := range words {
+		wordLetters := 0
+		wordDigits := 0
+		wordRunes := 0
+		for _, r := range word {
+			if unicode.IsLetter(r) {
+				letters++
+				wordLetters++
+				wordRunes++
+				continue
+			}
+			if unicode.IsDigit(r) {
+				digits++
+				wordDigits++
+				wordRunes++
+			}
+		}
+
+		if wordRunes == 0 {
+			continue
+		}
+		if wordRunes <= 2 {
+			shortWords++
+		}
+		if wordLetters >= 3 || (wordLetters >= 1 && wordDigits >= 2) {
+			meaningfulWords++
+		}
+	}
+
+	switch {
+	case letters == 0:
+		return digits <= 6
+	case letters < 3 && meaningfulWords == 0:
+		return true
+	case meaningfulWords == 0 && shortWords >= min(2, len(words)):
+		return true
+	case len(words) == 1 && letters <= 2:
+		return true
+	case len(words) <= 4 && shortWords == len(words) && meaningfulWords == 0:
+		return true
+	default:
+		return false
+	}
+}
+
+func containsLetter(text string) bool {
+	for _, r := range text {
+		if unicode.IsLetter(r) {
+			return true
+		}
+	}
+	return false
+}
+
+func countPDFBlockPageOccurrences(pageBlocks [][]textBlock) map[string]int {
+	counts := make(map[string]int)
+	for _, blocks := range pageBlocks {
+		seenOnPage := make(map[string]struct{})
+		for _, block := range blocks {
+			content := strings.TrimSpace(block.Content)
+			if content == "" {
+				continue
+			}
+			seenOnPage[content] = struct{}{}
+		}
+		for content := range seenOnPage {
+			counts[content]++
+		}
+	}
+	return counts
+}
+
+func shouldSuppressRepeatedPDFHeading(text string, occurrences map[string]int) bool {
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" {
+		return false
+	}
+	return occurrences[trimmed] >= 3 && len(strings.Fields(trimmed)) <= 16
 }
 
 func inferHeadingLevel(text string) int {
