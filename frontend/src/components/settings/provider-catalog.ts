@@ -55,6 +55,8 @@ const ollamaModelSuggestions = [
     "gemma2:9b",
 ];
 
+const OLLAMA_CLOUD_BASE_URL = "https://ollama.com/api";
+
 const openRouterModelSuggestions = [
     "openai/gpt-4o-mini",
     "openai/gpt-4.1-mini",
@@ -547,7 +549,7 @@ export const PROVIDERS: ProviderDefinition[] = [
         fields: [
             { key: "api_key", label: "API key", placeholder: "Required for Ollama Cloud", type: "password", optional: true },
             { key: "model", label: "Model", placeholder: "deepseek-v3.1:671b", kind: "model", suggestions: ollamaModelSuggestions },
-            { key: "base_url", label: "Base URL", placeholder: "https://ollama.com/v1 or http://host.docker.internal:11434/v1", optional: true },
+            { key: "base_url", label: "Base URL", placeholder: `${OLLAMA_CLOUD_BASE_URL} or http://host.docker.internal:11434/v1`, optional: true },
         ],
     }),
     withBranding({
@@ -596,9 +598,15 @@ export function getProvidersByFamily(family: ProviderFamily) {
 }
 
 export function getInitialFormState() {
+    const defaultFieldValues: Partial<Record<ProviderType, Record<string, string>>> = {
+        OLLAMA: {
+            base_url: OLLAMA_CLOUD_BASE_URL,
+        },
+    };
+
     return PROVIDERS.reduce<Record<ProviderType, Record<string, string>>>((state, provider) => {
         state[provider.providerType] = provider.fields.reduce<Record<string, string>>((fieldState, field) => {
-            fieldState[field.key] = "";
+            fieldState[field.key] = defaultFieldValues[provider.providerType]?.[field.key] ?? "";
             return fieldState;
         }, {});
         return state;
