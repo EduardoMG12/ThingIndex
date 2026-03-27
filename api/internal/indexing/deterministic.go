@@ -1324,9 +1324,49 @@ var numberedHeadingPattern = regexp.MustCompile(`^\d+(\.\d+)*\s+`)
 var pdfPageMarkerPattern = regexp.MustCompile(`^(p[aá]gina|page)\s+\d+(\s+(de|of)\s+\d+)?$`)
 var pdfProcessNumberPattern = regexp.MustCompile(`\b\d{4,7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b`)
 
+type documentHeadingArchetype string
+
+const (
+	documentHeadingArchetypeUnknown      documentHeadingArchetype = ""
+	documentHeadingArchetypeLegalRoot    documentHeadingArchetype = "legal_root"
+	documentHeadingArchetypeLegalSection documentHeadingArchetype = "legal_section"
+	documentHeadingArchetypeAttachment   documentHeadingArchetype = "attachment"
+)
+
+var legalDocumentRootHeadingKeywords = []string{
+	"sentenca",
+	"acordao",
+	"decisao",
+	"despacho",
+	"oficio",
+	"certidao",
+	"mandado",
+	"alvara",
+}
+
+var legalSectionHeadingKeywords = []string{
+	"relatorio",
+	"fundamentacao",
+	"dispositivo",
+	"ementa",
+	"voto",
+}
+
+var attachmentHeadingKeywords = []string{
+	"anexo",
+	"apendice",
+	"planilha",
+	"memoria de calculo",
+	"quadro demonstrativo",
+	"demonstrativo de calculo",
+}
+
 func looksLikeHeading(text string) bool {
 	if text == "" || strings.Contains(text, ". ") && len(text) > 120 {
 		return false
+	}
+	if classifyDocumentHeadingArchetype(text) != documentHeadingArchetypeUnknown {
+		return true
 	}
 	if numberedHeadingPattern.MatchString(text) {
 		return true
@@ -1387,6 +1427,10 @@ func looksLikePDFBoilerplate(text string) bool {
 
 	if pdfPageMarkerPattern.MatchString(normalized) || pdfProcessNumberPattern.MatchString(text) {
 		return true
+	}
+
+	if classifyDocumentHeadingArchetype(text) != documentHeadingArchetypeUnknown {
+		return false
 	}
 
 	if len(strings.Fields(text)) >= 8 && text == strings.ToUpper(text) && !numberedHeadingPattern.MatchString(text) {
@@ -1521,6 +1565,13 @@ func shouldSuppressRepeatedPDFHeading(text string, occurrences map[string]int) b
 }
 
 func inferHeadingLevel(text string) int {
+	switch classifyDocumentHeadingArchetype(text) {
+	case documentHeadingArchetypeLegalRoot:
+		return 1
+	case documentHeadingArchetypeLegalSection, documentHeadingArchetypeAttachment:
+		return 2
+	}
+
 	if matches := numberedHeadingPattern.FindString(text); matches != "" {
 		trimmed := strings.TrimSpace(matches)
 		return strings.Count(trimmed, ".") + 1
@@ -1533,6 +1584,94 @@ func inferHeadingLevel(text string) int {
 		return 2
 	default:
 		return 3
+	}
+}
+
+func classifyDocumentHeadingArchetype(text string) documentHeadingArchetype {
+	normalized := normalizeHeadingLexicon(text)
+	if normalized == "" {
+		return documentHeadingArchetypeUnknown
+	}
+
+	wordCount := len(strings.Fields(normalized))
+	if wordCount == 0 || wordCount > 14 {
+		return documentHeadingArchetypeUnknown
+	}
+
+	candidates := []string{normalized}
+	if stripped := strings.TrimSpace(numberedHeadingPattern.ReplaceAllString(normalized, "")); stripped != "" && stripped != normalized {
+		candidates = append(candidates, stripped)
+	}
+
+	for _, candidate := range candidates {
+		switch {
+		case matchesHeadingKeywordFamily(candidate, legalDocumentRootHeadingKeywords):
+			return documentHeadingArchetypeLegalRoot
+		case matchesHeadingKeywordFamily(candidate, legalSectionHeadingKeywords):
+			return documentHeadingArchetypeLegalSection
+		case matchesHeadingKeywordFamily(candidate, attachmentHeadingKeywords):
+			return documentHeadingArchetypeAttachment
+		}
+	}
+
+	return documentHeadingArchetypeUnknown
+}
+
+func matchesHeadingKeywordFamily(value string, keywords []string) bool {
+	for _, keyword := range keywords {
+		if keyword == "" {
+			continue
+		}
+		if value == keyword || strings.HasPrefix(value, keyword+" ") {
+			return true
+		}
+	}
+	return false
+}
+
+func normalizeHeadingLexicon(text string) string {
+	trimmed := strings.TrimSpace(strings.ToLower(text))
+	if trimmed == "" {
+		return ""
+	}
+
+	var builder strings.Builder
+	lastSpace := false
+	for _, r := range trimmed {
+		folded := foldLatinRune(r)
+		switch {
+		case unicode.IsLetter(folded) || unicode.IsDigit(folded):
+			builder.WriteRune(folded)
+			lastSpace = false
+		default:
+			if !lastSpace && builder.Len() > 0 {
+				builder.WriteRune(' ')
+				lastSpace = true
+			}
+		}
+	}
+
+	return strings.TrimSpace(builder.String())
+}
+
+func foldLatinRune(r rune) rune {
+	switch r {
+	case 'á', 'à', 'â', 'ã', 'ä':
+		return 'a'
+	case 'é', 'è', 'ê', 'ë':
+		return 'e'
+	case 'í', 'ì', 'î', 'ï':
+		return 'i'
+	case 'ó', 'ò', 'ô', 'õ', 'ö':
+		return 'o'
+	case 'ú', 'ù', 'û', 'ü':
+		return 'u'
+	case 'ç':
+		return 'c'
+	case 'ñ':
+		return 'n'
+	default:
+		return r
 	}
 }
 

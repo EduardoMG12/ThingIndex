@@ -547,8 +547,14 @@ func TestLooksLikePDFHeadingRejectsLowSignalAndFieldLikeBlocks(t *testing.T) {
 		want bool
 	}{
 		{text: "DECISÃO", want: true},
+		{text: "SENTENÇA", want: true},
+		{text: "ACÓRDÃO", want: true},
 		{text: "CERTIDÃO", want: true},
+		{text: "CERTIDÃO DE PUBLICAÇÃO E DECURSO DE PRAZO", want: true},
 		{text: "OFÍCIO REQUISITÓRIO", want: true},
+		{text: "OFÍCIO Nº 123/2026", want: true},
+		{text: "ANEXO I - PLANILHA DE CÁLCULO ATUALIZADA", want: true},
+		{text: "PLANILHA DE CÁLCULO DO DÉBITO", want: true},
 		{text: "PROCESSAMENTO", want: true},
 		{text: "Retention Schedule", want: true},
 		{text: "P", want: false},
@@ -574,6 +580,35 @@ func TestLooksLikePDFHeadingRejectsLowSignalAndFieldLikeBlocks(t *testing.T) {
 
 			if got := looksLikePDFHeading(tc.text); got != tc.want {
 				t.Fatalf("looksLikePDFHeading(%q) = %v, want %v", tc.text, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestInferHeadingLevelPromotesLegalSectionsAndAttachments(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		text string
+		want int
+	}{
+		{text: "SENTENÇA", want: 1},
+		{text: "ACÓRDÃO", want: 1},
+		{text: "1 RELATÓRIO", want: 2},
+		{text: "2 FUNDAMENTAÇÃO", want: 2},
+		{text: "3 DISPOSITIVO", want: 2},
+		{text: "ANEXO I - PLANILHA DE CÁLCULO", want: 2},
+		{text: "PLANILHA DE CÁLCULO DO DÉBITO", want: 2},
+		{text: "2 Payment Terms", want: 1},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.text, func(t *testing.T) {
+			t.Parallel()
+
+			if got := inferHeadingLevel(tc.text); got != tc.want {
+				t.Fatalf("inferHeadingLevel(%q) = %d, want %d", tc.text, got, tc.want)
 			}
 		})
 	}
