@@ -15,19 +15,19 @@ func TestIndexingBenchmarkProviderBuildsPublicReport(t *testing.T) {
 		t.Fatalf("GetPublicIndexingBenchmark returned error: %v", err)
 	}
 
-	if report.DatasetVersion != "2026-03-relational-baseline-v1" {
+	if report.DatasetVersion != "2026-03-relational-baseline-v2" {
 		t.Fatalf("unexpected dataset version: %#v", report.DatasetVersion)
 	}
 	if report.CorpusSourcePath != indexingBenchmarkCorpusPath {
 		t.Fatalf("unexpected corpus source path: %#v", report.CorpusSourcePath)
 	}
-	if len(report.Corpus) != 3 {
-		t.Fatalf("expected 3 benchmark documents, got %d", len(report.Corpus))
+	if len(report.Corpus) != 5 {
+		t.Fatalf("expected 5 benchmark documents, got %d", len(report.Corpus))
 	}
-	if len(report.Cases) != 7 {
-		t.Fatalf("expected 7 benchmark cases, got %d", len(report.Cases))
+	if len(report.Cases) != 11 {
+		t.Fatalf("expected 11 benchmark cases, got %d", len(report.Cases))
 	}
-	if report.Metrics.CorpusDocuments != 3 || report.Metrics.DocumentQueries != 4 || report.Metrics.CollectionQueries != 3 {
+	if report.Metrics.CorpusDocuments != 5 || report.Metrics.DocumentQueries != 6 || report.Metrics.CollectionQueries != 5 {
 		t.Fatalf("unexpected benchmark counts: %#v", report.Metrics)
 	}
 	if math.Abs(report.Metrics.StructurePassRate-100) > 0.0001 {
