@@ -12,6 +12,7 @@ import {
     type IndexingBenchmarkCase,
     type IndexingBenchmarkComparison,
     type IndexingBenchmarkReferenceComparison,
+    type IndexingBenchmarkRetrievalComparison,
     type IndexingBenchmarkReport,
     type IndexingBenchmarkStructuralSignal,
 } from "@/lib/api/indexing-benchmark";
@@ -81,6 +82,16 @@ function benchmarkStructuralSignalLabel(signal: IndexingBenchmarkStructuralSigna
     return labels[signal.id] ?? signal.id;
 }
 
+function benchmarkRetrievalVariantCategoryLabel(category: string, copy: ReturnType<typeof buildCopy>) {
+    const labels: Record<string, string> = {
+        baseline: copy.retrieval.categoryBaseline,
+        hybrid_control: copy.retrieval.categoryHybrid,
+        flat_control: copy.retrieval.categoryFlat,
+    };
+
+    return labels[category] ?? category;
+}
+
 function formatStructuralSignalDetail(signal: IndexingBenchmarkStructuralSignal, copy: ReturnType<typeof buildCopy>) {
     switch (signal.id) {
         case "expected_query_node_match":
@@ -126,10 +137,17 @@ function buildCopy(locale: string) {
                 outlineCoverageDetail: "headings esperados foram emitidos",
                 headingFalsePositiveDetail: "headings indexados foram inesperados",
             },
+            retrieval: {
+                intro: "A baseline relacional atual é comparada com controles experimentais explícitos usando o mesmo corpus e as mesmas expectativas de correspondência exata.",
+                categoryBaseline: "Baseline relacional",
+                categoryHybrid: "Controle híbrido",
+                categoryFlat: "Controle plano",
+            },
             sections: {
                 howItRuns: "Como o benchmark roda",
                 interpretation: "Como interpretar",
                 structuralSignals: "Sinais estruturais",
+                retrievalComparison: "Comparativo de retrieval",
                 versionedCorpus: "Corpus versionado",
                 reviewed: "revisado",
                 queries: "Consultas",
@@ -199,10 +217,17 @@ function buildCopy(locale: string) {
                     outlineCoverageDetail: "headings esperados fueron emitidos",
                     headingFalsePositiveDetail: "headings indexados fueron inesperados",
                 },
+                retrieval: {
+                    intro: "La baseline relacional actual se compara con controles experimentales explícitos usando el mismo corpus y las mismas expectativas de exact match.",
+                    categoryBaseline: "Baseline relacional",
+                    categoryHybrid: "Control híbrido",
+                    categoryFlat: "Control plano",
+                },
                 sections: {
                     howItRuns: "Cómo corre el benchmark",
                     interpretation: "Cómo interpretarlo",
                     structuralSignals: "Señales estructurales",
+                    retrievalComparison: "Comparación de retrieval",
                     versionedCorpus: "Corpus versionado",
                     reviewed: "revisado",
                     queries: "Queries",
@@ -271,10 +296,17 @@ function buildCopy(locale: string) {
                     outlineCoverageDetail: "expected headings were emitted",
                     headingFalsePositiveDetail: "indexed headings were unexpected",
                 },
+                retrieval: {
+                    intro: "The current relational baseline is compared against explicit experimental controls over the same corpus and exact-match expectations.",
+                    categoryBaseline: "Relational baseline",
+                    categoryHybrid: "Hybrid control",
+                    categoryFlat: "Flat control",
+                },
                 sections: {
                     howItRuns: "How the benchmark runs",
                     interpretation: "How to interpret it",
                     structuralSignals: "Structural signals",
+                    retrievalComparison: "Retrieval comparison",
                     versionedCorpus: "Versioned corpus",
                     reviewed: "reviewed",
                     queries: "Queries",
@@ -484,6 +516,69 @@ function renderStructuralSignals(signals: IndexingBenchmarkStructuralSignal[], c
     );
 }
 
+function renderRetrievalComparison(item: IndexingBenchmarkRetrievalComparison, copy: ReturnType<typeof buildCopy>) {
+    return (
+        <div className="rounded-xl border border-border bg-background/50 p-5">
+            <h4 className="text-sm font-semibold text-foreground">{copy.sections.retrievalComparison}</h4>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{copy.retrieval.intro}</p>
+            <p className="mt-3 text-sm leading-relaxed text-foreground/90">{item.summary}</p>
+
+            {item.notes.length > 0 ? (
+                <div className="mt-4 rounded-xl border border-border/70 bg-background/70 p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{copy.sections.notes}</p>
+                    <div className="mt-3 space-y-2 text-sm leading-relaxed text-muted-foreground">
+                        {item.notes.map((note) => (
+                            <p key={note}>{note}</p>
+                        ))}
+                    </div>
+                </div>
+            ) : null}
+
+            <div className="mt-4 grid gap-4 xl:grid-cols-3">
+                {item.variants.map((variant) => (
+                    <div key={variant.id} className="rounded-xl border border-border/70 bg-background/70 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                                <p className="text-sm font-semibold text-foreground">{variant.label}</p>
+                                <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                                    {benchmarkRetrievalVariantCategoryLabel(variant.category, copy)}
+                                </p>
+                            </div>
+                            <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${benchmarkStatusTone(variant.status)}`}>
+                                {copy.status[variant.status as keyof typeof copy.status] ?? variant.status}
+                            </span>
+                        </div>
+
+                        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{variant.summary}</p>
+
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            {[
+                                { label: copy.metrics.exactMatch, value: formatBenchmarkPercentage(variant.metrics.exact_match_accuracy) },
+                                { label: copy.metrics.nodeTop1, value: formatBenchmarkPercentage(variant.metrics.tree_node_top1_accuracy) },
+                                { label: copy.metrics.pageTop1, value: formatBenchmarkPercentage(variant.metrics.tree_page_top1_accuracy) },
+                                { label: copy.metrics.collectionTop1, value: formatBenchmarkPercentage(variant.metrics.collection_document_top1_accuracy) },
+                            ].map((metric) => (
+                                <div key={metric.label} className="rounded-xl border border-border/70 bg-background/80 p-3">
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{metric.label}</p>
+                                    <p className="mt-2 text-sm font-semibold text-foreground">{metric.value}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="mt-4 space-y-2 text-xs text-muted-foreground">
+                            {variant.key_metric_deltas.map((metric) => (
+                                <p key={metric.metric}>
+                                    {benchmarkMetricLabel(metric.metric, copy)}: <span className="font-mono text-foreground">{formatBenchmarkDelta(metric.delta)}</span>
+                                </p>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 export function IndexingBenchmarkSection() {
     const { locale } = useI18n();
     const copy = buildCopy(locale);
@@ -568,6 +663,7 @@ export function IndexingBenchmarkSection() {
                     </div>
 
                     {localizedReport.structural_signals.length > 0 ? renderStructuralSignals(localizedReport.structural_signals, copy) : null}
+                    {localizedReport.retrieval_comparison ? renderRetrievalComparison(localizedReport.retrieval_comparison, copy) : null}
 
                     <div className="rounded-xl border border-border bg-background/50 p-5">
                         <div className="flex flex-wrap items-center gap-3">

@@ -114,6 +114,32 @@ type IndexingBenchmarkReferenceComparisonApiRecord = {
     checklist?: unknown;
 };
 
+type IndexingBenchmarkRetrievalVariantMetricsApiRecord = {
+    document_queries?: number;
+    collection_queries?: number;
+    tree_node_top1_accuracy?: number;
+    tree_page_top1_accuracy?: number;
+    collection_document_top1_accuracy?: number;
+    exact_match_accuracy?: number;
+};
+
+type IndexingBenchmarkRetrievalVariantApiRecord = {
+    id?: string;
+    label?: string;
+    category?: string;
+    status?: string;
+    summary?: string;
+    metrics?: unknown;
+    key_metric_deltas?: unknown;
+};
+
+type IndexingBenchmarkRetrievalComparisonApiRecord = {
+    summary?: string;
+    baseline_id?: string;
+    notes?: unknown;
+    variants?: unknown;
+};
+
 type IndexingBenchmarkStructuralSignalApiRecord = {
     id?: string;
     direction?: string;
@@ -140,6 +166,7 @@ type IndexingBenchmarkApiRecord = {
     latest_comparison?: unknown;
     comparison_history?: unknown;
     reference_comparison?: unknown;
+    retrieval_comparison?: unknown;
 };
 
 export type IndexingBenchmarkCorpusDocument = {
@@ -255,6 +282,32 @@ export type IndexingBenchmarkReferenceComparison = {
     checklist: IndexingBenchmarkReferenceChecklistItem[];
 };
 
+export type IndexingBenchmarkRetrievalVariantMetrics = {
+    document_queries: number;
+    collection_queries: number;
+    tree_node_top1_accuracy: number;
+    tree_page_top1_accuracy: number;
+    collection_document_top1_accuracy: number;
+    exact_match_accuracy: number;
+};
+
+export type IndexingBenchmarkRetrievalVariant = {
+    id: string;
+    label: string;
+    category: string;
+    status: string;
+    summary: string;
+    metrics: IndexingBenchmarkRetrievalVariantMetrics;
+    key_metric_deltas: IndexingBenchmarkMetricDelta[];
+};
+
+export type IndexingBenchmarkRetrievalComparison = {
+    summary: string;
+    baseline_id: string;
+    notes: string[];
+    variants: IndexingBenchmarkRetrievalVariant[];
+};
+
 export type IndexingBenchmarkStructuralSignal = {
     id: string;
     direction: string;
@@ -281,6 +334,7 @@ export type IndexingBenchmarkReport = {
     latest_comparison?: IndexingBenchmarkComparison;
     comparison_history: IndexingBenchmarkComparison[];
     reference_comparison?: IndexingBenchmarkReferenceComparison;
+    retrieval_comparison?: IndexingBenchmarkRetrievalComparison;
 };
 
 function normalizeStringList(value: unknown): string[] {
@@ -513,6 +567,63 @@ function normalizeReferenceComparison(record: unknown): IndexingBenchmarkReferen
     };
 }
 
+function normalizeRetrievalVariantMetrics(record: unknown): IndexingBenchmarkRetrievalVariantMetrics {
+    const metrics = (record && typeof record === "object" ? record : {}) as IndexingBenchmarkRetrievalVariantMetricsApiRecord;
+
+    return {
+        document_queries: typeof metrics.document_queries === "number" ? metrics.document_queries : 0,
+        collection_queries: typeof metrics.collection_queries === "number" ? metrics.collection_queries : 0,
+        tree_node_top1_accuracy: typeof metrics.tree_node_top1_accuracy === "number" ? metrics.tree_node_top1_accuracy : 0,
+        tree_page_top1_accuracy: typeof metrics.tree_page_top1_accuracy === "number" ? metrics.tree_page_top1_accuracy : 0,
+        collection_document_top1_accuracy:
+            typeof metrics.collection_document_top1_accuracy === "number" ? metrics.collection_document_top1_accuracy : 0,
+        exact_match_accuracy: typeof metrics.exact_match_accuracy === "number" ? metrics.exact_match_accuracy : 0,
+    };
+}
+
+function normalizeRetrievalVariant(record: unknown): IndexingBenchmarkRetrievalVariant | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const item = record as IndexingBenchmarkRetrievalVariantApiRecord;
+    if (!item.id || !item.label || !item.category || !item.status || !item.summary) {
+        return null;
+    }
+
+    return {
+        id: item.id,
+        label: item.label,
+        category: item.category,
+        status: item.status,
+        summary: item.summary,
+        metrics: normalizeRetrievalVariantMetrics(item.metrics),
+        key_metric_deltas: Array.isArray(item.key_metric_deltas)
+            ? item.key_metric_deltas.map(normalizeMetricDelta).filter((item): item is IndexingBenchmarkMetricDelta => item !== null)
+            : [],
+    };
+}
+
+function normalizeRetrievalComparison(record: unknown): IndexingBenchmarkRetrievalComparison | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const item = record as IndexingBenchmarkRetrievalComparisonApiRecord;
+    if (!item.summary || !item.baseline_id) {
+        return null;
+    }
+
+    return {
+        summary: item.summary,
+        baseline_id: item.baseline_id,
+        notes: normalizeStringList(item.notes),
+        variants: Array.isArray(item.variants)
+            ? item.variants.map(normalizeRetrievalVariant).filter((item): item is IndexingBenchmarkRetrievalVariant => item !== null)
+            : [],
+    };
+}
+
 function normalizeStructuralSignal(record: unknown): IndexingBenchmarkStructuralSignal | null {
     if (!record || typeof record !== "object") {
         return null;
@@ -578,6 +689,7 @@ function normalizeReport(record: unknown): IndexingBenchmarkReport | null {
                 .filter((item): item is IndexingBenchmarkComparison => item !== null)
             : [],
         reference_comparison: normalizeReferenceComparison(report.reference_comparison) ?? undefined,
+        retrieval_comparison: normalizeRetrievalComparison(report.retrieval_comparison) ?? undefined,
     };
 }
 

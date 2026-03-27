@@ -237,6 +237,39 @@ describe("indexing benchmark api", () => {
                                 },
                             ],
                         },
+                        retrieval_comparison: {
+                            summary: "The relational baseline remains ahead of the strongest experimental control (Flat hybrid control), especially on exact node and page grounding.",
+                            baseline_id: "relational-tree-baseline",
+                            notes: [
+                                "This repository does not ship a native vector index in the current runtime.",
+                                "The variants below are explicit experimental controls over the same benchmark corpus, not hidden production paths.",
+                            ],
+                            variants: [
+                                {
+                                    id: "relational-tree-baseline",
+                                    label: "Current relational baseline",
+                                    category: "baseline",
+                                    status: "pass",
+                                    summary: "Current production path combining outline-aware retrieval, page grounding, and explicit relational provenance.",
+                                    metrics: {
+                                        document_queries: 4,
+                                        collection_queries: 3,
+                                        tree_node_top1_accuracy: 100,
+                                        tree_page_top1_accuracy: 100,
+                                        collection_document_top1_accuracy: 100,
+                                        exact_match_accuracy: 100,
+                                    },
+                                    key_metric_deltas: [
+                                        {
+                                            metric: "exact_match_accuracy",
+                                            previous_value: 100,
+                                            current_value: 100,
+                                            delta: 0,
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
                         cases: [
                             {
                                 id: "service-payment-deadline",
@@ -510,6 +543,39 @@ describe("indexing benchmark api", () => {
                         current_value: "max_depth=1; nested_nodes=0.0%",
                         reference_value: "max_depth=3; nested_nodes=75.4%",
                         summary: "The public ThingIndex corpus remains structurally flatter than the workspace references.",
+                    },
+                ],
+            },
+            retrieval_comparison: {
+                summary: "The relational baseline remains ahead of the strongest experimental control (Flat hybrid control), especially on exact node and page grounding.",
+                baseline_id: "relational-tree-baseline",
+                notes: [
+                    "This repository does not ship a native vector index in the current runtime.",
+                    "The variants below are explicit experimental controls over the same benchmark corpus, not hidden production paths.",
+                ],
+                variants: [
+                    {
+                        id: "relational-tree-baseline",
+                        label: "Current relational baseline",
+                        category: "baseline",
+                        status: "pass",
+                        summary: "Current production path combining outline-aware retrieval, page grounding, and explicit relational provenance.",
+                        metrics: {
+                            document_queries: 4,
+                            collection_queries: 3,
+                            tree_node_top1_accuracy: 100,
+                            tree_page_top1_accuracy: 100,
+                            collection_document_top1_accuracy: 100,
+                            exact_match_accuracy: 100,
+                        },
+                        key_metric_deltas: [
+                            {
+                                metric: "exact_match_accuracy",
+                                previous_value: 100,
+                                current_value: 100,
+                                delta: 0,
+                            },
+                        ],
                     },
                 ],
             },

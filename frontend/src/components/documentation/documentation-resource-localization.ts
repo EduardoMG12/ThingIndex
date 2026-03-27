@@ -94,6 +94,8 @@ const ptIndexingBenchmarkNarrativeMap: Record<string, string> = {
         "Executar casos de recuperação por coleção e validar correspondência exata do documento em top-1.",
     "Keep the monitoring heuristic visible as an operational signal, but separate it from benchmark accuracy.":
         "Manter a heurística de monitoramento visível como sinal operacional, mas separada da acurácia do benchmark.",
+    "Compare the current relational baseline against flat and hybrid experimental retrieval controls over the same corpus.":
+        "Comparar a baseline relacional atual com controles experimentais planos e híbridos de retrieval sobre o mesmo corpus.",
     "Document structure passes only when all expected outline titles are present and the table count matches the corpus expectation.":
         "A estrutura documental só é aprovada quando todos os títulos esperados da estrutura estão presentes e a contagem de tabelas corresponde ao esperado no corpus.",
     "Document-tree cases pass only when the expected node and page are both ranked first.":
@@ -104,10 +106,24 @@ const ptIndexingBenchmarkNarrativeMap: Record<string, string> = {
         "Este corpus é intencionalmente pequeno e controlado; ele valida a baseline, não corpora arbitrários de produção.",
     "The benchmark measures structural indexing and lexical retrieval on the current runtime, not grounded chat answer faithfulness.":
         "O benchmark mede indexação estrutural e recuperação lexical no runtime atual, não a fidelidade das respostas do chat grounded.",
-    "Comparative evaluation against vector retrieval and GraphRAG remains a separate research track.":
-        "A avaliação comparativa contra recuperação vetorial e GraphRAG permanece como trilha de pesquisa separada.",
+    "The public comparison currently covers flat and hybrid experimental controls; native vector retrieval and GraphRAG remain separate research tracks.":
+        "A comparação pública atualmente cobre controles experimentais planos e híbridos; recuperação vetorial nativa e GraphRAG continuam como trilhas de pesquisa separadas.",
     "The quality score exposed in document monitoring remains a structural heuristic for operators. It is not ground truth and should be interpreted together with this benchmark instead of replacing it.":
         "A pontuação de qualidade exposta no monitoramento documental continua sendo uma heurística estrutural para operadores. Ela não é verdade de referência e deve ser interpretada junto com este benchmark, e não no lugar dele.",
+    "The relational baseline remains ahead of the strongest experimental control (Flat hybrid control), especially on exact node and page grounding.":
+        "A baseline relacional continua à frente do controle experimental mais forte (controle híbrido plano), especialmente no grounding exato de nó e página.",
+    "Current production path combining outline-aware retrieval, page grounding, and explicit relational provenance.":
+        "Caminho atual de produção combinando retrieval orientado por outline, grounding por página e proveniência relacional explícita.",
+    "Experimental control that ranks nodes and pages independently without iterative tree traversal or path reinforcement.":
+        "Controle experimental que ranqueia nós e páginas de forma independente, sem travessia iterativa da árvore nem reforço de caminho.",
+    "Experimental control that flattens retrieval to page text and maps page hits back to overlapping nodes only.":
+        "Controle experimental que achata o retrieval para texto de página e mapeia hits de página apenas para nós sobrepostos.",
+    "This repository does not ship a native vector index in the current runtime.":
+        "Este repositório não entrega um índice vetorial nativo no runtime atual.",
+    "The variants below are explicit experimental controls over the same benchmark corpus, not hidden production paths.":
+        "As variantes abaixo são controles experimentais explícitos sobre o mesmo corpus do benchmark, e não caminhos ocultos de produção.",
+    "A future vector or GraphRAG baseline should be added here as a separate experimental variant instead of replacing the relational path.":
+        "Uma baseline futura de vetores ou GraphRAG deve ser adicionada aqui como variante experimental separada, em vez de substituir o caminho relacional.",
 };
 
 const ptIndexingBenchmarkFocusByDocumentID: Record<string, string> = {
@@ -120,6 +136,12 @@ const ptIndexingBenchmarkDocumentTitleMap: Record<string, string> = {
     "Master Service Agreement": "Contrato Mestre de Serviços",
     "Incident Response Playbook": "Playbook de Resposta a Incidentes",
     "Data Retention Policy": "Política de Retenção de Dados",
+};
+
+const ptIndexingBenchmarkRetrievalVariantLabelMap: Record<string, string> = {
+    "Current relational baseline": "Baseline relacional atual",
+    "Flat hybrid control": "Controle híbrido plano",
+    "Flat page control": "Controle plano por páginas",
 };
 
 const ptIndexingBenchmarkNodeTitleMap: Record<string, string> = {
@@ -324,6 +346,19 @@ export function localizeIndexingBenchmark(report: IndexingBenchmarkReport, local
             expected_node_title: translateValue(item.expected_node_title, ptIndexingBenchmarkNodeTitleMap),
             actual_node_title: translateValue(item.actual_node_title, ptIndexingBenchmarkNodeTitleMap),
         })),
+        retrieval_comparison: report.retrieval_comparison
+            ? {
+                ...report.retrieval_comparison,
+                summary:
+                    ptIndexingBenchmarkNarrativeMap[report.retrieval_comparison.summary] ?? report.retrieval_comparison.summary,
+                notes: translateList(report.retrieval_comparison.notes, ptIndexingBenchmarkNarrativeMap),
+                variants: report.retrieval_comparison.variants.map((variant) => ({
+                    ...variant,
+                    label: ptIndexingBenchmarkRetrievalVariantLabelMap[variant.label] ?? variant.label,
+                    summary: ptIndexingBenchmarkNarrativeMap[variant.summary] ?? variant.summary,
+                })),
+            }
+            : undefined,
     };
 }
 

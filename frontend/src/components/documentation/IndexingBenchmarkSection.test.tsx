@@ -214,6 +214,62 @@ describe("IndexingBenchmarkSection", () => {
                     },
                 ],
             },
+            retrieval_comparison: {
+                summary: "The relational baseline remains ahead of the strongest experimental control (Flat hybrid control), especially on exact node and page grounding.",
+                baseline_id: "relational-tree-baseline",
+                notes: [
+                    "This repository does not ship a native vector index in the current runtime.",
+                    "The variants below are explicit experimental controls over the same benchmark corpus, not hidden production paths.",
+                ],
+                variants: [
+                    {
+                        id: "relational-tree-baseline",
+                        label: "Current relational baseline",
+                        category: "baseline",
+                        status: "pass",
+                        summary: "Current production path combining outline-aware retrieval, page grounding, and explicit relational provenance.",
+                        metrics: {
+                            document_queries: 4,
+                            collection_queries: 3,
+                            tree_node_top1_accuracy: 100,
+                            tree_page_top1_accuracy: 100,
+                            collection_document_top1_accuracy: 100,
+                            exact_match_accuracy: 100,
+                        },
+                        key_metric_deltas: [
+                            {
+                                metric: "exact_match_accuracy",
+                                previous_value: 100,
+                                current_value: 100,
+                                delta: 0,
+                            },
+                        ],
+                    },
+                    {
+                        id: "flat-hybrid-control",
+                        label: "Flat hybrid control",
+                        category: "hybrid_control",
+                        status: "watch",
+                        summary: "Experimental control that ranks nodes and pages independently without iterative tree traversal or path reinforcement.",
+                        metrics: {
+                            document_queries: 4,
+                            collection_queries: 3,
+                            tree_node_top1_accuracy: 100,
+                            tree_page_top1_accuracy: 75,
+                            collection_document_top1_accuracy: 100,
+                            exact_match_accuracy: 90.9,
+                        },
+                        key_metric_deltas: [
+                            {
+                                metric: "exact_match_accuracy",
+                                previous_value: 100,
+                                current_value: 90.9,
+                                delta: -9.1,
+                            },
+                        ],
+                    },
+                ],
+            },
             cases: [
                 {
                     id: "service-payment-deadline",
@@ -255,6 +311,10 @@ describe("IndexingBenchmarkSection", () => {
         expect(screen.getByText("Expected node match")).toBeInTheDocument();
         expect(screen.getByText("Heading false positives")).toBeInTheDocument();
         expect(screen.getByText("1/20 indexed headings were unexpected")).toBeInTheDocument();
+        expect(screen.getByText("Retrieval comparison")).toBeInTheDocument();
+        expect(screen.getByText("Current relational baseline")).toBeInTheDocument();
+        expect(screen.getByText("Flat hybrid control")).toBeInTheDocument();
+        expect(screen.getByText("This repository does not ship a native vector index in the current runtime.")).toBeInTheDocument();
         expect(screen.getByText("Latest recorded before/after")).toBeInTheDocument();
         expect(screen.getByText("Workspace reference comparison")).toBeInTheDocument();
         expect(screen.getByText("Objective checklist")).toBeInTheDocument();
