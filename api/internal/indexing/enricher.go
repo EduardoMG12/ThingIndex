@@ -54,14 +54,16 @@ func (e *LLMEnricher) Enrich(ctx context.Context, llm domain.LLMService, doc *mo
 	if treeBuilt, err := e.buildTree(ctx, llm, doc, updated); err == nil {
 		updated = treeBuilt
 	} else {
-		appendMetadata(&updated, documentID, "tree_builder", "deterministic")
-		appendMetadata(&updated, documentID, "tree_verification_passed", "false")
-		appendMetadata(&updated, documentID, "tree_fallback_reason", clampText(err.Error(), 160))
-		if len(updated.DocumentPages) > 0 && len(updated.OutlineNodes) > 0 {
-			if verifiedNodes, stats := verifyAndScoreTree(updated.DocumentPages, updated.OutlineNodes, "deterministic"); len(verifiedNodes) > 0 {
-				updated.OutlineNodes = verifiedNodes
-				appendTreeVerificationMetadata(&updated, documentID, stats)
+		if len(updated.DocumentPages) > 0 {
+			verifiedNodes, stats := verifyAndScoreTree(updated.DocumentPages, updated.OutlineNodes, "deterministic")
+			updated.OutlineNodes = verifiedNodes
+			if shouldFallback, reason := shouldUseConservativeTreeFallback(stats); shouldFallback {
+				updated, stats = applyConservativeTreeFallback(updated, reason)
 			}
+			appendTreeVerificationMetadata(&updated, documentID, stats)
+		} else {
+			appendMetadata(&updated, documentID, "tree_builder", "deterministic")
+			appendMetadata(&updated, documentID, "tree_verification_passed", "false")
 		}
 	}
 

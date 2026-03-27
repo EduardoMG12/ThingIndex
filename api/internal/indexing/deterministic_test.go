@@ -259,6 +259,41 @@ func TestDeterministicIndexerBuildsDeterministicSectionSummaries(t *testing.T) {
 	assertMetadataValue(t, result.MetadataPairs, "tree_summary_coverage_ratio", "0.50")
 }
 
+func TestBuildIndexingResultFallsBackToPageSegmentsWhenTreeIsTooShallow(t *testing.T) {
+	t.Parallel()
+
+	pageOne := 1
+	headings := []outlineDraft{
+		{
+			Level:          1,
+			Title:          "OVERVIEW",
+			PageNumber:     &pageOne,
+			ParagraphStart: 0,
+			SectionKey:     "overview",
+		},
+	}
+	paragraphs := []textBlock{
+		{Content: "First page explains the contract overview.", PageNumber: intPtr(1), SectionKey: "overview"},
+		{Content: "Second page adds operational details.", PageNumber: intPtr(2), SectionKey: "overview"},
+		{Content: "Third page closes with appendix notes.", PageNumber: intPtr(3), SectionKey: "overview"},
+	}
+
+	result := buildIndexingResult(44, headings, paragraphs, nil)
+
+	if len(result.OutlineNodes) != 3 {
+		t.Fatalf("expected fallback outline nodes per page, got %#v", result.OutlineNodes)
+	}
+	if result.OutlineNodes[0].Title != "Page 1" || result.OutlineNodes[2].Title != "Page 3" {
+		t.Fatalf("unexpected fallback titles: %#v", result.OutlineNodes)
+	}
+	if got := result.OutlineNodes[0].Metadata["fallback_structure"]; got != true {
+		t.Fatalf("expected fallback structure metadata, got %#v", got)
+	}
+	assertMetadataValue(t, result.MetadataPairs, "tree_builder", conservativeTreeFallbackBuilder)
+	assertMetadataValue(t, result.MetadataPairs, "tree_fallback_reason", "shallow_tree")
+	assertMetadataValue(t, result.MetadataPairs, "tree_fallback_applied", "true")
+}
+
 func TestOutlineIdentifiersRespectStorageLimits(t *testing.T) {
 	t.Parallel()
 

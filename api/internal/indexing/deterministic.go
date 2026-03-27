@@ -310,11 +310,37 @@ func buildIndexingResult(documentID uint, headings []outlineDraft, paragraphs []
 	outlineNodes := buildOutlineNodes(documentID, headings, paragraphs)
 	outlineNodes = populateDeterministicOutlineSummaries(outlineNodes, paragraphs, tables)
 
-	totalPages, coveredPages, coverageRatio := outlineCoverageStats(documentPages, outlineNodes)
-	maxDepth := outlineMaxDepth(outlineNodes)
-	summaryCoverageRatio := outlineSummaryCoverageRatio(outlineNodes)
-	verificationPassed := coverageRatio >= 0.6 && len(outlineNodes) > 0
-	documentSummary := buildDeterministicDocumentSummary(outlineNodes, paragraphs)
+	result := domain.IndexingResult{
+		DocumentPages:  documentPages,
+		ParagraphNodes: paragraphNodes,
+		TableSections:  tables,
+		OutlineNodes:   outlineNodes,
+	}
+
+	treeStats := treeVerificationStats{
+		Builder:            "deterministic",
+		TotalNodes:         len(result.OutlineNodes),
+		TotalPages:         len(result.DocumentPages),
+		CoveredPages:       len(result.DocumentPages),
+		CoverageRatio:      1,
+		MaxDepth:           outlineMaxDepth(result.OutlineNodes),
+		VerificationPassed: len(result.OutlineNodes) > 0 || len(result.DocumentPages) == 0,
+	}
+	if len(result.DocumentPages) > 0 {
+		result.OutlineNodes, treeStats = verifyAndScoreTree(result.DocumentPages, result.OutlineNodes, "deterministic")
+		if shouldFallback, reason := shouldUseConservativeTreeFallback(treeStats); shouldFallback {
+			result, treeStats = applyConservativeTreeFallback(result, reason)
+		}
+	}
+
+	totalPages := treeStats.TotalPages
+	coveredPages := treeStats.CoveredPages
+	coverageRatio := treeStats.CoverageRatio
+	maxDepth := treeStats.MaxDepth
+	summaryCoverageRatio := outlineSummaryCoverageRatio(result.OutlineNodes)
+	verificationPassed := treeStats.VerificationPassed
+	documentSummary := buildDeterministicDocumentSummary(result.OutlineNodes, paragraphs)
+	fallbackApplied := treeStats.Builder == conservativeTreeFallbackBuilder
 
 	metadataPairs := make([]models.MetadataPair, 0, 16)
 	appendMetadataPair := func(key, value string) {
@@ -331,17 +357,21 @@ func buildIndexingResult(documentID uint, headings []outlineDraft, paragraphs []
 
 	appendMetadataPair("paragraph_count", strconv.Itoa(len(paragraphNodes)))
 	appendMetadataPair("table_count", strconv.Itoa(len(tables)))
-	appendMetadataPair("outline_count", strconv.Itoa(len(outlineNodes)))
-	appendMetadataPair("tree_builder", "deterministic")
-	appendMetadataPair("tree_total_nodes", strconv.Itoa(len(outlineNodes)))
+	appendMetadataPair("outline_count", strconv.Itoa(len(result.OutlineNodes)))
+	appendMetadataPair("tree_builder", treeStats.Builder)
+	appendMetadataPair("tree_total_nodes", strconv.Itoa(len(result.OutlineNodes)))
 	appendMetadataPair("tree_total_pages", strconv.Itoa(totalPages))
 	appendMetadataPair("tree_covered_pages", strconv.Itoa(coveredPages))
 	appendMetadataPair("tree_coverage_ratio", strconv.FormatFloat(coverageRatio, 'f', 2, 64))
 	appendMetadataPair("tree_max_depth", strconv.Itoa(maxDepth))
-	appendMetadataPair("tree_low_confidence_nodes", "0")
-	appendMetadataPair("tree_oversized_nodes", "0")
+	appendMetadataPair("tree_low_confidence_nodes", strconv.Itoa(treeStats.LowConfidenceNodes))
+	appendMetadataPair("tree_oversized_nodes", strconv.Itoa(treeStats.OversizedNodes))
 	appendMetadataPair("tree_summary_coverage_ratio", strconv.FormatFloat(summaryCoverageRatio, 'f', 2, 64))
 	appendMetadataPair("tree_verification_passed", strconv.FormatBool(verificationPassed))
+	appendMetadataPair("tree_fallback_applied", strconv.FormatBool(fallbackApplied))
+	if strings.TrimSpace(treeStats.FallbackReason) != "" {
+		appendMetadataPair("tree_fallback_reason", treeStats.FallbackReason)
+	}
 	appendMetadataPair("document_summary", documentSummary)
 
 	allTextParts := make([]string, 0, len(paragraphs))
@@ -354,13 +384,8 @@ func buildIndexingResult(documentID uint, headings []outlineDraft, paragraphs []
 	appendMetadataPair("word_count", strconv.Itoa(len(strings.Fields(allText))))
 	appendMetadataPair("character_count", strconv.Itoa(len([]rune(allText))))
 
-	return domain.IndexingResult{
-		DocumentPages:  documentPages,
-		ParagraphNodes: paragraphNodes,
-		TableSections:  tables,
-		MetadataPairs:  metadataPairs,
-		OutlineNodes:   outlineNodes,
-	}
+	result.MetadataPairs = metadataPairs
+	return result
 }
 
 func buildDocumentPages(documentID uint, paragraphs []textBlock) []models.DocumentPage {

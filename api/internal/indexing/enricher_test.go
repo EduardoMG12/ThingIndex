@@ -1,6 +1,7 @@
 package indexing
 
 import (
+	"context"
 	"testing"
 
 	"thing-index/internal/domain"
@@ -87,4 +88,64 @@ func TestBuildFallbackDocumentSynopsisUsesIndexedContent(t *testing.T) {
 	if len(synopsis.Keywords) == 0 {
 		t.Fatal("expected fallback keywords")
 	}
+}
+
+func TestLLMEnricherFallsBackToPageSegmentsWhenTreeBuildFails(t *testing.T) {
+	t.Parallel()
+
+	startPage := 1
+	endPage := 3
+	result, err := NewLLMEnricher().Enrich(
+		context.Background(),
+		stubFailingLLM{},
+		&models.Document{ID: 1, Title: "contract.pdf"},
+		domain.IndexingResult{
+			DocumentPages: []models.DocumentPage{
+				{DocumentID: 1, PageNumber: 1, Content: "First page explains the contract overview."},
+				{DocumentID: 1, PageNumber: 2, Content: "Second page adds operational details."},
+				{DocumentID: 1, PageNumber: 3, Content: "Third page closes with appendix notes."},
+			},
+			OutlineNodes: []models.DocumentOutlineNode{
+				{
+					DocumentID:    1,
+					SequenceOrder: 0,
+					NodeID:        "root",
+					Level:         1,
+					Title:         "Contract",
+					Summary:       "General overview",
+					StartPage:     &startPage,
+					EndPage:       &endPage,
+				},
+			},
+		},
+	)
+	if err != nil {
+		t.Fatalf("Enrich() returned error: %v", err)
+	}
+
+	if len(result.OutlineNodes) != 3 {
+		t.Fatalf("expected fallback outline nodes per page, got %#v", result.OutlineNodes)
+	}
+	if result.OutlineNodes[0].Title != "Page 1" || result.OutlineNodes[1].Title != "Page 2" {
+		t.Fatalf("unexpected fallback titles: %#v", result.OutlineNodes)
+	}
+	if got := lastMetadataValue(result.MetadataPairs, "tree_builder"); got != conservativeTreeFallbackBuilder {
+		t.Fatalf("expected fallback builder metadata, got %q", got)
+	}
+	if got := lastMetadataValue(result.MetadataPairs, "tree_fallback_reason"); got != "shallow_tree" {
+		t.Fatalf("expected fallback reason shallow_tree, got %q", got)
+	}
+	if got := lastMetadataValue(result.MetadataPairs, "tree_fallback_applied"); got != "true" {
+		t.Fatalf("expected fallback applied metadata, got %q", got)
+	}
+}
+
+func lastMetadataValue(pairs []models.MetadataPair, key string) string {
+	value := ""
+	for _, pair := range pairs {
+		if pair.Key == key {
+			value = pair.Value
+		}
+	}
+	return value
 }

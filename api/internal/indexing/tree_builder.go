@@ -18,6 +18,7 @@ const maxPagesPerNode = 10
 const maxTokensPerNode = 20000
 const maxRecursiveExpansions = 2
 const maxPhysicalFixRetries = 2
+const conservativeTreeFallbackBuilder = "fallback-page-segments"
 
 type treeConstructionResponse struct {
 	Nodes []struct {
@@ -88,6 +89,9 @@ func (e *LLMEnricher) buildTree(ctx context.Context, llm domain.LLMService, doc 
 
 	updated := result
 	updated.OutlineNodes = nodes
+	if shouldFallback, reason := shouldUseConservativeTreeFallback(stats); shouldFallback {
+		updated, stats = applyConservativeTreeFallback(updated, reason)
+	}
 	appendTreeVerificationMetadata(&updated, documentIDFromResult(result), stats)
 	return updated, nil
 }
@@ -412,6 +416,78 @@ func appendTreeVerificationMetadata(result *domain.IndexingResult, documentID ui
 	if strings.TrimSpace(stats.FallbackReason) != "" {
 		appendMetadata(result, documentID, "tree_fallback_reason", stats.FallbackReason)
 	}
+	appendMetadata(result, documentID, "tree_fallback_applied", strconv.FormatBool(stats.Builder == conservativeTreeFallbackBuilder))
+}
+
+func shouldUseConservativeTreeFallback(stats treeVerificationStats) (bool, string) {
+	if stats.TotalPages == 0 {
+		return false, ""
+	}
+
+	switch {
+	case !stats.VerificationPassed:
+		if strings.TrimSpace(stats.FallbackReason) != "" {
+			return true, stats.FallbackReason
+		}
+		return true, "verification_failed"
+	case stats.TotalPages >= 3 && stats.TotalNodes <= 1:
+		return true, "shallow_tree"
+	case stats.TotalNodes > 0 && stats.LowConfidenceNodes*2 >= stats.TotalNodes:
+		return true, "low_confidence_tree"
+	default:
+		return false, ""
+	}
+}
+
+func applyConservativeTreeFallback(result domain.IndexingResult, reason string) (domain.IndexingResult, treeVerificationStats) {
+	updated := result
+	if strings.TrimSpace(reason) == "" {
+		reason = "degraded_structure"
+	}
+
+	updated.OutlineNodes = buildConservativeFallbackNodes(documentIDFromResult(result), updated.DocumentPages, reason)
+	fallbackNodes, stats := verifyAndScoreTree(updated.DocumentPages, updated.OutlineNodes, conservativeTreeFallbackBuilder)
+	updated.OutlineNodes = fallbackNodes
+	stats.Builder = conservativeTreeFallbackBuilder
+	stats.FallbackReason = reason
+	stats.VerificationPassed = len(updated.DocumentPages) > 0 && len(updated.OutlineNodes) > 0
+	return updated, stats
+}
+
+func buildConservativeFallbackNodes(documentID uint, pages []models.DocumentPage, reason string) []models.DocumentOutlineNode {
+	nodes := make([]models.DocumentOutlineNode, 0, len(pages))
+	for idx, page := range pages {
+		pageNumber := page.PageNumber
+		title := fmt.Sprintf("Page %d", page.PageNumber)
+		summary := strings.TrimSpace(page.Summary)
+		if summary == "" {
+			summary = fallbackPageSummary(page.Content)
+		}
+
+		nodeID := buildOutlineNodeID(idx, fmt.Sprintf("page-%d", page.PageNumber))
+		nodes = append(nodes, models.DocumentOutlineNode{
+			DocumentID:    documentID,
+			SequenceOrder: idx,
+			NodeID:        nodeID,
+			Level:         1,
+			Title:         title,
+			Slug:          buildOutlineSlug(title),
+			Summary:       summary,
+			StartPage:     &pageNumber,
+			EndPage:       &pageNumber,
+			NodePath:      nodeID,
+			Metadata: map[string]any{
+				"builder":            conservativeTreeFallbackBuilder,
+				"fallback_structure": true,
+				"fallback_reason":    reason,
+				"segment_type":       "page",
+				"start_page":         page.PageNumber,
+				"end_page":           page.PageNumber,
+			},
+		})
+	}
+
+	return nodes
 }
 
 func (e *LLMEnricher) fixTreeWithRetries(
