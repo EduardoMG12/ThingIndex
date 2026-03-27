@@ -407,6 +407,7 @@ func appendTreeVerificationMetadata(result *domain.IndexingResult, documentID ui
 	appendMetadata(result, documentID, "tree_expanded_nodes", strconv.Itoa(stats.ExpandedNodes))
 	appendMetadata(result, documentID, "tree_oversized_nodes", strconv.Itoa(stats.OversizedNodes))
 	appendMetadata(result, documentID, "tree_low_text_pages", strconv.Itoa(stats.LowTextPages))
+	appendMetadata(result, documentID, "tree_summary_coverage_ratio", fmt.Sprintf("%.2f", outlineSummaryCoverageRatio(result.OutlineNodes)))
 	appendMetadata(result, documentID, "tree_verification_passed", strconv.FormatBool(stats.VerificationPassed))
 	if strings.TrimSpace(stats.FallbackReason) != "" {
 		appendMetadata(result, documentID, "tree_fallback_reason", stats.FallbackReason)

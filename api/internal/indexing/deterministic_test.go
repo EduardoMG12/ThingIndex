@@ -166,6 +166,38 @@ func TestDeterministicIndexerFallsBackToPlainText(t *testing.T) {
 	assertMetadataValue(t, result.MetadataPairs, "outline_count", "2")
 }
 
+func TestDeterministicIndexerParsesLineOrientedPlainTextHeadings(t *testing.T) {
+	t.Parallel()
+
+	indexer := NewDeterministicIndexer()
+	doc := &models.Document{
+		ID:       101,
+		MimeType: "text/plain",
+	}
+
+	content := "MASTER SERVICE AGREEMENT\n\n1 Scope\nThe platform subscription covers onboarding support.\n\n2 Payment Terms\nInvoices must be paid within 15 days of receipt."
+	result, err := indexer.Index(context.Background(), doc, bytes.NewBufferString(content))
+	if err != nil {
+		t.Fatalf("Index() returned error: %v", err)
+	}
+
+	if len(result.OutlineNodes) != 3 {
+		t.Fatalf("expected 3 outline nodes, got %#v", result.OutlineNodes)
+	}
+	if result.OutlineNodes[1].Title != "1 Scope" || result.OutlineNodes[2].Title != "2 Payment Terms" {
+		t.Fatalf("unexpected outline titles: %#v", result.OutlineNodes)
+	}
+	if len(result.ParagraphNodes) != 2 {
+		t.Fatalf("expected 2 paragraph nodes, got %#v", result.ParagraphNodes)
+	}
+	if result.ParagraphNodes[0].Content != "The platform subscription covers onboarding support." {
+		t.Fatalf("unexpected first paragraph: %#v", result.ParagraphNodes[0])
+	}
+	if result.ParagraphNodes[1].Content != "Invoices must be paid within 15 days of receipt." {
+		t.Fatalf("unexpected second paragraph: %#v", result.ParagraphNodes[1])
+	}
+}
+
 func TestDeterministicIndexerAssignsSectionMetadataToParagraphs(t *testing.T) {
 	t.Parallel()
 
@@ -195,6 +227,36 @@ func TestDeterministicIndexerAssignsSectionMetadataToParagraphs(t *testing.T) {
 	if got := result.OutlineNodes[1].Metadata["paragraph_start"]; got != 1 {
 		t.Fatalf("unexpected outline paragraph_start: %#v", got)
 	}
+	if got := result.OutlineNodes[1].Metadata["paragraph_end"]; got != 1 {
+		t.Fatalf("unexpected outline paragraph_end: %#v", got)
+	}
+}
+
+func TestDeterministicIndexerBuildsDeterministicSectionSummaries(t *testing.T) {
+	t.Parallel()
+
+	indexer := NewDeterministicIndexer()
+	doc := &models.Document{
+		ID:       102,
+		MimeType: "text/html",
+	}
+
+	content := `<html><body><h1>DATA RETENTION POLICY</h1><h2>Retention Schedule</h2><p>Customer invoices are retained for 5 years.</p><table><tr><th>Artifact</th><th>Retention</th></tr><tr><td>Security incidents</td><td>7 years</td></tr></table></body></html>`
+	result, err := indexer.Index(context.Background(), doc, bytes.NewBufferString(content))
+	if err != nil {
+		t.Fatalf("Index() returned error: %v", err)
+	}
+
+	if len(result.OutlineNodes) < 2 {
+		t.Fatalf("expected outline nodes, got %#v", result.OutlineNodes)
+	}
+	if !strings.Contains(result.OutlineNodes[1].Summary, "Customer invoices are retained for 5 years") {
+		t.Fatalf("expected paragraph-derived summary, got %#v", result.OutlineNodes[1])
+	}
+	if !strings.Contains(result.OutlineNodes[1].Summary, "Security incidents") {
+		t.Fatalf("expected table-derived signal in summary, got %#v", result.OutlineNodes[1])
+	}
+	assertMetadataValue(t, result.MetadataPairs, "tree_summary_coverage_ratio", "0.50")
 }
 
 func TestOutlineIdentifiersRespectStorageLimits(t *testing.T) {

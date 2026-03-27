@@ -271,28 +271,7 @@ func (i *DeterministicIndexer) indexPDF(documentID uint, data []byte) (domain.In
 }
 
 func (i *DeterministicIndexer) indexPlainText(documentID uint, raw string) domain.IndexingResult {
-	blocks := splitBlocks(raw)
-	headings := make([]outlineDraft, 0)
-	paragraphs := make([]textBlock, 0, len(blocks))
-	currentSectionKey := ""
-
-	for _, block := range blocks {
-		if looksLikeHeading(block) {
-			currentSectionKey = slugify(block)
-			headings = append(headings, outlineDraft{
-				Level:          inferHeadingLevel(block),
-				Title:          block,
-				ParagraphStart: len(paragraphs),
-				SectionKey:     currentSectionKey,
-			})
-			continue
-		}
-
-		paragraphs = append(paragraphs, textBlock{
-			Content:    block,
-			SectionKey: currentSectionKey,
-		})
-	}
+	headings, paragraphs := parsePlainTextStructure(raw)
 
 	if len(headings) == 0 && len(paragraphs) > 0 {
 		title := firstSentence(paragraphs[0].Content)
@@ -329,12 +308,41 @@ func buildIndexingResult(documentID uint, headings []outlineDraft, paragraphs []
 
 	documentPages := buildDocumentPages(documentID, paragraphs)
 	outlineNodes := buildOutlineNodes(documentID, headings, paragraphs)
+	outlineNodes = populateDeterministicOutlineSummaries(outlineNodes, paragraphs, tables)
 
-	metadataPairs := []models.MetadataPair{
-		{DocumentID: documentID, SequenceOrder: 0, Key: "paragraph_count", Value: strconv.Itoa(len(paragraphNodes))},
-		{DocumentID: documentID, SequenceOrder: 1, Key: "table_count", Value: strconv.Itoa(len(tables))},
-		{DocumentID: documentID, SequenceOrder: 2, Key: "outline_count", Value: strconv.Itoa(len(outlineNodes))},
+	totalPages, coveredPages, coverageRatio := outlineCoverageStats(documentPages, outlineNodes)
+	maxDepth := outlineMaxDepth(outlineNodes)
+	summaryCoverageRatio := outlineSummaryCoverageRatio(outlineNodes)
+	verificationPassed := coverageRatio >= 0.6 && len(outlineNodes) > 0
+	documentSummary := buildDeterministicDocumentSummary(outlineNodes, paragraphs)
+
+	metadataPairs := make([]models.MetadataPair, 0, 16)
+	appendMetadataPair := func(key, value string) {
+		if strings.TrimSpace(key) == "" || strings.TrimSpace(value) == "" {
+			return
+		}
+		metadataPairs = append(metadataPairs, models.MetadataPair{
+			DocumentID:    documentID,
+			SequenceOrder: len(metadataPairs),
+			Key:           key,
+			Value:         value,
+		})
 	}
+
+	appendMetadataPair("paragraph_count", strconv.Itoa(len(paragraphNodes)))
+	appendMetadataPair("table_count", strconv.Itoa(len(tables)))
+	appendMetadataPair("outline_count", strconv.Itoa(len(outlineNodes)))
+	appendMetadataPair("tree_builder", "deterministic")
+	appendMetadataPair("tree_total_nodes", strconv.Itoa(len(outlineNodes)))
+	appendMetadataPair("tree_total_pages", strconv.Itoa(totalPages))
+	appendMetadataPair("tree_covered_pages", strconv.Itoa(coveredPages))
+	appendMetadataPair("tree_coverage_ratio", strconv.FormatFloat(coverageRatio, 'f', 2, 64))
+	appendMetadataPair("tree_max_depth", strconv.Itoa(maxDepth))
+	appendMetadataPair("tree_low_confidence_nodes", "0")
+	appendMetadataPair("tree_oversized_nodes", "0")
+	appendMetadataPair("tree_summary_coverage_ratio", strconv.FormatFloat(summaryCoverageRatio, 'f', 2, 64))
+	appendMetadataPair("tree_verification_passed", strconv.FormatBool(verificationPassed))
+	appendMetadataPair("document_summary", documentSummary)
 
 	allTextParts := make([]string, 0, len(paragraphs))
 	for _, paragraph := range paragraphs {
@@ -343,10 +351,8 @@ func buildIndexingResult(documentID uint, headings []outlineDraft, paragraphs []
 		}
 	}
 	allText := strings.Join(allTextParts, " ")
-	metadataPairs = append(metadataPairs,
-		models.MetadataPair{DocumentID: documentID, SequenceOrder: 3, Key: "word_count", Value: strconv.Itoa(len(strings.Fields(allText)))},
-		models.MetadataPair{DocumentID: documentID, SequenceOrder: 4, Key: "character_count", Value: strconv.Itoa(len([]rune(allText)))},
-	)
+	appendMetadataPair("word_count", strconv.Itoa(len(strings.Fields(allText))))
+	appendMetadataPair("character_count", strconv.Itoa(len([]rune(allText))))
 
 	return domain.IndexingResult{
 		DocumentPages:  documentPages,
@@ -433,6 +439,10 @@ func buildOutlineNodes(documentID uint, headings []outlineDraft, paragraphs []te
 		nodeID := buildOutlineNodeID(len(nodes), title)
 		slug := buildOutlineSlug(title)
 		startPage, endPage := headingPageRange(idx, headings, paragraphs)
+		paragraphEnd := len(paragraphs) - 1
+		if idx+1 < len(headings) {
+			paragraphEnd = headings[idx+1].ParagraphStart - 1
+		}
 
 		for len(stack) > 0 && stack[len(stack)-1].level >= level {
 			stack = stack[:len(stack)-1]
@@ -450,10 +460,17 @@ func buildOutlineNodes(documentID uint, headings []outlineDraft, paragraphs []te
 
 		metadata := map[string]any{
 			"paragraph_start": heading.ParagraphStart,
+			"paragraph_end":   paragraphEnd,
 			"section_key":     heading.SectionKey,
 		}
 		if heading.PageNumber != nil && *heading.PageNumber > 0 {
 			metadata["page_number"] = *heading.PageNumber
+		}
+		if startPage != nil {
+			metadata["start_page"] = *startPage
+		}
+		if endPage != nil {
+			metadata["end_page"] = *endPage
 		}
 		if parentNodeID != "" {
 			metadata["parent_node_id"] = parentNodeID
@@ -494,7 +511,7 @@ func headingPageRange(index int, headings []outlineDraft, paragraphs []textBlock
 	startParagraph := max(0, headings[index].ParagraphStart)
 	endParagraph := len(paragraphs) - 1
 	if index+1 < len(headings) {
-		endParagraph = max(startParagraph, headings[index+1].ParagraphStart-1)
+		endParagraph = headings[index+1].ParagraphStart - 1
 	}
 
 	var startPage *int
@@ -524,6 +541,323 @@ func headingPageRange(index int, headings []outlineDraft, paragraphs []textBlock
 	}
 
 	return startPage, endPage
+}
+
+func parsePlainTextStructure(raw string) ([]outlineDraft, []textBlock) {
+	if strings.TrimSpace(raw) == "" {
+		return nil, nil
+	}
+
+	lines := strings.Split(strings.ReplaceAll(raw, "\r\n", "\n"), "\n")
+	headings := make([]outlineDraft, 0)
+	paragraphs := make([]textBlock, 0, len(lines))
+	currentSectionKey := ""
+	paragraphLines := make([]string, 0, 4)
+	pageNumber := 1
+
+	flushParagraph := func() {
+		if len(paragraphLines) == 0 {
+			return
+		}
+		content := normalizeText(strings.Join(paragraphLines, " "))
+		paragraphLines = paragraphLines[:0]
+		if content == "" {
+			return
+		}
+		paragraphs = append(paragraphs, textBlock{
+			Content:    content,
+			PageNumber: intPtr(pageNumber),
+			SectionKey: currentSectionKey,
+		})
+	}
+
+	for _, rawLine := range lines {
+		line := normalizeText(rawLine)
+		if line == "" {
+			flushParagraph()
+			continue
+		}
+
+		if looksLikeHeading(line) {
+			flushParagraph()
+			currentSectionKey = slugify(line)
+			headings = append(headings, outlineDraft{
+				Level:          inferHeadingLevel(line),
+				Title:          line,
+				PageNumber:     intPtr(pageNumber),
+				ParagraphStart: len(paragraphs),
+				SectionKey:     currentSectionKey,
+			})
+			continue
+		}
+
+		paragraphLines = append(paragraphLines, line)
+	}
+
+	flushParagraph()
+	return headings, paragraphs
+}
+
+func populateDeterministicOutlineSummaries(
+	nodes []models.DocumentOutlineNode,
+	paragraphs []textBlock,
+	tables []models.TableSection,
+) []models.DocumentOutlineNode {
+	if len(nodes) == 0 {
+		return nodes
+	}
+
+	updated := make([]models.DocumentOutlineNode, 0, len(nodes))
+	for _, node := range nodes {
+		summary := buildDeterministicSectionSummary(node, paragraphs, tables)
+		if node.Metadata == nil {
+			node.Metadata = map[string]any{}
+		}
+		if summary != "" {
+			node.Metadata["summary_source"] = "deterministic"
+		}
+		node.Summary = summary
+		updated = append(updated, node)
+	}
+
+	return updated
+}
+
+func buildDeterministicSectionSummary(
+	node models.DocumentOutlineNode,
+	paragraphs []textBlock,
+	tables []models.TableSection,
+) string {
+	fragments := make([]string, 0, 3)
+
+	start, end, ok := outlineParagraphRange(node)
+	if ok {
+		for idx := start; idx <= end && idx < len(paragraphs); idx++ {
+			sentence := firstSentence(paragraphs[idx].Content)
+			sentence = strings.TrimSpace(sentence)
+			if sentence == "" {
+				continue
+			}
+			fragments = appendUniqueSummaryFragment(fragments, sentence)
+			if len(fragments) == 2 {
+				break
+			}
+		}
+	}
+
+	for _, table := range matchingOutlineTables(node, tables) {
+		tableSummary := summarizeTableSection(table)
+		if tableSummary == "" {
+			continue
+		}
+		fragments = appendUniqueSummaryFragment(fragments, tableSummary)
+		if len(fragments) == 3 {
+			break
+		}
+	}
+
+	return clampSummary(strings.Join(fragments, ". "), 320)
+}
+
+func buildDeterministicDocumentSummary(nodes []models.DocumentOutlineNode, paragraphs []textBlock) string {
+	fragments := make([]string, 0, 3)
+	for _, node := range nodes {
+		summary := strings.TrimSpace(node.Summary)
+		if summary == "" {
+			continue
+		}
+		fragments = appendUniqueSummaryFragment(fragments, summary)
+		if len(fragments) == 2 {
+			break
+		}
+	}
+
+	if len(fragments) == 0 && len(paragraphs) > 0 {
+		fragments = appendUniqueSummaryFragment(fragments, firstSentence(paragraphs[0].Content))
+	}
+
+	return clampSummary(strings.Join(fragments, ". "), 320)
+}
+
+func outlineParagraphRange(node models.DocumentOutlineNode) (int, int, bool) {
+	start, startOK := metadataInt(node.Metadata, "paragraph_start")
+	end, endOK := metadataInt(node.Metadata, "paragraph_end")
+	if !startOK || !endOK || start < 0 || end < start {
+		return 0, 0, false
+	}
+	return start, end, true
+}
+
+func matchingOutlineTables(node models.DocumentOutlineNode, tables []models.TableSection) []models.TableSection {
+	if len(tables) == 0 {
+		return nil
+	}
+
+	sectionKey, _ := metadataString(node.Metadata, "section_key")
+	matches := make([]models.TableSection, 0, 2)
+	for _, table := range tables {
+		tableSectionKey, _ := metadataString(table.Metadata, "section_key")
+		switch {
+		case sectionKey != "" && tableSectionKey == sectionKey:
+			matches = append(matches, table)
+		case strings.EqualFold(strings.TrimSpace(table.Title), strings.TrimSpace(node.Title)):
+			matches = append(matches, table)
+		}
+	}
+
+	return matches
+}
+
+func summarizeTableSection(table models.TableSection) string {
+	parts := make([]string, 0, 3)
+	if title := strings.TrimSpace(table.Title); title != "" {
+		parts = append(parts, "Table "+title)
+	}
+	if len(table.Headers) > 0 {
+		parts = append(parts, "headers "+strings.Join(table.Headers, ", "))
+	}
+	if len(table.Rows) > 0 {
+		firstRow := make([]string, 0, len(table.Rows[0]))
+		for _, cell := range table.Rows[0] {
+			cell = strings.TrimSpace(cell)
+			if cell != "" {
+				firstRow = append(firstRow, cell)
+			}
+		}
+		if len(firstRow) > 0 {
+			parts = append(parts, strings.Join(firstRow, " | "))
+		}
+	}
+
+	return clampSummary(strings.Join(parts, " with "), 180)
+}
+
+func appendUniqueSummaryFragment(fragments []string, fragment string) []string {
+	fragment = strings.TrimSpace(fragment)
+	if fragment == "" {
+		return fragments
+	}
+
+	normalized := strings.ToLower(fragment)
+	for _, existing := range fragments {
+		if strings.ToLower(existing) == normalized {
+			return fragments
+		}
+	}
+
+	return append(fragments, fragment)
+}
+
+func clampSummary(value string, maxLen int) string {
+	value = strings.Join(strings.Fields(strings.TrimSpace(value)), " ")
+	if value == "" || maxLen <= 0 {
+		return ""
+	}
+
+	runes := []rune(value)
+	if len(runes) <= maxLen {
+		return value
+	}
+	return strings.TrimSpace(string(runes[:maxLen]))
+}
+
+func outlineCoverageStats(pages []models.DocumentPage, nodes []models.DocumentOutlineNode) (int, int, float64) {
+	totalPages := len(pages)
+	if totalPages == 0 {
+		return 0, 0, 0
+	}
+
+	coveredPages := make(map[int]struct{}, totalPages)
+	for _, node := range nodes {
+		if node.StartPage == nil || node.EndPage == nil {
+			continue
+		}
+
+		start := *node.StartPage
+		end := *node.EndPage
+		if end < start {
+			start, end = end, start
+		}
+		for pageNumber := start; pageNumber <= end; pageNumber++ {
+			coveredPages[pageNumber] = struct{}{}
+		}
+	}
+
+	coveredCount := len(coveredPages)
+	return totalPages, coveredCount, float64(coveredCount) / float64(totalPages)
+}
+
+func outlineMaxDepth(nodes []models.DocumentOutlineNode) int {
+	depth := 0
+	for _, node := range nodes {
+		if node.Level > depth {
+			depth = node.Level
+		}
+	}
+	return depth
+}
+
+func outlineSummaryCoverageRatio(nodes []models.DocumentOutlineNode) float64 {
+	if len(nodes) == 0 {
+		return 0
+	}
+
+	summarized := 0
+	for _, node := range nodes {
+		if strings.TrimSpace(node.Summary) != "" {
+			summarized++
+		}
+	}
+
+	return float64(summarized) / float64(len(nodes))
+}
+
+func metadataInt(metadata map[string]any, key string) (int, bool) {
+	if metadata == nil {
+		return 0, false
+	}
+
+	value, ok := metadata[key]
+	if !ok {
+		return 0, false
+	}
+
+	switch typed := value.(type) {
+	case int:
+		return typed, true
+	case int32:
+		return int(typed), true
+	case int64:
+		return int(typed), true
+	case float32:
+		return int(typed), true
+	case float64:
+		return int(typed), true
+	default:
+		return 0, false
+	}
+}
+
+func metadataString(metadata map[string]any, key string) (string, bool) {
+	if metadata == nil {
+		return "", false
+	}
+
+	value, ok := metadata[key]
+	if !ok {
+		return "", false
+	}
+
+	text, ok := value.(string)
+	if !ok {
+		return "", false
+	}
+
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return "", false
+	}
+	return text, true
 }
 
 func extractHTMLText(node *html.Node) string {
