@@ -63,6 +63,38 @@ type IndexingBenchmarkComparison struct {
 	KeyMetricDeltas []IndexingBenchmarkMetricDelta `json:"key_metric_deltas"`
 }
 
+type IndexingBenchmarkReferenceArtifact struct {
+	ID                   string   `json:"id"`
+	Label                string   `json:"label"`
+	SourcePath           string   `json:"source_path"`
+	DocumentName         string   `json:"document_name"`
+	TotalNodes           int      `json:"total_nodes"`
+	MaxDepth             int      `json:"max_depth"`
+	SummaryCoverageRatio float64  `json:"summary_coverage_ratio"`
+	InvalidRangeCount    int      `json:"invalid_range_count"`
+	AverageTitleLength   float64  `json:"average_title_length"`
+	AverageSummaryLength float64  `json:"average_summary_length"`
+	Notes                []string `json:"notes,omitempty"`
+}
+
+type IndexingBenchmarkReferenceChecklistItem struct {
+	ID             string `json:"id"`
+	Dimension      string `json:"dimension"`
+	Label          string `json:"label"`
+	Status         string `json:"status"`
+	CurrentValue   string `json:"current_value"`
+	ReferenceValue string `json:"reference_value"`
+	Summary        string `json:"summary"`
+}
+
+type IndexingBenchmarkReferenceComparison struct {
+	SourcePath     string                                    `json:"source_path"`
+	LastReviewedOn string                                    `json:"last_reviewed_on"`
+	Summary        string                                    `json:"summary"`
+	Artifacts      []IndexingBenchmarkReferenceArtifact      `json:"artifacts"`
+	Checklist      []IndexingBenchmarkReferenceChecklistItem `json:"checklist"`
+}
+
 type IndexingBenchmarkCaseResult struct {
 	ID                    string `json:"id"`
 	Scope                 string `json:"scope"`
@@ -84,20 +116,21 @@ type IndexingBenchmarkCaseResult struct {
 }
 
 type IndexingBenchmarkReport struct {
-	DatasetVersion       string                            `json:"dataset_version"`
-	CorpusSourcePath     string                            `json:"corpus_source_path"`
-	LastReviewedOn       string                            `json:"last_reviewed_on"`
-	Summary              string                            `json:"summary"`
-	Methodology          []string                          `json:"methodology"`
-	PassCriteria         []string                          `json:"pass_criteria"`
-	Limitations          []string                          `json:"limitations"`
-	HeuristicQualityNote string                            `json:"heuristic_quality_note"`
-	Corpus               []IndexingBenchmarkCorpusDocument `json:"corpus"`
-	Metrics              IndexingBenchmarkMetrics          `json:"metrics"`
-	Cases                []IndexingBenchmarkCaseResult     `json:"cases"`
-	CurrentSnapshot      *IndexingBenchmarkSnapshot        `json:"current_snapshot,omitempty"`
-	LatestComparison     *IndexingBenchmarkComparison      `json:"latest_comparison,omitempty"`
-	ComparisonHistory    []IndexingBenchmarkComparison     `json:"comparison_history,omitempty"`
+	DatasetVersion       string                                `json:"dataset_version"`
+	CorpusSourcePath     string                                `json:"corpus_source_path"`
+	LastReviewedOn       string                                `json:"last_reviewed_on"`
+	Summary              string                                `json:"summary"`
+	Methodology          []string                              `json:"methodology"`
+	PassCriteria         []string                              `json:"pass_criteria"`
+	Limitations          []string                              `json:"limitations"`
+	HeuristicQualityNote string                                `json:"heuristic_quality_note"`
+	Corpus               []IndexingBenchmarkCorpusDocument     `json:"corpus"`
+	Metrics              IndexingBenchmarkMetrics              `json:"metrics"`
+	Cases                []IndexingBenchmarkCaseResult         `json:"cases"`
+	CurrentSnapshot      *IndexingBenchmarkSnapshot            `json:"current_snapshot,omitempty"`
+	LatestComparison     *IndexingBenchmarkComparison          `json:"latest_comparison,omitempty"`
+	ComparisonHistory    []IndexingBenchmarkComparison         `json:"comparison_history,omitempty"`
+	ReferenceComparison  *IndexingBenchmarkReferenceComparison `json:"reference_comparison,omitempty"`
 }
 
 type IndexingBenchmarkProvider interface {

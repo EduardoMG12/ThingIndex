@@ -19,6 +19,7 @@ import (
 
 const indexingBenchmarkCorpusPath = "internal/usecase/testdata/indexing-benchmark/corpus.json"
 const indexingBenchmarkHistoryPath = "internal/usecase/testdata/indexing-benchmark/history.json"
+const indexingBenchmarkReferencePath = "internal/usecase/testdata/indexing-benchmark/reference-workspace.json"
 const indexingBenchmarkCorpusFixtureDir = "testdata/indexing-benchmark"
 
 //go:embed testdata/indexing-benchmark/*
@@ -32,6 +33,10 @@ var (
 	indexingBenchmarkHistoryOnce sync.Once
 	indexingBenchmarkHistoryData indexingBenchmarkHistoryFixture
 	indexingBenchmarkHistoryErr  error
+
+	indexingBenchmarkReferenceOnce sync.Once
+	indexingBenchmarkReferenceData indexingBenchmarkReferenceFixture
+	indexingBenchmarkReferenceErr  error
 )
 
 type indexingBenchmarkCorpusFixture struct {
@@ -68,6 +73,42 @@ type indexingBenchmarkCollectionQuery struct {
 
 type indexingBenchmarkHistoryFixture struct {
 	Snapshots []domain.IndexingBenchmarkSnapshot `json:"snapshots"`
+}
+
+type indexingBenchmarkReferenceFixture struct {
+	SourcePath     string                                      `json:"source_path"`
+	LastReviewedOn string                                      `json:"last_reviewed_on"`
+	Summary        string                                      `json:"summary"`
+	Artifacts      []indexingBenchmarkReferenceArtifactFixture `json:"artifacts"`
+}
+
+type indexingBenchmarkReferenceArtifactFixture struct {
+	ID                   string   `json:"id"`
+	Label                string   `json:"label"`
+	SourcePath           string   `json:"source_path"`
+	DocumentName         string   `json:"document_name"`
+	TotalNodes           int      `json:"total_nodes"`
+	MaxDepth             int      `json:"max_depth"`
+	NestedNodeCount      int      `json:"nested_node_count"`
+	SummarizedNodeCount  int      `json:"summarized_node_count"`
+	ConciseTitleCount    int      `json:"concise_title_count"`
+	InvalidRangeCount    int      `json:"invalid_range_count"`
+	AverageTitleLength   float64  `json:"average_title_length"`
+	AverageSummaryLength float64  `json:"average_summary_length"`
+	Notes                []string `json:"notes"`
+}
+
+type indexingBenchmarkStructureStats struct {
+	DocumentCount       int
+	TotalNodes          int
+	MaxDepth            int
+	SumMaxDepthPerDoc   int
+	NestedNodeCount     int
+	SummarizedNodeCount int
+	ConciseTitleCount   int
+	InvalidRangeCount   int
+	TotalTitleLength    int
+	TotalSummaryLength  int
 }
 
 type indexingBenchmarkProvider struct {
@@ -139,6 +180,27 @@ func loadIndexingBenchmarkHistory() (indexingBenchmarkHistoryFixture, error) {
 	return indexingBenchmarkHistoryData, nil
 }
 
+func loadIndexingBenchmarkReferenceFixture() (indexingBenchmarkReferenceFixture, error) {
+	indexingBenchmarkReferenceOnce.Do(func() {
+		raw, err := indexingBenchmarkFixtures.ReadFile("testdata/indexing-benchmark/reference-workspace.json")
+		if err != nil {
+			indexingBenchmarkReferenceErr = fmt.Errorf("read indexing benchmark reference comparison: %w", err)
+			return
+		}
+
+		if err := json.Unmarshal(raw, &indexingBenchmarkReferenceData); err != nil {
+			indexingBenchmarkReferenceErr = fmt.Errorf("parse indexing benchmark reference comparison: %w", err)
+			return
+		}
+	})
+
+	if indexingBenchmarkReferenceErr != nil {
+		return indexingBenchmarkReferenceFixture{}, indexingBenchmarkReferenceErr
+	}
+
+	return indexingBenchmarkReferenceData, nil
+}
+
 func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Context) (*domain.IndexingBenchmarkReport, error) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -161,6 +223,7 @@ func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Conte
 			"Run document-tree retrieval cases and validate exact top-1 node and page matches.",
 			"Run collection retrieval cases and validate exact top-1 document matches.",
 			"Keep the monitoring heuristic visible as an operational signal, but separate it from benchmark accuracy.",
+			"Compare the current structural profile against the normalized pageindex workspace references on depth, coherence, coverage, and legibility.",
 		},
 		PassCriteria: []string{
 			"Document structure passes only when all expected outline titles are present and the table count matches the corpus expectation.",
@@ -171,6 +234,7 @@ func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Conte
 			"This corpus is intentionally small and controlled; it validates the baseline, not arbitrary production corpora.",
 			"The benchmark measures structural indexing and lexical retrieval on the current runtime, not grounded chat answer faithfulness.",
 			"Comparative evaluation against vector retrieval and GraphRAG remains a separate research track.",
+			"The workspace reference comparison uses normalized structure exports from pageindex/results as a quality bar, not as perfect ground truth.",
 		},
 		HeuristicQualityNote: "The quality score exposed in document monitoring remains a structural heuristic for operators. " +
 			"It is not ground truth and should be interpreted together with this benchmark instead of replacing it.",
@@ -200,6 +264,7 @@ func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Conte
 	heuristicTotal := 0.0
 	minHeuristic := 0.0
 	maxHeuristic := 0.0
+	currentStructureStats := indexingBenchmarkStructureStats{}
 	pipelineSignature := processing.CurrentPipelineSignature()
 	currentSnapshot := domain.IndexingBenchmarkSnapshot{
 		ID:                   fmt.Sprintf("current-%s", corpus.Version),
@@ -258,6 +323,7 @@ func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Conte
 			RetrievalReady:        evaluation != nil && evaluation.RetrievalReady,
 			HeuristicQualityScore: heuristicScore,
 		})
+		accumulateBenchmarkStructureStats(&currentStructureStats, result)
 
 		documentTitleByID[fixture.ID] = fixture.Title
 		documentRuntimes = append(documentRuntimes, benchmarkDocumentRuntime{
@@ -438,6 +504,12 @@ func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Conte
 		report.LatestComparison = &latest
 	}
 
+	referenceFixture, err := loadIndexingBenchmarkReferenceFixture()
+	if err != nil {
+		return nil, err
+	}
+	report.ReferenceComparison = buildIndexingBenchmarkReferenceComparison(referenceFixture, currentStructureStats, report.Metrics)
+
 	return report, nil
 }
 
@@ -596,4 +668,259 @@ func sameBenchmarkMetrics(a, b domain.IndexingBenchmarkMetrics) bool {
 
 func nearlyEqualFloat(a, b float64) bool {
 	return math.Abs(a-b) <= 0.0001
+}
+
+func accumulateBenchmarkStructureStats(stats *indexingBenchmarkStructureStats, result domain.IndexingResult) {
+	if stats == nil {
+		return
+	}
+
+	stats.DocumentCount++
+	docMaxDepth := 0
+	for _, node := range result.OutlineNodes {
+		stats.TotalNodes++
+		if node.Level > stats.MaxDepth {
+			stats.MaxDepth = node.Level
+		}
+		if node.Level > docMaxDepth {
+			docMaxDepth = node.Level
+		}
+		if node.Level > 1 {
+			stats.NestedNodeCount++
+		}
+		if strings.TrimSpace(node.Summary) != "" {
+			stats.SummarizedNodeCount++
+			stats.TotalSummaryLength += len(strings.TrimSpace(node.Summary))
+		}
+		titleLen := len(strings.TrimSpace(node.Title))
+		stats.TotalTitleLength += titleLen
+		if titleLen >= 4 && titleLen <= 80 {
+			stats.ConciseTitleCount++
+		}
+		if node.StartPage != nil && node.EndPage != nil && *node.EndPage < *node.StartPage {
+			stats.InvalidRangeCount++
+		}
+	}
+	stats.SumMaxDepthPerDoc += docMaxDepth
+}
+
+func buildIndexingBenchmarkReferenceComparison(
+	fixture indexingBenchmarkReferenceFixture,
+	currentStats indexingBenchmarkStructureStats,
+	metrics domain.IndexingBenchmarkMetrics,
+) *domain.IndexingBenchmarkReferenceComparison {
+	referenceArtifacts := make([]domain.IndexingBenchmarkReferenceArtifact, 0, len(fixture.Artifacts))
+	referenceStats := indexingBenchmarkStructureStats{}
+	for _, artifact := range fixture.Artifacts {
+		referenceArtifacts = append(referenceArtifacts, domain.IndexingBenchmarkReferenceArtifact{
+			ID:                   artifact.ID,
+			Label:                artifact.Label,
+			SourcePath:           artifact.SourcePath,
+			DocumentName:         artifact.DocumentName,
+			TotalNodes:           artifact.TotalNodes,
+			MaxDepth:             artifact.MaxDepth,
+			SummaryCoverageRatio: ratio(artifact.SummarizedNodeCount, artifact.TotalNodes),
+			InvalidRangeCount:    artifact.InvalidRangeCount,
+			AverageTitleLength:   artifact.AverageTitleLength,
+			AverageSummaryLength: artifact.AverageSummaryLength,
+			Notes:                append([]string(nil), artifact.Notes...),
+		})
+
+		referenceStats.DocumentCount++
+		referenceStats.TotalNodes += artifact.TotalNodes
+		if artifact.MaxDepth > referenceStats.MaxDepth {
+			referenceStats.MaxDepth = artifact.MaxDepth
+		}
+		referenceStats.SumMaxDepthPerDoc += artifact.MaxDepth
+		referenceStats.NestedNodeCount += artifact.NestedNodeCount
+		referenceStats.SummarizedNodeCount += artifact.SummarizedNodeCount
+		referenceStats.ConciseTitleCount += artifact.ConciseTitleCount
+		referenceStats.InvalidRangeCount += artifact.InvalidRangeCount
+		referenceStats.TotalTitleLength += int(math.Round(artifact.AverageTitleLength * float64(artifact.TotalNodes)))
+		referenceStats.TotalSummaryLength += int(math.Round(artifact.AverageSummaryLength * float64(max(artifact.SummarizedNodeCount, 1))))
+	}
+
+	currentDepthValue := fmt.Sprintf("max_depth=%d; nested_nodes=%s", currentStats.MaxDepth, formatPercent(currentStats.nestedNodeRatio()))
+	referenceDepthValue := fmt.Sprintf("max_depth=%d; nested_nodes=%s", referenceStats.MaxDepth, formatPercent(referenceStats.nestedNodeRatio()))
+	depthStatus := "fail"
+	depthSummary := "The public ThingIndex corpus remains structurally flatter than the workspace references and still lacks nested outline depth."
+	if currentStats.MaxDepth >= referenceStats.MaxDepth-1 && currentStats.nestedNodeRatio() >= referenceStats.nestedNodeRatio()*0.5 {
+		depthStatus = "pass"
+		depthSummary = "The public ThingIndex corpus now reaches a useful nested depth close to the workspace references."
+	} else if currentStats.MaxDepth >= 2 || currentStats.NestedNodeCount > 0 {
+		depthStatus = "watch"
+		depthSummary = "ThingIndex now shows some useful hierarchy, but the public corpus is still shallower than the workspace references."
+	}
+
+	currentCoherenceValue := fmt.Sprintf("invalid_ranges=%s; summary_gaps=%s", formatPercent(currentStats.invalidRangeRatio()), formatPercent(1-currentStats.summaryCoverageRatio()))
+	referenceCoherenceValue := fmt.Sprintf("invalid_ranges=%s; summary_gaps=%s", formatPercent(referenceStats.invalidRangeRatio()), formatPercent(1-referenceStats.summaryCoverageRatio()))
+	coherenceStatus := "pass"
+	coherenceSummary := "ThingIndex is at least as coherent as the workspace references on span validity and summary presence."
+	if currentStats.invalidRangeRatio() > referenceStats.invalidRangeRatio()*2 {
+		coherenceStatus = "fail"
+		coherenceSummary = "ThingIndex still introduces more invalid structural spans than the workspace references."
+	} else if currentStats.invalidRangeRatio() > referenceStats.invalidRangeRatio() || currentStats.summaryCoverageRatio() < referenceStats.summaryCoverageRatio()-0.05 {
+		coherenceStatus = "watch"
+		coherenceSummary = "ThingIndex is mostly coherent, but still trails the workspace references on span or summary consistency."
+	}
+
+	currentCoverageValue := fmt.Sprintf("structure_pass=%s; summary_coverage=%s", formatPercent(metrics.StructurePassRate/100), formatPercent(currentStats.summaryCoverageRatio()))
+	referenceCoverageValue := fmt.Sprintf("summary_coverage=%s; reference_docs=%d", formatPercent(referenceStats.summaryCoverageRatio()), referenceStats.DocumentCount)
+	coverageStatus := "pass"
+	coverageSummary := "ThingIndex currently covers the benchmark corpus at or above the summary coverage observed in the workspace references."
+	if metrics.StructurePassRate < 60 || currentStats.summaryCoverageRatio() < referenceStats.summaryCoverageRatio()-0.1 {
+		coverageStatus = "fail"
+		coverageSummary = "ThingIndex still misses too much structural coverage relative to the workspace reference bar."
+	} else if metrics.StructurePassRate < 80 || currentStats.summaryCoverageRatio() < referenceStats.summaryCoverageRatio() {
+		coverageStatus = "watch"
+		coverageSummary = "ThingIndex covers most of the benchmark corpus, but not yet with the same consistency as the workspace references."
+	}
+
+	currentLegibilityValue := fmt.Sprintf("concise_titles=%s; avg_summary=%s chars", formatPercent(currentStats.conciseTitleRatio()), formatFloat(currentStats.averageSummaryLength()))
+	referenceLegibilityValue := fmt.Sprintf("concise_titles=%s; avg_summary=%s chars", formatPercent(referenceStats.conciseTitleRatio()), formatFloat(referenceStats.averageSummaryLength()))
+	legibilityStatus := "pass"
+	legibilitySummary := "ThingIndex keeps concise titles and much shorter section summaries than the workspace references while preserving coverage."
+	if currentStats.conciseTitleRatio() < 0.9 {
+		legibilityStatus = "fail"
+		legibilitySummary = "ThingIndex still produces too many awkward titles to match the legibility of the workspace references."
+	} else if currentStats.conciseTitleRatio() < referenceStats.conciseTitleRatio() || currentStats.averageSummaryLength() > referenceStats.averageSummaryLength() {
+		legibilityStatus = "watch"
+		legibilitySummary = "ThingIndex is readable, but still not as consistently legible as the workspace references."
+	}
+
+	checklist := []domain.IndexingBenchmarkReferenceChecklistItem{
+		{
+			ID:             "depth",
+			Dimension:      "depth",
+			Label:          "Useful structural depth",
+			Status:         depthStatus,
+			CurrentValue:   currentDepthValue,
+			ReferenceValue: referenceDepthValue,
+			Summary:        depthSummary,
+		},
+		{
+			ID:             "coherence",
+			Dimension:      "coherence",
+			Label:          "Structural coherence",
+			Status:         coherenceStatus,
+			CurrentValue:   currentCoherenceValue,
+			ReferenceValue: referenceCoherenceValue,
+			Summary:        coherenceSummary,
+		},
+		{
+			ID:             "coverage",
+			Dimension:      "coverage",
+			Label:          "Section coverage",
+			Status:         coverageStatus,
+			CurrentValue:   currentCoverageValue,
+			ReferenceValue: referenceCoverageValue,
+			Summary:        coverageSummary,
+		},
+		{
+			ID:             "legibility",
+			Dimension:      "legibility",
+			Label:          "Outline legibility",
+			Status:         legibilityStatus,
+			CurrentValue:   currentLegibilityValue,
+			ReferenceValue: referenceLegibilityValue,
+			Summary:        legibilitySummary,
+		},
+	}
+
+	return &domain.IndexingBenchmarkReferenceComparison{
+		SourcePath:     fixture.SourcePath,
+		LastReviewedOn: fixture.LastReviewedOn,
+		Summary:        summarizeReferenceChecklist(checklist),
+		Artifacts:      referenceArtifacts,
+		Checklist:      checklist,
+	}
+}
+
+func summarizeReferenceChecklist(checklist []domain.IndexingBenchmarkReferenceChecklistItem) string {
+	passing := make([]string, 0, len(checklist))
+	watching := make([]string, 0, len(checklist))
+	failing := make([]string, 0, len(checklist))
+	for _, item := range checklist {
+		switch item.Status {
+		case "pass":
+			passing = append(passing, item.Label)
+		case "watch":
+			watching = append(watching, item.Label)
+		case "fail":
+			failing = append(failing, item.Label)
+		}
+	}
+
+	switch {
+	case len(failing) == 0 && len(watching) == 0:
+		return "ThingIndex currently matches or exceeds the workspace reference artifacts on all checklist dimensions."
+	case len(failing) == 0:
+		return fmt.Sprintf(
+			"ThingIndex is close to the workspace reference artifacts overall, with watch-level gaps remaining in %s.",
+			joinBenchmarkChecklistLabels(watching),
+		)
+	default:
+		summary := fmt.Sprintf(
+			"ThingIndex still trails the workspace reference artifacts on %s.",
+			joinBenchmarkChecklistLabels(failing),
+		)
+		if len(watching) > 0 {
+			summary += fmt.Sprintf(" Watch-level gaps remain in %s.", joinBenchmarkChecklistLabels(watching))
+		}
+		if len(passing) > 0 {
+			summary += fmt.Sprintf(" It is already competitive on %s.", joinBenchmarkChecklistLabels(passing))
+		}
+		return summary
+	}
+}
+
+func joinBenchmarkChecklistLabels(labels []string) string {
+	switch len(labels) {
+	case 0:
+		return "the checklist"
+	case 1:
+		return labels[0]
+	case 2:
+		return labels[0] + " and " + labels[1]
+	default:
+		return strings.Join(labels[:len(labels)-1], ", ") + ", and " + labels[len(labels)-1]
+	}
+}
+
+func (stats indexingBenchmarkStructureStats) summaryCoverageRatio() float64 {
+	return ratio(stats.SummarizedNodeCount, stats.TotalNodes)
+}
+
+func (stats indexingBenchmarkStructureStats) conciseTitleRatio() float64 {
+	return ratio(stats.ConciseTitleCount, stats.TotalNodes)
+}
+
+func (stats indexingBenchmarkStructureStats) nestedNodeRatio() float64 {
+	return ratio(stats.NestedNodeCount, stats.TotalNodes)
+}
+
+func (stats indexingBenchmarkStructureStats) invalidRangeRatio() float64 {
+	return ratio(stats.InvalidRangeCount, stats.TotalNodes)
+}
+
+func (stats indexingBenchmarkStructureStats) averageSummaryLength() float64 {
+	if stats.SummarizedNodeCount <= 0 {
+		return 0
+	}
+	return float64(stats.TotalSummaryLength) / float64(stats.SummarizedNodeCount)
+}
+
+func ratio(value, total int) float64 {
+	if total <= 0 {
+		return 0
+	}
+	return float64(value) / float64(total)
+}
+
+func formatPercent(value float64) string {
+	return fmt.Sprintf("%.1f%%", value*100)
+}
+
+func formatFloat(value float64) string {
+	return fmt.Sprintf("%.1f", value)
 }

@@ -72,4 +72,27 @@ func TestIndexingBenchmarkProviderBuildsPublicReport(t *testing.T) {
 	if len(report.LatestComparison.KeyMetricDeltas) != 6 {
 		t.Fatalf("expected six key metric deltas, got %#v", report.LatestComparison.KeyMetricDeltas)
 	}
+	if report.ReferenceComparison == nil {
+		t.Fatalf("expected workspace reference comparison, got nil")
+	}
+	if report.ReferenceComparison.SourcePath != "pageindex/results" {
+		t.Fatalf("unexpected reference comparison source path: %#v", report.ReferenceComparison)
+	}
+	if len(report.ReferenceComparison.Artifacts) != 3 {
+		t.Fatalf("expected three reference artifacts, got %#v", report.ReferenceComparison.Artifacts)
+	}
+	if len(report.ReferenceComparison.Checklist) != 4 {
+		t.Fatalf("expected four checklist items, got %#v", report.ReferenceComparison.Checklist)
+	}
+
+	checklistByID := make(map[string]string, len(report.ReferenceComparison.Checklist))
+	for _, item := range report.ReferenceComparison.Checklist {
+		checklistByID[item.ID] = item.Status
+	}
+	if checklistByID["depth"] != "watch" {
+		t.Fatalf("expected depth checklist to remain below the reference bar, got %#v", report.ReferenceComparison.Checklist)
+	}
+	if checklistByID["coherence"] != "watch" || checklistByID["coverage"] != "fail" || checklistByID["legibility"] != "pass" {
+		t.Fatalf("unexpected reference checklist statuses: %#v", report.ReferenceComparison.Checklist)
+	}
 }

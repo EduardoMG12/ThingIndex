@@ -25,6 +25,9 @@ func TestIndexingBenchmarkIntegrationUsesEmbeddedCorpusWithRealIndexer(t *testin
 	if report.CurrentSnapshot == nil || report.LatestComparison == nil {
 		t.Fatalf("expected recorded benchmark snapshots, got snapshot=%#v latest=%#v", report.CurrentSnapshot, report.LatestComparison)
 	}
+	if report.ReferenceComparison == nil || len(report.ReferenceComparison.Checklist) == 0 {
+		t.Fatalf("expected workspace reference comparison, got %#v", report.ReferenceComparison)
+	}
 
 	structurePasses := 0
 	for _, item := range report.Corpus {
