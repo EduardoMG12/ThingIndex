@@ -1,9 +1,0 @@
-flowchart LR
-    A[Autenticação] --> B[Criação ou seleção de collection]
-    B --> C[Upload do documento]
-    C --> D[Persistência do arquivo no storage]
-    D --> E[Registro do documento no banco]
-    E --> F[Indexação estrutural síncrona ou assíncrona]
-    F --> G[Persistência de parágrafos, tabelas e metadados]
-    G --> H[Recuperação de contexto por collection]
-    H --> I[Chat grounded e navegação documental]
