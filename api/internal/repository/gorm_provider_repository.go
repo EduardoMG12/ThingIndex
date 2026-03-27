@@ -1,0 +1,388 @@
+package repository
+
+import (
+	"context"
+	"strings"
+	"thing-index/internal/domain"
+	"thing-index/internal/models"
+	"time"
+
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+)
+
+type gormProviderRepository struct {
+	db *gorm.DB
+}
+
+func NewGormProviderRepository(db *gorm.DB) domain.ProviderRepository {
+	return &gormProviderRepository{db: db}
+}
+
+func (r *gormProviderRepository) SaveConfig(ctx context.Context, config *models.UserProviderConfig, auditEvent *models.ProviderAuditEvent) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		switch config.Family {
+		case domain.FamilyStorage:
+			if config.IsEnabled {
+				if err := tx.Model(&models.UserProviderConfig{}).
+					Where("user_id = ? AND family = ? AND provider_type <> ?", config.UserID, config.Family, config.ProviderType).
+					Update("is_enabled", false).Error; err != nil {
+					return err
+				}
+			}
+		case domain.FamilyLLM:
+			if config.EnabledForIndexing {
+				if err := tx.Model(&models.UserProviderConfig{}).
+					Where("user_id = ? AND family = ? AND provider_type <> ?", config.UserID, config.Family, config.ProviderType).
+					Update("enabled_for_indexing", false).Error; err != nil {
+					return err
+				}
+			}
+			if config.EnabledForChat {
+				if err := tx.Model(&models.UserProviderConfig{}).
+					Where("user_id = ? AND family = ? AND provider_type <> ?", config.UserID, config.Family, config.ProviderType).
+					Update("enabled_for_chat", false).Error; err != nil {
+					return err
+				}
+			}
+		}
+
+		if err := tx.Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "user_id"}, {Name: "provider_type"}},
+			DoUpdates: clause.AssignmentColumns([]string{
+				"family",
+				"encrypted_data",
+				"is_enabled",
+				"enabled_for_indexing",
+				"enabled_for_chat",
+				"updated_at",
+			}),
+		}).Create(config).Error; err != nil {
+			return err
+		}
+
+		if auditEvent != nil {
+			auditEvent.ProviderConfigID = &config.ID
+			return tx.Create(auditEvent).Error
+		}
+
+		return nil
+	})
+}
+
+func (r *gormProviderRepository) CreateProviderAuditEvents(ctx context.Context, events []models.ProviderAuditEvent) error {
+	if len(events) == 0 {
+		return nil
+	}
+
+	return r.db.WithContext(ctx).Create(&events).Error
+}
+
+func (r *gormProviderRepository) ListProviderAuditEvents(ctx context.Context, userID uint, filter domain.ProviderAuditFilter) ([]models.ProviderAuditEvent, error) {
+	result, err := r.QueryProviderAuditEvents(ctx, userID, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	return result.Items, nil
+}
+
+func (r *gormProviderRepository) QueryProviderAuditEvents(ctx context.Context, userID uint, filter domain.ProviderAuditFilter) (*domain.ProviderAuditQueryResult, error) {
+	itemsQuery, err := r.buildProviderAuditQuery(ctx, userID, filter, true)
+	if err != nil {
+		return nil, err
+	}
+
+	summaryQuery, err := r.buildProviderAuditQuery(ctx, userID, filter, false)
+	if err != nil {
+		return nil, err
+	}
+
+	limit := clampAuditLimit(filter.Limit)
+	var events []models.ProviderAuditEvent
+	if err := itemsQuery.
+		Order("created_at DESC, id DESC").
+		Limit(limit + 1).
+		Find(&events).Error; err != nil {
+		return nil, err
+	}
+
+	pageInfo := domain.AuditPageInfo{
+		Limit: limit,
+	}
+	if len(events) > limit {
+		lastItem := events[limit-1]
+		pageInfo.HasNext = true
+		pageInfo.NextCursor = domain.EncodeAuditCursor(domain.AuditCursor{
+			CreatedAt: lastItem.CreatedAt,
+			ID:        lastItem.ID,
+		})
+		events = events[:limit]
+	}
+	pageInfo.Returned = len(events)
+
+	summary, err := r.buildProviderAuditSummary(summaryQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	return &domain.ProviderAuditQueryResult{
+		Items:    events,
+		Summary:  summary,
+		PageInfo: pageInfo,
+	}, nil
+}
+
+func (r *gormProviderRepository) buildProviderAuditQuery(ctx context.Context, userID uint, filter domain.ProviderAuditFilter, includeCursor bool) (*gorm.DB, error) {
+	query := r.db.WithContext(ctx).
+		Model(&models.ProviderAuditEvent{}).
+		Where("user_id = ?", userID)
+
+	if family := strings.ToUpper(strings.TrimSpace(filter.Family)); family != "" {
+		query = query.Where("family = ?", family)
+	}
+	if providerType := strings.ToUpper(strings.TrimSpace(filter.ProviderType)); providerType != "" {
+		query = query.Where("provider_type = ?", providerType)
+	}
+	if action := strings.ToUpper(strings.TrimSpace(filter.Action)); action != "" {
+		query = query.Where("action = ?", action)
+	}
+	if search := escapeLikePattern(filter.Query); search != "" {
+		pattern := "%" + search + "%"
+		query = query.Where(
+			`(
+				LOWER(COALESCE(provider_type, '')) LIKE ? ESCAPE '\' OR
+				LOWER(COALESCE(detail, '')) LIKE ? ESCAPE '\' OR
+				LOWER(COALESCE(origin, '')) LIKE ? ESCAPE '\' OR
+				LOWER(COALESCE(correlation_id, '')) LIKE ? ESCAPE '\'
+			)`,
+			pattern,
+			pattern,
+			pattern,
+			pattern,
+		)
+	}
+
+	return applyCommonAuditFilters(query, filter.AuditPageFilter, includeCursor)
+}
+
+func (r *gormProviderRepository) buildProviderAuditSummary(query *gorm.DB) (domain.ProviderAuditSummary, error) {
+	type summaryRow struct {
+		TotalEvents     int64
+		UniqueProviders int64
+		UniqueRequests  int64
+		LastEventAt     *time.Time
+	}
+
+	var row summaryRow
+	if err := query.
+		Session(&gorm.Session{}).
+		Select(
+			"COUNT(*) AS total_events",
+			"COUNT(DISTINCT provider_type) AS unique_providers",
+			"COUNT(DISTINCT NULLIF(correlation_id, '')) AS unique_requests",
+			"MAX(created_at) AS last_event_at",
+		).
+		Scan(&row).Error; err != nil {
+		return domain.ProviderAuditSummary{}, err
+	}
+
+	actionBreakdown, err := loadAuditBuckets(query, "action")
+	if err != nil {
+		return domain.ProviderAuditSummary{}, err
+	}
+	statusBreakdown, err := loadAuditBuckets(query, "status")
+	if err != nil {
+		return domain.ProviderAuditSummary{}, err
+	}
+
+	return domain.ProviderAuditSummary{
+		TotalEvents:     row.TotalEvents,
+		UniqueProviders: row.UniqueProviders,
+		UniqueRequests:  row.UniqueRequests,
+		LastEventAt:     row.LastEventAt,
+		ActionBreakdown: actionBreakdown,
+		StatusBreakdown: statusBreakdown,
+	}, nil
+}
+
+func (r *gormProviderRepository) GetConfig(ctx context.Context, userID uint, providerType string) (*models.UserProviderConfig, error) {
+	var config models.UserProviderConfig
+	if err := r.db.WithContext(ctx).Where("user_id = ? AND provider_type = ?", userID, providerType).First(&config).Error; err != nil {
+		return nil, err
+	}
+	return &config, nil
+}
+
+func (r *gormProviderRepository) GetConfigByFamily(ctx context.Context, userID uint, family string) (*models.UserProviderConfig, error) {
+	var config models.UserProviderConfig
+	if err := r.db.WithContext(ctx).
+		Where("user_id = ? AND family = ? AND is_enabled = ?", userID, family, true).
+		Order("updated_at DESC, id DESC").
+		First(&config).Error; err != nil {
+		return nil, err
+	}
+	return &config, nil
+}
+
+func (r *gormProviderRepository) GetConfigByLLMUsage(ctx context.Context, userID uint, usage string) (*models.UserProviderConfig, error) {
+	var config models.UserProviderConfig
+
+	query := r.db.WithContext(ctx).
+		Where("user_id = ? AND family = ?", userID, domain.FamilyLLM)
+
+	switch usage {
+	case domain.LLMUsageIndexing:
+		query = query.Where("enabled_for_indexing = ?", true)
+	case domain.LLMUsageChat:
+		query = query.Where("enabled_for_chat = ?", true)
+	default:
+		return nil, gorm.ErrRecordNotFound
+	}
+
+	if err := query.Order("updated_at DESC, id DESC").First(&config).Error; err != nil {
+		return nil, err
+	}
+
+	return &config, nil
+}
+
+func (r *gormProviderRepository) ListConfigs(ctx context.Context, userID uint) ([]models.UserProviderConfig, error) {
+	var configs []models.UserProviderConfig
+	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&configs).Error; err != nil {
+		return nil, err
+	}
+	return configs, nil
+}
+
+func (r *gormProviderRepository) ListAllConfigs(ctx context.Context) ([]models.UserProviderConfig, error) {
+	var configs []models.UserProviderConfig
+	if err := r.db.WithContext(ctx).Find(&configs).Error; err != nil {
+		return nil, err
+	}
+	return configs, nil
+}
+
+func (r *gormProviderRepository) ListModelCatalog(ctx context.Context, scopeKey, providerType string) ([]models.ProviderModelCatalog, error) {
+	var items []models.ProviderModelCatalog
+	if err := r.db.WithContext(ctx).
+		Where("scope_key = ? AND provider_type = ? AND is_active = ?", scopeKey, providerType, true).
+		Order("display_name ASC, model_id ASC").
+		Find(&items).Error; err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func (r *gormProviderRepository) ReplaceModelCatalog(ctx context.Context, scopeKey string, userID *uint, providerType string, entries []models.ProviderModelCatalog) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.ProviderModelCatalog{}).
+			Where("scope_key = ? AND provider_type = ?", scopeKey, providerType).
+			Update("is_active", false).Error; err != nil {
+			return err
+		}
+
+		for i := range entries {
+			entries[i].ScopeKey = scopeKey
+			entries[i].UserID = userID
+			entries[i].ProviderType = providerType
+			entries[i].IsActive = true
+		}
+
+		if len(entries) == 0 {
+			return nil
+		}
+
+		return tx.Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "scope_key"}, {Name: "provider_type"}, {Name: "model_id"}},
+			DoUpdates: clause.AssignmentColumns([]string{
+				"user_id",
+				"display_name",
+				"metadata_json",
+				"fetched_at",
+				"is_active",
+				"updated_at",
+			}),
+		}).Create(&entries).Error
+	})
+}
+
+func (r *gormProviderRepository) SetConfigEnabled(ctx context.Context, userID uint, family, providerType string, enabled bool, auditEvent *models.ProviderAuditEvent) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if enabled {
+			if err := tx.Model(&models.UserProviderConfig{}).
+				Where("user_id = ? AND family = ? AND provider_type <> ?", userID, family, providerType).
+				Update("is_enabled", false).Error; err != nil {
+				return err
+			}
+		}
+
+		result := tx.Model(&models.UserProviderConfig{}).
+			Where("user_id = ? AND family = ? AND provider_type = ?", userID, family, providerType).
+			Update("is_enabled", enabled)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+
+		if auditEvent != nil {
+			var config models.UserProviderConfig
+			if err := tx.Where("user_id = ? AND family = ? AND provider_type = ?", userID, family, providerType).First(&config).Error; err != nil {
+				return err
+			}
+			auditEvent.ProviderConfigID = &config.ID
+			return tx.Create(auditEvent).Error
+		}
+
+		return nil
+	})
+}
+
+func (r *gormProviderRepository) SetLLMConfigUsage(ctx context.Context, userID uint, providerType, usage string, enabled bool, auditEvent *models.ProviderAuditEvent) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		column := ""
+		switch usage {
+		case domain.LLMUsageIndexing:
+			column = "enabled_for_indexing"
+		case domain.LLMUsageChat:
+			column = "enabled_for_chat"
+		default:
+			return gorm.ErrRecordNotFound
+		}
+
+		if enabled {
+			if err := tx.Model(&models.UserProviderConfig{}).
+				Where("user_id = ? AND family = ? AND provider_type <> ?", userID, domain.FamilyLLM, providerType).
+				Update(column, false).Error; err != nil {
+				return err
+			}
+		}
+
+		result := tx.Model(&models.UserProviderConfig{}).
+			Where("user_id = ? AND family = ? AND provider_type = ?", userID, domain.FamilyLLM, providerType).
+			Update(column, enabled)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+
+		if auditEvent != nil {
+			var config models.UserProviderConfig
+			if err := tx.Where("user_id = ? AND family = ? AND provider_type = ?", userID, domain.FamilyLLM, providerType).First(&config).Error; err != nil {
+				return err
+			}
+			auditEvent.ProviderConfigID = &config.ID
+			return tx.Create(auditEvent).Error
+		}
+
+		return nil
+	})
+}
+
+func (r *gormProviderRepository) DeleteConfig(ctx context.Context, userID uint, providerType string) error {
+	return r.db.WithContext(ctx).Where("user_id = ? AND provider_type = ?", userID, providerType).Delete(&models.UserProviderConfig{}).Error
+}

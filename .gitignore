@@ -4,6 +4,7 @@
 /crawler/crawler
 /crawler/crawler_bin
 /crawler/purge_queue
+/api/api
 *.exe
 *.exe~
 *.dll
@@ -32,4 +33,5 @@ parsed_data/
 *.log
 
 comandos_neo4j.md
+what-missing?.md
 docs/

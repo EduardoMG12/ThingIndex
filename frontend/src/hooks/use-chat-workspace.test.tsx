@@ -1,0 +1,181 @@
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const navigation = vi.hoisted(() => ({
+    replace: vi.fn(),
+    pathname: "/en/chat",
+    searchParams: new URLSearchParams(),
+}));
+
+vi.mock("next/navigation", () => ({
+    usePathname: () => navigation.pathname,
+    useRouter: () => ({
+        replace: navigation.replace,
+    }),
+    useSearchParams: () => navigation.searchParams,
+}));
+
+vi.mock("@/hooks/use-collections", () => ({
+    useCollections: vi.fn(),
+}));
+
+vi.mock("@/hooks/use-provider-runtime-overview", () => ({
+    useProviderRuntimeOverview: vi.fn(),
+}));
+
+vi.mock("@/lib/api/chat", () => ({
+    createChatConversation: vi.fn(),
+    deleteChatConversation: vi.fn(),
+    fetchChatConversation: vi.fn(),
+    fetchChatConversations: vi.fn(),
+    streamCollectionChat: vi.fn(),
+}));
+
+import { useChatWorkspace } from "@/hooks/use-chat-workspace";
+import { useCollections } from "@/hooks/use-collections";
+import { useProviderRuntimeOverview } from "@/hooks/use-provider-runtime-overview";
+import {
+    deleteChatConversation,
+    fetchChatConversation,
+    fetchChatConversations,
+} from "@/lib/api/chat";
+import { createTestWrapper } from "@/test/test-utils";
+
+function createConversation(id: number, title: string) {
+    return {
+        id,
+        collectionId: 7,
+        title,
+        lastMessageAt: `2026-03-20T12:0${id - 10}:00Z`,
+        createdAt: `2026-03-20T12:0${id - 10}:00Z`,
+        updatedAt: `2026-03-20T12:0${id - 10}:00Z`,
+    };
+}
+
+describe("useChatWorkspace", () => {
+    beforeEach(() => {
+        navigation.replace.mockReset();
+        navigation.pathname = "/en/chat";
+        navigation.searchParams = new URLSearchParams();
+
+        vi.mocked(useCollections).mockReturnValue({
+            collections: [
+                {
+                    id: 7,
+                    name: "Operations",
+                    documentCount: 3,
+                    metadata: {},
+                },
+            ],
+            isLoading: false,
+            error: null,
+            mergeCollection: vi.fn(),
+            reloadCollections: vi.fn(),
+        });
+
+        vi.mocked(useProviderRuntimeOverview).mockReturnValue({
+            overview: {
+                storage: null,
+                indexing: null,
+                chat: {
+                    family: "LLM",
+                    activation_target: "CHAT",
+                    provider_type: "OPENAI",
+                    public_metadata: {
+                        model: "gpt-4o-mini",
+                    },
+                    updated_at: "2026-03-20T12:00:00Z",
+                },
+            },
+            isLoading: false,
+            error: null,
+        });
+
+        vi.mocked(fetchChatConversations).mockReset();
+        vi.mocked(fetchChatConversation).mockReset();
+        vi.mocked(deleteChatConversation).mockReset();
+    });
+
+    it("starts a fresh draft conversation while keeping the selected collection", async () => {
+        vi.mocked(fetchChatConversations).mockResolvedValue([
+            createConversation(10, "Quarterly review"),
+        ]);
+        vi.mocked(fetchChatConversation).mockResolvedValue({
+            conversation: createConversation(10, "Quarterly review"),
+            messages: [
+                {
+                    id: 1,
+                    role: "assistant",
+                    content: "Existing grounded answer",
+                    sources: [],
+                    createdAt: "2026-03-20T12:00:00Z",
+                    updatedAt: "2026-03-20T12:00:00Z",
+                },
+            ],
+        });
+
+        const { result } = renderHook(() => useChatWorkspace(), { wrapper: createTestWrapper("en") });
+
+        await waitFor(() => {
+            expect(result.current.isConversationLoading).toBe(false);
+        });
+
+        act(() => {
+            result.current.setInput("Draft question");
+            result.current.startNewConversation();
+        });
+
+        expect(result.current.selectedCollectionId).toBe(7);
+        expect(result.current.activeConversationId).toBeNull();
+        expect(result.current.messages).toEqual([]);
+        expect(result.current.input).toBe("");
+        expect(navigation.replace).toHaveBeenCalledWith("/en/chat?collection=7", { scroll: false });
+    });
+
+    it("deletes the active conversation and activates the next saved one", async () => {
+        vi.mocked(fetchChatConversations).mockResolvedValue([
+            createConversation(10, "Quarterly review"),
+            createConversation(11, "Risk register"),
+        ]);
+        vi.mocked(fetchChatConversation).mockImplementation(async (conversationId: number) => ({
+            conversation: createConversation(conversationId, conversationId === 10 ? "Quarterly review" : "Risk register"),
+            messages: [
+                {
+                    id: conversationId,
+                    role: "assistant",
+                    content: conversationId === 10 ? "Initial answer" : "Next answer",
+                    sources: [],
+                    createdAt: "2026-03-20T12:00:00Z",
+                    updatedAt: "2026-03-20T12:00:00Z",
+                },
+            ],
+        }));
+        vi.mocked(deleteChatConversation).mockResolvedValue(undefined);
+
+        const { result } = renderHook(() => useChatWorkspace(), { wrapper: createTestWrapper("en") });
+
+        await waitFor(() => {
+            expect(result.current.activeConversationId).toBe(10);
+        });
+
+        await act(async () => {
+            await result.current.deleteConversation(10);
+        });
+
+        await waitFor(() => {
+            expect(result.current.activeConversationId).toBe(11);
+        });
+
+        await waitFor(() => {
+            expect(result.current.messages).toEqual([
+                expect.objectContaining({
+                    id: "11",
+                    content: "Next answer",
+                }),
+            ]);
+        });
+
+        expect(deleteChatConversation).toHaveBeenCalledWith(10);
+        expect(result.current.conversations.map((conversation) => conversation.id)).toEqual([11]);
+    });
+});

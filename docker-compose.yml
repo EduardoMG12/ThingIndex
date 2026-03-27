@@ -1,22 +1,6 @@
 services:
-  neo4j:
-    image: neo4j:latest
-    container_name: tcc-graph-db
-    ports:
-      - "7474:7474" 
-      - "7687:7687"
-    # env_file:
-    #   - .env
-    environment:
-      - NEO4J_AUTH=${NEO4J_AUTH}
-      - NEO4J_PLUGINS=${NEO4J_PLUGINS}
-    volumes:
-      - neo4j_data:/data
-      - neo4j_logs:/logs
-
   rabbitmq:
     image: rabbitmq:3-management
-    container_name: tcc-rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -32,7 +16,6 @@ services:
 
   minio:
     image: minio/minio
-    container_name: tcc-minio
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -43,110 +26,70 @@ services:
     volumes:
       - minio_data:/data
 
-  crawler:
-    build:
-      context: .
-      dockerfile: crawler/Dockerfile
-    container_name: tcc-crawler
-    restart: unless-stopped
-    depends_on:
-      - rabbitmq
-      - minio
-    env_file:
-      - .env
-    environment:
-      STORAGE_TYPE: "minio"
-      RABBITMQ_URL: ${RABBITMQ_URL}
-      MINIO_ENDPOINT: "minio:9000"
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_USE_SSL: "false"
-      TELEMETRY_EXCHANGE: ${TELEMETRY_EXCHANGE:-pipeline_telemetry}
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-
   api:
     build:
       context: ./api
       dockerfile: Dockerfile
-    container_name: tcc-api
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "8000:8080"
     depends_on:
-      - rabbitmq
+      - db
+      - minio
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - .env
     environment:
       TELEMETRY_EXCHANGE: ${TELEMETRY_EXCHANGE:-pipeline_telemetry}
-      NEO4J_URI: ${NEO4J_URI}
-      NEO4J_AUTH: ${NEO4J_AUTH}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}
+      DOCUMENT_INDEX_EXCHANGE: ${DOCUMENT_INDEX_EXCHANGE:-thingindex.document.index}
+      DOCUMENT_INDEX_QUEUE: ${DOCUMENT_INDEX_QUEUE:-thingindex.document.index.queue}
+      DOCUMENT_INDEX_ROUTING_KEY: ${DOCUMENT_INDEX_ROUTING_KEY:-document.index.requested}
+      DOCUMENT_INDEX_RETRY_QUEUE: ${DOCUMENT_INDEX_RETRY_QUEUE:-thingindex.document.index.retry}
+      DOCUMENT_INDEX_DLQ: ${DOCUMENT_INDEX_DLQ:-thingindex.document.index.dlq}
+      DOCUMENT_INDEX_RETRY_DELAY_SECONDS: ${DOCUMENT_INDEX_RETRY_DELAY_SECONDS:-30}
+      DOCUMENT_INDEX_MAX_RETRIES: ${DOCUMENT_INDEX_MAX_RETRIES:-5}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
 
-  legal-parser:
+  indexer:
     build:
-      context: .
-      dockerfile: legal-parser/Dockerfile
-    container_name: tcc-legal-parser
+      context: ./api
+      dockerfile: Dockerfile.indexer
     restart: unless-stopped
     depends_on:
-      - rabbitmq
+      - db
       - minio
+      - rabbitmq
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - .env
     environment:
-      RABBITMQ_URL: ${RABBITMQ_URL}
-      PARSER_INPUT_QUEUE: "raw_documents"
-      PARSER_OUTPUT_QUEUE: "parsed_documents"
-      MINIO_ENDPOINT: "minio:9000"
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_USE_SSL: "false"
-      TELEMETRY_EXCHANGE: ${TELEMETRY_EXCHANGE:-pipeline_telemetry}
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-    volumes:
-      - ./legal-parser/parsed_data:/app/parsed_data
-
-  populator:
-    build:
-      context: .
-      dockerfile: populator/Dockerfile
-    container_name: tcc-populator
-    restart: unless-stopped
-    depends_on:
-      - rabbitmq
-      - minio
-      - neo4j
-    env_file:
-      - .env
-    environment:
-      RABBITMQ_URL: ${RABBITMQ_URL}
-      POPULATOR_QUEUE: "parsed_documents"
-      NEO4J_URI: ${NEO4J_URI}
-      NEO4J_AUTH: ${NEO4J_AUTH}
-      MINIO_ENDPOINT: "minio:9000"
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_USE_SSL: "false"
-      TELEMETRY_EXCHANGE: ${TELEMETRY_EXCHANGE:-pipeline_telemetry}
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}
+      DOCUMENT_INDEX_EXCHANGE: ${DOCUMENT_INDEX_EXCHANGE:-thingindex.document.index}
+      DOCUMENT_INDEX_QUEUE: ${DOCUMENT_INDEX_QUEUE:-thingindex.document.index.queue}
+      DOCUMENT_INDEX_ROUTING_KEY: ${DOCUMENT_INDEX_ROUTING_KEY:-document.index.requested}
+      DOCUMENT_INDEX_RETRY_QUEUE: ${DOCUMENT_INDEX_RETRY_QUEUE:-thingindex.document.index.retry}
+      DOCUMENT_INDEX_DLQ: ${DOCUMENT_INDEX_DLQ:-thingindex.document.index.dlq}
+      DOCUMENT_INDEX_RETRY_DELAY_SECONDS: ${DOCUMENT_INDEX_RETRY_DELAY_SECONDS:-30}
+      DOCUMENT_INDEX_MAX_RETRIES: ${DOCUMENT_INDEX_MAX_RETRIES:-5}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: tcc-frontend
     restart: unless-stopped
+    command: sh -c "CI=true pnpm install --frozen-lockfile && pnpm dev"
     ports:
       - "3000:8080"
     depends_on:
@@ -155,14 +98,28 @@ services:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules
       - /app/.next
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - .env
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+      API_INTERNAL_URL: http://api:8080/api/v1
+
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
 
 volumes:
   minio_data:
-  neo4j_data:
-  neo4j_logs:
   rabbitmq_data:
   frontend_node_modules:
+  pgdata:
