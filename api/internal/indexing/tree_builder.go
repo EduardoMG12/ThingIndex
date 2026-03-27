@@ -414,18 +414,26 @@ func persistOutlineStructuralSpans(source domain.IndexingResult, nodes []models.
 		}
 
 		start, end, sectionKey, ok := matchSourceOutlineSpan(source.OutlineNodes, nodes[idx])
+		paragraphSpanSource := ""
 		if !ok {
 			start, end, ok = paragraphSpanForPageRange(source.ParagraphNodes, nodes[idx].StartPage, nodes[idx].EndPage)
 			if ok {
 				sectionKey = sectionKeyForParagraphSpan(source.ParagraphNodes, start, end)
+				paragraphSpanSource = "page_range"
 			}
+		} else {
+			paragraphSpanSource = "outline"
 		}
 		if !ok {
+			delete(nodes[idx].Metadata, "paragraph_span_source")
 			continue
 		}
 
 		nodes[idx].Metadata["paragraph_start"] = start
 		nodes[idx].Metadata["paragraph_end"] = end
+		if paragraphSpanSource != "" {
+			nodes[idx].Metadata["paragraph_span_source"] = paragraphSpanSource
+		}
 		if sectionKey != "" {
 			nodes[idx].Metadata["section_key"] = sectionKey
 		}

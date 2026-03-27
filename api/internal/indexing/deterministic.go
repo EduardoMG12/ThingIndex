@@ -337,6 +337,7 @@ func buildIndexingResult(documentID uint, headings []outlineDraft, paragraphs []
 	coveredPages := treeStats.CoveredPages
 	coverageRatio := treeStats.CoverageRatio
 	maxDepth := treeStats.MaxDepth
+	populateOutlineRetrievalText(&result)
 	summaryCoverageRatio := outlineSummaryCoverageRatio(result.OutlineNodes)
 	verificationPassed := treeStats.VerificationPassed
 	documentSummary := buildDeterministicDocumentSummary(result.OutlineNodes, paragraphs)
@@ -704,6 +705,141 @@ func buildDeterministicDocumentSummary(nodes []models.DocumentOutlineNode, parag
 	return clampSummary(strings.Join(fragments, ". "), 320)
 }
 
+func populateOutlineRetrievalText(result *domain.IndexingResult) {
+	if result == nil || len(result.OutlineNodes) == 0 {
+		return
+	}
+
+	childParagraphRanges := buildOutlineChildParagraphRanges(result.OutlineNodes)
+	for idx := range result.OutlineNodes {
+		if result.OutlineNodes[idx].Metadata == nil {
+			result.OutlineNodes[idx].Metadata = map[string]any{}
+		}
+
+		retrievalText := buildOutlineRetrievalText(
+			result.OutlineNodes[idx],
+			childParagraphRanges[result.OutlineNodes[idx].NodeID],
+			result.ParagraphNodes,
+			result.DocumentPages,
+			result.TableSections,
+		)
+		if retrievalText == "" {
+			delete(result.OutlineNodes[idx].Metadata, "retrieval_text")
+			delete(result.OutlineNodes[idx].Metadata, "retrieval_text_source")
+			continue
+		}
+
+		result.OutlineNodes[idx].Metadata["retrieval_text"] = retrievalText
+		result.OutlineNodes[idx].Metadata["retrieval_text_source"] = "composite"
+	}
+}
+
+func buildOutlineRetrievalText(
+	node models.DocumentOutlineNode,
+	childRanges []outlineParagraphSpan,
+	paragraphs []models.ParagraphNode,
+	pages []models.DocumentPage,
+	tables []models.TableSection,
+) string {
+	fragments := make([]string, 0, 6)
+
+	paragraphSpanSource, _ := metadataString(node.Metadata, "paragraph_span_source")
+	if start, end, ok := outlineParagraphRange(node); ok && paragraphSpanSource != "page_range" {
+		for idx := start; idx <= end && idx < len(paragraphs); idx++ {
+			if paragraphIndexCoveredByAnyRange(idx, childRanges) {
+				continue
+			}
+			content := clampText(strings.TrimSpace(paragraphs[idx].Content), 360)
+			if content == "" {
+				continue
+			}
+			fragments = appendUniqueSummaryFragment(fragments, content)
+			if len(strings.Join(fragments, " ")) >= 900 {
+				break
+			}
+		}
+	} else if shouldUsePageFallbackRetrievalText(node) {
+		for _, page := range matchingOutlinePages(node, pages) {
+			pageSummary := clampText(strings.TrimSpace(page.Summary), 220)
+			if pageSummary != "" {
+				fragments = appendUniqueSummaryFragment(fragments, pageSummary)
+			}
+
+			pageContent := clampText(strings.TrimSpace(page.Content), 360)
+			if pageContent != "" {
+				fragments = appendUniqueSummaryFragment(fragments, pageContent)
+			}
+			if len(strings.Join(fragments, " ")) >= 900 {
+				break
+			}
+		}
+	}
+
+	for _, table := range matchingOutlineTables(node, tables) {
+		retrievalText := outlineTableRetrievalText(table)
+		if retrievalText == "" {
+			continue
+		}
+		fragments = appendUniqueSummaryFragment(fragments, retrievalText)
+		if len(strings.Join(fragments, " ")) >= 1100 {
+			break
+		}
+	}
+
+	if len(fragments) == 0 && len(childRanges) == 0 {
+		summary := strings.TrimSpace(node.Summary)
+		if summary != "" {
+			fragments = appendUniqueSummaryFragment(fragments, summary)
+		}
+	}
+
+	return clampText(strings.Join(fragments, ". "), 1200)
+}
+
+type outlineParagraphSpan struct {
+	start int
+	end   int
+}
+
+func buildOutlineChildParagraphRanges(nodes []models.DocumentOutlineNode) map[string][]outlineParagraphSpan {
+	rangesByParent := make(map[string][]outlineParagraphSpan)
+	for _, node := range nodes {
+		parentNodeID, _ := metadataString(node.Metadata, "parent_node_id")
+		if parentNodeID == "" {
+			continue
+		}
+		start, end, ok := outlineParagraphRange(node)
+		if !ok {
+			continue
+		}
+		rangesByParent[parentNodeID] = append(rangesByParent[parentNodeID], outlineParagraphSpan{
+			start: start,
+			end:   end,
+		})
+	}
+	return rangesByParent
+}
+
+func paragraphIndexCoveredByAnyRange(index int, ranges []outlineParagraphSpan) bool {
+	for _, span := range ranges {
+		if index >= span.start && index <= span.end {
+			return true
+		}
+	}
+	return false
+}
+
+func shouldUsePageFallbackRetrievalText(node models.DocumentOutlineNode) bool {
+	if node.Metadata == nil {
+		return false
+	}
+	if fallbackStructure, ok := node.Metadata["fallback_structure"].(bool); ok && fallbackStructure {
+		return true
+	}
+	segmentType, _ := metadataString(node.Metadata, "segment_type")
+	return segmentType == "page"
+}
+
 func outlineParagraphRange(node models.DocumentOutlineNode) (int, int, bool) {
 	start, startOK := metadataInt(node.Metadata, "paragraph_start")
 	end, endOK := metadataInt(node.Metadata, "paragraph_end")
@@ -733,6 +869,21 @@ func matchingOutlineTables(node models.DocumentOutlineNode, tables []models.Tabl
 	return matches
 }
 
+func matchingOutlinePages(node models.DocumentOutlineNode, pages []models.DocumentPage) []models.DocumentPage {
+	if len(pages) == 0 || node.StartPage == nil || node.EndPage == nil {
+		return nil
+	}
+
+	matches := make([]models.DocumentPage, 0, max(1, *node.EndPage-*node.StartPage+1))
+	for _, page := range pages {
+		if page.PageNumber < *node.StartPage || page.PageNumber > *node.EndPage {
+			continue
+		}
+		matches = append(matches, page)
+	}
+	return matches
+}
+
 func summarizeTableSection(table models.TableSection) string {
 	parts := make([]string, 0, 3)
 	if title := strings.TrimSpace(table.Title); title != "" {
@@ -755,6 +906,30 @@ func summarizeTableSection(table models.TableSection) string {
 	}
 
 	return clampSummary(strings.Join(parts, " with "), 180)
+}
+
+func outlineTableRetrievalText(table models.TableSection) string {
+	parts := make([]string, 0, 4)
+	if title := strings.TrimSpace(table.Title); title != "" {
+		parts = append(parts, title)
+	}
+	if len(table.Headers) > 0 {
+		parts = append(parts, strings.Join(table.Headers, " "))
+	}
+	for rowIdx := 0; rowIdx < len(table.Rows) && rowIdx < 2; rowIdx++ {
+		row := make([]string, 0, len(table.Rows[rowIdx]))
+		for _, cell := range table.Rows[rowIdx] {
+			cell = strings.TrimSpace(cell)
+			if cell != "" {
+				row = append(row, cell)
+			}
+		}
+		if len(row) > 0 {
+			parts = append(parts, strings.Join(row, " "))
+		}
+	}
+
+	return clampText(strings.Join(parts, ". "), 260)
 }
 
 func appendUniqueSummaryFragment(fragments []string, fragment string) []string {

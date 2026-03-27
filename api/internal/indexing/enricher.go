@@ -85,6 +85,7 @@ func (e *LLMEnricher) Enrich(ctx context.Context, llm domain.LLMService, doc *mo
 		applyPageSummaries(&updated, pageSummaries)
 	}
 	fillMissingPageSummaries(&updated)
+	populateOutlineRetrievalText(&updated)
 
 	retrievalSignals, err := e.generateRetrievalSignals(ctx, llm, contextBlock)
 	if err == nil {

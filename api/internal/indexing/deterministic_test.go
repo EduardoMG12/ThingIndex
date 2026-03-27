@@ -309,6 +309,157 @@ func TestBuildIndexingResultFallsBackToPageSegmentsWhenTreeIsTooShallow(t *testi
 	assertMetadataValue(t, result.MetadataPairs, "tree_fallback_applied", "true")
 }
 
+func TestBuildIndexingResultSeparatesSummaryFromRetrievalText(t *testing.T) {
+	t.Parallel()
+
+	pageOne := 1
+	headings := []outlineDraft{
+		{
+			Level:          1,
+			Title:          "Incident Response",
+			PageNumber:     &pageOne,
+			ParagraphStart: 0,
+			SectionKey:     "incident-response",
+		},
+	}
+	paragraphs := []textBlock{
+		{
+			Content:    "Overview of the incident response procedure. Escalation window is 48 hours after written notice.",
+			PageNumber: intPtr(1),
+			SectionKey: "incident-response",
+		},
+		{
+			Content:    "Security incidents must be retained for 7 years.",
+			PageNumber: intPtr(1),
+			SectionKey: "incident-response",
+		},
+	}
+
+	result := buildIndexingResult(77, headings, paragraphs, nil)
+	if len(result.OutlineNodes) != 1 {
+		t.Fatalf("expected one outline node, got %#v", result.OutlineNodes)
+	}
+
+	node := result.OutlineNodes[0]
+	if strings.Contains(node.Summary, "48 hours after written notice") {
+		t.Fatalf("expected concise summary, got %q", node.Summary)
+	}
+
+	retrievalText, ok := metadataString(node.Metadata, "retrieval_text")
+	if !ok {
+		t.Fatalf("expected retrieval_text metadata, got %#v", node.Metadata)
+	}
+	if !strings.Contains(retrievalText, "48 hours after written notice") {
+		t.Fatalf("expected retrieval_text to include paragraph detail, got %q", retrievalText)
+	}
+	if got := node.Metadata["retrieval_text_source"]; got != "composite" {
+		t.Fatalf("expected retrieval_text_source composite, got %#v", got)
+	}
+}
+
+func TestBuildIndexingResultDoesNotLeakChildContentIntoParentRetrievalText(t *testing.T) {
+	t.Parallel()
+
+	pageOne := 1
+	headings := []outlineDraft{
+		{
+			Level:          1,
+			Title:          "INCIDENT RESPONSE PLAYBOOK",
+			PageNumber:     &pageOne,
+			ParagraphStart: 0,
+			SectionKey:     "incident-response-playbook",
+		},
+		{
+			Level:          2,
+			Title:          "1 Severity Model",
+			PageNumber:     &pageOne,
+			ParagraphStart: 0,
+			SectionKey:     "1-severity-model",
+		},
+		{
+			Level:          2,
+			Title:          "2 Escalation",
+			PageNumber:     &pageOne,
+			ParagraphStart: 1,
+			SectionKey:     "2-escalation",
+		},
+	}
+	paragraphs := []textBlock{
+		{
+			Content:    "Severity one incidents affect all customers and require immediate triage.",
+			PageNumber: intPtr(1),
+			SectionKey: "1-severity-model",
+		},
+		{
+			Content:    "Severity one incidents require a bridge commander within 10 minutes.",
+			PageNumber: intPtr(1),
+			SectionKey: "2-escalation",
+		},
+	}
+
+	result := buildIndexingResult(88, headings, paragraphs, nil)
+	if len(result.OutlineNodes) < 3 {
+		t.Fatalf("expected parent and child outline nodes, got %#v", result.OutlineNodes)
+	}
+
+	parentRetrievalText, ok := metadataString(result.OutlineNodes[0].Metadata, "retrieval_text")
+	if ok && strings.Contains(parentRetrievalText, "bridge commander") {
+		t.Fatalf("expected parent retrieval_text to exclude child-only content, got %q", parentRetrievalText)
+	}
+
+	childRetrievalText, ok := metadataString(result.OutlineNodes[2].Metadata, "retrieval_text")
+	if !ok || !strings.Contains(childRetrievalText, "bridge commander") {
+		t.Fatalf("expected child retrieval_text to keep local content, got %q", childRetrievalText)
+	}
+}
+
+func TestBuildIndexingResultDoesNotFallbackToWholePageForHeadingWithoutParagraphSpan(t *testing.T) {
+	t.Parallel()
+
+	pageOne := 1
+	headings := []outlineDraft{
+		{
+			Level:          1,
+			Title:          "INCIDENT RESPONSE PLAYBOOK",
+			PageNumber:     &pageOne,
+			ParagraphStart: 0,
+			SectionKey:     "incident-response-playbook",
+		},
+		{
+			Level:          1,
+			Title:          "1 Severity Model",
+			PageNumber:     &pageOne,
+			ParagraphStart: 0,
+			SectionKey:     "1-severity-model",
+		},
+		{
+			Level:          1,
+			Title:          "2 Escalation",
+			PageNumber:     &pageOne,
+			ParagraphStart: 1,
+			SectionKey:     "2-escalation",
+		},
+	}
+	paragraphs := []textBlock{
+		{
+			Content:    "Severity one incidents affect all customers and require immediate triage.",
+			PageNumber: intPtr(1),
+			SectionKey: "1-severity-model",
+		},
+		{
+			Content:    "Severity one incidents require a bridge commander within 10 minutes.",
+			PageNumber: intPtr(1),
+			SectionKey: "2-escalation",
+		},
+	}
+
+	result := buildIndexingResult(89, headings, paragraphs, nil)
+	rootRetrievalText, ok := metadataString(result.OutlineNodes[0].Metadata, "retrieval_text")
+	if ok && strings.Contains(rootRetrievalText, "bridge commander") {
+		t.Fatalf("expected root retrieval_text to avoid whole-page fallback, got %q", rootRetrievalText)
+	}
+}
+
 func TestOutlineIdentifiersRespectStorageLimits(t *testing.T) {
 	t.Parallel()
 
