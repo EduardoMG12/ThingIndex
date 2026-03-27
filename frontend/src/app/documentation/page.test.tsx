@@ -118,6 +118,7 @@ function mockDocumentationPayloads() {
             minimum_heuristic_score: 98,
             maximum_heuristic_score: 98,
         },
+        comparison_history: [],
         cases: [
             {
                 id: "service-payment-deadline",
@@ -262,6 +263,7 @@ describe("DocumentationPage", () => {
                 minimum_heuristic_score: 98,
                 maximum_heuristic_score: 98,
             },
+            comparison_history: [],
             cases: [
                 {
                     id: "service-payment",

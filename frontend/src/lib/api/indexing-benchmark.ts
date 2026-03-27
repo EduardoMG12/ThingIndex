@@ -53,6 +53,35 @@ type IndexingBenchmarkCaseApiRecord = {
     passed?: boolean;
 };
 
+type IndexingBenchmarkSnapshotApiRecord = {
+    id?: string;
+    label?: string;
+    recorded_on?: string;
+    summary?: string;
+    dataset_version?: string;
+    pipeline_version?: string;
+    prompt_profile_version?: string;
+    chunk_strategy_version?: string;
+    metrics?: unknown;
+};
+
+type IndexingBenchmarkMetricDeltaApiRecord = {
+    metric?: string;
+    previous_value?: number;
+    current_value?: number;
+    delta?: number;
+};
+
+type IndexingBenchmarkComparisonApiRecord = {
+    id?: string;
+    title?: string;
+    recorded_on?: string;
+    summary?: string;
+    before?: unknown;
+    after?: unknown;
+    key_metric_deltas?: unknown;
+};
+
 type IndexingBenchmarkApiRecord = {
     dataset_version?: string;
     corpus_source_path?: string;
@@ -65,6 +94,9 @@ type IndexingBenchmarkApiRecord = {
     corpus?: unknown;
     metrics?: unknown;
     cases?: unknown;
+    current_snapshot?: unknown;
+    latest_comparison?: unknown;
+    comparison_history?: unknown;
 };
 
 export type IndexingBenchmarkCorpusDocument = {
@@ -119,6 +151,35 @@ export type IndexingBenchmarkCase = {
     passed: boolean;
 };
 
+export type IndexingBenchmarkSnapshot = {
+    id: string;
+    label: string;
+    recorded_on: string;
+    summary: string;
+    dataset_version: string;
+    pipeline_version: string;
+    prompt_profile_version: string;
+    chunk_strategy_version: string;
+    metrics: IndexingBenchmarkMetrics;
+};
+
+export type IndexingBenchmarkMetricDelta = {
+    metric: string;
+    previous_value: number;
+    current_value: number;
+    delta: number;
+};
+
+export type IndexingBenchmarkComparison = {
+    id: string;
+    title: string;
+    recorded_on: string;
+    summary: string;
+    before: IndexingBenchmarkSnapshot;
+    after: IndexingBenchmarkSnapshot;
+    key_metric_deltas: IndexingBenchmarkMetricDelta[];
+};
+
 export type IndexingBenchmarkReport = {
     dataset_version: string;
     corpus_source_path: string;
@@ -131,6 +192,9 @@ export type IndexingBenchmarkReport = {
     corpus: IndexingBenchmarkCorpusDocument[];
     metrics: IndexingBenchmarkMetrics;
     cases: IndexingBenchmarkCase[];
+    current_snapshot?: IndexingBenchmarkSnapshot;
+    latest_comparison?: IndexingBenchmarkComparison;
+    comparison_history: IndexingBenchmarkComparison[];
 };
 
 function normalizeStringList(value: unknown): string[] {
@@ -226,6 +290,72 @@ function normalizeCase(record: unknown): IndexingBenchmarkCase | null {
     };
 }
 
+function normalizeSnapshot(record: unknown): IndexingBenchmarkSnapshot | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const item = record as IndexingBenchmarkSnapshotApiRecord;
+    if (!item.id || !item.label || !item.recorded_on || !item.dataset_version) {
+        return null;
+    }
+
+    return {
+        id: item.id,
+        label: item.label,
+        recorded_on: item.recorded_on,
+        summary: item.summary ?? "",
+        dataset_version: item.dataset_version,
+        pipeline_version: item.pipeline_version ?? "",
+        prompt_profile_version: item.prompt_profile_version ?? "",
+        chunk_strategy_version: item.chunk_strategy_version ?? "",
+        metrics: normalizeMetrics(item.metrics),
+    };
+}
+
+function normalizeMetricDelta(record: unknown): IndexingBenchmarkMetricDelta | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const item = record as IndexingBenchmarkMetricDeltaApiRecord;
+    if (!item.metric) {
+        return null;
+    }
+
+    return {
+        metric: item.metric,
+        previous_value: typeof item.previous_value === "number" ? item.previous_value : 0,
+        current_value: typeof item.current_value === "number" ? item.current_value : 0,
+        delta: typeof item.delta === "number" ? item.delta : 0,
+    };
+}
+
+function normalizeComparison(record: unknown): IndexingBenchmarkComparison | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const item = record as IndexingBenchmarkComparisonApiRecord;
+    const before = normalizeSnapshot(item.before);
+    const after = normalizeSnapshot(item.after);
+    if (!item.id || !item.title || !item.recorded_on || before === null || after === null) {
+        return null;
+    }
+
+    return {
+        id: item.id,
+        title: item.title,
+        recorded_on: item.recorded_on,
+        summary: item.summary ?? "",
+        before,
+        after,
+        key_metric_deltas: Array.isArray(item.key_metric_deltas)
+            ? item.key_metric_deltas.map(normalizeMetricDelta).filter((delta): delta is IndexingBenchmarkMetricDelta => delta !== null)
+            : [],
+    };
+}
+
 function normalizeReport(record: unknown): IndexingBenchmarkReport | null {
     if (!record || typeof record !== "object") {
         return null;
@@ -257,6 +387,13 @@ function normalizeReport(record: unknown): IndexingBenchmarkReport | null {
         metrics: normalizeMetrics(report.metrics),
         cases: Array.isArray(report.cases)
             ? report.cases.map(normalizeCase).filter((item): item is IndexingBenchmarkCase => item !== null)
+            : [],
+        current_snapshot: normalizeSnapshot(report.current_snapshot) ?? undefined,
+        latest_comparison: normalizeComparison(report.latest_comparison) ?? undefined,
+        comparison_history: Array.isArray(report.comparison_history)
+            ? report.comparison_history
+                .map(normalizeComparison)
+                .filter((item): item is IndexingBenchmarkComparison => item !== null)
             : [],
     };
 }
