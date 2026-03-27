@@ -124,6 +124,32 @@ func TestMetaHandlerGetIndexingBenchmark(t *testing.T) {
 					{Metric: "exact_match_accuracy", PreviousValue: 20, CurrentValue: 100, Delta: 80},
 				},
 			},
+			ReferenceComparison: &domain.IndexingBenchmarkReferenceComparison{
+				SourcePath:     "pageindex/results",
+				LastReviewedOn: "2026-03-27",
+				Summary:        "Reference comparison summary.",
+				Artifacts: []domain.IndexingBenchmarkReferenceArtifact{
+					{
+						ID:           "earthmover",
+						Label:        "Research paper reference",
+						SourcePath:   "pageindex/results/earthmover_structure.json",
+						DocumentName: "earthmover.pdf",
+						TotalNodes:   21,
+						MaxDepth:     3,
+					},
+				},
+				Checklist: []domain.IndexingBenchmarkReferenceChecklistItem{
+					{
+						ID:             "depth",
+						Dimension:      "depth",
+						Label:          "Useful structural depth",
+						Status:         "watch",
+						CurrentValue:   "max_depth=2",
+						ReferenceValue: "max_depth=3",
+						Summary:        "Still shallower than the reference.",
+					},
+				},
+			},
 			Cases: []domain.IndexingBenchmarkCaseResult{
 				{
 					ID:                "service-payment-deadline",
@@ -176,5 +202,10 @@ func TestMetaHandlerGetIndexingBenchmark(t *testing.T) {
 	latestComparison, ok := data["latest_comparison"].(map[string]any)
 	if !ok || latestComparison["title"] != "Baseline -> Current" {
 		t.Fatalf("expected latest comparison payload, got %#v", data["latest_comparison"])
+	}
+
+	referenceComparison, ok := data["reference_comparison"].(map[string]any)
+	if !ok || referenceComparison["source_path"] != "pageindex/results" {
+		t.Fatalf("expected reference comparison payload, got %#v", data["reference_comparison"])
 	}
 }

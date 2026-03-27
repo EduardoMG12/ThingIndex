@@ -63,6 +63,38 @@ type IndexingBenchmarkComparisonResponse struct {
 	KeyMetricDeltas []IndexingBenchmarkMetricDeltaResponse `json:"key_metric_deltas"`
 }
 
+type IndexingBenchmarkReferenceArtifactResponse struct {
+	ID                   string   `json:"id"`
+	Label                string   `json:"label"`
+	SourcePath           string   `json:"source_path"`
+	DocumentName         string   `json:"document_name"`
+	TotalNodes           int      `json:"total_nodes"`
+	MaxDepth             int      `json:"max_depth"`
+	SummaryCoverageRatio float64  `json:"summary_coverage_ratio"`
+	InvalidRangeCount    int      `json:"invalid_range_count"`
+	AverageTitleLength   float64  `json:"average_title_length"`
+	AverageSummaryLength float64  `json:"average_summary_length"`
+	Notes                []string `json:"notes,omitempty"`
+}
+
+type IndexingBenchmarkReferenceChecklistItemResponse struct {
+	ID             string `json:"id"`
+	Dimension      string `json:"dimension"`
+	Label          string `json:"label"`
+	Status         string `json:"status"`
+	CurrentValue   string `json:"current_value"`
+	ReferenceValue string `json:"reference_value"`
+	Summary        string `json:"summary"`
+}
+
+type IndexingBenchmarkReferenceComparisonResponse struct {
+	SourcePath     string                                            `json:"source_path"`
+	LastReviewedOn string                                            `json:"last_reviewed_on"`
+	Summary        string                                            `json:"summary"`
+	Artifacts      []IndexingBenchmarkReferenceArtifactResponse      `json:"artifacts"`
+	Checklist      []IndexingBenchmarkReferenceChecklistItemResponse `json:"checklist"`
+}
+
 type IndexingBenchmarkCaseResultResponse struct {
 	ID                    string `json:"id"`
 	Scope                 string `json:"scope"`
@@ -84,20 +116,21 @@ type IndexingBenchmarkCaseResultResponse struct {
 }
 
 type IndexingBenchmarkReportResponse struct {
-	DatasetVersion       string                                    `json:"dataset_version"`
-	CorpusSourcePath     string                                    `json:"corpus_source_path"`
-	LastReviewedOn       string                                    `json:"last_reviewed_on"`
-	Summary              string                                    `json:"summary"`
-	Methodology          []string                                  `json:"methodology"`
-	PassCriteria         []string                                  `json:"pass_criteria"`
-	Limitations          []string                                  `json:"limitations"`
-	HeuristicQualityNote string                                    `json:"heuristic_quality_note"`
-	Corpus               []IndexingBenchmarkCorpusDocumentResponse `json:"corpus"`
-	Metrics              IndexingBenchmarkMetricsResponse          `json:"metrics"`
-	Cases                []IndexingBenchmarkCaseResultResponse     `json:"cases"`
-	CurrentSnapshot      *IndexingBenchmarkSnapshotResponse        `json:"current_snapshot,omitempty"`
-	LatestComparison     *IndexingBenchmarkComparisonResponse      `json:"latest_comparison,omitempty"`
-	ComparisonHistory    []IndexingBenchmarkComparisonResponse     `json:"comparison_history,omitempty"`
+	DatasetVersion       string                                        `json:"dataset_version"`
+	CorpusSourcePath     string                                        `json:"corpus_source_path"`
+	LastReviewedOn       string                                        `json:"last_reviewed_on"`
+	Summary              string                                        `json:"summary"`
+	Methodology          []string                                      `json:"methodology"`
+	PassCriteria         []string                                      `json:"pass_criteria"`
+	Limitations          []string                                      `json:"limitations"`
+	HeuristicQualityNote string                                        `json:"heuristic_quality_note"`
+	Corpus               []IndexingBenchmarkCorpusDocumentResponse     `json:"corpus"`
+	Metrics              IndexingBenchmarkMetricsResponse              `json:"metrics"`
+	Cases                []IndexingBenchmarkCaseResultResponse         `json:"cases"`
+	CurrentSnapshot      *IndexingBenchmarkSnapshotResponse            `json:"current_snapshot,omitempty"`
+	LatestComparison     *IndexingBenchmarkComparisonResponse          `json:"latest_comparison,omitempty"`
+	ComparisonHistory    []IndexingBenchmarkComparisonResponse         `json:"comparison_history,omitempty"`
+	ReferenceComparison  *IndexingBenchmarkReferenceComparisonResponse `json:"reference_comparison,omitempty"`
 }
 
 func ToIndexingBenchmarkReportResponse(report *domain.IndexingBenchmarkReport) *IndexingBenchmarkReportResponse {
@@ -177,10 +210,11 @@ func ToIndexingBenchmarkReportResponse(report *domain.IndexingBenchmarkReport) *
 			MinimumHeuristicScore:          report.Metrics.MinimumHeuristicScore,
 			MaximumHeuristicScore:          report.Metrics.MaximumHeuristicScore,
 		},
-		Cases:             cases,
-		CurrentSnapshot:   toIndexingBenchmarkSnapshotResponse(report.CurrentSnapshot),
-		LatestComparison:  toIndexingBenchmarkComparisonResponsePtr(report.LatestComparison),
-		ComparisonHistory: comparisonHistory,
+		Cases:               cases,
+		CurrentSnapshot:     toIndexingBenchmarkSnapshotResponse(report.CurrentSnapshot),
+		LatestComparison:    toIndexingBenchmarkComparisonResponsePtr(report.LatestComparison),
+		ComparisonHistory:   comparisonHistory,
+		ReferenceComparison: toIndexingBenchmarkReferenceComparisonResponse(report.ReferenceComparison),
 	}
 }
 
@@ -258,4 +292,50 @@ func toIndexingBenchmarkComparisonResponsePtr(item *domain.IndexingBenchmarkComp
 
 	response := toIndexingBenchmarkComparisonResponse(*item)
 	return &response
+}
+
+func toIndexingBenchmarkReferenceComparisonResponse(
+	item *domain.IndexingBenchmarkReferenceComparison,
+) *IndexingBenchmarkReferenceComparisonResponse {
+	if item == nil {
+		return nil
+	}
+
+	artifacts := make([]IndexingBenchmarkReferenceArtifactResponse, 0, len(item.Artifacts))
+	for _, artifact := range item.Artifacts {
+		artifacts = append(artifacts, IndexingBenchmarkReferenceArtifactResponse{
+			ID:                   artifact.ID,
+			Label:                artifact.Label,
+			SourcePath:           artifact.SourcePath,
+			DocumentName:         artifact.DocumentName,
+			TotalNodes:           artifact.TotalNodes,
+			MaxDepth:             artifact.MaxDepth,
+			SummaryCoverageRatio: artifact.SummaryCoverageRatio,
+			InvalidRangeCount:    artifact.InvalidRangeCount,
+			AverageTitleLength:   artifact.AverageTitleLength,
+			AverageSummaryLength: artifact.AverageSummaryLength,
+			Notes:                append([]string(nil), artifact.Notes...),
+		})
+	}
+
+	checklist := make([]IndexingBenchmarkReferenceChecklistItemResponse, 0, len(item.Checklist))
+	for _, checklistItem := range item.Checklist {
+		checklist = append(checklist, IndexingBenchmarkReferenceChecklistItemResponse{
+			ID:             checklistItem.ID,
+			Dimension:      checklistItem.Dimension,
+			Label:          checklistItem.Label,
+			Status:         checklistItem.Status,
+			CurrentValue:   checklistItem.CurrentValue,
+			ReferenceValue: checklistItem.ReferenceValue,
+			Summary:        checklistItem.Summary,
+		})
+	}
+
+	return &IndexingBenchmarkReferenceComparisonResponse{
+		SourcePath:     item.SourcePath,
+		LastReviewedOn: item.LastReviewedOn,
+		Summary:        item.Summary,
+		Artifacts:      artifacts,
+		Checklist:      checklist,
+	}
 }
