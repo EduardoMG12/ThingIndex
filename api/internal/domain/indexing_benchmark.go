@@ -95,6 +95,32 @@ type IndexingBenchmarkReferenceComparison struct {
 	Checklist      []IndexingBenchmarkReferenceChecklistItem `json:"checklist"`
 }
 
+type IndexingBenchmarkRetrievalVariantMetrics struct {
+	DocumentQueries                int     `json:"document_queries"`
+	CollectionQueries              int     `json:"collection_queries"`
+	TreeNodeTop1Accuracy           float64 `json:"tree_node_top1_accuracy"`
+	TreePageTop1Accuracy           float64 `json:"tree_page_top1_accuracy"`
+	CollectionDocumentTop1Accuracy float64 `json:"collection_document_top1_accuracy"`
+	ExactMatchAccuracy             float64 `json:"exact_match_accuracy"`
+}
+
+type IndexingBenchmarkRetrievalVariant struct {
+	ID              string                                   `json:"id"`
+	Label           string                                   `json:"label"`
+	Category        string                                   `json:"category"`
+	Status          string                                   `json:"status"`
+	Summary         string                                   `json:"summary"`
+	Metrics         IndexingBenchmarkRetrievalVariantMetrics `json:"metrics"`
+	KeyMetricDeltas []IndexingBenchmarkMetricDelta           `json:"key_metric_deltas"`
+}
+
+type IndexingBenchmarkRetrievalComparison struct {
+	Summary    string                              `json:"summary"`
+	BaselineID string                              `json:"baseline_id"`
+	Notes      []string                            `json:"notes"`
+	Variants   []IndexingBenchmarkRetrievalVariant `json:"variants"`
+}
+
 type IndexingBenchmarkStructuralSignal struct {
 	ID        string  `json:"id"`
 	Direction string  `json:"direction"`
@@ -141,6 +167,7 @@ type IndexingBenchmarkReport struct {
 	LatestComparison     *IndexingBenchmarkComparison          `json:"latest_comparison,omitempty"`
 	ComparisonHistory    []IndexingBenchmarkComparison         `json:"comparison_history,omitempty"`
 	ReferenceComparison  *IndexingBenchmarkReferenceComparison `json:"reference_comparison,omitempty"`
+	RetrievalComparison  *IndexingBenchmarkRetrievalComparison `json:"retrieval_comparison,omitempty"`
 }
 
 type IndexingBenchmarkProvider interface {

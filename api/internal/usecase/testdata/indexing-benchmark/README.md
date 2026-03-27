@@ -8,6 +8,7 @@ It exists to keep the baseline explicit and reproducible:
 - fixtures may live inline in `corpus.json` or as embedded files referenced by `content_file`;
 - `history.json` records versioned benchmark snapshots so pipeline changes can be compared before/after with the same key metrics;
 - `reference-workspace.json` keeps a normalized snapshot of `pageindex/results` so the public benchmark can compare ThingIndex against the workspace reference bar;
+- the public report also compares the current relational retrieval path against explicit flat and hybrid experimental controls over the same corpus;
 - the benchmark runs the real deterministic indexer over those fixtures;
 - document-tree cases validate exact top-1 node/page matches;
 - collection cases validate exact top-1 document matches;

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"path"
+	"sort"
 	"strings"
 	"sync"
 
@@ -112,12 +113,34 @@ type indexingBenchmarkStructureStats struct {
 }
 
 type indexingBenchmarkDocumentStructuralProfile struct {
-	AvailableTitles            map[string]struct{}
-	ExpectedTitleCount         int
-	MatchedExpectedTitleCount  int
-	ActualTitleCount           int
-	UnexpectedTitleCount       int
-	HasUsefulDepth             bool
+	AvailableTitles           map[string]struct{}
+	ExpectedTitleCount        int
+	MatchedExpectedTitleCount int
+	ActualTitleCount          int
+	UnexpectedTitleCount      int
+	HasUsefulDepth            bool
+}
+
+type benchmarkDocumentRuntime struct {
+	document models.Document
+	fixture  indexingBenchmarkDocumentFixture
+	result   domain.IndexingResult
+}
+
+type indexingBenchmarkRetrievalVariantDefinition struct {
+	ID              string
+	Label           string
+	Category        string
+	Summary         string
+	TreeBuild       func(query string, result domain.IndexingResult) *domain.TreeRetrievalResult
+	CollectionBuild func(
+		query string,
+		documents []models.Document,
+		pages []models.DocumentPage,
+		nodes []models.DocumentOutlineNode,
+		chunks []models.DocumentChunk,
+		tables []models.TableSection,
+	) *domain.CollectionRetrievalResult
 }
 
 type indexingBenchmarkProvider struct {
@@ -232,6 +255,7 @@ func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Conte
 			"Run document-tree retrieval cases and validate exact top-1 node and page matches.",
 			"Run collection retrieval cases and validate exact top-1 document matches.",
 			"Keep the monitoring heuristic visible as an operational signal, but separate it from benchmark accuracy.",
+			"Compare the current relational baseline against flat and hybrid experimental retrieval controls over the same corpus.",
 			"Compare the current structural profile against the normalized pageindex workspace references on depth, coherence, coverage, and legibility.",
 		},
 		PassCriteria: []string{
@@ -242,17 +266,11 @@ func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Conte
 		Limitations: []string{
 			"This corpus is intentionally small and controlled; it validates the baseline, not arbitrary production corpora.",
 			"The benchmark measures structural indexing and lexical retrieval on the current runtime, not grounded chat answer faithfulness.",
-			"Comparative evaluation against vector retrieval and GraphRAG remains a separate research track.",
+			"The public comparison currently covers flat and hybrid experimental controls; native vector retrieval and GraphRAG remain separate research tracks.",
 			"The workspace reference comparison uses normalized structure exports from pageindex/results as a quality bar, not as perfect ground truth.",
 		},
 		HeuristicQualityNote: "The quality score exposed in document monitoring remains a structural heuristic for operators. " +
 			"It is not ground truth and should be interpreted together with this benchmark instead of replacing it.",
-	}
-
-	type benchmarkDocumentRuntime struct {
-		document models.Document
-		fixture  indexingBenchmarkDocumentFixture
-		result   domain.IndexingResult
 	}
 
 	documentRuntimes := make([]benchmarkDocumentRuntime, 0, len(corpus.Documents))
@@ -547,6 +565,17 @@ func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Conte
 		return nil, err
 	}
 	report.ReferenceComparison = buildIndexingBenchmarkReferenceComparison(referenceFixture, currentStructureStats, report.Metrics)
+	report.RetrievalComparison = buildIndexingBenchmarkRetrievalComparison(
+		corpus,
+		documentRuntimes,
+		documentTitleByID,
+		allDocuments,
+		allPages,
+		allNodes,
+		allChunks,
+		allTables,
+		report.Metrics,
+	)
 
 	return report, nil
 }
@@ -683,6 +712,630 @@ func buildIndexingBenchmarkStructuralSignals(
 			Total:     totalIndexedHeadings,
 		},
 	}
+}
+
+func buildIndexingBenchmarkRetrievalComparison(
+	corpus indexingBenchmarkCorpusFixture,
+	documentRuntimes []benchmarkDocumentRuntime,
+	documentTitleByID map[string]string,
+	allDocuments []models.Document,
+	allPages []models.DocumentPage,
+	allNodes []models.DocumentOutlineNode,
+	allChunks []models.DocumentChunk,
+	allTables []models.TableSection,
+	baselineMetrics domain.IndexingBenchmarkMetrics,
+) *domain.IndexingBenchmarkRetrievalComparison {
+	if len(documentRuntimes) == 0 {
+		return nil
+	}
+
+	baselineVariantMetrics := buildIndexingBenchmarkRetrievalVariantMetrics(baselineMetrics)
+	baselineVariant := domain.IndexingBenchmarkRetrievalVariant{
+		ID:       "relational-tree-baseline",
+		Label:    "Current relational baseline",
+		Category: "baseline",
+		Status:   "pass",
+		Summary:  "Current production path combining outline-aware retrieval, page grounding, and explicit relational provenance.",
+		Metrics:  baselineVariantMetrics,
+		KeyMetricDeltas: buildIndexingBenchmarkRetrievalMetricDeltas(
+			baselineVariantMetrics,
+			baselineVariantMetrics,
+		),
+	}
+
+	definitions := []indexingBenchmarkRetrievalVariantDefinition{
+		{
+			ID:       "flat-hybrid-control",
+			Label:    "Flat hybrid control",
+			Category: "hybrid_control",
+			Summary:  "Experimental control that ranks nodes and pages independently without iterative tree traversal or path reinforcement.",
+			TreeBuild: func(query string, result domain.IndexingResult) *domain.TreeRetrievalResult {
+				return buildFlatHybridControlTreeRetrieval(query, result.OutlineNodes, result.DocumentPages)
+			},
+			CollectionBuild: func(
+				query string,
+				documents []models.Document,
+				pages []models.DocumentPage,
+				nodes []models.DocumentOutlineNode,
+				_ []models.DocumentChunk,
+				tables []models.TableSection,
+			) *domain.CollectionRetrievalResult {
+				return buildFlatHybridControlCollectionRetrieval(query, documents, pages, nodes, tables)
+			},
+		},
+		{
+			ID:       "flat-page-control",
+			Label:    "Flat page control",
+			Category: "flat_control",
+			Summary:  "Experimental control that flattens retrieval to page text and maps page hits back to overlapping nodes only.",
+			TreeBuild: func(query string, result domain.IndexingResult) *domain.TreeRetrievalResult {
+				return buildFlatPageControlTreeRetrieval(query, result.OutlineNodes, result.DocumentPages)
+			},
+			CollectionBuild: func(
+				query string,
+				documents []models.Document,
+				pages []models.DocumentPage,
+				_ []models.DocumentOutlineNode,
+				_ []models.DocumentChunk,
+				_ []models.TableSection,
+			) *domain.CollectionRetrievalResult {
+				return buildFlatPageControlCollectionRetrieval(query, documents, pages)
+			},
+		},
+	}
+
+	variants := make([]domain.IndexingBenchmarkRetrievalVariant, 0, len(definitions)+1)
+	variants = append(variants, baselineVariant)
+	for _, definition := range definitions {
+		variants = append(variants, buildIndexingBenchmarkRetrievalVariant(
+			definition,
+			corpus,
+			documentRuntimes,
+			documentTitleByID,
+			allDocuments,
+			allPages,
+			allNodes,
+			allChunks,
+			allTables,
+			baselineVariantMetrics,
+		))
+	}
+
+	return &domain.IndexingBenchmarkRetrievalComparison{
+		Summary:    summarizeIndexingBenchmarkRetrievalComparison(variants),
+		BaselineID: baselineVariant.ID,
+		Notes: []string{
+			"This repository does not ship a native vector index in the current runtime.",
+			"The variants below are explicit experimental controls over the same benchmark corpus, not hidden production paths.",
+			"A future vector or GraphRAG baseline should be added here as a separate experimental variant instead of replacing the relational path.",
+		},
+		Variants: variants,
+	}
+}
+
+func buildIndexingBenchmarkRetrievalVariant(
+	definition indexingBenchmarkRetrievalVariantDefinition,
+	corpus indexingBenchmarkCorpusFixture,
+	documentRuntimes []benchmarkDocumentRuntime,
+	documentTitleByID map[string]string,
+	allDocuments []models.Document,
+	allPages []models.DocumentPage,
+	allNodes []models.DocumentOutlineNode,
+	allChunks []models.DocumentChunk,
+	allTables []models.TableSection,
+	baselineMetrics domain.IndexingBenchmarkRetrievalVariantMetrics,
+) domain.IndexingBenchmarkRetrievalVariant {
+	totalDocumentQueries := 0
+	totalCollectionQueries := len(corpus.CollectionQueries)
+	totalExactCases := 0
+	totalExactPasses := 0
+	nodeTop1Passes := 0
+	pageTop1Passes := 0
+	collectionTop1Passes := 0
+
+	for _, runtime := range documentRuntimes {
+		for _, query := range runtime.fixture.DocumentQueries {
+			totalDocumentQueries++
+			totalExactCases++
+
+			tree := definition.TreeBuild(query.Query, runtime.result)
+			nodeMatched := false
+			pageMatched := false
+			if tree != nil && len(tree.NodeHits) > 0 {
+				nodeMatched = tree.NodeHits[0].Title == query.ExpectedTopNodeTitle
+			}
+			if tree != nil && len(tree.PageHits) > 0 {
+				pageMatched = tree.PageHits[0].PageNumber == query.ExpectedTopPage
+			}
+
+			if nodeMatched {
+				nodeTop1Passes++
+			}
+			if pageMatched {
+				pageTop1Passes++
+			}
+			if nodeMatched && pageMatched {
+				totalExactPasses++
+			}
+		}
+	}
+
+	for _, query := range corpus.CollectionQueries {
+		totalExactCases++
+		result := definition.CollectionBuild(query.Query, allDocuments, allPages, allNodes, allChunks, allTables)
+
+		expectedDocumentTitle := documentTitleByID[query.ExpectedTopDocumentID]
+		documentMatched := false
+		if result != nil && len(result.DocumentHits) > 0 {
+			documentMatched = result.DocumentHits[0].Title == expectedDocumentTitle
+		}
+		if documentMatched {
+			collectionTop1Passes++
+			totalExactPasses++
+		}
+	}
+
+	metrics := domain.IndexingBenchmarkRetrievalVariantMetrics{
+		DocumentQueries:                totalDocumentQueries,
+		CollectionQueries:              totalCollectionQueries,
+		TreeNodeTop1Accuracy:           percentage(nodeTop1Passes, totalDocumentQueries),
+		TreePageTop1Accuracy:           percentage(pageTop1Passes, totalDocumentQueries),
+		CollectionDocumentTop1Accuracy: percentage(collectionTop1Passes, totalCollectionQueries),
+		ExactMatchAccuracy:             percentage(totalExactPasses, totalExactCases),
+	}
+
+	return domain.IndexingBenchmarkRetrievalVariant{
+		ID:              definition.ID,
+		Label:           definition.Label,
+		Category:        definition.Category,
+		Status:          benchmarkRetrievalVariantStatus(metrics, baselineMetrics),
+		Summary:         definition.Summary,
+		Metrics:         metrics,
+		KeyMetricDeltas: buildIndexingBenchmarkRetrievalMetricDeltas(baselineMetrics, metrics),
+	}
+}
+
+func buildIndexingBenchmarkRetrievalVariantMetrics(
+	metrics domain.IndexingBenchmarkMetrics,
+) domain.IndexingBenchmarkRetrievalVariantMetrics {
+	return domain.IndexingBenchmarkRetrievalVariantMetrics{
+		DocumentQueries:                metrics.DocumentQueries,
+		CollectionQueries:              metrics.CollectionQueries,
+		TreeNodeTop1Accuracy:           metrics.TreeNodeTop1Accuracy,
+		TreePageTop1Accuracy:           metrics.TreePageTop1Accuracy,
+		CollectionDocumentTop1Accuracy: metrics.CollectionDocumentTop1Accuracy,
+		ExactMatchAccuracy:             metrics.ExactMatchAccuracy,
+	}
+}
+
+func buildIndexingBenchmarkRetrievalMetricDeltas(
+	before domain.IndexingBenchmarkRetrievalVariantMetrics,
+	after domain.IndexingBenchmarkRetrievalVariantMetrics,
+) []domain.IndexingBenchmarkMetricDelta {
+	return []domain.IndexingBenchmarkMetricDelta{
+		{
+			Metric:        "tree_node_top1_accuracy",
+			PreviousValue: before.TreeNodeTop1Accuracy,
+			CurrentValue:  after.TreeNodeTop1Accuracy,
+			Delta:         after.TreeNodeTop1Accuracy - before.TreeNodeTop1Accuracy,
+		},
+		{
+			Metric:        "tree_page_top1_accuracy",
+			PreviousValue: before.TreePageTop1Accuracy,
+			CurrentValue:  after.TreePageTop1Accuracy,
+			Delta:         after.TreePageTop1Accuracy - before.TreePageTop1Accuracy,
+		},
+		{
+			Metric:        "collection_document_top1_accuracy",
+			PreviousValue: before.CollectionDocumentTop1Accuracy,
+			CurrentValue:  after.CollectionDocumentTop1Accuracy,
+			Delta:         after.CollectionDocumentTop1Accuracy - before.CollectionDocumentTop1Accuracy,
+		},
+		{
+			Metric:        "exact_match_accuracy",
+			PreviousValue: before.ExactMatchAccuracy,
+			CurrentValue:  after.ExactMatchAccuracy,
+			Delta:         after.ExactMatchAccuracy - before.ExactMatchAccuracy,
+		},
+	}
+}
+
+func summarizeIndexingBenchmarkRetrievalComparison(
+	variants []domain.IndexingBenchmarkRetrievalVariant,
+) string {
+	if len(variants) == 0 {
+		return ""
+	}
+	if len(variants) == 1 {
+		return "The relational baseline is the current production retrieval path and the public benchmark keeps it explicit."
+	}
+
+	baseline := variants[0]
+	bestAlternative := variants[1]
+	for _, item := range variants[2:] {
+		if compareIndexingBenchmarkRetrievalVariantMetrics(item.Metrics, bestAlternative.Metrics) > 0 {
+			bestAlternative = item
+		}
+	}
+
+	switch {
+	case bestAlternative.Metrics.ExactMatchAccuracy > baseline.Metrics.ExactMatchAccuracy+0.0001:
+		return fmt.Sprintf(
+			"%s currently exceeds the relational baseline on this small corpus, but it remains an explicit experimental control until provenance and operational tradeoffs are measured separately.",
+			bestAlternative.Label,
+		)
+	case nearlyEqualFloat(bestAlternative.Metrics.ExactMatchAccuracy, baseline.Metrics.ExactMatchAccuracy) &&
+		nearlyEqualFloat(bestAlternative.Metrics.TreeNodeTop1Accuracy, baseline.Metrics.TreeNodeTop1Accuracy):
+		return fmt.Sprintf(
+			"%s matches the relational baseline on this small corpus, but the production path still keeps explicit tree traversal and provenance as the default.",
+			bestAlternative.Label,
+		)
+	default:
+		return fmt.Sprintf(
+			"The relational baseline remains ahead of the strongest experimental control (%s), especially on exact node and page grounding.",
+			bestAlternative.Label,
+		)
+	}
+}
+
+func compareIndexingBenchmarkRetrievalVariantMetrics(
+	left domain.IndexingBenchmarkRetrievalVariantMetrics,
+	right domain.IndexingBenchmarkRetrievalVariantMetrics,
+) int {
+	switch {
+	case !nearlyEqualFloat(left.ExactMatchAccuracy, right.ExactMatchAccuracy):
+		if left.ExactMatchAccuracy > right.ExactMatchAccuracy {
+			return 1
+		}
+		return -1
+	case !nearlyEqualFloat(left.TreeNodeTop1Accuracy, right.TreeNodeTop1Accuracy):
+		if left.TreeNodeTop1Accuracy > right.TreeNodeTop1Accuracy {
+			return 1
+		}
+		return -1
+	case !nearlyEqualFloat(left.CollectionDocumentTop1Accuracy, right.CollectionDocumentTop1Accuracy):
+		if left.CollectionDocumentTop1Accuracy > right.CollectionDocumentTop1Accuracy {
+			return 1
+		}
+		return -1
+	case !nearlyEqualFloat(left.TreePageTop1Accuracy, right.TreePageTop1Accuracy):
+		if left.TreePageTop1Accuracy > right.TreePageTop1Accuracy {
+			return 1
+		}
+		return -1
+	default:
+		return 0
+	}
+}
+
+func benchmarkRetrievalVariantStatus(
+	metrics domain.IndexingBenchmarkRetrievalVariantMetrics,
+	baseline domain.IndexingBenchmarkRetrievalVariantMetrics,
+) string {
+	if nearlyEqualFloat(metrics.ExactMatchAccuracy, baseline.ExactMatchAccuracy) &&
+		nearlyEqualFloat(metrics.TreeNodeTop1Accuracy, baseline.TreeNodeTop1Accuracy) &&
+		nearlyEqualFloat(metrics.TreePageTop1Accuracy, baseline.TreePageTop1Accuracy) &&
+		nearlyEqualFloat(metrics.CollectionDocumentTop1Accuracy, baseline.CollectionDocumentTop1Accuracy) {
+		return "watch"
+	}
+	if metrics.ExactMatchAccuracy >= baseline.ExactMatchAccuracy-10 &&
+		metrics.TreeNodeTop1Accuracy >= baseline.TreeNodeTop1Accuracy-15 {
+		return "watch"
+	}
+	return "fail"
+}
+
+func buildFlatHybridControlTreeRetrieval(
+	query string,
+	nodes []models.DocumentOutlineNode,
+	pages []models.DocumentPage,
+) *domain.TreeRetrievalResult {
+	queryTerms := tokenizeRetrievalText(query)
+	if len(queryTerms) == 0 {
+		return nil
+	}
+
+	nodeHits := rankNodesForTraversal(nodes, queryTerms, nil)
+	if len(nodeHits) > 5 {
+		nodeHits = nodeHits[:5]
+	}
+
+	pageHits := make([]domain.TreePageHit, 0, len(pages))
+	for _, page := range pages {
+		score := scoreTreePage(page, queryTerms)
+		if score == 0 {
+			continue
+		}
+		pageHits = append(pageHits, domain.TreePageHit{
+			PageNumber: page.PageNumber,
+			Summary:    page.Summary,
+			Snippet:    clampRetrievalSnippet(page.Content, 220),
+			Score:      score,
+		})
+	}
+	sort.Slice(pageHits, func(i, j int) bool {
+		if pageHits[i].Score == pageHits[j].Score {
+			return pageHits[i].PageNumber < pageHits[j].PageNumber
+		}
+		return pageHits[i].Score > pageHits[j].Score
+	})
+	if len(pageHits) > 5 {
+		pageHits = pageHits[:5]
+	}
+
+	return &domain.TreeRetrievalResult{
+		Query:    query,
+		NodeHits: nodeHits,
+		PageHits: pageHits,
+		UsedTree: false,
+		Strategy: "flat-hybrid-control",
+	}
+}
+
+func buildFlatPageControlTreeRetrieval(
+	query string,
+	nodes []models.DocumentOutlineNode,
+	pages []models.DocumentPage,
+) *domain.TreeRetrievalResult {
+	queryTerms := tokenizeRetrievalText(query)
+	if len(queryTerms) == 0 {
+		return nil
+	}
+
+	pageHits := make([]domain.TreePageHit, 0, len(pages))
+	pageScores := make(map[int]int, len(pages))
+	for _, page := range pages {
+		score := scoreTreePage(page, queryTerms)
+		if score == 0 {
+			continue
+		}
+		pageScores[page.PageNumber] = score
+		pageHits = append(pageHits, domain.TreePageHit{
+			PageNumber: page.PageNumber,
+			Summary:    page.Summary,
+			Snippet:    clampRetrievalSnippet(page.Content, 220),
+			Score:      score,
+		})
+	}
+	sort.Slice(pageHits, func(i, j int) bool {
+		if pageHits[i].Score == pageHits[j].Score {
+			return pageHits[i].PageNumber < pageHits[j].PageNumber
+		}
+		return pageHits[i].Score > pageHits[j].Score
+	})
+	if len(pageHits) > 5 {
+		pageHits = pageHits[:5]
+	}
+
+	nodeHits := make([]domain.TreeNodeHit, 0, len(nodes))
+	for _, node := range nodes {
+		startPage, endPage, ok := indexingBenchmarkNodePageRange(node)
+		if !ok {
+			continue
+		}
+		score := 0
+		for pageNumber := startPage; pageNumber <= endPage; pageNumber++ {
+			score += pageScores[pageNumber]
+		}
+		if score == 0 {
+			continue
+		}
+		nodeHits = append(nodeHits, domain.TreeNodeHit{
+			NodeID:        node.NodeID,
+			Title:         node.Title,
+			Summary:       node.Summary,
+			Level:         node.Level,
+			StartPage:     node.StartPage,
+			EndPage:       node.EndPage,
+			Score:         score,
+			SequenceOrder: node.SequenceOrder,
+		})
+	}
+	sort.Slice(nodeHits, func(i, j int) bool {
+		if nodeHits[i].Score == nodeHits[j].Score {
+			return nodeHits[i].SequenceOrder < nodeHits[j].SequenceOrder
+		}
+		return nodeHits[i].Score > nodeHits[j].Score
+	})
+	if len(nodeHits) > 5 {
+		nodeHits = nodeHits[:5]
+	}
+
+	return &domain.TreeRetrievalResult{
+		Query:    query,
+		NodeHits: nodeHits,
+		PageHits: pageHits,
+		UsedTree: false,
+		Strategy: "flat-page-control",
+	}
+}
+
+func buildFlatHybridControlCollectionRetrieval(
+	query string,
+	documents []models.Document,
+	pages []models.DocumentPage,
+	nodes []models.DocumentOutlineNode,
+	tables []models.TableSection,
+) *domain.CollectionRetrievalResult {
+	queryTerms := tokenizeRetrievalText(query)
+	if len(queryTerms) == 0 {
+		return nil
+	}
+
+	documentScores := make(map[uint]int, len(documents))
+	documentTitles := make(map[uint]string, len(documents))
+	for _, doc := range documents {
+		documentTitles[doc.ID] = doc.Title
+		if score := retrievalScore(doc.Title, queryTerms); score > 0 {
+			documentScores[doc.ID] += score
+		}
+	}
+
+	nodeHits := make([]domain.CollectionNodeHit, 0, len(nodes))
+	for _, node := range nodes {
+		score := retrievalScore(outlineNodeSearchText(node), queryTerms) * 2
+		if score == 0 {
+			continue
+		}
+		documentScores[node.DocumentID] += score
+		nodeHits = append(nodeHits, domain.CollectionNodeHit{
+			DocumentID: node.DocumentID,
+			NodeID:     node.NodeID,
+			Title:      node.Title,
+			Summary:    node.Summary,
+			Score:      score,
+			StartPage:  node.StartPage,
+			EndPage:    node.EndPage,
+		})
+	}
+	sort.Slice(nodeHits, func(i, j int) bool {
+		if nodeHits[i].Score == nodeHits[j].Score {
+			if nodeHits[i].DocumentID == nodeHits[j].DocumentID {
+				return nodeHits[i].NodeID < nodeHits[j].NodeID
+			}
+			return nodeHits[i].DocumentID < nodeHits[j].DocumentID
+		}
+		return nodeHits[i].Score > nodeHits[j].Score
+	})
+	if len(nodeHits) > 8 {
+		nodeHits = nodeHits[:8]
+	}
+
+	pageHits := make([]domain.CollectionPageHit, 0, len(pages))
+	for _, page := range pages {
+		score := retrievalScore(strings.Join([]string{page.Summary, page.Content}, " "), queryTerms)
+		if score == 0 {
+			continue
+		}
+		documentScores[page.DocumentID] += score
+		pageHits = append(pageHits, domain.CollectionPageHit{
+			DocumentID: page.DocumentID,
+			PageNumber: page.PageNumber,
+			Snippet:    clampRetrievalSnippet(page.Content, 220),
+			Score:      score,
+		})
+	}
+	sort.Slice(pageHits, func(i, j int) bool {
+		if pageHits[i].Score == pageHits[j].Score {
+			if pageHits[i].DocumentID == pageHits[j].DocumentID {
+				return pageHits[i].PageNumber < pageHits[j].PageNumber
+			}
+			return pageHits[i].DocumentID < pageHits[j].DocumentID
+		}
+		return pageHits[i].Score > pageHits[j].Score
+	})
+	if len(pageHits) > 8 {
+		pageHits = pageHits[:8]
+	}
+
+	for _, table := range tables {
+		content := strings.TrimSpace(strings.Join([]string{
+			table.Title,
+			strings.Join(table.Headers, " "),
+			renderTableRowsForRetrieval(table.Rows, 3),
+		}, " "))
+		score := retrievalScore(content, queryTerms) * 3
+		if score == 0 {
+			continue
+		}
+		documentScores[table.DocumentID] += score
+	}
+
+	return &domain.CollectionRetrievalResult{
+		Query:        query,
+		DocumentHits: buildIndexingBenchmarkCollectionDocumentHits(documentScores, documentTitles),
+		NodeHits:     nodeHits,
+		PageHits:     pageHits,
+		Strategy:     "flat-hybrid-control",
+	}
+}
+
+func buildFlatPageControlCollectionRetrieval(
+	query string,
+	documents []models.Document,
+	pages []models.DocumentPage,
+) *domain.CollectionRetrievalResult {
+	queryTerms := tokenizeRetrievalText(query)
+	if len(queryTerms) == 0 {
+		return nil
+	}
+
+	documentScores := make(map[uint]int, len(documents))
+	documentTitles := make(map[uint]string, len(documents))
+	for _, doc := range documents {
+		documentTitles[doc.ID] = doc.Title
+		if score := retrievalScore(doc.Title, queryTerms); score > 0 {
+			documentScores[doc.ID] += score
+		}
+	}
+
+	pageHits := make([]domain.CollectionPageHit, 0, len(pages))
+	for _, page := range pages {
+		score := retrievalScore(strings.Join([]string{page.Summary, page.Content}, " "), queryTerms)
+		if score == 0 {
+			continue
+		}
+		documentScores[page.DocumentID] += score
+		pageHits = append(pageHits, domain.CollectionPageHit{
+			DocumentID: page.DocumentID,
+			PageNumber: page.PageNumber,
+			Snippet:    clampRetrievalSnippet(page.Content, 220),
+			Score:      score,
+		})
+	}
+	sort.Slice(pageHits, func(i, j int) bool {
+		if pageHits[i].Score == pageHits[j].Score {
+			if pageHits[i].DocumentID == pageHits[j].DocumentID {
+				return pageHits[i].PageNumber < pageHits[j].PageNumber
+			}
+			return pageHits[i].DocumentID < pageHits[j].DocumentID
+		}
+		return pageHits[i].Score > pageHits[j].Score
+	})
+	if len(pageHits) > 8 {
+		pageHits = pageHits[:8]
+	}
+
+	return &domain.CollectionRetrievalResult{
+		Query:        query,
+		DocumentHits: buildIndexingBenchmarkCollectionDocumentHits(documentScores, documentTitles),
+		PageHits:     pageHits,
+		Strategy:     "flat-page-control",
+	}
+}
+
+func buildIndexingBenchmarkCollectionDocumentHits(
+	documentScores map[uint]int,
+	documentTitles map[uint]string,
+) []domain.CollectionDocumentHit {
+	documentHits := make([]domain.CollectionDocumentHit, 0, len(documentScores))
+	for documentID, score := range documentScores {
+		documentHits = append(documentHits, domain.CollectionDocumentHit{
+			DocumentID: documentID,
+			Title:      documentTitles[documentID],
+			Score:      score,
+		})
+	}
+	sort.Slice(documentHits, func(i, j int) bool {
+		if documentHits[i].Score == documentHits[j].Score {
+			return documentHits[i].DocumentID < documentHits[j].DocumentID
+		}
+		return documentHits[i].Score > documentHits[j].Score
+	})
+	if len(documentHits) > 5 {
+		documentHits = documentHits[:5]
+	}
+	return documentHits
+}
+
+func indexingBenchmarkNodePageRange(node models.DocumentOutlineNode) (int, int, bool) {
+	if node.StartPage == nil || node.EndPage == nil {
+		return 0, 0, false
+	}
+	if *node.StartPage <= 0 || *node.EndPage < *node.StartPage {
+		return 0, 0, false
+	}
+	return *node.StartPage, *node.EndPage, true
 }
 
 func benchmarkHighSignalStatus(rate float64, passThreshold float64, watchThreshold float64) string {

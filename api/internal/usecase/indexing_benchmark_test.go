@@ -4,6 +4,8 @@ import (
 	"context"
 	"math"
 	"testing"
+
+	"thing-index/internal/domain"
 )
 
 func TestIndexingBenchmarkProviderBuildsPublicReport(t *testing.T) {
@@ -131,5 +133,27 @@ func TestIndexingBenchmarkProviderBuildsPublicReport(t *testing.T) {
 	}
 	if checklistByID["coherence"] != "watch" || checklistByID["coverage"] != "fail" || checklistByID["legibility"] != "pass" {
 		t.Fatalf("unexpected reference checklist statuses: %#v", report.ReferenceComparison.Checklist)
+	}
+	if report.RetrievalComparison == nil {
+		t.Fatalf("expected retrieval comparison payload, got nil")
+	}
+	if report.RetrievalComparison.BaselineID != "relational-tree-baseline" {
+		t.Fatalf("unexpected retrieval comparison baseline: %#v", report.RetrievalComparison)
+	}
+	if len(report.RetrievalComparison.Variants) != 3 {
+		t.Fatalf("expected three retrieval variants, got %#v", report.RetrievalComparison)
+	}
+	variantByID := make(map[string]domain.IndexingBenchmarkRetrievalVariant, len(report.RetrievalComparison.Variants))
+	for _, item := range report.RetrievalComparison.Variants {
+		variantByID[item.ID] = item
+	}
+	if item, ok := variantByID["relational-tree-baseline"]; !ok || item.Status != "pass" || math.Abs(item.Metrics.ExactMatchAccuracy-100) > 0.0001 {
+		t.Fatalf("unexpected relational baseline variant: %#v", report.RetrievalComparison.Variants)
+	}
+	if item, ok := variantByID["flat-hybrid-control"]; !ok || item.Status != "watch" || math.Abs(item.Metrics.ExactMatchAccuracy-90.9090909090909) > 0.0001 {
+		t.Fatalf("unexpected flat hybrid variant: %#v", report.RetrievalComparison.Variants)
+	}
+	if item, ok := variantByID["flat-page-control"]; !ok || item.Status != "fail" || math.Abs(item.Metrics.TreeNodeTop1Accuracy-33.33333333333333) > 0.0001 {
+		t.Fatalf("unexpected flat page variant: %#v", report.RetrievalComparison.Variants)
 	}
 }
