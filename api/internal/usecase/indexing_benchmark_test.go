@@ -97,7 +97,10 @@ func TestIndexingBenchmarkProviderBuildsPublicReport(t *testing.T) {
 	if report.LatestComparison == nil {
 		t.Fatalf("expected latest benchmark comparison, got nil")
 	}
-	if report.LatestComparison.Before.DatasetVersion != "2026-03-relational-baseline-v1" {
+	if report.LatestComparison.Title != "Current runtime vs last recorded snapshot" {
+		t.Fatalf("unexpected latest comparison title: %#v", report.LatestComparison)
+	}
+	if report.LatestComparison.Before.DatasetVersion != "2026-03-relational-baseline-v2" {
 		t.Fatalf("unexpected latest comparison before snapshot: %#v", report.LatestComparison.Before)
 	}
 	if report.LatestComparison.After.DatasetVersion != "2026-03-relational-baseline-v2" {
