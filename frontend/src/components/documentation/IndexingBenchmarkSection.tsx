@@ -11,6 +11,7 @@ import {
     fetchIndexingBenchmark,
     type IndexingBenchmarkCase,
     type IndexingBenchmarkComparison,
+    type IndexingBenchmarkReferenceComparison,
     type IndexingBenchmarkReport,
 } from "@/lib/api/indexing-benchmark";
 import { useI18n } from "@/lib/i18n/provider";
@@ -30,6 +31,16 @@ function formatBenchmarkValue(metric: string, value: number) {
 function formatBenchmarkDelta(value: number) {
     const sign = value > 0 ? "+" : value < 0 ? "-" : "";
     return `${sign}${Math.abs(value).toFixed(1)} pts`;
+}
+
+function benchmarkStatusTone(status: string) {
+    if (status === "pass") {
+        return "border border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+    }
+    if (status === "watch") {
+        return "border border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300";
+    }
+    return "border border-destructive/20 bg-destructive/10 text-destructive";
 }
 
 function formatBenchmarkPipelineSignature(report: IndexingBenchmarkReport) {
@@ -95,15 +106,25 @@ function buildCopy(locale: string) {
                 explicitLimits: "Limites explícitos",
                 currentPipeline: "Assinatura atual da pipeline",
                 latestComparison: "Último antes/depois registrado",
+                referenceComparison: "Comparativo com a referência do workspace",
+                referenceArtifacts: "Artefatos de referência",
+                referenceChecklist: "Checklist objetivo",
+                workspaceSource: "Origem do workspace",
                 before: "Antes",
                 after: "Depois",
                 recorded: "registrado",
                 delta: "Delta",
                 previous: "Anterior",
                 current: "Atual",
+                reference: "Referência",
+                notes: "Notas",
+                maxDepth: "Profundidade máxima",
+                totalNodes: "Nós totais",
+                summaryCoverage: "Cobertura de resumo",
             },
             status: {
                 pass: "aprovado",
+                watch: "atenção",
                 fail: "falhou",
                 yes: "sim",
                 no: "não",
@@ -146,15 +167,25 @@ function buildCopy(locale: string) {
                     explicitLimits: "Límites explícitos",
                     currentPipeline: "Firma actual del pipeline",
                     latestComparison: "Último antes/después registrado",
+                    referenceComparison: "Comparativa con la referencia del workspace",
+                    referenceArtifacts: "Artefactos de referencia",
+                    referenceChecklist: "Checklist objetivo",
+                    workspaceSource: "Origen del workspace",
                     before: "Antes",
                     after: "Después",
                     recorded: "registrado",
                     delta: "Delta",
                     previous: "Anterior",
                     current: "Actual",
+                    reference: "Referencia",
+                    notes: "Notas",
+                    maxDepth: "Profundidad máxima",
+                    totalNodes: "Nodos totales",
+                    summaryCoverage: "Cobertura de resumen",
                 },
                 status: {
                     pass: "pass",
+                    watch: "watch",
                     fail: "fail",
                     yes: "sí",
                     no: "no",
@@ -196,15 +227,25 @@ function buildCopy(locale: string) {
                     explicitLimits: "Explicit limits",
                     currentPipeline: "Current pipeline signature",
                     latestComparison: "Latest recorded before/after",
+                    referenceComparison: "Workspace reference comparison",
+                    referenceArtifacts: "Reference artifacts",
+                    referenceChecklist: "Objective checklist",
+                    workspaceSource: "Workspace source",
                     before: "Before",
                     after: "After",
                     recorded: "recorded",
                     delta: "Delta",
                     previous: "Previous",
                     current: "Current",
+                    reference: "Reference",
+                    notes: "Notes",
+                    maxDepth: "Max depth",
+                    totalNodes: "Total nodes",
+                    summaryCoverage: "Summary coverage",
                 },
                 status: {
                     pass: "pass",
+                    watch: "watch",
                     fail: "fail",
                     yes: "yes",
                     no: "no",
@@ -284,6 +325,74 @@ function renderBenchmarkComparison(item: IndexingBenchmarkComparison, copy: Retu
                         </p>
                     </div>
                 ))}
+            </div>
+        </div>
+    );
+}
+
+function renderReferenceComparison(item: IndexingBenchmarkReferenceComparison, copy: ReturnType<typeof buildCopy>) {
+    return (
+        <div className="rounded-xl border border-border bg-background/50 p-5">
+            <div className="flex flex-wrap items-center gap-3">
+                <h4 className="text-sm font-semibold text-foreground">{copy.sections.referenceComparison}</h4>
+                <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                    {copy.sections.recorded} {item.last_reviewed_on}
+                </span>
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{item.summary}</p>
+            <p className="mt-2 font-mono text-xs text-primary">{copy.sections.workspaceSource}: {item.source_path}</p>
+
+            <div className="mt-4 rounded-xl border border-border/70 bg-background/70 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{copy.sections.referenceChecklist}</p>
+                <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                    {item.checklist.map((checklistItem) => (
+                        <div key={checklistItem.id} className="rounded-xl border border-border/70 bg-background/80 p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <p className="text-sm font-semibold text-foreground">{checklistItem.label}</p>
+                                <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${benchmarkStatusTone(checklistItem.status)}`}>
+                                    {copy.status[checklistItem.status as keyof typeof copy.status] ?? checklistItem.status}
+                                </span>
+                            </div>
+                            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{checklistItem.summary}</p>
+                            <div className="mt-3 grid gap-3 md:grid-cols-2">
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{copy.sections.current}</p>
+                                    <p className="mt-1 text-sm text-foreground">{checklistItem.current_value}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{copy.sections.reference}</p>
+                                    <p className="mt-1 text-sm text-foreground">{checklistItem.reference_value}</p>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-border/70 bg-background/70 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{copy.sections.referenceArtifacts}</p>
+                <div className="mt-3 grid gap-3 lg:grid-cols-3">
+                    {item.artifacts.map((artifact) => (
+                        <div key={artifact.id} className="rounded-xl border border-border/70 bg-background/80 p-4">
+                            <p className="text-sm font-semibold text-foreground">{artifact.label}</p>
+                            <p className="mt-1 font-mono text-xs text-primary">{artifact.source_path}</p>
+                            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{artifact.document_name}</p>
+                            <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                                <p>{copy.sections.totalNodes}: <span className="font-mono text-foreground">{artifact.total_nodes}</span></p>
+                                <p>{copy.sections.maxDepth}: <span className="font-mono text-foreground">{artifact.max_depth}</span></p>
+                                <p>{copy.sections.summaryCoverage}: <span className="font-mono text-foreground">{formatBenchmarkPercentage(artifact.summary_coverage_ratio * 100)}</span></p>
+                            </div>
+                            {artifact.notes.length > 0 ? (
+                                <div className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
+                                    <p className="font-bold uppercase tracking-[0.18em]">{copy.sections.notes}</p>
+                                    {artifact.notes.map((note) => (
+                                        <p key={note}>{note}</p>
+                                    ))}
+                                </div>
+                            ) : null}
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );
@@ -412,6 +521,7 @@ export function IndexingBenchmarkSection() {
                     </div>
 
                     {localizedReport.latest_comparison ? renderBenchmarkComparison(localizedReport.latest_comparison, copy) : null}
+                    {localizedReport.reference_comparison ? renderReferenceComparison(localizedReport.reference_comparison, copy) : null}
 
                     <div className="rounded-xl border border-border bg-background/50 p-5">
                         <h4 className="text-sm font-semibold text-foreground">{copy.sections.assessedCases}</h4>

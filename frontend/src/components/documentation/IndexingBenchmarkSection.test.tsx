@@ -149,6 +149,37 @@ describe("IndexingBenchmarkSection", () => {
                 ],
             },
             comparison_history: [],
+            reference_comparison: {
+                source_path: "pageindex/results",
+                last_reviewed_on: "2026-03-27",
+                summary: "ThingIndex now matches the workspace references on coherence, coverage, and legibility, but still trails them on structural depth.",
+                artifacts: [
+                    {
+                        id: "earthmover",
+                        label: "Research paper reference",
+                        source_path: "pageindex/results/earthmover_structure.json",
+                        document_name: "earthmover.pdf",
+                        total_nodes: 21,
+                        max_depth: 3,
+                        summary_coverage_ratio: 1,
+                        invalid_range_count: 1,
+                        average_title_length: 23.52,
+                        average_summary_length: 1414.67,
+                        notes: ["Carries the deepest hierarchy in the reference set."],
+                    },
+                ],
+                checklist: [
+                    {
+                        id: "depth",
+                        dimension: "depth",
+                        label: "Useful structural depth",
+                        status: "fail",
+                        current_value: "max_depth=1; nested_nodes=0.0%",
+                        reference_value: "max_depth=3; nested_nodes=75.4%",
+                        summary: "The public ThingIndex corpus remains structurally flatter than the workspace references.",
+                    },
+                ],
+            },
             cases: [
                 {
                     id: "service-payment-deadline",
@@ -187,6 +218,10 @@ describe("IndexingBenchmarkSection", () => {
         expect(screen.getAllByText("28.6%")).toHaveLength(2);
         expect(screen.getByText("Assessed cases")).toBeInTheDocument();
         expect(screen.getByText("Latest recorded before/after")).toBeInTheDocument();
+        expect(screen.getByText("Workspace reference comparison")).toBeInTheDocument();
+        expect(screen.getByText("Objective checklist")).toBeInTheDocument();
+        expect(screen.getByText("Useful structural depth")).toBeInTheDocument();
+        expect(screen.getByText("pageindex/results/earthmover_structure.json")).toBeInTheDocument();
         expect(screen.getAllByText(/Current pipeline signature/)).toHaveLength(3);
         expect(screen.getByText("+28.6 pts")).toBeInTheDocument();
         expect(screen.getByText("Heuristic is operational only.")).toBeInTheDocument();

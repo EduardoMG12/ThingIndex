@@ -82,6 +82,38 @@ type IndexingBenchmarkComparisonApiRecord = {
     key_metric_deltas?: unknown;
 };
 
+type IndexingBenchmarkReferenceArtifactApiRecord = {
+    id?: string;
+    label?: string;
+    source_path?: string;
+    document_name?: string;
+    total_nodes?: number;
+    max_depth?: number;
+    summary_coverage_ratio?: number;
+    invalid_range_count?: number;
+    average_title_length?: number;
+    average_summary_length?: number;
+    notes?: unknown;
+};
+
+type IndexingBenchmarkReferenceChecklistItemApiRecord = {
+    id?: string;
+    dimension?: string;
+    label?: string;
+    status?: string;
+    current_value?: string;
+    reference_value?: string;
+    summary?: string;
+};
+
+type IndexingBenchmarkReferenceComparisonApiRecord = {
+    source_path?: string;
+    last_reviewed_on?: string;
+    summary?: string;
+    artifacts?: unknown;
+    checklist?: unknown;
+};
+
 type IndexingBenchmarkApiRecord = {
     dataset_version?: string;
     corpus_source_path?: string;
@@ -97,6 +129,7 @@ type IndexingBenchmarkApiRecord = {
     current_snapshot?: unknown;
     latest_comparison?: unknown;
     comparison_history?: unknown;
+    reference_comparison?: unknown;
 };
 
 export type IndexingBenchmarkCorpusDocument = {
@@ -180,6 +213,38 @@ export type IndexingBenchmarkComparison = {
     key_metric_deltas: IndexingBenchmarkMetricDelta[];
 };
 
+export type IndexingBenchmarkReferenceArtifact = {
+    id: string;
+    label: string;
+    source_path: string;
+    document_name: string;
+    total_nodes: number;
+    max_depth: number;
+    summary_coverage_ratio: number;
+    invalid_range_count: number;
+    average_title_length: number;
+    average_summary_length: number;
+    notes: string[];
+};
+
+export type IndexingBenchmarkReferenceChecklistItem = {
+    id: string;
+    dimension: string;
+    label: string;
+    status: string;
+    current_value: string;
+    reference_value: string;
+    summary: string;
+};
+
+export type IndexingBenchmarkReferenceComparison = {
+    source_path: string;
+    last_reviewed_on: string;
+    summary: string;
+    artifacts: IndexingBenchmarkReferenceArtifact[];
+    checklist: IndexingBenchmarkReferenceChecklistItem[];
+};
+
 export type IndexingBenchmarkReport = {
     dataset_version: string;
     corpus_source_path: string;
@@ -195,6 +260,7 @@ export type IndexingBenchmarkReport = {
     current_snapshot?: IndexingBenchmarkSnapshot;
     latest_comparison?: IndexingBenchmarkComparison;
     comparison_history: IndexingBenchmarkComparison[];
+    reference_comparison?: IndexingBenchmarkReferenceComparison;
 };
 
 function normalizeStringList(value: unknown): string[] {
@@ -356,6 +422,77 @@ function normalizeComparison(record: unknown): IndexingBenchmarkComparison | nul
     };
 }
 
+function normalizeReferenceArtifact(record: unknown): IndexingBenchmarkReferenceArtifact | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const item = record as IndexingBenchmarkReferenceArtifactApiRecord;
+    if (!item.id || !item.label || !item.source_path || !item.document_name) {
+        return null;
+    }
+
+    return {
+        id: item.id,
+        label: item.label,
+        source_path: item.source_path,
+        document_name: item.document_name,
+        total_nodes: typeof item.total_nodes === "number" ? item.total_nodes : 0,
+        max_depth: typeof item.max_depth === "number" ? item.max_depth : 0,
+        summary_coverage_ratio: typeof item.summary_coverage_ratio === "number" ? item.summary_coverage_ratio : 0,
+        invalid_range_count: typeof item.invalid_range_count === "number" ? item.invalid_range_count : 0,
+        average_title_length: typeof item.average_title_length === "number" ? item.average_title_length : 0,
+        average_summary_length: typeof item.average_summary_length === "number" ? item.average_summary_length : 0,
+        notes: normalizeStringList(item.notes),
+    };
+}
+
+function normalizeReferenceChecklistItem(record: unknown): IndexingBenchmarkReferenceChecklistItem | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const item = record as IndexingBenchmarkReferenceChecklistItemApiRecord;
+    if (!item.id || !item.dimension || !item.label || !item.status) {
+        return null;
+    }
+
+    return {
+        id: item.id,
+        dimension: item.dimension,
+        label: item.label,
+        status: item.status,
+        current_value: item.current_value ?? "",
+        reference_value: item.reference_value ?? "",
+        summary: item.summary ?? "",
+    };
+}
+
+function normalizeReferenceComparison(record: unknown): IndexingBenchmarkReferenceComparison | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const item = record as IndexingBenchmarkReferenceComparisonApiRecord;
+    if (!item.source_path || !item.last_reviewed_on || !item.summary) {
+        return null;
+    }
+
+    return {
+        source_path: item.source_path,
+        last_reviewed_on: item.last_reviewed_on,
+        summary: item.summary,
+        artifacts: Array.isArray(item.artifacts)
+            ? item.artifacts.map(normalizeReferenceArtifact).filter((artifact): artifact is IndexingBenchmarkReferenceArtifact => artifact !== null)
+            : [],
+        checklist: Array.isArray(item.checklist)
+            ? item.checklist
+                .map(normalizeReferenceChecklistItem)
+                .filter((checklistItem): checklistItem is IndexingBenchmarkReferenceChecklistItem => checklistItem !== null)
+            : [],
+    };
+}
+
 function normalizeReport(record: unknown): IndexingBenchmarkReport | null {
     if (!record || typeof record !== "object") {
         return null;
@@ -395,6 +532,7 @@ function normalizeReport(record: unknown): IndexingBenchmarkReport | null {
                 .map(normalizeComparison)
                 .filter((item): item is IndexingBenchmarkComparison => item !== null)
             : [],
+        reference_comparison: normalizeReferenceComparison(report.reference_comparison) ?? undefined,
     };
 }
 
