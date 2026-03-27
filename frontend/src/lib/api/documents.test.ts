@@ -424,6 +424,9 @@ describe("documents api", () => {
                             stage: "POST_PROCESSING",
                             duration_ms: 3421,
                             tree_verification_passed: true,
+                            tree_state: "healthy",
+                            tree_state_detail: "Verified tree with coverage 91%, summary coverage 88%, 8 nodes, depth 4.",
+                            tree_concern_codes: [],
                             estimated_quality_score: 0.93,
                             llm: {
                                 provider_type: "OPENAI",
@@ -475,6 +478,9 @@ describe("documents api", () => {
             stage: "POST_PROCESSING",
             duration_ms: 3421,
             tree_verification_passed: true,
+            tree_state: "healthy",
+            tree_state_detail: "Verified tree with coverage 91%, summary coverage 88%, 8 nodes, depth 4.",
+            tree_concern_codes: [],
             estimated_quality_score: 0.93,
             llm: {
                 provider_type: "OPENAI",

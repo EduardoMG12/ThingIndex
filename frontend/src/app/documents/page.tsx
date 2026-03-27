@@ -68,6 +68,7 @@ import {
 import type { AppLocale } from "@/lib/i18n/config";
 import { useI18n } from "@/lib/i18n/provider";
 import { translate } from "@/lib/i18n/translate";
+import { cn } from "@/lib/utils";
 
 const fadeUp = { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } };
 type TranslateFn = (key: string, variables?: Record<string, string | number | boolean>) => string;
@@ -121,6 +122,55 @@ function formatUSD(value: number, locale: string) {
         minimumFractionDigits: 6,
         maximumFractionDigits: 6,
     }).format(value);
+}
+
+function formatMonitoringTreeStateLabel(treeState: string | undefined, t: TranslateFn) {
+    switch (treeState) {
+        case "healthy":
+            return t("documentsPage.monitoring.treeStateHealthy");
+        case "fallback":
+            return t("documentsPage.monitoring.treeStateFallback");
+        case "degraded":
+            return t("documentsPage.monitoring.treeStateDegraded");
+        default:
+            return t("documentsPage.monitoring.treeStateUnknown");
+    }
+}
+
+function monitoringTreeStateBadgeClassName(treeState: string | undefined) {
+    switch (treeState) {
+        case "healthy":
+            return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+        case "fallback":
+            return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300";
+        case "degraded":
+            return "border-destructive/30 bg-destructive/10 text-destructive";
+        default:
+            return "border-border bg-muted/40 text-muted-foreground";
+    }
+}
+
+function formatMonitoringTreeConcernLabel(concern: string, t: TranslateFn) {
+    switch (concern) {
+        case "fallback_builder":
+            return t("documentsPage.monitoring.concernFallbackBuilder");
+        case "verification_failed":
+            return t("documentsPage.monitoring.concernVerificationFailed");
+        case "low_coverage":
+            return t("documentsPage.monitoring.concernLowCoverage");
+        case "low_summary_coverage":
+            return t("documentsPage.monitoring.concernLowSummaryCoverage");
+        case "low_confidence_nodes":
+            return t("documentsPage.monitoring.concernLowConfidenceNodes");
+        case "shallow_tree":
+            return t("documentsPage.monitoring.concernShallowTree");
+        case "oversized_nodes":
+            return t("documentsPage.monitoring.concernOversizedNodes");
+        case "retrieval_not_ready":
+            return t("documentsPage.monitoring.concernRetrievalNotReady");
+        default:
+            return concern;
+    }
 }
 
 function formatStageLabel(stage: string | undefined, t: TranslateFn) {
@@ -249,10 +299,13 @@ function MonitoringView({
     const completedAt = monitoring?.completed_at || document.indexed_at;
     const llm = monitoring?.llm ?? null;
     const qualityScore = monitoring?.estimated_quality_score ?? 0;
+    const treeState = monitoring?.tree_state;
+    const treeStateDetail = monitoring?.tree_state_detail || t("documentsPage.monitoring.treeStateUnavailable");
+    const treeConcernCodes = monitoring?.tree_concern_codes ?? [];
 
     return (
         <div className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
                 <div className="rounded-xl border border-border bg-background/60 p-4">
                     <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
                         <Activity className="h-3.5 w-3.5 text-primary" />
@@ -270,6 +323,35 @@ function MonitoringView({
                     <p className="mt-1 text-xs text-muted-foreground">
                         {t("documentsPage.monitoring.estimatedQualityHint")}
                     </p>
+                </div>
+                <div className="rounded-xl border border-border bg-background/60 p-4">
+                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                        <AlertTriangle className="h-3.5 w-3.5 text-primary" />
+                        {t("documentsPage.monitoring.treeState")}
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <span
+                            className={cn(
+                                "inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide",
+                                monitoringTreeStateBadgeClassName(treeState)
+                            )}
+                        >
+                            {formatMonitoringTreeStateLabel(treeState, t)}
+                        </span>
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-muted-foreground">{treeStateDetail}</p>
+                    {treeConcernCodes.length > 0 ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            {treeConcernCodes.map((concern) => (
+                                <span
+                                    key={concern}
+                                    className="inline-flex rounded-full border border-border bg-muted/50 px-2.5 py-1 text-[11px] font-medium text-foreground/80"
+                                >
+                                    {formatMonitoringTreeConcernLabel(concern, t)}
+                                </span>
+                            ))}
+                        </div>
+                    ) : null}
                 </div>
                 <div className="rounded-xl border border-border bg-background/60 p-4">
                     <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">

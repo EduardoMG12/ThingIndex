@@ -371,6 +371,9 @@ type DocumentIndexApiRecord = {
         chunk_strategy_version?: string;
         tree_builder?: string;
         tree_verification_passed?: boolean;
+        tree_state?: string;
+        tree_state_detail?: string;
+        tree_concern_codes?: string[];
         estimated_quality_score?: number;
         llm?: {
             provider_type?: string;
@@ -437,6 +440,9 @@ export type IndexMonitoring = {
     chunk_strategy_version?: string;
     tree_builder?: string;
     tree_verification_passed: boolean;
+    tree_state?: string;
+    tree_state_detail?: string;
+    tree_concern_codes: string[];
     estimated_quality_score: number;
     llm: LLMMonitoring | null;
 };
@@ -575,6 +581,11 @@ function normalizeIndexMonitoring(value: DocumentIndexApiRecord["monitoring"]): 
             typeof value.chunk_strategy_version === "string" ? value.chunk_strategy_version : undefined,
         tree_builder: typeof value.tree_builder === "string" ? value.tree_builder : undefined,
         tree_verification_passed: Boolean(value.tree_verification_passed),
+        tree_state: typeof value.tree_state === "string" ? value.tree_state : undefined,
+        tree_state_detail: typeof value.tree_state_detail === "string" ? value.tree_state_detail : undefined,
+        tree_concern_codes: Array.isArray(value.tree_concern_codes)
+            ? value.tree_concern_codes.filter((item): item is string => typeof item === "string")
+            : [],
         estimated_quality_score:
             typeof value.estimated_quality_score === "number" ? value.estimated_quality_score : 0,
         llm,
