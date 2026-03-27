@@ -129,6 +129,9 @@ type IndexMonitoringResult struct {
 	ChunkStrategyVersion   string
 	TreeBuilder            string
 	TreeVerificationPassed bool
+	TreeState              string
+	TreeStateDetail        string
+	TreeConcernCodes       []string
 	EstimatedQualityScore  float64
 	LLM                    *LLMMonitoringResult
 }

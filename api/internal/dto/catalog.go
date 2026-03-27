@@ -285,6 +285,9 @@ type IndexMonitoringResponse struct {
 	ChunkStrategyVersion   string                 `json:"chunk_strategy_version,omitempty"`
 	TreeBuilder            string                 `json:"tree_builder,omitempty"`
 	TreeVerificationPassed bool                   `json:"tree_verification_passed"`
+	TreeState              string                 `json:"tree_state,omitempty"`
+	TreeStateDetail        string                 `json:"tree_state_detail,omitempty"`
+	TreeConcernCodes       []string               `json:"tree_concern_codes,omitempty"`
 	EstimatedQualityScore  float64                `json:"estimated_quality_score"`
 	LLM                    *LLMMonitoringResponse `json:"llm,omitempty"`
 }
@@ -761,6 +764,9 @@ func ToIndexMonitoringResponse(result *domain.IndexMonitoringResult) *IndexMonit
 		ChunkStrategyVersion:   result.ChunkStrategyVersion,
 		TreeBuilder:            result.TreeBuilder,
 		TreeVerificationPassed: result.TreeVerificationPassed,
+		TreeState:              result.TreeState,
+		TreeStateDetail:        result.TreeStateDetail,
+		TreeConcernCodes:       append([]string(nil), result.TreeConcernCodes...),
 		EstimatedQualityScore:  result.EstimatedQualityScore,
 		LLM:                    ToLLMMonitoringResponse(result.LLM),
 	}

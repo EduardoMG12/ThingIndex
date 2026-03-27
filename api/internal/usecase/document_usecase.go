@@ -1416,6 +1416,24 @@ func buildIndexEvaluation(metadataPairs []models.MetadataPair, nodes []models.Do
 	return evaluation
 }
 
+const (
+	indexMonitoringTreeStateUnknown  = "unknown"
+	indexMonitoringTreeStateHealthy  = "healthy"
+	indexMonitoringTreeStateFallback = "fallback"
+	indexMonitoringTreeStateDegraded = "degraded"
+
+	indexMonitoringConcernFallbackBuilder   = "fallback_builder"
+	indexMonitoringConcernVerification      = "verification_failed"
+	indexMonitoringConcernLowCoverage       = "low_coverage"
+	indexMonitoringConcernLowSummaries      = "low_summary_coverage"
+	indexMonitoringConcernLowConfidence     = "low_confidence_nodes"
+	indexMonitoringConcernShallowTree       = "shallow_tree"
+	indexMonitoringConcernOversizedNodes    = "oversized_nodes"
+	indexMonitoringConcernRetrievalNotReady = "retrieval_not_ready"
+
+	monitoringFallbackTreeBuilder = "fallback-page-segments"
+)
+
 func buildIndexMonitoring(
 	doc *models.Document,
 	metadataPairs []models.MetadataPair,
@@ -1480,7 +1498,16 @@ func buildIndexMonitoring(
 		monitoring.LLM = llmMonitoring
 	}
 
-	monitoring.EstimatedQualityScore = estimateIndexQualityScore(evaluation)
+	monitoring.TreeState, monitoring.TreeStateDetail, monitoring.TreeConcernCodes = classifyIndexMonitoringTree(
+		monitoring.TreeBuilder,
+		monitoring.TreeVerificationPassed,
+		evaluation,
+	)
+	monitoring.EstimatedQualityScore = adjustIndexMonitoringQualityScore(
+		estimateIndexQualityScore(evaluation),
+		monitoring.TreeState,
+		monitoring.TreeConcernCodes,
+	)
 	if monitoring.Status == "" &&
 		monitoring.Stage == "" &&
 		monitoring.EnrichmentStatus == "" &&
@@ -1491,6 +1518,233 @@ func buildIndexMonitoring(
 	}
 
 	return monitoring
+}
+
+func classifyIndexMonitoringTree(
+	treeBuilder string,
+	treeVerificationPassed bool,
+	evaluation *domain.IndexEvaluationResult,
+) (string, string, []string) {
+	treeBuilder = strings.TrimSpace(treeBuilder)
+	if treeBuilder == "" && evaluation == nil {
+		return indexMonitoringTreeStateUnknown, "No structural telemetry is available yet.", nil
+	}
+
+	concerns := buildIndexMonitoringTreeConcernCodes(treeBuilder, treeVerificationPassed, evaluation)
+	switch {
+	case isFallbackMonitoringTreeBuilder(treeBuilder):
+		return indexMonitoringTreeStateFallback, buildIndexMonitoringTreeDetail(indexMonitoringTreeStateFallback, treeBuilder, evaluation, concerns), concerns
+	case len(concerns) == 0:
+		return indexMonitoringTreeStateHealthy, buildIndexMonitoringTreeDetail(indexMonitoringTreeStateHealthy, treeBuilder, evaluation, concerns), nil
+	default:
+		return indexMonitoringTreeStateDegraded, buildIndexMonitoringTreeDetail(indexMonitoringTreeStateDegraded, treeBuilder, evaluation, concerns), concerns
+	}
+}
+
+func buildIndexMonitoringTreeConcernCodes(
+	treeBuilder string,
+	treeVerificationPassed bool,
+	evaluation *domain.IndexEvaluationResult,
+) []string {
+	concerns := make([]string, 0, 6)
+	if isFallbackMonitoringTreeBuilder(treeBuilder) {
+		concerns = append(concerns, indexMonitoringConcernFallbackBuilder)
+	}
+	if treeBuilder != "" && !treeVerificationPassed {
+		concerns = append(concerns, indexMonitoringConcernVerification)
+	}
+	if evaluation == nil {
+		return concerns
+	}
+	if !evaluation.RetrievalReady {
+		concerns = append(concerns, indexMonitoringConcernRetrievalNotReady)
+	}
+	if evaluation.CoverageRatio < 0.75 {
+		concerns = append(concerns, indexMonitoringConcernLowCoverage)
+	}
+	if evaluation.SummaryCoverageRatio < 0.5 {
+		concerns = append(concerns, indexMonitoringConcernLowSummaries)
+	}
+	if evaluation.TotalNodes <= 1 || evaluation.MaxDepth <= 1 {
+		concerns = append(concerns, indexMonitoringConcernShallowTree)
+	}
+	if evaluation.OversizedNodes > 0 {
+		concerns = append(concerns, indexMonitoringConcernOversizedNodes)
+	}
+
+	lowConfidenceThreshold := max(2, evaluation.TotalNodes/3)
+	if evaluation.LowConfidenceNodes >= lowConfidenceThreshold && evaluation.LowConfidenceNodes > 0 {
+		concerns = append(concerns, indexMonitoringConcernLowConfidence)
+	}
+
+	return concerns
+}
+
+func buildIndexMonitoringTreeDetail(
+	treeState string,
+	treeBuilder string,
+	evaluation *domain.IndexEvaluationResult,
+	concerns []string,
+) string {
+	metrics := describeIndexMonitoringTreeMetrics(evaluation)
+	switch treeState {
+	case indexMonitoringTreeStateHealthy:
+		if treeBuilder != "" && metrics != "" {
+			return fmt.Sprintf("Verified tree from builder %s with %s.", treeBuilder, metrics)
+		}
+		if metrics != "" {
+			return fmt.Sprintf("Verified tree with %s.", metrics)
+		}
+		return "Verified tree is available."
+	case indexMonitoringTreeStateFallback:
+		if metrics != "" {
+			return fmt.Sprintf("Fallback builder %s is active, so hierarchy was replaced by page segments; %s.", treeBuilder, metrics)
+		}
+		return fmt.Sprintf("Fallback builder %s is active, so hierarchy was replaced by page segments.", treeBuilder)
+	case indexMonitoringTreeStateDegraded:
+		fragments := describeIndexMonitoringTreeConcerns(concerns, treeBuilder, evaluation)
+		switch {
+		case len(fragments) > 0 && metrics != "":
+			return fmt.Sprintf("Tree is degraded because %s; %s.", strings.Join(fragments, "; "), metrics)
+		case len(fragments) > 0:
+			return fmt.Sprintf("Tree is degraded because %s.", strings.Join(fragments, "; "))
+		case metrics != "":
+			return fmt.Sprintf("Tree is degraded; %s.", metrics)
+		default:
+			return "Tree is degraded."
+		}
+	default:
+		if metrics != "" {
+			return fmt.Sprintf("Structural telemetry is partial; %s.", metrics)
+		}
+		return "No structural telemetry is available yet."
+	}
+}
+
+func describeIndexMonitoringTreeMetrics(evaluation *domain.IndexEvaluationResult) string {
+	if evaluation == nil {
+		return ""
+	}
+
+	parts := []string{
+		fmt.Sprintf("coverage %.0f%%", evaluation.CoverageRatio*100),
+		fmt.Sprintf("summary coverage %.0f%%", evaluation.SummaryCoverageRatio*100),
+		fmt.Sprintf("%d nodes", evaluation.TotalNodes),
+	}
+	if evaluation.MaxDepth > 0 {
+		parts = append(parts, fmt.Sprintf("depth %d", evaluation.MaxDepth))
+	}
+	return strings.Join(parts, ", ")
+}
+
+func describeIndexMonitoringTreeConcerns(
+	concerns []string,
+	treeBuilder string,
+	evaluation *domain.IndexEvaluationResult,
+) []string {
+	if len(concerns) == 0 {
+		return nil
+	}
+
+	fragments := make([]string, 0, len(concerns))
+	for _, concern := range concerns {
+		switch concern {
+		case indexMonitoringConcernFallbackBuilder:
+			if treeBuilder != "" {
+				fragments = append(fragments, fmt.Sprintf("builder=%s", treeBuilder))
+			}
+		case indexMonitoringConcernVerification:
+			fragments = append(fragments, "verification=false")
+		case indexMonitoringConcernRetrievalNotReady:
+			fragments = append(fragments, "retrieval_ready=false")
+		case indexMonitoringConcernLowCoverage:
+			if evaluation != nil {
+				fragments = append(fragments, fmt.Sprintf("coverage=%.0f%%", evaluation.CoverageRatio*100))
+			}
+		case indexMonitoringConcernLowSummaries:
+			if evaluation != nil {
+				fragments = append(fragments, fmt.Sprintf("summary_coverage=%.0f%%", evaluation.SummaryCoverageRatio*100))
+			}
+		case indexMonitoringConcernLowConfidence:
+			if evaluation != nil {
+				fragments = append(fragments, fmt.Sprintf("low_confidence_nodes=%d/%d", evaluation.LowConfidenceNodes, evaluation.TotalNodes))
+			}
+		case indexMonitoringConcernShallowTree:
+			if evaluation != nil {
+				fragments = append(fragments, fmt.Sprintf("nodes=%d depth=%d", evaluation.TotalNodes, evaluation.MaxDepth))
+			}
+		case indexMonitoringConcernOversizedNodes:
+			if evaluation != nil {
+				fragments = append(fragments, fmt.Sprintf("oversized_nodes=%d", evaluation.OversizedNodes))
+			}
+		}
+	}
+
+	return fragments
+}
+
+func adjustIndexMonitoringQualityScore(score float64, treeState string, concerns []string) float64 {
+	if score <= 0 {
+		return 0
+	}
+
+	switch treeState {
+	case indexMonitoringTreeStateFallback:
+		score -= 12
+		if score > 55 {
+			score = 55
+		}
+	case indexMonitoringTreeStateDegraded:
+		if containsIndexMonitoringConcern(concerns, indexMonitoringConcernVerification) {
+			score -= 8
+		}
+		if containsIndexMonitoringConcern(concerns, indexMonitoringConcernRetrievalNotReady) {
+			score -= 6
+		}
+		if containsIndexMonitoringConcern(concerns, indexMonitoringConcernLowCoverage) {
+			score -= 6
+		}
+		if containsIndexMonitoringConcern(concerns, indexMonitoringConcernLowSummaries) {
+			score -= 6
+		}
+		if containsIndexMonitoringConcern(concerns, indexMonitoringConcernLowConfidence) {
+			score -= 4
+		}
+		if containsIndexMonitoringConcern(concerns, indexMonitoringConcernShallowTree) {
+			score -= 4
+		}
+		if containsIndexMonitoringConcern(concerns, indexMonitoringConcernOversizedNodes) {
+			score -= 4
+		}
+		if score > 72 {
+			score = 72
+		}
+	case indexMonitoringTreeStateUnknown:
+		if score > 65 {
+			score = 65
+		}
+	}
+
+	if score < 0 {
+		return 0
+	}
+	if score > 100 {
+		return 100
+	}
+	return score
+}
+
+func containsIndexMonitoringConcern(concerns []string, target string) bool {
+	for _, concern := range concerns {
+		if concern == target {
+			return true
+		}
+	}
+	return false
+}
+
+func isFallbackMonitoringTreeBuilder(treeBuilder string) bool {
+	return strings.EqualFold(strings.TrimSpace(treeBuilder), monitoringFallbackTreeBuilder)
 }
 
 func estimateIndexQualityScore(evaluation *domain.IndexEvaluationResult) float64 {

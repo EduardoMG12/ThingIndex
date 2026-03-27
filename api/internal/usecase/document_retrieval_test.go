@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -267,6 +268,94 @@ func TestBuildIndexMonitoringBuildsTelemetrySnapshot(t *testing.T) {
 	}
 	if monitoring.EstimatedQualityScore <= 0 {
 		t.Fatalf("expected positive quality score, got %f", monitoring.EstimatedQualityScore)
+	}
+	if monitoring.TreeState != indexMonitoringTreeStateHealthy {
+		t.Fatalf("expected healthy tree state, got %#v", monitoring)
+	}
+	if monitoring.TreeStateDetail == "" {
+		t.Fatalf("expected tree state detail, got %#v", monitoring)
+	}
+	if len(monitoring.TreeConcernCodes) != 0 {
+		t.Fatalf("expected no tree concerns for healthy monitoring, got %#v", monitoring.TreeConcernCodes)
+	}
+}
+
+func TestBuildIndexMonitoringDistinguishesFallbackTrees(t *testing.T) {
+	t.Parallel()
+
+	monitoring := buildIndexMonitoring(
+		&models.Document{Status: "INDEXED", ProcessingStage: "COMPLETED"},
+		[]models.MetadataPair{
+			{Key: "tree_builder", Value: monitoringFallbackTreeBuilder},
+			{Key: "tree_verification_passed", Value: "false"},
+		},
+		buildIndexEvaluation([]models.MetadataPair{
+			{Key: "tree_coverage_ratio", Value: "0.81"},
+			{Key: "tree_summary_coverage_ratio", Value: "0.62"},
+			{Key: "tree_total_nodes", Value: "3"},
+			{Key: "tree_low_confidence_nodes", Value: "0"},
+			{Key: "tree_oversized_nodes", Value: "0"},
+			{Key: "tree_max_depth", Value: "1"},
+		}, []models.DocumentOutlineNode{{NodeID: "root", Title: "Fallback"}}),
+	)
+	if monitoring == nil {
+		t.Fatal("expected monitoring snapshot")
+	}
+	if monitoring.TreeState != indexMonitoringTreeStateFallback {
+		t.Fatalf("expected fallback tree state, got %#v", monitoring)
+	}
+	if !containsIndexMonitoringConcern(monitoring.TreeConcernCodes, indexMonitoringConcernFallbackBuilder) {
+		t.Fatalf("expected fallback builder concern, got %#v", monitoring.TreeConcernCodes)
+	}
+	if !strings.Contains(monitoring.TreeStateDetail, "page segments") {
+		t.Fatalf("expected fallback detail to mention page segments, got %q", monitoring.TreeStateDetail)
+	}
+	if monitoring.EstimatedQualityScore > 55 {
+		t.Fatalf("expected fallback monitoring score to be capped, got %f", monitoring.EstimatedQualityScore)
+	}
+}
+
+func TestBuildIndexMonitoringDistinguishesDegradedTrees(t *testing.T) {
+	t.Parallel()
+
+	monitoring := buildIndexMonitoring(
+		&models.Document{Status: "INDEXED", ProcessingStage: "COMPLETED"},
+		[]models.MetadataPair{
+			{Key: "tree_builder", Value: "llm-first"},
+			{Key: "tree_verification_passed", Value: "false"},
+		},
+		buildIndexEvaluation([]models.MetadataPair{
+			{Key: "tree_coverage_ratio", Value: "0.41"},
+			{Key: "tree_summary_coverage_ratio", Value: "0.18"},
+			{Key: "tree_total_nodes", Value: "6"},
+			{Key: "tree_low_confidence_nodes", Value: "3"},
+			{Key: "tree_oversized_nodes", Value: "1"},
+			{Key: "tree_max_depth", Value: "2"},
+		}, []models.DocumentOutlineNode{{NodeID: "root", Title: "Contrato"}}),
+	)
+	if monitoring == nil {
+		t.Fatal("expected monitoring snapshot")
+	}
+	if monitoring.TreeState != indexMonitoringTreeStateDegraded {
+		t.Fatalf("expected degraded tree state, got %#v", monitoring)
+	}
+	for _, concern := range []string{
+		indexMonitoringConcernVerification,
+		indexMonitoringConcernRetrievalNotReady,
+		indexMonitoringConcernLowCoverage,
+		indexMonitoringConcernLowSummaries,
+		indexMonitoringConcernLowConfidence,
+		indexMonitoringConcernOversizedNodes,
+	} {
+		if !containsIndexMonitoringConcern(monitoring.TreeConcernCodes, concern) {
+			t.Fatalf("expected concern %q, got %#v", concern, monitoring.TreeConcernCodes)
+		}
+	}
+	if !strings.Contains(monitoring.TreeStateDetail, "verification=false") {
+		t.Fatalf("expected degraded detail to mention verification=false, got %q", monitoring.TreeStateDetail)
+	}
+	if monitoring.EstimatedQualityScore > 72 {
+		t.Fatalf("expected degraded monitoring score to stay below optimistic cap, got %f", monitoring.EstimatedQualityScore)
 	}
 }
 
