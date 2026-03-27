@@ -30,19 +30,22 @@ func TestIndexingBenchmarkProviderBuildsPublicReport(t *testing.T) {
 	if report.Metrics.CorpusDocuments != 3 || report.Metrics.DocumentQueries != 4 || report.Metrics.CollectionQueries != 3 {
 		t.Fatalf("unexpected benchmark counts: %#v", report.Metrics)
 	}
-	if math.Abs(report.Metrics.StructurePassRate-33.33333333333333) > 0.0001 {
-		t.Fatalf("expected current structure pass rate, got %f", report.Metrics.StructurePassRate)
+	if math.Abs(report.Metrics.StructurePassRate-100) > 0.0001 {
+		t.Fatalf("expected improved structure pass rate, got %f", report.Metrics.StructurePassRate)
 	}
-	if math.Abs(report.Metrics.TreeNodeTop1Accuracy-0) > 0.0001 {
-		t.Fatalf("expected current node top-1 accuracy, got %f", report.Metrics.TreeNodeTop1Accuracy)
+	if math.Abs(report.Metrics.TreeNodeTop1Accuracy-100) > 0.0001 {
+		t.Fatalf("expected improved node top-1 accuracy, got %f", report.Metrics.TreeNodeTop1Accuracy)
 	}
-	if math.Abs(report.Metrics.CollectionDocumentTop1Accuracy-66.66666666666666) > 0.0001 {
-		t.Fatalf("expected current collection top-1 accuracy, got %f", report.Metrics.CollectionDocumentTop1Accuracy)
+	if math.Abs(report.Metrics.TreePageTop1Accuracy-100) > 0.0001 {
+		t.Fatalf("expected improved page top-1 accuracy, got %f", report.Metrics.TreePageTop1Accuracy)
 	}
-	if math.Abs(report.Metrics.ExactMatchAccuracy-28.57142857142857) > 0.0001 {
-		t.Fatalf("expected current exact match accuracy, got %f", report.Metrics.ExactMatchAccuracy)
+	if math.Abs(report.Metrics.CollectionDocumentTop1Accuracy-100) > 0.0001 {
+		t.Fatalf("expected improved collection top-1 accuracy, got %f", report.Metrics.CollectionDocumentTop1Accuracy)
 	}
-	if report.Metrics.AverageHeuristicScore < 90 {
-		t.Fatalf("expected healthy heuristic baseline, got %f", report.Metrics.AverageHeuristicScore)
+	if math.Abs(report.Metrics.ExactMatchAccuracy-100) > 0.0001 {
+		t.Fatalf("expected improved exact match accuracy, got %f", report.Metrics.ExactMatchAccuracy)
+	}
+	if report.Metrics.AverageHeuristicScore >= 90 || report.Metrics.AverageHeuristicScore <= 60 {
+		t.Fatalf("expected recalibrated heuristic score, got %f", report.Metrics.AverageHeuristicScore)
 	}
 }
