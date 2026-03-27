@@ -289,6 +289,21 @@ func TestBuildIndexingResultFallsBackToPageSegmentsWhenTreeIsTooShallow(t *testi
 	if got := result.OutlineNodes[0].Metadata["fallback_structure"]; got != true {
 		t.Fatalf("expected fallback structure metadata, got %#v", got)
 	}
+	if got := result.OutlineNodes[0].Metadata["paragraph_start"]; got != 0 {
+		t.Fatalf("expected first fallback paragraph_start=0, got %#v", got)
+	}
+	if got := result.OutlineNodes[0].Metadata["paragraph_end"]; got != 0 {
+		t.Fatalf("expected first fallback paragraph_end=0, got %#v", got)
+	}
+	if got := result.OutlineNodes[0].Metadata["section_key"]; got != "overview" {
+		t.Fatalf("expected first fallback section_key overview, got %#v", got)
+	}
+	if got := result.OutlineNodes[2].Metadata["paragraph_start"]; got != 2 {
+		t.Fatalf("expected last fallback paragraph_start=2, got %#v", got)
+	}
+	if got := result.OutlineNodes[2].Metadata["paragraph_end"]; got != 2 {
+		t.Fatalf("expected last fallback paragraph_end=2, got %#v", got)
+	}
 	assertMetadataValue(t, result.MetadataPairs, "tree_builder", conservativeTreeFallbackBuilder)
 	assertMetadataValue(t, result.MetadataPairs, "tree_fallback_reason", "shallow_tree")
 	assertMetadataValue(t, result.MetadataPairs, "tree_fallback_applied", "true")

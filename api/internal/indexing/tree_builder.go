@@ -71,7 +71,7 @@ func (e *LLMEnricher) buildTree(ctx context.Context, llm domain.LLMService, doc 
 		return result, fmt.Errorf("tree construction returned no valid nodes")
 	}
 
-	nodes, stats := verifyAndScoreTree(result.DocumentPages, nodes, "llm")
+	nodes, stats := verifyAndScoreTree(result, nodes, "llm")
 	if !stats.VerificationPassed {
 		fixedNodes, fixedStats, fixErr := e.fixTreeWithRetries(ctx, llm, doc, result, nodes, stats)
 		if fixErr != nil || !fixedStats.VerificationPassed {
@@ -81,7 +81,7 @@ func (e *LLMEnricher) buildTree(ctx context.Context, llm domain.LLMService, doc 
 		stats = fixedStats
 	}
 
-	expandedNodes, expandedStats, expandErr := e.expandOversizedNodes(ctx, llm, doc, result.DocumentPages, nodes, maxRecursiveExpansions)
+	expandedNodes, expandedStats, expandErr := e.expandOversizedNodes(ctx, llm, doc, result, nodes, maxRecursiveExpansions)
 	if expandErr == nil && len(expandedNodes) > 0 {
 		nodes = expandedNodes
 		stats = mergeTreeVerificationStats(stats, expandedStats)
@@ -310,7 +310,8 @@ func repairConstructedTree(nodes []models.DocumentOutlineNode) []models.Document
 	return nodes
 }
 
-func verifyAndScoreTree(pages []models.DocumentPage, nodes []models.DocumentOutlineNode, builder string) ([]models.DocumentOutlineNode, treeVerificationStats) {
+func verifyAndScoreTree(source domain.IndexingResult, nodes []models.DocumentOutlineNode, builder string) ([]models.DocumentOutlineNode, treeVerificationStats) {
+	pages := source.DocumentPages
 	stats := treeVerificationStats{
 		Builder:    strings.TrimSpace(builder),
 		TotalNodes: len(nodes),
@@ -378,6 +379,7 @@ func verifyAndScoreTree(pages []models.DocumentPage, nodes []models.DocumentOutl
 			stats.MaxDepth = nodes[idx].Level
 		}
 	}
+	nodes = persistOutlineStructuralSpans(source, nodes)
 
 	stats.CoveredPages = len(pageCovered)
 	if stats.TotalPages > 0 {
@@ -393,6 +395,146 @@ func verifyAndScoreTree(pages []models.DocumentPage, nodes []models.DocumentOutl
 	}
 
 	return nodes, stats
+}
+
+func persistOutlineStructuralSpans(source domain.IndexingResult, nodes []models.DocumentOutlineNode) []models.DocumentOutlineNode {
+	if len(nodes) == 0 {
+		return nodes
+	}
+
+	for idx := range nodes {
+		if nodes[idx].Metadata == nil {
+			nodes[idx].Metadata = map[string]any{}
+		}
+		if nodes[idx].StartPage != nil {
+			nodes[idx].Metadata["start_page"] = *nodes[idx].StartPage
+		}
+		if nodes[idx].EndPage != nil {
+			nodes[idx].Metadata["end_page"] = *nodes[idx].EndPage
+		}
+
+		start, end, sectionKey, ok := matchSourceOutlineSpan(source.OutlineNodes, nodes[idx])
+		if !ok {
+			start, end, ok = paragraphSpanForPageRange(source.ParagraphNodes, nodes[idx].StartPage, nodes[idx].EndPage)
+			if ok {
+				sectionKey = sectionKeyForParagraphSpan(source.ParagraphNodes, start, end)
+			}
+		}
+		if !ok {
+			continue
+		}
+
+		nodes[idx].Metadata["paragraph_start"] = start
+		nodes[idx].Metadata["paragraph_end"] = end
+		if sectionKey != "" {
+			nodes[idx].Metadata["section_key"] = sectionKey
+		}
+	}
+
+	return nodes
+}
+
+func matchSourceOutlineSpan(sourceNodes []models.DocumentOutlineNode, target models.DocumentOutlineNode) (int, int, string, bool) {
+	title := normalizeStructuralSpanTitle(target.Title)
+	if title == "" {
+		return 0, 0, "", false
+	}
+
+	exactRangeMatches := make([]models.DocumentOutlineNode, 0, 1)
+	overlapMatches := make([]models.DocumentOutlineNode, 0, 2)
+	for _, candidate := range sourceNodes {
+		if normalizeStructuralSpanTitle(candidate.Title) != title {
+			continue
+		}
+		if _, _, ok := outlineParagraphRange(candidate); !ok {
+			continue
+		}
+		switch {
+		case pageRangesEqual(candidate.StartPage, candidate.EndPage, target.StartPage, target.EndPage):
+			exactRangeMatches = append(exactRangeMatches, candidate)
+		case pageRangesOverlap(candidate.StartPage, candidate.EndPage, target.StartPage, target.EndPage):
+			overlapMatches = append(overlapMatches, candidate)
+		}
+	}
+
+	switch {
+	case len(exactRangeMatches) == 1:
+		return outlineSpanMetadata(exactRangeMatches[0])
+	case len(exactRangeMatches) > 1:
+		return 0, 0, "", false
+	case len(overlapMatches) == 1:
+		return outlineSpanMetadata(overlapMatches[0])
+	default:
+		return 0, 0, "", false
+	}
+}
+
+func outlineSpanMetadata(node models.DocumentOutlineNode) (int, int, string, bool) {
+	start, end, ok := outlineParagraphRange(node)
+	if !ok {
+		return 0, 0, "", false
+	}
+	sectionKey, _ := metadataString(node.Metadata, "section_key")
+	return start, end, sectionKey, true
+}
+
+func paragraphSpanForPageRange(paragraphs []models.ParagraphNode, startPage, endPage *int) (int, int, bool) {
+	if len(paragraphs) == 0 || startPage == nil || endPage == nil {
+		return 0, 0, false
+	}
+
+	start := -1
+	end := -1
+	for idx, paragraph := range paragraphs {
+		pageNumber := 1
+		if paragraph.PageNumber != nil && *paragraph.PageNumber > 0 {
+			pageNumber = *paragraph.PageNumber
+		}
+		if pageNumber < *startPage || pageNumber > *endPage {
+			continue
+		}
+		if start < 0 {
+			start = idx
+		}
+		end = idx
+	}
+	if start < 0 || end < start {
+		return 0, 0, false
+	}
+	return start, end, true
+}
+
+func sectionKeyForParagraphSpan(paragraphs []models.ParagraphNode, start, end int) string {
+	if len(paragraphs) == 0 || start < 0 || end < start {
+		return ""
+	}
+	if end >= len(paragraphs) {
+		end = len(paragraphs) - 1
+	}
+
+	var sectionKey string
+	for idx := start; idx <= end; idx++ {
+		candidate, _ := metadataString(paragraphs[idx].Metadata, "section_key")
+		if candidate == "" {
+			continue
+		}
+		if sectionKey == "" {
+			sectionKey = candidate
+			continue
+		}
+		if sectionKey != candidate {
+			return ""
+		}
+	}
+	return sectionKey
+}
+
+func normalizeStructuralSpanTitle(title string) string {
+	title = strings.ToLower(strings.TrimSpace(title))
+	if title == "" {
+		return ""
+	}
+	return strings.Join(strings.Fields(title), " ")
 }
 
 func appendTreeVerificationMetadata(result *domain.IndexingResult, documentID uint, stats treeVerificationStats) {
@@ -446,7 +588,7 @@ func applyConservativeTreeFallback(result domain.IndexingResult, reason string) 
 	}
 
 	updated.OutlineNodes = buildConservativeFallbackNodes(documentIDFromResult(result), updated.DocumentPages, reason)
-	fallbackNodes, stats := verifyAndScoreTree(updated.DocumentPages, updated.OutlineNodes, conservativeTreeFallbackBuilder)
+	fallbackNodes, stats := verifyAndScoreTree(result, updated.OutlineNodes, conservativeTreeFallbackBuilder)
 	updated.OutlineNodes = fallbackNodes
 	stats.Builder = conservativeTreeFallbackBuilder
 	stats.FallbackReason = reason
@@ -522,7 +664,7 @@ func (e *LLMEnricher) fixTreeWithRetries(
 			continue
 		}
 
-		fixedNodes, fixedStats := verifyAndScoreTree(result.DocumentPages, fixedNodes, "llm-fixed")
+		fixedNodes, fixedStats := verifyAndScoreTree(result, fixedNodes, "llm-fixed")
 		if fixedStats.VerificationPassed {
 			return fixedNodes, fixedStats, nil
 		}
@@ -579,7 +721,7 @@ func (e *LLMEnricher) expandOversizedNodes(
 	ctx context.Context,
 	llm domain.LLMService,
 	doc *models.Document,
-	pages []models.DocumentPage,
+	source domain.IndexingResult,
 	nodes []models.DocumentOutlineNode,
 	depth int,
 ) ([]models.DocumentOutlineNode, treeVerificationStats, error) {
@@ -588,6 +730,7 @@ func (e *LLMEnricher) expandOversizedNodes(
 		return nodes, stats, nil
 	}
 
+	pages := source.DocumentPages
 	pageIndex := make(map[int]models.DocumentPage, len(pages))
 	for _, page := range pages {
 		pageIndex[page.PageNumber] = page
@@ -607,7 +750,12 @@ func (e *LLMEnricher) expandOversizedNodes(
 		}
 
 		subsetPages := pagesForRange(pages, *node.StartPage, *node.EndPage)
-		children, childStats := verifyAndScoreTree(subsetPages, children, "llm-recursive")
+		childSource := domain.IndexingResult{
+			ParagraphNodes: source.ParagraphNodes,
+			DocumentPages:  subsetPages,
+			OutlineNodes:   source.OutlineNodes,
+		}
+		children, childStats := verifyAndScoreTree(childSource, children, "llm-recursive")
 		if !childStats.VerificationPassed {
 			continue
 		}
@@ -619,7 +767,9 @@ func (e *LLMEnricher) expandOversizedNodes(
 
 	expanded = repairConstructedTree(sortTreeNodes(expanded))
 	if depth > 1 {
-		return e.expandOversizedNodes(ctx, llm, doc, pages, expanded, depth-1)
+		nextSource := source
+		nextSource.DocumentPages = pages
+		return e.expandOversizedNodes(ctx, llm, doc, nextSource, expanded, depth-1)
 	}
 
 	return expanded, stats, nil
@@ -905,4 +1055,18 @@ func pageRangeContains(parentStart, parentEnd, childStart, childEnd *int) bool {
 		return false
 	}
 	return *parentStart <= *childStart && *parentEnd >= *childEnd
+}
+
+func pageRangesEqual(leftStart, leftEnd, rightStart, rightEnd *int) bool {
+	if leftStart == nil || leftEnd == nil || rightStart == nil || rightEnd == nil {
+		return false
+	}
+	return *leftStart == *rightStart && *leftEnd == *rightEnd
+}
+
+func pageRangesOverlap(leftStart, leftEnd, rightStart, rightEnd *int) bool {
+	if leftStart == nil || leftEnd == nil || rightStart == nil || rightEnd == nil {
+		return false
+	}
+	return *leftStart <= *rightEnd && *rightStart <= *leftEnd
 }

@@ -55,7 +55,7 @@ func (e *LLMEnricher) Enrich(ctx context.Context, llm domain.LLMService, doc *mo
 		updated = treeBuilt
 	} else {
 		if len(updated.DocumentPages) > 0 {
-			verifiedNodes, stats := verifyAndScoreTree(updated.DocumentPages, updated.OutlineNodes, "deterministic")
+			verifiedNodes, stats := verifyAndScoreTree(updated, updated.OutlineNodes, "deterministic")
 			updated.OutlineNodes = verifiedNodes
 			if shouldFallback, reason := shouldUseConservativeTreeFallback(stats); shouldFallback {
 				updated, stats = applyConservativeTreeFallback(updated, reason)

@@ -327,7 +327,7 @@ func buildIndexingResult(documentID uint, headings []outlineDraft, paragraphs []
 		VerificationPassed: len(result.OutlineNodes) > 0 || len(result.DocumentPages) == 0,
 	}
 	if len(result.DocumentPages) > 0 {
-		result.OutlineNodes, treeStats = verifyAndScoreTree(result.DocumentPages, result.OutlineNodes, "deterministic")
+		result.OutlineNodes, treeStats = verifyAndScoreTree(result, result.OutlineNodes, "deterministic")
 		if shouldFallback, reason := shouldUseConservativeTreeFallback(treeStats); shouldFallback {
 			result, treeStats = applyConservativeTreeFallback(result, reason)
 		}
