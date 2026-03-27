@@ -118,6 +118,16 @@ function mockDocumentationPayloads() {
             minimum_heuristic_score: 98,
             maximum_heuristic_score: 98,
         },
+        structural_signals: [
+            {
+                id: "expected_query_node_match",
+                direction: "higher_is_better",
+                status: "pass",
+                rate: 100,
+                count: 4,
+                total: 4,
+            },
+        ],
         comparison_history: [],
         cases: [
             {
@@ -263,6 +273,16 @@ describe("DocumentationPage", () => {
                 minimum_heuristic_score: 98,
                 maximum_heuristic_score: 98,
             },
+            structural_signals: [
+                {
+                    id: "expected_query_node_match",
+                    direction: "higher_is_better",
+                    status: "pass",
+                    rate: 100,
+                    count: 4,
+                    total: 4,
+                },
+            ],
             comparison_history: [],
             cases: [
                 {

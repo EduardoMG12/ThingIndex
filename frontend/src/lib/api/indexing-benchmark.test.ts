@@ -56,6 +56,24 @@ describe("indexing benchmark api", () => {
                             minimum_heuristic_score: 98,
                             maximum_heuristic_score: 98,
                         },
+                        structural_signals: [
+                            {
+                                id: "expected_query_node_match",
+                                direction: "higher_is_better",
+                                status: "pass",
+                                rate: 100,
+                                count: 4,
+                                total: 4,
+                            },
+                            {
+                                id: "heading_false_positive",
+                                direction: "lower_is_better",
+                                status: "watch",
+                                rate: 5,
+                                count: 1,
+                                total: 20,
+                            },
+                        ],
                         current_snapshot: {
                             id: "2026-03-26-relational-baseline-v1",
                             label: "Pre-quality backlog baseline",
@@ -286,6 +304,24 @@ describe("indexing benchmark api", () => {
                 minimum_heuristic_score: 98,
                 maximum_heuristic_score: 98,
             },
+            structural_signals: [
+                {
+                    id: "expected_query_node_match",
+                    direction: "higher_is_better",
+                    status: "pass",
+                    rate: 100,
+                    count: 4,
+                    total: 4,
+                },
+                {
+                    id: "heading_false_positive",
+                    direction: "lower_is_better",
+                    status: "watch",
+                    rate: 5,
+                    count: 1,
+                    total: 20,
+                },
+            ],
             current_snapshot: {
                 id: "2026-03-26-relational-baseline-v1",
                 label: "Pre-quality backlog baseline",

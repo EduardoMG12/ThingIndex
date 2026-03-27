@@ -56,6 +56,40 @@ describe("IndexingBenchmarkSection", () => {
                 minimum_heuristic_score: 98,
                 maximum_heuristic_score: 98,
             },
+            structural_signals: [
+                {
+                    id: "expected_query_node_match",
+                    direction: "higher_is_better",
+                    status: "pass",
+                    rate: 100,
+                    count: 4,
+                    total: 4,
+                },
+                {
+                    id: "useful_depth",
+                    direction: "higher_is_better",
+                    status: "watch",
+                    rate: 75,
+                    count: 3,
+                    total: 4,
+                },
+                {
+                    id: "outline_coverage",
+                    direction: "higher_is_better",
+                    status: "pass",
+                    rate: 100,
+                    count: 10,
+                    total: 10,
+                },
+                {
+                    id: "heading_false_positive",
+                    direction: "lower_is_better",
+                    status: "watch",
+                    rate: 5,
+                    count: 1,
+                    total: 20,
+                },
+            ],
             current_snapshot: {
                 id: "2026-03-26-relational-baseline-v1",
                 label: "Pre-quality backlog baseline",
@@ -217,6 +251,10 @@ describe("IndexingBenchmarkSection", () => {
         expect(screen.getByText("payment deadline invoice receipt")).toBeInTheDocument();
         expect(screen.getAllByText("28.6%")).toHaveLength(2);
         expect(screen.getByText("Assessed cases")).toBeInTheDocument();
+        expect(screen.getByText("Structural signals")).toBeInTheDocument();
+        expect(screen.getByText("Expected node match")).toBeInTheDocument();
+        expect(screen.getByText("Heading false positives")).toBeInTheDocument();
+        expect(screen.getByText("1/20 indexed headings were unexpected")).toBeInTheDocument();
         expect(screen.getByText("Latest recorded before/after")).toBeInTheDocument();
         expect(screen.getByText("Workspace reference comparison")).toBeInTheDocument();
         expect(screen.getByText("Objective checklist")).toBeInTheDocument();

@@ -13,6 +13,7 @@ import {
     type IndexingBenchmarkComparison,
     type IndexingBenchmarkReferenceComparison,
     type IndexingBenchmarkReport,
+    type IndexingBenchmarkStructuralSignal,
 } from "@/lib/api/indexing-benchmark";
 import { useI18n } from "@/lib/i18n/provider";
 
@@ -69,6 +70,32 @@ function benchmarkMetricLabel(metric: string, copy: ReturnType<typeof buildCopy>
     return labels[metric] ?? metric;
 }
 
+function benchmarkStructuralSignalLabel(signal: IndexingBenchmarkStructuralSignal, copy: ReturnType<typeof buildCopy>) {
+    const labels: Record<string, string> = {
+        expected_query_node_match: copy.structural.expectedNodeMatch,
+        useful_depth: copy.structural.usefulDepth,
+        outline_coverage: copy.structural.outlineCoverage,
+        heading_false_positive: copy.structural.headingFalsePositive,
+    };
+
+    return labels[signal.id] ?? signal.id;
+}
+
+function formatStructuralSignalDetail(signal: IndexingBenchmarkStructuralSignal, copy: ReturnType<typeof buildCopy>) {
+    switch (signal.id) {
+        case "expected_query_node_match":
+            return `${signal.count}/${signal.total} ${copy.structural.expectedNodeMatchDetail}`;
+        case "useful_depth":
+            return `${signal.count}/${signal.total} ${copy.structural.usefulDepthDetail}`;
+        case "outline_coverage":
+            return `${signal.count}/${signal.total} ${copy.structural.outlineCoverageDetail}`;
+        case "heading_false_positive":
+            return `${signal.count}/${signal.total} ${copy.structural.headingFalsePositiveDetail}`;
+        default:
+            return `${signal.count}/${signal.total}`;
+    }
+}
+
 function buildCopy(locale: string) {
     return locale === "pt-BR"
         ? {
@@ -88,9 +115,21 @@ function buildCopy(locale: string) {
                 recall: "Recall@3",
                 range: "Faixa",
             },
+            structural: {
+                intro: "Esses sinais mostram se a estrutura indexada continua navegável antes mesmo de olhar apenas o top-1 do retrieval.",
+                expectedNodeMatch: "Match do nó esperado",
+                usefulDepth: "Profundidade útil",
+                outlineCoverage: "Cobertura do outline",
+                headingFalsePositive: "Falsos positivos de heading",
+                expectedNodeMatchDetail: "targets de query existem no outline",
+                usefulDepthDetail: "documentos mantiveram navegação estrutural útil",
+                outlineCoverageDetail: "headings esperados foram emitidos",
+                headingFalsePositiveDetail: "headings indexados foram inesperados",
+            },
             sections: {
                 howItRuns: "Como o benchmark roda",
                 interpretation: "Como interpretar",
+                structuralSignals: "Sinais estruturais",
                 versionedCorpus: "Corpus versionado",
                 reviewed: "revisado",
                 queries: "Consultas",
@@ -145,13 +184,25 @@ function buildCopy(locale: string) {
                     structure: "Structure pass",
                     collectionTop1: "Collection top-1",
                     avgHeuristic: "Promedio heurístico",
-                    controlledCases: "casos controlados",
-                    recall: "Recall@3",
-                    range: "Rango",
+                controlledCases: "casos controlados",
+                recall: "Recall@3",
+                range: "Rango",
+            },
+                structural: {
+                    intro: "Estas señales muestran si la estructura indexada sigue siendo navegable incluso antes de mirar solo el top-1 del retrieval.",
+                    expectedNodeMatch: "Match del nodo esperado",
+                    usefulDepth: "Profundidad útil",
+                    outlineCoverage: "Cobertura del outline",
+                    headingFalsePositive: "Falsos positivos de heading",
+                    expectedNodeMatchDetail: "targets de query existen en el outline",
+                    usefulDepthDetail: "documentos mantuvieron profundidad navegable",
+                    outlineCoverageDetail: "headings esperados fueron emitidos",
+                    headingFalsePositiveDetail: "headings indexados fueron inesperados",
                 },
                 sections: {
                     howItRuns: "Cómo corre el benchmark",
                     interpretation: "Cómo interpretarlo",
+                    structuralSignals: "Señales estructurales",
                     versionedCorpus: "Corpus versionado",
                     reviewed: "revisado",
                     queries: "Queries",
@@ -209,9 +260,21 @@ function buildCopy(locale: string) {
                     recall: "Recall@3",
                     range: "Range",
                 },
+                structural: {
+                    intro: "These signals show whether the indexed structure stays navigable even before looking only at top-1 retrieval.",
+                    expectedNodeMatch: "Expected node match",
+                    usefulDepth: "Useful depth",
+                    outlineCoverage: "Outline coverage",
+                    headingFalsePositive: "Heading false positives",
+                    expectedNodeMatchDetail: "query targets exist in the outline",
+                    usefulDepthDetail: "documents kept useful structural navigation",
+                    outlineCoverageDetail: "expected headings were emitted",
+                    headingFalsePositiveDetail: "indexed headings were unexpected",
+                },
                 sections: {
                     howItRuns: "How the benchmark runs",
                     interpretation: "How to interpret it",
+                    structuralSignals: "Structural signals",
                     versionedCorpus: "Versioned corpus",
                     reviewed: "reviewed",
                     queries: "Queries",
@@ -398,6 +461,29 @@ function renderReferenceComparison(item: IndexingBenchmarkReferenceComparison, c
     );
 }
 
+function renderStructuralSignals(signals: IndexingBenchmarkStructuralSignal[], copy: ReturnType<typeof buildCopy>) {
+    return (
+        <div className="rounded-xl border border-border bg-background/50 p-5">
+            <h4 className="text-sm font-semibold text-foreground">{copy.sections.structuralSignals}</h4>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{copy.structural.intro}</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {signals.map((signal) => (
+                    <div key={signal.id} className="rounded-xl border border-border/70 bg-background/70 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-sm font-semibold text-foreground">{benchmarkStructuralSignalLabel(signal, copy)}</p>
+                            <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${benchmarkStatusTone(signal.status)}`}>
+                                {copy.status[signal.status as keyof typeof copy.status] ?? signal.status}
+                            </span>
+                        </div>
+                        <p className="mt-3 text-2xl font-semibold text-foreground">{formatBenchmarkPercentage(signal.rate)}</p>
+                        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{formatStructuralSignalDetail(signal, copy)}</p>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 export function IndexingBenchmarkSection() {
     const { locale } = useI18n();
     const copy = buildCopy(locale);
@@ -480,6 +566,8 @@ export function IndexingBenchmarkSection() {
                             </p>
                         </div>
                     </div>
+
+                    {localizedReport.structural_signals.length > 0 ? renderStructuralSignals(localizedReport.structural_signals, copy) : null}
 
                     <div className="rounded-xl border border-border bg-background/50 p-5">
                         <div className="flex flex-wrap items-center gap-3">

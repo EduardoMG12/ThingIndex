@@ -114,6 +114,15 @@ type IndexingBenchmarkReferenceComparisonApiRecord = {
     checklist?: unknown;
 };
 
+type IndexingBenchmarkStructuralSignalApiRecord = {
+    id?: string;
+    direction?: string;
+    status?: string;
+    rate?: number;
+    count?: number;
+    total?: number;
+};
+
 type IndexingBenchmarkApiRecord = {
     dataset_version?: string;
     corpus_source_path?: string;
@@ -125,6 +134,7 @@ type IndexingBenchmarkApiRecord = {
     heuristic_quality_note?: string;
     corpus?: unknown;
     metrics?: unknown;
+    structural_signals?: unknown;
     cases?: unknown;
     current_snapshot?: unknown;
     latest_comparison?: unknown;
@@ -245,6 +255,15 @@ export type IndexingBenchmarkReferenceComparison = {
     checklist: IndexingBenchmarkReferenceChecklistItem[];
 };
 
+export type IndexingBenchmarkStructuralSignal = {
+    id: string;
+    direction: string;
+    status: string;
+    rate: number;
+    count: number;
+    total: number;
+};
+
 export type IndexingBenchmarkReport = {
     dataset_version: string;
     corpus_source_path: string;
@@ -256,6 +275,7 @@ export type IndexingBenchmarkReport = {
     heuristic_quality_note: string;
     corpus: IndexingBenchmarkCorpusDocument[];
     metrics: IndexingBenchmarkMetrics;
+    structural_signals: IndexingBenchmarkStructuralSignal[];
     cases: IndexingBenchmarkCase[];
     current_snapshot?: IndexingBenchmarkSnapshot;
     latest_comparison?: IndexingBenchmarkComparison;
@@ -493,6 +513,26 @@ function normalizeReferenceComparison(record: unknown): IndexingBenchmarkReferen
     };
 }
 
+function normalizeStructuralSignal(record: unknown): IndexingBenchmarkStructuralSignal | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const item = record as IndexingBenchmarkStructuralSignalApiRecord;
+    if (!item.id || !item.direction || !item.status) {
+        return null;
+    }
+
+    return {
+        id: item.id,
+        direction: item.direction,
+        status: item.status,
+        rate: typeof item.rate === "number" ? item.rate : 0,
+        count: typeof item.count === "number" ? item.count : 0,
+        total: typeof item.total === "number" ? item.total : 0,
+    };
+}
+
 function normalizeReport(record: unknown): IndexingBenchmarkReport | null {
     if (!record || typeof record !== "object") {
         return null;
@@ -522,6 +562,11 @@ function normalizeReport(record: unknown): IndexingBenchmarkReport | null {
             ? report.corpus.map(normalizeCorpusDocument).filter((item): item is IndexingBenchmarkCorpusDocument => item !== null)
             : [],
         metrics: normalizeMetrics(report.metrics),
+        structural_signals: Array.isArray(report.structural_signals)
+            ? report.structural_signals
+                .map(normalizeStructuralSignal)
+                .filter((item): item is IndexingBenchmarkStructuralSignal => item !== null)
+            : [],
         cases: Array.isArray(report.cases)
             ? report.cases.map(normalizeCase).filter((item): item is IndexingBenchmarkCase => item !== null)
             : [],
