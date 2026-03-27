@@ -1121,6 +1121,8 @@ func splitBlocks(text string) []string {
 }
 
 var numberedHeadingPattern = regexp.MustCompile(`^\d+(\.\d+)*\s+`)
+var pdfPageMarkerPattern = regexp.MustCompile(`^(p[aá]gina|page)\s+\d+(\s+(de|of)\s+\d+)?$`)
+var pdfProcessNumberPattern = regexp.MustCompile(`\b\d{4,7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b`)
 
 func looksLikeHeading(text string) bool {
 	if text == "" || strings.Contains(text, ". ") && len(text) > 120 {
@@ -1143,7 +1145,7 @@ func looksLikePDFHeading(text string) bool {
 	if trimmed == "" || !looksLikeHeading(trimmed) {
 		return false
 	}
-	if isLowSignalPDFText(trimmed) || looksLikePDFFieldLine(trimmed) {
+	if isLowSignalPDFText(trimmed) || looksLikePDFFieldLine(trimmed) || looksLikePDFBoilerplate(trimmed) {
 		return false
 	}
 	return true
@@ -1157,13 +1159,62 @@ func looksLikePDFFieldLine(text string) bool {
 	if numberedHeadingPattern.MatchString(trimmed) {
 		return false
 	}
+	if pdfPageMarkerPattern.MatchString(strings.ToLower(trimmed)) {
+		return true
+	}
+	if pdfProcessNumberPattern.MatchString(trimmed) {
+		return true
+	}
 	if strings.HasSuffix(trimmed, ":") {
 		return true
 	}
 	if strings.Contains(trimmed, "@") {
 		return true
 	}
+	if strings.Contains(strings.ToLower(trimmed), "processo nº") ||
+		strings.Contains(strings.ToLower(trimmed), "processo n°") ||
+		strings.Contains(strings.ToLower(trimmed), "processo no ") {
+		return true
+	}
 	return strings.Count(trimmed, ":") >= 1
+}
+
+func looksLikePDFBoilerplate(text string) bool {
+	normalized := strings.ToLower(strings.Join(strings.Fields(strings.TrimSpace(text)), " "))
+	if normalized == "" {
+		return false
+	}
+
+	if pdfPageMarkerPattern.MatchString(normalized) || pdfProcessNumberPattern.MatchString(text) {
+		return true
+	}
+
+	if len(strings.Fields(text)) >= 8 && text == strings.ToUpper(text) && !numberedHeadingPattern.MatchString(text) {
+		return true
+	}
+
+	return containsAnySubstring(normalized,
+		"tribunal de justiça",
+		"tribunal de justica",
+		"poder judiciário",
+		"poder judiciario",
+		"diário da justiça",
+		"diario da justica",
+		"publicação oficial",
+		"publicacao oficial",
+		"documento assinado digitalmente",
+		"assinado digitalmente",
+		"código de autenticidade",
+		"codigo de autenticidade",
+		"código verificador",
+		"codigo verificador",
+		"para conferir o original",
+		"processo digital nº",
+		"processo digital n°",
+		"http://",
+		"https://",
+		"www.",
+	)
 }
 
 func isLowSignalPDFText(text string) bool {
@@ -1262,6 +1313,9 @@ func shouldSuppressRepeatedPDFHeading(text string, occurrences map[string]int) b
 	trimmed := strings.TrimSpace(text)
 	if trimmed == "" {
 		return false
+	}
+	if looksLikePDFBoilerplate(trimmed) && occurrences[trimmed] >= 2 {
+		return true
 	}
 	return occurrences[trimmed] >= 3 && len(strings.Fields(trimmed)) <= 16
 }
@@ -1429,4 +1483,13 @@ func sortedMapKeys(values map[string]struct{}) []string {
 
 func sortInts(values []int) {
 	sort.Ints(values)
+}
+
+func containsAnySubstring(value string, substrings ...string) bool {
+	for _, substring := range substrings {
+		if substring != "" && strings.Contains(value, substring) {
+			return true
+		}
+	}
+	return false
 }

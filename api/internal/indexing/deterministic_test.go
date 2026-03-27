@@ -349,6 +349,7 @@ func TestLooksLikePDFHeadingRejectsLowSignalAndFieldLikeBlocks(t *testing.T) {
 		{text: "CERTIDÃO", want: true},
 		{text: "OFÍCIO REQUISITÓRIO", want: true},
 		{text: "PROCESSAMENTO", want: true},
+		{text: "Retention Schedule", want: true},
 		{text: "P", want: false},
 		{text: "4", want: false},
 		{text: "395478", want: false},
@@ -357,6 +358,12 @@ func TestLooksLikePDFHeadingRejectsLowSignalAndFieldLikeBlocks(t *testing.T) {
 		{text: "Advogado(a):", want: false},
 		{text: "Ó rgão:", want: false},
 		{text: "sp1jefaz@tjsp.jus.br", want: false},
+		{text: "TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO", want: false},
+		{text: "PODER JUDICIÁRIO", want: false},
+		{text: "DOCUMENTO ASSINADO DIGITALMENTE", want: false},
+		{text: "CÓDIGO DE AUTENTICIDADE", want: false},
+		{text: "Página 1 de 8", want: false},
+		{text: "Processo nº 1001234-56.2024.8.26.0100", want: false},
 	}
 
 	for _, tc := range testCases {
@@ -403,6 +410,17 @@ func TestCountPDFBlockPageOccurrencesCountsPagesOnlyOnce(t *testing.T) {
 	}
 	if shouldSuppressRepeatedPDFHeading("DECISÃO", occurrences) {
 		t.Fatalf("did not expect decision heading to be suppressed with only two page occurrences")
+	}
+
+	boilerplateOccurrences := map[string]int{
+		"PODER JUDICIÁRIO": 2,
+		"CERTIDÃO":         2,
+	}
+	if !shouldSuppressRepeatedPDFHeading("PODER JUDICIÁRIO", boilerplateOccurrences) {
+		t.Fatalf("expected repeated boilerplate heading to be suppressed on two pages")
+	}
+	if shouldSuppressRepeatedPDFHeading("CERTIDÃO", boilerplateOccurrences) {
+		t.Fatalf("did not expect real section heading to be suppressed with only two page occurrences")
 	}
 }
 
