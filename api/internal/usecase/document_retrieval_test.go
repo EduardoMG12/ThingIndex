@@ -414,3 +414,29 @@ func TestEstimateIndexQualityScorePenalizesMissingSummaries(t *testing.T) {
 		t.Fatalf("expected missing summaries to avoid overly optimistic quality score, got %f", withoutSummaries)
 	}
 }
+
+func TestTokenizeRetrievalTextExpandsNumericWordsAndDigits(t *testing.T) {
+	t.Parallel()
+
+	tokens := tokenizeRetrievalText("security incidents seven years 7")
+
+	expected := map[string]struct{}{
+		"security":  {},
+		"incidents": {},
+		"seven":     {},
+		"7":         {},
+		"years":     {},
+	}
+	for token := range expected {
+		found := false
+		for _, candidate := range tokens {
+			if candidate == token {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("expected token %q in %#v", token, tokens)
+		}
+	}
+}

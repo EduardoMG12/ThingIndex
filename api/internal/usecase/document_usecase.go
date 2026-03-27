@@ -1640,16 +1640,87 @@ func tokenizeRetrievalText(value string) []string {
 	seen := make(map[string]struct{}, len(parts))
 	tokens := make([]string, 0, len(parts))
 	for _, part := range parts {
-		if len(part) < 2 {
-			continue
+		for _, expanded := range expandNumericRetrievalTerms(part) {
+			if len(expanded) < 1 {
+				continue
+			}
+			if len(expanded) < 2 && !isNumericToken(expanded) {
+				continue
+			}
+			if _, ok := seen[expanded]; ok {
+				continue
+			}
+			seen[expanded] = struct{}{}
+			tokens = append(tokens, expanded)
 		}
-		if _, ok := seen[part]; ok {
-			continue
-		}
-		seen[part] = struct{}{}
-		tokens = append(tokens, part)
 	}
 	return tokens
+}
+
+func expandNumericRetrievalTerms(term string) []string {
+	term = strings.TrimSpace(term)
+	if term == "" {
+		return nil
+	}
+
+	expansions := []string{term}
+	switch term {
+	case "zero":
+		expansions = append(expansions, "0")
+	case "one":
+		expansions = append(expansions, "1")
+	case "two":
+		expansions = append(expansions, "2")
+	case "three":
+		expansions = append(expansions, "3")
+	case "four":
+		expansions = append(expansions, "4")
+	case "five":
+		expansions = append(expansions, "5")
+	case "six":
+		expansions = append(expansions, "6")
+	case "seven":
+		expansions = append(expansions, "7")
+	case "eight":
+		expansions = append(expansions, "8")
+	case "nine":
+		expansions = append(expansions, "9")
+	case "ten":
+		expansions = append(expansions, "10")
+	case "0":
+		expansions = append(expansions, "zero")
+	case "1":
+		expansions = append(expansions, "one")
+	case "2":
+		expansions = append(expansions, "two")
+	case "3":
+		expansions = append(expansions, "three")
+	case "4":
+		expansions = append(expansions, "four")
+	case "5":
+		expansions = append(expansions, "five")
+	case "6":
+		expansions = append(expansions, "six")
+	case "7":
+		expansions = append(expansions, "seven")
+	case "8":
+		expansions = append(expansions, "eight")
+	case "9":
+		expansions = append(expansions, "nine")
+	case "10":
+		expansions = append(expansions, "ten")
+	}
+
+	return expansions
+}
+
+func isNumericToken(value string) bool {
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return value != ""
 }
 
 func retrievalScore(text string, queryTerms []string) int {
@@ -1723,7 +1794,7 @@ func scoreCollectionTable(table models.TableSection, queryTerms []string) int {
 		strings.Join(table.Headers, " "),
 		renderTableRowsForRetrieval(table.Rows, 3),
 	}, " "))
-	return retrievalScore(content, queryTerms) * 3
+	return retrievalScore(content, queryTerms) * 5
 }
 
 func renderTableRowsForRetrieval(rows [][]string, limit int) string {
