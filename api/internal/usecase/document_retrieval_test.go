@@ -101,6 +101,34 @@ func TestBuildTreeRetrievalPrefersStrongChildMatchOverGenericAncestor(t *testing
 	}
 }
 
+func TestBuildTreeRetrievalUsesNodeRetrievalTextMetadata(t *testing.T) {
+	t.Parallel()
+
+	pageOne := 1
+	result := buildTreeRetrieval("48 hours written notice", []models.DocumentOutlineNode{
+		{
+			NodeID:        "incident-response",
+			SequenceOrder: 0,
+			Level:         1,
+			Title:         "Incident Response",
+			Summary:       "Operational overview.",
+			StartPage:     &pageOne,
+			EndPage:       &pageOne,
+			Metadata: map[string]any{
+				"retrieval_text": "Escalation window is 48 hours after written notice.",
+			},
+		},
+	}, []models.DocumentPage{
+		{PageNumber: 1, Content: "General process."},
+	})
+	if result == nil {
+		t.Fatal("expected retrieval result")
+	}
+	if len(result.NodeHits) == 0 || result.NodeHits[0].NodeID != "incident-response" {
+		t.Fatalf("expected retrieval_text metadata to rank node, got %#v", result.NodeHits)
+	}
+}
+
 func BenchmarkBuildTreeRetrieval(b *testing.B) {
 	startPageOne := 1
 	endPageFive := 5
@@ -386,6 +414,50 @@ func TestBuildCollectionRetrievalUsesTableSignalsForDocumentRanking(t *testing.T
 	}
 	if len(result.DocumentHits) == 0 || result.DocumentHits[0].DocumentID != 10 {
 		t.Fatalf("expected table-backed document to rank first, got %#v", result.DocumentHits)
+	}
+}
+
+func TestBuildCollectionRetrievalUsesNodeRetrievalTextMetadata(t *testing.T) {
+	t.Parallel()
+
+	pageOne := 1
+	result := buildCollectionRetrieval(
+		"48 hours written notice",
+		[]models.Document{
+			{ID: 21, Title: "General Handbook"},
+			{ID: 22, Title: "Incident Manual"},
+		},
+		nil,
+		[]models.DocumentOutlineNode{
+			{
+				DocumentID: 21,
+				NodeID:     "handbook",
+				Title:      "Overview",
+				Summary:    "General guidance.",
+				StartPage:  &pageOne,
+				EndPage:    &pageOne,
+			},
+			{
+				DocumentID: 22,
+				NodeID:     "response",
+				Title:      "Incident Response",
+				Summary:    "Operational overview.",
+				StartPage:  &pageOne,
+				EndPage:    &pageOne,
+				Metadata: map[string]any{
+					"retrieval_text": "Escalation window is 48 hours after written notice.",
+				},
+			},
+		},
+		nil,
+		nil,
+	)
+
+	if result == nil {
+		t.Fatal("expected retrieval result")
+	}
+	if len(result.DocumentHits) == 0 || result.DocumentHits[0].DocumentID != 22 {
+		t.Fatalf("expected retrieval_text metadata to rank document 22 first, got %#v", result.DocumentHits)
 	}
 }
 

@@ -1170,7 +1170,7 @@ func traverseTree(queryTerms []string, nodes []models.DocumentOutlineNode) ([]do
 func rankNodesForTraversal(nodes []models.DocumentOutlineNode, queryTerms []string) []domain.TreeNodeHit {
 	hits := make([]domain.TreeNodeHit, 0, len(nodes))
 	for _, node := range nodes {
-		score := retrievalScore(strings.Join([]string{node.Title, node.Summary}, " "), queryTerms)
+		score := retrievalScore(outlineNodeSearchText(node), queryTerms)
 		score += metadataIntValue(node.Metadata, "confidence_score") / 25
 		if score == 0 {
 			continue
@@ -1629,6 +1629,32 @@ func metadataIntValue(metadata map[string]any, key string) int {
 	}
 }
 
+func metadataStringValue(metadata map[string]any, key string) string {
+	if metadata == nil {
+		return ""
+	}
+
+	value, ok := metadata[key]
+	if !ok {
+		return ""
+	}
+
+	text, ok := value.(string)
+	if !ok {
+		return ""
+	}
+
+	return strings.TrimSpace(text)
+}
+
+func outlineNodeSearchText(node models.DocumentOutlineNode) string {
+	retrievalText := metadataStringValue(node.Metadata, "retrieval_text")
+	if retrievalText == "" {
+		retrievalText = node.Summary
+	}
+	return strings.TrimSpace(strings.Join([]string{node.Title, retrievalText}, " "))
+}
+
 func tokenizeRetrievalText(value string) []string {
 	normalized := strings.ToLower(strings.TrimSpace(value))
 	if normalized == "" {
@@ -1769,7 +1795,7 @@ func estimateDepthQualityBonus(maxDepth int) float64 {
 }
 
 func scoreCollectionNode(node models.DocumentOutlineNode, queryTerms []string) int {
-	score := retrievalScore(strings.Join([]string{node.Title, node.Summary}, " "), queryTerms) * 3
+	score := retrievalScore(outlineNodeSearchText(node), queryTerms) * 3
 	score += metadataIntValue(node.Metadata, "confidence_score") / 25
 	if score > 0 && node.Level > 1 {
 		score++
