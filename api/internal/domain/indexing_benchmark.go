@@ -95,6 +95,15 @@ type IndexingBenchmarkReferenceComparison struct {
 	Checklist      []IndexingBenchmarkReferenceChecklistItem `json:"checklist"`
 }
 
+type IndexingBenchmarkStructuralSignal struct {
+	ID        string  `json:"id"`
+	Direction string  `json:"direction"`
+	Status    string  `json:"status"`
+	Rate      float64 `json:"rate"`
+	Count     int     `json:"count"`
+	Total     int     `json:"total"`
+}
+
 type IndexingBenchmarkCaseResult struct {
 	ID                    string `json:"id"`
 	Scope                 string `json:"scope"`
@@ -126,6 +135,7 @@ type IndexingBenchmarkReport struct {
 	HeuristicQualityNote string                                `json:"heuristic_quality_note"`
 	Corpus               []IndexingBenchmarkCorpusDocument     `json:"corpus"`
 	Metrics              IndexingBenchmarkMetrics              `json:"metrics"`
+	StructuralSignals    []IndexingBenchmarkStructuralSignal   `json:"structural_signals"`
 	Cases                []IndexingBenchmarkCaseResult         `json:"cases"`
 	CurrentSnapshot      *IndexingBenchmarkSnapshot            `json:"current_snapshot,omitempty"`
 	LatestComparison     *IndexingBenchmarkComparison          `json:"latest_comparison,omitempty"`

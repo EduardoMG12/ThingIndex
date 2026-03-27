@@ -111,6 +111,15 @@ type indexingBenchmarkStructureStats struct {
 	TotalSummaryLength  int
 }
 
+type indexingBenchmarkDocumentStructuralProfile struct {
+	AvailableTitles            map[string]struct{}
+	ExpectedTitleCount         int
+	MatchedExpectedTitleCount  int
+	ActualTitleCount           int
+	UnexpectedTitleCount       int
+	HasUsefulDepth             bool
+}
+
 type indexingBenchmarkProvider struct {
 	indexer domain.DocumentIndexer
 }
@@ -264,6 +273,13 @@ func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Conte
 	heuristicTotal := 0.0
 	minHeuristic := 0.0
 	maxHeuristic := 0.0
+	totalExpectedQueryNodes := 0
+	matchedExpectedQueryNodes := 0
+	totalExpectedOutlineTitles := 0
+	matchedExpectedOutlineTitles := 0
+	totalIndexedHeadings := 0
+	unexpectedHeadingCount := 0
+	usefulDepthDocuments := 0
 	currentStructureStats := indexingBenchmarkStructureStats{}
 	pipelineSignature := processing.CurrentPipelineSignature()
 	currentSnapshot := domain.IndexingBenchmarkSnapshot{
@@ -324,6 +340,14 @@ func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Conte
 			HeuristicQualityScore: heuristicScore,
 		})
 		accumulateBenchmarkStructureStats(&currentStructureStats, result)
+		structuralProfile := buildBenchmarkDocumentStructuralProfile(fixture, result)
+		totalExpectedOutlineTitles += structuralProfile.ExpectedTitleCount
+		matchedExpectedOutlineTitles += structuralProfile.MatchedExpectedTitleCount
+		totalIndexedHeadings += structuralProfile.ActualTitleCount
+		unexpectedHeadingCount += structuralProfile.UnexpectedTitleCount
+		if structuralProfile.HasUsefulDepth {
+			usefulDepthDocuments++
+		}
 
 		documentTitleByID[fixture.ID] = fixture.Title
 		documentRuntimes = append(documentRuntimes, benchmarkDocumentRuntime{
@@ -335,6 +359,10 @@ func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Conte
 		for _, query := range fixture.DocumentQueries {
 			totalDocumentQueries++
 			totalExactCases++
+			totalExpectedQueryNodes++
+			if _, ok := structuralProfile.AvailableTitles[normalizeBenchmarkTitle(query.ExpectedTopNodeTitle)]; ok {
+				matchedExpectedQueryNodes++
+			}
 
 			tree := buildTreeRetrieval(query.Query, result.OutlineNodes, result.DocumentPages, result.Chunks)
 
@@ -473,6 +501,16 @@ func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Conte
 		MinimumHeuristicScore:          minHeuristic,
 		MaximumHeuristicScore:          maxHeuristic,
 	}
+	report.StructuralSignals = buildIndexingBenchmarkStructuralSignals(
+		matchedExpectedQueryNodes,
+		totalExpectedQueryNodes,
+		usefulDepthDocuments,
+		len(corpus.Documents),
+		matchedExpectedOutlineTitles,
+		totalExpectedOutlineTitles,
+		unexpectedHeadingCount,
+		totalIndexedHeadings,
+	)
 
 	currentSnapshot.Metrics = report.Metrics
 	report.CurrentSnapshot = &currentSnapshot
@@ -536,11 +574,135 @@ func benchmarkDocumentStructurePassed(fixture indexingBenchmarkDocumentFixture, 
 	return true
 }
 
+func buildBenchmarkDocumentStructuralProfile(
+	fixture indexingBenchmarkDocumentFixture,
+	result domain.IndexingResult,
+) indexingBenchmarkDocumentStructuralProfile {
+	expectedTitleCounts := make(map[string]int, len(fixture.ExpectedOutlineTitles))
+	actualTitleCounts := make(map[string]int, len(result.OutlineNodes))
+	availableTitles := make(map[string]struct{}, len(result.OutlineNodes))
+	expectedTitleCount := 0
+	actualTitleCount := 0
+
+	for _, title := range fixture.ExpectedOutlineTitles {
+		normalized := normalizeBenchmarkTitle(title)
+		if normalized == "" {
+			continue
+		}
+		expectedTitleCounts[normalized]++
+		expectedTitleCount++
+	}
+
+	for _, node := range result.OutlineNodes {
+		normalized := normalizeBenchmarkTitle(node.Title)
+		if normalized != "" {
+			actualTitleCounts[normalized]++
+			availableTitles[normalized] = struct{}{}
+			actualTitleCount++
+		}
+	}
+
+	matchedExpectedTitleCount := 0
+	for title, expectedCount := range expectedTitleCounts {
+		matchedExpectedTitleCount += min(expectedCount, actualTitleCounts[title])
+	}
+
+	unexpectedTitleCount := actualTitleCount - matchedExpectedTitleCount
+	if unexpectedTitleCount < 0 {
+		unexpectedTitleCount = 0
+	}
+
+	requiredNodeCount := min(max(expectedTitleCount, 2), 3)
+	if expectedTitleCount <= 1 {
+		requiredNodeCount = 1
+	}
+	hasUsefulDepth := len(result.OutlineNodes) >= requiredNodeCount
+
+	return indexingBenchmarkDocumentStructuralProfile{
+		AvailableTitles:           availableTitles,
+		ExpectedTitleCount:        expectedTitleCount,
+		MatchedExpectedTitleCount: matchedExpectedTitleCount,
+		ActualTitleCount:          actualTitleCount,
+		UnexpectedTitleCount:      unexpectedTitleCount,
+		HasUsefulDepth:            hasUsefulDepth,
+	}
+}
+
 func percentage(value, total int) float64 {
 	if total <= 0 {
 		return 0
 	}
 	return float64(value) / float64(total) * 100
+}
+
+func normalizeBenchmarkTitle(value string) string {
+	return strings.Join(strings.Fields(strings.TrimSpace(value)), " ")
+}
+
+func buildIndexingBenchmarkStructuralSignals(
+	matchedExpectedQueryNodes int,
+	totalExpectedQueryNodes int,
+	usefulDepthDocuments int,
+	totalDocuments int,
+	matchedExpectedOutlineTitles int,
+	totalExpectedOutlineTitles int,
+	unexpectedHeadingCount int,
+	totalIndexedHeadings int,
+) []domain.IndexingBenchmarkStructuralSignal {
+	return []domain.IndexingBenchmarkStructuralSignal{
+		{
+			ID:        "expected_query_node_match",
+			Direction: "higher_is_better",
+			Status:    benchmarkHighSignalStatus(percentage(matchedExpectedQueryNodes, totalExpectedQueryNodes), 100, 90),
+			Rate:      percentage(matchedExpectedQueryNodes, totalExpectedQueryNodes),
+			Count:     matchedExpectedQueryNodes,
+			Total:     totalExpectedQueryNodes,
+		},
+		{
+			ID:        "useful_depth",
+			Direction: "higher_is_better",
+			Status:    benchmarkHighSignalStatus(percentage(usefulDepthDocuments, totalDocuments), 100, 80),
+			Rate:      percentage(usefulDepthDocuments, totalDocuments),
+			Count:     usefulDepthDocuments,
+			Total:     totalDocuments,
+		},
+		{
+			ID:        "outline_coverage",
+			Direction: "higher_is_better",
+			Status:    benchmarkHighSignalStatus(percentage(matchedExpectedOutlineTitles, totalExpectedOutlineTitles), 100, 90),
+			Rate:      percentage(matchedExpectedOutlineTitles, totalExpectedOutlineTitles),
+			Count:     matchedExpectedOutlineTitles,
+			Total:     totalExpectedOutlineTitles,
+		},
+		{
+			ID:        "heading_false_positive",
+			Direction: "lower_is_better",
+			Status:    benchmarkLowSignalStatus(percentage(unexpectedHeadingCount, totalIndexedHeadings), 0, 10),
+			Rate:      percentage(unexpectedHeadingCount, totalIndexedHeadings),
+			Count:     unexpectedHeadingCount,
+			Total:     totalIndexedHeadings,
+		},
+	}
+}
+
+func benchmarkHighSignalStatus(rate float64, passThreshold float64, watchThreshold float64) string {
+	if rate >= passThreshold {
+		return "pass"
+	}
+	if rate >= watchThreshold {
+		return "watch"
+	}
+	return "fail"
+}
+
+func benchmarkLowSignalStatus(rate float64, passThreshold float64, watchThreshold float64) string {
+	if rate <= passThreshold {
+		return "pass"
+	}
+	if rate <= watchThreshold {
+		return "watch"
+	}
+	return "fail"
 }
 
 func safeAverage(total float64, count int) float64 {

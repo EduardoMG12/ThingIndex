@@ -12,5 +12,6 @@ It exists to keep the baseline explicit and reproducible:
 - document-tree cases validate exact top-1 node/page matches;
 - collection cases validate exact top-1 document matches;
 - structure checks validate expected outline titles and table counts.
+- structural signals also report expected query-node presence, useful outline depth, outline coverage, and unexpected heading rate.
 
 The benchmark is intentionally small and deterministic. It is a runtime baseline, not a claim of general production accuracy for arbitrary corpora or grounded chat answers.

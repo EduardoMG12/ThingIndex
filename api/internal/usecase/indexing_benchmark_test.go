@@ -48,6 +48,40 @@ func TestIndexingBenchmarkProviderBuildsPublicReport(t *testing.T) {
 	if report.Metrics.AverageHeuristicScore >= 90 || report.Metrics.AverageHeuristicScore <= 60 {
 		t.Fatalf("expected recalibrated heuristic score, got %f", report.Metrics.AverageHeuristicScore)
 	}
+	if len(report.StructuralSignals) != 4 {
+		t.Fatalf("expected four structural signals, got %#v", report.StructuralSignals)
+	}
+	structuralSignalByID := make(map[string]struct {
+		Status string
+		Rate   float64
+		Count  int
+		Total  int
+	}, len(report.StructuralSignals))
+	for _, item := range report.StructuralSignals {
+		structuralSignalByID[item.ID] = struct {
+			Status string
+			Rate   float64
+			Count  int
+			Total  int
+		}{
+			Status: item.Status,
+			Rate:   item.Rate,
+			Count:  item.Count,
+			Total:  item.Total,
+		}
+	}
+	if item, ok := structuralSignalByID["expected_query_node_match"]; !ok || item.Status != "pass" || math.Abs(item.Rate-100) > 0.0001 || item.Count != 6 || item.Total != 6 {
+		t.Fatalf("unexpected expected_query_node_match signal: %#v", report.StructuralSignals)
+	}
+	if item, ok := structuralSignalByID["useful_depth"]; !ok || item.Status != "pass" || math.Abs(item.Rate-100) > 0.0001 || item.Count != 5 || item.Total != 5 {
+		t.Fatalf("unexpected useful_depth signal: %#v", report.StructuralSignals)
+	}
+	if item, ok := structuralSignalByID["outline_coverage"]; !ok || item.Status != "pass" || math.Abs(item.Rate-100) > 0.0001 || item.Count != 19 || item.Total != 19 {
+		t.Fatalf("unexpected outline_coverage signal: %#v", report.StructuralSignals)
+	}
+	if item, ok := structuralSignalByID["heading_false_positive"]; !ok || item.Status != "pass" || math.Abs(item.Rate) > 0.0001 || item.Count != 0 || item.Total != 19 {
+		t.Fatalf("unexpected heading_false_positive signal: %#v", report.StructuralSignals)
+	}
 	if report.CurrentSnapshot == nil {
 		t.Fatalf("expected current benchmark snapshot, got nil")
 	}
