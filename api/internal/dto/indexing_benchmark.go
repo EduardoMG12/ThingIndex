@@ -34,6 +34,35 @@ type IndexingBenchmarkMetricsResponse struct {
 	MaximumHeuristicScore          float64 `json:"maximum_heuristic_score"`
 }
 
+type IndexingBenchmarkSnapshotResponse struct {
+	ID                   string                           `json:"id"`
+	Label                string                           `json:"label"`
+	RecordedOn           string                           `json:"recorded_on"`
+	Summary              string                           `json:"summary,omitempty"`
+	DatasetVersion       string                           `json:"dataset_version"`
+	PipelineVersion      string                           `json:"pipeline_version,omitempty"`
+	PromptProfileVersion string                           `json:"prompt_profile_version,omitempty"`
+	ChunkStrategyVersion string                           `json:"chunk_strategy_version,omitempty"`
+	Metrics              IndexingBenchmarkMetricsResponse `json:"metrics"`
+}
+
+type IndexingBenchmarkMetricDeltaResponse struct {
+	Metric        string  `json:"metric"`
+	PreviousValue float64 `json:"previous_value"`
+	CurrentValue  float64 `json:"current_value"`
+	Delta         float64 `json:"delta"`
+}
+
+type IndexingBenchmarkComparisonResponse struct {
+	ID              string                                 `json:"id"`
+	Title           string                                 `json:"title"`
+	RecordedOn      string                                 `json:"recorded_on"`
+	Summary         string                                 `json:"summary,omitempty"`
+	Before          IndexingBenchmarkSnapshotResponse      `json:"before"`
+	After           IndexingBenchmarkSnapshotResponse      `json:"after"`
+	KeyMetricDeltas []IndexingBenchmarkMetricDeltaResponse `json:"key_metric_deltas"`
+}
+
 type IndexingBenchmarkCaseResultResponse struct {
 	ID                    string `json:"id"`
 	Scope                 string `json:"scope"`
@@ -66,6 +95,9 @@ type IndexingBenchmarkReportResponse struct {
 	Corpus               []IndexingBenchmarkCorpusDocumentResponse `json:"corpus"`
 	Metrics              IndexingBenchmarkMetricsResponse          `json:"metrics"`
 	Cases                []IndexingBenchmarkCaseResultResponse     `json:"cases"`
+	CurrentSnapshot      *IndexingBenchmarkSnapshotResponse        `json:"current_snapshot,omitempty"`
+	LatestComparison     *IndexingBenchmarkComparisonResponse      `json:"latest_comparison,omitempty"`
+	ComparisonHistory    []IndexingBenchmarkComparisonResponse     `json:"comparison_history,omitempty"`
 }
 
 func ToIndexingBenchmarkReportResponse(report *domain.IndexingBenchmarkReport) *IndexingBenchmarkReportResponse {
@@ -114,6 +146,11 @@ func ToIndexingBenchmarkReportResponse(report *domain.IndexingBenchmarkReport) *
 		})
 	}
 
+	comparisonHistory := make([]IndexingBenchmarkComparisonResponse, 0, len(report.ComparisonHistory))
+	for _, item := range report.ComparisonHistory {
+		comparisonHistory = append(comparisonHistory, toIndexingBenchmarkComparisonResponse(item))
+	}
+
 	return &IndexingBenchmarkReportResponse{
 		DatasetVersion:       report.DatasetVersion,
 		CorpusSourcePath:     report.CorpusSourcePath,
@@ -140,6 +177,85 @@ func ToIndexingBenchmarkReportResponse(report *domain.IndexingBenchmarkReport) *
 			MinimumHeuristicScore:          report.Metrics.MinimumHeuristicScore,
 			MaximumHeuristicScore:          report.Metrics.MaximumHeuristicScore,
 		},
-		Cases: cases,
+		Cases:             cases,
+		CurrentSnapshot:   toIndexingBenchmarkSnapshotResponse(report.CurrentSnapshot),
+		LatestComparison:  toIndexingBenchmarkComparisonResponsePtr(report.LatestComparison),
+		ComparisonHistory: comparisonHistory,
 	}
+}
+
+func toIndexingBenchmarkMetricsResponse(metrics domain.IndexingBenchmarkMetrics) IndexingBenchmarkMetricsResponse {
+	return IndexingBenchmarkMetricsResponse{
+		CorpusDocuments:                metrics.CorpusDocuments,
+		DocumentQueries:                metrics.DocumentQueries,
+		CollectionQueries:              metrics.CollectionQueries,
+		StructurePassRate:              metrics.StructurePassRate,
+		TreeNodeTop1Accuracy:           metrics.TreeNodeTop1Accuracy,
+		TreeNodeRecallAt3:              metrics.TreeNodeRecallAt3,
+		TreePageTop1Accuracy:           metrics.TreePageTop1Accuracy,
+		TreePageRecallAt3:              metrics.TreePageRecallAt3,
+		CollectionDocumentTop1Accuracy: metrics.CollectionDocumentTop1Accuracy,
+		CollectionDocumentRecallAt3:    metrics.CollectionDocumentRecallAt3,
+		ExactMatchAccuracy:             metrics.ExactMatchAccuracy,
+		AverageHeuristicScore:          metrics.AverageHeuristicScore,
+		MinimumHeuristicScore:          metrics.MinimumHeuristicScore,
+		MaximumHeuristicScore:          metrics.MaximumHeuristicScore,
+	}
+}
+
+func toIndexingBenchmarkSnapshotResponse(snapshot *domain.IndexingBenchmarkSnapshot) *IndexingBenchmarkSnapshotResponse {
+	if snapshot == nil {
+		return nil
+	}
+
+	return &IndexingBenchmarkSnapshotResponse{
+		ID:                   snapshot.ID,
+		Label:                snapshot.Label,
+		RecordedOn:           snapshot.RecordedOn,
+		Summary:              snapshot.Summary,
+		DatasetVersion:       snapshot.DatasetVersion,
+		PipelineVersion:      snapshot.PipelineVersion,
+		PromptProfileVersion: snapshot.PromptProfileVersion,
+		ChunkStrategyVersion: snapshot.ChunkStrategyVersion,
+		Metrics:              toIndexingBenchmarkMetricsResponse(snapshot.Metrics),
+	}
+}
+
+func toIndexingBenchmarkComparisonResponse(item domain.IndexingBenchmarkComparison) IndexingBenchmarkComparisonResponse {
+	deltas := make([]IndexingBenchmarkMetricDeltaResponse, 0, len(item.KeyMetricDeltas))
+	for _, delta := range item.KeyMetricDeltas {
+		deltas = append(deltas, IndexingBenchmarkMetricDeltaResponse{
+			Metric:        delta.Metric,
+			PreviousValue: delta.PreviousValue,
+			CurrentValue:  delta.CurrentValue,
+			Delta:         delta.Delta,
+		})
+	}
+
+	before := toIndexingBenchmarkSnapshotResponse(&item.Before)
+	after := toIndexingBenchmarkSnapshotResponse(&item.After)
+
+	response := IndexingBenchmarkComparisonResponse{
+		ID:              item.ID,
+		Title:           item.Title,
+		RecordedOn:      item.RecordedOn,
+		Summary:         item.Summary,
+		KeyMetricDeltas: deltas,
+	}
+	if before != nil {
+		response.Before = *before
+	}
+	if after != nil {
+		response.After = *after
+	}
+	return response
+}
+
+func toIndexingBenchmarkComparisonResponsePtr(item *domain.IndexingBenchmarkComparison) *IndexingBenchmarkComparisonResponse {
+	if item == nil {
+		return nil
+	}
+
+	response := toIndexingBenchmarkComparisonResponse(*item)
+	return &response
 }

@@ -90,6 +90,40 @@ func TestMetaHandlerGetIndexingBenchmark(t *testing.T) {
 				DocumentQueries:    1,
 				ExactMatchAccuracy: 100,
 			},
+			CurrentSnapshot: &domain.IndexingBenchmarkSnapshot{
+				ID:                   "2026-03-relational-baseline-v1",
+				Label:                "Current runtime",
+				RecordedOn:           "2026-03-22",
+				DatasetVersion:       "2026-03-relational-baseline-v1",
+				PipelineVersion:      "page-tree-v3",
+				PromptProfileVersion: "llm-index-v5",
+				ChunkStrategyVersion: "section-window-v2",
+				Metrics: domain.IndexingBenchmarkMetrics{
+					CorpusDocuments:    1,
+					DocumentQueries:    1,
+					ExactMatchAccuracy: 100,
+				},
+			},
+			LatestComparison: &domain.IndexingBenchmarkComparison{
+				ID:         "baseline",
+				Title:      "Baseline -> Current",
+				RecordedOn: "2026-03-22",
+				Before: domain.IndexingBenchmarkSnapshot{
+					ID:             "older",
+					Label:          "Older",
+					RecordedOn:     "2026-03-20",
+					DatasetVersion: "2026-03-relational-baseline-v0",
+				},
+				After: domain.IndexingBenchmarkSnapshot{
+					ID:             "current",
+					Label:          "Current",
+					RecordedOn:     "2026-03-22",
+					DatasetVersion: "2026-03-relational-baseline-v1",
+				},
+				KeyMetricDeltas: []domain.IndexingBenchmarkMetricDelta{
+					{Metric: "exact_match_accuracy", PreviousValue: 20, CurrentValue: 100, Delta: 80},
+				},
+			},
 			Cases: []domain.IndexingBenchmarkCaseResult{
 				{
 					ID:                "service-payment-deadline",
@@ -132,5 +166,15 @@ func TestMetaHandlerGetIndexingBenchmark(t *testing.T) {
 	metrics, ok := data["metrics"].(map[string]any)
 	if !ok || metrics["exact_match_accuracy"] != float64(100) {
 		t.Fatalf("expected metrics payload, got %#v", data["metrics"])
+	}
+
+	currentSnapshot, ok := data["current_snapshot"].(map[string]any)
+	if !ok || currentSnapshot["chunk_strategy_version"] != "section-window-v2" {
+		t.Fatalf("expected current snapshot payload, got %#v", data["current_snapshot"])
+	}
+
+	latestComparison, ok := data["latest_comparison"].(map[string]any)
+	if !ok || latestComparison["title"] != "Baseline -> Current" {
+		t.Fatalf("expected latest comparison payload, got %#v", data["latest_comparison"])
 	}
 }
