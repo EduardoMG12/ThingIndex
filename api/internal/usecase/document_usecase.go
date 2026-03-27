@@ -863,7 +863,7 @@ func (u *documentCatalogUseCase) GetDocumentIndex(ctx context.Context, userID, d
 	}
 
 	if strings.TrimSpace(query) != "" {
-		index.TreeRetrieval = buildTreeRetrieval(strings.TrimSpace(query), outlineNodes, documentPages)
+		index.TreeRetrieval = buildTreeRetrieval(strings.TrimSpace(query), outlineNodes, documentPages, chunks)
 	}
 	index.IndexEvaluation = buildIndexEvaluation(metadataPairs, outlineNodes)
 	index.Monitoring = buildIndexMonitoring(doc, metadataPairs, index.IndexEvaluation)
@@ -1088,13 +1088,15 @@ func (u *documentCatalogUseCase) StoreMetadataPairs(ctx context.Context, userID,
 	return pairs, nil
 }
 
-func buildTreeRetrieval(query string, nodes []models.DocumentOutlineNode, pages []models.DocumentPage) *domain.TreeRetrievalResult {
+func buildTreeRetrieval(query string, nodes []models.DocumentOutlineNode, pages []models.DocumentPage, chunks []models.DocumentChunk) *domain.TreeRetrievalResult {
 	queryTerms := tokenizeRetrievalText(query)
 	if len(queryTerms) == 0 {
 		return nil
 	}
 
-	nodeHits, traversalSteps := traverseTree(queryTerms, nodes)
+	directEvidence := buildTreeDirectEvidence(chunks, queryTerms)
+	baseNodeHits, _ := traverseTree(queryTerms, nodes, nil)
+	nodeHits, traversalSteps := traverseTree(queryTerms, nodes, directEvidence.NodeScoreByID)
 	pageScoreByNumber := make(map[int]int, len(pages))
 	for _, step := range traversalSteps {
 		if step.StartPage == nil || step.EndPage == nil {
@@ -1105,9 +1107,15 @@ func buildTreeRetrieval(query string, nodes []models.DocumentOutlineNode, pages 
 		}
 	}
 
+	bestDirectPageScore := 0
 	pageHits := make([]domain.TreePageHit, 0, len(pages))
 	for _, page := range pages {
-		score := pageScoreByNumber[page.PageNumber] + retrievalScore(strings.Join([]string{page.Summary, page.Content}, " "), queryTerms)
+		directScore := scoreTreePage(page, queryTerms) + directEvidence.PageScoreByNumber[page.PageNumber]
+		if directScore > bestDirectPageScore {
+			bestDirectPageScore = directScore
+		}
+
+		score := pageScoreByNumber[page.PageNumber] + directScore
 		if score == 0 {
 			continue
 		}
@@ -1130,20 +1138,72 @@ func buildTreeRetrieval(query string, nodes []models.DocumentOutlineNode, pages 
 		pageHits = pageHits[:5]
 	}
 
+	strategy := "tree-iterative"
+	if shouldPreferDirectTreeEvidence(baseNodeHits, nodeHits, nodes, directEvidence, bestDirectPageScore) {
+		strategy = "tree-degraded-direct-evidence"
+	} else if len(nodeHits) == 0 && bestDirectPageScore > 0 {
+		strategy = "tree-direct-evidence"
+	}
+
 	return &domain.TreeRetrievalResult{
 		Query:          query,
 		NodeHits:       nodeHits,
 		PageHits:       pageHits,
 		TraversalSteps: traversalSteps,
 		UsedTree:       true,
-		Strategy:       "tree-iterative",
+		Strategy:       strategy,
 	}
 }
 
-func traverseTree(queryTerms []string, nodes []models.DocumentOutlineNode) ([]domain.TreeNodeHit, []domain.TreeTraversalStep) {
+type treeDirectEvidence struct {
+	NodeScoreByID     map[string]int
+	PageScoreByNumber map[int]int
+	MaxNodeScore      int
+	MaxPageScore      int
+}
+
+func buildTreeDirectEvidence(chunks []models.DocumentChunk, queryTerms []string) treeDirectEvidence {
+	evidence := treeDirectEvidence{
+		NodeScoreByID:     make(map[string]int),
+		PageScoreByNumber: make(map[int]int),
+	}
+
+	for _, chunk := range chunks {
+		score := scoreTreeChunk(chunk, queryTerms)
+		if score == 0 {
+			continue
+		}
+
+		if score > evidence.MaxPageScore {
+			evidence.MaxPageScore = score
+		}
+
+		if nodeID := metadataStringValue(chunk.Metadata, "outline_node_id"); nodeID != "" {
+			evidence.NodeScoreByID[nodeID] += score
+			if evidence.NodeScoreByID[nodeID] > evidence.MaxNodeScore {
+				evidence.MaxNodeScore = evidence.NodeScoreByID[nodeID]
+			}
+		}
+
+		startPage, endPage, ok := chunkPageRange(chunk)
+		if !ok {
+			continue
+		}
+		for pageNumber := startPage; pageNumber <= endPage; pageNumber++ {
+			evidence.PageScoreByNumber[pageNumber] += score
+			if evidence.PageScoreByNumber[pageNumber] > evidence.MaxPageScore {
+				evidence.MaxPageScore = evidence.PageScoreByNumber[pageNumber]
+			}
+		}
+	}
+
+	return evidence
+}
+
+func traverseTree(queryTerms []string, nodes []models.DocumentOutlineNode, directNodeScores map[string]int) ([]domain.TreeNodeHit, []domain.TreeTraversalStep) {
 	nodeByID := make(map[string]models.DocumentOutlineNode, len(nodes))
 	parentByNodeID := make(map[string]string, len(nodes))
-	allHits := rankNodesForTraversal(nodes, queryTerms)
+	allHits := rankNodesForTraversal(nodes, queryTerms, directNodeScores)
 	if len(allHits) == 0 {
 		return nil, nil
 	}
@@ -1167,11 +1227,19 @@ func traverseTree(queryTerms []string, nodes []models.DocumentOutlineNode) ([]do
 	return allHits, steps
 }
 
-func rankNodesForTraversal(nodes []models.DocumentOutlineNode, queryTerms []string) []domain.TreeNodeHit {
+func rankNodesForTraversal(nodes []models.DocumentOutlineNode, queryTerms []string, directNodeScores map[string]int) []domain.TreeNodeHit {
 	hits := make([]domain.TreeNodeHit, 0, len(nodes))
 	for _, node := range nodes {
 		score := retrievalScore(outlineNodeSearchText(node), queryTerms)
 		score += metadataIntValue(node.Metadata, "confidence_score") / 25
+		directScore := directNodeScores[node.NodeID]
+		if directScore > 0 {
+			score += directScore
+			score += 2
+		}
+		if isWeakTreeNode(node, queryTerms, score) && directScore == 0 {
+			score = max(0, score-2)
+		}
 		if score == 0 {
 			continue
 		}
@@ -1198,6 +1266,68 @@ func rankNodesForTraversal(nodes []models.DocumentOutlineNode, queryTerms []stri
 	})
 
 	return hits
+}
+
+func shouldPreferDirectTreeEvidence(
+	baseNodeHits []domain.TreeNodeHit,
+	nodeHits []domain.TreeNodeHit,
+	nodes []models.DocumentOutlineNode,
+	directEvidence treeDirectEvidence,
+	bestDirectPageScore int,
+) bool {
+	if len(nodeHits) == 0 {
+		return false
+	}
+
+	nodeByID := make(map[string]models.DocumentOutlineNode, len(nodes))
+	for _, node := range nodes {
+		nodeByID[node.NodeID] = node
+	}
+
+	if len(baseNodeHits) == 0 {
+		return directEvidence.MaxNodeScore > 0 || bestDirectPageScore > 0
+	}
+
+	baseTop := baseNodeHits[0]
+	baseTopNode := nodeByID[baseTop.NodeID]
+	if !isWeakTreeNode(baseTopNode, nil, baseTop.Score) {
+		return false
+	}
+
+	if directEvidence.MaxNodeScore == 0 && bestDirectPageScore == 0 {
+		return false
+	}
+
+	if nodeHits[0].NodeID != baseTop.NodeID {
+		return true
+	}
+
+	return bestDirectPageScore >= baseTop.Score || directEvidence.MaxNodeScore >= baseTop.Score
+}
+
+func isWeakTreeNode(node models.DocumentOutlineNode, queryTerms []string, score int) bool {
+	if fallbackStructure, ok := node.Metadata["fallback_structure"].(bool); ok && fallbackStructure {
+		return true
+	}
+	if metadataStringValue(node.Metadata, "segment_type") == "page" {
+		return true
+	}
+	if confidenceBand := metadataStringValue(node.Metadata, "confidence_band"); confidenceBand == "low" {
+		return true
+	}
+	confidenceScore := metadataIntValue(node.Metadata, "confidence_score")
+	if confidenceScore > 0 && confidenceScore < 60 {
+		return true
+	}
+
+	minScore := 2
+	if queryTermCount := len(queryTerms); queryTermCount >= 4 {
+		minScore = 3
+	} else if queryTermCount == 0 {
+		minScore = 1
+	}
+
+	return score < minScore
 }
 
 func buildTraversalSteps(
@@ -1807,11 +1937,35 @@ func scoreCollectionPage(page models.DocumentPage, queryTerms []string) int {
 	return retrievalScore(strings.Join([]string{page.Summary, page.Content}, " "), queryTerms) * 2
 }
 
+func scoreTreePage(page models.DocumentPage, queryTerms []string) int {
+	return scoreCollectionPage(page, queryTerms)
+}
+
 func scoreCollectionChunk(chunk models.DocumentChunk, queryTerms []string) int {
 	if chunk.ChunkType == "table_section" {
 		return 0
 	}
 	return retrievalScore(strings.Join([]string{chunk.Title, chunk.Content}, " "), queryTerms) * 2
+}
+
+func scoreTreeChunk(chunk models.DocumentChunk, queryTerms []string) int {
+	score := scoreCollectionChunk(chunk, queryTerms)
+	if score == 0 {
+		return 0
+	}
+	if metadataIntValue(chunk.Metadata, "related_table_count") > 0 {
+		score++
+	}
+	return score
+}
+
+func chunkPageRange(chunk models.DocumentChunk) (int, int, bool) {
+	startPage := metadataIntValue(chunk.Metadata, "page_start")
+	endPage := metadataIntValue(chunk.Metadata, "page_end")
+	if startPage <= 0 || endPage < startPage {
+		return 0, 0, false
+	}
+	return startPage, endPage, true
 }
 
 func scoreCollectionTable(table models.TableSection, queryTerms []string) int {

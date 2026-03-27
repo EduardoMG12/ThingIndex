@@ -201,7 +201,7 @@ func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Conte
 			totalDocumentQueries++
 			totalExactCases++
 
-			tree := buildTreeRetrieval(query.Query, result.OutlineNodes, result.DocumentPages)
+			tree := buildTreeRetrieval(query.Query, result.OutlineNodes, result.DocumentPages, result.Chunks)
 
 			nodeMatched := false
 			nodeInTop3 := false

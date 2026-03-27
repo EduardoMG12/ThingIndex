@@ -40,6 +40,7 @@ func TestBuildTreeRetrievalPrioritizesMatchingNodesAndPages(t *testing.T) {
 			{PageNumber: 1, Summary: "Resumo introdutorio.", Content: "Introducao e escopo."},
 			{PageNumber: 3, Summary: "Pagamento em 15 dias.", Content: "The payment deadline is 15 days after invoice."},
 		},
+		nil,
 	)
 	if result == nil {
 		t.Fatal("expected retrieval result")
@@ -89,7 +90,7 @@ func TestBuildTreeRetrievalPrefersStrongChildMatchOverGenericAncestor(t *testing
 
 	result := buildTreeRetrieval("payment deadline invoice", nodes, []models.DocumentPage{
 		{PageNumber: 1, Content: "Payment deadline after invoice receipt."},
-	})
+	}, nil)
 	if result == nil {
 		t.Fatal("expected retrieval result")
 	}
@@ -120,7 +121,7 @@ func TestBuildTreeRetrievalUsesNodeRetrievalTextMetadata(t *testing.T) {
 		},
 	}, []models.DocumentPage{
 		{PageNumber: 1, Content: "General process."},
-	})
+	}, nil)
 	if result == nil {
 		t.Fatal("expected retrieval result")
 	}
@@ -155,7 +156,7 @@ func BenchmarkBuildTreeRetrieval(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = buildTreeRetrieval("payment deadline invoice", nodes, pages)
+		_ = buildTreeRetrieval("payment deadline invoice", nodes, pages, nil)
 	}
 }
 

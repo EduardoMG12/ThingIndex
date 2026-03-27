@@ -41,7 +41,7 @@ func TestRetrievalCorpusDocumentCases(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			result := buildTreeRetrieval(tc.query, tc.nodes, tc.pages)
+			result := buildTreeRetrieval(tc.query, tc.nodes, tc.pages, nil)
 			if result == nil {
 				t.Fatal("expected retrieval result")
 			}
