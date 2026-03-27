@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"thing-index/internal/domain"
 	"thing-index/internal/models"
 )
 
@@ -55,6 +56,48 @@ func TestBuildTreeRetrievalPrioritizesMatchingNodesAndPages(t *testing.T) {
 	}
 	if !result.UsedTree || result.Strategy != "tree-iterative" {
 		t.Fatalf("unexpected retrieval strategy: %#v", result)
+	}
+}
+
+func TestBuildTreeRetrievalPrefersStrongChildMatchOverGenericAncestor(t *testing.T) {
+	t.Parallel()
+
+	pageOne := 1
+	nodes := []models.DocumentOutlineNode{
+		{
+			NodeID:        "root",
+			SequenceOrder: 0,
+			Level:         1,
+			Title:         "Contract",
+			Summary:       "General contract information.",
+			StartPage:     &pageOne,
+			EndPage:       &pageOne,
+		},
+		{
+			NodeID:        "payment",
+			SequenceOrder: 1,
+			Level:         2,
+			Title:         "Payment Terms",
+			Summary:       "Payment deadline after invoice receipt.",
+			StartPage:     &pageOne,
+			EndPage:       &pageOne,
+			Metadata: map[string]any{
+				"parent_node_id": "root",
+			},
+		},
+	}
+
+	result := buildTreeRetrieval("payment deadline invoice", nodes, []models.DocumentPage{
+		{PageNumber: 1, Content: "Payment deadline after invoice receipt."},
+	})
+	if result == nil {
+		t.Fatal("expected retrieval result")
+	}
+	if len(result.NodeHits) == 0 || result.NodeHits[0].NodeID != "payment" {
+		t.Fatalf("expected child node to rank first, got %#v", result.NodeHits)
+	}
+	if len(result.TraversalSteps) != 2 || result.TraversalSteps[1].NodeID != "payment" {
+		t.Fatalf("expected traversal path to end at child node, got %#v", result.TraversalSteps)
 	}
 }
 
@@ -116,6 +159,7 @@ func TestBuildIndexEvaluationFallsBackToNodeCoverageWhenTreeMetadataIsMissing(t 
 			NodeID:    "root",
 			Title:     "Contrato",
 			Level:     1,
+			Summary:   "Resumo geral",
 			StartPage: &pageOne,
 			EndPage:   &pageTwo,
 		},
@@ -133,6 +177,9 @@ func TestBuildIndexEvaluationFallsBackToNodeCoverageWhenTreeMetadataIsMissing(t 
 	}
 	if evaluation.CoverageRatio != 1 {
 		t.Fatalf("expected fallback coverage ratio 1, got %f", evaluation.CoverageRatio)
+	}
+	if evaluation.SummaryCoverageRatio != 0.5 {
+		t.Fatalf("expected fallback summary coverage ratio 0.5, got %f", evaluation.SummaryCoverageRatio)
 	}
 	if evaluation.MaxDepth != 2 {
 		t.Fatalf("expected fallback max depth 2, got %d", evaluation.MaxDepth)
@@ -172,6 +219,7 @@ func TestBuildIndexMonitoringBuildsTelemetrySnapshot(t *testing.T) {
 	}
 	evaluation := buildIndexEvaluation([]models.MetadataPair{
 		{Key: "tree_coverage_ratio", Value: "0.91"},
+		{Key: "tree_summary_coverage_ratio", Value: "0.88"},
 		{Key: "tree_total_nodes", Value: "8"},
 		{Key: "tree_low_confidence_nodes", Value: "1"},
 		{Key: "tree_oversized_nodes", Value: "0"},
@@ -229,6 +277,7 @@ func TestAggregateDocumentMonitoringSummaryAggregatesTelemetry(t *testing.T) {
 		},
 		[]models.MetadataPair{
 			{DocumentID: 1, Key: "tree_coverage_ratio", Value: "0.91"},
+			{DocumentID: 1, Key: "tree_summary_coverage_ratio", Value: "0.88"},
 			{DocumentID: 1, Key: "tree_total_nodes", Value: "8"},
 			{DocumentID: 1, Key: "tree_low_confidence_nodes", Value: "1"},
 			{DocumentID: 1, Key: "tree_oversized_nodes", Value: "0"},
@@ -271,5 +320,97 @@ func TestAggregateDocumentMonitoringSummaryAggregatesTelemetry(t *testing.T) {
 	}
 	if len(summary.ModelBreakdown) != 1 || summary.ModelBreakdown[0].Model != "gpt-4o-mini" {
 		t.Fatalf("unexpected model breakdown: %#v", summary.ModelBreakdown)
+	}
+}
+
+func TestBuildCollectionRetrievalRanksDocumentsAfterAggregatingAllSignals(t *testing.T) {
+	t.Parallel()
+
+	pageOne := 1
+	pageTwo := 2
+	result := buildCollectionRetrieval(
+		"incident retention years",
+		[]models.Document{
+			{ID: 1, Title: "Contract Appendix"},
+			{ID: 2, Title: "Incident Playbook"},
+		},
+		[]models.DocumentPage{
+			{DocumentID: 1, PageNumber: 1, Content: "General appendix."},
+			{DocumentID: 2, PageNumber: 2, Content: "Incident retention is tracked by policy."},
+		},
+		[]models.DocumentOutlineNode{
+			{DocumentID: 1, NodeID: "d1-root", Title: "General Terms", Summary: "Retention", StartPage: &pageOne, EndPage: &pageOne},
+			{DocumentID: 2, NodeID: "d2-root", Title: "Evidence", Summary: "Incident retention", StartPage: &pageTwo, EndPage: &pageTwo},
+		},
+		[]models.DocumentChunk{
+			{DocumentID: 2, ChunkType: "paragraph_window", Title: "Evidence Retention", Content: "Incident evidence is retained for 7 years."},
+		},
+		nil,
+	)
+
+	if result == nil {
+		t.Fatal("expected retrieval result")
+	}
+	if len(result.DocumentHits) == 0 || result.DocumentHits[0].DocumentID != 2 {
+		t.Fatalf("expected aggregated document ranking to favor document 2, got %#v", result.DocumentHits)
+	}
+}
+
+func TestBuildCollectionRetrievalUsesTableSignalsForDocumentRanking(t *testing.T) {
+	t.Parallel()
+
+	pageOne := 1
+	result := buildCollectionRetrieval(
+		"security incidents seven years",
+		[]models.Document{
+			{ID: 10, Title: "Retention Policy"},
+			{ID: 11, Title: "Vendor Guide"},
+		},
+		nil,
+		[]models.DocumentOutlineNode{
+			{DocumentID: 10, NodeID: "retention", Title: "Retention Schedule", Summary: "Operational retention windows.", StartPage: &pageOne, EndPage: &pageOne},
+		},
+		nil,
+		[]models.TableSection{
+			{
+				DocumentID: 10,
+				Title:      "Retention Schedule",
+				Headers:    []string{"Artifact", "Retention"},
+				Rows:       [][]string{{"Security incidents", "7 years"}},
+			},
+		},
+	)
+
+	if result == nil {
+		t.Fatal("expected retrieval result")
+	}
+	if len(result.DocumentHits) == 0 || result.DocumentHits[0].DocumentID != 10 {
+		t.Fatalf("expected table-backed document to rank first, got %#v", result.DocumentHits)
+	}
+}
+
+func TestEstimateIndexQualityScorePenalizesMissingSummaries(t *testing.T) {
+	t.Parallel()
+
+	withSummaries := estimateIndexQualityScore(&domain.IndexEvaluationResult{
+		CoverageRatio:        1,
+		SummaryCoverageRatio: 1,
+		TotalNodes:           4,
+		MaxDepth:             2,
+		RetrievalReady:       true,
+	})
+	withoutSummaries := estimateIndexQualityScore(&domain.IndexEvaluationResult{
+		CoverageRatio:        1,
+		SummaryCoverageRatio: 0,
+		TotalNodes:           4,
+		MaxDepth:             2,
+		RetrievalReady:       true,
+	})
+
+	if withoutSummaries >= withSummaries {
+		t.Fatalf("expected missing summaries to reduce quality score, got with=%f without=%f", withSummaries, withoutSummaries)
+	}
+	if withoutSummaries >= 80 {
+		t.Fatalf("expected missing summaries to avoid overly optimistic quality score, got %f", withoutSummaries)
 	}
 }

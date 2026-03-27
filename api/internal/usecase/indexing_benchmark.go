@@ -270,15 +270,19 @@ func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Conte
 	allDocuments := make([]models.Document, 0, len(documentRuntimes))
 	allPages := make([]models.DocumentPage, 0)
 	allNodes := make([]models.DocumentOutlineNode, 0)
+	allChunks := make([]models.DocumentChunk, 0)
+	allTables := make([]models.TableSection, 0)
 	for _, runtime := range documentRuntimes {
 		allDocuments = append(allDocuments, runtime.document)
 		allPages = append(allPages, runtime.result.DocumentPages...)
 		allNodes = append(allNodes, runtime.result.OutlineNodes...)
+		allChunks = append(allChunks, runtime.result.Chunks...)
+		allTables = append(allTables, runtime.result.TableSections...)
 	}
 
 	for _, query := range corpus.CollectionQueries {
 		totalExactCases++
-		result := buildCollectionRetrieval(query.Query, allDocuments, allPages, allNodes)
+		result := buildCollectionRetrieval(query.Query, allDocuments, allPages, allNodes, allChunks, allTables)
 
 		expectedDocumentTitle := documentTitleByID[query.ExpectedTopDocumentID]
 		actualDocumentTitle := ""

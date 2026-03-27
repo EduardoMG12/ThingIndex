@@ -263,12 +263,13 @@ type TreeTraversalStepResponse struct {
 }
 
 type IndexEvaluationResponse struct {
-	CoverageRatio      float64 `json:"coverage_ratio"`
-	TotalNodes         int     `json:"total_nodes"`
-	LowConfidenceNodes int     `json:"low_confidence_nodes"`
-	OversizedNodes     int     `json:"oversized_nodes"`
-	MaxDepth           int     `json:"max_depth"`
-	RetrievalReady     bool    `json:"retrieval_ready"`
+	CoverageRatio        float64 `json:"coverage_ratio"`
+	SummaryCoverageRatio float64 `json:"summary_coverage_ratio"`
+	TotalNodes           int     `json:"total_nodes"`
+	LowConfidenceNodes   int     `json:"low_confidence_nodes"`
+	OversizedNodes       int     `json:"oversized_nodes"`
+	MaxDepth             int     `json:"max_depth"`
+	RetrievalReady       bool    `json:"retrieval_ready"`
 }
 
 type IndexMonitoringResponse struct {
@@ -732,12 +733,13 @@ func ToIndexEvaluationResponse(result *domain.IndexEvaluationResult) *IndexEvalu
 	}
 
 	return &IndexEvaluationResponse{
-		CoverageRatio:      result.CoverageRatio,
-		TotalNodes:         result.TotalNodes,
-		LowConfidenceNodes: result.LowConfidenceNodes,
-		OversizedNodes:     result.OversizedNodes,
-		MaxDepth:           result.MaxDepth,
-		RetrievalReady:     result.RetrievalReady,
+		CoverageRatio:        result.CoverageRatio,
+		SummaryCoverageRatio: result.SummaryCoverageRatio,
+		TotalNodes:           result.TotalNodes,
+		LowConfidenceNodes:   result.LowConfidenceNodes,
+		OversizedNodes:       result.OversizedNodes,
+		MaxDepth:             result.MaxDepth,
+		RetrievalReady:       result.RetrievalReady,
 	}
 }
 
