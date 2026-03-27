@@ -13,6 +13,38 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
+type fakePDFTextExtractor struct {
+	extraction pdfTextExtraction
+	err        error
+}
+
+func (f fakePDFTextExtractor) Extract(_ []byte) (pdfTextExtraction, error) {
+	return f.extraction, f.err
+}
+
+type fakePDFOCRExtractor struct {
+	name  string
+	texts map[int]string
+	err   error
+	calls [][]int
+}
+
+func (f *fakePDFOCRExtractor) Name() string {
+	if strings.TrimSpace(f.name) == "" {
+		return "fake_ocr"
+	}
+	return f.name
+}
+
+func (f *fakePDFOCRExtractor) Extract(_ context.Context, _ []byte, pageNumbers []int) (map[int]string, error) {
+	nextCall := append([]int(nil), pageNumbers...)
+	f.calls = append(f.calls, nextCall)
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.texts, nil
+}
+
 func TestDeterministicIndexerIndexHTML(t *testing.T) {
 	t.Parallel()
 
@@ -128,6 +160,143 @@ func TestDeterministicIndexerIndexSpreadsheet(t *testing.T) {
 	assertMetadataValue(t, result.MetadataPairs, "paragraph_count", "1")
 	assertMetadataValue(t, result.MetadataPairs, "table_count", "1")
 	assertMetadataValue(t, result.MetadataPairs, "outline_count", "1")
+}
+
+func TestDeterministicIndexerUsesOCRFallbackForScannedPDF(t *testing.T) {
+	t.Parallel()
+
+	ocr := &fakePDFOCRExtractor{
+		name: "fake_tesseract",
+		texts: map[int]string{
+			1: "DECISÃO\n\n1 RELATÓRIO\nO autor requereu a intimação da parte ré.\n\n2 DISPOSITIVO\nDefiro o prazo de 10 dias para apresentação dos documentos.",
+			2: "ANEXO I - PLANILHA DE CÁLCULO\nValor atualizado do débito em março de 2026.",
+		},
+	}
+	indexer := newDeterministicIndexerWithExtractors(
+		fakePDFTextExtractor{
+			extraction: pdfTextExtraction{
+				PageCount:  2,
+				PageBlocks: map[int][]textBlock{},
+			},
+		},
+		ocr,
+	)
+	doc := &models.Document{
+		ID:       301,
+		MimeType: "application/pdf",
+	}
+
+	result, err := indexer.Index(context.Background(), doc, bytes.NewBufferString("%PDF-scanned"))
+	if err != nil {
+		t.Fatalf("Index() returned error: %v", err)
+	}
+
+	if len(ocr.calls) != 1 || !slices.Equal(ocr.calls[0], []int{1, 2}) {
+		t.Fatalf("expected OCR over both scanned pages, got %#v", ocr.calls)
+	}
+	if len(result.DocumentPages) != 2 {
+		t.Fatalf("expected OCR pages to be materialized, got %#v", result.DocumentPages)
+	}
+	if got := result.DocumentPages[0].Metadata["source"]; got != "ocr" {
+		t.Fatalf("expected first page source ocr, got %#v", got)
+	}
+	if got := result.ParagraphNodes[0].Metadata["source"]; got != "ocr" {
+		t.Fatalf("expected first paragraph source ocr, got %#v", got)
+	}
+	if len(result.OutlineNodes) == 0 || result.OutlineNodes[0].Title != "DECISÃO" {
+		t.Fatalf("expected OCR heading to seed the outline, got %#v", result.OutlineNodes)
+	}
+
+	assertMetadataValue(t, result.MetadataPairs, "ocr_fallback_needed", "true")
+	assertMetadataValue(t, result.MetadataPairs, "ocr_fallback_attempted", "true")
+	assertMetadataValue(t, result.MetadataPairs, "ocr_fallback_applied", "true")
+	assertMetadataValue(t, result.MetadataPairs, "ocr_engine", "fake_tesseract")
+	assertMetadataValue(t, result.MetadataPairs, "ocr_page_count", "2")
+	assertMetadataValue(t, result.MetadataPairs, "ocr_page_numbers", "1,2")
+}
+
+func TestDeterministicIndexerUsesHybridOCRFallbackForDegradedPagesOnly(t *testing.T) {
+	t.Parallel()
+
+	ocr := &fakePDFOCRExtractor{
+		texts: map[int]string{
+			2: "3 DISPOSITIVO\nDefiro o prazo de 10 dias para apresentação de documentos.",
+		},
+	}
+	indexer := newDeterministicIndexerWithExtractors(
+		fakePDFTextExtractor{
+			extraction: pdfTextExtraction{
+				PageCount: 2,
+				PageBlocks: map[int][]textBlock{
+					1: {
+						{Content: "DECISÃO", PageNumber: intPtr(1), Source: "pdf_text"},
+						{Content: "O autor juntou contrato e comprovantes suficientes para análise.", PageNumber: intPtr(1), Source: "pdf_text"},
+					},
+				},
+			},
+		},
+		ocr,
+	)
+	doc := &models.Document{
+		ID:       302,
+		MimeType: "application/pdf",
+	}
+
+	result, err := indexer.Index(context.Background(), doc, bytes.NewBufferString("%PDF-hybrid"))
+	if err != nil {
+		t.Fatalf("Index() returned error: %v", err)
+	}
+
+	if len(ocr.calls) != 1 || !slices.Equal(ocr.calls[0], []int{2}) {
+		t.Fatalf("expected OCR only for degraded page 2, got %#v", ocr.calls)
+	}
+	if len(result.DocumentPages) != 2 {
+		t.Fatalf("expected both pages after hybrid OCR, got %#v", result.DocumentPages)
+	}
+	if got := result.DocumentPages[0].Metadata["source"]; got != "pdf_text" {
+		t.Fatalf("expected native source on page 1, got %#v", got)
+	}
+	if got := result.DocumentPages[1].Metadata["source"]; got != "ocr" {
+		t.Fatalf("expected OCR source on page 2, got %#v", got)
+	}
+	assertMetadataValue(t, result.MetadataPairs, "ocr_page_count", "1")
+	assertMetadataValue(t, result.MetadataPairs, "ocr_page_numbers", "2")
+}
+
+func TestDeterministicIndexerSkipsOCRWhenNativePDFTextIsSufficient(t *testing.T) {
+	t.Parallel()
+
+	ocr := &fakePDFOCRExtractor{}
+	indexer := newDeterministicIndexerWithExtractors(
+		fakePDFTextExtractor{
+			extraction: pdfTextExtraction{
+				PageCount: 1,
+				PageBlocks: map[int][]textBlock{
+					1: {
+						{Content: "DECISÃO", PageNumber: intPtr(1), Source: "pdf_text"},
+						{Content: "1 RELATÓRIO O autor apresentou documentos suficientes para análise e o pedido segue para apreciação final.", PageNumber: intPtr(1), Source: "pdf_text"},
+					},
+				},
+			},
+		},
+		ocr,
+	)
+	doc := &models.Document{
+		ID:       303,
+		MimeType: "application/pdf",
+	}
+
+	result, err := indexer.Index(context.Background(), doc, bytes.NewBufferString("%PDF-native"))
+	if err != nil {
+		t.Fatalf("Index() returned error: %v", err)
+	}
+
+	if len(ocr.calls) != 0 {
+		t.Fatalf("did not expect OCR when native text is healthy, got %#v", ocr.calls)
+	}
+	assertMetadataValue(t, result.MetadataPairs, "ocr_fallback_needed", "false")
+	assertMetadataValue(t, result.MetadataPairs, "ocr_fallback_attempted", "false")
+	assertMetadataValue(t, result.MetadataPairs, "ocr_fallback_applied", "false")
 }
 
 func TestDeterministicIndexerFallsBackToPlainText(t *testing.T) {
@@ -617,23 +786,23 @@ func TestInferHeadingLevelPromotesLegalSectionsAndAttachments(t *testing.T) {
 func TestCountPDFBlockPageOccurrencesCountsPagesOnlyOnce(t *testing.T) {
 	t.Parallel()
 
-	pageBlocks := [][]textBlock{
-		{
+	pageBlocks := map[int][]textBlock{
+		1: {
 			{Content: "TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO"},
 			{Content: "TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO"},
 			{Content: "DECISÃO"},
 		},
-		{
+		2: {
 			{Content: "TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO"},
 			{Content: "DECISÃO"},
 		},
-		{
+		3: {
 			{Content: "TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO"},
 			{Content: "CERTIDÃO"},
 		},
 	}
 
-	occurrences := countPDFBlockPageOccurrences(pageBlocks)
+	occurrences := countPDFBlockPageOccurrences(pageBlocks, 3)
 
 	if got := occurrences["TRIBUNAL DE JUSTIÇA DO ESTADO DE SÃO PAULO"]; got != 3 {
 		t.Fatalf("unexpected repeated heading count: got %d want 3", got)
