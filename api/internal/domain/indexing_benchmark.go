@@ -34,6 +34,35 @@ type IndexingBenchmarkMetrics struct {
 	MaximumHeuristicScore          float64 `json:"maximum_heuristic_score"`
 }
 
+type IndexingBenchmarkSnapshot struct {
+	ID                   string                   `json:"id"`
+	Label                string                   `json:"label"`
+	RecordedOn           string                   `json:"recorded_on"`
+	Summary              string                   `json:"summary,omitempty"`
+	DatasetVersion       string                   `json:"dataset_version"`
+	PipelineVersion      string                   `json:"pipeline_version,omitempty"`
+	PromptProfileVersion string                   `json:"prompt_profile_version,omitempty"`
+	ChunkStrategyVersion string                   `json:"chunk_strategy_version,omitempty"`
+	Metrics              IndexingBenchmarkMetrics `json:"metrics"`
+}
+
+type IndexingBenchmarkMetricDelta struct {
+	Metric        string  `json:"metric"`
+	PreviousValue float64 `json:"previous_value"`
+	CurrentValue  float64 `json:"current_value"`
+	Delta         float64 `json:"delta"`
+}
+
+type IndexingBenchmarkComparison struct {
+	ID              string                         `json:"id"`
+	Title           string                         `json:"title"`
+	RecordedOn      string                         `json:"recorded_on"`
+	Summary         string                         `json:"summary,omitempty"`
+	Before          IndexingBenchmarkSnapshot      `json:"before"`
+	After           IndexingBenchmarkSnapshot      `json:"after"`
+	KeyMetricDeltas []IndexingBenchmarkMetricDelta `json:"key_metric_deltas"`
+}
+
 type IndexingBenchmarkCaseResult struct {
 	ID                    string `json:"id"`
 	Scope                 string `json:"scope"`
@@ -66,6 +95,9 @@ type IndexingBenchmarkReport struct {
 	Corpus               []IndexingBenchmarkCorpusDocument `json:"corpus"`
 	Metrics              IndexingBenchmarkMetrics          `json:"metrics"`
 	Cases                []IndexingBenchmarkCaseResult     `json:"cases"`
+	CurrentSnapshot      *IndexingBenchmarkSnapshot        `json:"current_snapshot,omitempty"`
+	LatestComparison     *IndexingBenchmarkComparison      `json:"latest_comparison,omitempty"`
+	ComparisonHistory    []IndexingBenchmarkComparison     `json:"comparison_history,omitempty"`
 }
 
 type IndexingBenchmarkProvider interface {

@@ -14,6 +14,20 @@ const (
 	promptProfileVersion = "llm-index-v5"
 )
 
+type PipelineSignature struct {
+	PipelineVersion      string
+	PromptProfileVersion string
+	ChunkStrategyVersion string
+}
+
+func CurrentPipelineSignature() PipelineSignature {
+	return PipelineSignature{
+		PipelineVersion:      indexPipelineVersion,
+		PromptProfileVersion: promptProfileVersion,
+		ChunkStrategyVersion: chunkStrategyVersion,
+	}
+}
+
 func appendPipelineMetadata(result *domain.IndexingResult, documentID uint, enrichmentStatus string) {
 	if result == nil {
 		return

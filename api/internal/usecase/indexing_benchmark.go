@@ -6,6 +6,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"math"
 	"path"
 	"strings"
 	"sync"
@@ -13,9 +14,11 @@ import (
 	"thing-index/internal/domain"
 	"thing-index/internal/indexing"
 	"thing-index/internal/models"
+	"thing-index/internal/processing"
 )
 
 const indexingBenchmarkCorpusPath = "internal/usecase/testdata/indexing-benchmark/corpus.json"
+const indexingBenchmarkHistoryPath = "internal/usecase/testdata/indexing-benchmark/history.json"
 const indexingBenchmarkCorpusFixtureDir = "testdata/indexing-benchmark"
 
 //go:embed testdata/indexing-benchmark/*
@@ -25,6 +28,10 @@ var (
 	indexingBenchmarkCorpusOnce sync.Once
 	indexingBenchmarkCorpusData indexingBenchmarkCorpusFixture
 	indexingBenchmarkCorpusErr  error
+
+	indexingBenchmarkHistoryOnce sync.Once
+	indexingBenchmarkHistoryData indexingBenchmarkHistoryFixture
+	indexingBenchmarkHistoryErr  error
 )
 
 type indexingBenchmarkCorpusFixture struct {
@@ -57,6 +64,10 @@ type indexingBenchmarkCollectionQuery struct {
 	ID                    string `json:"id"`
 	Query                 string `json:"query"`
 	ExpectedTopDocumentID string `json:"expected_top_document_id"`
+}
+
+type indexingBenchmarkHistoryFixture struct {
+	Snapshots []domain.IndexingBenchmarkSnapshot `json:"snapshots"`
 }
 
 type indexingBenchmarkProvider struct {
@@ -105,6 +116,27 @@ func loadIndexingBenchmarkDocumentData(fixture indexingBenchmarkDocumentFixture)
 	}
 
 	return []byte(fixture.Content), nil
+}
+
+func loadIndexingBenchmarkHistory() (indexingBenchmarkHistoryFixture, error) {
+	indexingBenchmarkHistoryOnce.Do(func() {
+		raw, err := indexingBenchmarkFixtures.ReadFile("testdata/indexing-benchmark/history.json")
+		if err != nil {
+			indexingBenchmarkHistoryErr = fmt.Errorf("read indexing benchmark history: %w", err)
+			return
+		}
+
+		if err := json.Unmarshal(raw, &indexingBenchmarkHistoryData); err != nil {
+			indexingBenchmarkHistoryErr = fmt.Errorf("parse indexing benchmark history: %w", err)
+			return
+		}
+	})
+
+	if indexingBenchmarkHistoryErr != nil {
+		return indexingBenchmarkHistoryFixture{}, indexingBenchmarkHistoryErr
+	}
+
+	return indexingBenchmarkHistoryData, nil
 }
 
 func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Context) (*domain.IndexingBenchmarkReport, error) {
@@ -168,6 +200,17 @@ func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Conte
 	heuristicTotal := 0.0
 	minHeuristic := 0.0
 	maxHeuristic := 0.0
+	pipelineSignature := processing.CurrentPipelineSignature()
+	currentSnapshot := domain.IndexingBenchmarkSnapshot{
+		ID:                   fmt.Sprintf("current-%s", corpus.Version),
+		Label:                "Current runtime",
+		RecordedOn:           corpus.LastReviewedOn,
+		Summary:              "Current benchmark output for the embedded relational indexing corpus.",
+		DatasetVersion:       corpus.Version,
+		PipelineVersion:      pipelineSignature.PipelineVersion,
+		PromptProfileVersion: pipelineSignature.PromptProfileVersion,
+		ChunkStrategyVersion: pipelineSignature.ChunkStrategyVersion,
+	}
 
 	for index, fixture := range corpus.Documents {
 		doc := models.Document{
@@ -365,6 +408,36 @@ func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Conte
 		MaximumHeuristicScore:          maxHeuristic,
 	}
 
+	currentSnapshot.Metrics = report.Metrics
+	report.CurrentSnapshot = &currentSnapshot
+
+	history, err := loadIndexingBenchmarkHistory()
+	if err != nil {
+		return nil, err
+	}
+
+	report.ComparisonHistory = buildIndexingBenchmarkComparisonHistory(history.Snapshots)
+	if matchedSnapshot := findMatchingBenchmarkSnapshot(currentSnapshot, history.Snapshots); matchedSnapshot != nil {
+		report.CurrentSnapshot = matchedSnapshot
+		if len(report.ComparisonHistory) > 0 {
+			latest := report.ComparisonHistory[len(report.ComparisonHistory)-1]
+			if sameBenchmarkSnapshot(latest.After, *matchedSnapshot) {
+				report.LatestComparison = &latest
+			}
+		}
+	}
+	if report.LatestComparison == nil && len(history.Snapshots) > 0 {
+		latestRecordedSnapshot := history.Snapshots[len(history.Snapshots)-1]
+		latest := buildIndexingBenchmarkComparison(
+			latestRecordedSnapshot,
+			*report.CurrentSnapshot,
+			"Current runtime vs last recorded snapshot",
+			report.CurrentSnapshot.RecordedOn,
+			"Unrecorded benchmark delta against the latest versioned snapshot in the workspace.",
+		)
+		report.LatestComparison = &latest
+	}
+
 	return report, nil
 }
 
@@ -414,4 +487,113 @@ func optionalInt(value int) *int {
 
 func intPtr(value int) *int {
 	return &value
+}
+
+func buildIndexingBenchmarkComparisonHistory(snapshots []domain.IndexingBenchmarkSnapshot) []domain.IndexingBenchmarkComparison {
+	if len(snapshots) < 2 {
+		return nil
+	}
+
+	comparisons := make([]domain.IndexingBenchmarkComparison, 0, len(snapshots)-1)
+	for index := 1; index < len(snapshots); index++ {
+		before := snapshots[index-1]
+		after := snapshots[index]
+		comparisons = append(comparisons, buildIndexingBenchmarkComparison(
+			before,
+			after,
+			fmt.Sprintf("%s -> %s", before.Label, after.Label),
+			after.RecordedOn,
+			strings.TrimSpace(after.Summary),
+		))
+	}
+	return comparisons
+}
+
+func buildIndexingBenchmarkComparison(
+	before domain.IndexingBenchmarkSnapshot,
+	after domain.IndexingBenchmarkSnapshot,
+	title string,
+	recordedOn string,
+	summary string,
+) domain.IndexingBenchmarkComparison {
+	return domain.IndexingBenchmarkComparison{
+		ID:              fmt.Sprintf("%s__to__%s", before.ID, after.ID),
+		Title:           strings.TrimSpace(title),
+		RecordedOn:      strings.TrimSpace(recordedOn),
+		Summary:         strings.TrimSpace(summary),
+		Before:          before,
+		After:           after,
+		KeyMetricDeltas: buildIndexingBenchmarkMetricDeltas(before.Metrics, after.Metrics),
+	}
+}
+
+func buildIndexingBenchmarkMetricDeltas(
+	before domain.IndexingBenchmarkMetrics,
+	after domain.IndexingBenchmarkMetrics,
+) []domain.IndexingBenchmarkMetricDelta {
+	keyMetrics := []struct {
+		name    string
+		valueOf func(domain.IndexingBenchmarkMetrics) float64
+	}{
+		{name: "structure_pass_rate", valueOf: func(metrics domain.IndexingBenchmarkMetrics) float64 { return metrics.StructurePassRate }},
+		{name: "tree_node_top1_accuracy", valueOf: func(metrics domain.IndexingBenchmarkMetrics) float64 { return metrics.TreeNodeTop1Accuracy }},
+		{name: "tree_page_top1_accuracy", valueOf: func(metrics domain.IndexingBenchmarkMetrics) float64 { return metrics.TreePageTop1Accuracy }},
+		{name: "collection_document_top1_accuracy", valueOf: func(metrics domain.IndexingBenchmarkMetrics) float64 { return metrics.CollectionDocumentTop1Accuracy }},
+		{name: "exact_match_accuracy", valueOf: func(metrics domain.IndexingBenchmarkMetrics) float64 { return metrics.ExactMatchAccuracy }},
+		{name: "average_heuristic_score", valueOf: func(metrics domain.IndexingBenchmarkMetrics) float64 { return metrics.AverageHeuristicScore }},
+	}
+
+	deltas := make([]domain.IndexingBenchmarkMetricDelta, 0, len(keyMetrics))
+	for _, item := range keyMetrics {
+		previousValue := item.valueOf(before)
+		currentValue := item.valueOf(after)
+		deltas = append(deltas, domain.IndexingBenchmarkMetricDelta{
+			Metric:        item.name,
+			PreviousValue: previousValue,
+			CurrentValue:  currentValue,
+			Delta:         currentValue - previousValue,
+		})
+	}
+	return deltas
+}
+
+func findMatchingBenchmarkSnapshot(
+	current domain.IndexingBenchmarkSnapshot,
+	snapshots []domain.IndexingBenchmarkSnapshot,
+) *domain.IndexingBenchmarkSnapshot {
+	for index := range snapshots {
+		if sameBenchmarkSnapshot(current, snapshots[index]) {
+			return &snapshots[index]
+		}
+	}
+	return nil
+}
+
+func sameBenchmarkSnapshot(a, b domain.IndexingBenchmarkSnapshot) bool {
+	return a.DatasetVersion == b.DatasetVersion &&
+		a.PipelineVersion == b.PipelineVersion &&
+		a.PromptProfileVersion == b.PromptProfileVersion &&
+		a.ChunkStrategyVersion == b.ChunkStrategyVersion &&
+		sameBenchmarkMetrics(a.Metrics, b.Metrics)
+}
+
+func sameBenchmarkMetrics(a, b domain.IndexingBenchmarkMetrics) bool {
+	return a.CorpusDocuments == b.CorpusDocuments &&
+		a.DocumentQueries == b.DocumentQueries &&
+		a.CollectionQueries == b.CollectionQueries &&
+		nearlyEqualFloat(a.StructurePassRate, b.StructurePassRate) &&
+		nearlyEqualFloat(a.TreeNodeTop1Accuracy, b.TreeNodeTop1Accuracy) &&
+		nearlyEqualFloat(a.TreeNodeRecallAt3, b.TreeNodeRecallAt3) &&
+		nearlyEqualFloat(a.TreePageTop1Accuracy, b.TreePageTop1Accuracy) &&
+		nearlyEqualFloat(a.TreePageRecallAt3, b.TreePageRecallAt3) &&
+		nearlyEqualFloat(a.CollectionDocumentTop1Accuracy, b.CollectionDocumentTop1Accuracy) &&
+		nearlyEqualFloat(a.CollectionDocumentRecallAt3, b.CollectionDocumentRecallAt3) &&
+		nearlyEqualFloat(a.ExactMatchAccuracy, b.ExactMatchAccuracy) &&
+		nearlyEqualFloat(a.AverageHeuristicScore, b.AverageHeuristicScore) &&
+		nearlyEqualFloat(a.MinimumHeuristicScore, b.MinimumHeuristicScore) &&
+		nearlyEqualFloat(a.MaximumHeuristicScore, b.MaximumHeuristicScore)
+}
+
+func nearlyEqualFloat(a, b float64) bool {
+	return math.Abs(a-b) <= 0.0001
 }

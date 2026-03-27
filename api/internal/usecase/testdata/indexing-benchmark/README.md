@@ -6,6 +6,7 @@ It exists to keep the baseline explicit and reproducible:
 
 - each document fixture is embedded in the Go binary;
 - fixtures may live inline in `corpus.json` or as embedded files referenced by `content_file`;
+- `history.json` records versioned benchmark snapshots so pipeline changes can be compared before/after with the same key metrics;
 - the benchmark runs the real deterministic indexer over those fixtures;
 - document-tree cases validate exact top-1 node/page matches;
 - collection cases validate exact top-1 document matches;

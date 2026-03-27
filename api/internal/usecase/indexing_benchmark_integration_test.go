@@ -16,11 +16,14 @@ func TestIndexingBenchmarkIntegrationUsesEmbeddedCorpusWithRealIndexer(t *testin
 		t.Fatalf("GetPublicIndexingBenchmark returned error: %v", err)
 	}
 
-	if report.Metrics.CorpusDocuments != 3 || len(report.Cases) != 7 {
+	if report.Metrics.CorpusDocuments != 5 || len(report.Cases) != 11 {
 		t.Fatalf("expected populated benchmark report, got %#v", report.Metrics)
 	}
 	if report.Metrics.ExactMatchAccuracy <= 0 {
 		t.Fatalf("expected some passing benchmark cases, got %#v", report.Metrics)
+	}
+	if report.CurrentSnapshot == nil || report.LatestComparison == nil {
+		t.Fatalf("expected recorded benchmark snapshots, got snapshot=%#v latest=%#v", report.CurrentSnapshot, report.LatestComparison)
 	}
 
 	structurePasses := 0

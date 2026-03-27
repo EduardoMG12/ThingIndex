@@ -48,4 +48,28 @@ func TestIndexingBenchmarkProviderBuildsPublicReport(t *testing.T) {
 	if report.Metrics.AverageHeuristicScore >= 90 || report.Metrics.AverageHeuristicScore <= 60 {
 		t.Fatalf("expected recalibrated heuristic score, got %f", report.Metrics.AverageHeuristicScore)
 	}
+	if report.CurrentSnapshot == nil {
+		t.Fatalf("expected current benchmark snapshot, got nil")
+	}
+	if report.CurrentSnapshot.DatasetVersion != report.DatasetVersion {
+		t.Fatalf("expected current snapshot dataset %q, got %#v", report.DatasetVersion, report.CurrentSnapshot)
+	}
+	if report.CurrentSnapshot.ChunkStrategyVersion != "section-window-v3" {
+		t.Fatalf("expected current snapshot chunk strategy, got %#v", report.CurrentSnapshot)
+	}
+	if len(report.ComparisonHistory) != 1 {
+		t.Fatalf("expected one recorded benchmark comparison, got %#v", report.ComparisonHistory)
+	}
+	if report.LatestComparison == nil {
+		t.Fatalf("expected latest benchmark comparison, got nil")
+	}
+	if report.LatestComparison.Before.DatasetVersion != "2026-03-relational-baseline-v1" {
+		t.Fatalf("unexpected latest comparison before snapshot: %#v", report.LatestComparison.Before)
+	}
+	if report.LatestComparison.After.DatasetVersion != "2026-03-relational-baseline-v2" {
+		t.Fatalf("unexpected latest comparison after snapshot: %#v", report.LatestComparison.After)
+	}
+	if len(report.LatestComparison.KeyMetricDeltas) != 6 {
+		t.Fatalf("expected six key metric deltas, got %#v", report.LatestComparison.KeyMetricDeltas)
+	}
 }
