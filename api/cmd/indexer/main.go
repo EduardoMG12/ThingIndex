@@ -51,16 +51,18 @@ func main() {
 	enricher := indexing.NewLLMEnricher()
 	processor := processing.NewDocumentProcessor(processingRepo, defaultStorage, providerService, indexer, providerService, enricher)
 
-	publisher, err := queue.NewRabbitMQPublisher(config.AppConfig)
+	publisher, consumer, err := queue.BootstrapRabbitMQRuntime(
+		ctx,
+		config.AppConfig,
+		queue.BootstrapOptions{},
+	)
 	if err != nil {
-		log.Fatalf("failed to initialize rabbitmq publisher: %v", err)
+		if errors.Is(err, context.Canceled) {
+			return
+		}
+		log.Fatalf("failed to initialize rabbitmq runtime: %v", err)
 	}
 	defer publisher.Close()
-
-	consumer, err := queue.NewRabbitMQConsumer(config.AppConfig)
-	if err != nil {
-		log.Fatalf("failed to initialize rabbitmq consumer: %v", err)
-	}
 	defer consumer.Close()
 	consumer.SetFailureCallbacks(queue.DocumentIndexFailureCallbacks{
 		OnRetryScheduled: processor.MarkRetryScheduled,
