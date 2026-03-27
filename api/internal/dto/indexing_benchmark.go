@@ -95,6 +95,15 @@ type IndexingBenchmarkReferenceComparisonResponse struct {
 	Checklist      []IndexingBenchmarkReferenceChecklistItemResponse `json:"checklist"`
 }
 
+type IndexingBenchmarkStructuralSignalResponse struct {
+	ID        string  `json:"id"`
+	Direction string  `json:"direction"`
+	Status    string  `json:"status"`
+	Rate      float64 `json:"rate"`
+	Count     int     `json:"count"`
+	Total     int     `json:"total"`
+}
+
 type IndexingBenchmarkCaseResultResponse struct {
 	ID                    string `json:"id"`
 	Scope                 string `json:"scope"`
@@ -126,6 +135,7 @@ type IndexingBenchmarkReportResponse struct {
 	HeuristicQualityNote string                                        `json:"heuristic_quality_note"`
 	Corpus               []IndexingBenchmarkCorpusDocumentResponse     `json:"corpus"`
 	Metrics              IndexingBenchmarkMetricsResponse              `json:"metrics"`
+	StructuralSignals    []IndexingBenchmarkStructuralSignalResponse   `json:"structural_signals"`
 	Cases                []IndexingBenchmarkCaseResultResponse         `json:"cases"`
 	CurrentSnapshot      *IndexingBenchmarkSnapshotResponse            `json:"current_snapshot,omitempty"`
 	LatestComparison     *IndexingBenchmarkComparisonResponse          `json:"latest_comparison,omitempty"`
@@ -179,6 +189,18 @@ func ToIndexingBenchmarkReportResponse(report *domain.IndexingBenchmarkReport) *
 		})
 	}
 
+	structuralSignals := make([]IndexingBenchmarkStructuralSignalResponse, 0, len(report.StructuralSignals))
+	for _, item := range report.StructuralSignals {
+		structuralSignals = append(structuralSignals, IndexingBenchmarkStructuralSignalResponse{
+			ID:        item.ID,
+			Direction: item.Direction,
+			Status:    item.Status,
+			Rate:      item.Rate,
+			Count:     item.Count,
+			Total:     item.Total,
+		})
+	}
+
 	comparisonHistory := make([]IndexingBenchmarkComparisonResponse, 0, len(report.ComparisonHistory))
 	for _, item := range report.ComparisonHistory {
 		comparisonHistory = append(comparisonHistory, toIndexingBenchmarkComparisonResponse(item))
@@ -210,6 +232,7 @@ func ToIndexingBenchmarkReportResponse(report *domain.IndexingBenchmarkReport) *
 			MinimumHeuristicScore:          report.Metrics.MinimumHeuristicScore,
 			MaximumHeuristicScore:          report.Metrics.MaximumHeuristicScore,
 		},
+		StructuralSignals: structuralSignals,
 		Cases:               cases,
 		CurrentSnapshot:     toIndexingBenchmarkSnapshotResponse(report.CurrentSnapshot),
 		LatestComparison:    toIndexingBenchmarkComparisonResponsePtr(report.LatestComparison),

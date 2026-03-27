@@ -90,6 +90,16 @@ func TestMetaHandlerGetIndexingBenchmark(t *testing.T) {
 				DocumentQueries:    1,
 				ExactMatchAccuracy: 100,
 			},
+			StructuralSignals: []domain.IndexingBenchmarkStructuralSignal{
+				{
+					ID:        "expected_query_node_match",
+					Direction: "higher_is_better",
+					Status:    "pass",
+					Rate:      100,
+					Count:     1,
+					Total:     1,
+				},
+			},
 			CurrentSnapshot: &domain.IndexingBenchmarkSnapshot{
 				ID:                   "2026-03-relational-baseline-v1",
 				Label:                "Current runtime",
@@ -192,6 +202,11 @@ func TestMetaHandlerGetIndexingBenchmark(t *testing.T) {
 	metrics, ok := data["metrics"].(map[string]any)
 	if !ok || metrics["exact_match_accuracy"] != float64(100) {
 		t.Fatalf("expected metrics payload, got %#v", data["metrics"])
+	}
+
+	structuralSignals, ok := data["structural_signals"].([]any)
+	if !ok || len(structuralSignals) != 1 {
+		t.Fatalf("expected structural signals payload, got %#v", data["structural_signals"])
 	}
 
 	currentSnapshot, ok := data["current_snapshot"].(map[string]any)
