@@ -183,7 +183,7 @@ func buildPromptContext(doc *models.Document, result domain.IndexingResult) stri
 	var builder strings.Builder
 	builder.WriteString("Document type guidance:\n")
 	builder.WriteString(promptProfile)
-	builder.WriteString("\nPipeline versions:\n- chunk_strategy=tree-aware-v1\n- prompt_profile=llm-index-v5")
+	builder.WriteString("\nPipeline versions:\n- chunk_strategy=section-window-v3\n- prompt_profile=llm-index-v5")
 	builder.WriteString("\n\n")
 
 	builder.WriteString(buildDocumentIdentityBlock(doc))
