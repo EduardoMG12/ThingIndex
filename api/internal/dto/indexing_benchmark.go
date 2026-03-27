@@ -95,6 +95,32 @@ type IndexingBenchmarkReferenceComparisonResponse struct {
 	Checklist      []IndexingBenchmarkReferenceChecklistItemResponse `json:"checklist"`
 }
 
+type IndexingBenchmarkRetrievalVariantMetricsResponse struct {
+	DocumentQueries                int     `json:"document_queries"`
+	CollectionQueries              int     `json:"collection_queries"`
+	TreeNodeTop1Accuracy           float64 `json:"tree_node_top1_accuracy"`
+	TreePageTop1Accuracy           float64 `json:"tree_page_top1_accuracy"`
+	CollectionDocumentTop1Accuracy float64 `json:"collection_document_top1_accuracy"`
+	ExactMatchAccuracy             float64 `json:"exact_match_accuracy"`
+}
+
+type IndexingBenchmarkRetrievalVariantResponse struct {
+	ID              string                                           `json:"id"`
+	Label           string                                           `json:"label"`
+	Category        string                                           `json:"category"`
+	Status          string                                           `json:"status"`
+	Summary         string                                           `json:"summary"`
+	Metrics         IndexingBenchmarkRetrievalVariantMetricsResponse `json:"metrics"`
+	KeyMetricDeltas []IndexingBenchmarkMetricDeltaResponse           `json:"key_metric_deltas"`
+}
+
+type IndexingBenchmarkRetrievalComparisonResponse struct {
+	Summary    string                                      `json:"summary"`
+	BaselineID string                                      `json:"baseline_id"`
+	Notes      []string                                    `json:"notes"`
+	Variants   []IndexingBenchmarkRetrievalVariantResponse `json:"variants"`
+}
+
 type IndexingBenchmarkStructuralSignalResponse struct {
 	ID        string  `json:"id"`
 	Direction string  `json:"direction"`
@@ -141,6 +167,7 @@ type IndexingBenchmarkReportResponse struct {
 	LatestComparison     *IndexingBenchmarkComparisonResponse          `json:"latest_comparison,omitempty"`
 	ComparisonHistory    []IndexingBenchmarkComparisonResponse         `json:"comparison_history,omitempty"`
 	ReferenceComparison  *IndexingBenchmarkReferenceComparisonResponse `json:"reference_comparison,omitempty"`
+	RetrievalComparison  *IndexingBenchmarkRetrievalComparisonResponse `json:"retrieval_comparison,omitempty"`
 }
 
 func ToIndexingBenchmarkReportResponse(report *domain.IndexingBenchmarkReport) *IndexingBenchmarkReportResponse {
@@ -232,12 +259,13 @@ func ToIndexingBenchmarkReportResponse(report *domain.IndexingBenchmarkReport) *
 			MinimumHeuristicScore:          report.Metrics.MinimumHeuristicScore,
 			MaximumHeuristicScore:          report.Metrics.MaximumHeuristicScore,
 		},
-		StructuralSignals: structuralSignals,
+		StructuralSignals:   structuralSignals,
 		Cases:               cases,
 		CurrentSnapshot:     toIndexingBenchmarkSnapshotResponse(report.CurrentSnapshot),
 		LatestComparison:    toIndexingBenchmarkComparisonResponsePtr(report.LatestComparison),
 		ComparisonHistory:   comparisonHistory,
 		ReferenceComparison: toIndexingBenchmarkReferenceComparisonResponse(report.ReferenceComparison),
+		RetrievalComparison: toIndexingBenchmarkRetrievalComparisonResponse(report.RetrievalComparison),
 	}
 }
 
@@ -360,5 +388,56 @@ func toIndexingBenchmarkReferenceComparisonResponse(
 		Summary:        item.Summary,
 		Artifacts:      artifacts,
 		Checklist:      checklist,
+	}
+}
+
+func toIndexingBenchmarkRetrievalVariantMetricsResponse(
+	metrics domain.IndexingBenchmarkRetrievalVariantMetrics,
+) IndexingBenchmarkRetrievalVariantMetricsResponse {
+	return IndexingBenchmarkRetrievalVariantMetricsResponse{
+		DocumentQueries:                metrics.DocumentQueries,
+		CollectionQueries:              metrics.CollectionQueries,
+		TreeNodeTop1Accuracy:           metrics.TreeNodeTop1Accuracy,
+		TreePageTop1Accuracy:           metrics.TreePageTop1Accuracy,
+		CollectionDocumentTop1Accuracy: metrics.CollectionDocumentTop1Accuracy,
+		ExactMatchAccuracy:             metrics.ExactMatchAccuracy,
+	}
+}
+
+func toIndexingBenchmarkRetrievalComparisonResponse(
+	item *domain.IndexingBenchmarkRetrievalComparison,
+) *IndexingBenchmarkRetrievalComparisonResponse {
+	if item == nil {
+		return nil
+	}
+
+	variants := make([]IndexingBenchmarkRetrievalVariantResponse, 0, len(item.Variants))
+	for _, variant := range item.Variants {
+		deltas := make([]IndexingBenchmarkMetricDeltaResponse, 0, len(variant.KeyMetricDeltas))
+		for _, delta := range variant.KeyMetricDeltas {
+			deltas = append(deltas, IndexingBenchmarkMetricDeltaResponse{
+				Metric:        delta.Metric,
+				PreviousValue: delta.PreviousValue,
+				CurrentValue:  delta.CurrentValue,
+				Delta:         delta.Delta,
+			})
+		}
+
+		variants = append(variants, IndexingBenchmarkRetrievalVariantResponse{
+			ID:              variant.ID,
+			Label:           variant.Label,
+			Category:        variant.Category,
+			Status:          variant.Status,
+			Summary:         variant.Summary,
+			Metrics:         toIndexingBenchmarkRetrievalVariantMetricsResponse(variant.Metrics),
+			KeyMetricDeltas: deltas,
+		})
+	}
+
+	return &IndexingBenchmarkRetrievalComparisonResponse{
+		Summary:    item.Summary,
+		BaselineID: item.BaselineID,
+		Notes:      append([]string(nil), item.Notes...),
+		Variants:   variants,
 	}
 }

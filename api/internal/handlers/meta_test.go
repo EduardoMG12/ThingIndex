@@ -160,6 +160,31 @@ func TestMetaHandlerGetIndexingBenchmark(t *testing.T) {
 					},
 				},
 			},
+			RetrievalComparison: &domain.IndexingBenchmarkRetrievalComparison{
+				Summary:    "Retrieval comparison summary.",
+				BaselineID: "relational-tree-baseline",
+				Notes:      []string{"Experimental controls only."},
+				Variants: []domain.IndexingBenchmarkRetrievalVariant{
+					{
+						ID:       "relational-tree-baseline",
+						Label:    "Current relational baseline",
+						Category: "baseline",
+						Status:   "pass",
+						Summary:  "Production path.",
+						Metrics: domain.IndexingBenchmarkRetrievalVariantMetrics{
+							DocumentQueries:                1,
+							CollectionQueries:              1,
+							TreeNodeTop1Accuracy:           100,
+							TreePageTop1Accuracy:           100,
+							CollectionDocumentTop1Accuracy: 100,
+							ExactMatchAccuracy:             100,
+						},
+						KeyMetricDeltas: []domain.IndexingBenchmarkMetricDelta{
+							{Metric: "exact_match_accuracy", PreviousValue: 100, CurrentValue: 100, Delta: 0},
+						},
+					},
+				},
+			},
 			Cases: []domain.IndexingBenchmarkCaseResult{
 				{
 					ID:                "service-payment-deadline",
@@ -222,5 +247,10 @@ func TestMetaHandlerGetIndexingBenchmark(t *testing.T) {
 	referenceComparison, ok := data["reference_comparison"].(map[string]any)
 	if !ok || referenceComparison["source_path"] != "pageindex/results" {
 		t.Fatalf("expected reference comparison payload, got %#v", data["reference_comparison"])
+	}
+
+	retrievalComparison, ok := data["retrieval_comparison"].(map[string]any)
+	if !ok || retrievalComparison["baseline_id"] != "relational-tree-baseline" {
+		t.Fatalf("expected retrieval comparison payload, got %#v", data["retrieval_comparison"])
 	}
 }
