@@ -1,0 +1,1723 @@
+basePath: /api/v1
+definitions:
+  dto.AuditCountBucketResponse:
+    properties:
+      count:
+        type: integer
+      key:
+        type: string
+    type: object
+  dto.AuditPageInfoResponse:
+    properties:
+      has_next:
+        type: boolean
+      limit:
+        type: integer
+      next_cursor:
+        type: string
+      returned:
+        type: integer
+    type: object
+  dto.ChatConversationDetailResponse:
+    properties:
+      conversation:
+        $ref: '#/definitions/dto.ChatConversationResponse'
+      messages:
+        items:
+          $ref: '#/definitions/dto.ChatConversationMessageResponse'
+        type: array
+    type: object
+  dto.ChatConversationMessageResponse:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      role:
+        type: string
+      sources:
+        items:
+          $ref: '#/definitions/dto.ChatSourceResponse'
+        type: array
+      updated_at:
+        type: string
+    type: object
+  dto.ChatConversationResponse:
+    properties:
+      collection_id:
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: integer
+      last_message_at:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  dto.ChatMessageRequest:
+    properties:
+      content:
+        type: string
+      role:
+        enum:
+        - user
+        - assistant
+        type: string
+    required:
+    - content
+    - role
+    type: object
+  dto.ChatSourceResponse:
+    properties:
+      doc_name:
+        type: string
+      id:
+        type: string
+      page:
+        type: integer
+      snippet:
+        type: string
+    type: object
+  dto.ChatStreamRequest:
+    properties:
+      collection_id:
+        minimum: 1
+        type: integer
+      conversation_id:
+        minimum: 1
+        type: integer
+      history:
+        items:
+          $ref: '#/definitions/dto.ChatMessageRequest'
+        type: array
+      prompt:
+        type: string
+    required:
+    - collection_id
+    - conversation_id
+    - prompt
+    type: object
+  dto.CreateChatConversationRequest:
+    properties:
+      collection_id:
+        minimum: 1
+        type: integer
+      title:
+        maxLength: 255
+        type: string
+    required:
+    - collection_id
+    type: object
+  dto.DocumentAuditEventResponse:
+    properties:
+      action:
+        type: string
+      actor_id:
+        type: integer
+      actor_type:
+        type: string
+      collection_id:
+        type: integer
+      correlation_id:
+        type: string
+      created_at:
+        type: string
+      detail:
+        type: string
+      document_id:
+        type: integer
+      id:
+        type: integer
+      metadata:
+        additionalProperties: {}
+        type: object
+      origin:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  dto.DocumentAuditQueryResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/dto.DocumentAuditEventResponse'
+        type: array
+      page_info:
+        $ref: '#/definitions/dto.AuditPageInfoResponse'
+      summary:
+        $ref: '#/definitions/dto.DocumentAuditSummaryResponse'
+    type: object
+  dto.DocumentAuditSummaryResponse:
+    properties:
+      action_breakdown:
+        items:
+          $ref: '#/definitions/dto.AuditCountBucketResponse'
+        type: array
+      last_event_at:
+        type: string
+      status_breakdown:
+        items:
+          $ref: '#/definitions/dto.AuditCountBucketResponse'
+        type: array
+      total_events:
+        type: integer
+      unique_collections:
+        type: integer
+      unique_documents:
+        type: integer
+      unique_requests:
+        type: integer
+    type: object
+  dto.DocumentMonitoringModelAggregateResponse:
+    properties:
+      document_count:
+        type: integer
+      model:
+        type: string
+      provider_type:
+        type: string
+      request_count:
+        type: integer
+      total_cost_usd:
+        type: number
+      total_tokens:
+        type: integer
+    type: object
+  dto.DocumentMonitoringSummaryResponse:
+    properties:
+      average_duration_ms:
+        type: integer
+      average_quality_score:
+        type: number
+      dlq_documents:
+        type: integer
+      documents_with_llm:
+        type: integer
+      failed_documents:
+        type: integer
+      indexed_documents:
+        type: integer
+      last_completed_at:
+        type: string
+      model_breakdown:
+        items:
+          $ref: '#/definitions/dto.DocumentMonitoringModelAggregateResponse'
+        type: array
+      orphaned_documents:
+        type: integer
+      permanent_failed_documents:
+        type: integer
+      pricing_aware_documents:
+        type: integer
+      processing_documents:
+        type: integer
+      queued_documents:
+        type: integer
+      retrying_documents:
+        type: integer
+      total_documents:
+        type: integer
+      total_estimated_cost_usd:
+        type: number
+      total_input_tokens:
+        type: integer
+      total_llm_requests:
+        type: integer
+      total_output_tokens:
+        type: integer
+      total_tokens:
+        type: integer
+    type: object
+  dto.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  dto.IndexingBenchmarkCaseResultResponse:
+    properties:
+      actual_document_title:
+        type: string
+      actual_node_title:
+        type: string
+      actual_page_number:
+        type: integer
+      document_in_top_3:
+        type: boolean
+      document_matched:
+        type: boolean
+      document_title:
+        type: string
+      expected_document_title:
+        type: string
+      expected_node_title:
+        type: string
+      expected_page_number:
+        type: integer
+      id:
+        type: string
+      node_in_top_3:
+        type: boolean
+      node_matched:
+        type: boolean
+      page_in_top_3:
+        type: boolean
+      page_matched:
+        type: boolean
+      passed:
+        type: boolean
+      query:
+        type: string
+      scope:
+        type: string
+    type: object
+  dto.IndexingBenchmarkCorpusDocumentResponse:
+    properties:
+      expected_outline_titles:
+        items:
+          type: string
+        type: array
+      expected_table_count:
+        type: integer
+      focus:
+        type: string
+      heuristic_quality_score:
+        type: number
+      id:
+        type: string
+      mime_type:
+        type: string
+      outline_node_count:
+        type: integer
+      query_count:
+        type: integer
+      retrieval_ready:
+        type: boolean
+      structure_passed:
+        type: boolean
+      table_count:
+        type: integer
+      title:
+        type: string
+    type: object
+  dto.IndexingBenchmarkMetricsResponse:
+    properties:
+      average_heuristic_score:
+        type: number
+      collection_document_recall_at_3:
+        type: number
+      collection_document_top1_accuracy:
+        type: number
+      collection_queries:
+        type: integer
+      corpus_documents:
+        type: integer
+      document_queries:
+        type: integer
+      exact_match_accuracy:
+        type: number
+      maximum_heuristic_score:
+        type: number
+      minimum_heuristic_score:
+        type: number
+      structure_pass_rate:
+        type: number
+      tree_node_recall_at_3:
+        type: number
+      tree_node_top1_accuracy:
+        type: number
+      tree_page_recall_at_3:
+        type: number
+      tree_page_top1_accuracy:
+        type: number
+    type: object
+  dto.IndexingBenchmarkReportResponse:
+    properties:
+      cases:
+        items:
+          $ref: '#/definitions/dto.IndexingBenchmarkCaseResultResponse'
+        type: array
+      corpus:
+        items:
+          $ref: '#/definitions/dto.IndexingBenchmarkCorpusDocumentResponse'
+        type: array
+      corpus_source_path:
+        type: string
+      dataset_version:
+        type: string
+      heuristic_quality_note:
+        type: string
+      last_reviewed_on:
+        type: string
+      limitations:
+        items:
+          type: string
+        type: array
+      methodology:
+        items:
+          type: string
+        type: array
+      metrics:
+        $ref: '#/definitions/dto.IndexingBenchmarkMetricsResponse'
+      pass_criteria:
+        items:
+          type: string
+        type: array
+      summary:
+        type: string
+    type: object
+  dto.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  dto.ModelPriceHistoryResponse:
+    properties:
+      cached_input_cost_per_million_usd:
+        type: number
+      captured_at:
+        type: string
+      context_cost_per_million_usd:
+        type: number
+      currency:
+        type: string
+      flat_price_usd:
+        type: number
+      id:
+        type: integer
+      input_cost_per_million_usd:
+        type: number
+      model_key:
+        type: string
+      model_name:
+        type: string
+      output_cost_per_million_usd:
+        type: number
+      price_notes:
+        type: string
+      pricing_source_id:
+        type: integer
+      provider_type:
+        type: string
+      unit:
+        type: string
+    type: object
+  dto.ModelPriceResponse:
+    properties:
+      cached_input_cost_per_million_usd:
+        type: number
+      context_cost_per_million_usd:
+        type: number
+      currency:
+        type: string
+      flat_price_usd:
+        type: number
+      id:
+        type: integer
+      input_cost_per_million_usd:
+        type: number
+      last_synced_at:
+        type: string
+      model_key:
+        type: string
+      model_name:
+        type: string
+      output_cost_per_million_usd:
+        type: number
+      price_notes:
+        type: string
+      pricing_source_id:
+        type: integer
+      provider_type:
+        type: string
+      unit:
+        type: string
+    type: object
+  dto.PricingSourceResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      is_enabled:
+        type: boolean
+      last_price_count:
+        type: integer
+      last_sync_duration_ms:
+        type: integer
+      last_sync_error:
+        type: string
+      last_sync_status:
+        type: string
+      last_synced_at:
+        type: string
+      name:
+        type: string
+      provider_type:
+        type: string
+      source_url:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  dto.ProviderAuditEventResponse:
+    properties:
+      action:
+        type: string
+      actor_id:
+        type: integer
+      actor_type:
+        type: string
+      correlation_id:
+        type: string
+      created_at:
+        type: string
+      detail:
+        type: string
+      family:
+        type: string
+      id:
+        type: integer
+      metadata:
+        additionalProperties: {}
+        type: object
+      origin:
+        type: string
+      provider_config_id:
+        type: integer
+      provider_type:
+        type: string
+      status:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  dto.ProviderAuditQueryResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/dto.ProviderAuditEventResponse'
+        type: array
+      page_info:
+        $ref: '#/definitions/dto.AuditPageInfoResponse'
+      summary:
+        $ref: '#/definitions/dto.ProviderAuditSummaryResponse'
+    type: object
+  dto.ProviderAuditSummaryResponse:
+    properties:
+      action_breakdown:
+        items:
+          $ref: '#/definitions/dto.AuditCountBucketResponse'
+        type: array
+      last_event_at:
+        type: string
+      status_breakdown:
+        items:
+          $ref: '#/definitions/dto.AuditCountBucketResponse'
+        type: array
+      total_events:
+        type: integer
+      unique_providers:
+        type: integer
+      unique_requests:
+        type: integer
+    type: object
+  dto.ProviderConnectionRequest:
+    properties:
+      credentials:
+        additionalProperties:
+          type: string
+        type: object
+      family:
+        example: LLM
+        type: string
+      provider_type:
+        example: OPENAI
+        type: string
+    type: object
+  dto.ProviderModelsResponse:
+    properties:
+      models:
+        items:
+          type: string
+        type: array
+    type: object
+  dto.ProviderReadinessCheckResponse:
+    properties:
+      code:
+        type: string
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
+      status:
+        type: string
+    type: object
+  dto.ProviderReadinessReportResponse:
+    properties:
+      checked_at:
+        type: string
+      checks:
+        items:
+          $ref: '#/definitions/dto.ProviderReadinessCheckResponse'
+        type: array
+      discovered_models:
+        items:
+          type: string
+        type: array
+      family:
+        type: string
+      provider_type:
+        type: string
+      status:
+        type: string
+    type: object
+  dto.ProviderRuntimeAssignmentResponse:
+    properties:
+      activation_target:
+        type: string
+      family:
+        type: string
+      provider_type:
+        type: string
+      public_metadata:
+        additionalProperties:
+          type: string
+        type: object
+      updated_at:
+        type: string
+    type: object
+  dto.ProviderRuntimeOverviewResponse:
+    properties:
+      chat:
+        $ref: '#/definitions/dto.ProviderRuntimeAssignmentResponse'
+      indexing:
+        $ref: '#/definitions/dto.ProviderRuntimeAssignmentResponse'
+      storage:
+        $ref: '#/definitions/dto.ProviderRuntimeAssignmentResponse'
+    type: object
+  dto.ProviderSupportCapabilitiesResponse:
+    properties:
+      requires_explicit_base_url:
+        type: boolean
+      requires_explicit_model:
+        type: boolean
+      requires_openai_compatible_bridge:
+        type: boolean
+      supports_chat:
+        type: boolean
+      supports_connection_test:
+        type: boolean
+      supports_credential_validation:
+        type: boolean
+      supports_indexing:
+        type: boolean
+      supports_model_discovery:
+        type: boolean
+      supports_optional_live_tests:
+        type: boolean
+      supports_streaming:
+        type: boolean
+    type: object
+  dto.ProviderSupportResponse:
+    properties:
+      capabilities:
+        $ref: '#/definitions/dto.ProviderSupportCapabilitiesResponse'
+      display_name:
+        type: string
+      family:
+        type: string
+      notes:
+        items:
+          type: string
+        type: array
+      provider_type:
+        type: string
+      suggested_base_url:
+        type: string
+      suggested_model:
+        type: string
+      summary:
+        type: string
+      support_level:
+        type: string
+      transport:
+        type: string
+    type: object
+  dto.RegisterRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  dto.ResetPasswordRequest:
+    properties:
+      new_password:
+        minLength: 6
+        type: string
+      token:
+        type: string
+    required:
+    - new_password
+    - token
+    type: object
+  dto.RuntimeProfileArtifactResponse:
+    properties:
+      kind:
+        type: string
+      label:
+        type: string
+      path:
+        type: string
+      summary:
+        type: string
+    type: object
+  dto.RuntimeProfileAudienceResponse:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    type: object
+  dto.RuntimeProfileResponse:
+    properties:
+      artifact_refs:
+        items:
+          $ref: '#/definitions/dto.RuntimeProfileArtifactResponse'
+        type: array
+      core_problem:
+        type: string
+      current_scope:
+        items:
+          type: string
+        type: array
+      differentiators:
+        items:
+          type: string
+        type: array
+      last_reviewed_on:
+        type: string
+      non_goals:
+        items:
+          type: string
+        type: array
+      primary_use_case:
+        type: string
+      product_name:
+        type: string
+      research_tracks:
+        items:
+          type: string
+        type: array
+      tagline:
+        type: string
+      target_users:
+        items:
+          $ref: '#/definitions/dto.RuntimeProfileAudienceResponse'
+        type: array
+      value_proposition:
+        type: string
+    type: object
+  dto.SavePricingSourceRequest:
+    properties:
+      is_enabled:
+        type: boolean
+      name:
+        type: string
+      provider_type:
+        type: string
+      source_url:
+        type: string
+    required:
+    - provider_type
+    - source_url
+    type: object
+  dto.UpdateChatConversationRequest:
+    properties:
+      title:
+        maxLength: 255
+        type: string
+    required:
+    - title
+    type: object
+  response.Response:
+    properties:
+      data: {}
+      errors: {}
+      message:
+        type: string
+      status:
+        type: integer
+      type:
+        description: success, error, warning, info
+        type: string
+    type: object
+host: localhost:8000
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: Open-source HTTP API for ThingIndex covering auth, document cataloging,
+    provider configuration, monitoring, and grounded chat.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Thing-Index API
+  version: "1.0"
+paths:
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Send a reset password link to the user's email
+      parameters:
+      - description: User Email
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success message
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Invalid input
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Forgot password
+      tags:
+      - auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with email and password and return a JWT token
+      parameters:
+      - description: Login Credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success token
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+        "400":
+          description: Invalid input
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Login user
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account and return a JWT token
+      parameters:
+      - description: Registration Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Success token
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+        "400":
+          description: Invalid input
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Register a new user
+      tags:
+      - auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Reset the user's password using a reset token
+      parameters:
+      - description: Reset Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success message
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Invalid/Expired token
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Reset password
+      tags:
+      - auth
+  /chat/conversations:
+    get:
+      description: List saved chat conversations for the authenticated user inside
+        one collection.
+      parameters:
+      - description: Collection ID
+        in: query
+        name: collection_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.ChatConversationResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: List chat conversations
+      tags:
+      - chat
+    post:
+      consumes:
+      - application/json
+      description: Create a persisted chat conversation scoped to one collection before
+        starting the grounded response stream.
+      parameters:
+      - description: Conversation payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateChatConversationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ChatConversationResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Create chat conversation
+      tags:
+      - chat
+  /chat/conversations/{id}:
+    delete:
+      description: Delete one persisted chat conversation and its grounded message
+        history.
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Delete chat conversation
+      tags:
+      - chat
+    get:
+      description: Fetch one persisted chat conversation and the grounded messages
+        already stored for it.
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ChatConversationDetailResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get chat conversation
+      tags:
+      - chat
+    patch:
+      consumes:
+      - application/json
+      description: Rename one persisted chat conversation.
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Conversation update payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateChatConversationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ChatConversationResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update chat conversation title
+      tags:
+      - chat
+  /chat/stream:
+    post:
+      consumes:
+      - application/json
+      description: Start a grounded chat response for one persisted conversation and
+        stream stage, source, delta, done, and error events over SSE.
+      parameters:
+      - description: Chat stream payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ChatStreamRequest'
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: Server-sent events stream
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Stream grounded chat response
+      tags:
+      - chat
+  /documents/audit:
+    get:
+      description: Query document audit events with operational filters, summary and
+        cursor pagination.
+      parameters:
+      - description: Items per page (max 100)
+        in: query
+        name: limit
+        type: integer
+      - description: Opaque cursor returned by the previous audit page
+        in: query
+        name: cursor
+        type: string
+      - description: Search over title, detail, origin and request correlation
+        in: query
+        name: q
+        type: string
+      - description: Audit action filter
+        in: query
+        name: action
+        type: string
+      - description: Audit status filter
+        in: query
+        name: status
+        type: string
+      - description: Actor type filter
+        in: query
+        name: actor_type
+        type: string
+      - description: Actor ID filter
+        in: query
+        name: actor_id
+        type: integer
+      - description: Request correlation ID filter
+        in: query
+        name: correlation_id
+        type: string
+      - description: Document ID filter
+        in: query
+        name: document_id
+        type: integer
+      - description: Collection ID filter
+        in: query
+        name: collection_id
+        type: integer
+      - description: Inclusive start timestamp in RFC3339
+        in: query
+        name: created_from
+        type: string
+      - description: Inclusive end timestamp in RFC3339
+        in: query
+        name: created_to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.DocumentAuditQueryResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Query document audit events
+      tags:
+      - documents
+  /documents/monitoring/summary:
+    get:
+      description: Return the operational monitoring summary for the authenticated
+        user, including queue counters, failure buckets and LLM telemetry aggregates.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.DocumentMonitoringSummaryResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get aggregated document monitoring
+      tags:
+      - documents
+  /meta/indexing-benchmark:
+    get:
+      description: Returns the controlled corpus, exact-match benchmark metrics, and
+        interpretation guidance for the current relational indexing baseline.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.IndexingBenchmarkReportResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get indexing benchmark baseline
+      tags:
+      - meta
+  /meta/runtime-profile:
+    get:
+      description: Returns the current primary use case, scope, explicit non-goals,
+        and academic/reference artifacts for the main ThingIndex runtime.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.RuntimeProfileResponse'
+              type: object
+      summary: Get runtime profile
+      tags:
+      - meta
+  /providers/support:
+    get:
+      description: Returns the current support classification for provider integrations,
+        including support tier, transport mode and operational notes.
+      parameters:
+      - description: Optional provider family filter. The current public matrix is
+          available for LLM.
+        in: query
+        name: family
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.ProviderSupportResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: List provider support matrix
+      tags:
+      - providers
+  /user/prices:
+    get:
+      description: Return the latest synced pricing snapshot for the authenticated
+        user across all configured pricing sources.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.ModelPriceResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: List current model prices
+      tags:
+      - pricing
+  /user/prices/history:
+    get:
+      description: Return the recent price history captured from synced pricing sources
+        for the authenticated user.
+      parameters:
+      - description: Maximum number of history rows to return
+        in: query
+        minimum: 1
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.ModelPriceHistoryResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: List model price history
+      tags:
+      - pricing
+  /user/pricing-sources:
+    get:
+      description: Return the saved pricing source URLs and the latest sync status
+        for the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.PricingSourceResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: List pricing sources
+      tags:
+      - pricing
+    post:
+      consumes:
+      - application/json
+      description: Register or update an official pricing source URL so the pricing
+        worker can sync model prices for the authenticated user.
+      parameters:
+      - description: Pricing source payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SavePricingSourceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.PricingSourceResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Save pricing source
+      tags:
+      - pricing
+  /user/providers/audit:
+    get:
+      description: Query provider audit events with operational filters, summary and
+        cursor pagination.
+      parameters:
+      - description: Items per page (max 100)
+        in: query
+        name: limit
+        type: integer
+      - description: Opaque cursor returned by the previous audit page
+        in: query
+        name: cursor
+        type: string
+      - description: Search over provider type, detail, origin and request correlation
+        in: query
+        name: q
+        type: string
+      - description: Provider family filter
+        in: query
+        name: family
+        type: string
+      - description: Provider type filter
+        in: query
+        name: provider_type
+        type: string
+      - description: Audit action filter
+        in: query
+        name: action
+        type: string
+      - description: Audit status filter
+        in: query
+        name: status
+        type: string
+      - description: Actor type filter
+        in: query
+        name: actor_type
+        type: string
+      - description: Actor ID filter
+        in: query
+        name: actor_id
+        type: integer
+      - description: Request correlation ID filter
+        in: query
+        name: correlation_id
+        type: string
+      - description: Inclusive start timestamp in RFC3339
+        in: query
+        name: created_from
+        type: string
+      - description: Inclusive end timestamp in RFC3339
+        in: query
+        name: created_to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ProviderAuditQueryResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Query provider audit events
+      tags:
+      - providers
+  /user/providers/models:
+    post:
+      consumes:
+      - application/json
+      description: Tries to discover available models for the selected LLM provider,
+        using live discovery and cached fallbacks when applicable.
+      parameters:
+      - description: Provider model-discovery payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ProviderConnectionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ProviderModelsResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/response.Response'
+        "504":
+          description: Gateway Timeout
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: List provider models
+      tags:
+      - providers
+  /user/providers/runtime:
+    get:
+      description: Returns the currently active storage, indexing, and chat providers
+        for the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ProviderRuntimeOverviewResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get provider runtime overview
+      tags:
+      - providers
+  /user/providers/test:
+    post:
+      consumes:
+      - application/json
+      description: Validates the configured provider credentials and returns a readiness
+        report with connectivity checks and optional model discovery details.
+      parameters:
+      - description: Provider test payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ProviderConnectionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ProviderReadinessReportResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/response.Response'
+        "504":
+          description: Gateway Timeout
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Test provider readiness
+      tags:
+      - providers
+securityDefinitions:
+  BearerAuth:
+    description: Use "Bearer <token>".
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

@@ -1,0 +1,74 @@
+# Default local base:
+#   @apiHost = http://localhost:8000
+# Hosted deployment example:
+#   @apiHost = https://your-api.example.com
+@apiHost = http://localhost:8000
+@apiBase = {{apiHost}}/api/v1
+@userName = Open Source Demo
+@userEmail = oss-demo@example.com
+@userPassword = secret123
+
+# If the register request starts returning "email already exists",
+# change @userEmail or reset the local database/stack.
+
+### Healthcheck
+GET {{apiBase}}/health
+Accept: application/json
+
+### Scalar API reference
+GET {{apiHost}}/docs
+
+### Swagger JSON
+GET {{apiHost}}/swagger/doc.json
+Accept: application/json
+
+### Public runtime profile
+GET {{apiBase}}/meta/runtime-profile
+Accept: application/json
+
+### Public indexing benchmark
+GET {{apiBase}}/meta/indexing-benchmark
+Accept: application/json
+
+### Public LLM provider support matrix
+GET {{apiBase}}/providers/support?family=LLM
+Accept: application/json
+
+### Register a demo user
+POST {{apiBase}}/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "{{userName}}",
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}"
+}
+
+### Login
+# @name login
+POST {{apiBase}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}"
+}
+
+@token = {{login.response.body.data.token}}
+
+### List collections for the authenticated user
+GET {{apiBase}}/documents/collections
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### List documents for the authenticated user
+GET {{apiBase}}/documents/
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Read the active provider runtime overview
+GET {{apiBase}}/user/providers/runtime
+Authorization: Bearer {{token}}
+Accept: application/json

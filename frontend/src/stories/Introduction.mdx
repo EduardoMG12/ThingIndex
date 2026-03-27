@@ -1,0 +1,27 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Introduction/Workspace" />
+
+# ThingIndex Storybook
+
+This workspace documents the frontend building blocks used across ThingIndex.
+
+## What is covered here
+
+- reusable UI primitives;
+- runtime and readiness callouts;
+- operational document monitoring views;
+- component states that benefit from isolated review before they land in pages.
+
+## Conventions
+
+- stories should prefer stable mock data over live API calls;
+- components that depend on translations should rely on the global locale toolbar;
+- operational states should be represented explicitly, not hidden behind generic placeholders;
+- when a component already has unit tests, stories should complement them with visual and interaction coverage rather than duplicate every assertion.
+
+## Validation flow
+
+- `pnpm --dir frontend run build:storybook` validates the Storybook integration build;
+- `pnpm --dir frontend run test:storybook:e2e` runs a browser smoke over the published stories;
+- regular frontend unit tests keep covering the underlying component behavior.
