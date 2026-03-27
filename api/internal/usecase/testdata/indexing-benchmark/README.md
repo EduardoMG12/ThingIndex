@@ -5,6 +5,7 @@ This controlled corpus backs the public ThingIndex indexing benchmark exposed by
 It exists to keep the baseline explicit and reproducible:
 
 - each document fixture is embedded in the Go binary;
+- fixtures may live inline in `corpus.json` or as embedded files referenced by `content_file`;
 - the benchmark runs the real deterministic indexer over those fixtures;
 - document-tree cases validate exact top-1 node/page matches;
 - collection cases validate exact top-1 document matches;

@@ -1,10 +1,12 @@
 package usecase
 
 import (
+	"bytes"
 	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
+	"path"
 	"strings"
 	"sync"
 
@@ -14,8 +16,9 @@ import (
 )
 
 const indexingBenchmarkCorpusPath = "internal/usecase/testdata/indexing-benchmark/corpus.json"
+const indexingBenchmarkCorpusFixtureDir = "testdata/indexing-benchmark"
 
-//go:embed testdata/indexing-benchmark/corpus.json
+//go:embed testdata/indexing-benchmark/*
 var indexingBenchmarkFixtures embed.FS
 
 var (
@@ -37,6 +40,7 @@ type indexingBenchmarkDocumentFixture struct {
 	MimeType              string                           `json:"mime_type"`
 	Focus                 string                           `json:"focus"`
 	Content               string                           `json:"content"`
+	ContentFile           string                           `json:"content_file,omitempty"`
 	ExpectedOutlineTitles []string                         `json:"expected_outline_titles"`
 	ExpectedTableCount    int                              `json:"expected_table_count"`
 	DocumentQueries       []indexingBenchmarkDocumentQuery `json:"document_queries"`
@@ -84,6 +88,23 @@ func loadIndexingBenchmarkCorpus() (indexingBenchmarkCorpusFixture, error) {
 	}
 
 	return indexingBenchmarkCorpusData, nil
+}
+
+func loadIndexingBenchmarkDocumentData(fixture indexingBenchmarkDocumentFixture) ([]byte, error) {
+	if contentFile := strings.TrimSpace(fixture.ContentFile); contentFile != "" {
+		cleanPath := path.Clean(contentFile)
+		if cleanPath == "." || strings.HasPrefix(cleanPath, "../") {
+			return nil, fmt.Errorf("invalid benchmark content_file %q", contentFile)
+		}
+
+		data, err := indexingBenchmarkFixtures.ReadFile(path.Join(indexingBenchmarkCorpusFixtureDir, cleanPath))
+		if err != nil {
+			return nil, fmt.Errorf("read benchmark fixture %s: %w", contentFile, err)
+		}
+		return data, nil
+	}
+
+	return []byte(fixture.Content), nil
 }
 
 func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Context) (*domain.IndexingBenchmarkReport, error) {
@@ -155,7 +176,12 @@ func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Conte
 			MimeType: fixture.MimeType,
 		}
 
-		result, err := p.indexer.Index(ctx, &doc, strings.NewReader(fixture.Content))
+		contentData, err := loadIndexingBenchmarkDocumentData(fixture)
+		if err != nil {
+			return nil, fmt.Errorf("load benchmark document %s: %w", fixture.ID, err)
+		}
+
+		result, err := p.indexer.Index(ctx, &doc, bytes.NewReader(contentData))
 		if err != nil {
 			return nil, fmt.Errorf("index benchmark document %s: %w", fixture.ID, err)
 		}
