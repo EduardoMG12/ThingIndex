@@ -1267,24 +1267,47 @@ function DocumentCard({
 }) {
     const { t } = useI18n();
     const issue = getDocumentOperationalIssue(document, locale);
+    const isProcessing = document.status === "PROCESSING" || document.status === "QUEUED" || document.status === "PENDING" || document.status === "UPLOADING";
 
     return (
-        <div className="rounded-xl border border-border bg-background/70 p-4 shadow-card">
+        <div className={`rounded-xl border bg-background/70 p-4 shadow-card ${isProcessing ? "border-sky-500/30" : "border-border"}`}>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
                     <div className="flex items-center gap-2">
                         <FileText className="h-4 w-4 text-primary" />
                         <h3 className="truncate text-sm font-semibold">{document.title}</h3>
+                        {isProcessing && (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-500" />
+                        )}
                     </div>
                     <p className="mt-2 break-all font-mono text-[11px] text-muted-foreground">
                         {document.file_path || document.file_url}
                     </p>
                 </div>
 
-                <div className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">
+                <div className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
+                    isProcessing
+                        ? "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300"
+                        : "border-primary/20 bg-primary/10 text-primary"
+                }`}>
                     {formatDocumentStatus(document.status, t)}{document.processing_stage ? ` · ${formatStageLabel(document.processing_stage, t)}` : ""}
                 </div>
             </div>
+
+            {isProcessing && (
+                <div className="mt-3">
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin text-sky-500" />
+                        <span>{t("documentsPage.card.processing") || "Processando documento..."}</span>
+                        {document.status_detail && (
+                            <span className="font-mono text-sky-600 dark:text-sky-400">— {document.status_detail}</span>
+                        )}
+                    </div>
+                    <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
+                        <div className="h-full animate-pulse rounded-full bg-sky-500/60" style={{ width: document.status === "PROCESSING" ? "70%" : document.status === "QUEUED" ? "55%" : "30%" }} />
+                    </div>
+                </div>
+            )}
 
             <div className="mt-4 flex flex-wrap gap-2">
                 <span className="flex items-center gap-1 rounded border border-border bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground">
