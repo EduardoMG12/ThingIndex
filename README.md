@@ -294,32 +294,40 @@ Essa abordagem evita consultas por documento e mantem a montagem da resposta em 
 
 ### Passo a passo
 
+**Modo produção-like (build completo, sem hot-reload):**
+
 ```bash
 ./scripts/bootstrap.sh
 ./scripts/stack.sh up
 ./scripts/doctor.sh
 ```
 
-Para subir com hot reload no backend (`api` e `indexer` via `air`) mantendo o frontend em modo dev:
+**Modo desenvolvimento (hot-reload em tudo — api, indexer e frontend):**
 
 ```bash
+./scripts/bootstrap.sh
 ./scripts/stack.sh dev
+./scripts/doctor.sh
 ```
 
-No modo `dev`, o script preaquece e monta o cache Go do host antes de subir `api` e `indexer`, reduzindo a chance de o backend ficar preso baixando modulos dentro do Docker.
+No modo `dev`:
+- `api` e `indexer` usam `air` para reload automático do Go;
+- `frontend` reflete mudanças instantaneamente via Next.js dev server;
+- o script monta o cache Go do host para evitar downloads repetidos dentro do container;
+- os serviços só sobem depois que `db`, `minio` e `rabbitmq` estiverem realmente prontos (healthchecks).
 
 Se preferir `make`:
 
 ```bash
+# Produção-like
 make bootstrap
 make stack-up
 make doctor
-```
 
-Atalho equivalente para hot reload:
-
-```bash
-make stack-dev
+# Desenvolvimento com hot-reload
+make bootstrap
+make dev
+make doctor
 ```
 
 O guia curto de onboarding open source tambem ficou centralizado em `docs/open-source-onboarding.md`.
@@ -341,7 +349,8 @@ O guia curto de onboarding open source tambem ficou centralizado em `docs/open-s
 ### Observacoes importantes
 
 - O `docker-compose.yml` sobe RabbitMQ e suporta o pipeline assincrono de indexacao.
-- O modo `dev` combina `docker-compose.yml` com `docker-compose.dev.yml` e ativa hot reload para `api` e `indexer`.
+- O modo `dev` combina `docker-compose.yml` com `docker-compose.dev.yml` e ativa hot reload para **api, indexer e frontend**.
+- Servicos dependentes (`api`, `indexer`, `frontend`) aguardam `db`, `minio` e `rabbitmq` ficarem saudaveis antes de iniciar, eliminando race conditions no boot.
 - O modo `dev` resolve e monta o `GOMODCACHE` e o `GOCACHE` do host para evitar depender de download de modulos no boot da API.
 - O fluxo de `forgot-password` exige um servidor SMTP acessivel. O compose atual nao sobe Mailpit/Mailhog por padrao.
 - O frontend consome a API por `NEXT_PUBLIC_API_URL`.

@@ -1,22 +1,50 @@
 services:
   api:
-    image: thingindex-api-dev
     build:
       context: ./api
       dockerfile: Dockerfile.dev
     command: air -c .air.toml
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     volumes:
       - ./api:/app
-      - ${THINGINDEX_GO_MOD_CACHE}:/go/pkg/mod
-      - ${THINGINDEX_GO_BUILD_CACHE}:/root/.cache/go-build
+      - ${THINGINDEX_GO_MOD_CACHE:-/tmp/go-mod-cache}:/go/pkg/mod
+      - ${THINGINDEX_GO_BUILD_CACHE:-/tmp/go-build-cache}:/root/.cache/go-build
 
   indexer:
-    image: thingindex-indexer-dev
     build:
       context: ./api
       dockerfile: Dockerfile.indexer.dev
     command: air -c .air.indexer.toml
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     volumes:
       - ./api:/app
-      - ${THINGINDEX_GO_MOD_CACHE}:/go/pkg/mod
-      - ${THINGINDEX_GO_BUILD_CACHE}:/root/.cache/go-build
+      - ${THINGINDEX_GO_MOD_CACHE:-/tmp/go-mod-cache}:/go/pkg/mod
+      - ${THINGINDEX_GO_BUILD_CACHE:-/tmp/go-build-cache}:/root/.cache/go-build
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    command: pnpm dev
+    depends_on:
+      api:
+        condition: service_started
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+      - /app/.next
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+      API_INTERNAL_URL: http://api:8080/api/v1

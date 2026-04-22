@@ -115,19 +115,20 @@ command_name="${1:-help}"
 shift || true
 
 case "$command_name" in
-  up)
+   up)
     if [[ $# -eq 0 ]]; then
-      run_compose up --build
+      run_compose up --build --wait
     else
-      run_compose up --build "$@"
+      run_compose up --build --wait "$@"
     fi
     ;;
   dev)
     prepare_go_dev_cache
+    echo "[stack] starting dev stack with hot-reload (api + indexer + frontend)"
     if [[ $# -eq 0 ]]; then
-      run_compose_dev up
+      run_compose_dev up --build --wait
     else
-      run_compose_dev up "$@"
+      run_compose_dev up --build --wait "$@"
     fi
     ;;
   core)
