@@ -61,6 +61,10 @@ type pdfOCRExtractor interface {
 
 type nativePDFTextExtractor struct{}
 
+type commandPDFTextExtractor struct {
+	binPath string
+}
+
 type commandPDFOCRExtractor struct {
 	rendererPath  string
 	tesseractPath string
@@ -82,8 +86,13 @@ const (
 )
 
 func NewDeterministicIndexer() *DeterministicIndexer {
+	pdfExtractor := newCommandPDFTextExtractor()
+	if pdfExtractor == nil {
+		pdfExtractor = nativePDFTextExtractor{}
+	}
+
 	return &DeterministicIndexer{
-		pdfTextExtractor: nativePDFTextExtractor{},
+		pdfTextExtractor: pdfExtractor,
 		pdfOCRExtractor:  newCommandPDFOCRExtractor(),
 	}
 }
@@ -267,6 +276,135 @@ func (i *DeterministicIndexer) indexPDF(ctx context.Context, documentID uint, da
 	result := buildIndexingResult(documentID, headings, paragraphs, nil)
 	appendOCRFallbackMetadata(&result, documentID, ocrStats)
 	return result, nil
+}
+
+func newCommandPDFTextExtractor() pdfTextExtractor {
+	binPath, err := exec.LookPath("pdftotext")
+	if err != nil {
+		return nil
+	}
+	return &commandPDFTextExtractor{binPath: binPath}
+}
+
+func (e *commandPDFTextExtractor) Name() string {
+	return "pdftotext"
+}
+
+func (e *commandPDFTextExtractor) Extract(data []byte) (pdfTextExtraction, error) {
+	if e == nil {
+		return pdfTextExtraction{}, fmt.Errorf("pdftotext not available")
+	}
+
+	tempDir, err := os.MkdirTemp("", "thingindex-pdf-extract-*")
+	if err != nil {
+		return pdfTextExtraction{}, fmt.Errorf("create temp dir: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(tempDir) }()
+
+	pdfPath := filepath.Join(tempDir, "document.pdf")
+	txtPath := filepath.Join(tempDir, "document.txt")
+
+	if err := os.WriteFile(pdfPath, data, 0o600); err != nil {
+		return pdfTextExtraction{}, fmt.Errorf("write temporary pdf: %w", err)
+	}
+
+	cmd := exec.Command(e.binPath, "-layout", "-enc", "UTF-8", pdfPath, txtPath)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return pdfTextExtraction{}, fmt.Errorf("pdftotext failed: %w: %s", err, strings.TrimSpace(string(output)))
+	}
+
+	rawText, err := os.ReadFile(txtPath)
+	if err != nil {
+		return pdfTextExtraction{}, fmt.Errorf("read extracted text: %w", err)
+	}
+
+	text := string(rawText)
+	if !isPlausibleText(text) {
+		return pdfTextExtraction{}, fmt.Errorf("pdftotext returned implausible text (garbage or empty)")
+	}
+
+	extraction := pdfTextExtraction{
+		PageCount:  countPagesInExtractedText(text),
+		PageBlocks: make(map[int][]textBlock),
+	}
+
+	pageSeparator := regexp.MustCompile(`(?m)^-+\s*$`)
+	pages := pageSeparator.Split(text, -1)
+	currentPage := 1
+
+	for _, pageText := range pages {
+		pageText = strings.TrimSpace(pageText)
+		if pageText == "" {
+			continue
+		}
+
+		lines := strings.Split(pageText, "\n")
+		var blocks []textBlock
+		var currentBlock strings.Builder
+
+		for _, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if trimmed == "" {
+				if currentBlock.Len() > 0 {
+					blocks = append(blocks, textBlock{
+						Content:    normalizeText(currentBlock.String()),
+						PageNumber: &currentPage,
+						Source:     "pdftotext",
+					})
+					currentBlock.Reset()
+				}
+				continue
+			}
+			currentBlock.WriteString(trimmed)
+			currentBlock.WriteString("\n")
+		}
+
+		if currentBlock.Len() > 0 {
+			blocks = append(blocks, textBlock{
+				Content:    normalizeText(currentBlock.String()),
+				PageNumber: &currentPage,
+				Source:     "pdftotext",
+			})
+		}
+
+		if len(blocks) > 0 {
+			extraction.PageBlocks[currentPage] = blocks
+		}
+		currentPage++
+	}
+
+	return extraction, nil
+}
+
+func isPlausibleText(text string) bool {
+	trimmed := strings.TrimSpace(text)
+	if len(trimmed) < 10 {
+		return false
+	}
+
+	letters := 0
+	garbage := 0
+	for _, r := range trimmed {
+		if unicode.IsLetter(r) {
+			letters++
+		}
+		if !unicode.IsPrint(r) && !unicode.IsSpace(r) {
+			garbage++
+		}
+	}
+
+	total := letters + garbage
+	if total == 0 {
+		return false
+	}
+
+	garbageRatio := float64(garbage) / float64(total)
+	return garbageRatio < 0.1
+}
+
+func countPagesInExtractedText(text string) int {
+	pageSeparator := regexp.MustCompile(`(?m)^-+\s*$`)
+	return len(pageSeparator.Split(text, -1))
 }
 
 func (nativePDFTextExtractor) Extract(data []byte) (pdfTextExtraction, error) {
