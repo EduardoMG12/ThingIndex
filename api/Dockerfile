@@ -11,6 +11,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /app/bin/api ./cmd/api
 
 FROM alpine:latest
 
+RUN apk add --no-cache poppler-utils
+
 WORKDIR /app
 
 COPY --from=builder /app/bin/api .
