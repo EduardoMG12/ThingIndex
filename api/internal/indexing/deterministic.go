@@ -1195,7 +1195,11 @@ func clampSummary(value string, maxLen int) string {
 	if len(runes) <= maxLen {
 		return value
 	}
-	return strings.TrimSpace(string(runes[:maxLen]))
+	truncated := string(runes[:maxLen])
+	if lastSpace := strings.LastIndex(truncated, " "); lastSpace > 0 {
+		return truncated[:lastSpace]
+	}
+	return strings.TrimSpace(truncated)
 }
 
 func outlineCoverageStats(pages []models.DocumentPage, nodes []models.DocumentOutlineNode) (int, int, float64) {
@@ -2111,15 +2115,25 @@ func normalizeCells(cells []string) []string {
 
 func normalizeText(text string) string {
 	text = strings.ReplaceAll(text, "\u00a0", " ")
-	lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
-	compacted := make([]string, 0, len(lines))
-	for _, line := range lines {
-		line = strings.Join(strings.Fields(strings.TrimSpace(line)), " ")
-		if line != "" {
-			compacted = append(compacted, line)
+	text = strings.ReplaceAll(text, "\r\n", "\n")
+
+	paragraphs := strings.Split(text, "\n\n")
+	normalizedParagraphs := make([]string, 0, len(paragraphs))
+	for _, para := range paragraphs {
+		lines := strings.Split(para, "\n")
+		compacted := make([]string, 0, len(lines))
+		for _, line := range lines {
+			line = strings.Join(strings.Fields(strings.TrimSpace(line)), " ")
+			if line != "" {
+				compacted = append(compacted, line)
+			}
+		}
+		normalized := strings.TrimSpace(strings.Join(compacted, " "))
+		if normalized != "" {
+			normalizedParagraphs = append(normalizedParagraphs, normalized)
 		}
 	}
-	return strings.TrimSpace(strings.Join(compacted, "\n"))
+	return strings.Join(normalizedParagraphs, "\n\n")
 }
 
 func firstSentence(text string) string {

@@ -592,5 +592,9 @@ func clampText(value string, maxLen int) string {
 		return cleaned
 	}
 
-	return strings.TrimSpace(string(runes[:maxLen]))
+	truncated := string(runes[:maxLen])
+	if lastSpace := strings.LastIndex(truncated, " "); lastSpace > 0 {
+		return truncated[:lastSpace]
+	}
+	return strings.TrimSpace(truncated)
 }
