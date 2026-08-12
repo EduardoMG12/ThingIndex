@@ -9,7 +9,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	"thing-index/internal/pkg/netsec"
@@ -127,14 +126,13 @@ func (m *MinioStorage) UploadFile(ctx context.Context, file io.Reader, objectSiz
 		return "", fmt.Errorf("failed to upload file to minio: %w", err)
 	}
 
-	fileUrl := fmt.Sprintf("%s/%s", m.bucketName, info.Key)
-	return fileUrl, nil
+	return objectPathForStorage(m.bucketName, info.Key), nil
 }
 
 func (m *MinioStorage) OpenFile(ctx context.Context, objectPath string) (io.ReadCloser, error) {
-	objectKey := strings.TrimPrefix(strings.TrimSpace(objectPath), m.bucketName+"/")
-	if objectKey == "" {
-		return nil, errors.New("object path is required")
+	objectKey, err := objectKeyFromPath(m.bucketName, objectPath)
+	if err != nil {
+		return nil, err
 	}
 
 	object, err := m.client.GetObject(ctx, m.bucketName, objectKey, minio.GetObjectOptions{})
@@ -151,9 +149,9 @@ func (m *MinioStorage) OpenFile(ctx context.Context, objectPath string) (io.Read
 }
 
 func (m *MinioStorage) DeleteFile(ctx context.Context, objectPath string) error {
-	objectKey := strings.TrimPrefix(strings.TrimSpace(objectPath), m.bucketName+"/")
-	if objectKey == "" {
-		return errors.New("object path is required")
+	objectKey, err := objectKeyFromPath(m.bucketName, objectPath)
+	if err != nil {
+		return err
 	}
 
 	if err := m.client.RemoveObject(ctx, m.bucketName, objectKey, minio.RemoveObjectOptions{}); err != nil {
@@ -164,12 +162,12 @@ func (m *MinioStorage) DeleteFile(ctx context.Context, objectPath string) error 
 }
 
 func (m *MinioStorage) FileExists(ctx context.Context, objectPath string) (bool, error) {
-	objectKey := strings.TrimPrefix(strings.TrimSpace(objectPath), m.bucketName+"/")
-	if objectKey == "" {
-		return false, errors.New("object path is required")
+	objectKey, err := objectKeyFromPath(m.bucketName, objectPath)
+	if err != nil {
+		return false, err
 	}
 
-	_, err := m.client.StatObject(ctx, m.bucketName, objectKey, minio.StatObjectOptions{})
+	_, err = m.client.StatObject(ctx, m.bucketName, objectKey, minio.StatObjectOptions{})
 	if err == nil {
 		return true, nil
 	}

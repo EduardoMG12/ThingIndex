@@ -11,6 +11,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /app/bin/indexer ./cmd/indexer
 
 FROM alpine:latest
 
+RUN apk add --no-cache poppler-utils tesseract-ocr
+
 WORKDIR /app
 
 COPY --from=builder /app/bin/indexer .

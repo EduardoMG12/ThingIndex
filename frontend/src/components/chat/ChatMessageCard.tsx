@@ -32,35 +32,33 @@ export function ChatMessageCard({
     }).format(new Date(message.createdAt));
 
     return (
-        <div className={cn("flex gap-4 sm:gap-5", isUser ? "flex-row-reverse" : "flex-row")}>
-            <div
-                className={cn(
-                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border",
-                    isUser
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-card text-primary shadow-sm"
-                )}
-            >
-                {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-            </div>
+        <div className={cn("flex gap-3", isUser ? "justify-end" : "justify-start")}>
+            {!isUser ? (
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted/70 text-muted-foreground">
+                    <Bot className="h-4 w-4" />
+                </div>
+            ) : null}
 
-            <div className={cn("max-w-[94%] space-y-3 sm:max-w-[88%]", isUser ? "text-right" : "text-left")}>
-                <div className={cn("flex items-center gap-2", isUser ? "justify-end" : "justify-start")}>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground">
-                        {isUser ? t("dashboard.chat.userLabel") : t("dashboard.chat.assistantLabel")}
-                    </p>
-                    <time dateTime={message.createdAt} className="text-[10px] text-muted-foreground">
+            <div className={cn("max-w-[92%] space-y-2 sm:max-w-[85%]", isUser ? "items-end text-right" : "text-left")}>
+                <div className={cn("flex items-center gap-2 text-[11px] text-muted-foreground", isUser ? "justify-end" : "justify-start")}>
+                    {isUser ? (
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-muted/70 text-muted-foreground">
+                            <User className="h-3.5 w-3.5" />
+                        </span>
+                    ) : null}
+                    <span>{isUser ? t("dashboard.chat.userLabel") : t("dashboard.chat.assistantLabel")}</span>
+                    <time dateTime={message.createdAt}>
                         {timestamp}
                     </time>
                 </div>
 
                 <div
                     className={cn(
-                        "break-words rounded-[24px] px-5 py-4 shadow-sm transition-all",
+                        "break-words transition-all",
                         isUser
-                            ? "rounded-tr-md bg-primary text-primary-foreground whitespace-pre-wrap text-[15px] leading-7"
+                            ? "rounded-[24px] bg-muted px-5 py-3 text-[15px] leading-7 text-foreground"
                             : cn(
-                                "rounded-tl-md border border-border bg-card/95 text-foreground",
+                                "px-1 text-foreground",
                                 isStreaming && !message.content.trim() && "min-w-72"
                             )
                     )}
@@ -84,7 +82,7 @@ export function ChatMessageCard({
                 </div>
 
                 {message.sources && message.sources.length > 0 ? (
-                    <div className="grid gap-2 pt-1 sm:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid gap-2 pt-1 sm:grid-cols-2">
                         {message.sources.map((source) => (
                             <SourceReference key={source.id} source={source} />
                         ))}

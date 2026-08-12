@@ -35,8 +35,8 @@ src/
 
 - landing page institucional;
 - login e registro;
-- dashboard com abas de upload, documentos, chat e custo;
-- dashboard com leitura executiva de custos baseada em runtime, pricing sincronizado e telemetria documental;
+- dashboard focado em upload e organização do fluxo principal;
+- página dedicada de visibilidade de custos baseada em runtime, pricing sincronizado e telemetria documental;
 - tela de configuracao de providers;
 - documentacao visual da arquitetura.
 
@@ -47,8 +47,9 @@ src/
 - upload de documentos;
 - listagem de categorias, collections e documentos;
 - painel lateral de preview e auditoria da indexacao;
+- export versionado do indice documental em JSON a partir do painel de documentos;
 - painel operacional de documentos com leitura executiva, proximas acoes, mapa de anomalias, watchlist prioritaria e slice acionavel da biblioteca;
-- painel de custo no dashboard com estado de confiabilidade, cobertura precificada, limites da estimativa e drivers de custo observados;
+- página de visibilidade de custos com estado de confiabilidade, cobertura precificada, limites da estimativa e drivers de custo observados;
 - explorer de auditoria documental com busca, actor, request id, recorte por documento/collection, atalhos de falha e carregamento incremental;
 - explorer de auditoria de providers com escopo por familia ou provider ativo, filtros operacionais e atalhos para saves, ativacoes e falhas;
 - exibicao de monitoramento por documento:
@@ -107,10 +108,12 @@ Materiais de apoio imediatos:
 
 - guia curto: `docs/open-source-onboarding.md`
 - requests prontas: `examples/http/thingindex-api.http`
+- CLI de importacao de indices: `api/cmd/index-import`
 - contrato versionado: `api/docs/swagger.yaml` e `api/docs/swagger.json`
 - perfil publico do runtime: `http://localhost:8000/api/v1/meta/runtime-profile`
 - benchmark publico de indexacao: `http://localhost:8000/api/v1/meta/indexing-benchmark`
-- matriz pública de providers: `http://localhost:8000/api/v1/providers/support?family=LLM`
+- matriz pública de storage: `http://localhost:8000/api/v1/providers/support?family=STORAGE`
+- matriz pública de LLM: `http://localhost:8000/api/v1/providers/support?family=LLM`
 - RFC de foco do produto: `rfc/0001-product-focus.md`
 - workspace academico: `docs/article/README.md`
 
@@ -193,7 +196,7 @@ pnpm run build:storybook
 pnpm run test:storybook:e2e
 ```
 
-O `devcontainer` versionado na raiz ja expõe as portas `3000` e `8000` e inclui a extensao do Playwright, entao os cenarios do workspace de chat, da observabilidade documental e da visibilidade de custos podem ser executados nele sem ajuste extra.
+O `devcontainer` versionado na raiz ja expõe as portas `3000` e `8000` e inclui a extensao do Playwright, entao os cenarios do workspace de chat, da observabilidade documental e da visibilidade de custos podem ser executados nele sem ajuste extra. O mesmo ambiente tambem deixa o banco PostgreSQL do Compose acessivel para rodar a CLI `go run ./api/cmd/index-import ...` sem bootstrap adicional.
 
 ## Storybook
 
@@ -237,7 +240,7 @@ Esse desenho reduz acoplamento entre componentes React e detalhes de transporte,
 
 ## Visibilidade de custos
 
-- o card `src/components/dashboard/CostCalculator.tsx` agora cruza runtime ativo, fontes de pricing sincronizadas e telemetria documental antes de exibir qualquer leitura de custo;
+- a página `src/app/cost-visibility/page.tsx` usa o card `src/components/dashboard/CostCalculator.tsx` para cruzar runtime ativo, fontes de pricing sincronizadas e telemetria documental antes de exibir qualquer leitura de custo;
 - a heuristica compartilhada mora em `src/lib/cost-visibility.ts` e o carregamento em `src/hooks/use-cost-visibility.ts`, evitando regras de confiabilidade espalhadas pelo JSX;
 - a estimativa atual cobre apenas indexacao documental observada; chat grounded, providers sem pricing sincronizado e mudancas futuras de tabela ficam explicitamente fora da conta.
 

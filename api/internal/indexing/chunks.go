@@ -1,0 +1,280 @@
+package indexing
+
+import (
+	"strings"
+
+	"thing-index/internal/models"
+)
+
+const (
+	maxChunkContentLength   = 4000
+	minChunkContentLength   = 80
+	maxChunksPerOutlineNode = 5
+)
+
+type chunkBuilder struct {
+	documentID uint
+}
+
+func newChunkBuilder(documentID uint) *chunkBuilder {
+	return &chunkBuilder{documentID: documentID}
+}
+
+func (b *chunkBuilder) buildFromOutline(
+	nodes []models.DocumentOutlineNode,
+	paragraphs []models.ParagraphNode,
+	tables []models.TableSection,
+	pages []models.DocumentPage,
+) []models.DocumentChunk {
+	if len(nodes) == 0 {
+		return b.buildFallbackFromPages(pages)
+	}
+
+	chunks := make([]models.DocumentChunk, 0, len(nodes)*2)
+	for _, node := range nodes {
+		nodeChunks := b.buildChunksForNode(node, paragraphs, tables)
+		chunks = append(chunks, nodeChunks...)
+	}
+
+	if len(chunks) == 0 {
+		return b.buildFallbackFromPages(pages)
+	}
+
+	return chunks
+}
+
+func (b *chunkBuilder) buildChunksForNode(
+	node models.DocumentOutlineNode,
+	paragraphs []models.ParagraphNode,
+	tables []models.TableSection,
+) []models.DocumentChunk {
+	start, end, ok := outlineParagraphRange(node)
+	if !ok {
+		return nil
+	}
+
+	contentParts := make([]string, 0, 4)
+
+	contentParts = append(contentParts, node.Title)
+	if node.Summary != "" {
+		contentParts = append(contentParts, node.Summary)
+	}
+
+	for idx := start; idx <= end && idx < len(paragraphs); idx++ {
+		text := strings.TrimSpace(paragraphs[idx].Content)
+		if text == "" {
+			continue
+		}
+		contentParts = append(contentParts, text)
+		if len(strings.Join(contentParts, "\n\n")) > maxChunkContentLength {
+			break
+		}
+	}
+
+	for _, table := range matchingOutlineTables(node, tables) {
+		tableText := formatTableForChunk(table)
+		if tableText == "" {
+			continue
+		}
+		contentParts = append(contentParts, tableText)
+		if len(strings.Join(contentParts, "\n\n")) > maxChunkContentLength {
+			break
+		}
+	}
+
+	fullContent := strings.Join(contentParts, "\n\n")
+	if len(strings.TrimSpace(fullContent)) < minChunkContentLength {
+		return nil
+	}
+
+	if len([]rune(fullContent)) > maxChunkContentLength {
+		return b.splitOversizedChunk(node, fullContent)
+	}
+
+	return []models.DocumentChunk{
+		{
+			DocumentID:           b.documentID,
+			SequenceOrder:        node.SequenceOrder,
+			ChunkType:            "outline",
+			Title:                node.Title,
+			Content:              fullContent,
+			SourceParagraphStart: intPtr(start),
+			SourceParagraphEnd:   intPtr(end),
+			TokenEstimate:        estimateTextTokens(fullContent),
+			Metadata: map[string]any{
+				"node_id":     node.NodeID,
+				"level":       node.Level,
+				"section_key": metadataValue(node.Metadata, "section_key"),
+			},
+		},
+	}
+}
+
+func (b *chunkBuilder) splitOversizedChunk(
+	node models.DocumentOutlineNode,
+	content string,
+) []models.DocumentChunk {
+	sentences := splitIntoSentences(content)
+	if len(sentences) == 0 {
+		return nil
+	}
+
+	chunks := make([]models.DocumentChunk, 0, maxChunksPerOutlineNode)
+	var current strings.Builder
+	current.WriteString(node.Title + "\n\n")
+	chunkSeq := 0
+
+	for _, sentence := range sentences {
+		sentence = strings.TrimSpace(sentence)
+		if sentence == "" {
+			continue
+		}
+
+		projected := current.Len() + len(sentence) + 2
+		if projected > maxChunkContentLength && current.Len() > minChunkContentLength {
+			chunks = append(chunks, models.DocumentChunk{
+				DocumentID:    b.documentID,
+				SequenceOrder: node.SequenceOrder*100 + chunkSeq,
+				ChunkType:     "outline-split",
+				Title:         node.Title,
+				Content:       strings.TrimSpace(current.String()),
+				TokenEstimate: estimateTextTokens(current.String()),
+				Metadata: map[string]any{
+					"node_id":     node.NodeID,
+					"level":       node.Level,
+					"split_part":  chunkSeq + 1,
+					"section_key": metadataValue(node.Metadata, "section_key"),
+				},
+			})
+			chunkSeq++
+			current.Reset()
+			current.WriteString(node.Title + "\n\n")
+		}
+		current.WriteString(sentence)
+		current.WriteString("\n\n")
+	}
+
+	if current.Len() >= minChunkContentLength {
+		chunks = append(chunks, models.DocumentChunk{
+			DocumentID:    b.documentID,
+			SequenceOrder: node.SequenceOrder*100 + chunkSeq,
+			ChunkType:     "outline-split",
+			Title:         node.Title,
+			Content:       strings.TrimSpace(current.String()),
+			TokenEstimate: estimateTextTokens(current.String()),
+			Metadata: map[string]any{
+				"node_id":     node.NodeID,
+				"level":       node.Level,
+				"split_part":  chunkSeq + 1,
+				"section_key": metadataValue(node.Metadata, "section_key"),
+			},
+		})
+	}
+
+	if len(chunks) > maxChunksPerOutlineNode {
+		chunks = chunks[:maxChunksPerOutlineNode]
+	}
+
+	return chunks
+}
+
+func (b *chunkBuilder) buildFallbackFromPages(pages []models.DocumentPage) []models.DocumentChunk {
+	if len(pages) == 0 {
+		return nil
+	}
+
+	chunks := make([]models.DocumentChunk, 0, len(pages))
+	for idx, page := range pages {
+		content := strings.TrimSpace(page.Content)
+		if content == "" {
+			continue
+		}
+
+		chunks = append(chunks, models.DocumentChunk{
+			DocumentID:    b.documentID,
+			SequenceOrder: idx,
+			ChunkType:     "page",
+			Title:         pageTitle(page),
+			Content:       content,
+			TokenEstimate: page.TokenEstimate,
+			Metadata: map[string]any{
+				"page_number": page.PageNumber,
+			},
+		})
+	}
+
+	return chunks
+}
+
+func splitIntoSentences(text string) []string {
+	var sentences []string
+	var current strings.Builder
+
+	for _, r := range text {
+		current.WriteRune(r)
+		if r == '.' || r == '!' || r == '?' {
+			s := strings.TrimSpace(current.String())
+			if s != "" {
+				sentences = append(sentences, s)
+			}
+			current.Reset()
+		}
+	}
+
+	remainder := strings.TrimSpace(current.String())
+	if remainder != "" {
+		sentences = append(sentences, remainder)
+	}
+
+	return sentences
+}
+
+func formatTableForChunk(table models.TableSection) string {
+	var b strings.Builder
+
+	if table.Title != "" {
+		b.WriteString("Table: ")
+		b.WriteString(table.Title)
+		b.WriteString("\n")
+	}
+
+	if len(table.Headers) > 0 {
+		b.WriteString("Columns: ")
+		b.WriteString(strings.Join(table.Headers, ", "))
+		b.WriteString("\n")
+	}
+
+	for rowIdx := 0; rowIdx < len(table.Rows) && rowIdx < 10; rowIdx++ {
+		row := table.Rows[rowIdx]
+		if len(row) == 0 {
+			continue
+		}
+		b.WriteString("Row: ")
+		b.WriteString(strings.Join(row, " | "))
+		b.WriteString("\n")
+	}
+
+	return strings.TrimSpace(b.String())
+}
+
+func pageTitle(page models.DocumentPage) string {
+	if page.Summary != "" {
+		return firstSentence(page.Summary)
+	}
+	return firstSentence(page.Content)
+}
+
+func metadataValue(metadata map[string]any, key string) string {
+	if metadata == nil {
+		return ""
+	}
+	v, ok := metadata[key]
+	if !ok {
+		return ""
+	}
+	s, ok := v.(string)
+	if !ok {
+		return ""
+	}
+	return s
+}

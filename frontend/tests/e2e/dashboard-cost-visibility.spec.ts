@@ -21,7 +21,7 @@ async function authenticate(context: BrowserContext) {
 
 test.use({ locale: "en-US" });
 
-test("dashboard cost visibility explains trust and pricing coverage from runtime data", async ({ context, page }) => {
+test("cost visibility page explains trust and pricing coverage from runtime data", async ({ context, page }) => {
     await authenticate(context);
 
     await page.route("**/api/categories", async (route) => {
@@ -145,9 +145,9 @@ test("dashboard cost visibility explains trust and pricing coverage from runtime
         });
     });
 
-    await page.goto("/en/dashboard");
+    await page.goto("/en/cost-visibility");
 
-    await expect(page.getByText("Operational pricing estimate")).toBeVisible();
+    await expect(page.getByText("Operational cost estimate")).toBeVisible();
     await expect(page.getByText("Trusted estimate")).toBeVisible();
     await expect(page.getByText("$0.012300", { exact: true })).toBeVisible();
     await expect(page.getByText("3/3", { exact: true })).toBeVisible();

@@ -87,10 +87,10 @@ func (h *ProviderHandler) SaveCredentials(c *gin.Context) {
 }
 
 // @Summary      List provider support matrix
-// @Description  Returns the current support classification for provider integrations, including support tier, transport mode and operational notes.
+// @Description  Returns the current support classification for provider integrations, including support tier, transport mode, setup hints and operational notes.
 // @Tags         providers
 // @Produce      json
-// @Param        family query string false "Optional provider family filter. The current public matrix is available for LLM."
+// @Param        family query string false "Optional provider family filter. Supported values: STORAGE, LLM."
 // @Success      200 {object} response.Response{data=[]dto.ProviderSupportResponse}
 // @Failure      400 {object} response.Response
 // @Failure      500 {object} response.Response
@@ -98,7 +98,7 @@ func (h *ProviderHandler) SaveCredentials(c *gin.Context) {
 func (h *ProviderHandler) ListSupportMatrix(c *gin.Context) {
 	lang := c.GetString("language")
 	family := strings.ToUpper(strings.TrimSpace(c.Query("family")))
-	if family != "" && family != domain.FamilyLLM {
+	if family != "" && family != domain.FamilyLLM && family != domain.FamilyStorage {
 		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "provider.error_invalid_family"), nil)
 		return
 	}

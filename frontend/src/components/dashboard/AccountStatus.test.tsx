@@ -10,9 +10,9 @@ describe("AccountStatus", () => {
             wrapper: createTestWrapper(),
         });
 
-        expect(screen.getByText("Protected workspace")).toBeInTheDocument();
-        expect(screen.getByText("Monitoring and pricing views")).toBeInTheDocument();
-        expect(screen.getByText("Defined by backend auth")).toBeInTheDocument();
+        expect(screen.getByText("Session-protected routes")).toBeInTheDocument();
+        expect(screen.getByText("Runtime, cost, and audit")).toBeInTheDocument();
+        expect(screen.getByText("Sensitive config stays in backend")).toBeInTheDocument();
         expect(screen.queryByText("1.2k / 5k tokens")).not.toBeInTheDocument();
         expect(screen.queryByText("Expires in 4h")).not.toBeInTheDocument();
     });

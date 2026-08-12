@@ -10,8 +10,8 @@ import (
 	"thing-index/internal/domain"
 	"thing-index/internal/handlers"
 	"thing-index/internal/mailer"
+	providerpkg "thing-index/internal/pkg/provider"
 	"thing-index/internal/pkg/response"
-	"thing-index/internal/pkg/storage"
 	"thing-index/internal/repository"
 	"thing-index/internal/usecase"
 	"time"
@@ -24,6 +24,8 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/gorm"
 )
+
+var newDefaultStorageProvider = providerpkg.NewDefaultStorageProvider
 
 func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 	if err := router.SetTrustedProxies(cfg.TrustedProxyList()); err != nil {
@@ -41,15 +43,10 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		AllowCredentials: true,
 	}))
 
-	minioStorage, err := storage.NewMinioStorage(
-		cfg.MinioEndpoint,
-		cfg.MinioAccessKey,
-		cfg.MinioSecretKey,
-		cfg.MinioBucketName,
-		cfg.MinioUseSSL == "true",
-	)
+	defaultStorage, err := newDefaultStorageProvider(cfg)
 	if err != nil {
-		return fmt.Errorf("failed to initialize minio storage: %w", err)
+		log.Printf("warning: failed to initialize default storage provider, continuing with unavailable storage: %v", err)
+		defaultStorage = newUnavailableStorage(err)
 	}
 
 	authRepo := repository.NewGormAuthRepository(db)
@@ -62,9 +59,9 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 
 	smtpMailer := mailer.NewSMTPMailer(cfg)
 
-	authUseCase := usecase.NewAuthUseCase(authRepo, smtpMailer, cfg)
+	authUseCase := usecase.NewAuthUseCase(authRepo, smtpMailer, defaultStorage, cfg)
 
-	authHandler := handlers.NewAuthHandler(authUseCase)
+	authHandler := handlers.NewAuthHandler(authUseCase, defaultStorage)
 	benchmarkProvider := usecase.NewIndexingBenchmarkProvider()
 	metaHandler := handlers.NewMetaHandler(benchmarkProvider)
 
@@ -82,7 +79,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		documentRepo,
 		structuredDataRepo,
 		collectionContextRepo,
-		minioStorage,
+		defaultStorage,
 		providerUseCase,
 		cfg.MaxUploadSizeBytes,
 	)
@@ -122,6 +119,9 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		user := v1.Group("/user")
 		user.Use(middleware.AuthMiddleware(cfg, authRepo))
 		{
+			user.GET("/me", authHandler.Me)
+			user.GET("/me/avatar", authHandler.GetMyAvatar)
+			user.PUT("/me", authHandler.UpdateMe)
 			user.POST("/providers", providerHandler.SaveCredentials)
 			user.POST("/providers/test", providerHandler.TestConnection)
 			user.POST("/providers/models", providerHandler.ListModels)
@@ -157,6 +157,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 			documents.POST("/:id/retry", docHandler.RetryIndexing)
 			documents.DELETE("/:id", docHandler.DeleteDocument)
 			documents.GET("/monitoring/summary", docHandler.GetDocumentMonitoringSummary)
+			documents.GET("/:id/index/export", docHandler.ExportDocumentIndex)
 			documents.GET("/:id/index", docHandler.GetDocumentIndex)
 			documents.GET("/:id", docHandler.GetDocument)
 			documents.GET("/", docHandler.ListDocuments)

@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, Hash, Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { useCollections } from "@/hooks/use-collections";
 import { getCollectionName } from "@/lib/api/contracts/document-context";
@@ -29,14 +28,6 @@ export default function CollectionCombobox({ value, onChange, className }: Colle
     useEffect(() => {
         setQuery(value);
     }, [value]);
-
-    useEffect(() => {
-        if (!error) {
-            return;
-        }
-
-        toast.error(error);
-    }, [error]);
 
     useEffect(() => {
         function handlePointerDown(event: MouseEvent) {
@@ -78,7 +69,9 @@ export default function CollectionCombobox({ value, onChange, className }: Colle
                 }}
                 onFocus={() => {
                     setIsOpen(true);
-                    void reloadCollections();
+                    if (!isLoading && error) {
+                        void reloadCollections();
+                    }
                 }}
                 onBlur={() => commitCollection(query)}
                 onKeyDown={(event) => {
@@ -111,6 +104,23 @@ export default function CollectionCombobox({ value, onChange, className }: Colle
                             </div>
                         )}
 
+                        {!isLoading && error && (
+                            <div className="rounded px-3 py-2 text-xs">
+                                <p className="text-destructive">{t("dashboard.upload.collectionLoadError")}</p>
+                                <div className="mt-2 flex flex-wrap items-center gap-3">
+                                    <button
+                                        type="button"
+                                        onMouseDown={(event) => event.preventDefault()}
+                                        onClick={() => void reloadCollections()}
+                                        className="font-medium text-primary transition-colors hover:text-primary/80"
+                                    >
+                                        {t("common.refresh")}
+                                    </button>
+                                    <span className="text-[10px] text-muted-foreground">{error}</span>
+                                </div>
+                            </div>
+                        )}
+
                         {!isLoading && filteredCollections.map((collection) => {
                             const collectionName = getCollectionName(collection);
                             const isSelected = normalizeCollection(collectionName) === normalizeCollection(value);
@@ -132,7 +142,7 @@ export default function CollectionCombobox({ value, onChange, className }: Colle
                             );
                         })}
 
-                        {!isLoading && filteredCollections.length === 0 && (
+                        {!isLoading && !error && filteredCollections.length === 0 && (
                             <div className="px-3 py-2 text-xs text-muted-foreground">
                                 {t("dashboard.upload.noCollections")}
                             </div>

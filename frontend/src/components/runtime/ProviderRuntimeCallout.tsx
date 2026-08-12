@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { AlertTriangle, Bot, BrainCircuit, Settings2 } from "lucide-react";
 
+import { ProviderBrandMark } from "@/components/providers/ProviderBrandMark";
 import type { ProviderRuntimeAssignment } from "@/lib/api/providers";
 import { useI18n } from "@/lib/i18n/provider";
 import { getProviderRuntimeModel, formatProviderTypeLabel } from "@/lib/provider-runtime";
@@ -102,9 +103,17 @@ export default function ProviderRuntimeCallout({
                         <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                             {t("providerRuntime.providerLabel")}
                         </p>
-                        <p className="mt-3 text-sm font-semibold text-foreground">
-                            {formatProviderTypeLabel(assignment.provider_type)}
-                        </p>
+                        <div className="mt-3 flex items-center gap-3">
+                            <ProviderBrandMark providerType={assignment.provider_type} size="sm" />
+                            <div>
+                                <p className="text-sm font-semibold text-foreground">
+                                    {formatProviderTypeLabel(assignment.provider_type)}
+                                </p>
+                                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                                    {assignment.provider_type}
+                                </p>
+                            </div>
+                        </div>
                     </div>
                     <div className="rounded-xl border border-border bg-background/60 p-4">
                         <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">

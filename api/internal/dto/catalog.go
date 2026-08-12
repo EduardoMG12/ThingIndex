@@ -263,12 +263,13 @@ type TreeTraversalStepResponse struct {
 }
 
 type IndexEvaluationResponse struct {
-	CoverageRatio      float64 `json:"coverage_ratio"`
-	TotalNodes         int     `json:"total_nodes"`
-	LowConfidenceNodes int     `json:"low_confidence_nodes"`
-	OversizedNodes     int     `json:"oversized_nodes"`
-	MaxDepth           int     `json:"max_depth"`
-	RetrievalReady     bool    `json:"retrieval_ready"`
+	CoverageRatio        float64 `json:"coverage_ratio"`
+	SummaryCoverageRatio float64 `json:"summary_coverage_ratio"`
+	TotalNodes           int     `json:"total_nodes"`
+	LowConfidenceNodes   int     `json:"low_confidence_nodes"`
+	OversizedNodes       int     `json:"oversized_nodes"`
+	MaxDepth             int     `json:"max_depth"`
+	RetrievalReady       bool    `json:"retrieval_ready"`
 }
 
 type IndexMonitoringResponse struct {
@@ -284,6 +285,9 @@ type IndexMonitoringResponse struct {
 	ChunkStrategyVersion   string                 `json:"chunk_strategy_version,omitempty"`
 	TreeBuilder            string                 `json:"tree_builder,omitempty"`
 	TreeVerificationPassed bool                   `json:"tree_verification_passed"`
+	TreeState              string                 `json:"tree_state,omitempty"`
+	TreeStateDetail        string                 `json:"tree_state_detail,omitempty"`
+	TreeConcernCodes       []string               `json:"tree_concern_codes,omitempty"`
 	EstimatedQualityScore  float64                `json:"estimated_quality_score"`
 	LLM                    *LLMMonitoringResponse `json:"llm,omitempty"`
 }
@@ -732,12 +736,13 @@ func ToIndexEvaluationResponse(result *domain.IndexEvaluationResult) *IndexEvalu
 	}
 
 	return &IndexEvaluationResponse{
-		CoverageRatio:      result.CoverageRatio,
-		TotalNodes:         result.TotalNodes,
-		LowConfidenceNodes: result.LowConfidenceNodes,
-		OversizedNodes:     result.OversizedNodes,
-		MaxDepth:           result.MaxDepth,
-		RetrievalReady:     result.RetrievalReady,
+		CoverageRatio:        result.CoverageRatio,
+		SummaryCoverageRatio: result.SummaryCoverageRatio,
+		TotalNodes:           result.TotalNodes,
+		LowConfidenceNodes:   result.LowConfidenceNodes,
+		OversizedNodes:       result.OversizedNodes,
+		MaxDepth:             result.MaxDepth,
+		RetrievalReady:       result.RetrievalReady,
 	}
 }
 
@@ -759,6 +764,9 @@ func ToIndexMonitoringResponse(result *domain.IndexMonitoringResult) *IndexMonit
 		ChunkStrategyVersion:   result.ChunkStrategyVersion,
 		TreeBuilder:            result.TreeBuilder,
 		TreeVerificationPassed: result.TreeVerificationPassed,
+		TreeState:              result.TreeState,
+		TreeStateDetail:        result.TreeStateDetail,
+		TreeConcernCodes:       append([]string(nil), result.TreeConcernCodes...),
 		EstimatedQualityScore:  result.EstimatedQualityScore,
 		LLM:                    ToLLMMonitoringResponse(result.LLM),
 	}

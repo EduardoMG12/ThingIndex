@@ -41,6 +41,7 @@ func (r *GormCollectionContextRepository) GetCollectionContext(ctx context.Conte
 	documentPages := make([]models.DocumentPage, 0)
 	paragraphNodes := make([]models.ParagraphNode, 0)
 	tableSections := make([]models.TableSection, 0)
+	chunks := make([]models.DocumentChunk, 0)
 	metadataPairs := make([]models.MetadataPair, 0)
 	outlineNodes := make([]models.DocumentOutlineNode, 0)
 
@@ -69,6 +70,13 @@ func (r *GormCollectionContextRepository) GetCollectionContext(ctx context.Conte
 		if err := r.db.WithContext(ctx).
 			Where("document_id IN ?", documentIDs).
 			Order("document_id ASC, sequence_order ASC").
+			Find(&chunks).Error; err != nil {
+			return nil, err
+		}
+
+		if err := r.db.WithContext(ctx).
+			Where("document_id IN ?", documentIDs).
+			Order("document_id ASC, sequence_order ASC").
 			Find(&metadataPairs).Error; err != nil {
 			return nil, err
 		}
@@ -87,6 +95,7 @@ func (r *GormCollectionContextRepository) GetCollectionContext(ctx context.Conte
 		DocumentPages:  documentPages,
 		ParagraphNodes: paragraphNodes,
 		TableSections:  tableSections,
+		Chunks:         chunks,
 		MetadataPairs:  metadataPairs,
 		OutlineNodes:   outlineNodes,
 	}, nil

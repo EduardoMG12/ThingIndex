@@ -288,12 +288,12 @@ export async function deleteCollectionDocuments(collectionId: number): Promise<{
     };
 }
 
-export async function downloadDocumentOriginal(document: Pick<Document, "id" | "title">): Promise<void> {
+async function downloadBlobFromRoute(routePath: string, fallbackFilename: string, fallbackMessage: string): Promise<void> {
     if (typeof window === "undefined") {
         throw new Error("Download disponivel apenas no navegador.");
     }
 
-    const response = await fetchWithAuthRedirect(`/api/documents/${document.id}/download`, {
+    const response = await fetchWithAuthRedirect(routePath, {
         method: "GET",
         cache: "no-store",
     });
@@ -303,7 +303,7 @@ export async function downloadDocumentOriginal(document: Pick<Document, "id" | "
         : null;
 
     if (!response.ok) {
-        throw new Error(buildApiErrorMessage(response, payload, apiErrorMessage("documents.download")));
+        throw new Error(buildApiErrorMessage(response, payload, fallbackMessage));
     }
 
     const blob = await response.blob();
@@ -311,7 +311,7 @@ export async function downloadDocumentOriginal(document: Pick<Document, "id" | "
     const anchor = window.document.createElement("a");
 
     anchor.href = objectURL;
-    anchor.download = extractFilenameFromDisposition(response.headers.get("content-disposition"), document.title);
+    anchor.download = extractFilenameFromDisposition(response.headers.get("content-disposition"), fallbackFilename);
     anchor.rel = "noopener";
 
     window.document.body.appendChild(anchor);
@@ -321,6 +321,22 @@ export async function downloadDocumentOriginal(document: Pick<Document, "id" | "
     window.setTimeout(() => {
         window.URL.revokeObjectURL(objectURL);
     }, 0);
+}
+
+export async function downloadDocumentOriginal(document: Pick<Document, "id" | "title">): Promise<void> {
+    await downloadBlobFromRoute(
+        `/api/documents/${document.id}/download`,
+        document.title,
+        apiErrorMessage("documents.download")
+    );
+}
+
+export async function downloadDocumentIndexExport(document: Pick<Document, "id" | "title">): Promise<void> {
+    await downloadBlobFromRoute(
+        `/api/documents/${document.id}/index/export`,
+        `${document.title}.thingindex-index.json`,
+        apiErrorMessage("documents.indexExport")
+    );
 }
 
 type DocumentIndexApiRecord = {
@@ -355,6 +371,9 @@ type DocumentIndexApiRecord = {
         chunk_strategy_version?: string;
         tree_builder?: string;
         tree_verification_passed?: boolean;
+        tree_state?: string;
+        tree_state_detail?: string;
+        tree_concern_codes?: string[];
         estimated_quality_score?: number;
         llm?: {
             provider_type?: string;
@@ -421,6 +440,9 @@ export type IndexMonitoring = {
     chunk_strategy_version?: string;
     tree_builder?: string;
     tree_verification_passed: boolean;
+    tree_state?: string;
+    tree_state_detail?: string;
+    tree_concern_codes: string[];
     estimated_quality_score: number;
     llm: LLMMonitoring | null;
 };
@@ -559,6 +581,11 @@ function normalizeIndexMonitoring(value: DocumentIndexApiRecord["monitoring"]): 
             typeof value.chunk_strategy_version === "string" ? value.chunk_strategy_version : undefined,
         tree_builder: typeof value.tree_builder === "string" ? value.tree_builder : undefined,
         tree_verification_passed: Boolean(value.tree_verification_passed),
+        tree_state: typeof value.tree_state === "string" ? value.tree_state : undefined,
+        tree_state_detail: typeof value.tree_state_detail === "string" ? value.tree_state_detail : undefined,
+        tree_concern_codes: Array.isArray(value.tree_concern_codes)
+            ? value.tree_concern_codes.filter((item): item is string => typeof item === "string")
+            : [],
         estimated_quality_score:
             typeof value.estimated_quality_score === "number" ? value.estimated_quality_score : 0,
         llm,

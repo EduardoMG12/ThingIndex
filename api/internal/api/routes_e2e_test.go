@@ -135,6 +135,7 @@ func TestRoutesE2EAPIDocsExposeFallbackReferenceLinks(t *testing.T) {
 		"http://example.com/api/v1",
 		"http://example.com/api/v1/meta/runtime-profile",
 		"http://example.com/api/v1/meta/indexing-benchmark",
+		"http://example.com/api/v1/providers/support?family=STORAGE",
 		"http://example.com/api/v1/providers/support?family=LLM",
 		"Consume this deployment",
 		"Run locally from GitHub",
@@ -247,6 +248,33 @@ func TestRoutesE2EProviderSupportMatrixIsPublicAndDocumented(t *testing.T) {
 	} {
 		if !strings.Contains(body, expected) {
 			t.Fatalf("expected support matrix body to contain %q, got %s", expected, body)
+		}
+	}
+}
+
+func TestRoutesE2EStorageSupportMatrixIsPublicAndDocumented(t *testing.T) {
+	db := openRoutesE2EDB(t)
+	cfg := newRoutesE2EConfig(t)
+	router := gin.New()
+
+	if err := SetupRoutes(router, db, cfg); err != nil {
+		t.Fatalf("SetupRoutes returned error: %v", err)
+	}
+
+	response := performAuthorizedRequest(t, router, http.MethodGet, "/api/v1/providers/support?family=STORAGE", "", nil, "")
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected storage support matrix status 200, got %d body=%s", response.Code, response.Body.String())
+	}
+
+	body := response.Body.String()
+	for _, expected := range []string{
+		`"provider_type":"MINIO"`,
+		`"provider_type":"GCP_STORAGE"`,
+		`"transport":"NATIVE_GCS"`,
+		`"supports_connection_test":true`,
+	} {
+		if !strings.Contains(body, expected) {
+			t.Fatalf("expected storage support matrix body to contain %q, got %s", expected, body)
 		}
 	}
 }

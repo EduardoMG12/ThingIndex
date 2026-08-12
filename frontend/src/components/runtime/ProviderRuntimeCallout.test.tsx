@@ -25,6 +25,7 @@ describe("ProviderRuntimeCallout", () => {
         );
 
         expect(screen.getByRole("heading", { name: "Active chat LLM" })).toBeInTheDocument();
+        expect(screen.getByTestId("provider-brand-OPENAI")).toBeInTheDocument();
         expect(screen.getByText("OpenAI")).toBeInTheDocument();
         expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: /Review in settings/i })).toHaveAttribute("href", "/en/settings");

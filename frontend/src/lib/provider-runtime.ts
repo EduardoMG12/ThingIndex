@@ -7,6 +7,7 @@ const PROVIDER_LABELS: Record<ProviderType, string> = {
     DIGITALOCEAN_SPACES: "DigitalOcean Spaces",
     WASABI: "Wasabi",
     BACKBLAZE_B2: "Backblaze B2",
+    GCP_STORAGE: "Google Cloud Storage",
     OPENAI: "OpenAI",
     GOOGLE_GEMINI: "Google Gemini",
     DEEP_SEEK: "DeepSeek",

@@ -34,6 +34,102 @@ type IndexingBenchmarkMetricsResponse struct {
 	MaximumHeuristicScore          float64 `json:"maximum_heuristic_score"`
 }
 
+type IndexingBenchmarkSnapshotResponse struct {
+	ID                   string                           `json:"id"`
+	Label                string                           `json:"label"`
+	RecordedOn           string                           `json:"recorded_on"`
+	Summary              string                           `json:"summary,omitempty"`
+	DatasetVersion       string                           `json:"dataset_version"`
+	PipelineVersion      string                           `json:"pipeline_version,omitempty"`
+	PromptProfileVersion string                           `json:"prompt_profile_version,omitempty"`
+	ChunkStrategyVersion string                           `json:"chunk_strategy_version,omitempty"`
+	Metrics              IndexingBenchmarkMetricsResponse `json:"metrics"`
+}
+
+type IndexingBenchmarkMetricDeltaResponse struct {
+	Metric        string  `json:"metric"`
+	PreviousValue float64 `json:"previous_value"`
+	CurrentValue  float64 `json:"current_value"`
+	Delta         float64 `json:"delta"`
+}
+
+type IndexingBenchmarkComparisonResponse struct {
+	ID              string                                 `json:"id"`
+	Title           string                                 `json:"title"`
+	RecordedOn      string                                 `json:"recorded_on"`
+	Summary         string                                 `json:"summary,omitempty"`
+	Before          IndexingBenchmarkSnapshotResponse      `json:"before"`
+	After           IndexingBenchmarkSnapshotResponse      `json:"after"`
+	KeyMetricDeltas []IndexingBenchmarkMetricDeltaResponse `json:"key_metric_deltas"`
+}
+
+type IndexingBenchmarkReferenceArtifactResponse struct {
+	ID                   string   `json:"id"`
+	Label                string   `json:"label"`
+	SourcePath           string   `json:"source_path"`
+	DocumentName         string   `json:"document_name"`
+	TotalNodes           int      `json:"total_nodes"`
+	MaxDepth             int      `json:"max_depth"`
+	SummaryCoverageRatio float64  `json:"summary_coverage_ratio"`
+	InvalidRangeCount    int      `json:"invalid_range_count"`
+	AverageTitleLength   float64  `json:"average_title_length"`
+	AverageSummaryLength float64  `json:"average_summary_length"`
+	Notes                []string `json:"notes,omitempty"`
+}
+
+type IndexingBenchmarkReferenceChecklistItemResponse struct {
+	ID             string `json:"id"`
+	Dimension      string `json:"dimension"`
+	Label          string `json:"label"`
+	Status         string `json:"status"`
+	CurrentValue   string `json:"current_value"`
+	ReferenceValue string `json:"reference_value"`
+	Summary        string `json:"summary"`
+}
+
+type IndexingBenchmarkReferenceComparisonResponse struct {
+	SourcePath     string                                            `json:"source_path"`
+	LastReviewedOn string                                            `json:"last_reviewed_on"`
+	Summary        string                                            `json:"summary"`
+	Artifacts      []IndexingBenchmarkReferenceArtifactResponse      `json:"artifacts"`
+	Checklist      []IndexingBenchmarkReferenceChecklistItemResponse `json:"checklist"`
+}
+
+type IndexingBenchmarkRetrievalVariantMetricsResponse struct {
+	DocumentQueries                int     `json:"document_queries"`
+	CollectionQueries              int     `json:"collection_queries"`
+	TreeNodeTop1Accuracy           float64 `json:"tree_node_top1_accuracy"`
+	TreePageTop1Accuracy           float64 `json:"tree_page_top1_accuracy"`
+	CollectionDocumentTop1Accuracy float64 `json:"collection_document_top1_accuracy"`
+	ExactMatchAccuracy             float64 `json:"exact_match_accuracy"`
+}
+
+type IndexingBenchmarkRetrievalVariantResponse struct {
+	ID              string                                           `json:"id"`
+	Label           string                                           `json:"label"`
+	Category        string                                           `json:"category"`
+	Status          string                                           `json:"status"`
+	Summary         string                                           `json:"summary"`
+	Metrics         IndexingBenchmarkRetrievalVariantMetricsResponse `json:"metrics"`
+	KeyMetricDeltas []IndexingBenchmarkMetricDeltaResponse           `json:"key_metric_deltas"`
+}
+
+type IndexingBenchmarkRetrievalComparisonResponse struct {
+	Summary    string                                      `json:"summary"`
+	BaselineID string                                      `json:"baseline_id"`
+	Notes      []string                                    `json:"notes"`
+	Variants   []IndexingBenchmarkRetrievalVariantResponse `json:"variants"`
+}
+
+type IndexingBenchmarkStructuralSignalResponse struct {
+	ID        string  `json:"id"`
+	Direction string  `json:"direction"`
+	Status    string  `json:"status"`
+	Rate      float64 `json:"rate"`
+	Count     int     `json:"count"`
+	Total     int     `json:"total"`
+}
+
 type IndexingBenchmarkCaseResultResponse struct {
 	ID                    string `json:"id"`
 	Scope                 string `json:"scope"`
@@ -55,17 +151,23 @@ type IndexingBenchmarkCaseResultResponse struct {
 }
 
 type IndexingBenchmarkReportResponse struct {
-	DatasetVersion       string                                    `json:"dataset_version"`
-	CorpusSourcePath     string                                    `json:"corpus_source_path"`
-	LastReviewedOn       string                                    `json:"last_reviewed_on"`
-	Summary              string                                    `json:"summary"`
-	Methodology          []string                                  `json:"methodology"`
-	PassCriteria         []string                                  `json:"pass_criteria"`
-	Limitations          []string                                  `json:"limitations"`
-	HeuristicQualityNote string                                    `json:"heuristic_quality_note"`
-	Corpus               []IndexingBenchmarkCorpusDocumentResponse `json:"corpus"`
-	Metrics              IndexingBenchmarkMetricsResponse          `json:"metrics"`
-	Cases                []IndexingBenchmarkCaseResultResponse     `json:"cases"`
+	DatasetVersion       string                                        `json:"dataset_version"`
+	CorpusSourcePath     string                                        `json:"corpus_source_path"`
+	LastReviewedOn       string                                        `json:"last_reviewed_on"`
+	Summary              string                                        `json:"summary"`
+	Methodology          []string                                      `json:"methodology"`
+	PassCriteria         []string                                      `json:"pass_criteria"`
+	Limitations          []string                                      `json:"limitations"`
+	HeuristicQualityNote string                                        `json:"heuristic_quality_note"`
+	Corpus               []IndexingBenchmarkCorpusDocumentResponse     `json:"corpus"`
+	Metrics              IndexingBenchmarkMetricsResponse              `json:"metrics"`
+	StructuralSignals    []IndexingBenchmarkStructuralSignalResponse   `json:"structural_signals"`
+	Cases                []IndexingBenchmarkCaseResultResponse         `json:"cases"`
+	CurrentSnapshot      *IndexingBenchmarkSnapshotResponse            `json:"current_snapshot,omitempty"`
+	LatestComparison     *IndexingBenchmarkComparisonResponse          `json:"latest_comparison,omitempty"`
+	ComparisonHistory    []IndexingBenchmarkComparisonResponse         `json:"comparison_history,omitempty"`
+	ReferenceComparison  *IndexingBenchmarkReferenceComparisonResponse `json:"reference_comparison,omitempty"`
+	RetrievalComparison  *IndexingBenchmarkRetrievalComparisonResponse `json:"retrieval_comparison,omitempty"`
 }
 
 func ToIndexingBenchmarkReportResponse(report *domain.IndexingBenchmarkReport) *IndexingBenchmarkReportResponse {
@@ -114,6 +216,23 @@ func ToIndexingBenchmarkReportResponse(report *domain.IndexingBenchmarkReport) *
 		})
 	}
 
+	structuralSignals := make([]IndexingBenchmarkStructuralSignalResponse, 0, len(report.StructuralSignals))
+	for _, item := range report.StructuralSignals {
+		structuralSignals = append(structuralSignals, IndexingBenchmarkStructuralSignalResponse{
+			ID:        item.ID,
+			Direction: item.Direction,
+			Status:    item.Status,
+			Rate:      item.Rate,
+			Count:     item.Count,
+			Total:     item.Total,
+		})
+	}
+
+	comparisonHistory := make([]IndexingBenchmarkComparisonResponse, 0, len(report.ComparisonHistory))
+	for _, item := range report.ComparisonHistory {
+		comparisonHistory = append(comparisonHistory, toIndexingBenchmarkComparisonResponse(item))
+	}
+
 	return &IndexingBenchmarkReportResponse{
 		DatasetVersion:       report.DatasetVersion,
 		CorpusSourcePath:     report.CorpusSourcePath,
@@ -140,6 +259,185 @@ func ToIndexingBenchmarkReportResponse(report *domain.IndexingBenchmarkReport) *
 			MinimumHeuristicScore:          report.Metrics.MinimumHeuristicScore,
 			MaximumHeuristicScore:          report.Metrics.MaximumHeuristicScore,
 		},
-		Cases: cases,
+		StructuralSignals:   structuralSignals,
+		Cases:               cases,
+		CurrentSnapshot:     toIndexingBenchmarkSnapshotResponse(report.CurrentSnapshot),
+		LatestComparison:    toIndexingBenchmarkComparisonResponsePtr(report.LatestComparison),
+		ComparisonHistory:   comparisonHistory,
+		ReferenceComparison: toIndexingBenchmarkReferenceComparisonResponse(report.ReferenceComparison),
+		RetrievalComparison: toIndexingBenchmarkRetrievalComparisonResponse(report.RetrievalComparison),
+	}
+}
+
+func toIndexingBenchmarkMetricsResponse(metrics domain.IndexingBenchmarkMetrics) IndexingBenchmarkMetricsResponse {
+	return IndexingBenchmarkMetricsResponse{
+		CorpusDocuments:                metrics.CorpusDocuments,
+		DocumentQueries:                metrics.DocumentQueries,
+		CollectionQueries:              metrics.CollectionQueries,
+		StructurePassRate:              metrics.StructurePassRate,
+		TreeNodeTop1Accuracy:           metrics.TreeNodeTop1Accuracy,
+		TreeNodeRecallAt3:              metrics.TreeNodeRecallAt3,
+		TreePageTop1Accuracy:           metrics.TreePageTop1Accuracy,
+		TreePageRecallAt3:              metrics.TreePageRecallAt3,
+		CollectionDocumentTop1Accuracy: metrics.CollectionDocumentTop1Accuracy,
+		CollectionDocumentRecallAt3:    metrics.CollectionDocumentRecallAt3,
+		ExactMatchAccuracy:             metrics.ExactMatchAccuracy,
+		AverageHeuristicScore:          metrics.AverageHeuristicScore,
+		MinimumHeuristicScore:          metrics.MinimumHeuristicScore,
+		MaximumHeuristicScore:          metrics.MaximumHeuristicScore,
+	}
+}
+
+func toIndexingBenchmarkSnapshotResponse(snapshot *domain.IndexingBenchmarkSnapshot) *IndexingBenchmarkSnapshotResponse {
+	if snapshot == nil {
+		return nil
+	}
+
+	return &IndexingBenchmarkSnapshotResponse{
+		ID:                   snapshot.ID,
+		Label:                snapshot.Label,
+		RecordedOn:           snapshot.RecordedOn,
+		Summary:              snapshot.Summary,
+		DatasetVersion:       snapshot.DatasetVersion,
+		PipelineVersion:      snapshot.PipelineVersion,
+		PromptProfileVersion: snapshot.PromptProfileVersion,
+		ChunkStrategyVersion: snapshot.ChunkStrategyVersion,
+		Metrics:              toIndexingBenchmarkMetricsResponse(snapshot.Metrics),
+	}
+}
+
+func toIndexingBenchmarkComparisonResponse(item domain.IndexingBenchmarkComparison) IndexingBenchmarkComparisonResponse {
+	deltas := make([]IndexingBenchmarkMetricDeltaResponse, 0, len(item.KeyMetricDeltas))
+	for _, delta := range item.KeyMetricDeltas {
+		deltas = append(deltas, IndexingBenchmarkMetricDeltaResponse{
+			Metric:        delta.Metric,
+			PreviousValue: delta.PreviousValue,
+			CurrentValue:  delta.CurrentValue,
+			Delta:         delta.Delta,
+		})
+	}
+
+	before := toIndexingBenchmarkSnapshotResponse(&item.Before)
+	after := toIndexingBenchmarkSnapshotResponse(&item.After)
+
+	response := IndexingBenchmarkComparisonResponse{
+		ID:              item.ID,
+		Title:           item.Title,
+		RecordedOn:      item.RecordedOn,
+		Summary:         item.Summary,
+		KeyMetricDeltas: deltas,
+	}
+	if before != nil {
+		response.Before = *before
+	}
+	if after != nil {
+		response.After = *after
+	}
+	return response
+}
+
+func toIndexingBenchmarkComparisonResponsePtr(item *domain.IndexingBenchmarkComparison) *IndexingBenchmarkComparisonResponse {
+	if item == nil {
+		return nil
+	}
+
+	response := toIndexingBenchmarkComparisonResponse(*item)
+	return &response
+}
+
+func toIndexingBenchmarkReferenceComparisonResponse(
+	item *domain.IndexingBenchmarkReferenceComparison,
+) *IndexingBenchmarkReferenceComparisonResponse {
+	if item == nil {
+		return nil
+	}
+
+	artifacts := make([]IndexingBenchmarkReferenceArtifactResponse, 0, len(item.Artifacts))
+	for _, artifact := range item.Artifacts {
+		artifacts = append(artifacts, IndexingBenchmarkReferenceArtifactResponse{
+			ID:                   artifact.ID,
+			Label:                artifact.Label,
+			SourcePath:           artifact.SourcePath,
+			DocumentName:         artifact.DocumentName,
+			TotalNodes:           artifact.TotalNodes,
+			MaxDepth:             artifact.MaxDepth,
+			SummaryCoverageRatio: artifact.SummaryCoverageRatio,
+			InvalidRangeCount:    artifact.InvalidRangeCount,
+			AverageTitleLength:   artifact.AverageTitleLength,
+			AverageSummaryLength: artifact.AverageSummaryLength,
+			Notes:                append([]string(nil), artifact.Notes...),
+		})
+	}
+
+	checklist := make([]IndexingBenchmarkReferenceChecklistItemResponse, 0, len(item.Checklist))
+	for _, checklistItem := range item.Checklist {
+		checklist = append(checklist, IndexingBenchmarkReferenceChecklistItemResponse{
+			ID:             checklistItem.ID,
+			Dimension:      checklistItem.Dimension,
+			Label:          checklistItem.Label,
+			Status:         checklistItem.Status,
+			CurrentValue:   checklistItem.CurrentValue,
+			ReferenceValue: checklistItem.ReferenceValue,
+			Summary:        checklistItem.Summary,
+		})
+	}
+
+	return &IndexingBenchmarkReferenceComparisonResponse{
+		SourcePath:     item.SourcePath,
+		LastReviewedOn: item.LastReviewedOn,
+		Summary:        item.Summary,
+		Artifacts:      artifacts,
+		Checklist:      checklist,
+	}
+}
+
+func toIndexingBenchmarkRetrievalVariantMetricsResponse(
+	metrics domain.IndexingBenchmarkRetrievalVariantMetrics,
+) IndexingBenchmarkRetrievalVariantMetricsResponse {
+	return IndexingBenchmarkRetrievalVariantMetricsResponse{
+		DocumentQueries:                metrics.DocumentQueries,
+		CollectionQueries:              metrics.CollectionQueries,
+		TreeNodeTop1Accuracy:           metrics.TreeNodeTop1Accuracy,
+		TreePageTop1Accuracy:           metrics.TreePageTop1Accuracy,
+		CollectionDocumentTop1Accuracy: metrics.CollectionDocumentTop1Accuracy,
+		ExactMatchAccuracy:             metrics.ExactMatchAccuracy,
+	}
+}
+
+func toIndexingBenchmarkRetrievalComparisonResponse(
+	item *domain.IndexingBenchmarkRetrievalComparison,
+) *IndexingBenchmarkRetrievalComparisonResponse {
+	if item == nil {
+		return nil
+	}
+
+	variants := make([]IndexingBenchmarkRetrievalVariantResponse, 0, len(item.Variants))
+	for _, variant := range item.Variants {
+		deltas := make([]IndexingBenchmarkMetricDeltaResponse, 0, len(variant.KeyMetricDeltas))
+		for _, delta := range variant.KeyMetricDeltas {
+			deltas = append(deltas, IndexingBenchmarkMetricDeltaResponse{
+				Metric:        delta.Metric,
+				PreviousValue: delta.PreviousValue,
+				CurrentValue:  delta.CurrentValue,
+				Delta:         delta.Delta,
+			})
+		}
+
+		variants = append(variants, IndexingBenchmarkRetrievalVariantResponse{
+			ID:              variant.ID,
+			Label:           variant.Label,
+			Category:        variant.Category,
+			Status:          variant.Status,
+			Summary:         variant.Summary,
+			Metrics:         toIndexingBenchmarkRetrievalVariantMetricsResponse(variant.Metrics),
+			KeyMetricDeltas: deltas,
+		})
+	}
+
+	return &IndexingBenchmarkRetrievalComparisonResponse{
+		Summary:    item.Summary,
+		BaselineID: item.BaselineID,
+		Notes:      append([]string(nil), item.Notes...),
+		Variants:   variants,
 	}
 }

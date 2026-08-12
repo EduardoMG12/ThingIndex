@@ -1,6 +1,10 @@
 //go:build integration
 
-package processing
+// Pacote de teste externo de proposito: este teste precisa de
+// internal/usecase, e internal/usecase importa internal/processing. No mesmo
+// pacote isso fecha um ciclo de import e o alvo `-tags=integration` nem
+// compila.
+package processing_test
 
 import (
 	"bytes"
@@ -14,6 +18,7 @@ import (
 	"thing-index/internal/domain"
 	"thing-index/internal/indexing"
 	"thing-index/internal/models"
+	"thing-index/internal/processing"
 	"thing-index/internal/repository"
 	"thing-index/internal/testutil"
 	"thing-index/internal/usecase"
@@ -112,7 +117,7 @@ func TestDocumentProcessorWithRealLLMEnrichesAndPersistsIndex(t *testing.T) {
 		t.Fatalf("SaveCredentials returned error: %v", err)
 	}
 
-	processor := NewDocumentProcessor(
+	processor := processing.NewDocumentProcessor(
 		repository.NewGormDocumentProcessingRepository(db),
 		baseStorage,
 		providerService,

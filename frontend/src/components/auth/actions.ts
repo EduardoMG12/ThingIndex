@@ -3,9 +3,8 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createForwardHeaders } from "@/app/api/_utils/locale";
+import { fetchApiUpstream } from "@/app/api/_utils/upstream";
 import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, normalizeLocale } from "@/lib/i18n/config";
-
-const API_URL = process.env.API_INTERNAL_URL || "http://api:8080/api/v1";
 
 export async function login(formData: FormData) {
   const cookieStore = await cookies();
@@ -18,7 +17,7 @@ export async function login(formData: FormData) {
   }
 
   try {
-    const res = await fetch(`${API_URL}/auth/login`, {
+    const res = await fetchApiUpstream("/auth/login", {
       method: "POST",
       headers: await createForwardHeaders(undefined, { contentType: "application/json" }),
       body: JSON.stringify({ email, password }),
@@ -69,7 +68,7 @@ export async function register(formData: FormData) {
   }
 
   try {
-    const res = await fetch(`${API_URL}/auth/register`, {
+    const res = await fetchApiUpstream("/auth/register", {
       method: "POST",
       headers: await createForwardHeaders(undefined, { contentType: "application/json" }),
       body: JSON.stringify({ name, email, password }),

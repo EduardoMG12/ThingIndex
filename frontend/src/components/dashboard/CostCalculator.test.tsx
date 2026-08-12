@@ -116,7 +116,7 @@ describe("CostCalculator", () => {
             wrapper: createTestWrapper("en"),
         });
 
-        expect(screen.getByText("Operational pricing estimate")).toBeInTheDocument();
+        expect(screen.getByText("Operational cost estimate")).toBeInTheDocument();
         expect(screen.getByText("Trusted estimate")).toBeInTheDocument();
         expect(screen.getByText("Observed indexing cost")).toBeInTheDocument();
         expect(screen.getByText("Estimate trust boundary")).toBeInTheDocument();

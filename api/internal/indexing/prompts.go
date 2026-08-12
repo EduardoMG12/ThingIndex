@@ -183,7 +183,7 @@ func buildPromptContext(doc *models.Document, result domain.IndexingResult) stri
 	var builder strings.Builder
 	builder.WriteString("Document type guidance:\n")
 	builder.WriteString(promptProfile)
-	builder.WriteString("\nPipeline versions:\n- chunk_strategy=tree-aware-v1\n- prompt_profile=llm-index-v5")
+	builder.WriteString("\nPipeline versions:\n- chunk_strategy=section-window-v3\n- prompt_profile=llm-index-v5")
 	builder.WriteString("\n\n")
 
 	builder.WriteString(buildDocumentIdentityBlock(doc))
@@ -297,15 +297,27 @@ func promptProfileForDocument(doc *models.Document) string {
 }
 
 func pdfPromptProfile(doc *models.Document) string {
-	lowerTitle := strings.ToLower(strings.TrimSpace(doc.Title))
+	lowerTitle := normalizeHeadingLexicon(doc.Title)
 	switch {
 	case strings.Contains(lowerTitle, "contrat") || strings.Contains(lowerTitle, "acordo"):
 		return "Focus on obligations, parties, deadlines, conditions, exceptions, penalties, and clauses that structure the agreement. Prefer operational language over marketing language."
-	case strings.Contains(lowerTitle, "peti") || strings.Contains(lowerTitle, "contest") || strings.Contains(lowerTitle, "senten") || strings.Contains(lowerTitle, "acorda"):
+	case containsAnySubstring(lowerTitle, "peti", "contest", "recurso") ||
+		containsHeadingKeywordFamily(lowerTitle, legalDocumentRootHeadingKeywords):
 		return "Focus on procedural posture, parties, requests, defenses, cited facts, dates, legal grounds, and outcomes. Keep summaries neutral and auditable."
+	case containsHeadingKeywordFamily(lowerTitle, attachmentHeadingKeywords):
+		return "Focus on the role of the annex, referenced parties or case identifiers, tabular fields, values, dates, and any official instructions that explain how the attachment supports the main document."
 	default:
 		return "Focus on section hierarchy, key facts, decision points, deadlines, definitions, and operational content. Prefer traceable summaries over interpretation."
 	}
+}
+
+func containsHeadingKeywordFamily(value string, keywords []string) bool {
+	for _, keyword := range keywords {
+		if keyword != "" && strings.Contains(value, keyword) {
+			return true
+		}
+	}
+	return false
 }
 
 func spreadsheetPromptProfile() string {

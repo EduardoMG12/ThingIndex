@@ -40,6 +40,25 @@ func (s *providerUseCaseAuditCaptureStub) ListModels(context.Context, uint, stri
 func (s *providerUseCaseAuditCaptureStub) ListProviderSupportMatrix(context.Context, string) ([]domain.ProviderSupportEntry, error) {
 	return []domain.ProviderSupportEntry{
 		{
+			Family:       domain.FamilyStorage,
+			ProviderType: domain.ProviderGCPStorage,
+			DisplayName:  "Google Cloud Storage",
+			SupportLevel: domain.ProviderSupportLevelReady,
+			Transport:    domain.ProviderSupportTransportNativeGCS,
+			Summary:      "Ready for the main runtime.",
+			SuggestedSetup: map[string]string{
+				"project_id":  "thingindex-dev",
+				"bucket_name": "thingindex-docs",
+			},
+			Capabilities: domain.ProviderSupportCapabilities{
+				SupportsCredentialValidation: true,
+				SupportsConnectionTest:       true,
+				SupportsIndexing:             true,
+				SupportsOptionalLiveTests:    true,
+			},
+			Notes: []string{"Supports service-account JSON or emulator_host."},
+		},
+		{
 			Family:       domain.FamilyLLM,
 			ProviderType: domain.ProviderOpenAI,
 			DisplayName:  "OpenAI",
@@ -229,13 +248,40 @@ func TestListSupportMatrixEndpointRejectsUnsupportedFamilies(t *testing.T) {
 	})
 	router.GET("/api/v1/providers/support", handler.ListSupportMatrix)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/providers/support?family=STORAGE", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/providers/support?family=UNKNOWN", nil)
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400 response, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestListSupportMatrixEndpointAcceptsStorageFamily(t *testing.T) {
+	t.Parallel()
+
+	gin.SetMode(gin.TestMode)
+	useCase := &providerUseCaseAuditCaptureStub{}
+	handler := NewProviderHandler(useCase)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("language", "pt_BR")
+		c.Next()
+	})
+	router.GET("/api/v1/providers/support", handler.ListSupportMatrix)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/providers/support?family=STORAGE", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 response, got %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"provider_type":"GCP_STORAGE"`) {
+		t.Fatalf("expected gcp storage support entry, got %q", rec.Body.String())
 	}
 }
 

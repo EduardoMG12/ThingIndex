@@ -1,6 +1,6 @@
 {
-  "version": "2026-03-relational-baseline-v1",
-  "last_reviewed_on": "2026-03-22",
+  "version": "2026-03-relational-baseline-v2",
+  "last_reviewed_on": "2026-03-27",
   "documents": [
     {
       "id": "service-agreement",
@@ -72,6 +72,50 @@
           "expected_top_page_number": 1
         }
       ]
+    },
+    {
+      "id": "court-order",
+      "title": "Court Order",
+      "mime_type": "application/pdf",
+      "focus": "Judicial PDF with relatorio, fundamentacao, and a dispositive deadline for document production.",
+      "content_file": "court-order.pdf",
+      "expected_outline_titles": [
+        "DECISAO",
+        "1 RELATORIO",
+        "2 FUNDAMENTACAO",
+        "3 DISPOSITIVO"
+      ],
+      "expected_table_count": 0,
+      "document_queries": [
+        {
+          "id": "court-order-document-deadline",
+          "query": "apresentar documentos 10 dias",
+          "expected_top_node_title": "3 DISPOSITIVO",
+          "expected_top_page_number": 2
+        }
+      ]
+    },
+    {
+      "id": "supplier-order-form",
+      "title": "Supplier Master Order Form",
+      "mime_type": "application/pdf",
+      "focus": "Corporate PDF with scope, incident notification, and business continuity safeguards.",
+      "content_file": "supplier-master-order-form.pdf",
+      "expected_outline_titles": [
+        "SUPPLIER MASTER ORDER FORM",
+        "1 SCOPE OF SERVICES",
+        "2 INCIDENT NOTIFICATION",
+        "3 BUSINESS CONTINUITY"
+      ],
+      "expected_table_count": 0,
+      "document_queries": [
+        {
+          "id": "supplier-recovery-exercise",
+          "query": "alternate region annual recovery exercise",
+          "expected_top_node_title": "3 BUSINESS CONTINUITY",
+          "expected_top_page_number": 2
+        }
+      ]
     }
   ],
   "collection_queries": [
@@ -89,6 +133,16 @@
       "id": "collection-security-retention",
       "query": "security incidents seven years",
       "expected_top_document_id": "retention-policy"
+    },
+    {
+      "id": "collection-court-decision",
+      "query": "decisao apresentar documentos 10 dias",
+      "expected_top_document_id": "court-order"
+    },
+    {
+      "id": "collection-business-continuity",
+      "query": "alternate region annual recovery exercise supplier",
+      "expected_top_document_id": "supplier-order-form"
     }
   ]
 }

@@ -41,7 +41,7 @@ func TestRetrievalCorpusDocumentCases(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			result := buildTreeRetrieval(tc.query, tc.nodes, tc.pages)
+			result := buildTreeRetrieval(tc.query, tc.nodes, tc.pages, nil)
 			if result == nil {
 				t.Fatal("expected retrieval result")
 			}
@@ -74,6 +74,8 @@ func TestRetrievalCorpusCollectionCases(t *testing.T) {
 			{DocumentID: 10, NodeID: "root-10", Title: "General Terms", Summary: "Resumo", StartPage: &pageOne, EndPage: &pageOne},
 			{DocumentID: 11, NodeID: "billing-11", Title: "Billing Terms", Summary: "Invoice deadline e pagamento", StartPage: &pageTwo, EndPage: &pageTwo, Metadata: map[string]any{"confidence_score": 95}},
 		},
+		nil,
+		nil,
 	)
 
 	if result == nil {

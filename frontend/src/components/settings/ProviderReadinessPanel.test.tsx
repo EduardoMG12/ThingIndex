@@ -41,6 +41,7 @@ describe("ProviderReadinessPanel", () => {
         );
 
         expect(screen.getByText("Provider readiness")).toBeInTheDocument();
+        expect(screen.getByTestId("provider-brand-OPENAI")).toBeInTheDocument();
         expect(screen.getByText("Ready")).toBeInTheDocument();
         expect(screen.getByText(/Validated live connectivity and model discovery/i)).toBeInTheDocument();
         expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument();
@@ -68,6 +69,7 @@ describe("ProviderReadinessPanel", () => {
             { wrapper: createTestWrapper("en") }
         );
 
+        expect(screen.getByTestId("provider-brand-MINIO")).toBeInTheDocument();
         expect(screen.getByText("Not tested yet")).toBeInTheDocument();
         expect(screen.getByText(/Run the connection test/i)).toBeInTheDocument();
     });

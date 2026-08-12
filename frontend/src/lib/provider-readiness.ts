@@ -1,5 +1,6 @@
 import type { ProviderReadinessCheck, ProviderReadinessReport } from "@/lib/api/providers";
 import type { ProviderDefinition } from "@/components/settings/provider-catalog";
+import type { AppLocale } from "@/lib/i18n/config";
 
 type Translate = (key: string, variables?: Record<string, string | number>) => string;
 
@@ -97,5 +98,20 @@ export function getProviderReadinessCheckClass(check: ProviderReadinessCheck) {
             return "border-slate-500/20 bg-slate-500/10";
         default:
             return "border-border/80 bg-background/70";
+    }
+}
+
+export function getProviderReadinessCheckStatusLabel(locale: AppLocale, status: string) {
+    switch (status) {
+        case "PASSED":
+            return locale === "pt-BR" ? "Aprovado" : locale === "es" ? "Aprobado" : "Passed";
+        case "WARNING":
+            return locale === "pt-BR" ? "Alerta" : locale === "es" ? "Alerta" : "Warning";
+        case "FAILED":
+            return locale === "pt-BR" ? "Falhou" : locale === "es" ? "Falló" : "Failed";
+        case "UNSUPPORTED":
+            return locale === "pt-BR" ? "Não suportado" : locale === "es" ? "No soportado" : "Unsupported";
+        default:
+            return status;
     }
 }

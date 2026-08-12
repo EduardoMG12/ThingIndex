@@ -1,6 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { createTestWrapper } from "@/test/test-utils";
+
 const { fetchRuntimeProfileMock } = vi.hoisted(() => ({
     fetchRuntimeProfileMock: vi.fn(),
 }));
@@ -38,12 +40,15 @@ describe("ProductFocusSection", () => {
             last_reviewed_on: "2026-03-22",
         });
 
-        render(<ProductFocusSection />);
+        render(<ProductFocusSection />, {
+            wrapper: createTestWrapper(),
+        });
 
         await waitFor(() => {
             expect(screen.getByText("ThingIndex")).toBeInTheDocument();
         });
 
+        expect(screen.getByText("Priority profiles")).toBeInTheDocument();
         expect(screen.getByText(/Operations and compliance teams/i)).toBeInTheDocument();
         expect(screen.getByText("Relational-first context recovery.")).toBeInTheDocument();
         expect(screen.getByText("rfc/0001-product-focus.md")).toBeInTheDocument();

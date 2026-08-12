@@ -53,6 +53,102 @@ type IndexingBenchmarkCaseApiRecord = {
     passed?: boolean;
 };
 
+type IndexingBenchmarkSnapshotApiRecord = {
+    id?: string;
+    label?: string;
+    recorded_on?: string;
+    summary?: string;
+    dataset_version?: string;
+    pipeline_version?: string;
+    prompt_profile_version?: string;
+    chunk_strategy_version?: string;
+    metrics?: unknown;
+};
+
+type IndexingBenchmarkMetricDeltaApiRecord = {
+    metric?: string;
+    previous_value?: number;
+    current_value?: number;
+    delta?: number;
+};
+
+type IndexingBenchmarkComparisonApiRecord = {
+    id?: string;
+    title?: string;
+    recorded_on?: string;
+    summary?: string;
+    before?: unknown;
+    after?: unknown;
+    key_metric_deltas?: unknown;
+};
+
+type IndexingBenchmarkReferenceArtifactApiRecord = {
+    id?: string;
+    label?: string;
+    source_path?: string;
+    document_name?: string;
+    total_nodes?: number;
+    max_depth?: number;
+    summary_coverage_ratio?: number;
+    invalid_range_count?: number;
+    average_title_length?: number;
+    average_summary_length?: number;
+    notes?: unknown;
+};
+
+type IndexingBenchmarkReferenceChecklistItemApiRecord = {
+    id?: string;
+    dimension?: string;
+    label?: string;
+    status?: string;
+    current_value?: string;
+    reference_value?: string;
+    summary?: string;
+};
+
+type IndexingBenchmarkReferenceComparisonApiRecord = {
+    source_path?: string;
+    last_reviewed_on?: string;
+    summary?: string;
+    artifacts?: unknown;
+    checklist?: unknown;
+};
+
+type IndexingBenchmarkRetrievalVariantMetricsApiRecord = {
+    document_queries?: number;
+    collection_queries?: number;
+    tree_node_top1_accuracy?: number;
+    tree_page_top1_accuracy?: number;
+    collection_document_top1_accuracy?: number;
+    exact_match_accuracy?: number;
+};
+
+type IndexingBenchmarkRetrievalVariantApiRecord = {
+    id?: string;
+    label?: string;
+    category?: string;
+    status?: string;
+    summary?: string;
+    metrics?: unknown;
+    key_metric_deltas?: unknown;
+};
+
+type IndexingBenchmarkRetrievalComparisonApiRecord = {
+    summary?: string;
+    baseline_id?: string;
+    notes?: unknown;
+    variants?: unknown;
+};
+
+type IndexingBenchmarkStructuralSignalApiRecord = {
+    id?: string;
+    direction?: string;
+    status?: string;
+    rate?: number;
+    count?: number;
+    total?: number;
+};
+
 type IndexingBenchmarkApiRecord = {
     dataset_version?: string;
     corpus_source_path?: string;
@@ -64,7 +160,13 @@ type IndexingBenchmarkApiRecord = {
     heuristic_quality_note?: string;
     corpus?: unknown;
     metrics?: unknown;
+    structural_signals?: unknown;
     cases?: unknown;
+    current_snapshot?: unknown;
+    latest_comparison?: unknown;
+    comparison_history?: unknown;
+    reference_comparison?: unknown;
+    retrieval_comparison?: unknown;
 };
 
 export type IndexingBenchmarkCorpusDocument = {
@@ -119,6 +221,102 @@ export type IndexingBenchmarkCase = {
     passed: boolean;
 };
 
+export type IndexingBenchmarkSnapshot = {
+    id: string;
+    label: string;
+    recorded_on: string;
+    summary: string;
+    dataset_version: string;
+    pipeline_version: string;
+    prompt_profile_version: string;
+    chunk_strategy_version: string;
+    metrics: IndexingBenchmarkMetrics;
+};
+
+export type IndexingBenchmarkMetricDelta = {
+    metric: string;
+    previous_value: number;
+    current_value: number;
+    delta: number;
+};
+
+export type IndexingBenchmarkComparison = {
+    id: string;
+    title: string;
+    recorded_on: string;
+    summary: string;
+    before: IndexingBenchmarkSnapshot;
+    after: IndexingBenchmarkSnapshot;
+    key_metric_deltas: IndexingBenchmarkMetricDelta[];
+};
+
+export type IndexingBenchmarkReferenceArtifact = {
+    id: string;
+    label: string;
+    source_path: string;
+    document_name: string;
+    total_nodes: number;
+    max_depth: number;
+    summary_coverage_ratio: number;
+    invalid_range_count: number;
+    average_title_length: number;
+    average_summary_length: number;
+    notes: string[];
+};
+
+export type IndexingBenchmarkReferenceChecklistItem = {
+    id: string;
+    dimension: string;
+    label: string;
+    status: string;
+    current_value: string;
+    reference_value: string;
+    summary: string;
+};
+
+export type IndexingBenchmarkReferenceComparison = {
+    source_path: string;
+    last_reviewed_on: string;
+    summary: string;
+    artifacts: IndexingBenchmarkReferenceArtifact[];
+    checklist: IndexingBenchmarkReferenceChecklistItem[];
+};
+
+export type IndexingBenchmarkRetrievalVariantMetrics = {
+    document_queries: number;
+    collection_queries: number;
+    tree_node_top1_accuracy: number;
+    tree_page_top1_accuracy: number;
+    collection_document_top1_accuracy: number;
+    exact_match_accuracy: number;
+};
+
+export type IndexingBenchmarkRetrievalVariant = {
+    id: string;
+    label: string;
+    category: string;
+    status: string;
+    summary: string;
+    metrics: IndexingBenchmarkRetrievalVariantMetrics;
+    key_metric_deltas: IndexingBenchmarkMetricDelta[];
+};
+
+export type IndexingBenchmarkRetrievalComparison = {
+    summary: string;
+    baseline_id: string;
+    notes: string[];
+    variants: IndexingBenchmarkRetrievalVariant[];
+};
+
+export type IndexingBenchmarkStructuralSignal = {
+    id: string;
+    direction: string;
+    status: string;
+    rate: number;
+    count: number;
+    total: number;
+};
+
 export type IndexingBenchmarkReport = {
     dataset_version: string;
     corpus_source_path: string;
@@ -130,7 +328,13 @@ export type IndexingBenchmarkReport = {
     heuristic_quality_note: string;
     corpus: IndexingBenchmarkCorpusDocument[];
     metrics: IndexingBenchmarkMetrics;
+    structural_signals: IndexingBenchmarkStructuralSignal[];
     cases: IndexingBenchmarkCase[];
+    current_snapshot?: IndexingBenchmarkSnapshot;
+    latest_comparison?: IndexingBenchmarkComparison;
+    comparison_history: IndexingBenchmarkComparison[];
+    reference_comparison?: IndexingBenchmarkReferenceComparison;
+    retrieval_comparison?: IndexingBenchmarkRetrievalComparison;
 };
 
 function normalizeStringList(value: unknown): string[] {
@@ -226,6 +430,220 @@ function normalizeCase(record: unknown): IndexingBenchmarkCase | null {
     };
 }
 
+function normalizeSnapshot(record: unknown): IndexingBenchmarkSnapshot | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const item = record as IndexingBenchmarkSnapshotApiRecord;
+    if (!item.id || !item.label || !item.recorded_on || !item.dataset_version) {
+        return null;
+    }
+
+    return {
+        id: item.id,
+        label: item.label,
+        recorded_on: item.recorded_on,
+        summary: item.summary ?? "",
+        dataset_version: item.dataset_version,
+        pipeline_version: item.pipeline_version ?? "",
+        prompt_profile_version: item.prompt_profile_version ?? "",
+        chunk_strategy_version: item.chunk_strategy_version ?? "",
+        metrics: normalizeMetrics(item.metrics),
+    };
+}
+
+function normalizeMetricDelta(record: unknown): IndexingBenchmarkMetricDelta | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const item = record as IndexingBenchmarkMetricDeltaApiRecord;
+    if (!item.metric) {
+        return null;
+    }
+
+    return {
+        metric: item.metric,
+        previous_value: typeof item.previous_value === "number" ? item.previous_value : 0,
+        current_value: typeof item.current_value === "number" ? item.current_value : 0,
+        delta: typeof item.delta === "number" ? item.delta : 0,
+    };
+}
+
+function normalizeComparison(record: unknown): IndexingBenchmarkComparison | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const item = record as IndexingBenchmarkComparisonApiRecord;
+    const before = normalizeSnapshot(item.before);
+    const after = normalizeSnapshot(item.after);
+    if (!item.id || !item.title || !item.recorded_on || before === null || after === null) {
+        return null;
+    }
+
+    return {
+        id: item.id,
+        title: item.title,
+        recorded_on: item.recorded_on,
+        summary: item.summary ?? "",
+        before,
+        after,
+        key_metric_deltas: Array.isArray(item.key_metric_deltas)
+            ? item.key_metric_deltas.map(normalizeMetricDelta).filter((delta): delta is IndexingBenchmarkMetricDelta => delta !== null)
+            : [],
+    };
+}
+
+function normalizeReferenceArtifact(record: unknown): IndexingBenchmarkReferenceArtifact | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const item = record as IndexingBenchmarkReferenceArtifactApiRecord;
+    if (!item.id || !item.label || !item.source_path || !item.document_name) {
+        return null;
+    }
+
+    return {
+        id: item.id,
+        label: item.label,
+        source_path: item.source_path,
+        document_name: item.document_name,
+        total_nodes: typeof item.total_nodes === "number" ? item.total_nodes : 0,
+        max_depth: typeof item.max_depth === "number" ? item.max_depth : 0,
+        summary_coverage_ratio: typeof item.summary_coverage_ratio === "number" ? item.summary_coverage_ratio : 0,
+        invalid_range_count: typeof item.invalid_range_count === "number" ? item.invalid_range_count : 0,
+        average_title_length: typeof item.average_title_length === "number" ? item.average_title_length : 0,
+        average_summary_length: typeof item.average_summary_length === "number" ? item.average_summary_length : 0,
+        notes: normalizeStringList(item.notes),
+    };
+}
+
+function normalizeReferenceChecklistItem(record: unknown): IndexingBenchmarkReferenceChecklistItem | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const item = record as IndexingBenchmarkReferenceChecklistItemApiRecord;
+    if (!item.id || !item.dimension || !item.label || !item.status) {
+        return null;
+    }
+
+    return {
+        id: item.id,
+        dimension: item.dimension,
+        label: item.label,
+        status: item.status,
+        current_value: item.current_value ?? "",
+        reference_value: item.reference_value ?? "",
+        summary: item.summary ?? "",
+    };
+}
+
+function normalizeReferenceComparison(record: unknown): IndexingBenchmarkReferenceComparison | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const item = record as IndexingBenchmarkReferenceComparisonApiRecord;
+    if (!item.source_path || !item.last_reviewed_on || !item.summary) {
+        return null;
+    }
+
+    return {
+        source_path: item.source_path,
+        last_reviewed_on: item.last_reviewed_on,
+        summary: item.summary,
+        artifacts: Array.isArray(item.artifacts)
+            ? item.artifacts.map(normalizeReferenceArtifact).filter((artifact): artifact is IndexingBenchmarkReferenceArtifact => artifact !== null)
+            : [],
+        checklist: Array.isArray(item.checklist)
+            ? item.checklist
+                .map(normalizeReferenceChecklistItem)
+                .filter((checklistItem): checklistItem is IndexingBenchmarkReferenceChecklistItem => checklistItem !== null)
+            : [],
+    };
+}
+
+function normalizeRetrievalVariantMetrics(record: unknown): IndexingBenchmarkRetrievalVariantMetrics {
+    const metrics = (record && typeof record === "object" ? record : {}) as IndexingBenchmarkRetrievalVariantMetricsApiRecord;
+
+    return {
+        document_queries: typeof metrics.document_queries === "number" ? metrics.document_queries : 0,
+        collection_queries: typeof metrics.collection_queries === "number" ? metrics.collection_queries : 0,
+        tree_node_top1_accuracy: typeof metrics.tree_node_top1_accuracy === "number" ? metrics.tree_node_top1_accuracy : 0,
+        tree_page_top1_accuracy: typeof metrics.tree_page_top1_accuracy === "number" ? metrics.tree_page_top1_accuracy : 0,
+        collection_document_top1_accuracy:
+            typeof metrics.collection_document_top1_accuracy === "number" ? metrics.collection_document_top1_accuracy : 0,
+        exact_match_accuracy: typeof metrics.exact_match_accuracy === "number" ? metrics.exact_match_accuracy : 0,
+    };
+}
+
+function normalizeRetrievalVariant(record: unknown): IndexingBenchmarkRetrievalVariant | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const item = record as IndexingBenchmarkRetrievalVariantApiRecord;
+    if (!item.id || !item.label || !item.category || !item.status || !item.summary) {
+        return null;
+    }
+
+    return {
+        id: item.id,
+        label: item.label,
+        category: item.category,
+        status: item.status,
+        summary: item.summary,
+        metrics: normalizeRetrievalVariantMetrics(item.metrics),
+        key_metric_deltas: Array.isArray(item.key_metric_deltas)
+            ? item.key_metric_deltas.map(normalizeMetricDelta).filter((item): item is IndexingBenchmarkMetricDelta => item !== null)
+            : [],
+    };
+}
+
+function normalizeRetrievalComparison(record: unknown): IndexingBenchmarkRetrievalComparison | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const item = record as IndexingBenchmarkRetrievalComparisonApiRecord;
+    if (!item.summary || !item.baseline_id) {
+        return null;
+    }
+
+    return {
+        summary: item.summary,
+        baseline_id: item.baseline_id,
+        notes: normalizeStringList(item.notes),
+        variants: Array.isArray(item.variants)
+            ? item.variants.map(normalizeRetrievalVariant).filter((item): item is IndexingBenchmarkRetrievalVariant => item !== null)
+            : [],
+    };
+}
+
+function normalizeStructuralSignal(record: unknown): IndexingBenchmarkStructuralSignal | null {
+    if (!record || typeof record !== "object") {
+        return null;
+    }
+
+    const item = record as IndexingBenchmarkStructuralSignalApiRecord;
+    if (!item.id || !item.direction || !item.status) {
+        return null;
+    }
+
+    return {
+        id: item.id,
+        direction: item.direction,
+        status: item.status,
+        rate: typeof item.rate === "number" ? item.rate : 0,
+        count: typeof item.count === "number" ? item.count : 0,
+        total: typeof item.total === "number" ? item.total : 0,
+    };
+}
+
 function normalizeReport(record: unknown): IndexingBenchmarkReport | null {
     if (!record || typeof record !== "object") {
         return null;
@@ -255,9 +673,23 @@ function normalizeReport(record: unknown): IndexingBenchmarkReport | null {
             ? report.corpus.map(normalizeCorpusDocument).filter((item): item is IndexingBenchmarkCorpusDocument => item !== null)
             : [],
         metrics: normalizeMetrics(report.metrics),
+        structural_signals: Array.isArray(report.structural_signals)
+            ? report.structural_signals
+                .map(normalizeStructuralSignal)
+                .filter((item): item is IndexingBenchmarkStructuralSignal => item !== null)
+            : [],
         cases: Array.isArray(report.cases)
             ? report.cases.map(normalizeCase).filter((item): item is IndexingBenchmarkCase => item !== null)
             : [],
+        current_snapshot: normalizeSnapshot(report.current_snapshot) ?? undefined,
+        latest_comparison: normalizeComparison(report.latest_comparison) ?? undefined,
+        comparison_history: Array.isArray(report.comparison_history)
+            ? report.comparison_history
+                .map(normalizeComparison)
+                .filter((item): item is IndexingBenchmarkComparison => item !== null)
+            : [],
+        reference_comparison: normalizeReferenceComparison(report.reference_comparison) ?? undefined,
+        retrieval_comparison: normalizeRetrievalComparison(report.retrieval_comparison) ?? undefined,
     };
 }
 

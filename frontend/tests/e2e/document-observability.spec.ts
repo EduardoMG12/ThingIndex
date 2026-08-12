@@ -124,6 +124,38 @@ test("documents observability panel highlights attention slices and filters the 
         });
     });
 
+    await page.route("**/api/documents/*/index", async (route) => {
+        await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify(success({
+                document: {
+                    id: 8,
+                    user_id: 1,
+                    title: "Stalled parser.pdf",
+                    file_url: "documents/stalled.pdf",
+                    file_path: "documents/stalled.pdf",
+                    size: 2048,
+                    mime_type: "application/pdf",
+                    status: "PROCESSING",
+                    created_at: "2026-03-20T10:00:00Z",
+                    updated_at: "2026-03-20T10:00:00Z",
+                },
+                document_pages: [],
+                paragraph_nodes: [],
+                table_sections: [],
+                metadata_pairs: [],
+                chunks: [],
+                outline_nodes: [],
+                document_summary: "",
+                monitoring: {
+                    status: "PROCESSING",
+                    stage: "PROCESSING",
+                },
+            })),
+        });
+    });
+
     await page.route("**/api/documents/audit**", async (route) => {
         await route.fulfill({
             status: 200,
@@ -169,4 +201,8 @@ test("documents observability panel highlights attention slices and filters the 
 
     await page.getByRole("button", { name: "Clear operational slice" }).first().click();
     await expect(page.getByText("3 indexed document(s)")).toBeVisible();
+
+    await page.getByRole("button", { name: "Open priority document" }).click();
+    await page.getByRole("tab", { name: "Index" }).click();
+    await expect(page.getByRole("button", { name: "Download index JSON" })).toBeVisible();
 });

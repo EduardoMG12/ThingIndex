@@ -2,6 +2,7 @@
 
 import { History, Loader2 } from "lucide-react";
 
+import { ProviderBrandMark } from "@/components/providers/ProviderBrandMark";
 import type { ProviderReadinessReport } from "@/lib/api/providers";
 import type { ProviderDefinition } from "@/components/settings/provider-catalog";
 import { useI18n } from "@/lib/i18n/provider";
@@ -9,6 +10,7 @@ import {
     getProviderReadinessCheckClass,
     getProviderReadinessCheckLabel,
     getProviderReadinessCheckMessage,
+    getProviderReadinessCheckStatusLabel,
     getProviderReadinessStatusClass,
     getProviderReadinessStatusLabel,
     getProviderReadinessSummary,
@@ -47,21 +49,28 @@ export default function ProviderReadinessPanel({
     return (
         <div className="rounded-2xl border border-border bg-background/60 p-4">
             <div className="flex items-start justify-between gap-3">
-                <div className="space-y-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t("settings.readiness.title")}</p>
-                        <Badge variant="outline" className={getProviderReadinessStatusClass(report?.status ?? "IDLE")}>
-                            {getProviderReadinessStatusLabel(t, report?.status ?? "IDLE")}
-                        </Badge>
-                    </div>
-                    <p className="text-sm leading-relaxed text-foreground/85">
-                        {getProviderReadinessSummary(t, provider, report)}
-                    </p>
-                    {report ? (
-                        <p className="text-xs text-muted-foreground">
-                            {t("settings.readiness.checkedAt", { value: formatCheckedAt(locale, report.checked_at) })}
+                <div className="flex items-start gap-3">
+                    <ProviderBrandMark providerType={provider.providerType} size="sm" />
+                    <div className="space-y-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{t("settings.readiness.title")}</p>
+                            <Badge variant="outline" className={getProviderReadinessStatusClass(report?.status ?? "IDLE")}>
+                                {getProviderReadinessStatusLabel(t, report?.status ?? "IDLE")}
+                            </Badge>
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold text-foreground">{provider.name}</p>
+                            <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{provider.tagline}</p>
+                        </div>
+                        <p className="text-sm leading-relaxed text-foreground/85">
+                            {getProviderReadinessSummary(t, provider, report)}
                         </p>
-                    ) : null}
+                        {report ? (
+                            <p className="text-xs text-muted-foreground">
+                                {t("settings.readiness.checkedAt", { value: formatCheckedAt(locale, report.checked_at) })}
+                            </p>
+                        ) : null}
+                    </div>
                 </div>
                 {provider.family === "LLM" ? (
                     <Button
@@ -90,7 +99,7 @@ export default function ProviderReadinessPanel({
                                     {getProviderReadinessCheckLabel(t, check)}
                                 </p>
                                 <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                                    {check.status}
+                                    {getProviderReadinessCheckStatusLabel(locale, check.status)}
                                 </span>
                             </div>
                             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">

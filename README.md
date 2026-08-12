@@ -78,7 +78,7 @@ O projeto nasceu em contexto academico, mas foi estruturado com preocupacoes rea
 - Ja possui pipeline assincrono funcional com outbox, RabbitMQ e worker dedicado para indexacao estrutural.
 - Ja possui enriquecimento opcional com LLM para indexacao, incluindo telemetria estimada de tokens, custo e qualidade heuristica por documento.
 - Nao e um assistente juridico/QA pronto para producao; o chat runtime atual e documental, grounded por collection e ainda experimental no escopo do TCC.
-- Nao implementa multiplos storages de forma concreta hoje: o provider de storage efetivamente suportado no runtime atual e **MinIO/S3-compatible**.
+- O runtime agora suporta **MinIO/S3-compatible** e **Google Cloud Storage nativo**, com matriz pública de suporte para separar caminhos prontos, compartilhados e incrementais.
 
 ### Importante para quem vier de documentacao antiga
 
@@ -210,7 +210,7 @@ Essa abordagem evita consultas por documento e mantem a montagem da resposta em 
 - Cadastro, login e reset de senha com JWT.
 - Revogacao de sessoes antigas apos reset de senha.
 - Upload de documentos com validacao de tamanho e MIME.
-- Persistencia de uploads em MinIO/S3-compatible.
+- Persistencia de uploads em MinIO/S3-compatible e Google Cloud Storage nativo.
 - CRUD parcial de categorias e collections.
 - Persistencia de documentos com vinculacao obrigatoria a `collection`.
 - Persistencia de estruturas extraidas em tabelas tipadas.
@@ -294,17 +294,39 @@ Essa abordagem evita consultas por documento e mantem a montagem da resposta em 
 
 ### Passo a passo
 
+**Modo produção-like (build completo, sem hot-reload):**
+
 ```bash
 ./scripts/bootstrap.sh
 ./scripts/stack.sh up
 ./scripts/doctor.sh
 ```
 
+**Modo desenvolvimento (hot-reload em tudo — api, indexer e frontend):**
+
+```bash
+./scripts/bootstrap.sh
+./scripts/stack.sh dev
+./scripts/doctor.sh
+```
+
+No modo `dev`:
+- `api` e `indexer` usam `air` para reload automático do Go;
+- `frontend` reflete mudanças instantaneamente via Next.js dev server;
+- o script monta o cache Go do host para evitar downloads repetidos dentro do container;
+- os serviços só sobem depois que `db`, `minio` e `rabbitmq` estiverem realmente prontos (healthchecks).
+
 Se preferir `make`:
 
 ```bash
+# Produção-like
 make bootstrap
 make stack-up
+make doctor
+
+# Desenvolvimento com hot-reload
+make bootstrap
+make dev
 make doctor
 ```
 
@@ -320,12 +342,16 @@ O guia curto de onboarding open source tambem ficou centralizado em `docs/open-s
 | Swagger JSON | `http://localhost:8000/swagger/doc.json` |
 | MinIO API | `http://localhost:9000` |
 | MinIO Console | `http://localhost:9001` |
+| GCS Emulator | `http://localhost:4443` |
 | PostgreSQL | `localhost:5434` |
 | RabbitMQ Management | `http://localhost:15672` |
 
 ### Observacoes importantes
 
 - O `docker-compose.yml` sobe RabbitMQ e suporta o pipeline assincrono de indexacao.
+- O modo `dev` combina `docker-compose.yml` com `docker-compose.dev.yml` e ativa hot reload para **api, indexer e frontend**.
+- Servicos dependentes (`api`, `indexer`, `frontend`) aguardam `db`, `minio` e `rabbitmq` ficarem saudaveis antes de iniciar, eliminando race conditions no boot.
+- O modo `dev` resolve e monta o `GOMODCACHE` e o `GOCACHE` do host para evitar depender de download de modulos no boot da API.
 - O fluxo de `forgot-password` exige um servidor SMTP acessivel. O compose atual nao sobe Mailpit/Mailhog por padrao.
 - O frontend consome a API por `NEXT_PUBLIC_API_URL`.
 - Para requests prontas de API, use `examples/http/thingindex-api.http`.
@@ -371,7 +397,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 - Node.js `20+`
 - `pnpm`
 - PostgreSQL
-- MinIO ou outro endpoint MinIO/S3-compatible
+- MinIO, outro endpoint S3-compatible ou Google Cloud Storage
 
 ### Opcao B: abrir no Dev Container
 
@@ -397,6 +423,8 @@ Ele executa checks seletivos antes do commit:
 
 O hook foi pensado para proteger integridade basica do codigo sem tentar rodar `integration` ou `e2e` a cada commit.
 
+Se quiser incluir um smoke real de indexacao com LLM no `pre-commit`, defina `THINGINDEX_PRECOMMIT_REAL_LLM=true` no `.env` local. Nesse modo, mudancas em `api/` tambem executam `./scripts/test.sh backend-real-llm`.
+
 ### Comandos simples de teste
 
 O repositorio agora expõe comandos curtos na raiz:
@@ -407,6 +435,7 @@ O repositorio agora expõe comandos curtos na raiz:
 ./scripts/doctor.sh
 ./scripts/test.sh unit
 ./scripts/test.sh backend-integration
+./scripts/test.sh backend-real-llm
 ./scripts/test.sh backend-e2e
 ./scripts/test.sh frontend-storybook
 ./scripts/test.sh frontend-e2e
@@ -419,6 +448,7 @@ Se preferir `make`, os atalhos equivalentes tambem existem:
 make bootstrap
 make doctor
 make stack-up
+make stack-dev
 make test-unit
 make test-backend-integration
 make test-backend-e2e
@@ -482,14 +512,22 @@ O arquivo `.env.example` foi pensado para **desenvolvimento local**. Em producao
 | `DB_SSLMODE` | `disable` | SSL mode do driver Postgres |
 | `JWT_SECRET` | valor local forte | Chave de assinatura JWT |
 | `MASTER_ENCRYPTION_KEY` | valor local forte | Chave mestre para criptografia de credenciais |
+| `STORAGE_PROVIDER` | `MINIO` | Provider de storage padrão do runtime (`MINIO` ou `GCP_STORAGE`) |
 | `MINIO_ENDPOINT` | `minio:9000` ou `localhost:9000` | Endpoint do storage |
 | `MINIO_ACCESS_KEY` | `thingindex-local-access-key` | Access key do storage padrao |
 | `MINIO_SECRET_KEY` | `thingindex-local-secret-key` | Secret key do storage padrao |
 | `MINIO_USE_SSL` | `false` | HTTPS no storage padrao |
 | `MINIO_BUCKET_NAME` | `thingindex-docs` | Bucket utilizado pela aplicacao |
+| `GCP_STORAGE_PROJECT_ID` | `thingindex-dev` | Projeto usado no bootstrap nativo de GCS |
+| `GCP_STORAGE_BUCKET_NAME` | `thingindex-docs` | Bucket usado no bootstrap nativo de GCS |
+| `GCP_STORAGE_LOCATION` | `us-central1` | Location opcional do bucket GCS |
+| `GCP_STORAGE_CREDENTIALS_JSON` | vazio | JSON de service account para buckets GCS reais |
+| `GCP_STORAGE_EMULATOR_HOST` | vazio ou `127.0.0.1:4443` | Host do emulator GCS para desenvolvimento |
 | `THINGINDEX_TEST_DB_*` | vazio ou overrides locais | Overrides opcionais para testes de integracao/e2e do backend |
 | `THINGINDEX_TEST_MINIO_*` | vazio ou overrides locais | Overrides opcionais para testes reais com storage |
+| `THINGINDEX_TEST_GCP_*` | vazio ou overrides locais | Overrides opcionais para testes de integracao do GCS |
 | `THINGINDEX_TEST_RABBITMQ_URL` | vazio ou override local | Override opcional para os testes reais com fila |
+| `THINGINDEX_PRECOMMIT_REAL_LLM` | `false` | Quando `true`, inclui o smoke real de indexacao com LLM no `pre-commit` para mudancas em `api/` |
 | `THINGINDEX_TEST_LLM_*` | desabilitado por padrao | Habilita testes reais de provider/processing com IA |
 | `OPENAI_*`, `OPENROUTER_*`, `DEEPSEEK_*`, `GROK_*`, `GEMINI_*`, `CLAUDE_*`, `OLLAMA_*` | provider-specific | Fallbacks de credenciais/modelo para os testes reais de LLM |
 | `MAX_UPLOAD_SIZE_BYTES` | `20971520` | Limite maximo de upload |
@@ -625,7 +663,8 @@ Limite padrao de upload:
 - Swagger UI fallback: `http://localhost:8000/swagger/index.html`
 - Swagger JSON: `http://localhost:8000/swagger/doc.json`
 - Perfil publico do runtime: `http://localhost:8000/api/v1/meta/runtime-profile`
-- Matriz publica de providers: `http://localhost:8000/api/v1/providers/support?family=LLM`
+- Matriz publica de storage: `http://localhost:8000/api/v1/providers/support?family=STORAGE`
+- Matriz publica de LLM: `http://localhost:8000/api/v1/providers/support?family=LLM`
 - Contrato versionado no repositório: `api/docs/swagger.yaml` e `api/docs/swagger.json`
 
 Em deployments publicadas, mantenha os mesmos paths na origin publicada:
@@ -634,10 +673,12 @@ Em deployments publicadas, mantenha os mesmos paths na origin publicada:
 - `https://<sua-origin>/swagger/index.html`
 - `https://<sua-origin>/swagger/doc.json`
 - `https://<sua-origin>/api/v1/meta/runtime-profile`
+- `https://<sua-origin>/api/v1/providers/support?family=STORAGE`
 - `https://<sua-origin>/api/v1/providers/support?family=LLM`
 
-Use a matriz pública de providers para distinguir:
+Use as matrizes públicas de providers para distinguir:
 
+- o que está pronto para storage nativo ou S3-compatible;
 - o que está pronto para o runtime principal;
 - o que usa o caminho compartilhado OpenAI-compatible;
 - o que ainda depende de bridge experimental com `base_url` e `model` explícitos.
@@ -824,15 +865,16 @@ Os materiais em `docs/` e `frontend/architecture/` registram essa evolucao e tam
 
 Os artefatos academicos versionados desta fase agora ficam em:
 
-- `docs/article/README.md` para o workspace academico e as referencias de figuras;
-- `docs/article/sbc_template (1).doc` como referencia de formatacao SBC;
-- `rfc/0001-product-focus.md` para justificar o foco do produto e o recorte do artigo;
-- `api/internal/usecase/testdata/indexing-benchmark/corpus.json` para o corpus controlado da baseline de indexacao;
-- `docs/proposta-continuacao-tcc.md` para a frente de continuidade experimental.
+- `docs/article/article-overleaf.md` para o texto do artigo;
+- `docs/article/references.bib` para as referencias bibliograficas;
+- `docs/article/anexos/` para as figuras e anexos;
+- `docs/article/Apresentação de TCC ThingIndex Slides.pdf` para os slides da defesa;
+- `frontend/architecture/relational-context-architecture.md` para o registro da decisao arquitetural;
+- `api/internal/usecase/testdata/indexing-benchmark/corpus.json` para o corpus controlado da baseline de indexacao.
 
 ## 17. Limitacoes Atuais
 
-- Apenas MinIO/S3-compatible esta implementado de fato como storage provider no fluxo principal.
+- O storage padrão do runtime continua simples por design, mas agora pode ser inicializado com `MINIO` ou `GCP_STORAGE`.
 - O chat runtime existe com streaming incremental e grounding por collection, mas ainda nao substitui avaliacao juridica, benchmark de citacao ou validacao de acuracia para uso de producao.
 - A estimativa de custo e tokens de LLM e heuristica quando o provider nao devolve usage real.
 - O score de qualidade da indexacao e heuristico; ele agora deve ser lido junto do benchmark publico em `GET /api/v1/meta/indexing-benchmark`, nao como ground truth isolado.

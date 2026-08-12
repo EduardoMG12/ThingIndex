@@ -96,6 +96,114 @@ func TestNormalizeConstructedTreeKeepsValidHierarchy(t *testing.T) {
 	}
 }
 
+func TestVerifyAndScoreTreePersistsStructuralSpansFromSourceOutline(t *testing.T) {
+	t.Parallel()
+
+	pageOne := 1
+	result := domain.IndexingResult{
+		DocumentPages: []models.DocumentPage{
+			{DocumentID: 1, PageNumber: 1, Content: "Scope paragraph.\nPayment paragraph."},
+		},
+		ParagraphNodes: []models.ParagraphNode{
+			{
+				DocumentID:    1,
+				SequenceOrder: 0,
+				PageNumber:    &pageOne,
+				Content:       "Scope paragraph.",
+				Metadata: map[string]any{
+					"section_key": "scope",
+				},
+			},
+			{
+				DocumentID:    1,
+				SequenceOrder: 1,
+				PageNumber:    &pageOne,
+				Content:       "Payment paragraph.",
+				Metadata: map[string]any{
+					"section_key": "payment-terms",
+				},
+			},
+		},
+		OutlineNodes: []models.DocumentOutlineNode{
+			{
+				DocumentID:    1,
+				SequenceOrder: 0,
+				NodeID:        "scope",
+				Level:         1,
+				Title:         "Scope",
+				StartPage:     &pageOne,
+				EndPage:       &pageOne,
+				Metadata: map[string]any{
+					"paragraph_start": 0,
+					"paragraph_end":   0,
+					"section_key":     "scope",
+				},
+			},
+			{
+				DocumentID:    1,
+				SequenceOrder: 1,
+				NodeID:        "payment",
+				Level:         1,
+				Title:         "Payment Terms",
+				StartPage:     &pageOne,
+				EndPage:       &pageOne,
+				Metadata: map[string]any{
+					"paragraph_start": 1,
+					"paragraph_end":   1,
+					"section_key":     "payment-terms",
+				},
+			},
+		},
+	}
+
+	payload := treeConstructionResponse{
+		Nodes: []struct {
+			NodeID       string `json:"node_id"`
+			ParentNodeID string `json:"parent_node_id"`
+			Title        string `json:"title"`
+			Level        int    `json:"level"`
+			StartPage    int    `json:"start_page"`
+			EndPage      int    `json:"end_page"`
+			Summary      string `json:"summary"`
+		}{
+			{NodeID: "llm-scope", Title: "Scope", Level: 1, StartPage: 1, EndPage: 1, Summary: "Scope summary"},
+			{NodeID: "llm-payment", Title: "Payment Terms", Level: 1, StartPage: 1, EndPage: 1, Summary: "Payment summary"},
+		},
+	}
+
+	nodes := normalizeConstructedTree(result, payload)
+	verified, stats := verifyAndScoreTree(result, nodes, "llm")
+	if !stats.VerificationPassed {
+		t.Fatalf("expected verification to pass: %#v", stats)
+	}
+
+	var paymentNode *models.DocumentOutlineNode
+	for idx := range verified {
+		if verified[idx].Title == "Payment Terms" {
+			paymentNode = &verified[idx]
+			break
+		}
+	}
+	if paymentNode == nil {
+		t.Fatalf("expected Payment Terms node, got %#v", verified)
+	}
+	if got := paymentNode.Metadata["paragraph_start"]; got != 1 {
+		t.Fatalf("expected paragraph_start=1, got %#v", got)
+	}
+	if got := paymentNode.Metadata["paragraph_end"]; got != 1 {
+		t.Fatalf("expected paragraph_end=1, got %#v", got)
+	}
+	if got := paymentNode.Metadata["section_key"]; got != "payment-terms" {
+		t.Fatalf("expected section_key payment-terms, got %#v", got)
+	}
+	if got := paymentNode.Metadata["start_page"]; got != 1 {
+		t.Fatalf("expected start_page=1, got %#v", got)
+	}
+	if got := paymentNode.Metadata["end_page"]; got != 1 {
+		t.Fatalf("expected end_page=1, got %#v", got)
+	}
+}
+
 func TestVerifyAndScoreTreeComputesCoverageAndConfidence(t *testing.T) {
 	t.Parallel()
 
@@ -126,9 +234,11 @@ func TestVerifyAndScoreTreeComputesCoverageAndConfidence(t *testing.T) {
 		},
 	}
 
-	verified, stats := verifyAndScoreTree([]models.DocumentPage{
-		{PageNumber: 1, Content: "Payment terms overview and obligations."},
-		{PageNumber: 2, Content: "Invoice deadline is 15 days after issuance."},
+	verified, stats := verifyAndScoreTree(domain.IndexingResult{
+		DocumentPages: []models.DocumentPage{
+			{PageNumber: 1, Content: "Payment terms overview and obligations."},
+			{PageNumber: 2, Content: "Invoice deadline is 15 days after issuance."},
+		},
 	}, nodes, "llm")
 
 	if !stats.VerificationPassed {
@@ -162,10 +272,12 @@ func TestVerifyAndScoreTreeRejectsLowCoverage(t *testing.T) {
 		},
 	}
 
-	_, stats := verifyAndScoreTree([]models.DocumentPage{
-		{PageNumber: 1, Content: "Introduction content."},
-		{PageNumber: 2, Content: "Uncovered page."},
-		{PageNumber: 3, Content: "Another uncovered page."},
+	_, stats := verifyAndScoreTree(domain.IndexingResult{
+		DocumentPages: []models.DocumentPage{
+			{PageNumber: 1, Content: "Introduction content."},
+			{PageNumber: 2, Content: "Uncovered page."},
+			{PageNumber: 3, Content: "Another uncovered page."},
+		},
 	}, nodes, "llm")
 
 	if stats.VerificationPassed {

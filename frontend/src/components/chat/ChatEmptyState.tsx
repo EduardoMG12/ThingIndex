@@ -35,18 +35,18 @@ export function ChatEmptyState({
     const CtaIcon = cta?.icon ?? Sparkles;
 
     return (
-        <div className="flex min-h-[28rem] flex-col items-center justify-center rounded-[32px] border border-dashed border-border bg-card/45 px-8 py-10 text-center">
-            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-[22px] bg-primary/12">
-                <Sparkles className="h-8 w-8 text-primary" />
+        <div className="flex min-h-[22rem] flex-col items-center justify-center px-6 py-10 text-center">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted/70">
+                <Sparkles className="h-5 w-5 text-muted-foreground" />
             </div>
             <h2 className="text-2xl font-semibold tracking-tight text-foreground">
                 {t("dashboard.chat.emptyTitle")}
             </h2>
-            <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
                 {hasCollections && hasChatRuntime ? t("dashboard.chat.emptyDescription") : cta?.description}
             </p>
             {activeCollectionName ? (
-                <p className="mt-4 text-sm font-medium text-foreground/85">
+                <p className="mt-4 text-sm text-foreground/85">
                     {`${t("dashboard.chat.activeCollection")} ${activeCollectionName}`}
                 </p>
             ) : null}
@@ -54,7 +54,7 @@ export function ChatEmptyState({
             {cta ? (
                 <Link
                     href={cta.href}
-                    className="mt-6 inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary"
+                    className="mt-6 inline-flex items-center gap-2 rounded-full border border-border/70 bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-foreground/20 hover:bg-muted/40"
                 >
                     <CtaIcon className="h-4 w-4" />
                     {cta.label}

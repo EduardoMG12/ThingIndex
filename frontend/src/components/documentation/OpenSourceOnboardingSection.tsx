@@ -1,33 +1,58 @@
 import { ExternalLink, Globe2, TerminalSquare, Wrench } from "lucide-react";
 
 import {
-    DOCUMENTATION_TROUBLESHOOTING_ITEMS,
     getDocumentationResources,
     getDocumentationTracks,
-} from "@/components/documentation/open-source";
+    getOpenSourceTroubleshootingItems,
+} from "@/components/documentation/open-source-onboarding";
+import { useI18n } from "@/lib/i18n/provider";
 
 export function OpenSourceOnboardingSection({
     apiBaseUrl,
 }: {
     apiBaseUrl?: string;
 }) {
-    const resources = getDocumentationResources(apiBaseUrl);
-    const tracks = getDocumentationTracks(apiBaseUrl);
+    const { locale } = useI18n();
+    const resources = getDocumentationResources(apiBaseUrl, locale);
+    const tracks = getDocumentationTracks(apiBaseUrl, locale);
+    const troubleshootingItems = getOpenSourceTroubleshootingItems(locale);
+    const copy = locale === "pt-BR"
+        ? {
+            intro:
+                "O projeto agora documenta explicitamente os dois caminhos válidos para quem chega de fora: rodar o stack completo a partir do GitHub ou consumir uma API já publicada usando o mesmo contrato HTTP e a mesma referência interativa.",
+            openLink: "Abrir link",
+            step: "Passo",
+            notes: "Notas",
+            troubleshooting: "Resolução de problemas",
+        }
+        : locale === "es"
+            ? {
+                intro:
+                    "El proyecto ahora documenta explícitamente los dos caminos válidos para quien llega desde fuera: correr el stack completo desde GitHub o consumir una API ya publicada usando el mismo contrato HTTP y la misma referencia interactiva.",
+                openLink: "Abrir enlace",
+                step: "Paso",
+                notes: "Notas",
+                troubleshooting: "Resolución de problemas",
+            }
+            : {
+                intro:
+                    "The project now documents the two valid paths for outside consumers explicitly: run the full stack from GitHub or consume an already published API using the same HTTP contract and interactive reference.",
+                openLink: "Open link",
+                step: "Step",
+                notes: "Notes",
+                troubleshooting: "Troubleshooting",
+            };
 
     return (
         <div className="space-y-8">
             <div>
-                <p>
-                    O projeto agora documenta explicitamente os dois caminhos válidos para quem chega
-                    de fora: rodar o stack completo a partir do GitHub ou consumir uma API já
-                    publicada usando o mesmo contrato HTTP e a mesma referência interativa.
-                </p>
+                <p>{copy.intro}</p>
 
                 <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {resources.map((resource) => (
-                        <article key={resource.title} className="rounded-xl border border-border bg-background/50 p-5">
+                        <article key={resource.title} className="min-w-0 rounded-xl border border-border bg-background/50 p-5">
                             <h4 className="text-sm font-semibold text-foreground">{resource.title}</h4>
-                            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{resource.description}</p>
+                            <p className="mt-2 break-words text-sm leading-relaxed text-muted-foreground">{resource.description}</p>
                             {resource.href ? (
                                 <a
                                     href={resource.href}
@@ -35,12 +60,12 @@ export function OpenSourceOnboardingSection({
                                     rel="noreferrer"
                                     className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
                                 >
-                                    Open link
+                                    {copy.openLink}
                                     <ExternalLink className="h-3.5 w-3.5" />
                                 </a>
                             ) : null}
                             {resource.pathHint ? (
-                                <p className="mt-3">
+                                <p className="mt-3 break-all">
                                     <code>{resource.pathHint}</code>
                                 </p>
                             ) : null}
@@ -51,9 +76,9 @@ export function OpenSourceOnboardingSection({
 
             <div className="grid gap-5 xl:grid-cols-2">
                 {tracks.map((track) => (
-                    <div key={track.title} className="rounded-xl border border-border bg-background/50 p-5">
+                    <div key={track.title} className="min-w-0 rounded-xl border border-border bg-background/50 p-5">
                         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-primary">
-                            {track.title === "Hosted API consumption" ? (
+                            {track.kind === "hosted" ? (
                                 <Globe2 className="h-4 w-4" />
                             ) : (
                                 <TerminalSquare className="h-4 w-4" />
@@ -65,24 +90,24 @@ export function OpenSourceOnboardingSection({
 
                         <div className="mt-4 space-y-4">
                             {track.steps.map((step, index) => (
-                                <div key={`${track.title}-${step.command}`} className="rounded-xl border border-border bg-card px-4 py-4">
+                                <div key={`${track.title}-${step.command}`} className="min-w-0 rounded-xl border border-border bg-card px-4 py-4">
                                     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                                        Step {index + 1}
+                                        {copy.step} {index + 1}
                                     </p>
                                     <h4 className="mt-2 text-sm font-semibold text-foreground">{step.title}</h4>
-                                    <p className="mt-2">
+                                    <p className="mt-2 break-all">
                                         <code>{step.command}</code>
                                     </p>
-                                    <p className="mt-2 text-sm text-muted-foreground">{step.detail}</p>
+                                    <p className="mt-2 break-words text-sm text-muted-foreground">{step.detail}</p>
                                 </div>
                             ))}
                         </div>
 
                         <div className="mt-4 rounded-xl border border-border bg-card px-4 py-4">
                             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                                Notes
+                                {copy.notes}
                             </p>
-                            <ul className="mt-3 space-y-2 text-sm leading-relaxed text-muted-foreground">
+                            <ul className="mt-3 space-y-2 break-words text-sm leading-relaxed text-muted-foreground">
                                 {track.notes.map((note) => (
                                     <li key={note}>{note}</li>
                                 ))}
@@ -95,13 +120,13 @@ export function OpenSourceOnboardingSection({
             <div className="rounded-xl border border-border bg-background/50 p-5">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-primary">
                     <Wrench className="h-4 w-4" />
-                    Troubleshooting
+                    {copy.troubleshooting}
                 </div>
                 <div className="mt-4 grid gap-4 xl:grid-cols-2">
-                    {DOCUMENTATION_TROUBLESHOOTING_ITEMS.map((item) => (
-                        <div key={item.title} className="rounded-xl border border-border bg-card px-4 py-4">
+                    {troubleshootingItems.map((item) => (
+                        <div key={item.title} className="min-w-0 rounded-xl border border-border bg-card px-4 py-4">
                             <h4 className="text-sm font-semibold text-foreground">{item.title}</h4>
-                            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.detail}</p>
+                            <p className="mt-2 break-words text-sm leading-relaxed text-muted-foreground">{item.detail}</p>
                         </div>
                     ))}
                 </div>

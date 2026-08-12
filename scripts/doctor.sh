@@ -18,7 +18,7 @@ Checks:
   - presence of .env
   - presence of the indexing benchmark runner and benchmark corpus
   - reachability of frontend when running locally
-  - reachability of API health, Scalar docs, Swagger UI, Swagger JSON, the public runtime profile, the public indexing benchmark, and the public provider support matrix
+  - reachability of API health, Scalar docs, Swagger UI, Swagger JSON, the public runtime profile, the public indexing benchmark, and the public storage/LLM support matrices
 
 Behavior:
   - non-strict mode reports unavailable services as warnings
@@ -211,7 +211,8 @@ probe_url "Swagger UI" "$api_base/swagger/index.html"
 probe_url "Swagger JSON" "$api_base/swagger/doc.json"
 probe_url "Runtime profile" "$api_base/api/v1/meta/runtime-profile"
 probe_url "Indexing benchmark" "$api_base/api/v1/meta/indexing-benchmark"
-probe_url "Provider support matrix" "$api_base/api/v1/providers/support?family=LLM"
+probe_url "Storage support matrix" "$api_base/api/v1/providers/support?family=STORAGE"
+probe_url "LLM support matrix" "$api_base/api/v1/providers/support?family=LLM"
 
 echo "[doctor] failures=$failures warnings=$warnings"
 

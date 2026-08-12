@@ -44,16 +44,15 @@ type ProviderSupportCapabilitiesResponse struct {
 }
 
 type ProviderSupportResponse struct {
-	Family           string                              `json:"family"`
-	ProviderType     string                              `json:"provider_type"`
-	DisplayName      string                              `json:"display_name"`
-	SupportLevel     string                              `json:"support_level"`
-	Transport        string                              `json:"transport"`
-	Summary          string                              `json:"summary"`
-	SuggestedBaseURL string                              `json:"suggested_base_url,omitempty"`
-	SuggestedModel   string                              `json:"suggested_model,omitempty"`
-	Capabilities     ProviderSupportCapabilitiesResponse `json:"capabilities"`
-	Notes            []string                            `json:"notes,omitempty"`
+	Family         string                              `json:"family"`
+	ProviderType   string                              `json:"provider_type"`
+	DisplayName    string                              `json:"display_name"`
+	SupportLevel   string                              `json:"support_level"`
+	Transport      string                              `json:"transport"`
+	Summary        string                              `json:"summary"`
+	SuggestedSetup map[string]string                   `json:"suggested_setup,omitempty"`
+	Capabilities   ProviderSupportCapabilitiesResponse `json:"capabilities"`
+	Notes          []string                            `json:"notes,omitempty"`
 }
 
 func ToProviderConfigResponse(config *models.UserProviderConfig, publicMetadata map[string]string) *ProviderConfigResponse {
@@ -87,14 +86,13 @@ func ToProviderConfigResponses(configs []models.UserProviderConfig, publicMetada
 
 func ToProviderSupportResponse(item domain.ProviderSupportEntry) ProviderSupportResponse {
 	return ProviderSupportResponse{
-		Family:           item.Family,
-		ProviderType:     item.ProviderType,
-		DisplayName:      item.DisplayName,
-		SupportLevel:     item.SupportLevel,
-		Transport:        item.Transport,
-		Summary:          item.Summary,
-		SuggestedBaseURL: item.SuggestedBaseURL,
-		SuggestedModel:   item.SuggestedModel,
+		Family:         item.Family,
+		ProviderType:   item.ProviderType,
+		DisplayName:    item.DisplayName,
+		SupportLevel:   item.SupportLevel,
+		Transport:      item.Transport,
+		Summary:        item.Summary,
+		SuggestedSetup: cloneProviderSupportSetup(item.SuggestedSetup),
 		Capabilities: ProviderSupportCapabilitiesResponse{
 			SupportsCredentialValidation:   item.Capabilities.SupportsCredentialValidation,
 			SupportsConnectionTest:         item.Capabilities.SupportsConnectionTest,
@@ -109,6 +107,19 @@ func ToProviderSupportResponse(item domain.ProviderSupportEntry) ProviderSupport
 		},
 		Notes: append([]string(nil), item.Notes...),
 	}
+}
+
+func cloneProviderSupportSetup(source map[string]string) map[string]string {
+	if len(source) == 0 {
+		return nil
+	}
+
+	cloned := make(map[string]string, len(source))
+	for key, value := range source {
+		cloned[key] = value
+	}
+
+	return cloned
 }
 
 func ToProviderSupportResponses(items []domain.ProviderSupportEntry) []ProviderSupportResponse {

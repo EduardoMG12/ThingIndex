@@ -15,6 +15,7 @@ export type ProviderType =
     | "DIGITALOCEAN_SPACES"
     | "WASABI"
     | "BACKBLAZE_B2"
+    | "GCP_STORAGE"
     | "OPENAI"
     | "GOOGLE_GEMINI"
     | "DEEP_SEEK"
@@ -89,10 +90,9 @@ type ProviderSupportApiRecord = {
     provider_type: ProviderType;
     display_name: string;
     support_level: "READY" | "PARTIAL" | "EXPERIMENTAL";
-    transport: "NATIVE_OPENAI" | "NATIVE_OLLAMA" | "OPENAI_COMPATIBLE" | "OPENAI_COMPATIBLE_BRIDGE";
+    transport: "NATIVE_OPENAI" | "NATIVE_OLLAMA" | "NATIVE_GCS" | "OPENAI_COMPATIBLE" | "OPENAI_COMPATIBLE_BRIDGE" | "S3_COMPATIBLE";
     summary: string;
-    suggested_base_url?: string;
-    suggested_model?: string;
+    suggested_setup?: Record<string, unknown>;
     capabilities?: ProviderSupportCapabilitiesApiRecord;
     notes?: unknown;
 };
@@ -115,10 +115,9 @@ export type ProviderSupport = {
     provider_type: ProviderType;
     display_name: string;
     support_level: "READY" | "PARTIAL" | "EXPERIMENTAL";
-    transport: "NATIVE_OPENAI" | "NATIVE_OLLAMA" | "OPENAI_COMPATIBLE" | "OPENAI_COMPATIBLE_BRIDGE";
+    transport: "NATIVE_OPENAI" | "NATIVE_OLLAMA" | "NATIVE_GCS" | "OPENAI_COMPATIBLE" | "OPENAI_COMPATIBLE_BRIDGE" | "S3_COMPATIBLE";
     summary: string;
-    suggested_base_url: string | null;
-    suggested_model: string | null;
+    suggested_setup: Record<string, string>;
     capabilities: ProviderSupportCapabilities;
     notes: string[];
 };
@@ -256,6 +255,14 @@ function normalizeProviderSupport(record: unknown): ProviderSupport | null {
             return items;
         }, [])
         : [];
+    const suggested_setup = supportRecord.suggested_setup && typeof supportRecord.suggested_setup === "object"
+        ? Object.entries(supportRecord.suggested_setup).reduce<Record<string, string>>((items, [key, value]) => {
+            if (typeof value === "string" && value.trim()) {
+                items[key] = value.trim();
+            }
+            return items;
+        }, {})
+        : {};
 
     return {
         family: supportRecord.family,
@@ -264,12 +271,7 @@ function normalizeProviderSupport(record: unknown): ProviderSupport | null {
         support_level: supportRecord.support_level,
         transport: supportRecord.transport,
         summary: supportRecord.summary,
-        suggested_base_url: typeof supportRecord.suggested_base_url === "string" && supportRecord.suggested_base_url.trim()
-            ? supportRecord.suggested_base_url.trim()
-            : null,
-        suggested_model: typeof supportRecord.suggested_model === "string" && supportRecord.suggested_model.trim()
-            ? supportRecord.suggested_model.trim()
-            : null,
+        suggested_setup,
         capabilities: {
             supports_credential_validation: Boolean(capabilities.supports_credential_validation),
             supports_connection_test: Boolean(capabilities.supports_connection_test),

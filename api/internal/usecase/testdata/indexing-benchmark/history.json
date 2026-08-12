@@ -1,0 +1,56 @@
+{
+  "snapshots": [
+    {
+      "id": "2026-03-26-relational-baseline-v1",
+      "label": "Pre-quality backlog baseline",
+      "recorded_on": "2026-03-26",
+      "summary": "Before the indexing quality backlog, the public benchmark exposed a large gap between the heuristic score and exact-match retrieval quality.",
+      "dataset_version": "2026-03-relational-baseline-v1",
+      "pipeline_version": "page-tree-v3",
+      "prompt_profile_version": "llm-index-v5",
+      "chunk_strategy_version": "section-window-v2",
+      "metrics": {
+        "corpus_documents": 3,
+        "document_queries": 4,
+        "collection_queries": 3,
+        "structure_pass_rate": 33.33333333333333,
+        "tree_node_top1_accuracy": 0,
+        "tree_node_recall_at_3": 25,
+        "tree_page_top1_accuracy": 75,
+        "tree_page_recall_at_3": 75,
+        "collection_document_top1_accuracy": 66.66666666666666,
+        "collection_document_recall_at_3": 66.66666666666666,
+        "exact_match_accuracy": 28.57142857142857,
+        "average_heuristic_score": 98,
+        "minimum_heuristic_score": 98,
+        "maximum_heuristic_score": 98
+      }
+    },
+    {
+      "id": "2026-03-27-relational-baseline-v2",
+      "label": "After IQ-001 to IQ-015",
+      "recorded_on": "2026-03-27",
+      "summary": "After the structural, retrieval, monitoring, and corpus changes applied through IQ-015, the same public benchmark reached a fully passing baseline with a recalibrated heuristic score.",
+      "dataset_version": "2026-03-relational-baseline-v2",
+      "pipeline_version": "page-tree-v3",
+      "prompt_profile_version": "llm-index-v5",
+      "chunk_strategy_version": "section-window-v3",
+      "metrics": {
+        "corpus_documents": 5,
+        "document_queries": 6,
+        "collection_queries": 5,
+        "structure_pass_rate": 100,
+        "tree_node_top1_accuracy": 100,
+        "tree_node_recall_at_3": 100,
+        "tree_page_top1_accuracy": 100,
+        "tree_page_recall_at_3": 100,
+        "collection_document_top1_accuracy": 100,
+        "collection_document_recall_at_3": 100,
+        "exact_match_accuracy": 100,
+        "average_heuristic_score": 70.78,
+        "minimum_heuristic_score": 69.9,
+        "maximum_heuristic_score": 71
+      }
+    }
+  ]
+}
