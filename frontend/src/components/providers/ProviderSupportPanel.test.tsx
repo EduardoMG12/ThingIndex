@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { ProviderSupportPanel } from "@/components/providers/ProviderSupportPanel";
+import { createTestWrapper } from "@/test/test-utils";
 
 describe("ProviderSupportPanel", () => {
     it("renders support tier, setup hints and operational notes", () => {
@@ -14,8 +15,10 @@ describe("ProviderSupportPanel", () => {
                     support_level: "READY",
                     transport: "NATIVE_OPENAI",
                     summary: "Ready for the main runtime.",
-                    suggested_base_url: "https://api.openai.com/v1",
-                    suggested_model: "gpt-4o-mini",
+                    suggested_setup: {
+                        base_url: "https://api.openai.com/v1",
+                        model: "gpt-4o-mini",
+                    },
                     capabilities: {
                         supports_credential_validation: true,
                         supports_connection_test: true,
@@ -30,14 +33,55 @@ describe("ProviderSupportPanel", () => {
                     },
                     notes: ["Direct OpenAI path."],
                 }}
-            />
+            />,
+            { wrapper: createTestWrapper() }
         );
 
-        expect(screen.getByText("Real support level")).toBeInTheDocument();
+        expect(screen.getByText("Runtime support profile")).toBeInTheDocument();
+        expect(screen.getByTestId("provider-brand-OPENAI")).toBeInTheDocument();
         expect(screen.getByText("Ready for main runtime")).toBeInTheDocument();
         expect(screen.getByText("Native OpenAI path")).toBeInTheDocument();
         expect(screen.getByText("https://api.openai.com/v1")).toBeInTheDocument();
         expect(screen.getByText("gpt-4o-mini")).toBeInTheDocument();
         expect(screen.getByText("Direct OpenAI path.")).toBeInTheDocument();
+    });
+
+    it("renders storage-specific capability labels for storage providers", () => {
+        render(
+            <ProviderSupportPanel
+                support={{
+                    family: "STORAGE",
+                    provider_type: "GCP_STORAGE",
+                    display_name: "Google Cloud Storage",
+                    support_level: "READY",
+                    transport: "NATIVE_GCS",
+                    summary: "Ready for the main runtime.",
+                    suggested_setup: {
+                        project_id: "thingindex-dev",
+                        bucket_name: "thingindex-docs",
+                    },
+                    capabilities: {
+                        supports_credential_validation: true,
+                        supports_connection_test: true,
+                        supports_model_discovery: false,
+                        supports_streaming: false,
+                        supports_indexing: true,
+                        supports_chat: false,
+                        supports_optional_live_tests: true,
+                        requires_explicit_model: false,
+                        requires_explicit_base_url: false,
+                        requires_openai_compatible_bridge: false,
+                    },
+                    notes: ["Supports service-account JSON or emulator_host."],
+                }}
+            />,
+            { wrapper: createTestWrapper() }
+        );
+
+        expect(screen.getByTestId("provider-brand-GCP_STORAGE")).toBeInTheDocument();
+        expect(screen.getByText("Native Google Cloud Storage path")).toBeInTheDocument();
+        expect(screen.getByText("Credential validation")).toBeInTheDocument();
+        expect(screen.getByText("Project ID:")).toBeInTheDocument();
+        expect(screen.getByText("thingindex-dev")).toBeInTheDocument();
     });
 });

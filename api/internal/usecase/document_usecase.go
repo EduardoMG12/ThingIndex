@@ -848,7 +848,6 @@ func (u *documentCatalogUseCase) GetDocumentIndex(ctx context.Context, userID, d
 	for _, pair := range metadataPairs {
 		if pair.Key == "document_summary" {
 			documentSummary = pair.Value
-			break
 		}
 	}
 
@@ -864,7 +863,7 @@ func (u *documentCatalogUseCase) GetDocumentIndex(ctx context.Context, userID, d
 	}
 
 	if strings.TrimSpace(query) != "" {
-		index.TreeRetrieval = buildTreeRetrieval(strings.TrimSpace(query), outlineNodes, documentPages)
+		index.TreeRetrieval = buildTreeRetrieval(strings.TrimSpace(query), outlineNodes, documentPages, chunks)
 	}
 	index.IndexEvaluation = buildIndexEvaluation(metadataPairs, outlineNodes)
 	index.Monitoring = buildIndexMonitoring(doc, metadataPairs, index.IndexEvaluation)
@@ -1024,7 +1023,14 @@ func (u *documentCatalogUseCase) GetCollectionContext(ctx context.Context, userI
 	}
 
 	if strings.TrimSpace(query) != "" {
-		collectionContext.CollectionRetrieval = buildCollectionRetrieval(strings.TrimSpace(query), collectionContext.Documents, collectionContext.DocumentPages, collectionContext.OutlineNodes)
+		collectionContext.CollectionRetrieval = buildCollectionRetrieval(
+			strings.TrimSpace(query),
+			collectionContext.Documents,
+			collectionContext.DocumentPages,
+			collectionContext.OutlineNodes,
+			collectionContext.Chunks,
+			collectionContext.TableSections,
+		)
 	}
 
 	return collectionContext, nil
@@ -1082,13 +1088,15 @@ func (u *documentCatalogUseCase) StoreMetadataPairs(ctx context.Context, userID,
 	return pairs, nil
 }
 
-func buildTreeRetrieval(query string, nodes []models.DocumentOutlineNode, pages []models.DocumentPage) *domain.TreeRetrievalResult {
+func buildTreeRetrieval(query string, nodes []models.DocumentOutlineNode, pages []models.DocumentPage, chunks []models.DocumentChunk) *domain.TreeRetrievalResult {
 	queryTerms := tokenizeRetrievalText(query)
 	if len(queryTerms) == 0 {
 		return nil
 	}
 
-	nodeHits, traversalSteps := traverseTree(queryTerms, nodes)
+	directEvidence := buildTreeDirectEvidence(chunks, queryTerms)
+	baseNodeHits, _ := traverseTree(queryTerms, nodes, nil)
+	nodeHits, traversalSteps := traverseTree(queryTerms, nodes, directEvidence.NodeScoreByID)
 	pageScoreByNumber := make(map[int]int, len(pages))
 	for _, step := range traversalSteps {
 		if step.StartPage == nil || step.EndPage == nil {
@@ -1099,9 +1107,15 @@ func buildTreeRetrieval(query string, nodes []models.DocumentOutlineNode, pages 
 		}
 	}
 
+	bestDirectPageScore := 0
 	pageHits := make([]domain.TreePageHit, 0, len(pages))
 	for _, page := range pages {
-		score := pageScoreByNumber[page.PageNumber] + retrievalScore(strings.Join([]string{page.Summary, page.Content}, " "), queryTerms)
+		directScore := scoreTreePage(page, queryTerms) + directEvidence.PageScoreByNumber[page.PageNumber]
+		if directScore > bestDirectPageScore {
+			bestDirectPageScore = directScore
+		}
+
+		score := pageScoreByNumber[page.PageNumber] + directScore
 		if score == 0 {
 			continue
 		}
@@ -1124,79 +1138,108 @@ func buildTreeRetrieval(query string, nodes []models.DocumentOutlineNode, pages 
 		pageHits = pageHits[:5]
 	}
 
+	strategy := "tree-iterative"
+	if shouldPreferDirectTreeEvidence(baseNodeHits, nodeHits, nodes, directEvidence, bestDirectPageScore) {
+		strategy = "tree-degraded-direct-evidence"
+	} else if len(nodeHits) == 0 && bestDirectPageScore > 0 {
+		strategy = "tree-direct-evidence"
+	}
+
 	return &domain.TreeRetrievalResult{
 		Query:          query,
 		NodeHits:       nodeHits,
 		PageHits:       pageHits,
 		TraversalSteps: traversalSteps,
 		UsedTree:       true,
-		Strategy:       "tree-iterative",
+		Strategy:       strategy,
 	}
 }
 
-func traverseTree(queryTerms []string, nodes []models.DocumentOutlineNode) ([]domain.TreeNodeHit, []domain.TreeTraversalStep) {
-	nodeByID := make(map[string]models.DocumentOutlineNode, len(nodes))
-	childrenByParent := make(map[string][]models.DocumentOutlineNode, len(nodes))
-	roots := make([]models.DocumentOutlineNode, 0)
+type treeDirectEvidence struct {
+	NodeScoreByID     map[string]int
+	PageScoreByNumber map[int]int
+	MaxNodeScore      int
+	MaxPageScore      int
+}
 
-	for _, node := range nodes {
-		nodeByID[node.NodeID] = node
-		parentNodeID, _ := node.Metadata["parent_node_id"].(string)
-		if strings.TrimSpace(parentNodeID) == "" {
-			roots = append(roots, node)
-			continue
-		}
-		childrenByParent[parentNodeID] = append(childrenByParent[parentNodeID], node)
+func buildTreeDirectEvidence(chunks []models.DocumentChunk, queryTerms []string) treeDirectEvidence {
+	evidence := treeDirectEvidence{
+		NodeScoreByID:     make(map[string]int),
+		PageScoreByNumber: make(map[int]int),
 	}
 
-	current := rankNodesForTraversal(roots, queryTerms)
-	if len(current) == 0 {
+	for _, chunk := range chunks {
+		score := scoreTreeChunk(chunk, queryTerms)
+		if score == 0 {
+			continue
+		}
+
+		if score > evidence.MaxPageScore {
+			evidence.MaxPageScore = score
+		}
+
+		if nodeID := metadataStringValue(chunk.Metadata, "outline_node_id"); nodeID != "" {
+			evidence.NodeScoreByID[nodeID] += score
+			if evidence.NodeScoreByID[nodeID] > evidence.MaxNodeScore {
+				evidence.MaxNodeScore = evidence.NodeScoreByID[nodeID]
+			}
+		}
+
+		startPage, endPage, ok := chunkPageRange(chunk)
+		if !ok {
+			continue
+		}
+		for pageNumber := startPage; pageNumber <= endPage; pageNumber++ {
+			evidence.PageScoreByNumber[pageNumber] += score
+			if evidence.PageScoreByNumber[pageNumber] > evidence.MaxPageScore {
+				evidence.MaxPageScore = evidence.PageScoreByNumber[pageNumber]
+			}
+		}
+	}
+
+	return evidence
+}
+
+func traverseTree(queryTerms []string, nodes []models.DocumentOutlineNode, directNodeScores map[string]int) ([]domain.TreeNodeHit, []domain.TreeTraversalStep) {
+	nodeByID := make(map[string]models.DocumentOutlineNode, len(nodes))
+	parentByNodeID := make(map[string]string, len(nodes))
+	allHits := rankNodesForTraversal(nodes, queryTerms, directNodeScores)
+	if len(allHits) == 0 {
 		return nil, nil
 	}
 
-	hits := make([]domain.TreeNodeHit, 0, 5)
-	steps := make([]domain.TreeTraversalStep, 0, 5)
-	seen := make(map[string]struct{}, len(nodes))
-
-	for len(current) > 0 {
-		best := current[0]
-		if _, ok := seen[best.NodeID]; !ok {
-			seen[best.NodeID] = struct{}{}
-			hits = append(hits, domain.TreeNodeHit{
-				NodeID:        best.NodeID,
-				Title:         best.Title,
-				Summary:       best.Summary,
-				Level:         best.Level,
-				StartPage:     best.StartPage,
-				EndPage:       best.EndPage,
-				Score:         best.Score,
-				SequenceOrder: best.SequenceOrder,
-			})
-			steps = append(steps, domain.TreeTraversalStep{
-				NodeID:    best.NodeID,
-				Title:     best.Title,
-				Level:     best.Level,
-				Score:     best.Score,
-				StartPage: best.StartPage,
-				EndPage:   best.EndPage,
-			})
-		}
-
-		children := childrenByParent[best.NodeID]
-		current = rankNodesForTraversal(children, queryTerms)
-		if len(hits) >= 5 {
-			break
+	scoreByNodeID := make(map[string]domain.TreeNodeHit, len(allHits))
+	for _, node := range nodes {
+		nodeByID[node.NodeID] = node
+		if parentNodeID, ok := node.Metadata["parent_node_id"].(string); ok && strings.TrimSpace(parentNodeID) != "" {
+			parentByNodeID[node.NodeID] = parentNodeID
 		}
 	}
+	for _, hit := range allHits {
+		scoreByNodeID[hit.NodeID] = hit
+	}
 
-	return hits, steps
+	steps := buildTraversalSteps(allHits[0], nodeByID, parentByNodeID, scoreByNodeID)
+	if len(allHits) > 5 {
+		allHits = allHits[:5]
+	}
+
+	return allHits, steps
 }
 
-func rankNodesForTraversal(nodes []models.DocumentOutlineNode, queryTerms []string) []domain.TreeNodeHit {
+func rankNodesForTraversal(nodes []models.DocumentOutlineNode, queryTerms []string, directNodeScores map[string]int) []domain.TreeNodeHit {
 	hits := make([]domain.TreeNodeHit, 0, len(nodes))
 	for _, node := range nodes {
-		score := retrievalScore(strings.Join([]string{node.Title, node.Summary}, " "), queryTerms)
+		score := retrievalScore(outlineNodeSearchText(node), queryTerms)
 		score += metadataIntValue(node.Metadata, "confidence_score") / 25
+		directScore := directNodeScores[node.NodeID]
+		if directScore > 0 {
+			score += directScore
+			score += 2
+		}
+		if isWeakTreeNode(node, queryTerms, score) && directScore == 0 {
+			score = max(0, score-2)
+		}
 		if score == 0 {
 			continue
 		}
@@ -1214,15 +1257,126 @@ func rankNodesForTraversal(nodes []models.DocumentOutlineNode, queryTerms []stri
 
 	sort.Slice(hits, func(i, j int) bool {
 		if hits[i].Score == hits[j].Score {
-			return hits[i].SequenceOrder < hits[j].SequenceOrder
+			if hits[i].Level == hits[j].Level {
+				return hits[i].SequenceOrder < hits[j].SequenceOrder
+			}
+			return hits[i].Level > hits[j].Level
 		}
 		return hits[i].Score > hits[j].Score
 	})
 
-	if len(hits) > 3 {
-		hits = hits[:3]
-	}
 	return hits
+}
+
+func shouldPreferDirectTreeEvidence(
+	baseNodeHits []domain.TreeNodeHit,
+	nodeHits []domain.TreeNodeHit,
+	nodes []models.DocumentOutlineNode,
+	directEvidence treeDirectEvidence,
+	bestDirectPageScore int,
+) bool {
+	if len(nodeHits) == 0 {
+		return false
+	}
+
+	nodeByID := make(map[string]models.DocumentOutlineNode, len(nodes))
+	for _, node := range nodes {
+		nodeByID[node.NodeID] = node
+	}
+
+	if len(baseNodeHits) == 0 {
+		return directEvidence.MaxNodeScore > 0 || bestDirectPageScore > 0
+	}
+
+	baseTop := baseNodeHits[0]
+	baseTopNode := nodeByID[baseTop.NodeID]
+	if !isWeakTreeNode(baseTopNode, nil, baseTop.Score) {
+		return false
+	}
+
+	if directEvidence.MaxNodeScore == 0 && bestDirectPageScore == 0 {
+		return false
+	}
+
+	if nodeHits[0].NodeID != baseTop.NodeID {
+		return true
+	}
+
+	return bestDirectPageScore >= baseTop.Score || directEvidence.MaxNodeScore >= baseTop.Score
+}
+
+func isWeakTreeNode(node models.DocumentOutlineNode, queryTerms []string, score int) bool {
+	if fallbackStructure, ok := node.Metadata["fallback_structure"].(bool); ok && fallbackStructure {
+		return true
+	}
+	if metadataStringValue(node.Metadata, "segment_type") == "page" {
+		return true
+	}
+	if confidenceBand := metadataStringValue(node.Metadata, "confidence_band"); confidenceBand == "low" {
+		return true
+	}
+	confidenceScore := metadataIntValue(node.Metadata, "confidence_score")
+	if confidenceScore > 0 && confidenceScore < 60 {
+		return true
+	}
+
+	minScore := 2
+	if queryTermCount := len(queryTerms); queryTermCount >= 4 {
+		minScore = 3
+	} else if queryTermCount == 0 {
+		minScore = 1
+	}
+
+	return score < minScore
+}
+
+func buildTraversalSteps(
+	best domain.TreeNodeHit,
+	nodeByID map[string]models.DocumentOutlineNode,
+	parentByNodeID map[string]string,
+	scoreByNodeID map[string]domain.TreeNodeHit,
+) []domain.TreeTraversalStep {
+	if strings.TrimSpace(best.NodeID) == "" {
+		return nil
+	}
+
+	path := make([]string, 0, 4)
+	seen := make(map[string]struct{}, len(parentByNodeID)+1)
+	currentNodeID := best.NodeID
+	for strings.TrimSpace(currentNodeID) != "" {
+		if _, ok := seen[currentNodeID]; ok {
+			break
+		}
+		seen[currentNodeID] = struct{}{}
+		path = append(path, currentNodeID)
+		currentNodeID = strings.TrimSpace(parentByNodeID[currentNodeID])
+	}
+
+	steps := make([]domain.TreeTraversalStep, 0, len(path))
+	for idx := len(path) - 1; idx >= 0; idx-- {
+		nodeID := path[idx]
+		hit, ok := scoreByNodeID[nodeID]
+		if !ok {
+			node := nodeByID[nodeID]
+			hit = domain.TreeNodeHit{
+				NodeID:    node.NodeID,
+				Title:     node.Title,
+				Level:     node.Level,
+				StartPage: node.StartPage,
+				EndPage:   node.EndPage,
+			}
+		}
+		steps = append(steps, domain.TreeTraversalStep{
+			NodeID:    hit.NodeID,
+			Title:     hit.Title,
+			Level:     hit.Level,
+			Score:     hit.Score,
+			StartPage: hit.StartPage,
+			EndPage:   hit.EndPage,
+		})
+	}
+
+	return steps
 }
 
 func buildIndexEvaluation(metadataPairs []models.MetadataPair, nodes []models.DocumentOutlineNode) *domain.IndexEvaluationResult {
@@ -1232,14 +1386,17 @@ func buildIndexEvaluation(metadataPairs []models.MetadataPair, nodes []models.Do
 
 	pairMap := make(map[string]string, len(metadataPairs))
 	for _, pair := range metadataPairs {
-		if _, exists := pairMap[pair.Key]; !exists {
-			pairMap[pair.Key] = pair.Value
-		}
+		pairMap[pair.Key] = pair.Value
 	}
 
 	coverageRatio := parseFloatMetric(pairMap["tree_coverage_ratio"])
 	if coverageRatio == 0 {
 		coverageRatio = estimateCoverageRatioFromNodes(nodes)
+	}
+
+	summaryCoverageRatio := parseFloatMetric(pairMap["tree_summary_coverage_ratio"])
+	if summaryCoverageRatio == 0 {
+		summaryCoverageRatio = estimateSummaryCoverageFromNodes(nodes)
 	}
 
 	maxDepth := parseIntMetric(pairMap["tree_max_depth"], 0)
@@ -1248,15 +1405,34 @@ func buildIndexEvaluation(metadataPairs []models.MetadataPair, nodes []models.Do
 	}
 
 	evaluation := &domain.IndexEvaluationResult{
-		CoverageRatio:      coverageRatio,
-		TotalNodes:         parseIntMetric(pairMap["tree_total_nodes"], len(nodes)),
-		LowConfidenceNodes: parseIntMetric(pairMap["tree_low_confidence_nodes"], 0),
-		OversizedNodes:     parseIntMetric(pairMap["tree_oversized_nodes"], 0),
-		MaxDepth:           maxDepth,
+		CoverageRatio:        coverageRatio,
+		SummaryCoverageRatio: summaryCoverageRatio,
+		TotalNodes:           parseIntMetric(pairMap["tree_total_nodes"], len(nodes)),
+		LowConfidenceNodes:   parseIntMetric(pairMap["tree_low_confidence_nodes"], 0),
+		OversizedNodes:       parseIntMetric(pairMap["tree_oversized_nodes"], 0),
+		MaxDepth:             maxDepth,
 	}
 	evaluation.RetrievalReady = evaluation.CoverageRatio >= 0.6 && evaluation.TotalNodes > 0
 	return evaluation
 }
+
+const (
+	indexMonitoringTreeStateUnknown  = "unknown"
+	indexMonitoringTreeStateHealthy  = "healthy"
+	indexMonitoringTreeStateFallback = "fallback"
+	indexMonitoringTreeStateDegraded = "degraded"
+
+	indexMonitoringConcernFallbackBuilder   = "fallback_builder"
+	indexMonitoringConcernVerification      = "verification_failed"
+	indexMonitoringConcernLowCoverage       = "low_coverage"
+	indexMonitoringConcernLowSummaries      = "low_summary_coverage"
+	indexMonitoringConcernLowConfidence     = "low_confidence_nodes"
+	indexMonitoringConcernShallowTree       = "shallow_tree"
+	indexMonitoringConcernOversizedNodes    = "oversized_nodes"
+	indexMonitoringConcernRetrievalNotReady = "retrieval_not_ready"
+
+	monitoringFallbackTreeBuilder = "fallback-page-segments"
+)
 
 func buildIndexMonitoring(
 	doc *models.Document,
@@ -1269,9 +1445,7 @@ func buildIndexMonitoring(
 
 	pairMap := make(map[string]string, len(metadataPairs))
 	for _, pair := range metadataPairs {
-		if _, exists := pairMap[pair.Key]; !exists {
-			pairMap[pair.Key] = pair.Value
-		}
+		pairMap[pair.Key] = pair.Value
 	}
 
 	monitoring := &domain.IndexMonitoringResult{
@@ -1324,7 +1498,16 @@ func buildIndexMonitoring(
 		monitoring.LLM = llmMonitoring
 	}
 
-	monitoring.EstimatedQualityScore = estimateIndexQualityScore(evaluation)
+	monitoring.TreeState, monitoring.TreeStateDetail, monitoring.TreeConcernCodes = classifyIndexMonitoringTree(
+		monitoring.TreeBuilder,
+		monitoring.TreeVerificationPassed,
+		evaluation,
+	)
+	monitoring.EstimatedQualityScore = adjustIndexMonitoringQualityScore(
+		estimateIndexQualityScore(evaluation),
+		monitoring.TreeState,
+		monitoring.TreeConcernCodes,
+	)
 	if monitoring.Status == "" &&
 		monitoring.Stage == "" &&
 		monitoring.EnrichmentStatus == "" &&
@@ -1337,17 +1520,253 @@ func buildIndexMonitoring(
 	return monitoring
 }
 
+func classifyIndexMonitoringTree(
+	treeBuilder string,
+	treeVerificationPassed bool,
+	evaluation *domain.IndexEvaluationResult,
+) (string, string, []string) {
+	treeBuilder = strings.TrimSpace(treeBuilder)
+	if treeBuilder == "" && evaluation == nil {
+		return indexMonitoringTreeStateUnknown, "No structural telemetry is available yet.", nil
+	}
+
+	concerns := buildIndexMonitoringTreeConcernCodes(treeBuilder, treeVerificationPassed, evaluation)
+	switch {
+	case isFallbackMonitoringTreeBuilder(treeBuilder):
+		return indexMonitoringTreeStateFallback, buildIndexMonitoringTreeDetail(indexMonitoringTreeStateFallback, treeBuilder, evaluation, concerns), concerns
+	case len(concerns) == 0:
+		return indexMonitoringTreeStateHealthy, buildIndexMonitoringTreeDetail(indexMonitoringTreeStateHealthy, treeBuilder, evaluation, concerns), nil
+	default:
+		return indexMonitoringTreeStateDegraded, buildIndexMonitoringTreeDetail(indexMonitoringTreeStateDegraded, treeBuilder, evaluation, concerns), concerns
+	}
+}
+
+func buildIndexMonitoringTreeConcernCodes(
+	treeBuilder string,
+	treeVerificationPassed bool,
+	evaluation *domain.IndexEvaluationResult,
+) []string {
+	concerns := make([]string, 0, 6)
+	if isFallbackMonitoringTreeBuilder(treeBuilder) {
+		concerns = append(concerns, indexMonitoringConcernFallbackBuilder)
+	}
+	if treeBuilder != "" && !treeVerificationPassed {
+		concerns = append(concerns, indexMonitoringConcernVerification)
+	}
+	if evaluation == nil {
+		return concerns
+	}
+	if !evaluation.RetrievalReady {
+		concerns = append(concerns, indexMonitoringConcernRetrievalNotReady)
+	}
+	if evaluation.CoverageRatio < 0.75 {
+		concerns = append(concerns, indexMonitoringConcernLowCoverage)
+	}
+	if evaluation.SummaryCoverageRatio < 0.5 {
+		concerns = append(concerns, indexMonitoringConcernLowSummaries)
+	}
+	if evaluation.TotalNodes <= 1 || evaluation.MaxDepth <= 1 {
+		concerns = append(concerns, indexMonitoringConcernShallowTree)
+	}
+	if evaluation.OversizedNodes > 0 {
+		concerns = append(concerns, indexMonitoringConcernOversizedNodes)
+	}
+
+	lowConfidenceThreshold := max(2, evaluation.TotalNodes/3)
+	if evaluation.LowConfidenceNodes >= lowConfidenceThreshold && evaluation.LowConfidenceNodes > 0 {
+		concerns = append(concerns, indexMonitoringConcernLowConfidence)
+	}
+
+	return concerns
+}
+
+func buildIndexMonitoringTreeDetail(
+	treeState string,
+	treeBuilder string,
+	evaluation *domain.IndexEvaluationResult,
+	concerns []string,
+) string {
+	metrics := describeIndexMonitoringTreeMetrics(evaluation)
+	switch treeState {
+	case indexMonitoringTreeStateHealthy:
+		if treeBuilder != "" && metrics != "" {
+			return fmt.Sprintf("Verified tree from builder %s with %s.", treeBuilder, metrics)
+		}
+		if metrics != "" {
+			return fmt.Sprintf("Verified tree with %s.", metrics)
+		}
+		return "Verified tree is available."
+	case indexMonitoringTreeStateFallback:
+		if metrics != "" {
+			return fmt.Sprintf("Fallback builder %s is active, so hierarchy was replaced by page segments; %s.", treeBuilder, metrics)
+		}
+		return fmt.Sprintf("Fallback builder %s is active, so hierarchy was replaced by page segments.", treeBuilder)
+	case indexMonitoringTreeStateDegraded:
+		fragments := describeIndexMonitoringTreeConcerns(concerns, treeBuilder, evaluation)
+		switch {
+		case len(fragments) > 0 && metrics != "":
+			return fmt.Sprintf("Tree is degraded because %s; %s.", strings.Join(fragments, "; "), metrics)
+		case len(fragments) > 0:
+			return fmt.Sprintf("Tree is degraded because %s.", strings.Join(fragments, "; "))
+		case metrics != "":
+			return fmt.Sprintf("Tree is degraded; %s.", metrics)
+		default:
+			return "Tree is degraded."
+		}
+	default:
+		if metrics != "" {
+			return fmt.Sprintf("Structural telemetry is partial; %s.", metrics)
+		}
+		return "No structural telemetry is available yet."
+	}
+}
+
+func describeIndexMonitoringTreeMetrics(evaluation *domain.IndexEvaluationResult) string {
+	if evaluation == nil {
+		return ""
+	}
+
+	parts := []string{
+		fmt.Sprintf("coverage %.0f%%", evaluation.CoverageRatio*100),
+		fmt.Sprintf("summary coverage %.0f%%", evaluation.SummaryCoverageRatio*100),
+		fmt.Sprintf("%d nodes", evaluation.TotalNodes),
+	}
+	if evaluation.MaxDepth > 0 {
+		parts = append(parts, fmt.Sprintf("depth %d", evaluation.MaxDepth))
+	}
+	return strings.Join(parts, ", ")
+}
+
+func describeIndexMonitoringTreeConcerns(
+	concerns []string,
+	treeBuilder string,
+	evaluation *domain.IndexEvaluationResult,
+) []string {
+	if len(concerns) == 0 {
+		return nil
+	}
+
+	fragments := make([]string, 0, len(concerns))
+	for _, concern := range concerns {
+		switch concern {
+		case indexMonitoringConcernFallbackBuilder:
+			if treeBuilder != "" {
+				fragments = append(fragments, fmt.Sprintf("builder=%s", treeBuilder))
+			}
+		case indexMonitoringConcernVerification:
+			fragments = append(fragments, "verification=false")
+		case indexMonitoringConcernRetrievalNotReady:
+			fragments = append(fragments, "retrieval_ready=false")
+		case indexMonitoringConcernLowCoverage:
+			if evaluation != nil {
+				fragments = append(fragments, fmt.Sprintf("coverage=%.0f%%", evaluation.CoverageRatio*100))
+			}
+		case indexMonitoringConcernLowSummaries:
+			if evaluation != nil {
+				fragments = append(fragments, fmt.Sprintf("summary_coverage=%.0f%%", evaluation.SummaryCoverageRatio*100))
+			}
+		case indexMonitoringConcernLowConfidence:
+			if evaluation != nil {
+				fragments = append(fragments, fmt.Sprintf("low_confidence_nodes=%d/%d", evaluation.LowConfidenceNodes, evaluation.TotalNodes))
+			}
+		case indexMonitoringConcernShallowTree:
+			if evaluation != nil {
+				fragments = append(fragments, fmt.Sprintf("nodes=%d depth=%d", evaluation.TotalNodes, evaluation.MaxDepth))
+			}
+		case indexMonitoringConcernOversizedNodes:
+			if evaluation != nil {
+				fragments = append(fragments, fmt.Sprintf("oversized_nodes=%d", evaluation.OversizedNodes))
+			}
+		}
+	}
+
+	return fragments
+}
+
+func adjustIndexMonitoringQualityScore(score float64, treeState string, concerns []string) float64 {
+	if score <= 0 {
+		return 0
+	}
+
+	switch treeState {
+	case indexMonitoringTreeStateFallback:
+		score -= 12
+		if score > 55 {
+			score = 55
+		}
+	case indexMonitoringTreeStateDegraded:
+		if containsIndexMonitoringConcern(concerns, indexMonitoringConcernVerification) {
+			score -= 8
+		}
+		if containsIndexMonitoringConcern(concerns, indexMonitoringConcernRetrievalNotReady) {
+			score -= 6
+		}
+		if containsIndexMonitoringConcern(concerns, indexMonitoringConcernLowCoverage) {
+			score -= 6
+		}
+		if containsIndexMonitoringConcern(concerns, indexMonitoringConcernLowSummaries) {
+			score -= 6
+		}
+		if containsIndexMonitoringConcern(concerns, indexMonitoringConcernLowConfidence) {
+			score -= 4
+		}
+		if containsIndexMonitoringConcern(concerns, indexMonitoringConcernShallowTree) {
+			score -= 4
+		}
+		if containsIndexMonitoringConcern(concerns, indexMonitoringConcernOversizedNodes) {
+			score -= 4
+		}
+		if score > 72 {
+			score = 72
+		}
+	case indexMonitoringTreeStateUnknown:
+		if score > 65 {
+			score = 65
+		}
+	}
+
+	if score < 0 {
+		return 0
+	}
+	if score > 100 {
+		return 100
+	}
+	return score
+}
+
+func containsIndexMonitoringConcern(concerns []string, target string) bool {
+	for _, concern := range concerns {
+		if concern == target {
+			return true
+		}
+	}
+	return false
+}
+
+func isFallbackMonitoringTreeBuilder(treeBuilder string) bool {
+	return strings.EqualFold(strings.TrimSpace(treeBuilder), monitoringFallbackTreeBuilder)
+}
+
 func estimateIndexQualityScore(evaluation *domain.IndexEvaluationResult) float64 {
 	if evaluation == nil {
 		return 0
 	}
 
-	score := evaluation.CoverageRatio * 70
+	score := evaluation.CoverageRatio * 35
+	score += min(1, float64(evaluation.TotalNodes)/6) * 15
+	score += evaluation.SummaryCoverageRatio * 20
+	score += estimateDepthQualityBonus(evaluation.MaxDepth)
 	if evaluation.RetrievalReady {
-		score += 15
+		score += 8
 	}
-	score += float64(max(0, 5-evaluation.LowConfidenceNodes)) * 2
-	score += float64(max(0, 3-evaluation.OversizedNodes))
+	score -= float64(evaluation.LowConfidenceNodes) * 4
+	score -= float64(evaluation.OversizedNodes) * 6
+	if evaluation.TotalNodes <= 1 {
+		score -= 10
+	}
+	if evaluation.SummaryCoverageRatio < 0.4 {
+		score -= 8
+	}
 
 	if score > 100 {
 		return 100
@@ -1363,22 +1782,26 @@ func buildCollectionRetrieval(
 	documents []models.Document,
 	pages []models.DocumentPage,
 	nodes []models.DocumentOutlineNode,
+	chunks []models.DocumentChunk,
+	tables []models.TableSection,
 ) *domain.CollectionRetrievalResult {
 	queryTerms := tokenizeRetrievalText(query)
 	if len(queryTerms) == 0 {
 		return nil
 	}
 
+	documentScores := make(map[uint]int, len(documents))
 	documentTitles := make(map[uint]string, len(documents))
 	for _, doc := range documents {
 		documentTitles[doc.ID] = doc.Title
+		if score := retrievalScore(doc.Title, queryTerms); score > 0 {
+			documentScores[doc.ID] += score
+		}
 	}
 
-	documentScores := make(map[uint]int, len(documents))
 	nodeHits := make([]domain.CollectionNodeHit, 0)
 	for _, node := range nodes {
-		score := retrievalScore(strings.Join([]string{node.Title, node.Summary}, " "), queryTerms)
-		score += metadataIntValue(node.Metadata, "confidence_score") / 25
+		score := scoreCollectionNode(node, queryTerms)
 		if score == 0 {
 			continue
 		}
@@ -1408,27 +1831,9 @@ func buildCollectionRetrieval(
 		nodeHits = nodeHits[:8]
 	}
 
-	documentHits := make([]domain.CollectionDocumentHit, 0, len(documentScores))
-	for documentID, score := range documentScores {
-		documentHits = append(documentHits, domain.CollectionDocumentHit{
-			DocumentID: documentID,
-			Title:      documentTitles[documentID],
-			Score:      score,
-		})
-	}
-	sort.Slice(documentHits, func(i, j int) bool {
-		if documentHits[i].Score == documentHits[j].Score {
-			return documentHits[i].DocumentID < documentHits[j].DocumentID
-		}
-		return documentHits[i].Score > documentHits[j].Score
-	})
-	if len(documentHits) > 5 {
-		documentHits = documentHits[:5]
-	}
-
 	pageHits := make([]domain.CollectionPageHit, 0)
 	for _, page := range pages {
-		score := retrievalScore(strings.Join([]string{page.Summary, page.Content}, " "), queryTerms)
+		score := scoreCollectionPage(page, queryTerms)
 		if score == 0 {
 			continue
 		}
@@ -1451,6 +1856,40 @@ func buildCollectionRetrieval(
 	})
 	if len(pageHits) > 8 {
 		pageHits = pageHits[:8]
+	}
+
+	for _, chunk := range chunks {
+		score := scoreCollectionChunk(chunk, queryTerms)
+		if score == 0 {
+			continue
+		}
+		documentScores[chunk.DocumentID] += score
+	}
+
+	for _, table := range tables {
+		score := scoreCollectionTable(table, queryTerms)
+		if score == 0 {
+			continue
+		}
+		documentScores[table.DocumentID] += score
+	}
+
+	documentHits := make([]domain.CollectionDocumentHit, 0, len(documentScores))
+	for documentID, score := range documentScores {
+		documentHits = append(documentHits, domain.CollectionDocumentHit{
+			DocumentID: documentID,
+			Title:      documentTitles[documentID],
+			Score:      score,
+		})
+	}
+	sort.Slice(documentHits, func(i, j int) bool {
+		if documentHits[i].Score == documentHits[j].Score {
+			return documentHits[i].DocumentID < documentHits[j].DocumentID
+		}
+		return documentHits[i].Score > documentHits[j].Score
+	})
+	if len(documentHits) > 5 {
+		documentHits = documentHits[:5]
 	}
 
 	return &domain.CollectionRetrievalResult{
@@ -1574,6 +2013,32 @@ func metadataIntValue(metadata map[string]any, key string) int {
 	}
 }
 
+func metadataStringValue(metadata map[string]any, key string) string {
+	if metadata == nil {
+		return ""
+	}
+
+	value, ok := metadata[key]
+	if !ok {
+		return ""
+	}
+
+	text, ok := value.(string)
+	if !ok {
+		return ""
+	}
+
+	return strings.TrimSpace(text)
+}
+
+func outlineNodeSearchText(node models.DocumentOutlineNode) string {
+	retrievalText := metadataStringValue(node.Metadata, "retrieval_text")
+	if retrievalText == "" {
+		retrievalText = node.Summary
+	}
+	return strings.TrimSpace(strings.Join([]string{node.Title, retrievalText}, " "))
+}
+
 func tokenizeRetrievalText(value string) []string {
 	normalized := strings.ToLower(strings.TrimSpace(value))
 	if normalized == "" {
@@ -1585,16 +2050,87 @@ func tokenizeRetrievalText(value string) []string {
 	seen := make(map[string]struct{}, len(parts))
 	tokens := make([]string, 0, len(parts))
 	for _, part := range parts {
-		if len(part) < 2 {
-			continue
+		for _, expanded := range expandNumericRetrievalTerms(part) {
+			if len(expanded) < 1 {
+				continue
+			}
+			if len(expanded) < 2 && !isNumericToken(expanded) {
+				continue
+			}
+			if _, ok := seen[expanded]; ok {
+				continue
+			}
+			seen[expanded] = struct{}{}
+			tokens = append(tokens, expanded)
 		}
-		if _, ok := seen[part]; ok {
-			continue
-		}
-		seen[part] = struct{}{}
-		tokens = append(tokens, part)
 	}
 	return tokens
+}
+
+func expandNumericRetrievalTerms(term string) []string {
+	term = strings.TrimSpace(term)
+	if term == "" {
+		return nil
+	}
+
+	expansions := []string{term}
+	switch term {
+	case "zero":
+		expansions = append(expansions, "0")
+	case "one":
+		expansions = append(expansions, "1")
+	case "two":
+		expansions = append(expansions, "2")
+	case "three":
+		expansions = append(expansions, "3")
+	case "four":
+		expansions = append(expansions, "4")
+	case "five":
+		expansions = append(expansions, "5")
+	case "six":
+		expansions = append(expansions, "6")
+	case "seven":
+		expansions = append(expansions, "7")
+	case "eight":
+		expansions = append(expansions, "8")
+	case "nine":
+		expansions = append(expansions, "9")
+	case "ten":
+		expansions = append(expansions, "10")
+	case "0":
+		expansions = append(expansions, "zero")
+	case "1":
+		expansions = append(expansions, "one")
+	case "2":
+		expansions = append(expansions, "two")
+	case "3":
+		expansions = append(expansions, "three")
+	case "4":
+		expansions = append(expansions, "four")
+	case "5":
+		expansions = append(expansions, "five")
+	case "6":
+		expansions = append(expansions, "six")
+	case "7":
+		expansions = append(expansions, "seven")
+	case "8":
+		expansions = append(expansions, "eight")
+	case "9":
+		expansions = append(expansions, "nine")
+	case "10":
+		expansions = append(expansions, "ten")
+	}
+
+	return expansions
+}
+
+func isNumericToken(value string) bool {
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return value != ""
 }
 
 func retrievalScore(text string, queryTerms []string) int {
@@ -1610,6 +2146,102 @@ func retrievalScore(text string, queryTerms []string) int {
 		}
 	}
 	return score
+}
+
+func estimateSummaryCoverageFromNodes(nodes []models.DocumentOutlineNode) float64 {
+	if len(nodes) == 0 {
+		return 0
+	}
+
+	summarized := 0
+	for _, node := range nodes {
+		if strings.TrimSpace(node.Summary) != "" {
+			summarized++
+		}
+	}
+
+	return float64(summarized) / float64(len(nodes))
+}
+
+func estimateDepthQualityBonus(maxDepth int) float64 {
+	switch {
+	case maxDepth >= 4:
+		return 10
+	case maxDepth == 3:
+		return 8
+	case maxDepth == 2:
+		return 6
+	case maxDepth == 1:
+		return 3
+	default:
+		return 0
+	}
+}
+
+func scoreCollectionNode(node models.DocumentOutlineNode, queryTerms []string) int {
+	score := retrievalScore(outlineNodeSearchText(node), queryTerms) * 3
+	score += metadataIntValue(node.Metadata, "confidence_score") / 25
+	if score > 0 && node.Level > 1 {
+		score++
+	}
+	return score
+}
+
+func scoreCollectionPage(page models.DocumentPage, queryTerms []string) int {
+	return retrievalScore(strings.Join([]string{page.Summary, page.Content}, " "), queryTerms) * 2
+}
+
+func scoreTreePage(page models.DocumentPage, queryTerms []string) int {
+	return scoreCollectionPage(page, queryTerms)
+}
+
+func scoreCollectionChunk(chunk models.DocumentChunk, queryTerms []string) int {
+	if chunk.ChunkType == "table_section" {
+		return 0
+	}
+	return retrievalScore(strings.Join([]string{chunk.Title, chunk.Content}, " "), queryTerms) * 2
+}
+
+func scoreTreeChunk(chunk models.DocumentChunk, queryTerms []string) int {
+	score := scoreCollectionChunk(chunk, queryTerms)
+	if score == 0 {
+		return 0
+	}
+	if metadataIntValue(chunk.Metadata, "related_table_count") > 0 {
+		score++
+	}
+	return score
+}
+
+func chunkPageRange(chunk models.DocumentChunk) (int, int, bool) {
+	startPage := metadataIntValue(chunk.Metadata, "page_start")
+	endPage := metadataIntValue(chunk.Metadata, "page_end")
+	if startPage <= 0 || endPage < startPage {
+		return 0, 0, false
+	}
+	return startPage, endPage, true
+}
+
+func scoreCollectionTable(table models.TableSection, queryTerms []string) int {
+	content := strings.TrimSpace(strings.Join([]string{
+		table.Title,
+		strings.Join(table.Headers, " "),
+		renderTableRowsForRetrieval(table.Rows, 3),
+	}, " "))
+	return retrievalScore(content, queryTerms) * 5
+}
+
+func renderTableRowsForRetrieval(rows [][]string, limit int) string {
+	if len(rows) == 0 || limit <= 0 {
+		return ""
+	}
+
+	parts := make([]string, 0, min(limit, len(rows)))
+	for idx := 0; idx < len(rows) && idx < limit; idx++ {
+		parts = append(parts, strings.Join(rows[idx], " "))
+	}
+
+	return strings.Join(parts, " ")
 }
 
 func clampRetrievalSnippet(value string, maxLen int) string {

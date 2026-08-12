@@ -10,6 +10,7 @@
   "runServices": [
     "db",
     "minio",
+    "gcs-emulator",
     "rabbitmq",
     "api",
     "indexer",
@@ -22,6 +23,7 @@
     3000,
     6006,
     8000,
+    4443,
     9001,
     15672,
     5434

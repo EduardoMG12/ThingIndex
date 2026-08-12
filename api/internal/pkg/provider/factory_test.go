@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -14,6 +15,24 @@ type factoryRoundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f factoryRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
+}
+
+type factoryNetError struct {
+	message   string
+	timeout   bool
+	temporary bool
+}
+
+func (e factoryNetError) Error() string {
+	return e.message
+}
+
+func (e factoryNetError) Timeout() bool {
+	return e.timeout
+}
+
+func (e factoryNetError) Temporary() bool {
+	return e.temporary
 }
 
 func TestLLMEndpointAndModelUsesOpenRouterDefaults(t *testing.T) {
@@ -158,11 +177,116 @@ func TestListLLMModelsUsesOpenAICompatibleModelsEndpoint(t *testing.T) {
 	}
 }
 
+func TestListLLMModelsRetriesTransientInfraErrors(t *testing.T) {
+	originalFactory := NewLLMHTTPClientForTests(nil)
+	defer NewLLMHTTPClientForTests(originalFactory)
+
+	attempts := 0
+	NewLLMHTTPClientForTests(func() *http.Client {
+		return &http.Client{
+			Transport: factoryRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+				attempts++
+				if attempts == 1 {
+					return nil, factoryNetError{
+						message:   "temporary failure in name resolution",
+						temporary: true,
+					}
+				}
+
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body: io.NopCloser(strings.NewReader(`{
+						"data":[
+							{"id":"gpt-4o-mini"}
+						]
+					}`)),
+					Header: make(http.Header),
+				}, nil
+			}),
+		}
+	})
+
+	models, err := ListLLMModels(context.Background(), domain.ProviderOpenAI, map[string]string{
+		"api_key": "secret",
+	})
+	if err != nil {
+		t.Fatalf("expected transient failure to be retried, got %v", err)
+	}
+	if attempts != 2 {
+		t.Fatalf("expected two attempts, got %d", attempts)
+	}
+	if len(models) != 1 || models[0] != "gpt-4o-mini" {
+		t.Fatalf("unexpected models: %#v", models)
+	}
+}
+
 func TestOpenAIModelsEndpointNormalizesChatCompletionsURL(t *testing.T) {
 	t.Parallel()
 
 	endpoint := openAIModelsEndpoint("https://gateway.example.com/v1/chat/completions")
 	if endpoint != "https://gateway.example.com/v1/models" {
 		t.Fatalf("unexpected endpoint %q", endpoint)
+	}
+}
+
+func TestIsRetriableLLMInfraErrorRecognizesTransientFailures(t *testing.T) {
+	t.Parallel()
+
+	cases := []error{
+		context.DeadlineExceeded,
+		factoryNetError{message: "i/o timeout", timeout: true},
+		errors.New("dial tcp: lookup ollama.com: Temporary failure in name resolution"),
+	}
+
+	for _, err := range cases {
+		if !isRetriableLLMInfraError(err) {
+			t.Fatalf("expected retriable infra error for %v", err)
+		}
+	}
+}
+
+func TestIsRetriableLLMInfraErrorRejectsAuthenticationFailures(t *testing.T) {
+	t.Parallel()
+
+	if isRetriableLLMInfraError(errors.New("unauthorized")) {
+		t.Fatal("expected authentication failure to remain non-retriable")
+	}
+}
+
+func TestResolveGCSConfigAcceptsEmulatorHostWithoutCredentialsJSON(t *testing.T) {
+	t.Parallel()
+
+	projectID, bucketName, location, credentialsJSON, emulatorHost, err := resolveGCSConfig(map[string]string{
+		"project_id":    "thingindex-dev",
+		"bucket_name":   "thingindex-docs",
+		"location":      "us-central1",
+		"emulator_host": "127.0.0.1:4443",
+	})
+	if err != nil {
+		t.Fatalf("expected gcs config to resolve, got %v", err)
+	}
+	if projectID != "thingindex-dev" || bucketName != "thingindex-docs" {
+		t.Fatalf("unexpected gcs config: project=%q bucket=%q", projectID, bucketName)
+	}
+	if location != "us-central1" {
+		t.Fatalf("expected location to be preserved, got %q", location)
+	}
+	if credentialsJSON != "" {
+		t.Fatalf("expected empty credentials json, got %q", credentialsJSON)
+	}
+	if emulatorHost != "127.0.0.1:4443" {
+		t.Fatalf("unexpected emulator host %q", emulatorHost)
+	}
+}
+
+func TestResolveGCSConfigRejectsMissingCredentialsAndEmulatorHost(t *testing.T) {
+	t.Parallel()
+
+	_, _, _, _, _, err := resolveGCSConfig(map[string]string{
+		"project_id":  "thingindex-dev",
+		"bucket_name": "thingindex-docs",
+	})
+	if err == nil {
+		t.Fatal("expected missing gcs credentials to be rejected")
 	}
 }

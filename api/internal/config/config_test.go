@@ -67,6 +67,37 @@ func TestValidateRequiresPairedSMTPCredentials(t *testing.T) {
 	}
 }
 
+func TestValidateAcceptsGCPStorageWithEmulatorHost(t *testing.T) {
+	t.Parallel()
+
+	cfg := validConfig()
+	cfg.Environment = "development"
+	cfg.StorageProvider = "GCP_STORAGE"
+	cfg.GCPStorageProjectID = "thingindex-dev"
+	cfg.GCPStorageBucketName = "thingindex-docs"
+	cfg.GCPStorageEmulatorHost = "127.0.0.1:4443"
+	cfg.GCPStorageCredentialsJSON = ""
+
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("expected gcp storage config with emulator host to be valid, got %v", err)
+	}
+}
+
+func TestValidateRejectsGCPStorageWithoutCredentialsOrEmulator(t *testing.T) {
+	t.Parallel()
+
+	cfg := validConfig()
+	cfg.StorageProvider = "GCP_STORAGE"
+	cfg.GCPStorageProjectID = "thingindex-dev"
+	cfg.GCPStorageBucketName = "thingindex-docs"
+	cfg.GCPStorageCredentialsJSON = ""
+	cfg.GCPStorageEmulatorHost = ""
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("expected gcp storage config without credentials or emulator host to be rejected")
+	}
+}
+
 func validConfig() *Config {
 	return &Config{
 		Environment:                  "production",
@@ -91,6 +122,7 @@ func validConfig() *Config {
 		SMTPPass:                     "",
 		SMTPFrom:                     "no-reply@example.com",
 		ResetPasswordURL:             "https://app.example.com/reset-password",
+		StorageProvider:              "MINIO",
 		MinioEndpoint:                "storage.example.com:9000",
 		MinioAccessKey:               "access-key",
 		MinioSecretKey:               "secret-key",

@@ -23,6 +23,8 @@ type documentUseCaseAuditCaptureStub struct {
 	lastAuditFilter                  domain.DocumentAuditFilter
 	documentContent                  *domain.DocumentContent
 	documentContentErr               error
+	documentIndex                    *domain.DocumentIndex
+	documentIndexErr                 error
 	uploadErr                        error
 	uploadCalled                     bool
 	retryCalled                      bool
@@ -125,7 +127,10 @@ func (s *documentUseCaseAuditCaptureStub) GetDocumentContent(context.Context, ui
 }
 
 func (s *documentUseCaseAuditCaptureStub) GetDocumentIndex(context.Context, uint, uint, string) (*domain.DocumentIndex, error) {
-	return nil, nil
+	if s.documentIndexErr != nil {
+		return nil, s.documentIndexErr
+	}
+	return s.documentIndex, nil
 }
 
 func (s *documentUseCaseAuditCaptureStub) GetDocumentMonitoringSummary(context.Context, uint) (*domain.DocumentMonitoringSummary, error) {

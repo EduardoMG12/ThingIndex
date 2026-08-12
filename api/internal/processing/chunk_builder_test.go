@@ -1,6 +1,7 @@
 package processing
 
 import (
+	"strings"
 	"testing"
 
 	"thing-index/internal/domain"
@@ -188,5 +189,150 @@ func TestBuildDocumentChunksRespectsSectionBoundaries(t *testing.T) {
 	}
 	if chunks[1].Metadata["section_key"] != "payment-terms" {
 		t.Fatalf("unexpected second chunk section key: %#v", chunks[1].Metadata["section_key"])
+	}
+}
+
+func TestBuildDocumentChunksUsesMostSpecificOutlineNodeForChunkTitle(t *testing.T) {
+	t.Parallel()
+
+	pageOne := 1
+	result := domain.IndexingResult{
+		ParagraphNodes: []models.ParagraphNode{
+			{
+				DocumentID:    3,
+				SequenceOrder: 0,
+				PageNumber:    &pageOne,
+				Content:       "General overview.",
+				Metadata: map[string]any{
+					"section_key":   "overview",
+					"section_title": "Overview",
+				},
+			},
+			{
+				DocumentID:    3,
+				SequenceOrder: 1,
+				PageNumber:    &pageOne,
+				Content:       "Invoices must be paid within 15 days.",
+				Metadata: map[string]any{
+					"section_key": "payment-terms",
+				},
+			},
+		},
+		OutlineNodes: []models.DocumentOutlineNode{
+			{
+				DocumentID:    3,
+				SequenceOrder: 0,
+				NodeID:        "root",
+				Level:         1,
+				Title:         "MASTER SERVICE AGREEMENT",
+				NodePath:      "root",
+				Metadata: map[string]any{
+					"paragraph_start": 0,
+					"paragraph_end":   1,
+				},
+			},
+			{
+				DocumentID:    3,
+				SequenceOrder: 1,
+				NodeID:        "payment",
+				Level:         2,
+				Title:         "2 Payment Terms",
+				NodePath:      "root/payment",
+				Metadata: map[string]any{
+					"paragraph_start": 1,
+					"paragraph_end":   1,
+					"parent_node_id":  "root",
+					"section_key":     "payment-terms",
+				},
+			},
+		},
+	}
+
+	chunks := buildDocumentChunks(3, result)
+	if len(chunks) == 0 {
+		t.Fatal("expected chunks")
+	}
+
+	found := false
+	for _, chunk := range chunks {
+		if chunk.SourceParagraphStart == nil || *chunk.SourceParagraphStart != 1 {
+			continue
+		}
+		found = true
+		if chunk.Title != "2 Payment Terms" {
+			t.Fatalf("expected specific outline title, got %q", chunk.Title)
+		}
+		if chunk.Metadata["outline_node_id"] != "payment" {
+			t.Fatalf("expected outline node metadata, got %#v", chunk.Metadata)
+		}
+	}
+	if !found {
+		t.Fatalf("expected chunk anchored to paragraph 1, got %#v", chunks)
+	}
+}
+
+func TestBuildDocumentChunksAddsRelatedTableContextToParagraphChunk(t *testing.T) {
+	t.Parallel()
+
+	pageOne := 1
+	result := domain.IndexingResult{
+		ParagraphNodes: []models.ParagraphNode{
+			{
+				DocumentID:    4,
+				SequenceOrder: 0,
+				PageNumber:    &pageOne,
+				Content:       "Customer invoices are retained according to the schedule below.",
+				Metadata: map[string]any{
+					"section_key":   "retention-schedule",
+					"section_title": "Retention Schedule",
+				},
+			},
+		},
+		TableSections: []models.TableSection{
+			{
+				DocumentID:    4,
+				SequenceOrder: 0,
+				Title:         "Retention Schedule",
+				Headers:       []string{"Artifact", "Retention"},
+				Rows: [][]string{
+					{"Security incidents", "7 years"},
+				},
+				Metadata: map[string]any{
+					"section_key": "retention-schedule",
+				},
+			},
+		},
+		OutlineNodes: []models.DocumentOutlineNode{
+			{
+				DocumentID:    4,
+				SequenceOrder: 0,
+				NodeID:        "retention",
+				Level:         1,
+				Title:         "Retention Schedule",
+				NodePath:      "retention",
+				Metadata: map[string]any{
+					"paragraph_start": 0,
+					"paragraph_end":   0,
+					"section_key":     "retention-schedule",
+				},
+			},
+		},
+	}
+
+	chunks := buildDocumentChunks(4, result)
+	if len(chunks) != 2 {
+		t.Fatalf("expected paragraph and table chunks, got %d", len(chunks))
+	}
+	if !strings.Contains(chunks[0].Content, "Security incidents") {
+		t.Fatalf("expected paragraph chunk to include related table context, got %q", chunks[0].Content)
+	}
+	if chunks[0].Metadata["related_table_count"] != 1 {
+		t.Fatalf("expected related_table_count=1, got %#v", chunks[0].Metadata["related_table_count"])
+	}
+	if got := chunks[0].Metadata["related_table_titles"]; got == nil {
+		t.Fatalf("expected related table titles metadata, got %#v", chunks[0].Metadata)
+	}
+	if chunks[1].Metadata["section_key"] != "retention-schedule" {
+		t.Fatalf("expected table chunk to keep section_key, got %#v", chunks[1].Metadata)
 	}
 }

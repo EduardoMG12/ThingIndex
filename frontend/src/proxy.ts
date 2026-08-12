@@ -8,7 +8,7 @@ import {
     stripLocaleFromPathname,
 } from "@/lib/i18n/config";
 
-const PROTECTED_PATHS = ["/dashboard", "/documents", "/settings"];
+const PROTECTED_PATHS = ["/dashboard", "/documents", "/cost-visibility", "/settings"];
 const AUTH_PATHS = ["/login", "/register"];
 
 function isStaticAsset(pathname: string) {

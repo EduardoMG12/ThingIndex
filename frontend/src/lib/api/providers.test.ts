@@ -136,8 +136,10 @@ describe("providers api", () => {
                                 support_level: "READY",
                                 transport: "NATIVE_OPENAI",
                                 summary: "Ready for the main runtime.",
-                                suggested_base_url: "https://api.openai.com/v1",
-                                suggested_model: "gpt-4o-mini",
+                                suggested_setup: {
+                                    base_url: "https://api.openai.com/v1",
+                                    model: "gpt-4o-mini",
+                                },
                                 capabilities: {
                                     supports_credential_validation: true,
                                     supports_connection_test: true,
@@ -170,8 +172,10 @@ describe("providers api", () => {
                 support_level: "READY",
                 transport: "NATIVE_OPENAI",
                 summary: "Ready for the main runtime.",
-                suggested_base_url: "https://api.openai.com/v1",
-                suggested_model: "gpt-4o-mini",
+                suggested_setup: {
+                    base_url: "https://api.openai.com/v1",
+                    model: "gpt-4o-mini",
+                },
                 capabilities: {
                     supports_credential_validation: true,
                     supports_connection_test: true,

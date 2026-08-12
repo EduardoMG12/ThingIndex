@@ -3,8 +3,7 @@ import { NextResponse } from "next/server";
 
 import { proxyJsonWithAuthCleanup, unauthorizedJson } from "@/app/api/_utils/auth";
 import { createForwardHeaders } from "@/app/api/_utils/locale";
-
-const API_URL = process.env.API_INTERNAL_URL || "http://api:8080/api/v1";
+import { fetchApiUpstream } from "@/app/api/_utils/upstream";
 
 type RouteContext = {
     params: Promise<{
@@ -23,7 +22,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     const body = await request.json().catch(() => null);
 
     try {
-        const response = await fetch(`${API_URL}/user/providers/${providerType}`, {
+        const response = await fetchApiUpstream(`/user/providers/${providerType}`, {
             method: "PATCH",
             headers: await createForwardHeaders(request, { token, contentType: "application/json" }),
             body: JSON.stringify(body ?? {}),

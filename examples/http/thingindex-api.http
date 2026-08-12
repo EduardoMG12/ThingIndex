@@ -30,6 +30,10 @@ Accept: application/json
 GET {{apiBase}}/meta/indexing-benchmark
 Accept: application/json
 
+### Public storage provider support matrix
+GET {{apiBase}}/providers/support?family=STORAGE
+Accept: application/json
+
 ### Public LLM provider support matrix
 GET {{apiBase}}/providers/support?family=LLM
 Accept: application/json
@@ -65,6 +69,11 @@ Accept: application/json
 
 ### List documents for the authenticated user
 GET {{apiBase}}/documents/
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Export one document index as a versioned JSON artifact
+GET {{apiBase}}/documents/1/index/export
 Authorization: Bearer {{token}}
 Accept: application/json
 

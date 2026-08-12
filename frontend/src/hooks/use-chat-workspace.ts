@@ -299,23 +299,20 @@ export function useChatWorkspace() {
             return;
         }
 
+        const queryCollectionId = Number(searchParams.get("collection"));
+        if (Number.isFinite(queryCollectionId) && queryCollectionId > 0) {
+            setSelectedCollectionId(queryCollectionId);
+            hasHydratedRouteRef.current = true;
+            return;
+        }
+
         const firstCollection = collections.find((collection) => typeof collection.id === "number");
         if (firstCollection && typeof firstCollection.id === "number") {
             setSelectedCollectionId(firstCollection.id);
         }
-    }, [collections, selectedCollectionId]);
 
-    useEffect(() => {
-        const queryCollectionId = Number(searchParams.get("collection"));
-        if (Number.isFinite(queryCollectionId) && queryCollectionId > 0 && queryCollectionId !== selectedCollectionId) {
-            setSelectedCollectionId(queryCollectionId);
-            return;
-        }
-
-        if (!hasHydratedRouteRef.current) {
-            hasHydratedRouteRef.current = true;
-        }
-    }, [searchParams, selectedCollectionId]);
+        hasHydratedRouteRef.current = true;
+    }, [collections, searchParams, selectedCollectionId]);
 
     useEffect(() => {
         return () => {
@@ -376,6 +373,10 @@ export function useChatWorkspace() {
     }, [selectedCollectionId, t]);
 
     useEffect(() => {
+        if (!hasHydratedRouteRef.current) {
+            return;
+        }
+
         const queryConversationId = Number(searchParams.get("conversation"));
         if (!Number.isFinite(queryConversationId) || queryConversationId <= 0) {
             return;
@@ -718,27 +719,21 @@ export function useChatWorkspace() {
             return;
         }
 
-        const params = new URLSearchParams(searchParams.toString());
+        const params = new URLSearchParams();
         if (selectedCollectionId) {
             params.set("collection", String(selectedCollectionId));
-        } else {
-            params.delete("collection");
         }
 
         if (activeConversationId) {
             params.set("conversation", String(activeConversationId));
-        } else {
-            params.delete("conversation");
         }
-
-        params.delete("new");
 
         const next = params.toString();
         const current = searchParams.toString();
         if (next !== current) {
             router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
         }
-    }, [selectedCollectionId, activeConversationId, pathname, router, searchParams]);
+    }, [selectedCollectionId, activeConversationId, pathname, router]);
 
     return {
         activeCollection,

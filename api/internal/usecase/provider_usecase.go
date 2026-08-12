@@ -30,6 +30,7 @@ var supportedProvidersByFamily = map[string]map[string]struct{}{
 		domain.ProviderDOSpaces:   {},
 		domain.ProviderWasabi:     {},
 		domain.ProviderB2:         {},
+		domain.ProviderGCPStorage: {},
 	},
 	domain.FamilyLLM: {
 		domain.ProviderOpenAI:     {},
@@ -53,21 +54,23 @@ var providerFamilyByType = func() map[string]string {
 }()
 
 var providerTypeAliases = map[string]string{
-	"AWS":              domain.ProviderAWSS3,
-	"S3":               domain.ProviderAWSS3,
-	"CLOUDFLARE":       domain.ProviderCloudflare,
-	"R2":               domain.ProviderCloudflare,
-	"DIGITALOCEAN":     domain.ProviderDOSpaces,
-	"DO_SPACES":        domain.ProviderDOSpaces,
-	"BACKBLAZE":        domain.ProviderB2,
-	"B2":               domain.ProviderB2,
-	"GEMINI":           domain.ProviderGemini,
-	"GOOGLE":           domain.ProviderGemini,
-	"DEEPSEEK":         domain.ProviderDeepSeek,
-	"OPEN_ROUTER":      domain.ProviderOpenRouter,
-	"OPEN-ROUTER":      domain.ProviderOpenRouter,
-	"ANTHROPIC":        domain.ProviderClaude,
-	"CLAUDE_ANTHROPIC": domain.ProviderClaude,
+	"AWS":                  domain.ProviderAWSS3,
+	"S3":                   domain.ProviderAWSS3,
+	"CLOUDFLARE":           domain.ProviderCloudflare,
+	"R2":                   domain.ProviderCloudflare,
+	"DIGITALOCEAN":         domain.ProviderDOSpaces,
+	"DO_SPACES":            domain.ProviderDOSpaces,
+	"BACKBLAZE":            domain.ProviderB2,
+	"B2":                   domain.ProviderB2,
+	"GCS":                  domain.ProviderGCPStorage,
+	"GOOGLE_CLOUD_STORAGE": domain.ProviderGCPStorage,
+	"GEMINI":               domain.ProviderGemini,
+	"GOOGLE":               domain.ProviderGemini,
+	"DEEPSEEK":             domain.ProviderDeepSeek,
+	"OPEN_ROUTER":          domain.ProviderOpenRouter,
+	"OPEN-ROUTER":          domain.ProviderOpenRouter,
+	"ANTHROPIC":            domain.ProviderClaude,
+	"CLAUDE_ANTHROPIC":     domain.ProviderClaude,
 }
 
 const globalModelCatalogScope = "GLOBAL"
@@ -603,6 +606,12 @@ func sanitizeProviderPublicMetadata(family string, credentials map[string]string
 		if region := strings.TrimSpace(credentials["region"]); region != "" {
 			publicMetadata["region"] = region
 		}
+		if projectID := strings.TrimSpace(credentials["project_id"]); projectID != "" {
+			publicMetadata["project_id"] = projectID
+		}
+		if emulatorHost := strings.TrimSpace(credentials["emulator_host"]); emulatorHost != "" {
+			publicMetadata["emulator_host"] = emulatorHost
+		}
 	}
 
 	return publicMetadata
@@ -782,6 +791,25 @@ func (u *providerUseCase) validateCredentials(ctx context.Context, family, provi
 			}
 			if err := u.endpointValidator.Validate(ctx, credentials["endpoint"]); err != nil {
 				return domain.ErrProviderCredentialsInvalid
+			}
+		case domain.ProviderGCPStorage:
+			for _, requiredKey := range []string{"project_id", "bucket_name"} {
+				if strings.TrimSpace(credentials[requiredKey]) == "" {
+					return domain.ErrProviderCredentialsInvalid
+				}
+			}
+			hasCredentialsJSON := strings.TrimSpace(credentials["credentials_json"]) != ""
+			hasEmulatorHost := strings.TrimSpace(credentials["emulator_host"]) != ""
+			if !hasCredentialsJSON && !hasEmulatorHost {
+				return domain.ErrProviderCredentialsInvalid
+			}
+			if hasCredentialsJSON && !json.Valid([]byte(credentials["credentials_json"])) {
+				return domain.ErrProviderCredentialsInvalid
+			}
+			if hasEmulatorHost {
+				if err := u.endpointValidator.Validate(ctx, credentials["emulator_host"]); err != nil {
+					return domain.ErrProviderCredentialsInvalid
+				}
 			}
 		}
 	case domain.FamilyLLM:

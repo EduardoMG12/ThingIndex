@@ -1,4 +1,4 @@
-.PHONY: bootstrap doctor stack-up stack-core stack-down stack-ps stack-logs test test-unit test-integration test-e2e test-all docs-api benchmark-indexing \
+.PHONY: bootstrap doctor dev dev-down stack-up stack-dev stack-core stack-down stack-dev-down stack-ps stack-dev-ps stack-logs stack-dev-logs test test-unit test-integration test-e2e test-all docs-api benchmark-indexing \
 	test-backend test-backend-unit test-backend-benchmark test-backend-integration test-backend-e2e test-backend-smoke \
 	test-frontend test-frontend-unit test-frontend-storybook test-frontend-e2e test-frontend-smoke test-frontend-e2e-install
 
@@ -8,8 +8,17 @@ bootstrap:
 doctor:
 	./scripts/doctor.sh
 
+dev:
+	./scripts/stack.sh dev
+
+dev-down:
+	./scripts/stack.sh dev-down
+
 stack-up:
 	./scripts/stack.sh up
+
+stack-dev:
+	./scripts/stack.sh dev
 
 stack-core:
 	./scripts/stack.sh core
@@ -17,11 +26,20 @@ stack-core:
 stack-down:
 	./scripts/stack.sh down
 
+stack-dev-down:
+	./scripts/stack.sh dev-down
+
 stack-ps:
 	./scripts/stack.sh ps
 
+stack-dev-ps:
+	./scripts/stack.sh dev-ps
+
 stack-logs:
 	./scripts/stack.sh logs
+
+stack-dev-logs:
+	./scripts/stack.sh dev-logs
 
 test: test-unit
 

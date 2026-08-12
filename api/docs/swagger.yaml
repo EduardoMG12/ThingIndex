@@ -18,6 +18,21 @@ definitions:
       returned:
         type: integer
     type: object
+  dto.CategoryResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
   dto.ChatConversationDetailResponse:
     properties:
       conversation:
@@ -102,6 +117,28 @@ definitions:
     - conversation_id
     - prompt
     type: object
+  dto.CollectionResponse:
+    properties:
+      category:
+        $ref: '#/definitions/dto.CategoryResponse'
+      category_id:
+        type: integer
+      created_at:
+        type: string
+      document_count:
+        type: integer
+      id:
+        type: integer
+      metadata:
+        additionalProperties: {}
+        type: object
+      name:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
   dto.CreateChatConversationRequest:
     properties:
       collection_id:
@@ -177,6 +214,67 @@ definitions:
       unique_requests:
         type: integer
     type: object
+  dto.DocumentChunkResponse:
+    properties:
+      chunk_type:
+        type: string
+      content:
+        type: string
+      document_id:
+        type: integer
+      id:
+        type: integer
+      metadata:
+        additionalProperties: {}
+        type: object
+      sequence_order:
+        type: integer
+      source_paragraph_end:
+        type: integer
+      source_paragraph_start:
+        type: integer
+      title:
+        type: string
+      token_estimate:
+        type: integer
+    type: object
+  dto.DocumentIndexResponse:
+    properties:
+      chunks:
+        items:
+          $ref: '#/definitions/dto.DocumentChunkResponse'
+        type: array
+      document:
+        $ref: '#/definitions/dto.DocumentResponse'
+      document_pages:
+        items:
+          $ref: '#/definitions/dto.DocumentPageResponse'
+        type: array
+      document_summary:
+        type: string
+      index_evaluation:
+        $ref: '#/definitions/dto.IndexEvaluationResponse'
+      metadata_pairs:
+        items:
+          $ref: '#/definitions/dto.MetadataPairResponse'
+        type: array
+      monitoring:
+        $ref: '#/definitions/dto.IndexMonitoringResponse'
+      outline_nodes:
+        items:
+          $ref: '#/definitions/dto.OutlineNodeResponse'
+        type: array
+      paragraph_nodes:
+        items:
+          $ref: '#/definitions/dto.ParagraphNodeResponse'
+        type: array
+      table_sections:
+        items:
+          $ref: '#/definitions/dto.TableSectionResponse'
+        type: array
+      tree_retrieval:
+        $ref: '#/definitions/dto.TreeRetrievalResponse'
+    type: object
   dto.DocumentMonitoringModelAggregateResponse:
     properties:
       document_count:
@@ -237,12 +335,146 @@ definitions:
       total_tokens:
         type: integer
     type: object
+  dto.DocumentPageResponse:
+    properties:
+      content:
+        type: string
+      document_id:
+        type: integer
+      id:
+        type: integer
+      metadata:
+        additionalProperties: {}
+        type: object
+      page_number:
+        type: integer
+      summary:
+        type: string
+      token_estimate:
+        type: integer
+    type: object
+  dto.DocumentProcessingAttemptResponse:
+    properties:
+      created_at:
+        type: string
+      detail:
+        type: string
+      disposition:
+        type: string
+      error_message:
+        type: string
+      failure_kind:
+        type: string
+      id:
+        type: integer
+      max_retry_attempts:
+        type: integer
+      next_retry_attempt:
+        type: integer
+      retry_count:
+        type: integer
+      retry_delay_seconds:
+        type: integer
+      stage:
+        type: string
+    type: object
+  dto.DocumentResponse:
+    properties:
+      category:
+        $ref: '#/definitions/dto.CategoryResponse'
+      category_id:
+        type: integer
+      collection:
+        $ref: '#/definitions/dto.CollectionResponse'
+      collection_id:
+        type: integer
+      created_at:
+        type: string
+      file_path:
+        type: string
+      file_url:
+        type: string
+      id:
+        type: integer
+      index_started_at:
+        type: string
+      indexed_at:
+        type: string
+      last_processing_error:
+        type: string
+      mime_type:
+        type: string
+      processing_attempts:
+        items:
+          $ref: '#/definitions/dto.DocumentProcessingAttemptResponse'
+        type: array
+      processing_stage:
+        type: string
+      size:
+        type: integer
+      status:
+        type: string
+      status_detail:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
   dto.ForgotPasswordRequest:
     properties:
       email:
         type: string
     required:
     - email
+    type: object
+  dto.IndexEvaluationResponse:
+    properties:
+      coverage_ratio:
+        type: number
+      low_confidence_nodes:
+        type: integer
+      max_depth:
+        type: integer
+      oversized_nodes:
+        type: integer
+      retrieval_ready:
+        type: boolean
+      total_nodes:
+        type: integer
+    type: object
+  dto.IndexMonitoringResponse:
+    properties:
+      chunk_strategy_version:
+        type: string
+      completed_at:
+        type: string
+      duration_ms:
+        type: integer
+      enrichment_status:
+        type: string
+      estimated_quality_score:
+        type: number
+      llm:
+        $ref: '#/definitions/dto.LLMMonitoringResponse'
+      pipeline_version:
+        type: string
+      prompt_profile_version:
+        type: string
+      stage:
+        type: string
+      started_at:
+        type: string
+      status:
+        type: string
+      status_detail:
+        type: string
+      tree_builder:
+        type: string
+      tree_verification_passed:
+        type: boolean
     type: object
   dto.IndexingBenchmarkCaseResultResponse:
     properties:
@@ -376,6 +608,29 @@ definitions:
       summary:
         type: string
     type: object
+  dto.LLMMonitoringResponse:
+    properties:
+      estimated_input_tokens:
+        type: integer
+      estimated_output_tokens:
+        type: integer
+      estimated_total_tokens:
+        type: integer
+      input_cost_usd:
+        type: number
+      model:
+        type: string
+      output_cost_usd:
+        type: number
+      pricing_available:
+        type: boolean
+      provider_type:
+        type: string
+      request_count:
+        type: integer
+      total_cost_usd:
+        type: number
+    type: object
   dto.LoginRequest:
     properties:
       email:
@@ -386,6 +641,19 @@ definitions:
     required:
     - email
     - password
+    type: object
+  dto.MetadataPairResponse:
+    properties:
+      document_id:
+        type: integer
+      id:
+        type: integer
+      key:
+        type: string
+      sequence_order:
+        type: integer
+      value:
+        type: string
     type: object
   dto.ModelPriceHistoryResponse:
     properties:
@@ -448,6 +716,52 @@ definitions:
         type: string
       unit:
         type: string
+    type: object
+  dto.OutlineNodeResponse:
+    properties:
+      document_id:
+        type: integer
+      end_page:
+        type: integer
+      id:
+        type: integer
+      level:
+        type: integer
+      metadata:
+        additionalProperties: {}
+        type: object
+      node_id:
+        type: string
+      node_path:
+        type: string
+      parent_id:
+        type: integer
+      sequence_order:
+        type: integer
+      slug:
+        type: string
+      start_page:
+        type: integer
+      summary:
+        type: string
+      title:
+        type: string
+    type: object
+  dto.ParagraphNodeResponse:
+    properties:
+      content:
+        type: string
+      document_id:
+        type: integer
+      id:
+        type: integer
+      metadata:
+        additionalProperties: {}
+        type: object
+      page_number:
+        type: integer
+      sequence_order:
+        type: integer
     type: object
   dto.PricingSourceResponse:
     properties:
@@ -651,10 +965,10 @@ definitions:
         type: array
       provider_type:
         type: string
-      suggested_base_url:
-        type: string
-      suggested_model:
-        type: string
+      suggested_setup:
+        additionalProperties:
+          type: string
+        type: object
       summary:
         type: string
       support_level:
@@ -758,6 +1072,94 @@ definitions:
     - provider_type
     - source_url
     type: object
+  dto.TableSectionResponse:
+    properties:
+      document_id:
+        type: integer
+      headers:
+        items:
+          type: string
+        type: array
+      id:
+        type: integer
+      metadata:
+        additionalProperties: {}
+        type: object
+      rows:
+        items:
+          items:
+            type: string
+          type: array
+        type: array
+      sequence_order:
+        type: integer
+      title:
+        type: string
+    type: object
+  dto.TreeRetrievalNodeHitResponse:
+    properties:
+      end_page:
+        type: integer
+      node_id:
+        type: string
+      score:
+        type: integer
+      sequence_order:
+        type: integer
+      start_page:
+        type: integer
+      summary:
+        type: string
+      title:
+        type: string
+    type: object
+  dto.TreeRetrievalPageHitResponse:
+    properties:
+      page_number:
+        type: integer
+      score:
+        type: integer
+      snippet:
+        type: string
+      summary:
+        type: string
+    type: object
+  dto.TreeRetrievalResponse:
+    properties:
+      node_hits:
+        items:
+          $ref: '#/definitions/dto.TreeRetrievalNodeHitResponse'
+        type: array
+      page_hits:
+        items:
+          $ref: '#/definitions/dto.TreeRetrievalPageHitResponse'
+        type: array
+      query:
+        type: string
+      strategy:
+        type: string
+      traversal_steps:
+        items:
+          $ref: '#/definitions/dto.TreeTraversalStepResponse'
+        type: array
+      used_tree:
+        type: boolean
+    type: object
+  dto.TreeTraversalStepResponse:
+    properties:
+      end_page:
+        type: integer
+      level:
+        type: integer
+      node_id:
+        type: string
+      score:
+        type: integer
+      start_page:
+        type: integer
+      title:
+        type: string
+    type: object
   dto.UpdateChatConversationRequest:
     properties:
       title:
@@ -765,6 +1167,36 @@ definitions:
         type: string
     required:
     - title
+    type: object
+  indexio.DocumentIndexExportEnvelope:
+    properties:
+      document_index:
+        $ref: '#/definitions/dto.DocumentIndexResponse'
+      exported_at:
+        type: string
+      kind:
+        type: string
+      source:
+        $ref: '#/definitions/indexio.DocumentIndexExportSource'
+      version:
+        type: string
+    type: object
+  indexio.DocumentIndexExportSource:
+    properties:
+      document_id:
+        type: integer
+      document_title:
+        type: string
+      export_route:
+        type: string
+      mime_type:
+        type: string
+      origin:
+        type: string
+      product:
+        type: string
+      source_key:
+        type: string
     type: object
   response.Response:
     properties:
@@ -1175,6 +1607,94 @@ paths:
       summary: Stream grounded chat response
       tags:
       - chat
+  /documents/{id}/index:
+    get:
+      description: Return the persisted structural index for a document owned by the
+        authenticated user, including pages, paragraphs, tables, metadata, chunks,
+        outline, evaluation, and monitoring.
+      parameters:
+      - description: Document ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Optional retrieval query evaluated over the persisted outline
+          and page summaries
+        in: query
+        name: q
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.DocumentIndexResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get document index
+      tags:
+      - documents
+  /documents/{id}/index/export:
+    get:
+      description: Download the versioned `document_index_export` JSON artifact for
+        a document owned by the authenticated user. This artifact is consumed by the
+        index import CLI.
+      parameters:
+      - description: Document ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/indexio.DocumentIndexExportEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Export document index
+      tags:
+      - documents
   /documents/audit:
     get:
       description: Query document audit events with operational filters, summary and
@@ -1331,10 +1851,10 @@ paths:
   /providers/support:
     get:
       description: Returns the current support classification for provider integrations,
-        including support tier, transport mode and operational notes.
+        including support tier, transport mode, setup hints and operational notes.
       parameters:
-      - description: Optional provider family filter. The current public matrix is
-          available for LLM.
+      - description: 'Optional provider family filter. Supported values: STORAGE,
+          LLM.'
         in: query
         name: family
         type: string

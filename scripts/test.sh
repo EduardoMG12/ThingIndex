@@ -16,6 +16,7 @@ Targets:
   backend-unit          Run backend unit tests
   backend-benchmark     Run the indexing benchmark unit suite
   backend-integration   Run backend integration tests
+  backend-real-llm      Run the real LLM-backed backend processing smoke test
   backend-e2e           Run backend end-to-end tests
   backend-smoke         Run backend smoke tests
   frontend-unit         Run frontend unit tests
@@ -48,6 +49,14 @@ run_backend_integration() {
   (
     cd api
     env GOCACHE="$GOCACHE_DIR" go test -tags=integration ./...
+  )
+}
+
+run_backend_real_llm() {
+  echo "[test] backend real llm"
+  (
+    cd api
+    env GOCACHE="$GOCACHE_DIR" go test -tags=integration ./internal/processing -run TestDocumentProcessorWithRealLLMEnrichesAndPersistsIndex -count=1 -v
   )
 }
 
@@ -115,6 +124,9 @@ case "$target" in
     ;;
   backend-integration|integration)
     run_backend_integration
+    ;;
+  backend-real-llm)
+    run_backend_real_llm
     ;;
   backend-e2e)
     run_backend_e2e

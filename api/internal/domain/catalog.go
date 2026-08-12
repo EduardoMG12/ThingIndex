@@ -18,6 +18,7 @@ type CollectionContext struct {
 	DocumentPages       []models.DocumentPage
 	ParagraphNodes      []models.ParagraphNode
 	TableSections       []models.TableSection
+	Chunks              []models.DocumentChunk
 	MetadataPairs       []models.MetadataPair
 	OutlineNodes        []models.DocumentOutlineNode
 	CollectionRetrieval *CollectionRetrievalResult
@@ -106,12 +107,13 @@ type TreeTraversalStep struct {
 }
 
 type IndexEvaluationResult struct {
-	CoverageRatio      float64
-	TotalNodes         int
-	LowConfidenceNodes int
-	OversizedNodes     int
-	MaxDepth           int
-	RetrievalReady     bool
+	CoverageRatio        float64
+	SummaryCoverageRatio float64
+	TotalNodes           int
+	LowConfidenceNodes   int
+	OversizedNodes       int
+	MaxDepth             int
+	RetrievalReady       bool
 }
 
 type IndexMonitoringResult struct {
@@ -127,6 +129,9 @@ type IndexMonitoringResult struct {
 	ChunkStrategyVersion   string
 	TreeBuilder            string
 	TreeVerificationPassed bool
+	TreeState              string
+	TreeStateDetail        string
+	TreeConcernCodes       []string
 	EstimatedQualityScore  float64
 	LLM                    *LLMMonitoringResult
 }

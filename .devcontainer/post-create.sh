@@ -19,5 +19,6 @@ cat <<'EOF'
   product focus RFC: rfc/0001-product-focus.md
   academic workspace: docs/article/README.md
   benchmark runner: ./scripts/indexing-benchmark.sh
+  index import CLI: go run ./api/cmd/index-import --help
   request examples: examples/http/thingindex-api.http
 EOF

@@ -156,7 +156,6 @@ func loadNearestDotEnv() {
 		candidate := filepath.Join(dir, ".env")
 		if _, statErr := os.Stat(candidate); statErr == nil {
 			_ = godotenv.Load(candidate)
-			return
 		}
 
 		parent := filepath.Dir(dir)

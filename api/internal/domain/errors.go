@@ -4,6 +4,8 @@ import "errors"
 
 var (
 	ErrUserExists                   = errors.New("user already exists")
+	ErrUserNameRequired             = errors.New("user name is required")
+	ErrUserAvatarInvalidMime        = errors.New("user avatar mime type is invalid")
 	ErrInvalidCredentials           = errors.New("invalid credentials")
 	ErrResetTokenInvalid            = errors.New("invalid reset token")
 	ErrResetTokenExpired            = errors.New("reset token expired")

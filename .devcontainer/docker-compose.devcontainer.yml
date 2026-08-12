@@ -12,6 +12,8 @@ services:
       DB_HOST: db
       DB_PORT: 5432
       MINIO_ENDPOINT: minio:9000
+      THINGINDEX_TEST_GCP_EMULATOR_HOST: gcs-emulator:4443
+      GCP_STORAGE_EMULATOR_HOST: gcs-emulator:4443
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
     volumes:
       - ..:/workspace:cached

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Clock3, FileSearch, Filter, Loader2, RefreshCw, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, Clock3, FileSearch, Filter, Loader2, RefreshCw, Search } from "lucide-react";
 
 import AuditMetadataList from "@/components/audit/AuditMetadataList";
 import {
@@ -88,6 +88,9 @@ const emptyResult: DocumentAuditQueryResult = {
     },
 };
 
+const selectClassName =
+    "flex h-10 w-full rounded-md border border-input bg-secondary/30 px-3 py-2 text-sm ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+
 function DocumentAuditEventCard({
     event,
     locale,
@@ -135,6 +138,7 @@ export default function DocumentAuditExplorer({
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
     function applyImmediateFilters(partial: Partial<AuditFilters>) {
         const nextFilters = {
@@ -154,6 +158,21 @@ export default function DocumentAuditExplorer({
             setFilters((current) => ({ ...current, scope: "ALL" }));
         }
     }, [filters.scope, selectedDocument, selectedDocument?.collection_id]);
+
+    const hasAdvancedFilters =
+        filters.action !== "" ||
+        filters.status !== "" ||
+        filters.actorType !== "" ||
+        filters.actorId.trim() !== "" ||
+        filters.correlationId.trim() !== "" ||
+        filters.createdFrom !== "" ||
+        filters.createdTo !== "";
+
+    useEffect(() => {
+        if (hasAdvancedFilters) {
+            setShowAdvancedFilters(true);
+        }
+    }, [hasAdvancedFilters]);
 
     useEffect(() => {
         let cancelled = false;
@@ -253,6 +272,15 @@ export default function DocumentAuditExplorer({
     const retryEvents = getAuditBucketCount(result.summary.action_breakdown, "DOCUMENT_RETRY_INDEX");
     const deleteEvents = getAuditBucketCount(result.summary.action_breakdown, "DOCUMENT_DELETE");
     const appliedActorId = parseAuditActorId(appliedFilters.actorId);
+    const advancedFilterCount = [
+        filters.action,
+        filters.status,
+        filters.actorType,
+        filters.actorId.trim(),
+        filters.correlationId.trim(),
+        filters.createdFrom,
+        filters.createdTo,
+    ].filter(Boolean).length;
     const activeFilterItems = [
         appliedFilters.scope !== "ALL"
             ? {
@@ -361,124 +389,31 @@ export default function DocumentAuditExplorer({
 
             <CardContent className="space-y-6">
                 <form
-                    className="grid gap-4 rounded-2xl border border-border bg-background/55 p-4 lg:grid-cols-2 xl:grid-cols-4"
+                    className="space-y-4 rounded-2xl border border-border bg-background/55 p-4"
                     onSubmit={(event) => {
                         event.preventDefault();
                         setAppliedFilters(filters);
                     }}
-                    >
-                    <div className="space-y-2 xl:col-span-2">
-                        <Label htmlFor="document-audit-query">{t("audit.common.search")}</Label>
-                        <div className="relative">
-                            <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                id="document-audit-query"
-                                value={filters.query}
-                                onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))}
-                                className="pl-9"
-                                placeholder={t("audit.documents.searchPlaceholder")}
-                            />
+                >
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-end">
+                        <div className="space-y-2">
+                            <Label htmlFor="document-audit-query">{t("audit.documents.quickSearchLabel")}</Label>
+                            <div className="relative">
+                                <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    id="document-audit-query"
+                                    value={filters.query}
+                                    onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))}
+                                    className="pl-9"
+                                    placeholder={t("audit.documents.searchPlaceholder")}
+                                />
+                            </div>
+                            <p className="text-xs text-muted-foreground">{t("audit.documents.searchHint")}</p>
                         </div>
-                    </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="document-audit-action">{t("audit.common.action")}</Label>
-                        <Input
-                            id="document-audit-action"
-                            list="document-audit-actions"
-                            value={filters.action}
-                            onChange={(event) => setFilters((current) => ({ ...current, action: normalizeAuditFilterValue(event.target.value) }))}
-                            placeholder="ALL"
-                        />
-                        <datalist id="document-audit-actions">
-                            <option value="ALL" />
-                            <option value="DOCUMENT_UPLOAD" />
-                            <option value="DOCUMENT_RETRY_INDEX" />
-                            <option value="DOCUMENT_DELETE" />
-                        </datalist>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="document-audit-status">{t("audit.common.status")}</Label>
-                        <Input
-                            id="document-audit-status"
-                            list="document-audit-statuses"
-                            value={filters.status}
-                            onChange={(event) => setFilters((current) => ({ ...current, status: normalizeAuditFilterValue(event.target.value) }))}
-                            placeholder="ALL"
-                        />
-                        <datalist id="document-audit-statuses">
-                            <option value="ALL" />
-                            <option value="SUCCESS" />
-                            <option value="FAILED" />
-                        </datalist>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="document-audit-actor-type">{t("audit.common.actor")}</Label>
-                        <Input
-                            id="document-audit-actor-type"
-                            list="document-audit-actor-types"
-                            value={filters.actorType}
-                            onChange={(event) => setFilters((current) => ({ ...current, actorType: normalizeAuditFilterValue(event.target.value) }))}
-                            placeholder="ALL"
-                        />
-                        <datalist id="document-audit-actor-types">
-                            <option value="ALL" />
-                            <option value="USER" />
-                            <option value="SYSTEM" />
-                            <option value="SERVICE" />
-                            <option value="WORKER" />
-                        </datalist>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="document-audit-actor-id">{t("audit.common.actorId")}</Label>
-                        <Input
-                            id="document-audit-actor-id"
-                            type="number"
-                            min="1"
-                            step="1"
-                            value={filters.actorId}
-                            onChange={(event) => setFilters((current) => ({ ...current, actorId: event.target.value }))}
-                            placeholder="9"
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="document-audit-correlation">{t("audit.common.requestId")}</Label>
-                        <Input
-                            id="document-audit-correlation"
-                            value={filters.correlationId}
-                            onChange={(event) => setFilters((current) => ({ ...current, correlationId: event.target.value }))}
-                            placeholder="req-..."
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="document-audit-created-from">{t("audit.common.createdFrom")}</Label>
-                        <Input
-                            id="document-audit-created-from"
-                            type="datetime-local"
-                            value={filters.createdFrom}
-                            onChange={(event) => setFilters((current) => ({ ...current, createdFrom: event.target.value }))}
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="document-audit-created-to">{t("audit.common.createdTo")}</Label>
-                        <Input
-                            id="document-audit-created-to"
-                            type="datetime-local"
-                            value={filters.createdTo}
-                            onChange={(event) => setFilters((current) => ({ ...current, createdTo: event.target.value }))}
-                        />
-                    </div>
-
-                    <div className="flex items-end gap-2 xl:col-span-4">
                         <Button type="submit" className="gap-2">
-                            <Filter className="h-4 w-4" />
-                            {t("audit.common.applyFilters")}
+                            <Search className="h-4 w-4" />
+                            {t("audit.documents.searchAction")}
                         </Button>
                         <Button
                             type="button"
@@ -487,11 +422,179 @@ export default function DocumentAuditExplorer({
                             onClick={() => {
                                 setFilters(initialFilters);
                                 setAppliedFilters(initialFilters);
+                                setShowAdvancedFilters(false);
                             }}
                         >
                             <RefreshCw className="h-4 w-4" />
-                            {t("audit.common.clear")}
+                            {t("audit.documents.clearAll")}
                         </Button>
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-background/45 p-4">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                            {t("audit.documents.quickFiltersTitle")}
+                        </p>
+                        <p className="mt-2 text-xs text-muted-foreground">{t("audit.documents.quickFiltersDescription")}</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            <AuditQuickFilterButton
+                                label={t("audit.common.onlyFailures")}
+                                count={failedEvents}
+                                active={appliedFilters.status === "FAILED"}
+                                tone="danger"
+                                onClick={() =>
+                                    applyImmediateFilters({
+                                        status: appliedFilters.status === "FAILED" ? "" : "FAILED",
+                                    })
+                                }
+                            />
+                            <AuditQuickFilterButton
+                                label={t("audit.documents.quickFilters.uploads")}
+                                count={uploadEvents}
+                                active={appliedFilters.action === "DOCUMENT_UPLOAD"}
+                                onClick={() =>
+                                    applyImmediateFilters({
+                                        action: appliedFilters.action === "DOCUMENT_UPLOAD" ? "" : "DOCUMENT_UPLOAD",
+                                    })
+                                }
+                            />
+                            <AuditQuickFilterButton
+                                label={t("audit.documents.quickFilters.retries")}
+                                count={retryEvents}
+                                active={appliedFilters.action === "DOCUMENT_RETRY_INDEX"}
+                                onClick={() =>
+                                    applyImmediateFilters({
+                                        action: appliedFilters.action === "DOCUMENT_RETRY_INDEX" ? "" : "DOCUMENT_RETRY_INDEX",
+                                    })
+                                }
+                            />
+                            <AuditQuickFilterButton
+                                label={t("audit.documents.quickFilters.deletes")}
+                                count={deleteEvents}
+                                active={appliedFilters.action === "DOCUMENT_DELETE"}
+                                onClick={() =>
+                                    applyImmediateFilters({
+                                        action: appliedFilters.action === "DOCUMENT_DELETE" ? "" : "DOCUMENT_DELETE",
+                                    })
+                                }
+                            />
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-background/45 p-4">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                                    {t("audit.documents.advancedFiltersTitle")}
+                                </p>
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                    {t("audit.documents.advancedFiltersDescription")}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowAdvancedFilters((current) => !current)}
+                                className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted"
+                                aria-expanded={showAdvancedFilters}
+                            >
+                                <Filter className="h-4 w-4" />
+                                {showAdvancedFilters
+                                    ? t("audit.documents.advancedFiltersHide")
+                                    : t("audit.documents.advancedFiltersShow", { count: advancedFilterCount })}
+                                {showAdvancedFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </button>
+                        </div>
+
+                        {showAdvancedFilters ? (
+                            <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="document-audit-action">{t("audit.common.action")}</Label>
+                                    <select
+                                        id="document-audit-action"
+                                        value={filters.action}
+                                        onChange={(event) => setFilters((current) => ({ ...current, action: normalizeAuditFilterValue(event.target.value) }))}
+                                        className={selectClassName}
+                                    >
+                                        <option value="">{t("audit.documents.anyOption")}</option>
+                                        <option value="DOCUMENT_UPLOAD">{t("audit.documents.quickFilters.uploads")}</option>
+                                        <option value="DOCUMENT_RETRY_INDEX">{t("audit.documents.quickFilters.retries")}</option>
+                                        <option value="DOCUMENT_DELETE">{t("audit.documents.quickFilters.deletes")}</option>
+                                    </select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="document-audit-status">{t("audit.common.status")}</Label>
+                                    <select
+                                        id="document-audit-status"
+                                        value={filters.status}
+                                        onChange={(event) => setFilters((current) => ({ ...current, status: normalizeAuditFilterValue(event.target.value) }))}
+                                        className={selectClassName}
+                                    >
+                                        <option value="">{t("audit.documents.anyOption")}</option>
+                                        <option value="SUCCESS">{t("audit.status.success")}</option>
+                                        <option value="FAILED">{t("audit.status.failed")}</option>
+                                    </select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="document-audit-created-from">{t("audit.common.createdFrom")}</Label>
+                                    <Input
+                                        id="document-audit-created-from"
+                                        type="datetime-local"
+                                        value={filters.createdFrom}
+                                        onChange={(event) => setFilters((current) => ({ ...current, createdFrom: event.target.value }))}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="document-audit-created-to">{t("audit.common.createdTo")}</Label>
+                                    <Input
+                                        id="document-audit-created-to"
+                                        type="datetime-local"
+                                        value={filters.createdTo}
+                                        onChange={(event) => setFilters((current) => ({ ...current, createdTo: event.target.value }))}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="document-audit-correlation">{t("audit.common.requestId")}</Label>
+                                    <Input
+                                        id="document-audit-correlation"
+                                        value={filters.correlationId}
+                                        onChange={(event) => setFilters((current) => ({ ...current, correlationId: event.target.value }))}
+                                        placeholder="req-..."
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="document-audit-actor-type">{t("audit.common.actor")}</Label>
+                                    <select
+                                        id="document-audit-actor-type"
+                                        value={filters.actorType}
+                                        onChange={(event) => setFilters((current) => ({ ...current, actorType: normalizeAuditFilterValue(event.target.value) }))}
+                                        className={selectClassName}
+                                    >
+                                        <option value="">{t("audit.documents.anyOption")}</option>
+                                        <option value="USER">{t("audit.actorType.user")}</option>
+                                        <option value="SYSTEM">{t("audit.actorType.system")}</option>
+                                        <option value="SERVICE">{t("audit.actorType.service")}</option>
+                                        <option value="WORKER">{t("audit.actorType.worker")}</option>
+                                    </select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="document-audit-actor-id">{t("audit.common.actorId")}</Label>
+                                    <Input
+                                        id="document-audit-actor-id"
+                                        type="number"
+                                        min="1"
+                                        step="1"
+                                        value={filters.actorId}
+                                        onChange={(event) => setFilters((current) => ({ ...current, actorId: event.target.value }))}
+                                        placeholder="9"
+                                    />
+                                </div>
+                            </div>
+                        ) : null}
                     </div>
                 </form>
 
@@ -522,55 +625,6 @@ export default function DocumentAuditExplorer({
                             deletes: deleteEvents,
                         })}
                     />
-                </div>
-
-                <div className="rounded-xl border border-border bg-background/45 p-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                        {t("audit.documents.quickFiltersTitle")}
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                        <AuditQuickFilterButton
-                            label={t("audit.common.onlyFailures")}
-                            count={failedEvents}
-                            active={appliedFilters.status === "FAILED"}
-                            tone="danger"
-                            onClick={() =>
-                                applyImmediateFilters({
-                                    status: appliedFilters.status === "FAILED" ? "" : "FAILED",
-                                })
-                            }
-                        />
-                        <AuditQuickFilterButton
-                            label={t("audit.documents.quickFilters.uploads")}
-                            count={uploadEvents}
-                            active={appliedFilters.action === "DOCUMENT_UPLOAD"}
-                            onClick={() =>
-                                applyImmediateFilters({
-                                    action: appliedFilters.action === "DOCUMENT_UPLOAD" ? "" : "DOCUMENT_UPLOAD",
-                                })
-                            }
-                        />
-                        <AuditQuickFilterButton
-                            label={t("audit.documents.quickFilters.retries")}
-                            count={retryEvents}
-                            active={appliedFilters.action === "DOCUMENT_RETRY_INDEX"}
-                            onClick={() =>
-                                applyImmediateFilters({
-                                    action: appliedFilters.action === "DOCUMENT_RETRY_INDEX" ? "" : "DOCUMENT_RETRY_INDEX",
-                                })
-                            }
-                        />
-                        <AuditQuickFilterButton
-                            label={t("audit.documents.quickFilters.deletes")}
-                            count={deleteEvents}
-                            active={appliedFilters.action === "DOCUMENT_DELETE"}
-                            onClick={() =>
-                                applyImmediateFilters({
-                                    action: appliedFilters.action === "DOCUMENT_DELETE" ? "" : "DOCUMENT_DELETE",
-                                })
-                            }
-                        />
-                    </div>
                 </div>
 
                 {error ? (

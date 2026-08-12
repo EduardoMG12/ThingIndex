@@ -29,7 +29,14 @@ vi.mock("framer-motion", () => {
             { children, ...props },
             ref
         ) {
-            return React.createElement(tag, { ...props, ref }, children);
+            const domProps = { ...props } as React.HTMLAttributes<HTMLElement> & Record<string, unknown>;
+            delete domProps.animate;
+            delete domProps.initial;
+            delete domProps.transition;
+            delete domProps.whileHover;
+            delete domProps.whileTap;
+
+            return React.createElement(tag, { ...domProps, ref }, children);
         });
 
     const motion = new Proxy(

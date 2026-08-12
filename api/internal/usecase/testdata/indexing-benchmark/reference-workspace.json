@@ -1,0 +1,58 @@
+{
+  "source_path": "pageindex/results",
+  "last_reviewed_on": "2026-03-27",
+  "summary": "Normalized structural profile derived from the pageindex reference artifacts kept in the workspace.",
+  "artifacts": [
+    {
+      "id": "annual-report-reference",
+      "label": "Annual report reference",
+      "source_path": "pageindex/results/2023-annual-report-truncated_structure.json",
+      "document_name": "2023-annual-report-truncated.pdf",
+      "total_nodes": 13,
+      "max_depth": 2,
+      "nested_node_count": 6,
+      "summarized_node_count": 12,
+      "concise_title_count": 13,
+      "invalid_range_count": 1,
+      "average_title_length": 26.54,
+      "average_summary_length": 1212.17,
+      "notes": [
+        "Shows a moderately deep corporate outline with one inverted range and one placeholder summary."
+      ]
+    },
+    {
+      "id": "court-case-reference",
+      "label": "Court case reference",
+      "source_path": "pageindex/results/PROCESSO DEPRE - 0021980-50.2026.8.26.0500_structure.json",
+      "document_name": "PROCESSO DEPRE - 0021980-50.2026.8.26.0500.pdf",
+      "total_nodes": 23,
+      "max_depth": 2,
+      "nested_node_count": 17,
+      "summarized_node_count": 23,
+      "concise_title_count": 23,
+      "invalid_range_count": 0,
+      "average_title_length": 21.52,
+      "average_summary_length": 1435.39,
+      "notes": [
+        "Represents a denser legal structure with strong section coverage and long summaries."
+      ]
+    },
+    {
+      "id": "research-paper-reference",
+      "label": "Research paper reference",
+      "source_path": "pageindex/results/earthmover_structure.json",
+      "document_name": "earthmover.pdf",
+      "total_nodes": 21,
+      "max_depth": 3,
+      "nested_node_count": 20,
+      "summarized_node_count": 21,
+      "concise_title_count": 21,
+      "invalid_range_count": 1,
+      "average_title_length": 23.52,
+      "average_summary_length": 1414.67,
+      "notes": [
+        "Carries the deepest hierarchy in the reference set and exposes a strong nested-section pattern."
+      ]
+    }
+  ]
+}

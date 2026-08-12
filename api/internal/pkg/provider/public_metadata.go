@@ -21,6 +21,12 @@ func PublicMetadata(family string, credentials map[string]string) map[string]str
 		if region := strings.TrimSpace(credentials["region"]); region != "" {
 			publicMetadata["region"] = region
 		}
+		if projectID := strings.TrimSpace(credentials["project_id"]); projectID != "" {
+			publicMetadata["project_id"] = projectID
+		}
+		if emulatorHost := strings.TrimSpace(credentials["emulator_host"]); emulatorHost != "" {
+			publicMetadata["emulator_host"] = emulatorHost
+		}
 	}
 
 	if len(publicMetadata) == 0 {

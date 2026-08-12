@@ -1,6 +1,7 @@
 "use client";
 
 import type { ProviderSupport } from "@/lib/api/providers";
+import { useI18n } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
 import { getProviderSupportBadgeClass, getProviderSupportLabel } from "@/lib/provider-support";
 
@@ -11,6 +12,8 @@ export function ProviderSupportBadge({
     level?: ProviderSupport["support_level"] | null;
     className?: string;
 }) {
+    const { locale } = useI18n();
+
     return (
         <span
             className={cn(
@@ -19,7 +22,7 @@ export function ProviderSupportBadge({
                 className
             )}
         >
-            {getProviderSupportLabel(level)}
+            {getProviderSupportLabel(locale, level)}
         </span>
     );
 }

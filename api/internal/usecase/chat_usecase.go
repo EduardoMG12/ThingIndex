@@ -161,7 +161,14 @@ func (u *chatUseCase) StreamCollectionChat(
 		return fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
 	}
 
-	retrieval := buildCollectionRetrieval(prompt, collectionContext.Documents, collectionContext.DocumentPages, collectionContext.OutlineNodes)
+	retrieval := buildCollectionRetrieval(
+		prompt,
+		collectionContext.Documents,
+		collectionContext.DocumentPages,
+		collectionContext.OutlineNodes,
+		collectionContext.Chunks,
+		collectionContext.TableSections,
+	)
 	sources := buildChatSources(collectionContext, retrieval)
 	if len(sources) > 0 {
 		if err := onEvent(domain.ChatStreamEvent{
@@ -442,9 +449,6 @@ func buildDocumentSummaryMap(pairs []models.MetadataPair) map[uint]string {
 	result := make(map[uint]string)
 	for _, pair := range pairs {
 		if pair.Key != "document_summary" {
-			continue
-		}
-		if _, exists := result[pair.DocumentID]; exists {
 			continue
 		}
 		result[pair.DocumentID] = pair.Value

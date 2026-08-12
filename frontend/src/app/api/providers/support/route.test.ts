@@ -38,4 +38,15 @@ describe("providers support route", () => {
         expect(response.status).toBe(502);
         expect(body.message).toContain("matriz de suporte");
     });
+
+    it("preserves storage family filters when forwarding the request", async () => {
+        vi.mocked(fetch).mockResolvedValue(
+            new Response(JSON.stringify({ status: 200, data: [{ provider_type: "GCP_STORAGE" }] }), { status: 200 })
+        );
+
+        const response = await GET(new Request("http://localhost/api/providers/support?family=STORAGE"));
+
+        expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe("http://api:8080/api/v1/providers/support?family=STORAGE");
+        expect(response.status).toBe(200);
+    });
 });

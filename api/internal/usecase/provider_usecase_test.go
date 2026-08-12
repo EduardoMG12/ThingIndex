@@ -323,6 +323,59 @@ func TestValidateCredentialsRejectsOpenRouterWithoutModel(t *testing.T) {
 	}
 }
 
+func TestValidateCredentialsAcceptsGCPStorageWithCredentialsJSON(t *testing.T) {
+	t.Parallel()
+
+	useCase := &providerUseCase{
+		cfg:               &config.Config{Environment: "production"},
+		endpointValidator: netsec.NewStorageEndpointValidator(false),
+	}
+
+	err := useCase.validateCredentials(context.Background(), domain.FamilyStorage, domain.ProviderGCPStorage, map[string]string{
+		"project_id":       "thingindex-dev",
+		"bucket_name":      "thingindex-docs",
+		"credentials_json": `{"type":"service_account","project_id":"thingindex-dev"}`,
+	})
+	if err != nil {
+		t.Fatalf("expected gcp storage credentials to be accepted, got %v", err)
+	}
+}
+
+func TestValidateCredentialsAcceptsGCPStorageWithEmulatorHost(t *testing.T) {
+	t.Parallel()
+
+	useCase := &providerUseCase{
+		cfg:               &config.Config{Environment: "development"},
+		endpointValidator: netsec.NewStorageEndpointValidator(true),
+	}
+
+	err := useCase.validateCredentials(context.Background(), domain.FamilyStorage, domain.ProviderGCPStorage, map[string]string{
+		"project_id":    "thingindex-dev",
+		"bucket_name":   "thingindex-docs",
+		"emulator_host": "127.0.0.1:4443",
+	})
+	if err != nil {
+		t.Fatalf("expected gcp storage emulator credentials to be accepted, got %v", err)
+	}
+}
+
+func TestValidateCredentialsRejectsGCPStorageWithoutCredentialsOrEmulatorHost(t *testing.T) {
+	t.Parallel()
+
+	useCase := &providerUseCase{
+		cfg:               &config.Config{Environment: "production"},
+		endpointValidator: netsec.NewStorageEndpointValidator(false),
+	}
+
+	err := useCase.validateCredentials(context.Background(), domain.FamilyStorage, domain.ProviderGCPStorage, map[string]string{
+		"project_id":  "thingindex-dev",
+		"bucket_name": "thingindex-docs",
+	})
+	if err == nil {
+		t.Fatal("expected gcp storage credentials without credentials_json or emulator_host to be rejected")
+	}
+}
+
 func TestNormalizeProviderSelectionInfersFamilyFromProviderType(t *testing.T) {
 	t.Parallel()
 
@@ -1242,8 +1295,8 @@ func TestListProviderSupportMatrixReturnsOrderedLLMEntries(t *testing.T) {
 	if openAI.Capabilities.RequiresExplicitModel {
 		t.Fatalf("expected openai model to remain optional, got %#v", openAI.Capabilities)
 	}
-	if openAI.SuggestedBaseURL != "https://api.openai.com/v1" {
-		t.Fatalf("unexpected openai suggested base url %q", openAI.SuggestedBaseURL)
+	if openAI.SuggestedSetup["base_url"] != "https://api.openai.com/v1" {
+		t.Fatalf("unexpected openai suggested setup %#v", openAI.SuggestedSetup)
 	}
 
 	var gemini domain.ProviderSupportEntry
@@ -1263,5 +1316,42 @@ func TestListProviderSupportMatrixReturnsOrderedLLMEntries(t *testing.T) {
 	}
 	if !gemini.Capabilities.RequiresOpenAICompatibleBridge || !gemini.Capabilities.RequiresExplicitBaseURL {
 		t.Fatalf("expected gemini bridge requirements, got %#v", gemini.Capabilities)
+	}
+}
+
+func TestListProviderSupportMatrixReturnsStorageEntries(t *testing.T) {
+	t.Parallel()
+
+	useCase := &providerUseCase{}
+
+	items, err := useCase.ListProviderSupportMatrix(context.Background(), domain.FamilyStorage)
+	if err != nil {
+		t.Fatalf("expected storage support matrix, got %v", err)
+	}
+	if len(items) == 0 {
+		t.Fatal("expected non-empty storage support matrix")
+	}
+
+	var gcs domain.ProviderSupportEntry
+	foundGCS := false
+	for _, item := range items {
+		if item.ProviderType != domain.ProviderGCPStorage {
+			continue
+		}
+		gcs = item
+		foundGCS = true
+		break
+	}
+	if !foundGCS {
+		t.Fatalf("expected gcp storage entry in support matrix: %#v", items)
+	}
+	if gcs.Transport != domain.ProviderSupportTransportNativeGCS {
+		t.Fatalf("expected native gcs transport, got %#v", gcs)
+	}
+	if gcs.SuggestedSetup["project_id"] == "" || gcs.SuggestedSetup["bucket_name"] == "" {
+		t.Fatalf("expected suggested setup for gcs storage, got %#v", gcs.SuggestedSetup)
+	}
+	if !gcs.Capabilities.SupportsConnectionTest || gcs.Capabilities.SupportsModelDiscovery {
+		t.Fatalf("unexpected gcs capabilities: %#v", gcs.Capabilities)
 	}
 }
