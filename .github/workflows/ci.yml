@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Um push novo na mesma branch cancela a execucao anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: backend (go)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: api/go.mod
+          cache-dependency-path: api/go.sum
+
+      # O indexador chama pdftotext e o fallback de OCR chama pdftoppm +
+      # tesseract. Sem eles os testes de PDF caem em skip e passam sem testar
+      # nada, que e o pior resultado possivel.
+      - name: instalar poppler-utils e tesseract
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils tesseract-ocr
+
+      - name: gofmt
+        working-directory: api
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "arquivos fora do gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: go vet
+        working-directory: api
+        run: go vet ./...
+
+      # Garante que o alvo de integracao pelo menos compila. Ele nao roda aqui
+      # (precisa de Postgres e MinIO), mas foi exatamente um ciclo de import que
+      # deixou esse build quebrado por varios commits sem ninguem notar.
+      - name: go vet (tags de integracao)
+        working-directory: api
+        run: go vet -tags=integration ./...
+
+      - name: go test
+        working-directory: api
+        run: go test ./...
+
+  frontend:
+    name: frontend (next)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: instalar dependencias
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: lint
+        working-directory: frontend
+        run: pnpm run lint
+
+      - name: typecheck
+        working-directory: frontend
+        run: pnpm run typecheck
+
+      - name: testes unitarios
+        working-directory: frontend
+        run: pnpm run test:unit

@@ -4,10 +4,14 @@ set -euo pipefail
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 cd "$ROOT_DIR"
 
-PRECOMMIT_REAL_LLM="${THINGINDEX_PRECOMMIT_REAL_LLM:-}"
-if [[ -z "$PRECOMMIT_REAL_LLM" && -f "$ROOT_DIR/.env" ]]; then
-  PRECOMMIT_REAL_LLM="$(awk -F= '/^THINGINDEX_PRECOMMIT_REAL_LLM=/{print $2; exit}' "$ROOT_DIR/.env")"
-fi
+# O pre-commit roda so o que e rapido e offline. Teste de integracao e de LLM
+# real continuam disponiveis, mas sob demanda:
+#
+#   ./scripts/test.sh backend-real-llm
+#
+# Deixa-los aqui exigia Postgres em :5434 e chamadas pagas de LLM a cada commit,
+# entao o hook falhava sempre e o habito virava `--no-verify` — pior que nao ter
+# hook, porque da falsa sensacao de protecao.
 
 mapfile -t STAGED_FILES < <(git diff --cached --name-only --diff-filter=ACMR)
 
@@ -50,11 +54,6 @@ if [[ $HAS_BACKEND_CHANGES -eq 1 ]]; then
     env GOCACHE=/tmp/thingindex-go-cache go vet ./...
   )
   "$ROOT_DIR/scripts/test.sh" backend-unit
-
-  if [[ "$PRECOMMIT_REAL_LLM" == "true" ]]; then
-    echo "[pre-commit] validando backend com LLM real"
-    "$ROOT_DIR/scripts/test.sh" backend-real-llm
-  fi
 fi
 
 if [[ $HAS_FRONTEND_CHANGES -eq 1 ]]; then
