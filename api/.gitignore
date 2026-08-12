@@ -1,8 +1,12 @@
-# Binaries
+# Binarios compilados na raiz de api/.
+# Os padroes precisam da barra inicial: sem ela, `api` casa com QUALQUER
+# diretorio chamado api em qualquer nivel — inclusive o pacote de codigo
+# internal/api/, o que fazia o git ignorar em silencio qualquer arquivo novo
+# de rota ou middleware.
 bin/
-main
-api
-api-server
+/main
+/api
+/api-server
 
 # Environment
 .env
@@ -23,5 +27,6 @@ debug/
 ehthumbs.db
 Thumbs.db
 
-# Swagger docs
-docs/
+# Nota: api/docs/ NAO e ignorado. O contrato OpenAPI e gerado por
+# scripts/generate-api-docs.sh e versionado de proposito — o README aponta
+# api/docs/swagger.yaml e api/docs/swagger.json como contrato do repositorio.
