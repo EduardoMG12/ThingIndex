@@ -865,11 +865,12 @@ Os materiais em `docs/` e `frontend/architecture/` registram essa evolucao e tam
 
 Os artefatos academicos versionados desta fase agora ficam em:
 
-- `docs/article/README.md` para o workspace academico e as referencias de figuras;
-- `docs/article/sbc_template (1).doc` como referencia de formatacao SBC;
-- `rfc/0001-product-focus.md` para justificar o foco do produto e o recorte do artigo;
-- `api/internal/usecase/testdata/indexing-benchmark/corpus.json` para o corpus controlado da baseline de indexacao;
-- `docs/proposta-continuacao-tcc.md` para a frente de continuidade experimental.
+- `docs/article/article-overleaf.md` para o texto do artigo;
+- `docs/article/references.bib` para as referencias bibliograficas;
+- `docs/article/anexos/` para as figuras e anexos;
+- `docs/article/Apresentação de TCC ThingIndex Slides.pdf` para os slides da defesa;
+- `frontend/architecture/relational-context-architecture.md` para o registro da decisao arquitetural;
+- `api/internal/usecase/testdata/indexing-benchmark/corpus.json` para o corpus controlado da baseline de indexacao.
 
 ## 17. Limitacoes Atuais
 
