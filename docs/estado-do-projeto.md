@@ -1,6 +1,6 @@
 # Estado do Projeto — ThingIndex
 
-> Levantamento feito em 2026-08-12, logo após o merge do PR #2.
+> Levantamento feito em 2026-08-12. Atualizado após os PRs #3 e #4.
 > Ordenado por urgência. A última seção é tão importante quanto a primeira:
 > ela diz o que **não** precisa de trabalho.
 
@@ -154,18 +154,54 @@ padrão), e precisam virar pontos PDF para casar com as caixas do `-bbox-layout`
 
 ## 2. Médio prazo
 
-### 2.1 `internal/repository` não tem um único teste
+### ~~2.1 `internal/repository` não tem um único teste~~ — CORREÇÃO + RESOLVIDO (PR #4)
 
-É onde mora todo o SQL: joins hierárquicos, `sequence_order`, agregação O(n),
-escopo por usuário. Ou seja, **exatamente a tese do TCC**.
+**A primeira versão deste documento afirmava que `internal/repository` não tinha
+nenhum teste. Isso estava errado.** O erro veio da forma de medir: o comando
+usado contava apenas arquivos de teste que o Go compila por padrão, e os desse
+pacote estão atrás de `//go:build integration`. Havia 8 testes — o maior arquivo
+do pacote é justamente um deles.
 
-A afirmação central do artigo — "contexto se preserva por modelagem relacional
-rigorosa" — é sustentada por código sem nenhuma verificação automatizada. Esse é
-o ponto mais frágil academicamente, mais do que qualquer bug.
+O que já era coberto: outbox (claim de pendentes, incremento de tentativas),
+auditoria de provider e documento com filtro e cursor, criação de documento com
+registros derivados, retry de indexação e deleção em cascata por collection.
 
-Não precisa de suíte completa. Um punhado de testes cobrindo ordenação estável,
-isolamento por usuário e a forma do join já muda o argumento de "confie em mim"
-para "está verificado".
+Mas duas lacunas reais existiam, e essas foram resolvidas:
+
+**O código que sustenta a tese não era testado.**
+`gorm_collection_context_repository.go` reconstrói o contexto de uma collection —
+é a frase do artigo virada em SQL. Nenhum teste mencionava `CollectionContext`.
+Agora há 6, cobrindo exatamente as propriedades afirmadas:
+
+| Teste | Propriedade do artigo |
+|---|---|
+| `ReconstructsStableReadingOrder` | ordem de leitura sai por `sequence_order`, não por ordem de inserção |
+| `GroupsNodesByDocumentBeforeSequence` | ordenação composta: documento antes de sequência |
+| `RejectsCollectionOfAnotherUser` | escopo por usuário na collection |
+| `ExcludesDocumentsOfAnotherUser` | isolamento transitivo nas tabelas derivadas |
+| `ReconstructionIsFaithful` | sem perda nem duplicação (produto cartesiano) |
+| `QueryCountDoesNotGrowWithDocuments` | **agregação linear: 9 consultas fixas** |
+
+O último é o que rende número para o artigo: **9 consultas para 1 documento e 9
+para 20**. É a diferença entre afirmar "agregação linear" e demonstrá-la. A
+contagem tem limite superior travado numa constante, então acrescentar uma
+consulta obriga a revisar o número citado no texto.
+
+> Detalhe honesto: a primeira versão do teste esperava 8 consultas e falhou. São
+> 9 — o `Preload("Category")` emite uma consulta extra que eu não tinha contado.
+> O teste corrigiu a minha suposição, que é exatamente o serviço que ele presta.
+
+**Os testes nunca rodavam.** Precisam de Postgres, e o CI só verificava se
+compilavam. Agora há um job `backend-integration` com service container de
+Postgres 16. Escopo proposital em `./internal/repository`: os outros pacotes com
+tag `integration` também exigem MinIO, RabbitMQ ou LLM real.
+
+**Bônus encontrado ao rodar a suíte inteira pela primeira vez:**
+`migrateIntegrationModels` não criava a tabela `document_processing_attempts`,
+presente no `AutoMigrate` de produção. Um dos 8 testes existentes falhava com
+`relation "document_processing_attempts" does not exist` — vermelho que ninguém
+via, porque a suíte não rodava sozinha. Corrigido, e as duas listas de migration
+agora conferem.
 
 ### ~~2.2 `pkg/crypto` sem teste~~ — RESOLVIDO (PR #3)
 
@@ -244,8 +280,8 @@ código de produção. Baixo risco.
 | 1 | CI (1.1) | ✅ PR #3 |
 | 2 | Enxugar o pre-commit (1.2) | ✅ PR #3 |
 | 3 | Teste de crypto (2.2) | ✅ PR #3 |
-| 4 | **Testes de `repository` (2.1)** | ⬜ próximo — sustenta a tese do artigo |
-| 5 | **bbox no OCR (1.3)** | ⬜ destrava o grifo em documento digitalizado |
+| 4 | Testes de `repository` (2.1) | ✅ PR #4 — 6 testes novos + Postgres no CI |
+| 5 | **bbox no OCR (1.3)** | ⬜ próximo — destrava o grifo em documento digitalizado |
 | 6 | `LICENSE` (2.4) | ⬜ depende de decisão sua |
 | ! | **Backup do artigo (1.4)** | ⚠️ decisão sua, e é a mais urgente da lista |
 
