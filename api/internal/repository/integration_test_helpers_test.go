@@ -128,9 +128,15 @@ func openIntegrationGorm(dsn string) (*gorm.DB, error) {
 	})
 }
 
+// Esta lista precisa acompanhar o AutoMigrate de producao em db/connect.go.
+// DocumentProcessingAttempt estava faltando, entao
+// DeleteDocumentsByCollection falhava com `relation
+// "document_processing_attempts" does not exist` — um teste vermelho que
+// ninguem via, porque a suite de integracao nao roda sozinha.
 func migrateIntegrationModels(db *gorm.DB) error {
 	return db.AutoMigrate(
 		&models.User{},
+		&models.DocumentProcessingAttempt{},
 		&models.DocumentCategory{},
 		&models.Collection{},
 		&models.Document{},
