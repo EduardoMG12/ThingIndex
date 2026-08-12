@@ -356,7 +356,7 @@ Esses testes fazem `skip` por padrao. Para habilitar rodada real, configure no `
 
 Os testes tambem aceitam fallbacks por provider, por exemplo `OPENAI_API_KEY`/`OPENAI_MODEL`, `GROK_API_KEY`/`GROK_MODEL` ou `OLLAMA_BASE_URL`/`OLLAMA_MODEL`, e nunca imprimem o segredo em assertions ou docs.
 
-Se voce quiser rodar esse smoke real automaticamente no `pre-commit` da raiz quando houver mudancas em `api/`, defina `THINGINDEX_PRECOMMIT_REAL_LLM=true` no `.env` local. O hook passa a executar `./scripts/test.sh backend-real-llm`.
+Esse smoke real nao roda no `pre-commit`: ele exige Postgres de pe e chamadas pagas ao provider. Rode sob demanda com `./scripts/test.sh backend-real-llm`.
 
 `e2e` autenticado do backend cobrindo upload, retry, exclusao, documento orfao, providers e chat grounded:
 
