@@ -24,12 +24,17 @@ func (i *DeterministicIndexer) indexHTML(documentID uint, data []byte) (domain.I
 	currentSectionKey := ""
 	currentSectionTitle := ""
 
-	var walk func(*html.Node)
-	walk = func(node *html.Node) {
+	// insideBlock evita emitir duas vezes o texto de um <p>/<li> aninhado:
+	// extractHTMLText ja captura toda a subarvore do bloco externo, e antes a
+	// descida continuava emitindo cada bloco interno de novo. A recursao segue
+	// mesmo assim, para que tabelas dentro de listas ainda sejam encontradas.
+	var walk func(node *html.Node, insideBlock bool)
+	walk = func(node *html.Node, insideBlock bool) {
 		if node == nil {
 			return
 		}
 
+		childrenInsideBlock := insideBlock
 		if node.Type == html.ElementNode {
 			switch node.Data {
 			case "h1", "h2", "h3", "h4", "h5", "h6":
@@ -46,14 +51,17 @@ func (i *DeterministicIndexer) indexHTML(documentID uint, data []byte) (domain.I
 					})
 				}
 			case "p", "li":
-				text := normalizeText(extractHTMLText(node))
-				if text != "" {
-					paragraphs = append(paragraphs, textBlock{
-						Content:    text,
-						PageNumber: &pageNumber,
-						SectionKey: currentSectionKey,
-					})
+				if !insideBlock {
+					text := normalizeText(extractHTMLText(node))
+					if text != "" {
+						paragraphs = append(paragraphs, textBlock{
+							Content:    text,
+							PageNumber: &pageNumber,
+							SectionKey: currentSectionKey,
+						})
+					}
 				}
+				childrenInsideBlock = true
 			case "table":
 				section := extractHTMLTable(documentID, len(tables), node)
 				if len(section.Headers) > 0 || len(section.Rows) > 0 {
@@ -67,11 +75,11 @@ func (i *DeterministicIndexer) indexHTML(documentID uint, data []byte) (domain.I
 		}
 
 		for child := node.FirstChild; child != nil; child = child.NextSibling {
-			walk(child)
+			walk(child, childrenInsideBlock)
 		}
 	}
 
-	walk(root)
+	walk(root, false)
 
 	return buildIndexingResult(documentID, headings, paragraphs, tables), nil
 }
