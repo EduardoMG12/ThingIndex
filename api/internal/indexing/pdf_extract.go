@@ -3,7 +3,6 @@ package indexing
 import (
 	"context"
 	"os/exec"
-	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
@@ -43,11 +42,6 @@ func isPlausibleText(text string) bool {
 
 	garbageRatio := float64(garbage) / float64(total)
 	return garbageRatio < 0.1
-}
-
-func countPagesInExtractedText(text string) int {
-	pageSeparator := regexp.MustCompile(`(?m)^-+\s*$`)
-	return len(pageSeparator.Split(text, -1))
 }
 
 func newCommandPDFOCRExtractor() pdfOCRExtractor {

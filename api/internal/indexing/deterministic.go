@@ -28,6 +28,22 @@ type textBlock struct {
 	PageNumber *int
 	SectionKey string
 	Source     string
+	Box        *textBox
+	// LineCount guarda quantas linhas o extrator agrupou neste bloco; blocos de
+	// uma linha podem ser remontados com vizinhos da mesma linha visual.
+	LineCount int
+}
+
+// textBox ancora um bloco na coordenada original da pagina, em pontos PDF com
+// origem no canto superior esquerdo. PageWidth/PageHeight acompanham a caixa
+// para que o consumidor normalize sem precisar reabrir o documento.
+type textBox struct {
+	XMin       float64 `json:"x_min"`
+	YMin       float64 `json:"y_min"`
+	XMax       float64 `json:"x_max"`
+	YMax       float64 `json:"y_max"`
+	PageWidth  float64 `json:"page_width"`
+	PageHeight float64 `json:"page_height"`
 }
 
 type pdfTextExtraction struct {

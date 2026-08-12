@@ -19,6 +19,9 @@ func buildIndexingResult(documentID uint, headings []outlineDraft, paragraphs []
 		if strings.TrimSpace(paragraph.Source) != "" {
 			metadata["source"] = paragraph.Source
 		}
+		if paragraph.Box != nil {
+			metadata["box"] = paragraph.Box
+		}
 
 		paragraphNodes = append(paragraphNodes, models.ParagraphNode{
 			DocumentID:    documentID,

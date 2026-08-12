@@ -5,7 +5,9 @@ import (
 	"context"
 	"crypto/sha1"
 	"encoding/hex"
+	"encoding/xml"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -49,7 +51,11 @@ func (e *commandPDFTextExtractor) Extract(data []byte) (pdfTextExtraction, error
 		return pdfTextExtraction{}, fmt.Errorf("write temporary pdf: %w", err)
 	}
 
-	cmd := exec.Command(e.binPath, "-layout", "-enc", "UTF-8", pdfPath, txtPath)
+	// -bbox-layout entrega paginas explicitas e a caixa de cada bloco/linha ja no
+	// espaco renderizado (origem superior esquerda, /Rotate e CropBox aplicados).
+	// O modo -layout antigo devolvia so texto: sem coordenada e sem fronteira de
+	// pagina confiavel, porque pdftotext separa paginas com form feed.
+	cmd := exec.Command(e.binPath, "-bbox-layout", "-enc", "UTF-8", pdfPath, txtPath)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return pdfTextExtraction{}, fmt.Errorf("pdftotext failed: %w: %s", err, strings.TrimSpace(string(output)))
 	}
@@ -59,62 +65,203 @@ func (e *commandPDFTextExtractor) Extract(data []byte) (pdfTextExtraction, error
 		return pdfTextExtraction{}, fmt.Errorf("read extracted text: %w", err)
 	}
 
-	text := string(rawText)
-	if !isPlausibleText(text) {
-		return pdfTextExtraction{}, fmt.Errorf("pdftotext returned implausible text (garbage or empty)")
+	extraction, err := parsePDFBBoxLayout(rawText)
+	if err != nil {
+		return pdfTextExtraction{}, err
 	}
 
-	extraction := pdfTextExtraction{
-		PageCount:  countPagesInExtractedText(text),
-		PageBlocks: make(map[int][]textBlock),
-	}
-
-	pageSeparator := regexp.MustCompile(`(?m)^-+\s*$`)
-	pages := pageSeparator.Split(text, -1)
-	currentPage := 1
-
-	for _, pageText := range pages {
-		pageText = strings.TrimSpace(pageText)
-		if pageText == "" {
-			continue
+	if !isPlausibleText(textFromPageBlocks(extraction.PageBlocks)) {
+		// Sem camada de texto utilizavel (PDF digitalizado) ou texto corrompido.
+		// Isso nao e erro de parsing: a contagem de paginas continua valida e o
+		// fallback de OCR decide pagina a pagina. Retornar erro aqui tornava o
+		// OCR inalcancavel justamente nos documentos 100% escaneados, que sao a
+		// maioria dos processos judiciais digitalizados.
+		if extraction.PageCount == 0 {
+			return pdfTextExtraction{}, fmt.Errorf("pdftotext returned no pages")
 		}
-
-		lines := strings.Split(pageText, "\n")
-		var blocks []textBlock
-		var currentBlock strings.Builder
-
-		for _, line := range lines {
-			trimmed := strings.TrimSpace(line)
-			if trimmed == "" {
-				if currentBlock.Len() > 0 {
-					blocks = append(blocks, textBlock{
-						Content:    normalizeText(currentBlock.String()),
-						PageNumber: &currentPage,
-						Source:     "pdftotext",
-					})
-					currentBlock.Reset()
-				}
-				continue
-			}
-			currentBlock.WriteString(trimmed)
-			currentBlock.WriteString("\n")
-		}
-
-		if currentBlock.Len() > 0 {
-			blocks = append(blocks, textBlock{
-				Content:    normalizeText(currentBlock.String()),
-				PageNumber: &currentPage,
-				Source:     "pdftotext",
-			})
-		}
-
-		if len(blocks) > 0 {
-			extraction.PageBlocks[currentPage] = blocks
-		}
-		currentPage++
+		extraction.PageBlocks = map[int][]textBlock{}
 	}
 
 	return extraction, nil
+}
+
+type pdfBBoxDocument struct {
+	Pages []pdfBBoxPage `xml:"body>doc>page"`
+}
+
+type pdfBBoxPage struct {
+	Width  float64        `xml:"width,attr"`
+	Height float64        `xml:"height,attr"`
+	Blocks []pdfBBoxBlock `xml:"flow>block"`
+}
+
+type pdfBBoxBlock struct {
+	XMin  float64       `xml:"xMin,attr"`
+	YMin  float64       `xml:"yMin,attr"`
+	XMax  float64       `xml:"xMax,attr"`
+	YMax  float64       `xml:"yMax,attr"`
+	Lines []pdfBBoxLine `xml:"line"`
+}
+
+type pdfBBoxLine struct {
+	Words []string `xml:"word"`
+}
+
+func parsePDFBBoxLayout(raw []byte) (pdfTextExtraction, error) {
+	var document pdfBBoxDocument
+	decoder := xml.NewDecoder(bytes.NewReader(raw))
+	// A saida e XHTML e declara entidades HTML que o parser estrito rejeita.
+	decoder.Strict = false
+	decoder.AutoClose = xml.HTMLAutoClose
+	decoder.Entity = xml.HTMLEntity
+	if err := decoder.Decode(&document); err != nil {
+		return pdfTextExtraction{}, fmt.Errorf("parse pdftotext bbox output: %w", err)
+	}
+
+	extraction := pdfTextExtraction{
+		PageCount:  len(document.Pages),
+		PageBlocks: make(map[int][]textBlock, len(document.Pages)),
+	}
+
+	for pageIndex, page := range document.Pages {
+		pageNumber := pageIndex + 1
+		blocks := make([]textBlock, 0, len(page.Blocks))
+
+		for _, block := range page.Blocks {
+			lines := make([]string, 0, len(block.Lines))
+			for _, line := range block.Lines {
+				if text := strings.TrimSpace(strings.Join(line.Words, " ")); text != "" {
+					lines = append(lines, text)
+				}
+			}
+
+			content := normalizeText(strings.Join(lines, "\n"))
+			if content == "" {
+				continue
+			}
+
+			pageRef := pageNumber
+			blocks = append(blocks, textBlock{
+				Content:    content,
+				PageNumber: &pageRef,
+				Source:     "pdftotext",
+				LineCount:  len(lines),
+				Box: &textBox{
+					XMin:       block.XMin,
+					YMin:       block.YMin,
+					XMax:       block.XMax,
+					YMax:       block.YMax,
+					PageWidth:  page.Width,
+					PageHeight: page.Height,
+				},
+			})
+		}
+
+		if blocks = mergeBlocksOnSameRow(blocks); len(blocks) > 0 {
+			extraction.PageBlocks[pageNumber] = blocks
+		}
+	}
+
+	return extraction, nil
+}
+
+// mergeBlocksOnSameRow remonta uma linha visual que o poppler quebrou em varios
+// blocos. Ele corta o fluxo quando encontra folga horizontal grande (tabela,
+// campo alinhado, texto justificado), entao "Critical services run in an
+// alternate region" virava tres blocos, e o primeiro, curto e capitalizado,
+// ainda era classificado como titulo e poluia o outline.
+//
+// So blocos de uma linha se juntam: bloco multilinha ja e um paragrafo agrupado
+// pelo poppler e nao deve ser fundido com vizinhos.
+func mergeBlocksOnSameRow(blocks []textBlock) []textBlock {
+	if len(blocks) < 2 {
+		return blocks
+	}
+
+	ordered := make([]textBlock, len(blocks))
+	copy(ordered, blocks)
+	sort.SliceStable(ordered, func(i, j int) bool {
+		left, right := ordered[i].Box, ordered[j].Box
+		if left == nil || right == nil {
+			return false
+		}
+		return left.YMin < right.YMin
+	})
+
+	// Primeiro agrupa por faixa vertical, depois ordena cada faixa por X. Ordenar
+	// direto por (YMin, XMin) embaralharia a leitura: fragmentos da mesma linha
+	// visual costumam ter baselines com alguns decimos de diferenca, e o vizinho
+	// da direita pode ter YMin menor que o da esquerda.
+	rows := make([][]textBlock, 0, len(ordered))
+	for _, block := range ordered {
+		placed := false
+		if len(rows) > 0 {
+			row := rows[len(rows)-1]
+			if sameVisualRow(&row[0], &block) {
+				rows[len(rows)-1] = append(row, block)
+				placed = true
+			}
+		}
+		if !placed {
+			rows = append(rows, []textBlock{block})
+		}
+	}
+
+	merged := make([]textBlock, 0, len(rows))
+	for _, row := range rows {
+		sort.SliceStable(row, func(i, j int) bool {
+			return row[i].Box.XMin < row[j].Box.XMin
+		})
+
+		head := row[0]
+		for _, block := range row[1:] {
+			head.Content = normalizeText(head.Content + " " + block.Content)
+			head.Box.XMin = math.Min(head.Box.XMin, block.Box.XMin)
+			head.Box.YMin = math.Min(head.Box.YMin, block.Box.YMin)
+			head.Box.XMax = math.Max(head.Box.XMax, block.Box.XMax)
+			head.Box.YMax = math.Max(head.Box.YMax, block.Box.YMax)
+		}
+		merged = append(merged, head)
+	}
+
+	return merged
+}
+
+func sameVisualRow(left, right *textBlock) bool {
+	if left.Box == nil || right.Box == nil {
+		return false
+	}
+	if left.LineCount != 1 || right.LineCount != 1 {
+		return false
+	}
+
+	overlap := math.Min(left.Box.YMax, right.Box.YMax) - math.Max(left.Box.YMin, right.Box.YMin)
+	if overlap <= 0 {
+		return false
+	}
+
+	shortest := math.Min(left.Box.YMax-left.Box.YMin, right.Box.YMax-right.Box.YMin)
+	if shortest <= 0 {
+		return false
+	}
+
+	return overlap/shortest >= 0.6
+}
+
+func textFromPageBlocks(pageBlocks map[int][]textBlock) string {
+	pageNumbers := make([]int, 0, len(pageBlocks))
+	for pageNumber := range pageBlocks {
+		pageNumbers = append(pageNumbers, pageNumber)
+	}
+	sort.Ints(pageNumbers)
+
+	parts := make([]string, 0, len(pageNumbers))
+	for _, pageNumber := range pageNumbers {
+		if text := textFromBlocks(pageBlocks[pageNumber]); text != "" {
+			parts = append(parts, text)
+		}
+	}
+	return strings.Join(parts, "\n")
 }
 
 func (nativePDFTextExtractor) Extract(data []byte) (pdfTextExtraction, error) {
