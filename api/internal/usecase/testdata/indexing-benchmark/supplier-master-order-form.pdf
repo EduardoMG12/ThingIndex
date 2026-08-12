@@ -1,167 +1,167 @@
 %PDF-1.4
 1 0 obj
-<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+<< /Type /Catalog /Pages 2 0 R >>
 endobj
 2 0 obj
-<< /Length 1141 >>
+<< /Type /Pages /Kids [4 0 R 6 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 1251 >>
 stream
 BT
 /F1 14 Tf
 1 0 0 1 72 740 Tm
 (SUPPLIER) Tj
-1 0 0 1 134 740 Tm
+1 0 0 1 145.136 740 Tm
 (MASTER) Tj
-1 0 0 1 182 740 Tm
+1 0 0 1 207.366 740 Tm
 (ORDER) Tj
-1 0 0 1 223 740 Tm
+1 0 0 1 261.812 740 Tm
 (FORM) Tj
 1 0 0 1 72 718 Tm
 (1) Tj
-1 0 0 1 90 718 Tm
+1 0 0 1 83.676 718 Tm
 (SCOPE) Tj
-1 0 0 1 131 718 Tm
+1 0 0 1 136.582 718 Tm
 (OF) Tj
-1 0 0 1 151 718 Tm
+1 0 0 1 159.92 718 Tm
 (SERVICES) Tj
 1 0 0 1 72 696 Tm
 (The) Tj
-1 0 0 1 99 696 Tm
+1 0 0 1 100.014 696 Tm
 (supplier) Tj
-1 0 0 1 161 696 Tm
+1 0 0 1 152.92 696 Tm
 (will) Tj
-1 0 0 1 195 696 Tm
+1 0 0 1 176.244 696 Tm
 (provide) Tj
-1 0 0 1 250 696 Tm
+1 0 0 1 226.042 696 Tm
 (managed) Tj
-1 0 0 1 305 696 Tm
+1 0 0 1 288.3 696 Tm
 (SOC) Tj
-1 0 0 1 332 696 Tm
+1 0 0 1 322.53 696 Tm
 (monitoring) Tj
-1 0 0 1 408 696 Tm
+1 0 0 1 391.774 696 Tm
 (and) Tj
-1 0 0 1 435 696 Tm
+1 0 0 1 419.018 696 Tm
 (quarterly) Tj
-1 0 0 1 504 696 Tm
+1 0 0 1 477.37 696 Tm
 (control) Tj
-1 0 0 1 559 696 Tm
-(reviews.) Tj
 1 0 0 1 72 674 Tm
-(2) Tj
-1 0 0 1 90 674 Tm
-(INCIDENT) Tj
-1 0 0 1 152 674 Tm
-(NOTIFICATION) Tj
+(reviews.) Tj
 1 0 0 1 72 652 Tm
+(2) Tj
+1 0 0 1 83.676 652 Tm
+(INCIDENT) Tj
+1 0 0 1 153.676 652 Tm
+(NOTIFICATION) Tj
+1 0 0 1 72 630 Tm
 (The) Tj
-1 0 0 1 99 652 Tm
+1 0 0 1 100.014 630 Tm
 (supplier) Tj
-1 0 0 1 161 652 Tm
+1 0 0 1 152.92 630 Tm
 (must) Tj
-1 0 0 1 195 652 Tm
+1 0 0 1 187.15 630 Tm
 (notify) Tj
-1 0 0 1 243 652 Tm
+1 0 0 1 224.502 630 Tm
 (the) Tj
-1 0 0 1 270 652 Tm
+1 0 0 1 247.854 630 Tm
 (customer) Tj
-1 0 0 1 332 652 Tm
+1 0 0 1 309.314 630 Tm
 (within) Tj
-1 0 0 1 380 652 Tm
+1 0 0 1 348.99 630 Tm
 (24) Tj
-1 0 0 1 400 652 Tm
+1 0 0 1 368.45 630 Tm
 (hours) Tj
-1 0 0 1 441 652 Tm
+1 0 0 1 407.356 630 Tm
 (after) Tj
-1 0 0 1 482 652 Tm
+1 0 0 1 439.262 630 Tm
 (confirming) Tj
-1 0 0 1 558 652 Tm
+1 0 0 1 507.722 630 Tm
 (a) Tj
-1 0 0 1 576 652 Tm
+1 0 0 1 72 608 Tm
 (severity) Tj
-1 0 0 1 638 652 Tm
+1 0 0 1 124.122 608 Tm
 (one) Tj
-1 0 0 1 665 652 Tm
+1 0 0 1 151.366 608 Tm
 (incident.) Tj
 ET
 endstream
 endobj
-3 0 obj
-<< /Type /Page /Parent 6 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 2 0 R >>
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 7 0 R >>
 endobj
-4 0 obj
-<< /Length 725 >>
+7 0 obj
+<< /Length 800 >>
 stream
 BT
 /F1 14 Tf
 1 0 0 1 72 740 Tm
 (3) Tj
-1 0 0 1 90 740 Tm
+1 0 0 1 83.676 740 Tm
 (BUSINESS) Tj
-1 0 0 1 152 740 Tm
+1 0 0 1 158.366 740 Tm
 (CONTINUITY) Tj
 1 0 0 1 72 718 Tm
 (Critical) Tj
-1 0 0 1 134 718 Tm
+1 0 0 1 118.662 718 Tm
 (services) Tj
-1 0 0 1 196 718 Tm
+1 0 0 1 173.892 718 Tm
 (run) Tj
-1 0 0 1 223 718 Tm
+1 0 0 1 198.014 718 Tm
 (in) Tj
-1 0 0 1 243 718 Tm
+1 0 0 1 212.798 718 Tm
 (an) Tj
-1 0 0 1 263 718 Tm
+1 0 0 1 232.258 718 Tm
 (alternate) Tj
-1 0 0 1 332 718 Tm
+1 0 0 1 290.624 718 Tm
 (region) Tj
-1 0 0 1 380 718 Tm
+1 0 0 1 333.422 718 Tm
 (and) Tj
-1 0 0 1 407 718 Tm
+1 0 0 1 360.666 718 Tm
 (complete) Tj
-1 0 0 1 469 718 Tm
+1 0 0 1 421.356 718 Tm
 (an) Tj
-1 0 0 1 489 718 Tm
+1 0 0 1 440.816 718 Tm
 (annual) Tj
-1 0 0 1 537 718 Tm
-(recovery) Tj
-1 0 0 1 599 718 Tm
-(exercise.) Tj
 1 0 0 1 72 696 Tm
+(recovery) Tj
+1 0 0 1 129.568 696 Tm
+(exercise.) Tj
+1 0 0 1 72 674 Tm
 (Audit) Tj
-1 0 0 1 113 696 Tm
+1 0 0 1 107.798 674 Tm
 (contacts) Tj
-1 0 0 1 175 696 Tm
+1 0 0 1 163.826 674 Tm
 (remain) Tj
-1 0 0 1 223 696 Tm
+1 0 0 1 210.502 674 Tm
 (available) Tj
-1 0 0 1 292 696 Tm
+1 0 0 1 269.638 674 Tm
 (for) Tj
-1 0 0 1 319 696 Tm
+1 0 0 1 289.868 674 Tm
 (customer) Tj
-1 0 0 1 381 696 Tm
+1 0 0 1 351.328 674 Tm
 (review.) Tj
 ET
 endstream
-endobj
-5 0 obj
-<< /Type /Page /Parent 6 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 4 0 R >>
-endobj
-6 0 obj
-<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>
-endobj
-7 0 obj
-<< /Type /Catalog /Pages 6 0 R >>
 endobj
 xref
 0 8
 0000000000 65535 f 
 0000000009 00000 n 
-0000000079 00000 n 
-0000001272 00000 n 
-0000001398 00000 n 
-0000002174 00000 n 
-0000002300 00000 n 
-0000002363 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000218 00000 n 
+0000000344 00000 n 
+0000001647 00000 n 
+0000001773 00000 n 
 trailer
-<< /Size 8 /Root 7 0 R >>
+<< /Size 8 /Root 1 0 R >>
 startxref
-2412
+2624
 %%EOF
