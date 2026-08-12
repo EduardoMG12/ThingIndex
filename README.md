@@ -94,11 +94,10 @@ O foco declarado do runtime atual e:
 
 Os artefatos versionados que registram esse posicionamento agora sao:
 
-- `rfc/0001-product-focus.md`
-- `docs/article/README.md`
-- `docs/article/sbc_template (1).doc`
+- `docs/article/article-overleaf.md`
+- `docs/estado-do-projeto.md`
+- `frontend/architecture/relational-context-architecture.md`
 - `api/internal/usecase/testdata/indexing-benchmark/corpus.json`
-- `docs/proposta-continuacao-tcc.md`
 
 ## 3. Problema e Motivacao
 
@@ -423,7 +422,11 @@ Ele executa checks seletivos antes do commit:
 
 O hook foi pensado para proteger integridade basica do codigo sem tentar rodar `integration` ou `e2e` a cada commit.
 
-Se quiser incluir um smoke real de indexacao com LLM no `pre-commit`, defina `THINGINDEX_PRECOMMIT_REAL_LLM=true` no `.env` local. Nesse modo, mudancas em `api/` tambem executam `./scripts/test.sh backend-real-llm`.
+O `pre-commit` roda apenas o que e rapido e offline. O smoke real de indexacao com LLM exige Postgres de pe e chamadas pagas ao provider, entao fica sob demanda:
+
+```bash
+./scripts/test.sh backend-real-llm
+```
 
 ### Comandos simples de teste
 
@@ -527,7 +530,6 @@ O arquivo `.env.example` foi pensado para **desenvolvimento local**. Em producao
 | `THINGINDEX_TEST_MINIO_*` | vazio ou overrides locais | Overrides opcionais para testes reais com storage |
 | `THINGINDEX_TEST_GCP_*` | vazio ou overrides locais | Overrides opcionais para testes de integracao do GCS |
 | `THINGINDEX_TEST_RABBITMQ_URL` | vazio ou override local | Override opcional para os testes reais com fila |
-| `THINGINDEX_PRECOMMIT_REAL_LLM` | `false` | Quando `true`, inclui o smoke real de indexacao com LLM no `pre-commit` para mudancas em `api/` |
 | `THINGINDEX_TEST_LLM_*` | desabilitado por padrao | Habilita testes reais de provider/processing com IA |
 | `OPENAI_*`, `OPENROUTER_*`, `DEEPSEEK_*`, `GROK_*`, `GEMINI_*`, `CLAUDE_*`, `OLLAMA_*` | provider-specific | Fallbacks de credenciais/modelo para os testes reais de LLM |
 | `MAX_UPLOAD_SIZE_BYTES` | `20971520` | Limite maximo de upload |
