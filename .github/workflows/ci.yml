@@ -53,6 +53,53 @@ jobs:
         working-directory: api
         run: go test ./...
 
+  # Os testes de integracao do repositorio validam as propriedades que o artigo
+  # afirma: ordem de leitura por sequence_order, isolamento por usuario,
+  # fidelidade da reconstrucao e numero fixo de consultas (sem N+1). Precisam de
+  # Postgres de verdade, entao rodam em job proprio.
+  #
+  # Escopo proposital em ./internal/repository: os demais pacotes com tag
+  # integration (processing, usecase, pkg/storage, queue, indeximport,
+  # pkg/provider) tambem exigem MinIO, RabbitMQ ou chamadas reais de LLM.
+  # Adicione-os aqui conforme os servicos correspondentes forem configurados.
+  backend-integration:
+    name: backend (integracao com postgres)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: thingindex
+          POSTGRES_PASSWORD: thingindex
+          POSTGRES_DB: thingindex_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U thingindex"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: api/go.mod
+          cache-dependency-path: api/go.sum
+
+      - name: testes de integracao do repositorio
+        working-directory: api
+        env:
+          THINGINDEX_TEST_DB_HOST: 127.0.0.1
+          THINGINDEX_TEST_DB_PORT: "5432"
+          THINGINDEX_TEST_DB_USER: thingindex
+          THINGINDEX_TEST_DB_PASSWORD: thingindex
+          THINGINDEX_TEST_DB_NAME: thingindex_test
+          THINGINDEX_TEST_DB_SSLMODE: disable
+        run: go test -tags=integration ./internal/repository/ -v
+
   frontend:
     name: frontend (next)
     runs-on: ubuntu-latest
