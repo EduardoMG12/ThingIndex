@@ -15,8 +15,8 @@ test("redirects the bare root to the localized landing page @smoke", async ({ pa
     await expect(page.getByRole("link", { name: "Documentation", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: /Login/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /Start free/i })).toBeVisible();
-    await expect(page.getByRole("heading", { level: 2, name: "Explicit product focus" })).toBeVisible();
-    await expect(page.getByText("Primary use case", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Where ThingIndex helps most" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 3, name: "Organize documents with structure" })).toBeVisible();
 });
 
 test("opens the documentation page from the landing navigation @smoke", async ({ page }) => {
@@ -28,7 +28,7 @@ test("opens the documentation page from the landing navigation @smoke", async ({
     await expect(
         page.getByRole("heading", {
             level: 1,
-            name: /estado atual do projeto/i,
+            name: /engineering documentation/i,
         })
     ).toBeVisible();
 });
@@ -36,7 +36,7 @@ test("opens the documentation page from the landing navigation @smoke", async ({
 test("opens the localized register page from the landing CTA @smoke", async ({ page }) => {
     await page.goto("/en");
 
-    await page.getByRole("link", { name: /Start now/i }).click();
+    await page.getByRole("link", { name: /Start free/i }).click();
 
     await expect(page).toHaveURL(/\/en\/register$/);
     await expect(page.getByRole("button", { name: /Create account/i })).toBeVisible();
@@ -51,12 +51,14 @@ test("redirects protected routes to the localized login page when unauthenticate
     await expect(page.getByRole("link", { name: /Create account/i })).toBeVisible();
 });
 
-test("redirects authenticated users away from auth routes to the localized dashboard @smoke", async ({ context, page }) => {
+test("redirects authenticated users away from auth routes to the localized dashboard @smoke", async ({ baseURL, context, page }) => {
+    // A URL do cookie precisa acompanhar a baseURL. Fixar a porta 3000 fazia o
+    // cookie ser descartado sempre que a suite rodava em outra porta.
     await context.addCookies([
         {
             name: "token",
             value: "playwright-token",
-            url: "http://127.0.0.1:3000",
+            url: baseURL ?? "http://127.0.0.1:3000",
         },
     ]);
 
