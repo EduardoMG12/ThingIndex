@@ -45,6 +45,7 @@ func appendLLMUsageMetadata(result *domain.IndexingResult, documentID uint, usag
 	}
 
 	appendMetadataPair(result, documentID, "llm_request_count", strconv.Itoa(usage.RequestCount))
+	appendMetadataPair(result, documentID, "llm_failed_request_count", strconv.Itoa(usage.FailedRequestCount))
 	appendMetadataPair(result, documentID, "llm_input_tokens_estimate", strconv.Itoa(usage.EstimatedInputTokens))
 	appendMetadataPair(result, documentID, "llm_output_tokens_estimate", strconv.Itoa(usage.EstimatedOutputTokens))
 	appendMetadataPair(result, documentID, "llm_total_tokens_estimate", strconv.Itoa(usage.EstimatedTotalTokens))

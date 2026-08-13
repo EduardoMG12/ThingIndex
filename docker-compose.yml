@@ -40,7 +40,10 @@ services:
 
   gcs-emulator:
     image: fsouza/fake-gcs-server:1.53.1
-    command: -scheme http
+    # -public-host e obrigatorio: sem ele o emulador monta as URLs de download
+    # contra storage.googleapis.com, entao Attrs funciona mas NewReader devolve
+    # "object doesn't exist" — upload aparentemente ok e leitura quebrada.
+    command: -scheme http -public-host 127.0.0.1:4443
     ports:
       - "4443:4443"
     volumes:
