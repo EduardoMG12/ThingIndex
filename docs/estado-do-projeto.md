@@ -241,7 +241,13 @@ Três bloqueios sistêmicos foram corrigidos:
 | `/api/user/me` sem mock | O bootstrap batia na API real com token falso, recebia 401 e redirecionava — falha aparecia como "elemento não encontrado" |
 | Cópia defasada | Asserções contra textos que não existem mais |
 
-**Resultado: de 2/14 para 6/14 passando**, com `public-smoke.spec.ts` 5/5 e no CI.
+**Resultado: de 2/14 para 7/14 passando.** No CI: `public-smoke.spec.ts` e
+`documentation-onboarding.spec.ts`.
+
+Um quarto bloqueio apareceu depois: assercoes acopladas ao ambiente. O teste
+fixava `http://127.0.0.1:8000` para URLs que a pagina deriva de
+`NEXT_PUBLIC_API_URL` — rodar a API em outra porta quebrava sem nada estar
+errado. Passa a derivar da mesma variavel.
 
 **O que falta:** 8 testes ainda referenciam cópia antiga da UI. Cada um tem uma
 cadeia de asserções, então consertar exige percorrer assertion por assertion
@@ -253,6 +259,19 @@ hoje.
 Conforme cada arquivo ficar verde, mova-o para o passo `e2e` do
 `.github/workflows/ci.yml`. Só `public-smoke` está lá agora, de propósito: CI
 vermelho permanente equivale a não ter CI.
+
+### 2.6 A página de documentação expulsa o visitante para o login
+
+Encontrado ao consertar o E2E. A documentação é pública — o servidor devolve a
+página completa sem sessão, e a landing linka para ela abertamente. Mas o
+bootstrap de sessão no cliente recebe 401 e redireciona para `/en/login`.
+
+É uma corrida: às vezes o conteúdo aparece antes do redirecionamento, às vezes
+não. Na prática, um visitante que clica em "Documentation" na landing pode cair
+no login sem motivo — justamente o público que o projeto quer atrair.
+
+O teste correspondente está marcado com `test.fixme` para não deixar o CI
+intermitente. Remover a marcação quando o redirecionamento for corrigido.
 
 ### 2.3 Arquivos grandes demais
 
@@ -324,7 +343,8 @@ código de produção. Baixo risco.
 | 4 | Testes de `repository` (2.1) | ✅ PR #4 — 6 testes novos + Postgres no CI |
 | 5 | **bbox no OCR (1.3)** | ⬜ próximo — destrava o grifo em documento digitalizado |
 | 6 | `LICENSE` (2.4) | ✅ PR #6 — MIT |
-| 7 | **Terminar os 8 E2E restantes (2.5)** | ⬜ próximo |
+| 7 | **Terminar os 7 E2E restantes (2.5)** | ⬜ 5 falham por fluxo de UI mudado |
+| 8 | **Documentação pública expulsa visitante para login (2.6)** | ⬜ bug de produto |
 | ! | **Backup do artigo (1.4)** | ⚠️ decisão sua, e é a mais urgente da lista |
 
 Com o CI de pé, os itens 4 e 5 passam a ser protegidos automaticamente contra
