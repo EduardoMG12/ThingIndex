@@ -55,9 +55,13 @@ type pdfTextExtractor interface {
 	Extract(data []byte) (pdfTextExtraction, error)
 }
 
+// pdfOCRExtractor devolve blocos, nao texto puro, porque um provider capaz de
+// layout (como o Unlimited-OCR) sabe a caixa de cada regiao. Providers que so
+// entregam texto devolvem blocos com Box nil, e o grifo posicional
+// simplesmente nao existe para aquelas paginas.
 type pdfOCRExtractor interface {
 	Name() string
-	Extract(ctx context.Context, data []byte, pageNumbers []int) (map[int]string, error)
+	Extract(ctx context.Context, data []byte, pageNumbers []int) (map[int][]textBlock, error)
 }
 
 type nativePDFTextExtractor struct{}
@@ -78,6 +82,10 @@ type pdfOCRFallbackStats struct {
 	Engine      string
 	Reason      string
 	PageNumbers []int
+	// AnchoredBlocks conta quantos blocos vindos do OCR trouxeram caixa. Com
+	// tesseract e sempre zero; com um provider de layout mede a cobertura de
+	// ancoragem posicional em documento digitalizado.
+	AnchoredBlocks int
 }
 
 func NewDeterministicIndexer() *DeterministicIndexer {

@@ -36,13 +36,22 @@ func (f *fakePDFOCRExtractor) Name() string {
 	return f.name
 }
 
-func (f *fakePDFOCRExtractor) Extract(_ context.Context, _ []byte, pageNumbers []int) (map[int]string, error) {
+// O fake continua declarando texto por pagina; a conversao para blocos
+// acontece aqui, do mesmo jeito que um provider sem layout faria.
+func (f *fakePDFOCRExtractor) Extract(_ context.Context, _ []byte, pageNumbers []int) (map[int][]textBlock, error) {
 	nextCall := append([]int(nil), pageNumbers...)
 	f.calls = append(f.calls, nextCall)
 	if f.err != nil {
 		return nil, f.err
 	}
-	return f.texts, nil
+
+	blocksByPage := make(map[int][]textBlock, len(f.texts))
+	for pageNumber, text := range f.texts {
+		if blocks := blocksFromOCRPageText(text, pageNumber); len(blocks) > 0 {
+			blocksByPage[pageNumber] = blocks
+		}
+	}
+	return blocksByPage, nil
 }
 
 func TestDeterministicIndexerIndexHTML(t *testing.T) {

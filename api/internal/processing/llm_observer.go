@@ -9,9 +9,13 @@ import (
 )
 
 type llmUsageSnapshot struct {
-	ProviderType          string
-	Model                 string
-	RequestCount          int
+	ProviderType string
+	Model        string
+	RequestCount int
+	// FailedRequestCount separa "nenhuma chamada foi feita" de "todas as
+	// chamadas falharam". Sem ele, os dois casos reportavam request_count 0 e a
+	// telemetria de uso do LLM ficava cega para falha de provider.
+	FailedRequestCount    int
 	EstimatedInputTokens  int
 	EstimatedOutputTokens int
 	EstimatedTotalTokens  int
@@ -47,6 +51,7 @@ func newObservedLLMService(base domain.LLMService) *observedLLMService {
 func (o *observedLLMService) GenerateText(ctx context.Context, systemPrompt, userPrompt string) (string, error) {
 	output, err := o.base.GenerateText(ctx, systemPrompt, userPrompt)
 	if err != nil {
+		o.usage.FailedRequestCount++
 		return "", err
 	}
 
