@@ -9,20 +9,49 @@ function success(data: unknown) {
     };
 }
 
-async function authenticate(context: BrowserContext) {
+// A URL do cookie acompanha a baseURL. Fixar a porta 3000 fazia o cookie ser
+// descartado sempre que a suite rodava em outra porta, e todo teste autenticado
+// caia na tela de login sem explicar o motivo.
+// Alem do cookie, o bootstrap do app busca /api/user/me. Sem esse mock a
+// chamada ia para a API real com um token falso, recebia 401 e a pagina
+// redirecionava para o login — todo teste autenticado falhava com "elemento nao
+// encontrado", escondendo a causa real.
+async function authenticateRoutes(context: BrowserContext) {
+    await context.route("**/api/user/me", async (route) => {
+        await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({
+                status: 200,
+                type: "success",
+                message: "ok",
+                data: {
+                    id: 1,
+                    name: "Playwright",
+                    email: "playwright@example.com",
+                    avatarUrl: null,
+                    updatedAt: "2026-01-01T00:00:00Z",
+                },
+            }),
+        });
+    });
+}
+
+async function authenticate(context: BrowserContext, baseURL: string | undefined) {
+    await authenticateRoutes(context);
     await context.addCookies([
         {
             name: "token",
             value: "playwright-token",
-            url: "http://127.0.0.1:3000",
+            url: baseURL ?? "http://127.0.0.1:3000",
         },
     ]);
 }
 
 test.use({ locale: "en-US" });
 
-test("documents observability panel highlights attention slices and filters the library", async ({ context, page }) => {
-    await authenticate(context);
+test("documents observability panel highlights attention slices and filters the library", async ({ baseURL, context, page }) => {
+    await authenticate(context, baseURL);
 
     await page.route("**/api/user/providers/runtime", async (route) => {
         await route.fulfill({

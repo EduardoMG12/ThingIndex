@@ -216,7 +216,7 @@ test("documentation page exposes the open-source onboarding flow", async ({ page
 
     await page.goto("/en/documentation");
 
-    await expect(page.getByRole("heading", { level: 2, name: "Foco do Produto" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Product focus" })).toBeVisible();
     await expect(page.getByText("/api/v1/meta/runtime-profile", { exact: true })).toBeVisible();
     await expect(page.getByText(/Operations and compliance teams/i)).toBeVisible();
     await expect(page.getByText("rfc/0001-product-focus.md", { exact: true })).toBeVisible();

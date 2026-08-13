@@ -226,6 +226,34 @@ O mais importante deles trava a propriedade de isolamento: uma credencial
 cifrada para o usuário 1 **não** decifra no contexto do usuário 2, porque o
 `userID` entra na derivação da chave.
 
+### 2.5 Suíte E2E parcialmente apodrecida — PARCIAL (PR #6)
+
+Os testes E2E nunca rodavam. Não estavam no CI, e rodá-los localmente dava um
+resultado enganoso: o `reuseExistingServer` do Playwright pegava qualquer
+`next-server` já ativo na porta 3000 — na máquina do autor, outro projeto. A
+suíte "testava" a landing de outra aplicação e falhava de forma incompreensível.
+
+Três bloqueios sistêmicos foram corrigidos:
+
+| Problema | Efeito |
+|---|---|
+| `url: "http://127.0.0.1:3000"` fixo no cookie, em 6 arquivos | Fora da porta 3000 o cookie era descartado e todo teste autenticado caía no login |
+| `/api/user/me` sem mock | O bootstrap batia na API real com token falso, recebia 401 e redirecionava — falha aparecia como "elemento não encontrado" |
+| Cópia defasada | Asserções contra textos que não existem mais |
+
+**Resultado: de 2/14 para 6/14 passando**, com `public-smoke.spec.ts` 5/5 e no CI.
+
+**O que falta:** 8 testes ainda referenciam cópia antiga da UI. Cada um tem uma
+cadeia de asserções, então consertar exige percorrer assertion por assertion
+comparando com a interface atual. Exemplos encontrados: `"Explicit product
+focus"`, `"Primary use case"`, `"Foco do Produto"`, `"Active chat LLM"`,
+`"Document audit history"`, `"Operations and compliance teams"` — nenhum existe
+hoje.
+
+Conforme cada arquivo ficar verde, mova-o para o passo `e2e` do
+`.github/workflows/ci.yml`. Só `public-smoke` está lá agora, de propósito: CI
+vermelho permanente equivale a não ter CI.
+
 ### 2.3 Arquivos grandes demais
 
 | Arquivo | Tamanho |
@@ -241,10 +269,10 @@ por outro motivo — refatorar por refatorar não paga.
 
 ### 2.4 Pendências administrativas
 
-- **Sem `LICENSE`.** O próprio README admite. Repo público de TCC sem licença
-  fica juridicamente ambíguo para quem quiser citar ou reusar. **Pendente de
-  decisão sua** — escolher licença é chamada do autor, não do agente. MIT e
-  Apache-2.0 são as usuais para trabalho acadêmico que se quer citável.
+- ~~**Sem `LICENSE`.**~~ Resolvido no PR #6: **MIT**, com o autor como titular.
+  Escolhida por ser a mais comum em trabalho acadêmico que se quer citável e
+  reusável. Trocar para Apache-2.0 (que adiciona concessão de patente) é um
+  commit.
 - ~~**Remote com nome antigo.**~~ Resolvido: `origin` agora aponta para
   `ThingIndex` em vez de `LegisGraph-`.
 - **Arquivo `1` na raiz.** 0 bytes, untracked, provável typo de redirecionamento
@@ -295,7 +323,8 @@ código de produção. Baixo risco.
 | 3 | Teste de crypto (2.2) | ✅ PR #3 |
 | 4 | Testes de `repository` (2.1) | ✅ PR #4 — 6 testes novos + Postgres no CI |
 | 5 | **bbox no OCR (1.3)** | ⬜ próximo — destrava o grifo em documento digitalizado |
-| 6 | `LICENSE` (2.4) | ⬜ depende de decisão sua |
+| 6 | `LICENSE` (2.4) | ✅ PR #6 — MIT |
+| 7 | **Terminar os 8 E2E restantes (2.5)** | ⬜ próximo |
 | ! | **Backup do artigo (1.4)** | ⚠️ decisão sua, e é a mais urgente da lista |
 
 Com o CI de pé, os itens 4 e 5 passam a ser protegidos automaticamente contra
