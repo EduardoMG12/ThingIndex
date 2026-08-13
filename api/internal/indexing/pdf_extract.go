@@ -44,6 +44,22 @@ func isPlausibleText(text string) bool {
 	return garbageRatio < 0.1
 }
 
+// newPDFOCRExtractor escolhe o provider de OCR.
+//
+// O Unlimited-OCR entrega qualidade melhor e, principalmente, a caixa de cada
+// bloco — o que estende o grifo posicional para paginas digitalizadas. Em
+// troca, exige GPU e um servidor separado.
+//
+// O tesseract permanece como fallback de proposito: roda em qualquer maquina,
+// ja esta na imagem do worker e nao depende de servico externo. Sem ele, clonar
+// o repositorio sem GPU deixaria o projeto sem OCR nenhum.
+func newPDFOCRExtractor() pdfOCRExtractor {
+	if extractor := newUnlimitedOCRExtractor(); extractor != nil {
+		return extractor
+	}
+	return newCommandPDFOCRExtractor()
+}
+
 func newCommandPDFOCRExtractor() pdfOCRExtractor {
 	rendererPath, err := exec.LookPath("pdftoppm")
 	if err != nil {
@@ -84,26 +100,28 @@ func (i *DeterministicIndexer) applyPDFOCRFallback(
 
 	stats.Attempted = true
 	stats.Engine = i.pdfOCRExtractor.Name()
-	ocrTextByPage, err := i.pdfOCRExtractor.Extract(ctx, data, pagesNeedingOCR)
+	ocrBlocksByPage, err := i.pdfOCRExtractor.Extract(ctx, data, pagesNeedingOCR)
 	if err != nil {
 		stats.Reason = strings.TrimSpace(stats.Reason + "_ocr_failed")
 		return merged, stats
 	}
 
 	appliedPages := make([]int, 0, len(pagesNeedingOCR))
+	anchored := 0
 	for _, pageNumber := range pagesNeedingOCR {
-		text := strings.TrimSpace(ocrTextByPage[pageNumber])
-		if text == "" {
-			continue
-		}
-
-		blocks := blocksFromOCRPageText(text, pageNumber)
+		blocks := ocrBlocksByPage[pageNumber]
 		if len(blocks) == 0 {
 			continue
 		}
 		merged[pageNumber] = blocks
 		appliedPages = append(appliedPages, pageNumber)
+		for _, block := range blocks {
+			if block.Box != nil {
+				anchored++
+			}
+		}
 	}
+	stats.AnchoredBlocks = anchored
 
 	stats.Applied = len(appliedPages) > 0
 	stats.PageNumbers = appliedPages
