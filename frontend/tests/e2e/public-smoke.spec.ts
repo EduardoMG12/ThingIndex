@@ -27,7 +27,7 @@ test("redirects the bare root to the localized landing page @smoke", async ({ pa
 //
 // Marcado como fixme para nao deixar o CI intermitente. Remover assim que o
 // redirecionamento indevido for corrigido no app.
-test.fixme("opens the documentation page from the landing navigation @smoke", async ({ page }) => {
+test("opens the documentation page from the landing navigation @smoke", async ({ page }) => {
     await page.goto("/en");
 
     await page.getByRole("link", { name: "Documentation", exact: true }).click();
@@ -35,7 +35,10 @@ test.fixme("opens the documentation page from the landing navigation @smoke", as
     // Prazo maior de proposito: em modo dev o webpack compila esta rota sob
     // demanda na primeira visita, e a compilacao a frio passa dos 15s padrao.
     // Nao e lentidao do produto, e do servidor de desenvolvimento.
-    await expect(page).toHaveURL(/\/en\/documentation$/);
+    // Prazo maior: em modo dev o webpack compila esta rota sob demanda, e sob
+    // contencao a compilacao a frio passa dos 15s padrao. E lentidao do servidor
+    // de desenvolvimento, nao do produto.
+    await expect(page).toHaveURL(/\/en\/documentation$/, { timeout: 60_000 });
     await expect(
         page.getByRole("heading", {
             level: 1,

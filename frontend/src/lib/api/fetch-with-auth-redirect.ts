@@ -39,9 +39,22 @@ function redirectToLogin() {
     window.location.assign(loginPath);
 }
 
+interface FetchWithAuthRedirectOptions {
+    /**
+     * Quando false, um 401 apenas lanca UnauthorizedRequestError, sem mandar o
+     * navegador para o login. Usado em telas que tambem existem para visitante
+     * anonimo: a pagina publica ainda renderiza, so nao mostra dados de sessao.
+     *
+     * A protecao de rota nao depende disso — quem barra acesso e o proxy no
+     * servidor, com a lista PROTECTED_PATHS.
+     */
+    redirectOnUnauthorized?: boolean;
+}
+
 export async function fetchWithAuthRedirect(
     input: RequestInfo | URL,
-    init?: RequestInit
+    init?: RequestInit,
+    options?: FetchWithAuthRedirectOptions
 ) {
     const locale = getClientLocale();
     const headers = new Headers(init?.headers);
@@ -57,7 +70,9 @@ export async function fetchWithAuthRedirect(
     });
 
     if (response.status === 401) {
-        redirectToLogin();
+        if (options?.redirectOnUnauthorized !== false) {
+            redirectToLogin();
+        }
         throw new UnauthorizedRequestError();
     }
 

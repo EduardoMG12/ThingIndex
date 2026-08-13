@@ -260,7 +260,7 @@ Conforme cada arquivo ficar verde, mova-o para o passo `e2e` do
 `.github/workflows/ci.yml`. Só `public-smoke` está lá agora, de propósito: CI
 vermelho permanente equivale a não ter CI.
 
-### 2.6 A página de documentação expulsa o visitante para o login
+### ~~2.6 A página de documentação expulsa o visitante para o login~~ — RESOLVIDO (PR #8)
 
 Encontrado ao consertar o E2E. A documentação é pública — o servidor devolve a
 página completa sem sessão, e a landing linka para ela abertamente. Mas o
@@ -270,8 +270,21 @@ bootstrap de sessão no cliente recebe 401 e redireciona para `/en/login`.
 não. Na prática, um visitante que clica em "Documentation" na landing pode cair
 no login sem motivo — justamente o público que o projeto quer atrair.
 
-O teste correspondente está marcado com `test.fixme` para não deixar o CI
-intermitente. Remover a marcação quando o redirecionamento for corrigido.
+**Causa raiz:** `AppShell` envolve também páginas públicas e chama
+`fetchCurrentUser()` ao montar. Esse cliente usava `fetchWithAuthRedirect`, que
+mandava o navegador para o login em qualquer 401 — antes de o `AppShell` poder
+decidir. O `AppShell` já tratava o erro (`catch { setCurrentUser(null) }`), mas a
+decisão dele nunca chegava a valer.
+
+**Correção:** `fetchWithAuthRedirect` ganhou a opção `redirectOnUnauthorized`, e
+`fetchCurrentUser` passa `false`. Página pública renderiza em modo anônimo; o
+resto do app segue redirecionando como antes.
+
+Isso não enfraquece a proteção de rota: quem barra acesso é o `proxy.ts` no
+servidor, com a lista `PROTECTED_PATHS`. O redirecionamento no cliente era
+redundante ali e nocivo nas públicas.
+
+O `test.fixme` foi removido e o teste passa.
 
 ### 2.3 Arquivos grandes demais
 
@@ -344,7 +357,7 @@ código de produção. Baixo risco.
 | 5 | **bbox no OCR (1.3)** | ⬜ próximo — destrava o grifo em documento digitalizado |
 | 6 | `LICENSE` (2.4) | ✅ PR #6 — MIT |
 | 7 | **Terminar os 7 E2E restantes (2.5)** | ⬜ 5 falham por fluxo de UI mudado |
-| 8 | **Documentação pública expulsa visitante para login (2.6)** | ⬜ bug de produto |
+| 8 | Documentação pública expulsava visitante (2.6) | ✅ PR #8 |
 | ! | **Backup do artigo (1.4)** | ⚠️ decisão sua, e é a mais urgente da lista |
 
 Com o CI de pé, os itens 4 e 5 passam a ser protegidos automaticamente contra
