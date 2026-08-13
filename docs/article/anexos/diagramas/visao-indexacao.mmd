@@ -1,0 +1,32 @@
+---
+title: Visão Geral da Indexação
+---
+flowchart TB
+    subgraph Entrada["Entrada"]
+        A[Documento PDF]
+    end
+
+    subgraph Processamento["Processamento"]
+        B[Parser]
+        C[Extração de Parágrafos]
+        D[Extração de Tabelas]
+        E[Extração de Metadados]
+    end
+
+    subgraph Saida["Saída"]
+        F[(PostgreSQL)]
+        G[(Object Storage)]
+    end
+
+    A --> B
+    B --> C
+    B --> D
+    B --> E
+    C --> F
+    D --> F
+    E --> F
+    A --> G
+
+    style Entrada fill:#E3F2FD,stroke:#1565C0
+    style Processamento fill:#E8F5E9,stroke:#2E7D32
+    style Saida fill:#FFF3E0,stroke:#E65100

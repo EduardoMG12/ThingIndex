@@ -26,7 +26,7 @@ em `ParagraphNode.Metadata` (sem migration, a coluna já era `jsonb`).
 
 ## 1. Urgente
 
-### ~~1.0 O repositório público não compilava~~ — RESOLVIDO (PR #3)
+### ~~1.0 O repositório não compilava~~ — RESOLVIDO (PR #3)
 
 O achado mais grave de todos, e o mais silencioso. Um clone limpo do repositório
 falhava no build:
@@ -52,8 +52,7 @@ existiam apenas na máquina local:
 - `internal/api/export.go`
 - `internal/api/unavailable_storage.go`
 
-Para um TCC com repositório público, isso é crítico: a banca pode clonar e nada
-compila. Padrões agora ancorados (`/main`, `/api`, `/api-server`), o que preserva
+Isso é crítico: qualquer clone — inclusive o da banca — não compilava. Padrões agora ancorados (`/main`, `/api`, `/api-server`), o que preserva
 o comportamento pretendido — `api/api`, 54 MB, segue ignorado — sem capturar
 código-fonte. Verificado com clone limpo antes e depois.
 
@@ -100,7 +99,7 @@ O smoke de LLM real saiu do hook e virou sob demanda:
 O `pre-commit` mantém apenas o que é rápido e offline. A flag foi removida de
 `.env.example` e das três seções de documentação que ainda a citavam.
 
-### 1.4 O artigo do TCC não tem backup nenhum — DECISÃO SUA
+### ~~1.4 O artigo do TCC não tem backup nenhum~~ — RESOLVIDO (PR #9)
 
 Mesma classe de bug do 1.0, em outro arquivo. O `.gitignore` da raiz continha a
 linha `docs/`, que ignorava a pasta inteira. **Zero arquivos de `docs/` estavam
@@ -120,24 +119,13 @@ Isso também explica por que o README apontava para `docs/article/README.md` e
 `docs/proposta-continuacao-tcc.md`: a documentação descrevia arquivos que nunca
 entraram no repositório.
 
-**Estado atual:** a pasta `docs/` foi destravada para documentação de engenharia
-(este arquivo, por exemplo), mas os artefatos de pesquisa continuam ignorados de
-propósito. Commitar o artigo num repositório **público** antes da defesa é
-decisão de publicação do autor — pode esbarrar em regra institucional, em
-política de publicação prévia, ou simplesmente não ser desejado ainda.
+**Resolvido.** O repositório é **privado** — eu havia afirmado que era público,
+sem verificar, e isso enviesou a recomendação anterior. Sem risco de exposição,
+os artefatos passam a ser versionados junto do código.
 
-**As opções:**
-
-1. **Versionar no repo público** — remova as linhas de `.gitignore`. Simples, mas
-   o artigo fica visível para qualquer pessoa antes da defesa.
-2. **Repositório privado separado** para os artefatos acadêmicos. Melhor
-   isolamento, mas mais um lugar para manter.
-3. **Backup fora do git** (Overleaf já é um, Drive, etc.). O nome
-   `article-overleaf.md` sugere que talvez já exista cópia no Overleaf — se sim,
-   confirme que está sincronizada, porque a cópia local está 100% desprotegida.
-
-Enquanto nenhuma for escolhida, o risco continua: uma falha de disco custa o
-artigo inteiro.
+O backup principal é `docs/article/thingindex-artigo.pdf`, a versão compilada de
+referência (23 páginas). Ao atualizar o artigo, commite o PDF junto: é ele que
+garante uma versão recuperável independente do estado do Overleaf.
 
 ### ~~1.3 Páginas via OCR não têm âncora posicional~~ — RESOLVIDO (PR #5)
 
@@ -358,7 +346,7 @@ código de produção. Baixo risco.
 | 6 | `LICENSE` (2.4) | ✅ PR #6 — MIT |
 | 7 | **Terminar os 7 E2E restantes (2.5)** | ⬜ 5 falham por fluxo de UI mudado |
 | 8 | Documentação pública expulsava visitante (2.6) | ✅ PR #8 |
-| ! | **Backup do artigo (1.4)** | ⚠️ decisão sua, e é a mais urgente da lista |
+| ! | Backup do artigo (1.4) | ✅ PR #9 — versionado, repo é privado |
 
 Com o CI de pé, os itens 4 e 5 passam a ser protegidos automaticamente contra
 regressão — que era o ponto de fazer 1 e 2 primeiro.

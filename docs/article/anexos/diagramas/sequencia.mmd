@@ -1,0 +1,82 @@
+sequenceDiagram
+    participant U as Usuário
+    participant F as Frontend
+    participant A as API (Go)
+    participant S as Storage
+    participant P as PostgreSQL
+    participant R as RabbitMQ
+    participant W as Worker
+
+    Note over U,W: FLUXO 1: Upload e Indexação
+
+    U->>F: Seleciona coleção e PDF
+    F->>A: POST /documents/upload
+    activate A
+    A->>A: Valida PDF (< 20MB)
+    A->>S: PUT arquivo
+    activate S
+    S-->>A: URL do objeto
+    deactivate S
+    A->>P: INSERT document (QUEUED)
+    activate P
+    P-->>A: document_id
+    deactivate P
+    A->>P: INSERT outbox_event
+    P-->>A: event_id
+    A-->>F: 201 Created
+    deactivate A
+    F-->>U: Upload confirmado
+
+    Note over R,P: Dispatcher polling 1s
+
+    R->>P: SELECT outbox WHERE published=false
+    P-->>R: Evento pendente
+    R->>R: Publica na fila
+
+    Note over R,W: Worker consome
+
+    activate W
+    R-->>W: Mensagem de indexação
+    W->>S: GET arquivo
+    activate S
+    S-->>W: Stream de bytes
+    deactivate S
+    W->>W: Parsing do PDF
+    W->>P: INSERT paragraph_nodes, table_sections, pages, outline
+    activate P
+    P-->>W: OK
+    deactivate P
+    W->>P: UPDATE document SET status=INDEXED
+    activate P
+    P-->>W: OK
+    deactivate P
+    deactivate W
+
+    Note over U,W: FLUXO 2: Recuperação de Contexto
+
+    U->>F: Abre página da coleção
+    F->>A: GET /collections/:id/context
+    activate A
+    A->>P: SELECT collection, documents, paragraphs, tables
+    activate P
+    P-->>A: Dados estruturados
+    deactivate P
+    A->>A: Agrega em memória O(n)
+    A-->>F: JSON hierárquico
+    deactivate A
+    F-->>U: Visualização da coleção
+
+    Note over U,W: FLUXO 3: Chat com Contexto
+
+    U->>F: Digita pergunta
+    F->>A: POST /chat (collection_id, pergunta)
+    activate A
+    A->>A: Recupera contexto (reusa Fluxo 2)
+    A->>A: Monta prompt com contexto
+    loop streaming SSE
+        A-->>F: token da resposta
+        F-->>U: Renderiza em tempo real
+    end
+    A-->>F: Fontes citadas (doc_id, página, parágrafo)
+    deactivate A
+    F-->>U: Exibe fontes
