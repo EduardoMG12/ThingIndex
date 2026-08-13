@@ -136,8 +136,8 @@ jobs:
         working-directory: frontend
         run: pnpm exec playwright install --with-deps chromium
 
-      # Escopo proposital em public-smoke.spec.ts: e o unico arquivo com a suite
-      # inteira verde hoje. Os outros 7 ainda tem assercoes escritas contra uma
+      # Escopo proposital: apenas os arquivos inteiramente verdes hoje. Os demais
+      # ainda tem assercoes escritas contra uma
       # versao antiga da UI (ver docs/estado-do-projeto.md, secao 2.5). Colocar
       # tudo aqui deixaria o CI vermelho permanente, que e o mesmo que nao ter
       # CI. Mova cada arquivo para ca conforme for consertado.
@@ -146,4 +146,4 @@ jobs:
       # redirecionamento de rota protegida e a landing publica.
       - name: e2e (smoke publico)
         working-directory: frontend
-        run: pnpm exec playwright test tests/e2e/public-smoke.spec.ts --reporter=list
+        run: pnpm exec playwright test tests/e2e/public-smoke.spec.ts tests/e2e/documentation-onboarding.spec.ts --reporter=list
