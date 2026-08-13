@@ -9,9 +9,27 @@ function success(data: unknown) {
     };
 }
 
+// A pagina monta esses enderecos a partir de NEXT_PUBLIC_API_URL. Fixar a porta
+// 8000 amarrava o teste a um unico ambiente: rodar a API em outra porta fazia a
+// assercao falhar sem que nada estivesse errado.
+const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api/v1";
+const apiOrigin = apiBase.replace(/\/api\/v1\/?$/, "");
+
 test.use({ locale: "en-US" });
 
 test("documentation page exposes the open-source onboarding flow", async ({ page }) => {
+    // A pagina e publica, mas o app faz o bootstrap de sessao mesmo assim. Sem
+    // este mock a chamada recebe 401 no meio do teste e a navegacao pula para o
+    // login — as primeiras assercoes passam e as seguintes falham com "elemento
+    // nao encontrado", escondendo o redirecionamento.
+    await page.route("**/api/user/me", async (route) => {
+        await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify(success({ id: 1, name: "Playwright", email: "playwright@example.com", avatarUrl: null, updatedAt: "2026-01-01T00:00:00Z" })),
+        });
+    });
+
     await page.route("**/api/runtime/profile", async (route) => {
         await route.fulfill({
             status: 200,
@@ -221,29 +239,30 @@ test("documentation page exposes the open-source onboarding flow", async ({ page
     await expect(page.getByText(/Operations and compliance teams/i)).toBeVisible();
     await expect(page.getByText("rfc/0001-product-focus.md", { exact: true })).toBeVisible();
     await expect(page.getByText("docs/article/README.md", { exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { level: 2, name: "Benchmark de Indexação" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Indexing benchmark" })).toBeVisible();
     await expect(page.getByText("/api/v1/meta/indexing-benchmark", { exact: true })).toBeVisible();
     await expect(page.getByText("internal/usecase/testdata/indexing-benchmark/corpus.json", { exact: true })).toBeVisible();
     await expect(page.getByText("28.6%", { exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { level: 2, name: "Onboarding Open Source" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Open-source onboarding" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 3, name: "Self-hosted runtime" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 3, name: "Hosted API consumption" })).toBeVisible();
     await expect(page.getByText("./scripts/bootstrap.sh", { exact: true })).toBeVisible();
     await expect(page.getByText("./scripts/stack.sh up", { exact: true })).toBeVisible();
     await expect(page.getByText("./scripts/doctor.sh", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("http://127.0.0.1:8000/docs", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("http://127.0.0.1:8000/api/v1", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("docs/open-source-onboarding.md", { exact: true })).toBeVisible();
+    await expect(page.getByText(`${apiOrigin}/docs`, { exact: true }).first()).toBeVisible();
+    await expect(page.getByText(apiBase, { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("docs/open-source-onboarding.md", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("examples/http/thingindex-api.http", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("api/cmd/index-import", { exact: true })).toBeVisible();
     await expect(page.getByText("api/docs/swagger.yaml", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("Nenhuma task aberta no backlog principal neste momento.", { exact: true })).toBeVisible();
+    // A secao de roadmap nao renderiza mais mensagem de backlog vazio; a string
+    // que este teste esperava nao existe em nenhum dicionario.
     await expect(page.getByText("Ready", { exact: true })).toHaveCount(2);
     await expect(page.getByText("Experimental", { exact: true })).toHaveCount(2);
     await expect(page.getByText("Google Gemini", { exact: true }).first()).toBeVisible();
     await expect(page.getByTestId("provider-brand-GOOGLE_GEMINI").first()).toBeVisible();
 
-    await expect(page.getByRole("link", { name: "Open link" }).first()).toHaveAttribute("href", /127\.0\.0\.1:8000/);
-    await expect(page.getByRole("link", { name: "Open link" }).nth(1)).toHaveAttribute("href", "http://127.0.0.1:8000/swagger/index.html");
-    await expect(page.getByRole("link", { name: "Open link" }).nth(2)).toHaveAttribute("href", "http://127.0.0.1:8000/swagger/doc.json");
+    await expect(page.getByRole("link", { name: "Open link" }).first()).toHaveAttribute("href", new RegExp(apiOrigin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    await expect(page.getByRole("link", { name: "Open link" }).nth(1)).toHaveAttribute("href", `${apiOrigin}/swagger/index.html`);
+    await expect(page.getByRole("link", { name: "Open link" }).nth(2)).toHaveAttribute("href", `${apiOrigin}/swagger/doc.json`);
 });
