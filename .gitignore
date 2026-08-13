@@ -37,16 +37,7 @@ parsed_data/
 comandos_neo4j.md
 what-missing?.md
 
-# `docs/` inteiro estava ignorado, o que escondia duas coisas muito diferentes:
-# documentacao de engenharia (que deve ser versionada) e os artefatos de
-# pesquisa do TCC (que sao decisao de publicacao do autor).
-#
-# A pasta foi destravada para a documentacao de engenharia. Os artefatos
-# academicos seguem fora do repositorio publico ate decisao explicita do autor
-# — ver docs/estado-do-projeto.md, secao 1.4.
-#
-# ATENCAO: enquanto estiverem listados aqui, esses arquivos NAO tem backup no
-# git. Existem apenas no disco local.
-docs/article/
-docs/analise-para-correcao/
-docs/presentation/
+# `docs/` inteiro esteve ignorado por um tempo, o que deixou o artigo do TCC,
+# a bibliografia e os slides sem backup nenhum — existiam so no disco local.
+# Agora tudo e versionado. O repositorio e privado, entao versionar os
+# artefatos academicos nao os expoe.
