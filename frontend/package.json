@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbo -H 0.0.0.0",
-    "dev:e2e": "next dev --webpack -H 127.0.0.1 -p 3000",
+    "dev:e2e": "next dev --webpack -H 127.0.0.1 -p ${THINGINDEX_E2E_PORT:-3000}",
     "storybook": "pnpm run build:storybook && python3 -m http.server 6006 --bind 0.0.0.0 --directory storybook-static",
     "storybook:test-server": "python3 -m http.server 6006 --bind 127.0.0.1 --directory storybook-static",
     "build": "next build",

@@ -1,0 +1,49 @@
+graph TB
+    subgraph Frontend["Frontend"]
+        UI["Next.js App"]
+        DOCS["Documentacao"]
+    end
+
+    subgraph API["API (Go)"]
+        AUTH["Autenticacao"]
+        HANDLERS["Handlers HTTP"]
+        UC["Use Cases"]
+    end
+
+    subgraph Storage["Persistencia"]
+        PG[("PostgreSQL")]
+        OBJ[("Object Storage")]
+    end
+
+    subgraph Pipeline["Pipeline Assincrono"]
+        OUTBOX["Outbox"]
+        MQ[("RabbitMQ")]
+        WORKER["Worker Indexer"]
+        ENRICH["Extracao de Estruturas"]
+    end
+
+    subgraph External["Provedores Externos"]
+        LLM["LLM Providers"]
+    end
+
+    UI -->|"HTTP"| HANDLERS
+    DOCS --> HANDLERS
+    HANDLERS --> AUTH
+    HANDLERS --> UC
+    UC --> PG
+    UC --> OBJ
+    UC --> OUTBOX
+    UC --> LLM
+
+    OUTBOX -->|"Eventos"| MQ
+    MQ --> WORKER
+    WORKER --> OBJ
+    WORKER --> ENRICH
+    ENRICH --> PG
+    ENRICH --> LLM
+
+    style Frontend fill:#E3F2FD,stroke:#1565C0,stroke-width:2px
+    style API fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px
+    style Storage fill:#FFF3E0,stroke:#E65100,stroke-width:2px
+    style Pipeline fill:#F3E5F5,stroke:#6A1B9A,stroke-width:2px
+    style External fill:#ECEFF1,stroke:#546E7A,stroke-width:2px
