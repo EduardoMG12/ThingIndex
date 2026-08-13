@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	gcs "cloud.google.com/go/storage"
 	"google.golang.org/api/option"
@@ -21,6 +22,13 @@ type GCSStorage struct {
 
 var gcsClientEnvMutex sync.Mutex
 
+// defaultGCSSetupTimeout limita a inicializacao do storage quando o chamador nao
+// traz contexto proprio. Sem esse limite, endpoint inalcancavel fazia
+// bucket.Attrs bloquear indefinidamente: o host do emulador e da configuracao do
+// usuario, entao um endereco que engole pacotes prendia uma goroutine para
+// sempre em vez de devolver erro.
+const defaultGCSSetupTimeout = 30 * time.Second
+
 func NewGCSStorage(projectID, bucketName, location, credentialsJSON, emulatorHost string) (*GCSStorage, error) {
 	cfg := GCSStorageConfig{
 		ProjectID:       projectID,
@@ -30,7 +38,10 @@ func NewGCSStorage(projectID, bucketName, location, credentialsJSON, emulatorHos
 		EmulatorHost:    emulatorHost,
 	}
 
-	return newGCSStorage(context.Background(), cfg)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultGCSSetupTimeout)
+	defer cancel()
+
+	return newGCSStorage(ctx, cfg)
 }
 
 type GCSStorageConfig struct {

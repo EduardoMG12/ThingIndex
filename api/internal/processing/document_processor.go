@@ -147,6 +147,20 @@ func (p *DocumentProcessor) Process(ctx context.Context, event domain.DocumentIn
 		}
 	}
 
+	// O enricher cai em fallback deterministico sempre que uma chamada ao LLM
+	// falha, e devolve sucesso. Sem esta correcao o pipeline gravava
+	// enrichment_status "applied" mesmo quando nenhuma requisicao completou —
+	// o metadado afirmava enriquecimento por IA num indice 100% deterministico,
+	// e a telemetria de custo e qualidade herdava a mentira.
+	if enrichmentStatus == "applied" && observedLLM != nil {
+		if usage := observedLLM.Snapshot(); usage.RequestCount == 0 {
+			enrichmentStatus = "degraded"
+			if usage.FailedRequestCount == 0 {
+				enrichmentStatus = "skipped"
+			}
+		}
+	}
+
 	updateState(domain.DocumentStatusProcessing, "FINALIZING_INDEX", "Consolidando metadados, telemetria e chunks finais.", "", nil)
 	result.Chunks = buildDocumentChunks(doc.ID, result)
 	appendPipelineMetadata(&result, doc.ID, enrichmentStatus)

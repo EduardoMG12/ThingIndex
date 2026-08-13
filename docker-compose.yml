@@ -40,7 +40,10 @@ services:
 
   gcs-emulator:
     image: fsouza/fake-gcs-server:1.53.1
-    command: -scheme http
+    # -public-host e obrigatorio: sem ele o emulador monta as URLs de download
+    # contra storage.googleapis.com, entao Attrs funciona mas NewReader devolve
+    # "object doesn't exist" — upload aparentemente ok e leitura quebrada.
+    command: -scheme http -public-host 127.0.0.1:4443
     ports:
       - "4443:4443"
     volumes:
@@ -110,6 +113,51 @@ services:
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_NAME: ${POSTGRES_DB}
+      # Vazio => o worker usa tesseract. Apontando para o servico ocr abaixo,
+      # passa a usar o Unlimited-OCR, que tambem devolve a caixa de cada bloco.
+      THINGINDEX_OCR_ENDPOINT: ${THINGINDEX_OCR_ENDPOINT:-}
+      THINGINDEX_OCR_MODEL: ${THINGINDEX_OCR_MODEL:-Unlimited-OCR}
+      THINGINDEX_OCR_DPI: ${THINGINDEX_OCR_DPI:-150}
+      THINGINDEX_OCR_BOX_SCALE: ${THINGINDEX_OCR_BOX_SCALE:-1000}
+
+  # Servidor do baidu/Unlimited-OCR (3B, BF16), atras da API compativel com
+  # OpenAI do SGLang. Fica sob o profile `ocr` porque EXIGE GPU NVIDIA — sem ele
+  # o worker continua funcionando com tesseract.
+  #
+  #   docker compose --profile ocr up -d ocr
+  #   THINGINDEX_OCR_ENDPOINT=http://ocr:10000 docker compose up -d indexer
+  #
+  # Requisitos reais: 3B em BF16 ocupa ~6 GB so de pesos, entao uma GPU de 6 GB
+  # nao comporta o modelo com as ativacoes. Em placa dessa faixa, sirva
+  # quantizado. A primeira execucao baixa os pesos do Hugging Face.
+  ocr:
+    profiles: ["ocr"]
+    image: lmsysorg/sglang:latest
+    restart: unless-stopped
+    command: >
+      python3 -m sglang.launch_server
+      --model baidu/Unlimited-OCR
+      --served-model-name Unlimited-OCR
+      --page-size 1
+      --mem-fraction-static 0.8
+      --context-length 32768
+      --enable-custom-logit-processor
+      --disable-overlap-schedule
+      --host 0.0.0.0
+      --port 10000
+    ports:
+      - "${OCR_PORT:-10000}:10000"
+    volumes:
+      - huggingface_cache:/root/.cache/huggingface
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
   frontend:
     build:
@@ -152,6 +200,7 @@ services:
       start_period: 10s
 
 volumes:
+  huggingface_cache:
   gcs_emulator_data:
   minio_data:
   rabbitmq_data:
