@@ -928,9 +928,9 @@ Contribuicoes sao bem-vindas, especialmente em:
 
 ## 20. Licenca
 
-No momento, o repositorio **ainda nao possui um arquivo `LICENSE` publicado**.
+O projeto e distribuido sob a **Licenca MIT** — ver [`LICENSE`](LICENSE).
 
-Isso significa que o codigo esta disponivel para estudo e avaliacao academica, mas **o regime formal de uso, redistribuicao e contribuicao ainda precisa ser definido** antes de uma abertura publica plena como projeto open source.
+Isso permite uso, copia, modificacao e redistribuicao, inclusive comercial, desde que o aviso de copyright e a licenca sejam mantidos. A escolha favorece a citabilidade e o reuso academico do trabalho.
 
 ---
 
