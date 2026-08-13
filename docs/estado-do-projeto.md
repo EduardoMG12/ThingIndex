@@ -139,16 +139,29 @@ política de publicação prévia, ou simplesmente não ser desejado ainda.
 Enquanto nenhuma for escolhida, o risco continua: uma falha de disco custa o
 artigo inteiro.
 
-### 1.3 Páginas via OCR não têm âncora posicional
+### ~~1.3 Páginas via OCR não têm âncora posicional~~ — RESOLVIDO (PR #5)
 
 Foi o único pedaço que ficou de fora do PR #2. Blocos vindos do `tesseract`
 entram sem `Box`, então o grifo posicional simplesmente não existe justamente em
 documento digitalizado — o caso que mais importa para processo judicial.
 
-**Caminho:** `helpers.go:196` chama `tesseract <img> stdout --psm 1`. Trocar
-`stdout` por `tsv` devolve bbox por palavra. A conversão é o trabalho real: as
-coordenadas saem em **pixels da imagem** gerada pelo `pdftoppm` (150 DPI por
-padrão), e precisam virar pontos PDF para casar com as caixas do `-bbox-layout`.
+**Resolvido por outro caminho:** em vez de extrair bbox do tesseract, o OCR
+virou plugável e ganhou um provider baseado no `baidu/Unlimited-OCR`, que devolve
+`<|det|>tipo [bbox]<|/det|>conteúdo` — texto e região juntos.
+
+O `pdfOCRExtractor` agora devolve blocos em vez de texto puro. O tesseract
+continua como fallback e entrega blocos sem `Box`; o Unlimited-OCR entrega
+ancorados, convertidos de pixel da imagem para pontos PDF pelo DPI de
+rasterização, no mesmo espaço das caixas do `-bbox-layout`.
+
+**Requer GPU NVIDIA.** O modelo tem 3B params em BF16 (~6 GB só de pesos), então
+sobe sob o profile `ocr` do compose e é opcional por construção — sem ele o
+projeto continua funcionando com tesseract em qualquer máquina.
+
+> **Pendente de conferência:** a escala das coordenadas (`THINGINDEX_OCR_BOX_SCALE`,
+> padrão 1000 = normalizado) não pôde ser validada contra uma execução real do
+> modelo, por falta de GPU disponível. Escala errada desloca o grifo sem gerar
+> erro. Confira na primeira execução e ajuste a variável se necessário.
 
 ---
 

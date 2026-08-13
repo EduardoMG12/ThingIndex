@@ -300,7 +300,7 @@ func (e *commandPDFOCRExtractor) Extract(
 	ctx context.Context,
 	data []byte,
 	pageNumbers []int,
-) (map[int]string, error) {
+) (map[int][]textBlock, error) {
 	if e == nil || len(pageNumbers) == 0 {
 		return nil, nil
 	}
@@ -318,7 +318,7 @@ func (e *commandPDFOCRExtractor) Extract(
 		return nil, fmt.Errorf("write temporary pdf: %w", err)
 	}
 
-	results := make(map[int]string, len(pageNumbers))
+	results := make(map[int][]textBlock, len(pageNumbers))
 	for _, pageNumber := range pageNumbers {
 		if pageNumber <= 0 {
 			continue
@@ -353,7 +353,11 @@ func (e *commandPDFOCRExtractor) Extract(
 
 		text := normalizeText(string(output))
 		if text != "" {
-			results[pageNumber] = text
+			// tesseract entrega texto puro: os blocos saem sem Box, entao as
+			// paginas cobertas por ele nao participam do grifo posicional.
+			if blocks := blocksFromOCRPageText(text, pageNumber); len(blocks) > 0 {
+				results[pageNumber] = blocks
+			}
 		}
 	}
 
