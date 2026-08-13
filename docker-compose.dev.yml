@@ -3,6 +3,11 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile.dev
+    # Nome explicito: sem ele, dev e producao geram a MESMA tag
+    # (thingindex-api). Quem buildou por ultimo vencia, entao rodar o compose de
+    # producao depois do de dev reaproveitava a imagem de dev e o container
+    # entrava em crash-loop com "open .air.toml: no such file or directory".
+    image: thingindex-api-dev
     command: air -c .air.toml
     depends_on:
       db:
@@ -20,6 +25,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile.indexer.dev
+    image: thingindex-indexer-dev
     command: air -c .air.indexer.toml
     depends_on:
       db:
