@@ -136,14 +136,10 @@ jobs:
         working-directory: frontend
         run: pnpm exec playwright install --with-deps chromium
 
-      # A suite inteira roda aqui. Os testes que ainda nao foram consertados
-      # estao marcados com test.fixme, cada um com o diagnostico no comentario
-      # — ver docs/estado-do-projeto.md secao 2.5. Assim o CI cobre tudo que
-      # funciona hoje, e o que falta fica visivel como skip em vez de virar
-      # vermelho permanente, que na pratica seria o mesmo que nao ter CI.
-      #
-      # Estes testes nao dependem de backend: exercitam roteamento, i18n,
-      # redirecionamento de rota protegida e a landing publica.
-      - name: e2e (smoke publico)
+      # A suite inteira roda aqui, sem nenhum test.fixme pendente: 14 testes,
+      # todos ativos. Nenhum depende de backend — as rotas de API sao mockadas
+      # com page.route, entao o que se exercita e roteamento, i18n, fluxo de UI
+      # e o contrato que o frontend espera da API.
+      - name: e2e (suite completa)
         working-directory: frontend
         run: pnpm exec playwright test --reporter=list
