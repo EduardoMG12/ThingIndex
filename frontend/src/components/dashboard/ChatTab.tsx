@@ -7,6 +7,7 @@ import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ChatEmptyState } from "@/components/chat/ChatEmptyState";
 import { ChatMessageCard } from "@/components/chat/ChatMessageCard";
 import SubQueryProgress from "@/components/chat/SubQueryProgress";
+import ProviderRuntimeCallout from "@/components/runtime/ProviderRuntimeCallout";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatWorkspace } from "@/hooks/use-chat-workspace";
 import { useI18n } from "@/lib/i18n/provider";
@@ -50,6 +51,7 @@ const ChatTab = ({ className }: { className?: string }) => {
         isStreaming,
         messages,
         providerRuntimeError,
+        providerRuntimeOverview,
         scrollAreaRef,
         scrollRef,
         selectedCollectionId,
@@ -61,6 +63,8 @@ const ChatTab = ({ className }: { className?: string }) => {
         streamMessageId,
         textareaRef,
     } = useChatWorkspace();
+
+    const showsRuntimeCallout = messages.length === 0 && !isConversationLoading;
 
     const conversationTitle =
         activeConversation?.title
@@ -96,7 +100,10 @@ const ChatTab = ({ className }: { className?: string }) => {
                         <p className="truncate text-sm font-medium text-foreground">
                             {conversationTitle}
                         </p>
-                        {!hasChatRuntime && !isProviderRuntimeLoading ? (
+                        {/* Sem o callout na tela, este aviso e a unica pista de
+                            que o chat nao tem LLM. Com ele, seria a mesma frase
+                            tres vezes na mesma tela. */}
+                        {!hasChatRuntime && !isProviderRuntimeLoading && !showsRuntimeCallout ? (
                             <p className="mt-1 text-sm text-destructive">
                                 {providerRuntimeError || t("providerRuntime.chat.missing")}
                             </p>
@@ -141,12 +148,26 @@ const ChatTab = ({ className }: { className?: string }) => {
 
             <ScrollArea ref={scrollAreaRef} className="flex-1 px-4 py-6 sm:px-6">
                 <div className="mx-auto max-w-3xl space-y-6">
-                    {messages.length === 0 && !isConversationLoading ? (
-                        <ChatEmptyState
-                            hasCollections={hasCollections}
-                            hasChatRuntime={hasChatRuntime}
-                            activeCollectionName={activeCollection?.name ?? null}
-                        />
+                    {/* Ate aqui a tela de documentos mostrava qual LLM estava
+                        ativo e o chat nao — o usuario nao tinha como saber quem
+                        estava respondendo. O componente, a copia e o teste
+                        unitario do papel "chat" ja existiam; so a pagina nunca
+                        renderizava. So aparece com a conversa vazia para nao
+                        empurrar as mensagens para baixo o tempo todo. */}
+                    {showsRuntimeCallout ? (
+                        <>
+                            <ProviderRuntimeCallout
+                                role="chat"
+                                assignment={providerRuntimeOverview.chat}
+                                isLoading={isProviderRuntimeLoading}
+                                error={providerRuntimeError}
+                            />
+                            <ChatEmptyState
+                                hasCollections={hasCollections}
+                                hasChatRuntime={hasChatRuntime}
+                                activeCollectionName={activeCollection?.name ?? null}
+                            />
+                        </>
                     ) : null}
 
                     {isConversationLoading ? (
