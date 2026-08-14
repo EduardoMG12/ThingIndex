@@ -50,11 +50,10 @@ async function authenticate(context: BrowserContext, baseURL: string | undefined
 
 test.use({ locale: "en-US" });
 
-// FLUXO DE UI MUDOU. A pagina carrega com "Documents", "Active indexing LLM" e
-// "Document workspace". "Actionable monitoring" existe no dicionario, mas o
-// painel de observabilidade parece exigir abertura antes de renderizar.
-// Falta mapear a interacao que revela o painel.
-test.fixme("documents observability panel highlights attention slices and filters the library", async ({ baseURL, context, page }) => {
+// O workspace de documentos tem tres abas (Library, Operations, Audit) e abre
+// na Library. O painel de observabilidade vive na aba Operations — o teste
+// antigo esperava tudo na primeira tela.
+test("documents observability panel highlights attention slices and filters the library", async ({ baseURL, context, page }) => {
     await authenticate(context, baseURL);
 
     await page.route("**/api/user/providers/runtime", async (route) => {
@@ -214,27 +213,34 @@ test.fixme("documents observability panel highlights attention slices and filter
 
     await page.goto("/en/documents");
 
+    await page.getByRole("tab", { name: "Operations" }).click();
+
     await expect(page.getByRole("heading", { name: "Actionable monitoring" })).toBeVisible();
     await expect(page.getByText("Executive brief")).toBeVisible();
     await expect(page.getByText("Next operational actions")).toBeVisible();
     await expect(page.getByText("Anomaly map")).toBeVisible();
-    await expect(page.getByText("Orphaned invoice.pdf", { exact: true })).toBeVisible();
-    await expect(page.getByText("Stalled parser.pdf", { exact: true })).toBeVisible();
+    await expect(page.getByText("Orphaned invoice.pdf", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Stalled parser.pdf", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Missing originals", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Open priority document" })).toBeVisible();
 
+    // A fatia escolhida na triagem tem que valer tambem para a biblioteca — e
+    // esse acoplamento entre as duas abas que o teste protege.
     await page.getByRole("button", { name: "Focus: Unblock the flow" }).click();
+    await page.getByRole("tab", { name: "Library" }).click();
 
     await expect(page.getByText("1 of 3 document(s) in the operational slice")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Stalled parser.pdf" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Orphaned invoice.pdf" })).not.toBeVisible();
+    await expect(page.getByText("Stalled parser.pdf", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Orphaned invoice.pdf", { exact: true })).toHaveCount(0);
 
+    // A busca da biblioteca compartilha estado e rotulo com a da aba Operations.
     await page.getByLabel("Operational search and slice").fill("healthy");
     await expect(page.getByRole("heading", { name: "No documents match the current slice" })).toBeVisible();
 
     await page.getByRole("button", { name: "Clear operational slice" }).first().click();
     await expect(page.getByText("3 indexed document(s)")).toBeVisible();
 
+    await page.getByRole("tab", { name: "Operations" }).click();
     await page.getByRole("button", { name: "Open priority document" }).click();
     await page.getByRole("tab", { name: "Index" }).click();
     await expect(page.getByRole("button", { name: "Download index JSON" })).toBeVisible();
