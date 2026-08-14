@@ -237,7 +237,7 @@ fixava `http://127.0.0.1:8000` para URLs que a pagina deriva de
 `NEXT_PUBLIC_API_URL` — rodar a API em outra porta quebrava sem nada estar
 errado. Passa a derivar da mesma variavel.
 
-**O que falta:** 8 testes ainda referenciam cópia antiga da UI. Cada um tem uma
+**Estado:** 9 de 14 passando e a suíte inteira no CI. Os 5 restantes estão marcados com `test.fixme`, cada um com o diagnóstico no comentário do próprio teste. Cada um tem uma
 cadeia de asserções, então consertar exige percorrer assertion por assertion
 comparando com a interface atual. Exemplos encontrados: `"Explicit product
 focus"`, `"Primary use case"`, `"Foco do Produto"`, `"Active chat LLM"`,
@@ -273,6 +273,19 @@ servidor, com a lista `PROTECTED_PATHS`. O redirecionamento no cliente era
 redundante ali e nocivo nas públicas.
 
 O `test.fixme` foi removido e o teste passa.
+
+### Diagnóstico dos 5 marcados
+
+Nenhum é "texto renomeado" — as páginas carregam e 4 das 5 strings esperadas
+**existem** no dicionário. São fluxo e seletor:
+
+| Teste | Diagnóstico |
+|---|---|
+| `runtime-visibility` (chat) | **Feature ausente.** `ProviderRuntimeCallout` só é usado em `documents/page.tsx`; o chat nunca o renderiza, e `"Active chat LLM"` virou cópia morta. Decidir: reintroduzir no chat ou remover string e teste |
+| `settings-readiness` | Fluxo mudou: `"Provider readiness"` está atrás de navegar até a seção de LLM e expandir o bloco |
+| `chat-workspace` | Seletor: a página mostra `"Start a contextual query"`; o `h1 "ThingIndex Chat"` provavelmente virou título do documento |
+| `document-observability` | Fluxo: o painel de observabilidade parece exigir abertura antes de renderizar `"Actionable monitoring"` |
+| `audit-explorer` (×2) | Um por navegação até o explorador; o outro por `"Sensitive changes for LLMs"` ter sumido de vez do dicionário |
 
 ### 2.3 Arquivos grandes demais
 
@@ -344,7 +357,7 @@ código de produção. Baixo risco.
 | 4 | Testes de `repository` (2.1) | ✅ PR #4 — 6 testes novos + Postgres no CI |
 | 5 | **bbox no OCR (1.3)** | ⬜ próximo — destrava o grifo em documento digitalizado |
 | 6 | `LICENSE` (2.4) | ✅ PR #6 — MIT |
-| 7 | **Terminar os 7 E2E restantes (2.5)** | ⬜ 5 falham por fluxo de UI mudado |
+| 7 | **Terminar os 5 E2E marcados (2.5)** | ⬜ diagnóstico pronto em cada teste |
 | 8 | Documentação pública expulsava visitante (2.6) | ✅ PR #8 |
 | ! | Backup do artigo (1.4) | ✅ PR #9 — versionado, repo é privado |
 

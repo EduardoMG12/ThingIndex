@@ -136,14 +136,14 @@ jobs:
         working-directory: frontend
         run: pnpm exec playwright install --with-deps chromium
 
-      # Escopo proposital: apenas os arquivos inteiramente verdes hoje. Os demais
-      # ainda tem assercoes escritas contra uma
-      # versao antiga da UI (ver docs/estado-do-projeto.md, secao 2.5). Colocar
-      # tudo aqui deixaria o CI vermelho permanente, que e o mesmo que nao ter
-      # CI. Mova cada arquivo para ca conforme for consertado.
+      # A suite inteira roda aqui. Os testes que ainda nao foram consertados
+      # estao marcados com test.fixme, cada um com o diagnostico no comentario
+      # — ver docs/estado-do-projeto.md secao 2.5. Assim o CI cobre tudo que
+      # funciona hoje, e o que falta fica visivel como skip em vez de virar
+      # vermelho permanente, que na pratica seria o mesmo que nao ter CI.
       #
       # Estes testes nao dependem de backend: exercitam roteamento, i18n,
       # redirecionamento de rota protegida e a landing publica.
       - name: e2e (smoke publico)
         working-directory: frontend
-        run: pnpm exec playwright test tests/e2e/public-smoke.spec.ts tests/e2e/documentation-onboarding.spec.ts --reporter=list
+        run: pnpm exec playwright test --reporter=list
