@@ -400,7 +400,8 @@ const AppShell = ({ children, contentClassName }: AppShellProps) => {
                                                                             <button
                                                                                 type="button"
                                                                                 onClick={() => startEditingConversation(conversation)}
-                                                                                className="rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
+                                                                                aria-label={t("dashboard.chat.renameConversationLabel")}
+                                                                                className="rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100"
                                                                             >
                                                                                 <Pencil className="h-3.5 w-3.5" />
                                                                             </button>
@@ -410,7 +411,8 @@ const AppShell = ({ children, contentClassName }: AppShellProps) => {
                                                                                     setConversationPendingDelete(conversation);
                                                                                     setConversationDeleteConfirmationValue("");
                                                                                 }}
-                                                                                className="rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                                                                                aria-label={t("dashboard.chat.deleteConversationLabel")}
+                                                                                className="rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus-visible:opacity-100"
                                                                             >
                                                                                 <Trash2 className="h-3.5 w-3.5" />
                                                                             </button>

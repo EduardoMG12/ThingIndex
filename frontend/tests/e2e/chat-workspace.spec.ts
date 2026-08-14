@@ -50,11 +50,14 @@ async function authenticate(context: BrowserContext, baseURL: string | undefined
 
 test.use({ locale: "en-US" });
 
-// SELETOR DESATUALIZADO. A pagina carrega e renderiza "Start a contextual
-// query", mas o teste procura um h1 "ThingIndex Chat". A string existe no
-// dicionario — provavelmente como titulo do documento, nao como heading.
-// Falta conferir qual elemento carrega o titulo hoje.
-test.fixme("chat workspace keeps conversation history, creates a fresh draft, and expands verified sources", async ({ baseURL, context, page }) => {
+// O diagnostico anterior estava errado: nao era seletor desatualizado. O h1
+// "ThingIndex Chat" vive em ChatWorkspaceHero e a lista de conversas em
+// ChatConversationRail — os dois componentes existem, tem teste unitario e
+// story, mas nenhuma pagina os renderiza. A lista de conversas migrou para a
+// sidebar do AppShell, sincronizada por evento (thingindex:chat-sidebar-sync).
+// O teste agora exercita o fluxo real: sidebar vazia -> primeira mensagem cria
+// a conversa -> resposta com fonte citada -> exclusao volta ao estado vazio.
+test("chat workspace keeps conversation history, creates a fresh draft, and expands verified sources", async ({ baseURL, context, page }) => {
     await authenticate(context, baseURL);
 
     type ConversationRecord = {
@@ -198,23 +201,30 @@ test.fixme("chat workspace keeps conversation history, creates a fresh draft, an
     await page.goto("/en/chat");
 
     const workspace = page.locator("#main-content");
+    const sidebar = page.getByRole("complementary");
 
-    await expect(page.getByRole("heading", { level: 1, name: "ThingIndex Chat" })).toBeVisible();
-    await expect(workspace.getByRole("button", { name: "New chat" })).toBeVisible();
     await expect(workspace.getByRole("heading", { level: 2, name: "Start a contextual query" })).toBeVisible();
-    await expect(workspace.getByText("No saved conversations")).toBeVisible();
+    await expect(sidebar.getByRole("button", { name: "New chat" })).toBeVisible();
+    await expect(sidebar.getByText("Saved conversations for the active collection appear here.")).toBeVisible();
 
-    await workspace.getByRole("button", { name: /Deadlines and dates/i }).click();
+    // A collection e escolhida sozinha quando so existe uma, entao o composer ja
+    // aceita envio. A primeira mensagem e o que cria a conversa.
+    await workspace.getByRole("textbox", { name: "Chat message" }).fill("What are the escalation deadlines?");
     await workspace.getByRole("textbox", { name: "Chat message" }).press("Enter");
 
-    await expect(workspace.getByRole("heading", { level: 4, name: "Next steps" })).toBeVisible();
-    await expect(workspace.getByText("Escalate unresolved incidents within 24 hours.", { exact: true })).toBeVisible();
-    await expect(workspace.getByRole("button", { name: /Deadlines and dates/i })).toBeVisible();
+    await expect(workspace.getByRole("heading", { name: "Next steps" })).toBeVisible();
+    await expect(workspace.getByText("Escalate unresolved incidents within 24 hours.").first()).toBeVisible();
     await expect(workspace.getByText("Operations handbook.pdf", { exact: true })).toBeVisible();
 
-    await workspace.getByLabel("Delete conversation").first().click();
+    // A conversa criada aparece na sidebar via evento de sincronizacao.
+    const conversationRow = sidebar.getByText("Deadlines and dates");
+    await expect(conversationRow).toBeVisible();
+
+    // Os botoes de renomear e excluir so ficam visiveis no hover da linha.
+    await conversationRow.hover();
+    await sidebar.getByRole("button", { name: "Delete conversation" }).click();
     await page.getByLabel("Confirmation value").fill("Deadlines and dates");
     await page.getByRole("button", { name: "Confirm deletion" }).click();
 
-    await expect(workspace.getByText("No saved conversations")).toBeVisible();
+    await expect(sidebar.getByText("Saved conversations for the active collection appear here.")).toBeVisible();
 });
