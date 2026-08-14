@@ -214,7 +214,7 @@ O mais importante deles trava a propriedade de isolamento: uma credencial
 cifrada para o usuário 1 **não** decifra no contexto do usuário 2, porque o
 `userID` entra na derivação da chave.
 
-### 2.5 Suíte E2E parcialmente apodrecida — PARCIAL (PR #6)
+### ~~2.5 Suíte E2E parcialmente apodrecida~~ — RESOLVIDO (PR #6, #10, #11)
 
 Os testes E2E nunca rodavam. Não estavam no CI, e rodá-los localmente dava um
 resultado enganoso: o `reuseExistingServer` do Playwright pegava qualquer
@@ -237,16 +237,35 @@ fixava `http://127.0.0.1:8000` para URLs que a pagina deriva de
 `NEXT_PUBLIC_API_URL` — rodar a API em outra porta quebrava sem nada estar
 errado. Passa a derivar da mesma variavel.
 
-**Estado:** 9 de 14 passando e a suíte inteira no CI. Os 5 restantes estão marcados com `test.fixme`, cada um com o diagnóstico no comentário do próprio teste. Cada um tem uma
-cadeia de asserções, então consertar exige percorrer assertion por assertion
-comparando com a interface atual. Exemplos encontrados: `"Explicit product
-focus"`, `"Primary use case"`, `"Foco do Produto"`, `"Active chat LLM"`,
-`"Document audit history"`, `"Operations and compliance teams"` — nenhum existe
-hoje.
+**Estado final: 14 de 14 passando, suíte inteira no CI, nenhum `test.fixme`.**
 
-Conforme cada arquivo ficar verde, mova-o para o passo `e2e` do
-`.github/workflows/ci.yml`. Só `public-smoke` está lá agora, de propósito: CI
-vermelho permanente equivale a não ter CI.
+Os 5 últimos não eram cópia defasada — o diagnóstico anterior estava errado em
+três deles. Três componentes completos (com teste unitário, story e tradução nos
+três idiomas) tinham deixado de ser renderizados por qualquer página numa
+refatoração, e os testes eram a única coisa no repositório que ainda sabia que
+essas telas deveriam existir:
+
+| Componente órfão | Efeito para o usuário | Desfecho |
+|---|---|---|
+| `ProviderRuntimeCallout` (papel `chat`) | Via qual LLM indexava, mas não qual respondia no chat | Remontado em `ChatTab`, visível com a conversa vazia |
+| `ProviderAuditExplorer` | Nenhuma tela mostrava quem trocou credencial ou ativou provider | Montado no fim de cada aba de família em `/settings` |
+| `ChatConversationRail` + `ChatWorkspaceHero` | Nenhum — a lista de conversas migrou para a sidebar do `AppShell` | **Código morto de verdade**, candidato a exclusão |
+
+Os outros dois falhavam por camadas de UI que o teste não percorria: abas de
+workspace (`Library` / `Operations` / `Audit`), abas de família em settings e
+blocos `<details>` que precisam ser abertos.
+
+Achados colaterais, corrigidos no caminho:
+
+- Os botões de renomear e excluir conversa na sidebar eram ícones sem
+  `aria-label` — invisíveis para leitor de tela e para qualquer seletor por
+  papel. Ganharam rótulo e `focus-visible:opacity-100`, já que só apareciam no
+  hover.
+- O callout de runtime aparecia duas vezes na tela de documentos: fixo no topo e
+  de novo dentro da aba `Operations`. O duplicado saiu.
+- O Playwright rodava com vários workers fora do CI contra **um único** servidor
+  de dev. A suíte inteira falhava em 3 testes que passavam sozinhos. Agora é
+  `workers: 1` sempre, igual ao CI.
 
 ### ~~2.6 A página de documentação expulsa o visitante para o login~~ — RESOLVIDO (PR #8)
 
@@ -357,7 +376,7 @@ código de produção. Baixo risco.
 | 4 | Testes de `repository` (2.1) | ✅ PR #4 — 6 testes novos + Postgres no CI |
 | 5 | **bbox no OCR (1.3)** | ⬜ próximo — destrava o grifo em documento digitalizado |
 | 6 | `LICENSE` (2.4) | ✅ PR #6 — MIT |
-| 7 | **Terminar os 5 E2E marcados (2.5)** | ⬜ diagnóstico pronto em cada teste |
+| 7 | Terminar os 5 E2E marcados (2.5) | ✅ PR #11 — 14/14, nenhum `test.fixme` |
 | 8 | Documentação pública expulsava visitante (2.6) | ✅ PR #8 |
 | ! | Backup do artigo (1.4) | ✅ PR #9 — versionado, repo é privado |
 
