@@ -50,10 +50,9 @@ async function authenticate(context: BrowserContext, baseURL: string | undefined
 
 test.use({ locale: "en-US" });
 
-// FLUXO DE UI MUDOU. "Document audit history" existe no dicionario, mas nao
-// aparece no estado inicial da pagina. Falta mapear a navegacao ate o explorador
-// de auditoria no layout atual.
-test.fixme("documents audit explorer applies filters and loads the next page", async ({ baseURL, context, page }) => {
+// O explorador de auditoria vive na terceira aba do workspace de documentos
+// (Library / Operations / Audit), que abre na Library.
+test("documents audit explorer applies filters and loads the next page", async ({ baseURL, context, page }) => {
     await authenticate(context, baseURL);
 
     const auditRequests: string[] = [];
@@ -210,11 +209,16 @@ test.fixme("documents audit explorer applies filters and loads the next page", a
 
     await page.goto("/en/documents");
 
+    await page.getByRole("tab", { name: "Audit" }).click();
+
     await expect(page.getByText("Document audit history")).toBeVisible();
-    await page.getByLabel("Operational search").fill("manual");
-    await page.locator("#document-audit-actor-type").fill("USER");
+    await page.getByLabel("Find an event").fill("manual");
+
+    // Actor e actor ID sao filtros tecnicos: ficam atras do toggle de avancados.
+    await page.getByRole("button", { name: /Show advanced filters/ }).click();
+    await page.locator("#document-audit-actor-type").selectOption("USER");
     await page.locator("#document-audit-actor-id").fill("1");
-    await page.getByRole("button", { name: "Apply filters" }).click();
+    await page.getByRole("button", { name: "Search history" }).click();
 
     await expect.poll(() =>
         auditRequests.some((url) => url.includes("q=manual") && url.includes("actor_type=USER") && url.includes("actor_id=1"))
@@ -224,10 +228,13 @@ test.fixme("documents audit explorer applies filters and loads the next page", a
     await expect(page.getByText("retry failed")).toBeVisible();
 });
 
-// COPIA REMOVIDA. "Sensitive changes for LLMs" nao existe em nenhum dicionario;
-// diferente dos demais, aqui o texto sumiu de vez. Falta descobrir o rotulo que
-// o substituiu antes de reescrever a assercao.
-test.fixme("provider audit explorer filters by the active provider scope", async ({ baseURL, context, page }) => {
+// O diagnostico anterior estava errado: a copia nao sumiu. "Sensitive changes
+// for LLMs" e montada a partir de "Sensitive changes for {family}", por isso a
+// busca pela frase literal no dicionario nao achou nada. O que faltava era o
+// ProviderAuditExplorer: componente, endpoint e traducao existiam, mas nenhuma
+// pagina o renderizava. Agora ele fica no fim de cada aba de familia em
+// /settings.
+test("provider audit explorer filters by the active provider scope", async ({ baseURL, context, page }) => {
     await authenticate(context, baseURL);
 
     const auditRequests: string[] = [];
@@ -321,12 +328,14 @@ test.fixme("provider audit explorer filters by the active provider scope", async
 
     await page.goto("/en/settings");
 
+    await page.getByRole("tab", { name: "LLM provider" }).click();
+
     await expect(page.getByText("Sensitive changes for LLMs")).toBeVisible();
     await page.getByRole("button", { name: "Active: OpenAI" }).click();
     await page.locator("#llm-provider-audit-query").fill("openai");
     await page.locator("#llm-provider-audit-actor-type").fill("USER");
     await page.locator("#llm-provider-audit-actor-id").fill("52");
-    await page.getByRole("button", { name: "Apply filters" }).nth(1).click();
+    await page.getByRole("button", { name: "Apply filters" }).click();
 
     await expect.poll(() =>
         auditRequests.some((requestURL) =>
