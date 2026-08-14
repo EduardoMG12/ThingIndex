@@ -23,7 +23,11 @@ export default defineConfig({
         timeout: 15_000,
     },
     retries: process.env.CI ? 1 : 0,
-    workers: process.env.CI ? 1 : undefined,
+    // Um worker sempre, nao so no CI. Todos os workers compartilham o mesmo
+    // servidor de dev, entao rodar em paralelo enfileirava a compilacao das
+    // rotas e estourava o timeout — a suite inteira falhava em 3 testes que
+    // passavam sozinhos. Serial demora ~1min30 e da o mesmo resultado do CI.
+    workers: 1,
     reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
     use: {
         baseURL: frontendBaseURL,
