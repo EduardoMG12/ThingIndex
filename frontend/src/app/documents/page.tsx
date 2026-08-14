@@ -2137,14 +2137,10 @@ export default function DocumentsPage() {
                             )}
                         </TabsContent>
 
+                        {/* O mesmo callout de runtime ja fica fixo no topo da
+                            pagina, acima das abas. Repeti-lo aqui mostrava o
+                            bloco duas vezes na mesma tela. */}
                         <TabsContent value="operations" className="mt-0 space-y-6">
-                            <ProviderRuntimeCallout
-                                role="indexing"
-                                assignment={providerRuntimeOverview.indexing}
-                                isLoading={isProviderRuntimeLoading}
-                                error={providerRuntimeError}
-                            />
-
                             {monitoringError && (
                                 <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
                                     {monitoringError}
