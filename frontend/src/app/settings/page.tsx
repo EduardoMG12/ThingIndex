@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import ProviderAuditExplorer from "@/components/audit/ProviderAuditExplorer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useI18n } from "@/lib/i18n/provider";
@@ -579,6 +580,9 @@ export default function SettingsPage() {
         [localizedProviders]
     );
 
+    const activeStorageProvider = localizedProviders.find((provider) => provider.providerType === activeStorageType) ?? null;
+    const activeLLMProvider = localizedProviders.find((provider) => provider.providerType === activeLLMType) ?? null;
+
     const activeStorageConfig = providers.find((provider) => provider.family === "STORAGE" && provider.is_enabled) ?? null;
     const activeIndexingConfig = providers.find((provider) => provider.family === "LLM" && provider.enabled_for_indexing) ?? null;
     const activeChatConfig = providers.find((provider) => provider.family === "LLM" && provider.enabled_for_chat) ?? null;
@@ -1025,6 +1029,20 @@ export default function SettingsPage() {
                                 readinessReports={readinessReports}
                                 providerSupportByType={providerSupportByType}
                             />
+
+                            {/* A trilha de auditoria de providers existia so como
+                                componente: endpoint, copia e explorador prontos,
+                                mas nenhuma pagina o montava. Sem isso nao havia
+                                como ver quem trocou credencial ou ativou qual
+                                provider. */}
+                            <div className="mt-6">
+                                <ProviderAuditExplorer
+                                    locale={locale}
+                                    family="STORAGE"
+                                    activeProviderName={activeStorageProvider?.name ?? activeStorageType}
+                                    activeProviderType={activeStorageType}
+                                />
+                            </div>
                         </TabsContent>
 
                         <TabsContent value="LLM" className="mt-6">
@@ -1049,6 +1067,15 @@ export default function SettingsPage() {
                                 readinessReports={readinessReports}
                                 providerSupportByType={providerSupportByType}
                             />
+
+                            <div className="mt-6">
+                                <ProviderAuditExplorer
+                                    locale={locale}
+                                    family="LLM"
+                                    activeProviderName={activeLLMProvider?.name ?? activeLLMType}
+                                    activeProviderType={activeLLMType}
+                                />
+                            </div>
                         </TabsContent>
                     </Tabs>
                 ) : null}

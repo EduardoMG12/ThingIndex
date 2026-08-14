@@ -50,12 +50,12 @@ async function authenticate(context: BrowserContext, baseURL: string | undefined
 
 test.use({ locale: "en-US" });
 
-// FLUXO DE UI MUDOU. A pagina carrega normalmente e mostra a aba de storage
-// ("Storage and LLM settings", "Storage provider"...). "Provider readiness"
-// existe no dicionario, mas hoje esta atras de uma interacao: e preciso navegar
-// ate a secao de LLM e expandir o bloco antes de o texto aparecer.
-// Falta mapear os cliques do fluxo atual.
-test.fixme("shows provider readiness details after a successful connection test", async ({ baseURL, context, page }) => {
+// A tela de settings hoje esconde diagnostico atras de tres camadas: a aba da
+// familia (STORAGE e a padrao), o <details> "Advanced runtime profile" e o
+// <details> "Diagnostics and models". O teste antigo assumia tudo aberto de
+// cara. Aqui o fluxo e percorrido clique a clique, que e tambem o que o usuario
+// faz — se alguma dessas camadas sumir ou trocar de rotulo, o teste acusa.
+test("shows provider readiness details after a successful connection test", async ({ baseURL, context, page }) => {
     await authenticate(context, baseURL);
 
     await page.route("**/api/providers/support**", async (route) => {
@@ -244,18 +244,32 @@ test.fixme("shows provider readiness details after a successful connection test"
 
     await page.goto("/en/settings");
 
-    await expect(page.getByText("Provider readiness").first()).toBeVisible();
+    // Storage e a familia que abre por padrao. Selecionar o GCS na lista da
+    // esquerda troca o card da direita.
+    await page.getByRole("button", { name: /Google Cloud Storage/ }).first().click();
+    await page.getByText("Advanced runtime profile").click();
+
+    await expect(page.getByTestId("provider-brand-GCP_STORAGE").first()).toBeVisible();
+    await expect(page.getByText("Native Google Cloud Storage path", { exact: true })).toBeVisible();
+    await expect(page.getByText("Supports service-account JSON or emulator_host.")).toBeVisible();
+
+    // A aba de LLM monta outra secao — os <details> voltam fechados.
+    await page.getByRole("tab", { name: "LLM provider" }).click();
+    await page.getByText("Advanced runtime profile").click();
+
     await expect(page.getByTestId("provider-brand-OPENAI").first()).toBeVisible();
     await expect(page.getByText("Ready for main runtime").first()).toBeVisible();
     await expect(page.getByText("Native OpenAI path", { exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Test connection" }).nth(1).click();
+
+    await page.getByText("Diagnostics and models").click();
+    // exact: true porque o texto de "nenhum modelo carregado" tambem cita
+    // "provider readiness" no meio da frase.
+    await expect(page.getByText("Provider readiness", { exact: true })).toBeVisible();
+    await expect(page.getByText("No readiness report yet.", { exact: false })).toBeVisible();
+
+    await page.getByRole("button", { name: "Test connection" }).click();
 
     await expect(page.getByText("Ready", { exact: true })).toBeVisible();
     await expect(page.getByText(/Validated live connectivity and model discovery for OpenAI/i)).toBeVisible();
     await expect(page.getByText("gpt-4.1-mini", { exact: true })).toBeVisible();
-
-    await page.getByRole("button", { name: "Google Cloud Storage" }).click();
-    await expect(page.getByTestId("provider-brand-GCP_STORAGE").first()).toBeVisible();
-    await expect(page.getByText("Native Google Cloud Storage path", { exact: true })).toBeVisible();
-    await expect(page.getByText("Supports service-account JSON or emulator_host.")).toBeVisible();
 });

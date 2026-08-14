@@ -50,13 +50,12 @@ async function authenticate(context: BrowserContext, baseURL: string | undefined
 
 test.use({ locale: "en-US" });
 
-// FEATURE AUSENTE, nao teste desatualizado. ProviderRuntimeCallout — o painel
-// que mostra qual LLM esta ativo — so e usado em src/app/documents/page.tsx. A
-// pagina de chat nunca o renderiza, embora a string "Active chat LLM" continue
-// no dicionario, virada copia morta. Ou a feature foi removida do chat sem
-// limpar a traducao, ou se perdeu numa refatoracao.
-// Decidir: reintroduzir o callout no chat, ou remover a string e este teste.
-test.fixme("shows the active chat runtime in the main chat flow @smoke", async ({ baseURL, context, page }) => {
+// Este teste ficou vermelho por falta da feature, nao por texto desatualizado: o
+// ProviderRuntimeCallout so era usado na tela de documentos, entao o usuario do
+// chat nao via qual LLM respondia. O callout foi reintroduzido em ChatTab e so
+// aparece com a conversa vazia — por isso o mock de conversas devolve lista
+// vazia.
+test("shows the active chat runtime in the main chat flow @smoke", async ({ baseURL, context, page }) => {
     await authenticate(context, baseURL);
 
     await page.route("**/api/user/providers/runtime", async (route) => {
