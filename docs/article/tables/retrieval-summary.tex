@@ -1,0 +1,15 @@
+% GERADO POR scripts/analyze.py -- nao edite a mao.
+\begin{table}[htb]
+\centering
+\caption{Desempenho de recuperação por braço. Intervalos de confiança de 95\% obtidos por bootstrap sobre as consultas (10.000 reamostragens).}
+\label{tab:retrieval-summary}
+\begin{tabular}{lccccc}
+\hline
+Braço & P@1 & P@3 & R@5 & MRR & nDCG@10 \\
+\hline
+A-relacional & 0.750 \newline \scriptsize[0.500, 0.938] & 0.312 \newline \scriptsize[0.250, 0.375] & 1.000 \newline \scriptsize[1.000, 1.000] & 0.830 \newline \scriptsize[0.669, 0.958] & 0.869 \newline \scriptsize[0.748, 0.968] \\
+B-bm25 & 0.812 \newline \scriptsize[0.625, 1.000] & 0.333 \newline \scriptsize[0.250, 0.417] & 1.000 \newline \scriptsize[1.000, 1.000] & 0.861 \newline \scriptsize[0.715, 1.000] & 0.894 \newline \scriptsize[0.783, 0.998] \\
+D-rrf & 0.812 \newline \scriptsize[0.625, 1.000] & 0.333 \newline \scriptsize[0.271, 0.396] & 1.000 \newline \scriptsize[1.000, 1.000] & 0.870 \newline \scriptsize[0.729, 1.000] & 0.900 \newline \scriptsize[0.795, 0.997] \\
+\hline
+\end{tabular}
+\end{table}
