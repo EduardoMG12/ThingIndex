@@ -41,3 +41,10 @@ what-missing?.md
 # a bibliografia e os slides sem backup nenhum — existiam so no disco local.
 # Agora tudo e versionado. O repositorio e privado, entao versionar os
 # artefatos academicos nao os expoe.
+
+# Bytecode do Python. Os scripts de analise (scripts/analyze.py,
+# scripts/test_analyze.py) geram __pycache__ ao serem importados, e um
+# `git add -A` distraido versiona o cache junto — foi o que aconteceu no PR
+# que introduziu o script de analise estatistica.
+__pycache__/
+*.py[cod]
