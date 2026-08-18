@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -62,4 +63,106 @@ func TestClassifyDocumentIndexFailureMovesToDLQWhenRetriesAreExhausted(t *testin
 
 func fmtError(base error) error {
 	return fmt.Errorf("%w: wrapped", base)
+}
+
+// O consumidor e sequencial: uma mensagem por vez. Sem prazo maximo, um PDF
+// gigante ou um provider de LLM que aceita a conexao e nunca responde prende a
+// goroutine para sempre e a fila inteira para atras dele. O ctx do handler era
+// o do processo, sem deadline nenhum.
+func TestHandleDeliveryInterrompeMensagemQueEstouraOPrazo(t *testing.T) {
+	t.Parallel()
+
+	consumer := &RabbitMQConsumer{handlerTimeout: 40 * time.Millisecond}
+
+	handlerRetornou := make(chan struct{})
+	err := consumer.handleDelivery(context.Background(), func(ctx context.Context, _ domain.DocumentIndexRequestedEvent) error {
+		// Handler bem comportado: respeita o cancelamento do contexto.
+		<-ctx.Done()
+		close(handlerRetornou)
+		return ctx.Err()
+	}, domain.DocumentIndexRequestedEvent{DocumentID: 1, UserID: 1})
+
+	select {
+	case <-handlerRetornou:
+	case <-time.After(2 * time.Second):
+		t.Fatal("o handler nao foi cancelado pelo deadline; a fila ficaria travada")
+	}
+
+	if err == nil {
+		t.Fatal("esperava erro de timeout, veio nil")
+	}
+
+	// A classificacao importa tanto quanto a interrupcao: o timeout precisa
+	// ser TRANSIENTE. Se fosse permanente, um provider lento mandaria
+	// documentos legitimos direto para a DLQ sem nenhuma nova tentativa.
+	if !errors.Is(err, domain.ErrDocumentIndexing) {
+		t.Fatalf("o timeout deveria ser ErrDocumentIndexing (transiente), veio %v", err)
+	}
+	disposition := classifyDocumentIndexFailure(err, 0, 5, time.Second)
+	if disposition.Action != documentIndexFailureRetry {
+		t.Fatalf("timeout deveria virar retry, virou %q", disposition.Action)
+	}
+}
+
+func TestHandleDeliveryNaoInterfereQuandoOHandlerTerminaATempo(t *testing.T) {
+	t.Parallel()
+
+	consumer := &RabbitMQConsumer{handlerTimeout: 5 * time.Second}
+
+	chamadas := 0
+	err := consumer.handleDelivery(context.Background(), func(context.Context, domain.DocumentIndexRequestedEvent) error {
+		chamadas++
+		return nil
+	}, domain.DocumentIndexRequestedEvent{DocumentID: 2, UserID: 1})
+
+	if err != nil {
+		t.Fatalf("handler rapido nao deveria falhar, veio %v", err)
+	}
+	if chamadas != 1 {
+		t.Fatalf("esperava 1 chamada, veio %d", chamadas)
+	}
+}
+
+// Regressao sutil: no shutdown o contexto pai e cancelado, e por heranca o
+// contexto do handler tambem. Sem separar os dois casos, um documento
+// interrompido por SIGTERM seria reportado como "estourou o prazo" e contaria
+// retry -- eventualmente indo para a DLQ por culpa de um deploy.
+func TestHandleDeliveryNaoConfundeShutdownComTimeoutDaMensagem(t *testing.T) {
+	t.Parallel()
+
+	consumer := &RabbitMQConsumer{handlerTimeout: 10 * time.Second}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	err := consumer.handleDelivery(ctx, func(handlerCtx context.Context, _ domain.DocumentIndexRequestedEvent) error {
+		cancel() // simula SIGTERM no meio do processamento
+		<-handlerCtx.Done()
+		return handlerCtx.Err()
+	}, domain.DocumentIndexRequestedEvent{DocumentID: 3, UserID: 1})
+
+	if errors.Is(err, domain.ErrDocumentIndexing) {
+		t.Fatalf("shutdown nao pode ser reportado como timeout da mensagem, veio %v", err)
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("esperava context.Canceled vindo do handler, veio %v", err)
+	}
+}
+
+func TestHandleDeliverySemTimeoutConfiguradoExecutaDireto(t *testing.T) {
+	t.Parallel()
+
+	consumer := &RabbitMQConsumer{handlerTimeout: 0}
+
+	var recebido context.Context
+	err := consumer.handleDelivery(context.Background(), func(ctx context.Context, _ domain.DocumentIndexRequestedEvent) error {
+		recebido = ctx
+		return nil
+	}, domain.DocumentIndexRequestedEvent{DocumentID: 4, UserID: 1})
+
+	if err != nil {
+		t.Fatalf("esperava sucesso, veio %v", err)
+	}
+	if _, temDeadline := recebido.Deadline(); temDeadline {
+		t.Fatal("com handlerTimeout zero o contexto nao deveria ganhar deadline")
+	}
 }

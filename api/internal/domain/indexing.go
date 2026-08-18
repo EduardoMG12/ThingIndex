@@ -25,9 +25,27 @@ const (
 	OutboxEventDocumentIndexRequested = "document.index.requested"
 )
 
+// DocumentIndexRequestedEvent e o payload que trafega do outbox ate o worker.
+//
+// RequestedAt existe para tornar o consumidor idempotente. O claim do outbox
+// impede que o mesmo evento seja PUBLICADO duas vezes, mas nao impede que o
+// RabbitMQ REENTREGUE a mesma mensagem -- o que acontece normalmente quando o
+// worker morre depois de processar e antes do ack. Sem uma referencia temporal
+// o consumidor nao tem como distinguir "reentrega do trabalho que ja fiz" de
+// "pedido novo de reindexacao", e reprocessar custa uma rodada inteira de LLM.
+//
+// Comparando RequestedAt com Document.IndexedAt a distincao fica trivial: se o
+// documento foi indexado DEPOIS de o evento ser criado, o trabalho ja foi feito.
+// A reindexacao manual zera indexed_at (ver ReindexDocument), entao ela nunca e
+// confundida com duplicata.
+//
+// O campo tem `omitempty` e e opcional de proposito: eventos gravados antes
+// desta mudanca chegam com RequestedAt zero e caem no comportamento antigo
+// (processar), em vez de serem descartados por engano.
 type DocumentIndexRequestedEvent struct {
-	DocumentID uint `json:"document_id"`
-	UserID     uint `json:"user_id"`
+	DocumentID  uint      `json:"document_id"`
+	UserID      uint      `json:"user_id"`
+	RequestedAt time.Time `json:"requested_at,omitempty"`
 }
 
 type IndexingResult struct {
@@ -63,6 +81,9 @@ type DocumentProcessingRepository interface {
 	UpdateDocumentProcessingState(ctx context.Context, documentID uint, state DocumentProcessingState) error
 	CreateProcessingAttempt(ctx context.Context, attempt *models.DocumentProcessingAttempt) error
 	ReplaceIndexingResult(ctx context.Context, documentID uint, result IndexingResult) error
+	// ReapStuckProcessingDocuments marca como FAILED os documentos presos em
+	// PROCESSING desde antes de `olderThan`. Devolve quantos foram liberados.
+	ReapStuckProcessingDocuments(ctx context.Context, olderThan time.Time) (int64, error)
 }
 
 type MessagePublisher interface {

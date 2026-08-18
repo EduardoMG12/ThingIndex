@@ -318,6 +318,11 @@ func (r *GormCatalogDocumentRepository) RetryDocumentIndexing(ctx context.Contex
 			Payload: map[string]any{
 				"document_id": documentID,
 				"user_id":     userID,
+				// Carimbo lido pelo consumidor para descartar reentrega do
+				// RabbitMQ de trabalho ja concluido. Aqui o UPDATE acima ja
+				// zerou indexed_at, entao a reindexacao nunca e confundida
+				// com duplicata.
+				"requested_at": now,
 			},
 			AvailableAt: now,
 		}
@@ -466,6 +471,19 @@ func (r *GormCatalogDocumentRepository) DeleteDocumentsByCollection(ctx context.
 	return deletedCount, nil
 }
 
+// deleteStructuredDocumentData apaga em definitivo o conteudo extraido dos
+// documentos informados.
+//
+// O `Unscoped()` e obrigatorio, nao otimizacao. Estes modelos tem
+// `gorm.DeletedAt`, entao sem ele o GORM faz soft delete: o TEXTO INTEGRAL do
+// documento "excluido" continua nas tabelas, apenas invisivel para as consultas
+// da aplicacao. Para um sistema cuja tese e auditabilidade e cujo usuario pede
+// exclusao, guardar o conteudo indefinidamente e o comportamento errado.
+//
+// Havia ainda uma incoerencia interna: os caminhos de reindexacao
+// (gorm_document_processing_repository.go e gorm_structured_data_repository.go)
+// ja usavam `Unscoped()` para as MESMAS tabelas. Só a exclusao ficou para tras,
+// que e justamente onde apagar de verdade importa mais.
 func deleteStructuredDocumentData(tx *gorm.DB, documentIDs []uint) error {
 	if len(documentIDs) == 0 {
 		return nil
@@ -480,7 +498,7 @@ func deleteStructuredDocumentData(tx *gorm.DB, documentIDs []uint) error {
 		&models.DocumentChunk{},
 		&models.DocumentOutlineNode{},
 	} {
-		if err := tx.Where("document_id IN ?", documentIDs).Delete(model).Error; err != nil {
+		if err := tx.Unscoped().Where("document_id IN ?", documentIDs).Delete(model).Error; err != nil {
 			return err
 		}
 	}
