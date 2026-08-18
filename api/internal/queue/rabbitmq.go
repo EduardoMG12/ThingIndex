@@ -56,6 +56,10 @@ type RabbitMQConsumer struct {
 	dlq        string
 	retryDelay time.Duration
 	maxRetries int
+	// Prazo maximo de uma unica mensagem. O consumidor e sequencial, entao
+	// sem isso um PDF gigante ou um LLM que nao responde trava a fila inteira
+	// -- e o ctx do handler era o do processo, sem deadline nenhum.
+	handlerTimeout time.Duration
 
 	failureCallbacks DocumentIndexFailureCallbacks
 }
@@ -111,15 +115,16 @@ func NewRabbitMQConsumer(cfg *config.Config) (*RabbitMQConsumer, error) {
 	}
 
 	return &RabbitMQConsumer{
-		conn:       conn,
-		channel:    channel,
-		exchange:   cfg.DocumentIndexExchange,
-		routingKey: cfg.DocumentIndexRoutingKey,
-		queue:      cfg.DocumentIndexQueue,
-		retryQueue: cfg.DocumentIndexRetryQueue,
-		dlq:        cfg.DocumentIndexDLQ,
-		retryDelay: cfg.DocumentIndexRetryDelay,
-		maxRetries: cfg.DocumentIndexMaxRetries,
+		conn:           conn,
+		channel:        channel,
+		exchange:       cfg.DocumentIndexExchange,
+		routingKey:     cfg.DocumentIndexRoutingKey,
+		queue:          cfg.DocumentIndexQueue,
+		retryQueue:     cfg.DocumentIndexRetryQueue,
+		dlq:            cfg.DocumentIndexDLQ,
+		retryDelay:     cfg.DocumentIndexRetryDelay,
+		maxRetries:     cfg.DocumentIndexMaxRetries,
+		handlerTimeout: cfg.DocumentIndexHandlerTimeout,
 	}, nil
 }
 
@@ -221,7 +226,13 @@ func (c *RabbitMQConsumer) ConsumeDocumentIndexRequested(ctx context.Context, ha
 				continue
 			}
 
-			if err := handler(ctx, event); err != nil {
+			if err := c.handleDelivery(ctx, handler, event); err != nil {
+				// Distinguir "o processo esta encerrando" de "esta mensagem
+				// estourou o prazo" e essencial: no primeiro caso devolvemos o
+				// controle sem ack, e o RabbitMQ reentrega para outro worker;
+				// no segundo a mensagem precisa seguir o fluxo normal de
+				// retry/DLQ. Consultar ctx.Err() do contexto PAI (nao o do
+				// handler, que ja expirou) faz essa separacao.
 				if ctx.Err() != nil {
 					return ctx.Err()
 				}
@@ -260,6 +271,45 @@ func (c *RabbitMQConsumer) ConsumeDocumentIndexRequested(ctx context.Context, ha
 			}
 		}
 	}
+}
+
+// handleDelivery roda o handler com prazo maximo por mensagem.
+//
+// O consumidor processa uma mensagem por vez. Sem deadline, um PDF gigante ou
+// um provider de LLM que aceita a conexao e nunca responde prende a goroutine
+// para sempre -- e como o ctx do handler era o do processo, nada alem de um
+// restart resolvia. A fila inteira parava atras de um unico documento.
+//
+// O erro de timeout e envolvido em ErrDocumentIndexing de proposito: e uma
+// falha transiente (o proximo retry pode pegar um provider saudavel), entao
+// precisa ser classificada como retry e nao como falha permanente. Ver
+// classifyDocumentIndexFailure.
+func (c *RabbitMQConsumer) handleDelivery(
+	ctx context.Context,
+	handler func(context.Context, domain.DocumentIndexRequestedEvent) error,
+	event domain.DocumentIndexRequestedEvent,
+) error {
+	if c.handlerTimeout <= 0 {
+		return handler(ctx, event)
+	}
+
+	handlerCtx, cancel := context.WithTimeout(ctx, c.handlerTimeout)
+	defer cancel()
+
+	err := handler(handlerCtx, event)
+
+	// A checagem do contexto PAI vem primeiro: se o processo esta encerrando,
+	// o handlerCtx tambem expirou por heranca, e reportar "timeout da mensagem"
+	// mandaria para a DLQ um documento que so foi interrompido pelo shutdown.
+	if ctx.Err() != nil {
+		return err
+	}
+
+	if handlerCtx.Err() != nil && errors.Is(handlerCtx.Err(), context.DeadlineExceeded) {
+		return fmt.Errorf("%w: processamento excedeu o limite de %s por mensagem", domain.ErrDocumentIndexing, c.handlerTimeout)
+	}
+
+	return err
 }
 
 func (c *RabbitMQConsumer) publishRetry(ctx context.Context, delivery amqp.Delivery, nextRetryAttempt int) error {

@@ -108,6 +108,14 @@ services:
       DOCUMENT_INDEX_DLQ: ${DOCUMENT_INDEX_DLQ:-thingindex.document.index.dlq}
       DOCUMENT_INDEX_RETRY_DELAY_SECONDS: ${DOCUMENT_INDEX_RETRY_DELAY_SECONDS:-30}
       DOCUMENT_INDEX_MAX_RETRIES: ${DOCUMENT_INDEX_MAX_RETRIES:-5}
+      # Prazo maximo de uma unica mensagem. O consumidor e sequencial, entao sem
+      # isso um PDF gigante ou um LLM que nao responde trava a fila inteira.
+      DOCUMENT_INDEX_HANDLER_TIMEOUT_SECONDS: ${DOCUMENT_INDEX_HANDLER_TIMEOUT_SECONDS:-600}
+      # Documento em PROCESSING ha mais que isto e considerado abandonado por um
+      # worker morto e marcado como FAILED. Precisa ser MAIOR que o prazo por
+      # mensagem, senao o reaper mata trabalho legitimo (validado no boot).
+      STUCK_DOCUMENT_THRESHOLD_SECONDS: ${STUCK_DOCUMENT_THRESHOLD_SECONDS:-1800}
+      STUCK_DOCUMENT_POLL_INTERVAL_SECONDS: ${STUCK_DOCUMENT_POLL_INTERVAL_SECONDS:-300}
       DB_HOST: db
       DB_PORT: 5432
       DB_USER: ${POSTGRES_USER}

@@ -422,6 +422,8 @@ func (u *documentCatalogUseCase) UploadDocument(ctx context.Context, userID uint
 		doc.CategoryID = &category.ID
 	}
 
+	now := time.Now().UTC()
+
 	event := &models.OutboxEvent{
 		AggregateType: domain.OutboxAggregateDocument,
 		EventType:     domain.OutboxEventDocumentIndexRequested,
@@ -429,8 +431,12 @@ func (u *documentCatalogUseCase) UploadDocument(ctx context.Context, userID uint
 		Payload: map[string]any{
 			"document_id": doc.ID,
 			"user_id":     userID,
+			// Carimbo lido pelo consumidor para descartar reentrega do
+			// RabbitMQ de trabalho ja concluido. Ver
+			// domain.DocumentIndexRequestedEvent.
+			"requested_at": now,
 		},
-		AvailableAt: time.Now().UTC(),
+		AvailableAt: now,
 	}
 
 	auditEvent := buildDocumentAuditEvent(ctx, doc, "DOCUMENT_UPLOAD", "SUCCESS", "Documento enviado com sucesso e reenfileirado para indexacao.", map[string]any{
