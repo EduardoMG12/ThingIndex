@@ -733,7 +733,14 @@ export function useChatWorkspace() {
         if (next !== current) {
             router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
         }
-    }, [selectedCollectionId, activeConversationId, pathname, router]);
+        // `searchParams` estava faltando aqui e era lido de um closure velho, o
+        // que podia disparar um router.replace redundante para uma URL que ja
+        // era a atual.
+        //
+        // Incluir a dependencia NAO gera loop: o replace muda searchParams e
+        // reexecuta o efeito, mas na segunda passada `next === current` e o
+        // guard impede a segunda escrita. O efeito converge.
+    }, [selectedCollectionId, activeConversationId, pathname, router, searchParams]);
 
     return {
         activeCollection,

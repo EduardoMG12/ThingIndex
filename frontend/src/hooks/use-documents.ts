@@ -78,7 +78,18 @@ export function useDocuments() {
         pollTimerRef.current = setTimeout(poll, POLL_INTERVAL_MS);
     }, [stopPolling]);
 
-    async function loadDocuments(signal?: AbortSignal) {
+    // loadDocuments precisa ser estavel por duas razoes:
+    //
+    // 1. Ela e devolvida como `reloadDocuments`. Sendo recriada a cada render,
+    //    qualquer consumidor que a coloque em array de dependencias entra em
+    //    loop de efeito.
+    // 2. O efeito de montagem abaixo pode entao declarar suas dependencias de
+    //    verdade, em vez de silenciar o lint com um array vazio.
+    //
+    // As duas dependencias ja sao estaveis (`useCallback` com deps estaveis),
+    // entao a identidade de loadDocuments nao muda entre renders e o efeito
+    // continua rodando apenas uma vez.
+    const loadDocuments = useCallback(async (signal?: AbortSignal) => {
         try {
             setIsLoading(true);
             setError(null);
@@ -103,7 +114,7 @@ export function useDocuments() {
                 setIsLoading(false);
             }
         }
-    }
+    }, [startPolling, stopPolling]);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -114,7 +125,7 @@ export function useDocuments() {
             controller.abort();
             stopPolling();
         };
-    }, []);
+    }, [loadDocuments, stopPolling]);
 
     useEffect(() => {
         return () => {
