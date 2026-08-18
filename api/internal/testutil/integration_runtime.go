@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"thing-index/internal/models"
+	appdb "thing-index/db"
 	storagepkg "thing-index/internal/pkg/storage"
 
 	"github.com/minio/minio-go/v7"
@@ -198,29 +198,7 @@ func openIntegrationGorm(dsn string) (*gorm.DB, error) {
 }
 
 func migrateIntegrationModels(db *gorm.DB) error {
-	return db.AutoMigrate(
-		&models.User{},
-		&models.DocumentCategory{},
-		&models.Collection{},
-		&models.Document{},
-		&models.DocumentProcessingAttempt{},
-		&models.DocumentPage{},
-		&models.ParagraphNode{},
-		&models.TableSection{},
-		&models.MetadataPair{},
-		&models.DocumentChunk{},
-		&models.DocumentOutlineNode{},
-		&models.OutboxEvent{},
-		&models.DocumentAuditEvent{},
-		&models.UserProviderConfig{},
-		&models.ProviderModelCatalog{},
-		&models.ProviderAuditEvent{},
-		&models.PricingSource{},
-		&models.ModelPrice{},
-		&models.ModelPriceHistory{},
-		&models.ChatConversation{},
-		&models.ChatConversationEntry{},
-	)
+	return db.AutoMigrate(appdb.ManagedModels()...)
 }
 
 func sanitizeIntegrationIdentifier(value string) string {

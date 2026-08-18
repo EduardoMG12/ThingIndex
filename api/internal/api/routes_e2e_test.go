@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	appdb "thing-index/db"
 	"thing-index/internal/config"
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
@@ -1352,29 +1353,7 @@ func openRoutesE2EDB(t *testing.T) *gorm.DB {
 		t.Fatalf("open e2e schema database: %v", err)
 	}
 
-	if err := testDB.AutoMigrate(
-		&models.User{},
-		&models.DocumentCategory{},
-		&models.Collection{},
-		&models.Document{},
-		&models.DocumentPage{},
-		&models.ParagraphNode{},
-		&models.TableSection{},
-		&models.MetadataPair{},
-		&models.DocumentChunk{},
-		&models.DocumentOutlineNode{},
-		&models.OutboxEvent{},
-		&models.DocumentProcessingAttempt{},
-		&models.DocumentAuditEvent{},
-		&models.UserProviderConfig{},
-		&models.ProviderModelCatalog{},
-		&models.ProviderAuditEvent{},
-		&models.PricingSource{},
-		&models.ModelPrice{},
-		&models.ModelPriceHistory{},
-		&models.ChatConversation{},
-		&models.ChatConversationEntry{},
-	); err != nil {
+	if err := testDB.AutoMigrate(appdb.ManagedModels()...); err != nil {
 		t.Fatalf("AutoMigrate returned error: %v", err)
 	}
 
