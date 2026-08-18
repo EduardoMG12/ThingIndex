@@ -425,7 +425,46 @@ Ordenado por impacto na nota dividido por esforço.
 | 2 | `dive` nos 3 DTOs (§1.2) | Uma linha por struct. Fecha entrada de lixo nas tabelas da tese | ✅ feito |
 | 3 | Splash + `html lang` + persistir tema (§1.3) | Três correções pequenas que a banca vê na primeira tela | ✅ feito |
 | 4 | Contraste do tema claro (§1.3) | Ajuste de dois tokens em `globals.css` | ✅ feito |
-| 5 | Conferir os números do artigo (21 tabelas, idiomas, DBML) | Detalhe calibra a confiança da banca no resto | ⬜ pendente |
+| 5 | Conferir os números do artigo (21 tabelas, idiomas, DBML) | Detalhe calibra a confiança da banca no resto | ✅ feito |
+
+#### Auditoria dos números do artigo — resultado
+
+Todos verificados no código, não no que o artigo afirma:
+
+| Afirmação | Real | Ação |
+|---|---|---|
+| "20 tabelas" (§ modelo de dados e Apêndice A) | **21** no `AutoMigrate`, confirmado em `information_schema` contra Postgres 16 real | corrigido para 21 nos dois lugares, inclusive nas versões comentadas |
+| "14 classes" na legenda do diagrama | `classes.mmd` tem **16** | corrigido para 16 |
+| Apêndice A: "esquema em DBML no repositório" | **nenhum `.dbml` existia** | gerado em `docs/schema/thingindex.dbml`, derivado dos modelos |
+| RF15: i18n PT-BR e EN-US **nas respostas da API** | backend resolve `pt` e `en` | **o RF está cumprido** — a auditoria original enquadrou errado |
+
+Sobre o i18n vale a precisão: o RF15 pede PT-BR e EN-US *na API*, e a API
+entrega os dois. O problema real é outro e menor — o **frontend** anuncia três
+locales (`pt-BR`, `en`, `es`) enquanto o backend só resolve dois, então
+`Accept-Language: es` recebe mensagens em inglês numa UI em espanhol. É
+inconsistência de produto, não RF descumprido. Registro a correção porque
+afirmar "RF15 não cumprido" na frente da banca seria um erro auto-infligido.
+
+**Nota sobre o DBML.** O gerador (`api/cmd/schema-dbml`) lê `db.ManagedModels()`
+— a mesma lista que alimenta o `AutoMigrate` — e usa o parser de schema do
+próprio GORM. Validado contra um Postgres 16 real, não só contra o parser:
+
+```
+tabelas  DBML=21  Postgres=21   diferença: nenhuma
+colunas  DBML=253 Postgres=253  diferença: nenhuma
+FKs: as 6 do DBML são exatamente as 6 criadas pelo AutoMigrate
+```
+
+Um bug apareceu no caminho e vale registrar: o GORM registra a relação nos
+**dois** schemas, então ao parsear `ChatConversation` (HasMany) a mesma relação
+reaparece em `ChatConversationEntry`. Deduzir a tabela pelo lado que declarou
+gerava auto-referências falsas (`chat_conversation_entries.conversation_id >
+chat_conversation_entries.id`). A leitura correta ignora quem declarou e
+pergunta aos campos a que schema pertencem.
+
+O CI ganhou o job `artigo`, que roda o guard de citações e falha se o `.dbml`
+versionado divergir dos modelos.
+
 
 #### O que foi aplicado nesta rodada
 
@@ -496,7 +535,7 @@ Ordenado por impacto na nota dividido por esforço.
 | 8 | `WriteTimeout` do SSE + persistir resposta parcial (§1.4-2) | ⬜ |
 | 9 | Rate limit por `user_id` em upload e chat (§1.4-3) | ⬜ |
 | 10 | `Unscoped()` no delete, corte por runes, logar erros do worker (§1.4-5,6,7) | ⬜ |
-| 11 | Gerar os `.dbml` do Apêndice A ou remover a promessa | ⬜ |
+| 11 | Gerar os `.dbml` do Apêndice A ou remover a promessa | ✅ feito (gerado a partir dos modelos, com guard no CI) |
 
 #### Correção do outbox — o que mudou
 
