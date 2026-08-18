@@ -75,6 +75,7 @@ func main() {
 		publisher,
 		config.AppConfig.OutboxPollInterval,
 		config.AppConfig.OutboxBatchSize,
+		config.AppConfig.OutboxVisibilityTimeout,
 	)
 
 	go func() {
