@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"thing-index/internal/config"
-	"thing-index/internal/models"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -52,29 +51,7 @@ func Connect() (*gorm.DB, error) {
 
 func bootstrapSchema(db *gorm.DB) error {
 	return withSchemaMigrationLock(db, func(tx *gorm.DB) error {
-		if err := tx.AutoMigrate(
-			&models.User{},
-			&models.DocumentCategory{},
-			&models.Collection{},
-			&models.Document{},
-			&models.DocumentProcessingAttempt{},
-			&models.DocumentPage{},
-			&models.ParagraphNode{},
-			&models.TableSection{},
-			&models.MetadataPair{},
-			&models.DocumentChunk{},
-			&models.DocumentOutlineNode{},
-			&models.OutboxEvent{},
-			&models.DocumentAuditEvent{},
-			&models.UserProviderConfig{},
-			&models.ProviderModelCatalog{},
-			&models.ProviderAuditEvent{},
-			&models.PricingSource{},
-			&models.ModelPrice{},
-			&models.ModelPriceHistory{},
-			&models.ChatConversation{},
-			&models.ChatConversationEntry{},
-		); err != nil {
+		if err := tx.AutoMigrate(ManagedModels()...); err != nil {
 			return fmt.Errorf("fail to run automatic migrations: %w", err)
 		}
 

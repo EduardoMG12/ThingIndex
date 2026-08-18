@@ -7,7 +7,31 @@ import "./globals.css";
 
 const themeInitScript = `
 (() => {
-  const preferredTheme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  // Corrige o atributo lang antes do primeiro paint. O <html> e renderizado
+  // aqui, na raiz estatica, entao nao ha como saber o locale no servidor sem
+  // chamar cookies() -- o que desligaria a pre-renderizacao das 38 paginas.
+  // Ler o locale do proprio pathname mantem o SSG e ja entrega o valor certo
+  // ao leitor de tela, que le o DOM vivo. Ver ROADMAP secao 4 para a correcao
+  // definitiva (mover <html> para app/[locale]/layout.tsx).
+  const SUPPORTED = ["pt-BR", "en", "es"];
+  const segment = window.location.pathname.split("/")[1];
+  const matched = SUPPORTED.find((locale) => locale.toLowerCase() === (segment || "").toLowerCase());
+  if (matched) {
+    document.documentElement.lang = matched;
+  }
+
+  let storedTheme = null;
+  try {
+    const raw = window.localStorage.getItem("thingindex-theme");
+    if (raw === "dark" || raw === "light") {
+      storedTheme = raw;
+    }
+  } catch (error) {
+    // localStorage indisponivel: cai no prefers-color-scheme.
+  }
+
+  const preferredTheme = storedTheme
+    ?? (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
 
   document.documentElement.dataset.theme = preferredTheme;
   document.documentElement.style.colorScheme = preferredTheme;
@@ -53,7 +77,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>

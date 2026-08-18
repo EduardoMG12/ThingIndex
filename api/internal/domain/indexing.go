@@ -17,6 +17,7 @@ const (
 	DocumentStatusOrphaned   = "ORPHANED"
 
 	OutboxEventStatusPending   = "PENDING"
+	OutboxEventStatusInFlight  = "IN_FLIGHT"
 	OutboxEventStatusPublished = "PUBLISHED"
 	OutboxEventStatusFailed    = "FAILED"
 
@@ -52,7 +53,7 @@ type DocumentIngestionRepository interface {
 }
 
 type OutboxRepository interface {
-	ClaimPendingEvents(ctx context.Context, limit int, now time.Time) ([]models.OutboxEvent, error)
+	ClaimPendingEvents(ctx context.Context, limit int, now time.Time, visibilityTimeout time.Duration) ([]models.OutboxEvent, error)
 	MarkEventPublished(ctx context.Context, eventID uint, publishedAt time.Time) error
 	MarkEventFailed(ctx context.Context, eventID uint, errMsg string, availableAt time.Time) error
 }
