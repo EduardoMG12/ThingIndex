@@ -438,3 +438,164 @@ func TestProcessFailsWhenIndexerReturnsParsingError(t *testing.T) {
 		t.Fatalf("expected parser failure detail, got %#v", lastState)
 	}
 }
+
+// Os testes abaixo cobrem a idempotencia do consumidor. O claim do outbox
+// impede que o mesmo evento seja PUBLICADO duas vezes, mas nao impede que o
+// RabbitMQ REENTREGUE a mesma mensagem -- cenario normal quando o worker morre
+// entre concluir o trabalho e dar o ack. Sem esta defesa, a reentrega paga uma
+// rodada inteira de LLM de novo e reescreve o indice de um documento pronto.
+
+func TestProcessDescartaReentregaDeDocumentoJaIndexado(t *testing.T) {
+	t.Parallel()
+
+	requestedAt := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
+	indexedAt := requestedAt.Add(2 * time.Minute)
+
+	repo := &processingRepoStub{
+		document: &models.Document{
+			ID:        21,
+			UserID:    5,
+			FileURL:   "documents/ja-indexado.html",
+			Status:    domain.DocumentStatusIndexed,
+			IndexedAt: &indexedAt,
+		},
+	}
+	indexer := &processingIndexerStub{}
+	storage := &processingStorageStub{
+		openBodyByPath: map[string]string{"documents/ja-indexado.html": "<html>corpo</html>"},
+	}
+	processor := NewDocumentProcessor(repo, storage, &processingStorageResolverStub{err: domain.ErrStorageProviderNotConfigured}, indexer, nil, nil)
+
+	err := processor.Process(context.Background(), domain.DocumentIndexRequestedEvent{
+		DocumentID:  21,
+		UserID:      5,
+		RequestedAt: requestedAt,
+	})
+	if err != nil {
+		t.Fatalf("reentrega deveria ser descartada em silencio, veio erro: %v", err)
+	}
+
+	if indexer.calls != 0 {
+		t.Fatalf("o indexador nao deveria rodar numa reentrega, rodou %d vez(es)", indexer.calls)
+	}
+	if repo.replaceCalls != 0 {
+		t.Fatalf("o indice nao deveria ser reescrito numa reentrega, foi %d vez(es)", repo.replaceCalls)
+	}
+	// A verificacao que pega o bug sutil: se o guard rodasse DEPOIS de marcar
+	// PROCESSING, um documento pronto apareceria como "processando" para o
+	// usuario ate a proxima escrita.
+	if len(repo.updatedStates) != 0 {
+		t.Fatalf("nenhum estado deveria ser escrito numa reentrega, foram %d: %+v", len(repo.updatedStates), repo.updatedStates)
+	}
+}
+
+func TestProcessIndexaQuandoOPedidoEPosteriorAUltimaIndexacao(t *testing.T) {
+	t.Parallel()
+
+	// Reindexacao legitima: o usuario pediu de novo depois de o documento ter
+	// sido indexado. Aqui o trabalho PRECISA acontecer.
+	indexedAt := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
+	requestedAt := indexedAt.Add(1 * time.Hour)
+
+	repo := &processingRepoStub{
+		document: &models.Document{
+			ID:        22,
+			UserID:    5,
+			FileURL:   "documents/reindexar.html",
+			Status:    domain.DocumentStatusIndexed,
+			IndexedAt: &indexedAt,
+		},
+	}
+	indexer := &processingIndexerStub{}
+	storage := &processingStorageStub{
+		openBodyByPath: map[string]string{"documents/reindexar.html": "<html>corpo</html>"},
+	}
+	processor := NewDocumentProcessor(repo, storage, &processingStorageResolverStub{err: domain.ErrStorageProviderNotConfigured}, indexer, nil, nil)
+
+	if err := processor.Process(context.Background(), domain.DocumentIndexRequestedEvent{
+		DocumentID:  22,
+		UserID:      5,
+		RequestedAt: requestedAt,
+	}); err != nil {
+		t.Fatalf("reindexacao legitima deveria processar, veio erro: %v", err)
+	}
+
+	if indexer.calls != 1 {
+		t.Fatalf("esperava 1 execucao do indexador, veio %d", indexer.calls)
+	}
+	if repo.replaceCalls != 1 {
+		t.Fatalf("esperava o indice persistido 1 vez, veio %d", repo.replaceCalls)
+	}
+}
+
+func TestIsAlreadyIndexedForEConservadorEmTodasAsGuardas(t *testing.T) {
+	t.Parallel()
+
+	base := time.Date(2026, 8, 18, 10, 0, 0, 0, time.UTC)
+	depois := base.Add(time.Minute)
+	antes := base.Add(-time.Minute)
+
+	casos := []struct {
+		nome     string
+		doc      *models.Document
+		event    domain.DocumentIndexRequestedEvent
+		esperado bool
+		porque   string
+	}{
+		{
+			nome:     "documento nulo",
+			doc:      nil,
+			event:    domain.DocumentIndexRequestedEvent{RequestedAt: base},
+			esperado: false,
+		},
+		{
+			nome:     "evento antigo sem carimbo processa",
+			doc:      &models.Document{Status: domain.DocumentStatusIndexed, IndexedAt: &depois},
+			event:    domain.DocumentIndexRequestedEvent{},
+			esperado: false,
+			porque:   "eventos gravados antes do campo existir nao podem ser descartados por ausencia de informacao",
+		},
+		{
+			nome:     "indexed_at zerado pela reindexacao processa",
+			doc:      &models.Document{Status: domain.DocumentStatusIndexed, IndexedAt: nil},
+			event:    domain.DocumentIndexRequestedEvent{RequestedAt: base},
+			esperado: false,
+			porque:   "ReindexDocument zera indexed_at justamente para pedir trabalho novo",
+		},
+		{
+			nome:     "documento FAILED processa mesmo com indexed_at futuro",
+			doc:      &models.Document{Status: domain.DocumentStatusFailed, IndexedAt: &depois},
+			event:    domain.DocumentIndexRequestedEvent{RequestedAt: base},
+			esperado: false,
+			porque:   "uma tentativa que falhou depois precisa rodar de novo",
+		},
+		{
+			nome:     "indexacao anterior ao pedido processa",
+			doc:      &models.Document{Status: domain.DocumentStatusIndexed, IndexedAt: &antes},
+			event:    domain.DocumentIndexRequestedEvent{RequestedAt: base},
+			esperado: false,
+			porque:   "o indice e mais velho que o pedido, entao o pedido ainda nao foi atendido",
+		},
+		{
+			nome:     "indexacao posterior ao pedido descarta",
+			doc:      &models.Document{Status: domain.DocumentStatusIndexed, IndexedAt: &depois},
+			event:    domain.DocumentIndexRequestedEvent{RequestedAt: base},
+			esperado: true,
+		},
+		{
+			nome:     "indexacao no mesmo instante descarta",
+			doc:      &models.Document{Status: domain.DocumentStatusIndexed, IndexedAt: &base},
+			event:    domain.DocumentIndexRequestedEvent{RequestedAt: base},
+			esperado: true,
+			porque:   "igualdade conta como atendido; o oposto reprocessaria o evento eternamente",
+		},
+	}
+
+	for _, caso := range casos {
+		t.Run(caso.nome, func(t *testing.T) {
+			if got := isAlreadyIndexedFor(caso.doc, caso.event); got != caso.esperado {
+				t.Fatalf("isAlreadyIndexedFor = %v, esperava %v. %s", got, caso.esperado, caso.porque)
+			}
+		})
+	}
+}

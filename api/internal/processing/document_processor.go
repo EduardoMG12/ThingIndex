@@ -45,14 +45,39 @@ func (p *DocumentProcessor) Process(ctx context.Context, event domain.DocumentIn
 	enrichmentStatus := "not_configured"
 	startedAt := time.Now().UTC()
 	updateState := func(status, stage, detail, lastError string, completedAt *time.Time) {
-		_ = p.repo.UpdateDocumentProcessingState(ctx, event.DocumentID, domain.DocumentProcessingState{
+		if err := p.repo.UpdateDocumentProcessingState(ctx, event.DocumentID, domain.DocumentProcessingState{
 			Status:       status,
 			Stage:        stage,
 			StatusDetail: detail,
 			LastError:    lastError,
 			StartedAt:    &startedAt,
 			CompletedAt:  completedAt,
-		})
+		}); err != nil {
+			// Antes este erro era descartado com `_ =`, inclusive nas
+			// transicoes que marcam FAILED. O efeito era um documento
+			// congelado em PROCESSING sem nenhum sintoma em log -- o pior
+			// modo de falha possivel para diagnosticar.
+			log.Printf("document processor: falha ao atualizar estado do documento %d para %s/%s: %v",
+				event.DocumentID, status, stage, err)
+		}
+	}
+
+	// A carga do documento vem ANTES de marcar PROCESSING de proposito. O
+	// claim do outbox impede publicacao dupla, mas nao impede reentrega do
+	// RabbitMQ (worker que morre entre processar e dar o ack). Marcar
+	// PROCESSING primeiro sobrescreveria o estado INDEXED de um documento
+	// pronto, e so entao descobririamos que era duplicata.
+	doc, err := p.repo.GetDocumentByIDForProcessing(ctx, event.DocumentID)
+	if err != nil {
+		completedAt := time.Now().UTC()
+		updateState(domain.DocumentStatusFailed, "FAILED_LOADING_DOCUMENT", "Falha ao carregar o documento para indexacao.", err.Error(), &completedAt)
+		return fmt.Errorf("%w: load document: %v", domain.ErrDocumentIndexing, err)
+	}
+
+	if isAlreadyIndexedFor(doc, event) {
+		log.Printf("document processor: descartando reentrega do documento %d (indexado em %s, evento pedido em %s)",
+			event.DocumentID, doc.IndexedAt.UTC().Format(time.RFC3339), event.RequestedAt.UTC().Format(time.RFC3339))
+		return nil
 	}
 
 	if err := p.repo.UpdateDocumentProcessingState(ctx, event.DocumentID, domain.DocumentProcessingState{
@@ -62,13 +87,6 @@ func (p *DocumentProcessor) Process(ctx context.Context, event domain.DocumentIn
 		StartedAt:    &startedAt,
 	}); err != nil {
 		return fmt.Errorf("%w: update status to processing: %v", domain.ErrDocumentIndexing, err)
-	}
-
-	doc, err := p.repo.GetDocumentByIDForProcessing(ctx, event.DocumentID)
-	if err != nil {
-		completedAt := time.Now().UTC()
-		updateState(domain.DocumentStatusFailed, "FAILED_LOADING_DOCUMENT", "Falha ao carregar o documento para indexacao.", err.Error(), &completedAt)
-		return fmt.Errorf("%w: load document: %v", domain.ErrDocumentIndexing, err)
 	}
 
 	storageClient := p.baseStorage
@@ -179,6 +197,37 @@ func (p *DocumentProcessor) Process(ctx context.Context, event domain.DocumentIn
 	}
 
 	return nil
+}
+
+// isAlreadyIndexedFor decide se o evento recebido ja foi atendido.
+//
+// A regra e uma so: o documento esta INDEXED e foi indexado DEPOIS de o evento
+// ter sido pedido. Qualquer coisa fora disso processa normalmente.
+//
+// As tres guardas conservadoras importam mais que a regra:
+//
+//  1. RequestedAt zero -> processa. Eventos gravados antes desta mudanca nao
+//     carregam o carimbo, e descartar por ausencia de informacao perderia
+//     indexacao de verdade.
+//  2. IndexedAt nil -> processa. E o caso da reindexacao manual, que zera o
+//     campo justamente para pedir trabalho novo.
+//  3. Status != INDEXED -> processa. Documento em FAILED ou ORPHANED precisa da
+//     nova tentativa mesmo que tenha um indexed_at antigo.
+//
+// Na duvida o sistema reprocessa. Reprocessar custa uma rodada de LLM;
+// descartar por engano deixa o documento sem indice e o usuario sem sintoma.
+func isAlreadyIndexedFor(doc *models.Document, event domain.DocumentIndexRequestedEvent) bool {
+	if doc == nil || doc.IndexedAt == nil {
+		return false
+	}
+	if event.RequestedAt.IsZero() {
+		return false
+	}
+	if doc.Status != domain.DocumentStatusIndexed {
+		return false
+	}
+
+	return !doc.IndexedAt.Before(event.RequestedAt)
 }
 
 func (p *DocumentProcessor) MarkRetryScheduled(ctx context.Context, event domain.DocumentIndexRequestedEvent, disposition queue.DocumentIndexFailureDisposition) {

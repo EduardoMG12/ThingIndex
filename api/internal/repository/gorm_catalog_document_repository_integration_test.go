@@ -636,3 +636,52 @@ func payloadUint(payload map[string]any, key string) uint {
 func titleSuffix(id uint) string {
 	return fmt.Sprintf("%d", id)
 }
+
+// Este teste existe porque os anteriores nao conseguiam pegar o bug: eles
+// contam linhas com o escopo padrao do GORM, que ESCONDE registros com
+// deleted_at preenchido. Um soft delete passava por exclusao completa.
+//
+// Aqui a contagem e feita com Unscoped(), que enxerga tambem o que foi
+// soft-deletado. Sem o Unscoped() no repositorio, o texto integral do documento
+// "excluido" continua no banco -- o oposto do que o usuario pediu, e um
+// problema serio para um sistema que se apresenta como auditavel.
+func TestCatalogRepositoryDeleteDocumentApagaConteudoDeVerdade(t *testing.T) {
+	db := openIntegrationDB(t)
+	repo := &GormCatalogDocumentRepository{db: db}
+	ctx := context.Background()
+
+	user := seedIntegrationUser(t, db, "hard-delete")
+	category := seedIntegrationCategory(t, db, user.ID, "Compliance")
+	collection := seedIntegrationCollection(t, db, user.ID, category.ID, "Contratos")
+	document := seedIntegrationDocument(t, db, user.ID, category.ID, collection.ID, "contrato.pdf")
+
+	seedIntegrationDerivedData(t, db, document.ID)
+
+	if err := repo.DeleteDocument(ctx, user.ID, document.ID, nil); err != nil {
+		t.Fatalf("DeleteDocument retornou erro: %v", err)
+	}
+
+	// As tabelas com gorm.DeletedAt sao as que correm o risco. Se o registro
+	// ainda estiver la para o Unscoped(), o conteudo nao foi apagado.
+	derivados := []struct {
+		nome  string
+		model any
+	}{
+		{"document_pages", &models.DocumentPage{}},
+		{"paragraph_nodes", &models.ParagraphNode{}},
+		{"table_sections", &models.TableSection{}},
+		{"metadata_pairs", &models.MetadataPair{}},
+		{"document_chunks", &models.DocumentChunk{}},
+		{"document_outline_nodes", &models.DocumentOutlineNode{}},
+	}
+
+	for _, derivado := range derivados {
+		var count int64
+		if err := db.Unscoped().Model(derivado.model).Where("document_id = ?", document.ID).Count(&count).Error; err != nil {
+			t.Fatalf("contar %s com Unscoped: %v", derivado.nome, err)
+		}
+		if count != 0 {
+			t.Errorf("%s: %d linha(s) sobreviveram a exclusao (soft delete deixou o conteudo no banco)", derivado.nome, count)
+		}
+	}
+}

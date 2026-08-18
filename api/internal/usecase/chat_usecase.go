@@ -274,8 +274,12 @@ func buildConversationTitle(title string) string {
 	if normalized == "" {
 		return fmt.Sprintf("Chat %s", time.Now().UTC().Format("2006-01-02 15:04"))
 	}
-	if len(normalized) > 255 {
-		return strings.TrimSpace(normalized[:255])
+	// Corte por runes, nao por bytes. `normalized[:255]` parte um code point
+	// UTF-8 no meio quando o caractere 255 e acentuado -- caso comum em
+	// portugues -- e grava bytes invalidos no titulo. O limite de 255 e o
+	// tamanho da coluna, entao contar runes so pode gravar menos, nunca mais.
+	if runes := []rune(normalized); len(runes) > 255 {
+		return strings.TrimSpace(string(runes[:255]))
 	}
 	return normalized
 }
