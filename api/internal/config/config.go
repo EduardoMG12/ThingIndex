@@ -65,6 +65,10 @@ type Config struct {
 	DocumentIndexHandlerTimeout time.Duration
 	StuckDocumentThreshold      time.Duration
 	StuckDocumentPollInterval   time.Duration
+	UploadRateLimitRequests     int
+	UploadRateLimitWindow       time.Duration
+	ChatRateLimitRequests       int
+	ChatRateLimitWindow         time.Duration
 	ConsumerPrefetchCount       int
 	DocumentIndexRetryDelay     time.Duration
 	DocumentIndexMaxRetries     int
@@ -119,6 +123,10 @@ func Load() {
 		JWTSecret:                    getEnv("JWT_SECRET", defaultValueForEnvironment(environment, defaultDevelopmentJWT)),
 		AuthRateLimitRequests:        getEnvInt("AUTH_RATE_LIMIT_REQUESTS", 10),
 		AuthRateLimitWindow:          getEnvDurationSeconds("AUTH_RATE_LIMIT_WINDOW_SECONDS", 60),
+		UploadRateLimitRequests:      getEnvInt("UPLOAD_RATE_LIMIT_REQUESTS", 30),
+		UploadRateLimitWindow:        getEnvDurationSeconds("UPLOAD_RATE_LIMIT_WINDOW_SECONDS", 60),
+		ChatRateLimitRequests:        getEnvInt("CHAT_RATE_LIMIT_REQUESTS", 20),
+		ChatRateLimitWindow:          getEnvDurationSeconds("CHAT_RATE_LIMIT_WINDOW_SECONDS", 60),
 		SMTPHost:                     getEnv("SMTP_HOST", "localhost"),
 		SMTPPort:                     getEnv("SMTP_PORT", "1025"),
 		SMTPSecurityMode:             getEnv("SMTP_SECURITY_MODE", defaultSMTPSecurityMode(environment)),
@@ -251,6 +259,18 @@ func (c *Config) Validate() error {
 	}
 	if c.AuthRateLimitWindow <= 0 {
 		return errors.New("AUTH_RATE_LIMIT_WINDOW_SECONDS must be greater than zero")
+	}
+	if c.UploadRateLimitRequests <= 0 {
+		return errors.New("UPLOAD_RATE_LIMIT_REQUESTS must be greater than zero")
+	}
+	if c.UploadRateLimitWindow <= 0 {
+		return errors.New("UPLOAD_RATE_LIMIT_WINDOW_SECONDS must be greater than zero")
+	}
+	if c.ChatRateLimitRequests <= 0 {
+		return errors.New("CHAT_RATE_LIMIT_REQUESTS must be greater than zero")
+	}
+	if c.ChatRateLimitWindow <= 0 {
+		return errors.New("CHAT_RATE_LIMIT_WINDOW_SECONDS must be greater than zero")
 	}
 	if c.MaxUploadSizeBytes <= 0 {
 		return errors.New("MAX_UPLOAD_SIZE_BYTES must be greater than zero")

@@ -138,7 +138,15 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 		documents := v1.Group("/documents")
 		documents.Use(middleware.AuthMiddleware(cfg, authRepo))
 		{
-			documents.POST("/upload", docHandler.Upload)
+			// Limite POR USUARIO, e nao por IP: o frontend chama a API
+			// server-side, entao o ClientIP e sempre o do container do Next e
+			// um limite por IP viraria uma cota global compartilhada. Upload e
+			// a rota mais cara do sistema (storage + fila + LLM no worker) e
+			// ate agora nao tinha limite nenhum.
+			documents.POST("/upload",
+				middleware.UserRateLimitMiddleware(cfg.UploadRateLimitRequests, cfg.UploadRateLimitWindow),
+				docHandler.Upload,
+			)
 			documents.GET("/audit", docHandler.ListDocumentAuditEvents)
 			documents.POST("/collections", docHandler.CreateCollection)
 			documents.GET("/collections", docHandler.ListCollections)
@@ -171,7 +179,13 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 			chat.GET("/conversations/:id", chatHandler.GetConversation)
 			chat.PATCH("/conversations/:id", chatHandler.UpdateConversation)
 			chat.DELETE("/conversations/:id", chatHandler.DeleteConversation)
-			chat.POST("/stream", chatHandler.StreamCollectionChat)
+			// Cada mensagem aqui vira chamada paga de LLM. Balde separado do
+			// upload de proposito: enviar documentos nao pode consumir a cota
+			// de conversar sobre eles.
+			chat.POST("/stream",
+				middleware.UserRateLimitMiddleware(cfg.ChatRateLimitRequests, cfg.ChatRateLimitWindow),
+				chatHandler.StreamCollectionChat,
+			)
 		}
 	}
 

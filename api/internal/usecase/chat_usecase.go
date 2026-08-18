@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -211,35 +212,20 @@ func (u *chatUseCase) StreamCollectionChat(
 	}
 
 	var answerBuilder strings.Builder
-	if streamer, ok := llm.(domain.LLMStreamingService); ok {
-		if err := streamer.StreamText(ctx, systemPrompt, userPrompt, func(delta string) error {
-			if delta == "" {
-				return nil
-			}
-			answerBuilder.WriteString(delta)
-			return onEvent(domain.ChatStreamEvent{
-				Type:  chatStreamEventDelta,
-				Delta: delta,
-			})
-		}); err != nil {
-			return err
-		}
-	} else {
-		response, err := llm.GenerateText(ctx, systemPrompt, userPrompt)
-		if err != nil {
-			return err
-		}
-		answerBuilder.WriteString(strings.TrimSpace(response))
-		if err := onEvent(domain.ChatStreamEvent{
-			Type:  chatStreamEventDelta,
-			Delta: strings.TrimSpace(response),
-		}); err != nil {
-			return err
-		}
-	}
 
-	answer := strings.TrimSpace(answerBuilder.String())
-	if answer != "" {
+	// persistAnswer grava o que houver de resposta ate agora.
+	//
+	// Precisa acontecer TAMBEM no caminho de erro. Antes, um `return err` no
+	// meio do streaming pulava a persistencia inteira: o usuario via o texto
+	// aparecer na tela, a conexao caia, e ao recarregar a conversa a resposta
+	// tinha sumido -- sem nenhum registro de que a chamada de LLM foi feita e
+	// paga. Guardar o parcial e melhor que perder tudo.
+	persistAnswer := func() error {
+		answer := strings.TrimSpace(answerBuilder.String())
+		if answer == "" {
+			return nil
+		}
+
 		persistedSources := make([]models.ChatSourceReference, 0, len(sources))
 		for _, source := range sources {
 			persistedSources = append(persistedSources, models.ChatSourceReference{
@@ -260,6 +246,50 @@ func (u *chatUseCase) StreamCollectionChat(
 			}
 			return fmt.Errorf("%w: %v", domain.ErrChatConversationMessageStore, err)
 		}
+
+		return nil
+	}
+
+	if streamer, ok := llm.(domain.LLMStreamingService); ok {
+		if err := streamer.StreamText(ctx, systemPrompt, userPrompt, func(delta string) error {
+			if delta == "" {
+				return nil
+			}
+			answerBuilder.WriteString(delta)
+			return onEvent(domain.ChatStreamEvent{
+				Type:  chatStreamEventDelta,
+				Delta: delta,
+			})
+		}); err != nil {
+			// O contexto usado para persistir e o mesmo que acabou de falhar.
+			// Se ele ja estiver cancelado (cliente desconectou), a gravacao
+			// tambem falharia -- por isso o erro de persistencia so e logado,
+			// nunca substitui o erro original do stream, que e o que o handler
+			// precisa para escolher a mensagem certa ao usuario.
+			if persistErr := persistAnswer(); persistErr != nil {
+				log.Printf("chat: resposta parcial da conversa %d nao pode ser persistida: %v", conversation.ID, persistErr)
+			}
+			return err
+		}
+	} else {
+		response, err := llm.GenerateText(ctx, systemPrompt, userPrompt)
+		if err != nil {
+			return err
+		}
+		answerBuilder.WriteString(strings.TrimSpace(response))
+		if err := onEvent(domain.ChatStreamEvent{
+			Type:  chatStreamEventDelta,
+			Delta: strings.TrimSpace(response),
+		}); err != nil {
+			if persistErr := persistAnswer(); persistErr != nil {
+				log.Printf("chat: resposta da conversa %d nao pode ser persistida: %v", conversation.ID, persistErr)
+			}
+			return err
+		}
+	}
+
+	if err := persistAnswer(); err != nil {
+		return err
 	}
 
 	return onEvent(domain.ChatStreamEvent{
