@@ -53,6 +53,12 @@ jobs:
         working-directory: api
         run: go test ./...
 
+      # O artigo afirma ter "cobertura de testes automatizados" e nao havia
+      # -coverprofile em lugar nenhum: nao existia percentual publicavel.
+      # O piso protege contra regressao; nao e meta de perseguir 100%.
+      - name: cobertura de testes
+        run: bash scripts/check-coverage.sh
+
   # O artigo e um artefato versionado como qualquer outro, e ja quebrou em
   # silencio duas vezes: uma citacao (schymik2015benefits) existia no Overleaf e
   # nao no .bib versionado, e o Apendice A prometia arquivos DBML que nao
