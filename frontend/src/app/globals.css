@@ -42,7 +42,11 @@
     --card: 0 0% 100%;
     --card-foreground: 220 24% 14%;
 
-    --primary: 38 92% 48%;
+    /* 48% dava 2.16:1 como texto sobre o background e 2.32:1 para o branco
+       sobre bg-primary -- ambos reprovam WCAG AA (4.5:1), o que deixava todo
+       botao primario quase ilegivel no tema claro. Em 31% ficam 4.77:1 e
+       5.13:1. O tema escuro nunca teve esse problema (9.89:1). */
+    --primary: 38 92% 31%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 42 30% 91%;
@@ -51,12 +55,13 @@
     --muted: 40 25% 90%;
     --muted-foreground: 220 10% 42%;
 
-    --accent: 32 82% 52%;
+    /* Mesmo motivo: 52% dava 2.39:1. Em 34% da 4.93:1. */
+    --accent: 32 82% 34%;
     --accent-foreground: 0 0% 100%;
 
     --border: 36 24% 82%;
     --input: 36 24% 82%;
-    --ring: 38 92% 48%;
+    --ring: 38 92% 31%;
 
     --gradient-gold: linear-gradient(135deg, hsl(38 92% 52%), hsl(18 88% 58%));
     --shadow-gold: 0 0 36px -14px hsl(38 92% 52% / 0.28);

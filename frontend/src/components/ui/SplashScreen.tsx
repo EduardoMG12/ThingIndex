@@ -96,7 +96,7 @@ export const SplashScreen = () => {
         }
 
         const timer = setTimeout(() => {
-            // localStorage.setItem(SPLASH_STORAGE_KEY, Date.now().toString());
+            localStorage.setItem(SPLASH_STORAGE_KEY, Date.now().toString());
             setIsDismissed(true);
         }, 3500);
 
