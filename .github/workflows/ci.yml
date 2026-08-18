@@ -79,6 +79,19 @@ jobs:
         working-directory: api
         run: go test -count=1 ./cmd/schema-dbml/
 
+      # As tabelas do artigo sao DERIVADAS do CSV do experimento. Rodar o
+      # harness no CI garante que o numero publicado corresponde ao codigo
+      # publicado -- e que o corpus nao voltou a ser circular, ja que
+      # retrieval-eval aborta quando detecta circularidade.
+      - name: experimento de recuperacao roda e o corpus nao e circular
+        working-directory: api
+        run: go run ./cmd/retrieval-eval -out /tmp/results.csv
+
+      - name: script de analise estatistica
+        run: |
+          python3 scripts/test_analyze.py
+          python3 scripts/analyze.py /tmp/results.csv --outdir /tmp/tables
+
   # Os testes de integracao do repositorio validam as propriedades que o artigo
   # afirma: ordem de leitura por sequence_order, isolamento por usuario,
   # fidelidade da reconstrucao e numero fixo de consultas (sem N+1). Precisam de

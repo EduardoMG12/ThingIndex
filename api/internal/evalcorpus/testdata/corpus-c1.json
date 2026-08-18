@@ -1,0 +1,182 @@
+{
+  "version": "c1-2026-08",
+  "notes": "Corpus C1 do experimento comparativo. Consultas escritas a partir da necessidade de informacao, nao copiando o texto-alvo (exceto as marcadas como 'literal', que existem como controle de teto). Relevancia graduada 0-3. Inclui casos negativos, cuja resposta correta e nao devolver nada. Gabarito por document_id -- nunca por titulo produzido pelo pipeline, o que evita a circularidade do benchmark anterior.",
+  "documents": [
+    {
+      "id": "acordao-trabalhista",
+      "stratum": "juridico",
+      "title": "Acórdão — Recurso Ordinário 0001234-56.2025.5.09.0011",
+      "content": "ACÓRDÃO\nRECURSO ORDINÁRIO 0001234-56.2025.5.09.0011\n\n1 RELATÓRIO\nA reclamante ajuizou ação postulando o reconhecimento de vínculo empregatício no período de março de 2021 a agosto de 2023, além do pagamento de horas extraordinárias e adicional noturno.\n\n2 FUNDAMENTAÇÃO\nA prova testemunhal confirmou a pessoalidade e a não eventualidade da prestação de serviços. O depoimento do preposto confirmou a existência de escala fixa, o que descaracteriza a alegada autonomia. Quanto à jornada, os controles de ponto apresentados são britânicos e, portanto, inválidos como meio de prova, invertendo-se o ônus probatório.\n\n3 DISPOSITIVO\nAnte o exposto, conheço do recurso e, no mérito, dou-lhe parcial provimento para reconhecer o vínculo empregatício e condenar a reclamada ao pagamento de horas extraordinárias excedentes à 8a diária, com adicional de 50%, e reflexos em férias, décimo terceiro e FGTS. Custas pela reclamada."
+    },
+    {
+      "id": "edital-pregao",
+      "stratum": "licitacao",
+      "title": "Edital de Pregão Eletrônico 042/2025",
+      "content": "EDITAL DE PREGÃO ELETRÔNICO Nº 042/2025\n\n1 DO OBJETO\nContratação de empresa especializada na prestação de serviços continuados de limpeza e conservação predial, com fornecimento de materiais e equipamentos.\n\n2 DA HABILITAÇÃO\nOs licitantes deverão apresentar certidão negativa de débitos relativos a tributos federais, prova de regularidade com o FGTS e atestado de capacidade técnica emitido por pessoa jurídica de direito público ou privado.\n\n3 DA PROPOSTA E DOS PREÇOS\nO valor máximo estimado para a contratação é de R$ 1.480.000,00 (um milhão, quatrocentos e oitenta mil reais) para o período de doze meses.\n\nItem | Descrição | Quantidade | Valor unitário\n1 | Posto de servente diurno | 12 | R$ 4.320,00\n2 | Posto de servente noturno | 4 | R$ 5.870,00\n3 | Posto de encarregado | 2 | R$ 7.150,00\n\n4 DOS PRAZOS\nA vigência contratual será de 12 (doze) meses, prorrogável na forma da Lei 14.133/2021. O pagamento será efetuado em até 30 (trinta) dias após o atesto da nota fiscal."
+    },
+    {
+      "id": "contrato-sla",
+      "stratum": "contratual",
+      "title": "Contrato de Prestação de Serviços de TI — Anexo de Níveis de Serviço",
+      "content": "CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE TECNOLOGIA DA INFORMAÇÃO\nANEXO II — NÍVEIS DE SERVIÇO\n\n1 DISPONIBILIDADE\nA CONTRATADA garante disponibilidade mensal mínima de 99,5% para o ambiente de produção, apurada mensalmente, excluídas as janelas de manutenção programada comunicadas com 72 horas de antecedência.\n\n2 TEMPO DE ATENDIMENTO\nIncidentes classificados como severidade 1 deverão ter início de atendimento em até 30 minutos e solução de contorno em até 4 horas. Severidade 2: início em 2 horas, contorno em 8 horas.\n\n3 PENALIDADES\nO descumprimento dos níveis pactuados sujeita a CONTRATADA a desconto de 5% sobre a fatura mensal por ponto percentual de indisponibilidade excedente, limitado a 20% do valor mensal.\n\n4 REAJUSTE\nOs valores serão reajustados anualmente pela variação acumulada do IPCA."
+    },
+    {
+      "id": "politica-privacidade",
+      "stratum": "normativo",
+      "title": "Política de Privacidade e Tratamento de Dados Pessoais",
+      "content": "POLÍTICA DE PRIVACIDADE E TRATAMENTO DE DADOS PESSOAIS\n\n1 FINALIDADE DO TRATAMENTO\nOs dados pessoais coletados destinam-se à execução do contrato, ao cumprimento de obrigação legal e ao legítimo interesse do controlador, nos termos do artigo 7º da Lei 13.709/2018.\n\n2 COMPARTILHAMENTO\nNão há compartilhamento de dados pessoais com terceiros para fins publicitários. O compartilhamento com operadores ocorre exclusivamente para viabilizar a hospedagem e o processamento das informações.\n\n3 DIREITOS DO TITULAR\nO titular pode requerer confirmação de tratamento, acesso, correção, anonimização, portabilidade e eliminação dos dados, mediante solicitação ao encarregado.\n\n4 RETENÇÃO\nOs registros de acesso a aplicações são mantidos por 6 (seis) meses, conforme o Marco Civil da Internet."
+    },
+    {
+      "id": "manual-onboarding",
+      "stratum": "operacional",
+      "title": "Manual de Integração de Novos Colaboradores",
+      "content": "MANUAL DE INTEGRAÇÃO DE NOVOS COLABORADORES\n\n1 PRIMEIRO DIA\nO novo colaborador deve comparecer ao setor de gestão de pessoas para conferência documental e assinatura do termo de responsabilidade sobre equipamentos.\n\n2 ACESSOS E FERRAMENTAS\nA solicitação de credenciais é feita pelo gestor imediato com antecedência mínima de 48 horas. O acesso à rede corporativa exige a conclusão do treinamento de segurança da informação.\n\n3 PERÍODO DE EXPERIÊNCIA\nO contrato de experiência tem duração de 45 dias, prorrogável por igual período, com avaliação formal ao final de cada etapa.\n\n4 BENEFÍCIOS\nVale-refeição, plano de saúde e auxílio-creche passam a vigorar a partir do primeiro dia útil do mês subsequente à admissão."
+    }
+  ],
+  "queries": [
+    {
+      "id": "q01-literal",
+      "text": "horas extraordinárias adicional noturno vínculo",
+      "variant": "literal",
+      "relevance": {
+        "acordao-trabalhista": 3
+      }
+    },
+    {
+      "id": "q02-literal",
+      "text": "certidão negativa FGTS atestado capacidade técnica",
+      "variant": "literal",
+      "relevance": {
+        "edital-pregao": 3
+      }
+    },
+    {
+      "id": "q03-literal",
+      "text": "disponibilidade mensal severidade contorno",
+      "variant": "literal",
+      "relevance": {
+        "contrato-sla": 3
+      }
+    },
+    {
+      "id": "q04-literal",
+      "text": "anonimização portabilidade eliminação titular",
+      "variant": "literal",
+      "relevance": {
+        "politica-privacidade": 3
+      }
+    },
+    {
+      "id": "q05-literal",
+      "text": "contrato de experiência prorrogável avaliação",
+      "variant": "literal",
+      "relevance": {
+        "manual-onboarding": 3
+      }
+    },
+    {
+      "id": "q06-para",
+      "text": "quanto tempo a empresa tem para pagar a nota",
+      "variant": "paraphrase",
+      "relevance": {
+        "edital-pregao": 3,
+        "contrato-sla": 1
+      }
+    },
+    {
+      "id": "q07-para",
+      "text": "o que acontece se o fornecedor ficar fora do ar",
+      "variant": "paraphrase",
+      "relevance": {
+        "contrato-sla": 3
+      }
+    },
+    {
+      "id": "q08-para",
+      "text": "por quanto tempo guardamos registro de quem acessou",
+      "variant": "paraphrase",
+      "relevance": {
+        "politica-privacidade": 3
+      }
+    },
+    {
+      "id": "q09-para",
+      "text": "o juiz aceitou o registro de jornada apresentado",
+      "variant": "paraphrase",
+      "relevance": {
+        "acordao-trabalhista": 3
+      }
+    },
+    {
+      "id": "q10-para",
+      "text": "quando o funcionário novo começa a ter plano de saúde",
+      "variant": "paraphrase",
+      "relevance": {
+        "manual-onboarding": 3
+      }
+    },
+    {
+      "id": "q11-para",
+      "text": "qual o teto de gasto previsto na licitação",
+      "variant": "paraphrase",
+      "relevance": {
+        "edital-pregao": 3
+      }
+    },
+    {
+      "id": "q12-para",
+      "text": "como os valores sobem depois de um ano",
+      "variant": "paraphrase",
+      "relevance": {
+        "contrato-sla": 3,
+        "edital-pregao": 1
+      }
+    },
+    {
+      "id": "q13-noisy",
+      "text": "prazo pagamneto nota fical licitacao",
+      "variant": "noisy",
+      "relevance": {
+        "edital-pregao": 3
+      }
+    },
+    {
+      "id": "q14-noisy",
+      "text": "multa por sistema fora do ar sla",
+      "variant": "noisy",
+      "relevance": {
+        "contrato-sla": 3
+      }
+    },
+    {
+      "id": "q15-noisy",
+      "text": "direitos do dono dos dados lgpd",
+      "variant": "noisy",
+      "relevance": {
+        "politica-privacidade": 3
+      }
+    },
+    {
+      "id": "q16-noisy",
+      "text": "onboarding acesso rede treinamento",
+      "variant": "noisy",
+      "relevance": {
+        "manual-onboarding": 3
+      }
+    },
+    {
+      "id": "q17-neg",
+      "text": "qual a política de reembolso de passagens aéreas internacionais",
+      "variant": "paraphrase",
+      "relevance": {},
+      "negative": true
+    },
+    {
+      "id": "q18-neg",
+      "text": "cronograma de manutenção da frota de veículos",
+      "variant": "literal",
+      "relevance": {},
+      "negative": true
+    }
+  ]
+}
