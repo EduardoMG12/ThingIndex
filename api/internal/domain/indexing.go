@@ -81,6 +81,9 @@ type DocumentProcessingRepository interface {
 	UpdateDocumentProcessingState(ctx context.Context, documentID uint, state DocumentProcessingState) error
 	CreateProcessingAttempt(ctx context.Context, attempt *models.DocumentProcessingAttempt) error
 	ReplaceIndexingResult(ctx context.Context, documentID uint, result IndexingResult) error
+	// ReapStuckProcessingDocuments marca como FAILED os documentos presos em
+	// PROCESSING desde antes de `olderThan`. Devolve quantos foram liberados.
+	ReapStuckProcessingDocuments(ctx context.Context, olderThan time.Time) (int64, error)
 }
 
 type MessagePublisher interface {

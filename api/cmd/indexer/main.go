@@ -85,6 +85,21 @@ func main() {
 		}
 	}()
 
+	// O timeout por mensagem cobre o worker vivo que demora demais; este reaper
+	// cobre o worker que morreu no meio do trabalho e nunca marcou FAILED.
+	// Sem ele o documento fica PROCESSING para sempre na tela do usuario.
+	reaper := processing.NewStuckDocumentReaper(
+		processingRepo,
+		config.AppConfig.StuckDocumentThreshold,
+		config.AppConfig.StuckDocumentPollInterval,
+	)
+
+	go func() {
+		if err := reaper.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			log.Printf("stuck document reaper stopped with error: %v", err)
+		}
+	}()
+
 	if err := consumer.ConsumeDocumentIndexRequested(ctx, processor.Process); err != nil && !errors.Is(err, context.Canceled) {
 		log.Fatalf("document consumer stopped with error: %v", err)
 	}

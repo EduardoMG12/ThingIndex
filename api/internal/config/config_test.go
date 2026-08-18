@@ -166,11 +166,65 @@ func validConfig() *Config {
 		ConsumerPrefetchCount:        10,
 		DocumentIndexRetryDelay:      30 * time.Second,
 		DocumentIndexMaxRetries:      5,
+		DocumentIndexHandlerTimeout:  600 * time.Second,
+		StuckDocumentThreshold:       1800 * time.Second,
+		StuckDocumentPollInterval:    300 * time.Second,
 		PricingSyncInterval:          24 * time.Hour,
 		MaxUploadSizeBytes:           20 * 1024 * 1024,
 		MasterEncryptionKey:          "master-key",
 		ServerReadTimeout:            15 * time.Second,
 		ServerWriteTimeout:           30 * time.Second,
 		ServerIdleTimeout:            60 * time.Second,
+	}
+}
+
+// O reaper marca FAILED documentos presos em PROCESSING. Se o limite dele for
+// menor ou igual ao prazo de uma mensagem, ele passa a matar documentos que o
+// worker ainda esta processando legitimamente -- transformando lentidao em
+// erro, e com um sintoma dificil de diagnosticar (o documento falha sozinho,
+// sem nenhum erro real). A regra e barrada no boot, nao em producao.
+func TestValidateRejectsStuckThresholdShorterThanHandlerTimeout(t *testing.T) {
+	t.Parallel()
+
+	cfg := validConfig()
+	cfg.DocumentIndexHandlerTimeout = 600 * time.Second
+	cfg.StuckDocumentThreshold = 300 * time.Second
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("esperava erro quando o limite de documento preso e menor que o prazo por mensagem")
+	}
+}
+
+func TestValidateRejectsStuckThresholdEqualToHandlerTimeout(t *testing.T) {
+	t.Parallel()
+
+	cfg := validConfig()
+	cfg.DocumentIndexHandlerTimeout = 600 * time.Second
+	cfg.StuckDocumentThreshold = 600 * time.Second
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("igualdade tambem e insegura: o reaper competiria com a mensagem no limite")
+	}
+}
+
+func TestValidateRejectsNonPositiveHandlerTimeout(t *testing.T) {
+	t.Parallel()
+
+	cfg := validConfig()
+	cfg.DocumentIndexHandlerTimeout = 0
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("esperava erro para prazo por mensagem igual a zero")
+	}
+}
+
+func TestValidateRejectsNonPositiveStuckDocumentPollInterval(t *testing.T) {
+	t.Parallel()
+
+	cfg := validConfig()
+	cfg.StuckDocumentPollInterval = 0
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("esperava erro para intervalo de varredura igual a zero")
 	}
 }

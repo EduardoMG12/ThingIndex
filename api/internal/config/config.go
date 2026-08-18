@@ -42,36 +42,39 @@ type Config struct {
 	ResetPasswordURL string
 
 	// Storage config
-	StorageProvider           string
-	MinioEndpoint             string
-	MinioAccessKey            string
-	MinioSecretKey            string
-	MinioUseSSL               string
-	MinioBucketName           string
-	GCPStorageProjectID       string
-	GCPStorageBucketName      string
-	GCPStorageLocation        string
-	GCPStorageCredentialsJSON string
-	GCPStorageEmulatorHost    string
-	RabbitMQURL               string
-	DocumentIndexExchange     string
-	DocumentIndexQueue        string
-	DocumentIndexRoutingKey   string
-	DocumentIndexRetryQueue   string
-	DocumentIndexDLQ          string
-	OutboxPollInterval        time.Duration
-	OutboxBatchSize           int
-	OutboxVisibilityTimeout   time.Duration
-	ConsumerPrefetchCount     int
-	DocumentIndexRetryDelay   time.Duration
-	DocumentIndexMaxRetries   int
-	PricingSyncInterval       time.Duration
-	ModelCatalogSyncInterval  time.Duration
-	MaxUploadSizeBytes        int64
-	MasterEncryptionKey       string
-	ServerReadTimeout         time.Duration
-	ServerWriteTimeout        time.Duration
-	ServerIdleTimeout         time.Duration
+	StorageProvider             string
+	MinioEndpoint               string
+	MinioAccessKey              string
+	MinioSecretKey              string
+	MinioUseSSL                 string
+	MinioBucketName             string
+	GCPStorageProjectID         string
+	GCPStorageBucketName        string
+	GCPStorageLocation          string
+	GCPStorageCredentialsJSON   string
+	GCPStorageEmulatorHost      string
+	RabbitMQURL                 string
+	DocumentIndexExchange       string
+	DocumentIndexQueue          string
+	DocumentIndexRoutingKey     string
+	DocumentIndexRetryQueue     string
+	DocumentIndexDLQ            string
+	OutboxPollInterval          time.Duration
+	OutboxBatchSize             int
+	OutboxVisibilityTimeout     time.Duration
+	DocumentIndexHandlerTimeout time.Duration
+	StuckDocumentThreshold      time.Duration
+	StuckDocumentPollInterval   time.Duration
+	ConsumerPrefetchCount       int
+	DocumentIndexRetryDelay     time.Duration
+	DocumentIndexMaxRetries     int
+	PricingSyncInterval         time.Duration
+	ModelCatalogSyncInterval    time.Duration
+	MaxUploadSizeBytes          int64
+	MasterEncryptionKey         string
+	ServerReadTimeout           time.Duration
+	ServerWriteTimeout          time.Duration
+	ServerIdleTimeout           time.Duration
 }
 
 var AppConfig *Config
@@ -146,6 +149,9 @@ func Load() {
 		ConsumerPrefetchCount:        getEnvInt("CONSUMER_PREFETCH_COUNT", 10),
 		DocumentIndexRetryDelay:      getEnvDurationSeconds("DOCUMENT_INDEX_RETRY_DELAY_SECONDS", 30),
 		DocumentIndexMaxRetries:      getEnvInt("DOCUMENT_INDEX_MAX_RETRIES", 5),
+		DocumentIndexHandlerTimeout:  getEnvDurationSeconds("DOCUMENT_INDEX_HANDLER_TIMEOUT_SECONDS", 600),
+		StuckDocumentThreshold:       getEnvDurationSeconds("STUCK_DOCUMENT_THRESHOLD_SECONDS", 1800),
+		StuckDocumentPollInterval:    getEnvDurationSeconds("STUCK_DOCUMENT_POLL_INTERVAL_SECONDS", 300),
 		PricingSyncInterval:          getEnvDurationSeconds("PRICING_SYNC_INTERVAL_SECONDS", 86400),
 		ModelCatalogSyncInterval:     getEnvDurationSeconds("MODEL_CATALOG_SYNC_INTERVAL_SECONDS", 86400),
 		MaxUploadSizeBytes:           getEnvInt64("MAX_UPLOAD_SIZE_BYTES", 20*1024*1024),
@@ -284,6 +290,19 @@ func (c *Config) Validate() error {
 	}
 	if c.DocumentIndexMaxRetries <= 0 {
 		return errors.New("DOCUMENT_INDEX_MAX_RETRIES must be greater than zero")
+	}
+	if c.DocumentIndexHandlerTimeout <= 0 {
+		return errors.New("DOCUMENT_INDEX_HANDLER_TIMEOUT_SECONDS must be greater than zero")
+	}
+	if c.StuckDocumentPollInterval <= 0 {
+		return errors.New("STUCK_DOCUMENT_POLL_INTERVAL_SECONDS must be greater than zero")
+	}
+	if c.StuckDocumentThreshold <= c.DocumentIndexHandlerTimeout {
+		// O reaper existe para documentos abandonados por um worker morto. Se
+		// o limite for menor que o prazo de uma mensagem, ele marca FAILED
+		// documentos que o worker ainda esta processando legitimamente --
+		// transformando lentidao em erro.
+		return errors.New("STUCK_DOCUMENT_THRESHOLD_SECONDS must be greater than DOCUMENT_INDEX_HANDLER_TIMEOUT_SECONDS")
 	}
 	if c.ServerReadTimeout <= 0 || c.ServerWriteTimeout <= 0 || c.ServerIdleTimeout <= 0 {
 		return errors.New("server timeout values must be greater than zero")

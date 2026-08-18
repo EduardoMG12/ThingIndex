@@ -21,6 +21,18 @@ type processingRepoStub struct {
 	replaceCalls  int
 	replaceErr    error
 	results       []domain.IndexingResult
+
+	reapCutoffs []time.Time
+	reapCount   int64
+	reapErr     error
+}
+
+func (r *processingRepoStub) ReapStuckProcessingDocuments(_ context.Context, olderThan time.Time) (int64, error) {
+	r.reapCutoffs = append(r.reapCutoffs, olderThan)
+	if r.reapErr != nil {
+		return 0, r.reapErr
+	}
+	return r.reapCount, nil
 }
 
 func (r *processingRepoStub) GetDocumentByIDForProcessing(context.Context, uint) (*models.Document, error) {
