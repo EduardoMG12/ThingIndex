@@ -63,6 +63,14 @@ export function useDocuments() {
                 if (controller.signal.aborted) {
                     return;
                 }
+
+                // O erro era capturado e descartado, entao uma falha
+                // persistente de polling ficava invisivel: a tela seguia
+                // mostrando "processando" e o unico sintoma era a lista nunca
+                // atualizar. Logar mantem o backoff (o polling continua) e
+                // deixa a causa visivel no console.
+                console.warn("polling de documentos falhou; nova tentativa com backoff", err);
+
                 pollTimerRef.current = setTimeout(poll, POLL_INTERVAL_MS * 2);
             }
         };
