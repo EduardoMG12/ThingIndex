@@ -682,12 +682,33 @@ mesmo sistema**. Adicionar `usage` ao struct é meia hora de trabalho e troca
 
 | # | Item |
 |---|---|
-| 19 | Corpus C1 expandido (30 docs, 150 consultas) com as 3 regras anti-circularidade |
-| 20 | Corpus C2 real público PT-BR, com qrels graduados e κ reportado |
-| 21 | pgvector no compose + braços B (BM25), C (denso), D (RRF) |
-| 22 | `cmd/retrieval-eval` — 4 braços × 2 chunkings, emite `results.csv` |
-| 23 | `scripts/analyze.py` — gera as tabelas em LaTeX direto do CSV, zero transcrição manual |
-| 24 | Reescrever o artigo: tempo verbal, H1-H3, Ameaças à Validade, +12 referências |
+| 19 | Corpus C1 expandido (30 docs, 150 consultas) com as 3 regras anti-circularidade | 🟡 estrutura pronta e validada (5 docs, 18 consultas); falta **anotação** |
+| 20 | Corpus C2 real público PT-BR, com qrels graduados e κ reportado | ⬜ |
+| 21 | pgvector no compose + braços B (BM25), C (denso), D (RRF) | 🟡 B e D **feitos**; C (denso) declarado como ausente, não prometido |
+| 22 | `cmd/retrieval-eval` — emite `results.csv` | ✅ feito, rodando no CI |
+| 23 | `scripts/analyze.py` — tabelas LaTeX direto do CSV, zero transcrição manual | ✅ feito, 19 testes próprios |
+| 24 | Reescrever o artigo: tempo verbal, H1-H3, Ameaças à Validade, +12 referências | ⬜ |
+
+> **A Fase 3 saiu do papel.** Metodologia completa, resultados e leitura honesta
+> em [`experimento-recuperacao.md`](experimento-recuperacao.md). Reprodução em
+> dois comandos; nenhum número transcrito à mão.
+>
+> **Os três achados da primeira execução:**
+>
+> 1. Todos os braços acertam **100% em consultas literais** e caem para
+>    **57–71% em paráfrase**. Isso quantifica exatamente o que os 100/100/100 do
+>    benchmark antigo escondiam. A queda é maior no relacional (−0,429) que no
+>    BM25 (−0,286), coerente com a ausência de IDF no scorer atual.
+> 2. **Taxa de falso positivo 1,000 nos três braços** — nenhum reconhece a
+>    ausência de resposta. Limitação real, medida pela primeira vez, invisível em
+>    qualquer métrica de ranking.
+> 3. As diferenças **não são estatisticamente significativas** — e isso é
+>    limitação de poder amostral, não evidência de empate. Com 16 consultas
+>    positivas o Wilcoxon não detecta efeito.
+>
+> **O achado 3 é o que decide o cronograma:** a infraestrutura está pronta e
+> testada; o que falta é anotação, que é trabalho humano e não comprime no fim do
+> semestre. Priorize os itens 19 e 20.
 
 ### Fase 4 — paralelo, quando der
 
