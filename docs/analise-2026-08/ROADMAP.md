@@ -526,15 +526,28 @@ versionado divergir dos modelos.
 > Vale considerar tornar isso o padrão: trocar o fallback `?? "3000"` por uma
 > porta improvável (ex.: 3457), já que 3000 é a porta que todo projeto Next usa
 > — e é justamente por isso que ela colide.
+>
+> **Atualização: 3457 também colide.** Numa rodada posterior a suíte falhou com
+> `listen EADDRINUSE` na 3457 — o projeto `programacao_web_III` do mesmo usuário
+> estava servindo nela. A lição real não é "use a porta X", é **conferir antes**:
+> ```bash
+> for p in 3987 4123 4577 5321; do
+>   ss -ltn | grep -q ":$p " || { echo "livre: $p"; break; }
+> done
+> ```
+> E, ao encontrar a porta ocupada, **verificar de quem é o processo antes de
+> matar** (`ps -p <pid> -o cmd`): nas duas vezes o dono era outro projeto do
+> usuário, não um servidor órfão da própria suíte.
 
 
 | # | Item | Estado |
 |---|---|---|
-| 6 | Corrigir o claim do outbox + idempotência do consumidor (§1.1) | ✅ feito (claim); idempotência do consumidor pendente |
-| 7 | Timeout por mensagem + reaper de `PROCESSING` preso (§1.4-1) | ⬜ |
-| 8 | `WriteTimeout` do SSE + persistir resposta parcial (§1.4-2) | ⬜ |
-| 9 | Rate limit por `user_id` em upload e chat (§1.4-3) | ⬜ |
-| 10 | `Unscoped()` no delete, corte por runes, logar erros do worker (§1.4-5,6,7) | ⬜ |
+| 6 | Corrigir o claim do outbox + idempotência do consumidor (§1.1) | ✅ feito (claim + idempotência) |
+| 7 | Timeout por mensagem + reaper de `PROCESSING` preso (§1.4-1) | ✅ feito |
+| 8 | `WriteTimeout` do SSE + persistir resposta parcial (§1.4-2) | ✅ feito |
+| 9 | Rate limit por `user_id` em upload e chat (§1.4-3) | ✅ feito |
+| 10 | `Unscoped()` no delete, corte por runes, logar erros do worker (§1.4-5,6,7) | ✅ feito |
+| 4* | `GetCollectionContext` sem `LIMIT` (§1.4-4) | ✅ feito (teto de materialização) |
 | 11 | Gerar os `.dbml` do Apêndice A ou remover a promessa | ✅ feito (gerado a partir dos modelos, com guard no CI) |
 
 #### Correção do outbox — o que mudou
@@ -581,6 +594,67 @@ descartável, não mock). Verifiquei que pegam o bug em três variantes:
 
 A terceira linha é a que importa: o teste não aceita meia correção. Quem mexer
 nisso depois não consegue "consertar" só o status e achar que resolveu.
+
+#### Fase 1 — o que foi aplicado no restante dos itens
+
+**Item 6b — idempotência do consumidor.** O claim impede publicação dupla, mas
+não impede *reentrega* do RabbitMQ (worker que morre entre processar e dar o
+ack). O evento agora carrega `requested_at` e o `Process` descarta quando o
+documento está `INDEXED` com `indexed_at` posterior ao pedido. A reindexação
+manual zera `indexed_at`, então nunca é confundida com duplicata.
+
+> Detalhe que mudou comportamento observável: a **carga do documento passou a
+> vir ANTES de marcar `PROCESSING`**. Na ordem antiga o guard chegaria tarde —
+> um documento pronto já teria sido sobrescrito para `PROCESSING` antes de
+> descobrirmos que era duplicata.
+
+O guard é conservador em quatro pontos, todos com teste de tabela: evento sem
+carimbo processa, `indexed_at` nulo processa, status ≠ `INDEXED` processa,
+indexação anterior ao pedido processa. **Na dúvida reprocessa** — reprocessar
+custa uma rodada de LLM, descartar por engano deixa o documento sem índice e o
+usuário sem sintoma.
+
+**Item 7 — dois modos de falha, duas defesas.** O timeout por mensagem
+(`DOCUMENT_INDEX_HANDLER_TIMEOUT_SECONDS`, default 600s) cobre o worker *vivo*
+que demora demais; o `StuckDocumentReaper` cobre o worker que *morreu* (OOM
+kill, SIGKILL) e nunca marcou `FAILED`. A config rejeita no boot
+`STUCK_DOCUMENT_THRESHOLD_SECONDS <= DOCUMENT_INDEX_HANDLER_TIMEOUT_SECONDS`,
+senão o reaper mataria trabalho legítimo — lentidão virando erro.
+
+> Sutileza que virou teste próprio: no shutdown o contexto pai é cancelado e o
+> do handler expira por herança. Sem separar os dois casos, um documento
+> interrompido por SIGTERM seria reportado como "estourou o prazo" e contaria
+> retry — **documentos indo para a DLQ por causa de um deploy**.
+
+**Item 8 — o `WriteTimeout` é deadline absoluto, não de ociosidade.** Toda
+resposta de chat acima de 30s era truncada sem erro. `writeChatEvent` agora
+empurra o prazo via `http.ResponseController` a cada evento: o limite passa a
+ser de silêncio entre eventos. E o `return err` no meio do streaming pulava a
+persistência inteira — o texto aparecia na tela e sumia no reload, sem registro
+de que o LLM foi chamado e pago. Agora o parcial é salvo também nos caminhos de
+erro.
+
+**Item 9 — o rate limit por IP era global.** O frontend chama a API
+server-side, então o `ClientIP` é sempre o do container do Next: o 11º login do
+minuto de *qualquer* usuário levava 429, e upload/chat não tinham limite algum.
+`UserRateLimitMiddleware` chaveia por `user_id` + rota, com baldes separados
+para que enviar documentos não consuma a cota de conversar sobre eles.
+
+**Item 10 — exclusão que não excluía.** Faltava `Unscoped()` e os seis modelos
+derivados têm `gorm.DeletedAt`: o texto integral do documento "excluído"
+permanecia no banco. O teste antigo não pegava porque contava com o escopo
+padrão do GORM, que esconde soft delete.
+
+**Item 4 (§1.4-4) — teto de materialização.** As seis consultas derivadas
+ganharam `LIMIT`. **O número de consultas não muda** — continuam as 9 de custo
+constante que o artigo reporta. O que passa a ter teto é o volume materializado.
+Quando um teto é atingido isso vai para o log: truncar evidência em silêncio
+seria o pior resultado possível para um sistema que se apresenta como auditável.
+
+**Verificação por mutação em todos os itens.** Cada correção foi testada
+revertendo o código e confirmando que o teste falha com a mensagem certa — por
+exemplo, com corte em bytes o teste exibe o byte órfão `\xc3` do "ã" partido ao
+meio; sem renovar o deadline do SSE o cliente recebe `unexpected EOF`.
 
 
 
