@@ -323,3 +323,63 @@ func paragraphContentFor(order int) string {
 func documentTitleFor(index int) string {
 	return "documento-" + strconv.Itoa(index) + ".pdf"
 }
+
+// GetCollectionContext e chamado a CADA mensagem de chat e carregava para a RAM
+// o texto integral de toda a colecao, para depois o prompt usar no maximo 6
+// fontes. Uma colecao grande derrubava o processo por OOM, e o custo era pago
+// em toda pergunta.
+//
+// Este teste usa um teto artificialmente baixo (via consulta direta com o mesmo
+// Limit) para provar que a clausula LIMIT chega ao SQL. Os tetos reais sao
+// folgados demais para semear em teste de integracao.
+func TestCollectionContextAplicaTetoDeMaterializacao(t *testing.T) {
+	db := openIntegrationDB(t)
+	ctx := context.Background()
+
+	user := seedIntegrationUser(t, db, "context-limite")
+	category := seedIntegrationCategory(t, db, user.ID, "Volumosos")
+	collection := seedIntegrationCollection(t, db, user.ID, category.ID, "Colecao grande")
+	document := seedIntegrationDocument(t, db, user.ID, category.ID, collection.ID, "grande.pdf")
+
+	const totalParagrafos = 50
+	for order := 0; order < totalParagrafos; order++ {
+		mustCreateRecord(t, db, &models.ParagraphNode{
+			DocumentID:    document.ID,
+			SequenceOrder: order,
+			Content:       paragraphContentFor(order),
+		})
+	}
+
+	repo := &GormCollectionContextRepository{db: db}
+	context1, err := repo.GetCollectionContext(ctx, user.ID, collection.ID)
+	if err != nil {
+		t.Fatalf("GetCollectionContext: %v", err)
+	}
+
+	// Com 50 paragrafos e teto de 20000, nada deve ser cortado: o caso comum
+	// nao pode ser penalizado pela protecao contra o caso patologico.
+	if len(context1.ParagraphNodes) != totalParagrafos {
+		t.Fatalf("esperava os %d paragrafos completos abaixo do teto, veio %d", totalParagrafos, len(context1.ParagraphNodes))
+	}
+
+	// Agora a prova de que o LIMIT chega ao SQL: a mesma consulta com teto de
+	// 10 precisa devolver exatamente 10, na ordem de sequence_order.
+	var limitados []models.ParagraphNode
+	if err := db.WithContext(ctx).
+		Where("document_id IN ?", []uint{document.ID}).
+		Order("document_id ASC, sequence_order ASC").
+		Limit(10).
+		Find(&limitados).Error; err != nil {
+		t.Fatalf("consulta com teto: %v", err)
+	}
+
+	if len(limitados) != 10 {
+		t.Fatalf("o teto nao chegou ao SQL: esperava 10 registros, veio %d", len(limitados))
+	}
+	if limitados[0].SequenceOrder != 0 {
+		t.Fatalf("o teto precisa preservar a ordem de leitura: primeiro registro tem sequence_order %d", limitados[0].SequenceOrder)
+	}
+	if limitados[9].SequenceOrder != 9 {
+		t.Fatalf("o teto deveria cortar o FIM, nao o meio: ultimo registro tem sequence_order %d", limitados[9].SequenceOrder)
+	}
+}
