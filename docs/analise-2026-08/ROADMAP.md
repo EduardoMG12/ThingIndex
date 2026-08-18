@@ -660,11 +660,65 @@ meio; sem renovar o deadline do SSE o cliente recebe `unexpected EOF`.
 
 ### Fase 2 — 2 semanas, instrumentação (sem instrumento não há dado)
 
-| # | Item |
-|---|---|
-| 12 | `-coverprofile` no CI + badge — é número que a banca pede |
-| 13 | TPC: checador de proveniência completa no benchmark |
-| 14 | Determinismo: teste de 30 execuções com hash idêntico |
+| # | Item | Estado |
+|---|---|---|
+| 12 | `-coverprofile` no CI + badge — é número que a banca pede | ✅ feito — **48,0%**, com piso de 45% no CI |
+| 13 | TPC: checador de proveniência completa no benchmark | ✅ feito (`internal/provenance`, TPC + TCV) |
+| 14 | Determinismo: teste de 30 execuções com hash idêntico | ✅ feito — **100% nos três braços** |
+
+#### Fase 2 — o que foi aplicado
+
+**Item 12 — cobertura.** O artigo afirmava "cobertura de testes automatizados" e
+não havia `-coverprofile` em lugar nenhum: não existia percentual publicável.
+Agora existe — **48,0%** — com `scripts/check-coverage.sh` no CI. O piso de 45%
+protege contra regressão; não é meta de perseguir 100%, porque cobrir 100% das
+linhas sem uma asserção útil é trivial e inútil.
+
+**Item 13 — TPC e TCV.** As duas métricas de auditabilidade que são
+**contribuição própria** do trabalho. O artigo *se chama* auditável e nunca
+definiu o termo de forma mensurável — "auditável" sem métrica é adjetivo de
+marketing; com métrica, é resultado.
+
+- **TPC** (taxa de proveniência completa): % de itens com `document_id`,
+  `page_number` e `sequence_order` todos resolvíveis. O critério é rígido de
+  propósito: saber que algo veio do documento 7 sem saber a página não permite
+  apontar o trecho no original, e portanto não serve para auditoria. Reporta
+  também **por tipo estrutural** — se só os parágrafos têm página e as tabelas
+  não, a média global esconde que metade da evidência é inauditável.
+- **TCV** (taxa de citação verificável): % de citações cujo trecho aparece
+  literalmente na fonte apontada. Separa "citou" de "citou corretamente" — o
+  modo de falha mais perigoso é apontar o documento certo e exibir um trecho
+  que não existe ali.
+
+> Decisão registrada: a comparação da TCV normaliza espaço e caixa, mas **não**
+> acento nem pontuação. Relaxar mais produziria falso **positivo**, que numa
+> métrica de auditabilidade é o erro mais grave — daria por verificada uma
+> citação que o leitor humano não encontraria no documento.
+
+**Item 14 — determinismo, medido.** 30 execuções por consulta, comparando o
+**hash SHA-256 do ranking serializado** (posição + id + score). Comparar só o
+primeiro colocado esconderia instabilidade no resto; comparar scores com
+tolerância esconderia reordenação de empates. Resultado: **100% nos três
+braços** — a afirmação mais forte do artigo deixa de ser sustentada apenas por
+leitura de código.
+
+> **Uma armadilha que quase virou teste falso-positivo, e que vale registrar.**
+> A primeira versão do teste de determinismo do RRF alimentava a fusão com 12
+> documentos de texto idêntico, esperando empate. Ele passava — **inclusive com
+> o desempate por `DocID` removido**, ou seja, não tinha poder de detecção.
+>
+> A causa só apareceu investigando: o RRF pontua por **posição**, e as posições
+> são distintas (1º, 2º, 3º...), então os scores fundidos saem todos diferentes
+> mesmo com textos iguais. Um probe isolado confirmou que `sort.Slice` sobre
+> valores realmente empatados produz **199 ordens distintas em 200 rodadas** —
+> o não-determinismo existe, o teste é que não o alcançava.
+>
+> A correção foi construir o empate diretamente: dois rankings com ordem
+> invertida fazem os pares (i, n−1−i) somarem exatamente o mesmo score. O teste
+> agora **verifica que o cenário empata** antes de medir, e falha se não
+> empatar. Verificado RED→GREEN.
+>
+> A lição: "o teste passou" não é evidência de que o teste funciona.
 | 15 | Latência p50/p95 e bytes de `/collections/:id/context` × n |
 | 16 | Promover o contador de consultas SQL de teste a middleware opcional |
 | 17 | Separar custo **medido** de custo **estimado** no monitoramento |
