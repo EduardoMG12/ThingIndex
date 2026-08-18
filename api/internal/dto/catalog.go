@@ -14,18 +14,18 @@ type CreateCollectionRequest struct {
 }
 
 type ParagraphNodeInput struct {
-	SequenceOrder int            `json:"sequence_order" binding:"required,gte=0"`
+	SequenceOrder int            `json:"sequence_order" binding:"gte=0"`
 	PageNumber    *int           `json:"page_number,omitempty" binding:"omitempty,gte=1"`
 	Content       string         `json:"content" binding:"required"`
 	Metadata      map[string]any `json:"metadata"`
 }
 
 type StoreParagraphNodesRequest struct {
-	Nodes []ParagraphNodeInput `json:"nodes" binding:"required"`
+	Nodes []ParagraphNodeInput `json:"nodes" binding:"required,dive"`
 }
 
 type TableSectionInput struct {
-	SequenceOrder int            `json:"sequence_order" binding:"required,gte=0"`
+	SequenceOrder int            `json:"sequence_order" binding:"gte=0"`
 	Title         string         `json:"title" binding:"omitempty,max=255"`
 	Headers       []string       `json:"headers"`
 	Rows          [][]string     `json:"rows"`
@@ -33,17 +33,17 @@ type TableSectionInput struct {
 }
 
 type StoreTableSectionsRequest struct {
-	Sections []TableSectionInput `json:"sections" binding:"required"`
+	Sections []TableSectionInput `json:"sections" binding:"required,dive"`
 }
 
 type MetadataPairInput struct {
-	SequenceOrder int    `json:"sequence_order" binding:"required,gte=0"`
+	SequenceOrder int    `json:"sequence_order" binding:"gte=0"`
 	Key           string `json:"key" binding:"required,max=255"`
 	Value         string `json:"value" binding:"required"`
 }
 
 type StoreMetadataPairsRequest struct {
-	Pairs []MetadataPairInput `json:"pairs" binding:"required"`
+	Pairs []MetadataPairInput `json:"pairs" binding:"required,dive"`
 }
 
 type CategoryResponse struct {

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"thing-index/internal/models"
+	appdb "thing-index/db"
 
 	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
@@ -134,29 +134,7 @@ func openIntegrationGorm(dsn string) (*gorm.DB, error) {
 // "document_processing_attempts" does not exist` — um teste vermelho que
 // ninguem via, porque a suite de integracao nao roda sozinha.
 func migrateIntegrationModels(db *gorm.DB) error {
-	return db.AutoMigrate(
-		&models.User{},
-		&models.DocumentProcessingAttempt{},
-		&models.DocumentCategory{},
-		&models.Collection{},
-		&models.Document{},
-		&models.DocumentPage{},
-		&models.ParagraphNode{},
-		&models.TableSection{},
-		&models.MetadataPair{},
-		&models.DocumentChunk{},
-		&models.DocumentOutlineNode{},
-		&models.OutboxEvent{},
-		&models.DocumentAuditEvent{},
-		&models.UserProviderConfig{},
-		&models.ProviderModelCatalog{},
-		&models.ProviderAuditEvent{},
-		&models.PricingSource{},
-		&models.ModelPrice{},
-		&models.ModelPriceHistory{},
-		&models.ChatConversation{},
-		&models.ChatConversationEntry{},
-	)
+	return db.AutoMigrate(appdb.ManagedModels()...)
 }
 
 func sanitizeIdentifier(value string) string {

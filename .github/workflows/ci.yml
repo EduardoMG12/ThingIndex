@@ -53,6 +53,32 @@ jobs:
         working-directory: api
         run: go test ./...
 
+  # O artigo e um artefato versionado como qualquer outro, e ja quebrou em
+  # silencio duas vezes: uma citacao (schymik2015benefits) existia no Overleaf e
+  # nao no .bib versionado, e o Apendice A prometia arquivos DBML que nao
+  # existiam no repositorio. Os dois defeitos so aparecem na compilacao final,
+  # que costuma acontecer na vespera da entrega.
+  artigo:
+    name: artigo (citacoes e esquema)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: api/go.mod
+          cache-dependency-path: api/go.sum
+
+      - name: citacoes com entrada no .bib
+        run: bash scripts/check-article-citations.sh
+
+      # O .dbml e lido em runtime, entao o test cache do Go nao o enxerga como
+      # entrada -- por isso o -count=1. Sem ele um cache quente esconderia a
+      # divergencia.
+      - name: DBML do Apendice A em dia com os modelos
+        working-directory: api
+        run: go test -count=1 ./cmd/schema-dbml/
+
   # Os testes de integracao do repositorio validam as propriedades que o artigo
   # afirma: ordem de leitura por sequence_order, isolamento por usuario,
   # fidelidade da reconstrucao e numero fixo de consultas (sem N+1). Precisam de

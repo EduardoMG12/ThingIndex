@@ -1,0 +1,481 @@
+// Esquema relacional do ThingIndex -- Apendice A do artigo.
+//
+// ARQUIVO GERADO. Nao edite a mao.
+// Fonte: api/db/models.go (a mesma lista que alimenta o AutoMigrate).
+// Regerar: cd api && go run ./cmd/schema-dbml
+//
+// Importavel em https://dbdiagram.io para visualizacao interativa.
+//
+// Total: 21 tabelas.
+
+Table users {
+  id serial [pk, increment]
+  name varchar(255) [not null]
+  email varchar(255) [not null, unique]
+  avatar_url varchar(2048)
+  password varchar(255) [not null]
+  reset_token varchar(255)
+  reset_token_expires_at timestamptz
+  session_invalid_after timestamptz
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+
+  indexes {
+    deleted_at [name: "idx_users_deleted_at"]
+  }
+}
+
+Table document_categories {
+  id serial [pk, increment]
+  user_id integer [not null]
+  name varchar(255) [not null]
+  normalized_name varchar(255)
+  description text
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+
+  indexes {
+    deleted_at [name: "idx_document_categories_deleted_at"]
+    (user_id, normalized_name) [name: "idx_user_category_normalized", unique]
+  }
+}
+
+Table collections {
+  id serial [pk, increment]
+  user_id integer [not null]
+  category_id integer
+  name varchar(255) [not null]
+  normalized_name varchar(255)
+  metadata jsonb
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+
+  indexes {
+    deleted_at [name: "idx_collections_deleted_at"]
+    user_id [name: "idx_collections_user_id"]
+    (user_id, normalized_name) [name: "idx_user_collection_normalized", unique]
+  }
+}
+
+Table documents {
+  id serial [pk, increment]
+  user_id integer [not null]
+  title varchar(255) [not null]
+  file_url varchar(512) [not null]
+  size integer
+  mime_type varchar(100)
+  status varchar(50) [default: `UPLOADED`]
+  processing_stage varchar(64) [default: `QUEUED`]
+  status_detail varchar(255)
+  index_started_at timestamptz
+  indexed_at timestamptz
+  last_processing_error text
+  collection varchar(255)
+  collection_id integer
+  category_id integer
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+
+  indexes {
+    collection [name: "idx_documents_collection"]
+    collection_id [name: "idx_documents_collection_id"]
+    deleted_at [name: "idx_documents_deleted_at"]
+    status [name: "idx_documents_status"]
+    user_id [name: "idx_documents_user_id"]
+  }
+}
+
+Table document_processing_attempts {
+  id serial [pk, increment]
+  document_id integer [not null]
+  user_id integer [not null]
+  stage varchar(64)
+  failure_kind varchar(32)
+  disposition varchar(32)
+  detail text
+  error_message text
+  retry_count integer [not null, default: `0`]
+  next_retry_attempt integer [not null, default: `0`]
+  max_retry_attempts integer [not null, default: `0`]
+  retry_delay_seconds integer [not null, default: `0`]
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+
+  indexes {
+    deleted_at [name: "idx_document_processing_attempts_deleted_at"]
+    disposition [name: "idx_document_processing_attempts_disposition"]
+    (document_id, created_at) [name: "idx_document_processing_attempts_document_created"]
+    failure_kind [name: "idx_document_processing_attempts_failure_kind"]
+    stage [name: "idx_document_processing_attempts_stage"]
+    user_id [name: "idx_document_processing_attempts_user_id"]
+  }
+}
+
+Table document_pages {
+  id serial [pk, increment]
+  document_id integer [not null]
+  page_number integer [not null]
+  content text [not null]
+  summary text
+  token_estimate integer [not null, default: `0`]
+  metadata jsonb
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+
+  indexes {
+    deleted_at [name: "idx_document_pages_deleted_at"]
+    document_id [name: "idx_document_pages_document_id"]
+    (document_id, page_number) [name: "idx_document_pages_document_page", unique]
+  }
+}
+
+Table paragraph_nodes {
+  id serial [pk, increment]
+  document_id integer [not null]
+  sequence_order integer [not null]
+  page_number integer
+  content text [not null]
+  metadata jsonb
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+
+  indexes {
+    deleted_at [name: "idx_paragraph_nodes_deleted_at"]
+    document_id [name: "idx_paragraph_nodes_document_id"]
+    (document_id, sequence_order) [name: "idx_paragraph_nodes_document_sequence", unique]
+  }
+}
+
+Table table_sections {
+  id serial [pk, increment]
+  document_id integer [not null]
+  sequence_order integer [not null]
+  title varchar(255)
+  headers jsonb
+  rows jsonb
+  metadata jsonb
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+
+  indexes {
+    deleted_at [name: "idx_table_sections_deleted_at"]
+    document_id [name: "idx_table_sections_document_id"]
+    (document_id, sequence_order) [name: "idx_table_sections_document_sequence", unique]
+  }
+}
+
+Table metadata_pairs {
+  id serial [pk, increment]
+  document_id integer [not null]
+  sequence_order integer [not null]
+  key varchar(255) [not null]
+  value text [not null]
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+
+  indexes {
+    deleted_at [name: "idx_metadata_pairs_deleted_at"]
+    document_id [name: "idx_metadata_pairs_document_id"]
+    (document_id, sequence_order, key) [name: "idx_metadata_pairs_document_sequence_key", unique]
+  }
+}
+
+Table document_chunks {
+  id serial [pk, increment]
+  document_id integer [not null]
+  sequence_order integer [not null]
+  chunk_type varchar(64) [not null]
+  title varchar(255)
+  content text [not null]
+  source_paragraph_start integer
+  source_paragraph_end integer
+  token_estimate integer [not null, default: `0`]
+  metadata jsonb
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+
+  indexes {
+    chunk_type [name: "idx_document_chunks_chunk_type"]
+    deleted_at [name: "idx_document_chunks_deleted_at"]
+    document_id [name: "idx_document_chunks_document_id"]
+    (document_id, sequence_order) [name: "idx_document_chunks_document_sequence", unique]
+  }
+}
+
+Table document_outline_nodes {
+  id serial [pk, increment]
+  document_id integer [not null]
+  sequence_order integer [not null]
+  node_id varchar(128) [not null]
+  parent_id integer
+  level integer [not null]
+  title varchar(255) [not null]
+  slug varchar(255)
+  summary text
+  start_page integer
+  end_page integer
+  node_path varchar(1024)
+  metadata jsonb
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+
+  indexes {
+    deleted_at [name: "idx_document_outline_nodes_deleted_at"]
+    document_id [name: "idx_document_outline_nodes_document_id"]
+    node_path [name: "idx_document_outline_nodes_node_path"]
+    parent_id [name: "idx_document_outline_nodes_parent_id"]
+    (document_id, node_id) [name: "idx_outline_nodes_document_node", unique]
+    (document_id, sequence_order) [name: "idx_outline_nodes_document_sequence", unique]
+  }
+}
+
+Table outbox_events {
+  id serial [pk, increment]
+  aggregate_type varchar(64) [not null]
+  aggregate_id integer [not null]
+  event_type varchar(128) [not null]
+  status varchar(32) [not null]
+  payload jsonb
+  attempts integer [not null, default: `0`]
+  available_at timestamptz [not null]
+  published_at timestamptz
+  last_error text
+  created_at timestamptz
+  updated_at timestamptz
+
+  indexes {
+    (aggregate_type, aggregate_id) [name: "idx_outbox_events_aggregate"]
+    available_at [name: "idx_outbox_events_available_at"]
+    event_type [name: "idx_outbox_events_event_type"]
+    status [name: "idx_outbox_events_status"]
+  }
+}
+
+Table document_audit_events {
+  id serial [pk, increment]
+  user_id integer [not null]
+  document_id integer
+  collection_id integer
+  actor_type varchar(32) [not null, default: `USER`]
+  actor_id integer
+  action varchar(64) [not null]
+  status varchar(32) [not null]
+  correlation_id varchar(64)
+  origin varchar(255)
+  title varchar(255)
+  detail text
+  metadata jsonb
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+
+  indexes {
+    action [name: "idx_document_audit_events_action"]
+    actor_id [name: "idx_document_audit_events_actor_id"]
+    actor_type [name: "idx_document_audit_events_actor_type"]
+    collection_id [name: "idx_document_audit_events_collection_id"]
+    correlation_id [name: "idx_document_audit_events_correlation_id"]
+    deleted_at [name: "idx_document_audit_events_deleted_at"]
+    document_id [name: "idx_document_audit_events_document_id"]
+    origin [name: "idx_document_audit_events_origin"]
+    status [name: "idx_document_audit_events_status"]
+    user_id [name: "idx_document_audit_events_user_id"]
+  }
+}
+
+Table user_provider_configs {
+  id serial [pk, increment]
+  user_id integer [not null]
+  family varchar(20) [not null]
+  provider_type varchar(50) [not null]
+  encrypted_data text [not null]
+  is_enabled boolean [default: `true`]
+  enabled_for_indexing boolean [default: `false`]
+  enabled_for_chat boolean [default: `false`]
+  created_at timestamptz
+  updated_at timestamptz
+
+  indexes {
+    (user_id, provider_type) [name: "idx_user_provider", unique]
+    family [name: "idx_user_provider_configs_family"]
+  }
+}
+
+Table provider_model_catalogs {
+  id serial [pk, increment]
+  scope_key varchar(64) [not null]
+  user_id integer
+  provider_type varchar(50) [not null]
+  model_id varchar(255) [not null]
+  display_name varchar(255) [not null]
+  metadata_json text
+  fetched_at timestamptz [not null]
+  is_active boolean [not null, default: `true`]
+  created_at timestamptz
+  updated_at timestamptz
+
+  indexes {
+    (scope_key, provider_type, model_id) [name: "idx_provider_model_catalog_scope", unique]
+    fetched_at [name: "idx_provider_model_catalogs_fetched_at"]
+    is_active [name: "idx_provider_model_catalogs_is_active"]
+    provider_type [name: "idx_provider_model_catalogs_provider_type"]
+    scope_key [name: "idx_provider_model_catalogs_scope_key"]
+    user_id [name: "idx_provider_model_catalogs_user_id"]
+  }
+}
+
+Table provider_audit_events {
+  id serial [pk, increment]
+  user_id integer [not null]
+  provider_config_id integer
+  family varchar(20) [not null]
+  provider_type varchar(50) [not null]
+  actor_type varchar(32) [not null, default: `USER`]
+  actor_id integer
+  action varchar(64) [not null]
+  status varchar(32) [not null]
+  correlation_id varchar(64)
+  origin varchar(255)
+  detail text
+  metadata jsonb
+  created_at timestamptz
+  updated_at timestamptz
+
+  indexes {
+    action [name: "idx_provider_audit_events_action"]
+    actor_id [name: "idx_provider_audit_events_actor_id"]
+    actor_type [name: "idx_provider_audit_events_actor_type"]
+    correlation_id [name: "idx_provider_audit_events_correlation_id"]
+    family [name: "idx_provider_audit_events_family"]
+    origin [name: "idx_provider_audit_events_origin"]
+    provider_config_id [name: "idx_provider_audit_events_provider_config_id"]
+    provider_type [name: "idx_provider_audit_events_provider_type"]
+    status [name: "idx_provider_audit_events_status"]
+    user_id [name: "idx_provider_audit_events_user_id"]
+  }
+}
+
+Table pricing_sources {
+  id serial [pk, increment]
+  user_id integer [not null]
+  provider_type varchar(50) [not null]
+  name varchar(120) [not null]
+  source_url varchar(1024) [not null]
+  is_enabled boolean [not null, default: `true`]
+  last_synced_at timestamptz
+  last_sync_status varchar(32) [default: `PENDING`]
+  last_sync_error text
+  last_sync_duration_ms integer
+  last_price_count integer
+  created_at timestamptz
+  updated_at timestamptz
+
+  indexes {
+    (user_id, provider_type) [name: "idx_pricing_source_user_provider"]
+    is_enabled [name: "idx_pricing_sources_is_enabled"]
+  }
+}
+
+Table model_prices {
+  id serial [pk, increment]
+  user_id integer [not null]
+  pricing_source_id integer [not null]
+  provider_type varchar(50) [not null]
+  model_key varchar(120) [not null]
+  model_name varchar(255) [not null]
+  unit varchar(80) [not null]
+  currency varchar(10) [not null, default: `USD`]
+  flat_price_usd numeric
+  input_cost_per_million_usd numeric
+  output_cost_per_million_usd numeric
+  cached_input_cost_per_million_usd numeric
+  context_cost_per_million_usd numeric
+  price_notes text
+  last_synced_at timestamptz [not null]
+  created_at timestamptz
+  updated_at timestamptz
+
+  indexes {
+    (user_id, pricing_source_id, model_key) [name: "idx_model_price_user_source_model"]
+    last_synced_at [name: "idx_model_prices_last_synced_at"]
+    provider_type [name: "idx_model_prices_provider_type"]
+  }
+}
+
+Table model_price_histories {
+  id serial [pk, increment]
+  user_id integer [not null]
+  pricing_source_id integer [not null]
+  provider_type varchar(50) [not null]
+  model_key varchar(120) [not null]
+  model_name varchar(255) [not null]
+  unit varchar(80) [not null]
+  currency varchar(10) [not null, default: `USD`]
+  flat_price_usd numeric
+  input_cost_per_million_usd numeric
+  output_cost_per_million_usd numeric
+  cached_input_cost_per_million_usd numeric
+  context_cost_per_million_usd numeric
+  price_notes text
+  captured_at timestamptz [not null]
+  created_at timestamptz
+
+  indexes {
+    provider_type [name: "idx_model_price_histories_provider_type"]
+    (user_id, pricing_source_id, model_key, captured_at) [name: "idx_model_price_history_lookup"]
+  }
+}
+
+Table chat_conversations {
+  id serial [pk, increment]
+  user_id integer [not null]
+  collection_id integer [not null]
+  title varchar(255) [not null]
+  last_message_at timestamptz
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+
+  indexes {
+    collection_id [name: "idx_chat_conversations_collection_id"]
+    deleted_at [name: "idx_chat_conversations_deleted_at"]
+    last_message_at [name: "idx_chat_conversations_last_message_at"]
+    user_id [name: "idx_chat_conversations_user_id"]
+  }
+}
+
+Table chat_conversation_entries {
+  id serial [pk, increment]
+  conversation_id integer [not null]
+  role varchar(16) [not null]
+  content text [not null]
+  sources jsonb
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+
+  indexes {
+    conversation_id [name: "idx_chat_conversation_entries_conversation_id"]
+    deleted_at [name: "idx_chat_conversation_entries_deleted_at"]
+  }
+}
+
+// Relacionamentos (chaves estrangeiras declaradas nos modelos GORM)
+
+Ref: chat_conversation_entries.conversation_id > chat_conversations.id
+Ref: collections.category_id > document_categories.id
+Ref: document_outline_nodes.parent_id > document_outline_nodes.id
+Ref: document_processing_attempts.document_id > documents.id
+Ref: documents.category_id > document_categories.id
+Ref: documents.collection_id > collections.id

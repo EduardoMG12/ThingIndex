@@ -372,7 +372,7 @@ O worker \textit{indexer} consumirá a fila, processará o documento e persistir
 
 \subsection{Modelagem de Dados}
 
-O modelo de dados será projetado para que o contexto de uma coleção seja reconstruído por consultas SQL determinísticas. O esquema completo contempla 20 tabelas organizadas em três grupos lógicos: núcleo, estruturas extraídas e infraestrutura, conforme descrito a seguir e disponível na íntegra no Apêndice A. A Figura~\ref{fig:schema-core} apresenta o diagrama entidade-relacionamento do grupo principal (núcleo), com as entidades fundamentais do sistema.
+O modelo de dados será projetado para que o contexto de uma coleção seja reconstruído por consultas SQL determinísticas. O esquema completo contempla 21 tabelas organizadas em três grupos lógicos: núcleo, estruturas extraídas e infraestrutura, conforme descrito a seguir e disponível na íntegra no Apêndice A. A Figura~\ref{fig:schema-core} apresenta o diagrama entidade-relacionamento do grupo principal (núcleo), com as entidades fundamentais do sistema.
 
 A Figura~\ref{fig:schema-core} apresenta o diagrama entidade-relacionamento do núcleo do sistema, composto pelas entidades fundamentais: usuários, categorias, coleções e documentos. Esse núcleo estabelece as relações básicas sobre as quais todo o sistema se apoia. Um \texttt{user} pode possuir múltiplas \texttt{categories} e \texttt{collections}, e cada \texttt{collection} agrupa diversos \texttt{documents}. A \texttt{collection} pode opcionalmente pertencer a uma \texttt{category}, permitindo organização hierárquica. Cada \texttt{document} armazena metadados como caminho, tipo MIME, tamanho e status de processamento.
 
@@ -402,7 +402,7 @@ A Figura~\ref{fig:classes} complementa essa visão com o diagrama de classes, qu
 \begin{figure}[!ht]
   \centering
   \includegraphics[width=1\textwidth]{anexos/diagramas/classes.png}
-  \caption{Diagrama de classes do ThingIndex, com 14 classes organizadas em núcleo (azul), estruturas (verde) e infraestrutura (roxo).}
+  \caption{Diagrama de classes do ThingIndex, com 16 classes organizadas em núcleo (azul), estruturas (verde) e infraestrutura (roxo).}
   \label{fig:classes}
 \end{figure}
 
@@ -592,7 +592,7 @@ O desenvolvimento do ThingIndex será realizado entre junho e dezembro de 2026, 
 
 % \subsection{Modelagem de Dados}
 
-% O modelo de dados será projetado para que o contexto de uma coleção seja reconstruído por consultas SQL determinísticas. O esquema completo contempla 20 tabelas organizadas em três grupos lógicos: núcleo, estruturas extraídas e infraestrutura, conforme descrito a seguir e disponível na íntegra no Apêndice A. A Figura~\ref{fig:schema-core} apresenta o diagrama entidade-relacionamento do grupo principal (núcleo), com as entidades fundamentais do sistema.
+% O modelo de dados será projetado para que o contexto de uma coleção seja reconstruído por consultas SQL determinísticas. O esquema completo contempla 21 tabelas organizadas em três grupos lógicos: núcleo, estruturas extraídas e infraestrutura, conforme descrito a seguir e disponível na íntegra no Apêndice A. A Figura~\ref{fig:schema-core} apresenta o diagrama entidade-relacionamento do grupo principal (núcleo), com as entidades fundamentais do sistema.
 
 % A Figura~\ref{fig:schema-core} apresenta o diagrama entidade-relacionamento do núcleo do sistema, composto pelas entidades fundamentais: usuários, categorias, coleções e documentos. Esse núcleo estabelece as relações básicas sobre as quais todo o sistema se apoia. Um \texttt{user} pode possuir múltiplas \texttt{categories} e \texttt{collections}, e cada \texttt{collection} agrupa diversos \texttt{documents}. A \texttt{collection} pode opcionalmente pertencer a uma \texttt{category}, permitindo organização hierárquica. Cada \texttt{document} armazena metadados como caminho, tipo MIME, tamanho e status de processamento.
 
@@ -622,7 +622,7 @@ O desenvolvimento do ThingIndex será realizado entre junho e dezembro de 2026, 
 % \begin{figure}[!ht]
 %   \centering
 %   \includegraphics[width=1\textwidth]{anexos/diagramas/classes.png}
-%   \caption{Diagrama de classes do ThingIndex, com 14 classes organizadas em núcleo (azul), estruturas (verde) e infraestrutura (roxo).}
+%   \caption{Diagrama de classes do ThingIndex, com 16 classes organizadas em núcleo (azul), estruturas (verde) e infraestrutura (roxo).}
 %   \label{fig:classes}
 % \end{figure}
 
@@ -878,7 +878,9 @@ No desenvolvimento deste manuscrito, os autores utilizaram o serviço ChatGPT, b
 
 \subsection*{Apêndice A: Esquema Completo do Banco de Dados}
 
-O esquema relacional completo do ThingIndex, contendo todas as 20 tabelas, tipos de dados, chaves primárias, chaves estrangeiras e índices, está disponível em formato DBML no repositório do projeto. Os arquivos podem ser importados no \texttt{dbdiagram.io} para visualização interativa.
+O esquema relacional completo do ThingIndex, contendo todas as 21 tabelas, tipos de dados, chaves primárias, chaves estrangeiras e índices, está disponível em formato DBML no repositório do projeto, no arquivo \texttt{docs/schema/thingindex.dbml}. O arquivo pode ser importado no \texttt{dbdiagram.io} para visualização interativa.
+
+O arquivo é gerado a partir dos mesmos modelos que a aplicação submete à migração automática, e não redigido manualmente (\texttt{api/cmd/schema-dbml}). A escolha é deliberada: um apêndice escrito à mão descreve o esquema que o autor acredita ter, enquanto um apêndice derivado descreve o esquema que o sistema efetivamente cria. Um teste de regressão falha caso o arquivo versionado divirja dos modelos, de modo que a documentação não pode silenciosamente envelhecer em relação ao código.
 
 % \noindent\textit{Nota: este artigo utilizou ferramentas de IA (ChatGPT) exclusivamente para correção ortográfica e gramatical, conforme orientação do professor orientador. Todo o conteúdo técnico e conceitual foi escrito pelo autor.}
 

@@ -61,6 +61,7 @@ type Config struct {
 	DocumentIndexDLQ          string
 	OutboxPollInterval        time.Duration
 	OutboxBatchSize           int
+	OutboxVisibilityTimeout   time.Duration
 	ConsumerPrefetchCount     int
 	DocumentIndexRetryDelay   time.Duration
 	DocumentIndexMaxRetries   int
@@ -141,6 +142,7 @@ func Load() {
 		DocumentIndexDLQ:             getEnv("DOCUMENT_INDEX_DLQ", "thingindex.document.index.dlq"),
 		OutboxPollInterval:           getEnvDurationSeconds("OUTBOX_POLL_INTERVAL_SECONDS", 5),
 		OutboxBatchSize:              getEnvInt("OUTBOX_BATCH_SIZE", 20),
+		OutboxVisibilityTimeout:      getEnvDurationSeconds("OUTBOX_VISIBILITY_TIMEOUT_SECONDS", 120),
 		ConsumerPrefetchCount:        getEnvInt("CONSUMER_PREFETCH_COUNT", 10),
 		DocumentIndexRetryDelay:      getEnvDurationSeconds("DOCUMENT_INDEX_RETRY_DELAY_SECONDS", 30),
 		DocumentIndexMaxRetries:      getEnvInt("DOCUMENT_INDEX_MAX_RETRIES", 5),
@@ -261,6 +263,15 @@ func (c *Config) Validate() error {
 	}
 	if c.OutboxBatchSize <= 0 {
 		return errors.New("OUTBOX_BATCH_SIZE must be greater than zero")
+	}
+	if c.OutboxVisibilityTimeout <= 0 {
+		return errors.New("OUTBOX_VISIBILITY_TIMEOUT_SECONDS must be greater than zero")
+	}
+	if c.OutboxVisibilityTimeout <= c.OutboxPollInterval {
+		// Se a janela de invisibilidade for menor que o intervalo de poll, o
+		// evento reaparece antes de o dispatcher terminar de publicar — que e
+		// exatamente a duplicacao que o claim existe para evitar.
+		return errors.New("OUTBOX_VISIBILITY_TIMEOUT_SECONDS must be greater than OUTBOX_POLL_INTERVAL_SECONDS")
 	}
 	if c.ConsumerPrefetchCount <= 0 {
 		return errors.New("CONSUMER_PREFETCH_COUNT must be greater than zero")

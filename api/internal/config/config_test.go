@@ -19,6 +19,32 @@ func TestValidateAllowsDevelopmentSecurityShortcuts(t *testing.T) {
 	}
 }
 
+// A janela de invisibilidade precisa ser maior que o intervalo de poll. Se for
+// menor, o evento reivindicado reaparece antes de o dispatcher terminar de
+// publicar — que e exatamente a duplicacao que o claim existe para evitar.
+func TestValidateRejectsOutboxVisibilityTimeoutShorterThanPollInterval(t *testing.T) {
+	t.Parallel()
+
+	cfg := validConfig()
+	cfg.OutboxPollInterval = 30 * time.Second
+	cfg.OutboxVisibilityTimeout = 10 * time.Second
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("esperava rejeitar visibility timeout menor que o poll interval")
+	}
+}
+
+func TestValidateRejectsNonPositiveOutboxVisibilityTimeout(t *testing.T) {
+	t.Parallel()
+
+	cfg := validConfig()
+	cfg.OutboxVisibilityTimeout = 0
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("esperava rejeitar visibility timeout zerado")
+	}
+}
+
 func TestValidateRejectsInsecureProductionResetURL(t *testing.T) {
 	t.Parallel()
 
@@ -136,6 +162,7 @@ func validConfig() *Config {
 		DocumentIndexDLQ:             "thingindex.document.index.dlq",
 		OutboxPollInterval:           5 * time.Second,
 		OutboxBatchSize:              20,
+		OutboxVisibilityTimeout:      120 * time.Second,
 		ConsumerPrefetchCount:        10,
 		DocumentIndexRetryDelay:      30 * time.Second,
 		DocumentIndexMaxRetries:      5,

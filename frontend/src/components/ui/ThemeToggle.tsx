@@ -10,6 +10,17 @@ import { cn } from "@/lib/utils";
 type ThemeMode = "dark" | "light";
 
 const THEME_EVENT = "thingindex-theme-change";
+const THEME_STORAGE_KEY = "thingindex-theme";
+
+function readStoredTheme(): ThemeMode | null {
+    try {
+        const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+        return stored === "dark" || stored === "light" ? stored : null;
+    } catch {
+        // localStorage pode estar indisponivel (modo privativo, storage cheio).
+        return null;
+    }
+}
 
 function subscribeToClientRender(onStoreChange: () => void) {
     if (typeof window === "undefined") {
@@ -32,12 +43,26 @@ function resolveThemeSnapshot(): ThemeMode {
         return "dark";
     }
 
+    const storedTheme = readStoredTheme();
+    if (storedTheme) {
+        return storedTheme;
+    }
+
     return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
 }
 
 function applyTheme(theme: ThemeMode) {
     document.documentElement.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
+
+    // Sem esta persistencia o toggle se desfaz em todo reload, porque o script
+    // de boot do layout recalcula o tema a partir do prefers-color-scheme.
+    try {
+        window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+        // Preferencia nao persiste, mas a troca na sessao atual segue valendo.
+    }
+
     window.dispatchEvent(new Event(THEME_EVENT));
 }
 

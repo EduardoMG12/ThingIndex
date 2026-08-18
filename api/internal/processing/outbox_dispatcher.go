@@ -15,16 +15,33 @@ type OutboxDispatcher struct {
 	publisher    domain.MessagePublisher
 	pollInterval time.Duration
 	batchSize    int
+	// Por quanto tempo um evento reivindicado fica invisivel para outros
+	// dispatchers. Precisa ser folgadamente maior que o tempo de publicar no
+	// broker; se o processo morrer nesse intervalo, o evento volta sozinho.
+	visibilityTimeout time.Duration
 }
 
-func NewOutboxDispatcher(repo domain.OutboxRepository, publisher domain.MessagePublisher, pollInterval time.Duration, batchSize int) *OutboxDispatcher {
+func NewOutboxDispatcher(
+	repo domain.OutboxRepository,
+	publisher domain.MessagePublisher,
+	pollInterval time.Duration,
+	batchSize int,
+	visibilityTimeout time.Duration,
+) *OutboxDispatcher {
+	if visibilityTimeout <= 0 {
+		visibilityTimeout = defaultOutboxVisibilityTimeout
+	}
+
 	return &OutboxDispatcher{
-		repo:         repo,
-		publisher:    publisher,
-		pollInterval: pollInterval,
-		batchSize:    batchSize,
+		repo:              repo,
+		publisher:         publisher,
+		pollInterval:      pollInterval,
+		batchSize:         batchSize,
+		visibilityTimeout: visibilityTimeout,
 	}
 }
+
+const defaultOutboxVisibilityTimeout = 2 * time.Minute
 
 func (d *OutboxDispatcher) Run(ctx context.Context) error {
 	ticker := time.NewTicker(d.pollInterval)
@@ -44,7 +61,7 @@ func (d *OutboxDispatcher) Run(ctx context.Context) error {
 }
 
 func (d *OutboxDispatcher) dispatchOnce(ctx context.Context) error {
-	events, err := d.repo.ClaimPendingEvents(ctx, d.batchSize, time.Now().UTC())
+	events, err := d.repo.ClaimPendingEvents(ctx, d.batchSize, time.Now().UTC(), d.visibilityTimeout)
 	if err != nil {
 		return fmt.Errorf("claim outbox events: %w", err)
 	}
@@ -52,17 +69,24 @@ func (d *OutboxDispatcher) dispatchOnce(ctx context.Context) error {
 	for _, event := range events {
 		requestedEvent, err := decodeDocumentIndexRequestedEvent(event.Payload)
 		if err != nil {
-			_ = d.repo.MarkEventFailed(ctx, event.ID, err.Error(), nextBackoffTime(event.Attempts))
+			if markErr := d.repo.MarkEventFailed(ctx, event.ID, err.Error(), nextBackoffTime(event.Attempts)); markErr != nil {
+				log.Printf("outbox: falha ao marcar evento %d como FAILED apos decode invalido: %v", event.ID, markErr)
+			}
 			continue
 		}
 
 		if err := d.publisher.PublishDocumentIndexRequested(ctx, requestedEvent); err != nil {
-			_ = d.repo.MarkEventFailed(ctx, event.ID, err.Error(), nextBackoffTime(event.Attempts))
+			if markErr := d.repo.MarkEventFailed(ctx, event.ID, err.Error(), nextBackoffTime(event.Attempts)); markErr != nil {
+				log.Printf("outbox: falha ao marcar evento %d como FAILED apos erro de publicacao: %v", event.ID, markErr)
+			}
 			continue
 		}
 
 		if err := d.repo.MarkEventPublished(ctx, event.ID, time.Now().UTC()); err != nil {
-			return fmt.Errorf("mark outbox event published: %w", err)
+			// Nao aborta o lote: os eventos seguintes ja foram reivindicados e
+			// ficariam presos em IN_FLIGHT ate o visibility timeout vencer.
+			// Este evento especifico volta pela mesma rede de seguranca.
+			log.Printf("outbox: evento %d publicado no broker mas nao marcado como PUBLISHED: %v", event.ID, err)
 		}
 	}
 
