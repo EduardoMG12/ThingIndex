@@ -272,6 +272,38 @@ mensurável.** Este é o resultado que sustenta a contribuição do trabalho, e 
 > que o usuário não controla nem observa. A recuperação relacional não paga
 > nenhum dos dois preços.*
 
+### 4.1 Ameaça à validade do achado 5, medida em vez de argumentada
+
+A objeção óbvia ao achado 5 é de escala: *"o corpus C1 tem 5 documentos, logo
+`lists = sqrt(5) = 2`. Você colocou o IVF num regime degenerado; com um corpus
+realista o k-means converge para partições estáveis e o efeito some."*
+
+A objeção é legítima e não se responde com argumento. `TestIVFInstabilidadePersisteEmEscala`
+mede, sobre corpora sintéticos de 768 dimensões com 8 clusters, 20 consultas e
+10 seeds por consulta:
+
+| N | `lists` | Recall@10 do IVF vs. exato | Consultas instáveis entre seeds |
+|---|---|---|---|
+| 5 | 2 | **31,2%** | **20/20** |
+| 50 | 7 | 69,0% | **20/20** |
+| 200 | 14 | **81,3%** | **20/20** |
+| 1000 | 32 | 50,5% | **20/20** |
+
+**A leitura tem duas partes, e reportar as duas é o que torna o achado
+defensável:**
+
+1. **A objeção procede quanto à magnitude da perda.** Em N=5 o IVF recupera
+   31% do que a varredura exata recupera; em N=200, 81%. O regime de corpus
+   minúsculo **de fato amplifica** a perda de recall. Isso entra em Ameaças à
+   Validade, e o número de 48,4% do corpus C1 precisa vir com essa ressalva.
+2. **A objeção não procede quanto à instabilidade** — que é a afirmação que o
+   trabalho realmente faz. Em **todas** as escalas, incluindo N=1000, **100%
+   das consultas devolvem rankings diferentes quando só a seed muda**. A
+   instabilidade não é artefato de corpus pequeno: é propriedade do algoritmo.
+
+As duas conclusões estão travadas por teste — inclusive a primeira, para que
+"melhorar" o IVF sem revisar o texto de Ameaças à Validade quebre o build.
+
 ---
 
 ## 5. O que fica pendente
@@ -280,7 +312,6 @@ mensurável.** Este é o resultado que sustenta a contribuição do trabalho, e 
 |---|---|
 | Corpus para ~150 consultas, ≥30 documentos | Sem isso não há poder estatístico (§4, achado 4). **É o gargalo único** |
 | Dupla anotação em ≥20% com Cohen's κ reportado | Sem κ, "gabarito" é opinião do autor |
-| Repetir o experimento de determinismo com N maior | Com 5 documentos, `lists = sqrt(N) = 2`: o IVF tem pouco espaço para particionar, e o efeito medido pode estar amplificado |
 | Braço denso com HNSW além de IVF-Flat | HNSW é o default do pgvector desde a 0.5.0 e tem fontes de não-determinismo próprias (`ef_construction`, ordem de inserção nos grafos) |
 | Documentos escaneados (curva CER × dpi) | O caminho de OCR nunca foi medido |
 
