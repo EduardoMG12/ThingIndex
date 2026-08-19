@@ -89,9 +89,23 @@ jobs:
       # harness no CI garante que o numero publicado corresponde ao codigo
       # publicado -- e que o corpus nao voltou a ser circular, ja que
       # retrieval-eval aborta quando detecta circularidade.
+      #
+      # Este passo tambem exercita o guard de sincronia dos embeddings: o
+      # harness aborta se o artefato versionado nao corresponder ao corpus
+      # atual (conferencia por hash SHA-256 do texto). Sem ele, editar o corpus
+      # sem regerar os vetores produziria numeros do braco denso calculados
+      # sobre uma versao anterior -- sem erro, sem aviso, sem sintoma.
       - name: experimento de recuperacao roda e o corpus nao e circular
         working-directory: api
         run: go run ./cmd/retrieval-eval -out /tmp/results.csv
+
+      # O determinismo e a afirmacao central do artigo, e a comparacao denso
+      # exato (100% estavel) vs denso aproximado (0%) e a evidencia que a
+      # sustenta. Rodar no CI impede que uma mudanca no IVF altere o resultado
+      # publicado sem ninguem perceber.
+      - name: estabilidade do ranking dos bracos densos
+        working-directory: api
+        run: go run ./cmd/dense-determinism
 
       - name: script de analise estatistica
         run: |
