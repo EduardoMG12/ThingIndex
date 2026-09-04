@@ -12,12 +12,32 @@ function hasActiveProcessing(docs: Document[]): boolean {
     return docs.some((doc) => PROCESSING_STATUSES.has(doc.status));
 }
 
+// O polling devolve a lista COMPLETA do servidor, entao ela e a verdade sobre
+// quais documentos existem. Preservar entradas locais que sumiram do servidor
+// deixava na tela, para sempre, documentos excluidos em outra aba ou
+// dispositivo -- e o unico jeito de limpar era dar F5.
+//
+// O merge existe para nao perder o que ja estava carregado enquanto uma rodada
+// nao termina, entao ele mantem a ORDEM atual e reaproveita o objeto anterior
+// quando o servidor nao mudou nada; mas quem nao veio na resposta e removido.
 function mergeDocuments(current: Document[], updated: Document[]): Document[] {
-    const byId = new Map(current.map((doc) => [doc.id, doc]));
-    for (const doc of updated) {
-        byId.set(doc.id, doc);
+    const currentById = new Map(current.map((doc) => [doc.id, doc]));
+    const orderedIds = current.map((doc) => doc.id);
+    const updatedById = new Map(updated.map((doc) => [doc.id, doc]));
+
+    const merged: Document[] = [];
+    for (const id of orderedIds) {
+        const fresh = updatedById.get(id);
+        if (fresh) {
+            merged.push(fresh);
+        }
     }
-    return Array.from(byId.values());
+    for (const doc of updated) {
+        if (!currentById.has(doc.id)) {
+            merged.push(doc);
+        }
+    }
+    return merged;
 }
 
 export function useDocuments() {

@@ -68,4 +68,41 @@ describe("useDocuments", () => {
         expect(fetchDocuments).toHaveBeenNthCalledWith(2, undefined);
         expect(result.current.documents).toEqual([createDocument({ id: 2, title: "updated.pdf" })]);
     });
+
+    it("remove da lista o documento que o polling nao devolve mais", async () => {
+        // Cenario: dois documentos, um deles ainda processando (por isso o
+        // polling liga). O documento 1 e excluido em outra aba/dispositivo, e
+        // a rodada seguinte do polling devolve apenas o documento 2.
+        vi.useFakeTimers();
+
+        try {
+            vi.mocked(fetchDocuments)
+                .mockResolvedValueOnce([
+                    createDocument({ id: 1, title: "excluido.pdf" }),
+                    createDocument({ id: 2, title: "processando.pdf", status: "PROCESSING" }),
+                ])
+                .mockResolvedValue([createDocument({ id: 2, title: "processando.pdf", status: "PROCESSING" })]);
+
+            const { result } = renderHook(() => useDocuments());
+
+            await vi.waitFor(() => {
+                expect(result.current.isLoading).toBe(false);
+            });
+            expect(result.current.documents).toHaveLength(2);
+
+            // Deixa uma rodada de polling acontecer.
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(3100);
+            });
+
+            await vi.waitFor(() => {
+                expect(fetchDocuments).toHaveBeenCalledTimes(2);
+            });
+
+            // O documento 1 sumiu do servidor, entao precisa sumir da tela.
+            expect(result.current.documents.map((doc) => doc.id)).toEqual([2]);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
 });
