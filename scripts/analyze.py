@@ -218,7 +218,10 @@ def build_summary_table(rows: list[dict]) -> str:
         for key, _ in METRICS:
             values = [to_float(r[key]) for r in arm_rows]
             lo, hi = bootstrap_ci(values)
-            cells.append(f"{mean(values):.3f} \\newline \\scriptsize[{lo:.3f}, {hi:.3f}]")
+            # \newline nao funciona em coluna `c` de tabular; \shortstack sim.
+            cells.append(
+                f"\\shortstack{{{mean(values):.3f} \\\\ \\scriptsize[{lo:.3f}, {hi:.3f}]}}"
+            )
         lines.append(latex_escape(arm) + " & " + " & ".join(cells) + r" \\")
 
     lines += [r"\hline", r"\end{tabular}", r"\end{table}"]
