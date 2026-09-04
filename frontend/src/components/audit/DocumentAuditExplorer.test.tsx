@@ -257,4 +257,68 @@ describe("DocumentAuditExplorer", () => {
 
         expect(await screen.findByText("retry failed")).toBeInTheDocument();
     });
+
+    it("preserva o termo digitado ao clicar num filtro rapido", async () => {
+        // Cenario: o usuario digita no campo de busca e, ANTES de submeter,
+        // clica no atalho "Somente falhas".
+        //
+        // A versao anterior montava o proximo estado como
+        // `{...filters, ...appliedFilters, ...partial}` -- appliedFilters vinha
+        // depois e reimpunha o valor vazio ja submetido, apagando o texto do
+        // campo na frente do usuario e ignorando o termo na consulta.
+        const page = {
+            items: [
+                {
+                    id: 1,
+                    user_id: 9,
+                    document_id: 7,
+                    collection_id: 3,
+                    actor_type: "USER",
+                    action: "DOCUMENT_UPLOAD",
+                    status: "SUCCESS",
+                    title: "Manual.pdf",
+                    detail: "uploaded",
+                    metadata: {},
+                    created_at: "2026-03-20T12:00:00Z",
+                },
+            ],
+            summary: {
+                total_events: 1,
+                unique_documents: 1,
+                unique_collections: 1,
+                unique_requests: 1,
+                last_event_at: "2026-03-20T12:00:00Z",
+                action_breakdown: [{ key: "DOCUMENT_UPLOAD", count: 1 }],
+                status_breakdown: [{ key: "FAILED", count: 1 }],
+            },
+            page_info: { limit: 12, returned: 1, has_next: false },
+        };
+        vi.mocked(fetchDocumentAuditEvents).mockResolvedValue(page);
+
+        const user = userEvent.setup();
+        render(<DocumentAuditExplorer locale="pt-BR" />);
+
+        await screen.findByText("uploaded");
+
+        const searchField = screen.getByLabelText("Encontre um evento");
+        await user.type(searchField, "contrato");
+        expect(searchField).toHaveValue("contrato");
+
+        await user.click(screen.getByRole("button", { name: /Somente falhas/i }));
+
+        // O texto digitado continua no campo...
+        await waitFor(() => {
+            expect(searchField).toHaveValue("contrato");
+        });
+
+        // ...e vai junto na consulta, com o filtro rapido aplicado.
+        await waitFor(() => {
+            expect(fetchDocumentAuditEvents).toHaveBeenLastCalledWith(
+                expect.objectContaining({
+                    status: "FAILED",
+                    query: "contrato",
+                })
+            );
+        });
+    });
 });

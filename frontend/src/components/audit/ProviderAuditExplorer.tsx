@@ -134,10 +134,12 @@ export default function ProviderAuditExplorer({
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+    // Mesmo defeito corrigido em DocumentAuditExplorer: com
+    // `...appliedFilters` depois de `...filters`, o clique num filtro rapido
+    // descartava o texto que o usuario estava digitando e ainda nao submetera.
     function applyImmediateFilters(partial: Partial<ProviderFilters>) {
         const nextFilters = {
             ...filters,
-            ...appliedFilters,
             ...partial,
         };
         setFilters(nextFilters);

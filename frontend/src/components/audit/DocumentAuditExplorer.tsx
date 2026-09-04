@@ -140,10 +140,18 @@ export default function DocumentAuditExplorer({
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
+    // Os filtros rapidos aplicam uma mudanca pontual sem passar pelo submit do
+    // formulario. A versao anterior montava o proximo estado como
+    // `{...filters, ...appliedFilters, ...partial}`: o spread de
+    // appliedFilters vinha DEPOIS e sobrescrevia o que o usuario tinha
+    // digitado e ainda nao submetido -- clicar em "Falhas" apagava o termo de
+    // busca do campo, na frente dele, sem aviso.
+    //
+    // A base correta e o estado atual do formulario (`filters`), que ja contem
+    // tudo que foi submetido mais o que esta sendo editado.
     function applyImmediateFilters(partial: Partial<AuditFilters>) {
         const nextFilters = {
             ...filters,
-            ...appliedFilters,
             ...partial,
         };
         setFilters(nextFilters);
