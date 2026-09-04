@@ -48,3 +48,11 @@ what-missing?.md
 # que introduziu o script de analise estatistica.
 __pycache__/
 *.py[cod]
+
+# Binarios que o air (hot reload) compila em cada rebuild do ambiente de
+# desenvolvimento. Sao ~85 MB CADA e mudam a cada salvamento de arquivo: o
+# GitHub recusa arquivos acima de 100 MB e ja avisa acima de 50 MB. Ficaram
+# versionados sem querer por um `git add -A` enquanto a stack dev rodava.
+api/tmp/
+**/tmp/
+
