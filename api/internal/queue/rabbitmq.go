@@ -200,6 +200,25 @@ func (c *RabbitMQConsumer) SetFailureCallbacks(callbacks DocumentIndexFailureCal
 	c.failureCallbacks = callbacks
 }
 
+// ErrDeliveriesChannelClosed sinaliza que o RabbitMQ fechou o canal de
+// entregas por conta propria -- queda do broker, restart, corte de rede ou
+// channel.Close() remoto.
+//
+// Antes desta distincao o consumidor devolvia `nil` nesse caso, exatamente
+// como no encerramento limpo por cancelamento de contexto. O efeito era grave
+// e silencioso: `cmd/indexer/main.go` so chama log.Fatalf quando o erro nao e
+// nil, entao o processo saia com codigo 0. Para o supervisor (Docker,
+// Kubernetes, systemd) isso e uma parada bem-sucedida, e a politica
+// `restart: unless-stopped` NAO reinicia o container. O worker sumia, a fila
+// parava de ser consumida e nenhum documento era indexado -- sem alarme, sem
+// log de erro e sem sintoma ate alguem reparar que os uploads ficam eternamente
+// em QUEUED.
+//
+// Devolver um erro distinto faz o processo morrer com codigo diferente de zero
+// e o supervisor reinicia, que e o comportamento correto para uma dependencia
+// que caiu.
+var ErrDeliveriesChannelClosed = errors.New("rabbitmq fechou o canal de entregas")
+
 func (c *RabbitMQConsumer) ConsumeDocumentIndexRequested(ctx context.Context, handler func(context.Context, domain.DocumentIndexRequestedEvent) error) error {
 	deliveries, err := c.channel.Consume(c.queue, "", false, false, false, false, nil)
 	if err != nil {
@@ -212,7 +231,9 @@ func (c *RabbitMQConsumer) ConsumeDocumentIndexRequested(ctx context.Context, ha
 			return ctx.Err()
 		case delivery, ok := <-deliveries:
 			if !ok {
-				return nil
+				// O canal so fecha por iniciativa do broker: encerramento
+				// limpo chega por ctx.Done() no case acima.
+				return ErrDeliveriesChannelClosed
 			}
 
 			var event domain.DocumentIndexRequestedEvent
