@@ -65,14 +65,14 @@
 
 \selectlanguage{brazil}
 \begin{resumo}
-Este artigo apresenta o ThingIndex, uma plataforma open source voltada a inteligência documental, organização de coleções e recuperação de contexto com base em modelagem relacional. O trabalho parte do problema de que fluxos documentais frequentemente se apoiam em ferramentas fragmentadas, com baixa auditabilidade e pouca rastreabilidade do contexto reconstruído para busca, indexação e interação assistida por IA. O objetivo geral é propor e especificar o ThingIndex como uma plataforma open source de inteligência documental baseada em modelagem relacional, capaz de organizar, processar, indexar e recuperar contexto documental de forma auditável. Dessa forma, o artigo descreve as motivações, a relevância, os objetivos e o planejamento arquitetural do sistema, estabelecendo a base conceitual e metodológica para o desenvolvimento e a avaliação futura do projeto.
+Este artigo apresenta o ThingIndex, uma plataforma open source voltada a inteligência documental, organização de coleções e recuperação de contexto com base em modelagem relacional. O trabalho parte do problema de que fluxos documentais frequentemente se apoiam em ferramentas fragmentadas, com baixa auditabilidade e pouca rastreabilidade do contexto reconstruído para busca, indexação e interação assistida por IA. O objetivo geral é propor, especificar e avaliar o ThingIndex como uma plataforma open source de inteligência documental baseada em modelagem relacional, capaz de organizar, processar, indexar e recuperar contexto documental de forma auditável. O sistema foi implementado e avaliado em um experimento comparativo com seis braços de recuperação (relacional, BM25, denso exato, denso aproximado e duas fusões por Reciprocal Rank Fusion) sobre corpus controlado com regras anti-circularidade. Os resultados indicam que a recuperação relacional não foi inferior à densa neste corpus (nDCG@10 de 0,869 contra 0,844) e que o índice vetorial aproximado, necessário para escalar a busca densa, torna o ranking instável sob fatores que o usuário não controla: variar apenas a semente ou a ordem de inserção dos documentos alterou o resultado em 100\% das consultas, com perda média de 48,4\% de recall. A recuperação relacional não paga nem o custo de varredura exata nem o preço de não-determinismo do índice aproximado.
 \end{resumo}
 
 \noindent\textbf{Palavras-chave}: inteligência documental, recuperação de informação, RAG relacional, baseline relacional, open source.
 
 \selectlanguage{english}
 \begin{abstract}
- This paper presents ThingIndex, an open-source platform focused on document intelligence, collection organization, and context retrieval based on relational modeling. The work starts from the problem that document workflows often rely on fragmented tools, with low auditability and limited traceability of the reconstructed context for search, indexing, and AI-assisted interaction. The general objective is to propose and specify ThingIndex as an open-source document intelligence platform based on relational modeling, capable of organizing, processing, indexing, and retrieving document context in an auditable manner. Thus, the paper describes the motivations, relevance, objectives, and architectural planning of the system, establishing the conceptual and methodological basis for the future development and evaluation of the project.
+ This paper presents ThingIndex, an open-source platform focused on document intelligence, collection organization, and context retrieval based on relational modeling. The work starts from the problem that document workflows often rely on fragmented tools, with low auditability and limited traceability of the reconstructed context for search, indexing, and AI-assisted interaction. The general objective is to propose, specify, and evaluate ThingIndex as an open-source document intelligence platform based on relational modeling, capable of organizing, processing, indexing, and retrieving document context in an auditable manner. The system was implemented and evaluated in a comparative experiment with six retrieval arms (relational, BM25, exact dense, approximate dense, and two Reciprocal Rank Fusion combinations) over a controlled corpus with anti-circularity rules. The results indicate that relational retrieval was not inferior to dense retrieval on this corpus (nDCG@10 of 0.869 versus 0.844) and that the approximate vector index required to scale dense search makes the ranking unstable under factors the user does not control: varying only the seed or the document insertion order changed the result in 100\% of the queries, with an average recall loss of 48.4\%. Relational retrieval pays neither the cost of exact scanning nor the non-determinism price of the approximate index.
 \end{abstract}
 
 \noindent\textbf{Keywords}: document intelligence, information retrieval, relational RAG, relational baseline, open source.
@@ -95,7 +95,7 @@ Para investigar essa questão, propõe-se o ThingIndex, um sistema de inteligên
 
 Além de sua relevância prática, o projeto apresenta interesse acadêmico ao integrar conceitos de engenharia de software, arquitetura de sistemas, modelagem de dados, processamento assíncrono e recuperação de informação, passível de implementação, avaliação e evolução.
 
-Portanto, este documento tem como propósito a qualificação da proposta de pesquisa. São apresentados nas próximas seções os objetivos, a fundamentação teórica, os trabalhos relacionados, a arquitetura proposta, a metodologia de avaliação e o cronograma de desenvolvimento. A implementação do sistema será objeto do TCC II.
+Portanto, este documento apresenta a pesquisa completa: são descritos nas próximas seções os objetivos, a fundamentação teórica, os trabalhos relacionados, a metodologia, a proposta arquitetural do sistema e, em seguida, os resultados da avaliação experimental da recuperação, a discussão desses resultados com suas ameaças à validade e a conclusão do trabalho.
 
 % O ThingIndex será desenvolvido como um artefato executável, composto por frontend, backend, pipeline assíncrono de indexação, mecanismos de observabilidade, suporte à avaliação experimental de desempenho e integração com sistemas externos. Assim, este artigo apresenta a motivação da pesquisa, a arquitetura proposta, o planejamento de desenvolvimento e a consolidação do sistema como um artefato de engenharia para gestão e recuperação de conhecimento documental.
 
@@ -244,7 +244,7 @@ Nenhuma das ferramentas analisadas oferece simultaneamente: (i) pipeline assínc
 % =============================================================================
 \section{Metodologia}
 
-Este trabalho caracteriza-se como uma pesquisa aplicada orientada pela Design Science Research (DSR)~\cite{hevner2004design}, que estabelece que a construção de um artefato de software e sua avaliação segundo critérios explícitos de utilidade e rigor são inseparáveis da investigação do problema. A pesquisa investiga o problema de fragmentação documental, propõe o artefato ThingIndex como solução, descreve sua arquitetura e define critérios para sua avaliação futura.
+Este trabalho caracteriza-se como uma pesquisa aplicada orientada pela Design Science Research (DSR)~\cite{hevner2004design}, que estabelece que a construção de um artefato de software e sua avaliação segundo critérios explícitos de utilidade e rigor são inseparáveis da investigação do problema. A pesquisa investiga o problema de fragmentação documental, propõe o artefato ThingIndex como solução, descreve sua arquitetura, implementa o sistema e o avalia experimentalmente segundo critérios definidos a priori.
 
 Quanto aos procedimentos, o trabalho segue os ciclos da DSR propostos por Hevner et al.~\cite{hevner2004design}: (i) conscientização do problema, (ii) sugestão, (iii) desenvolvimento, (iv) avaliação e (v) conclusão.
 
@@ -542,6 +542,119 @@ O desenvolvimento do ThingIndex será realizado entre junho e dezembro de 2026, 
   \label{fig:cronograma}
 \end{figure}
 
+\FloatBarrier
+
+% =============================================================================
+% RESULTADOS
+% =============================================================================
+\section{Resultados}
+
+Esta seção apresenta os resultados do ciclo de avaliação da DSR~\cite{hevner2004design}. O artefato descrito na Seção anterior foi integralmente implementado como monorepo executável (API e workers em Go, frontend em Next.js, PostgreSQL com as 21 tabelas do Apêndice A, pipeline assíncrono com outbox, retry e DLQ), com testes automatizados nos níveis unitário, de integração e end-to-end. Sobre esse artefato foi conduzido um experimento comparativo de recuperação de informação, cujo protocolo e resultados são descritos a seguir. Todos os números reportados são gerados por scripts a partir da saída bruta do experimento — nenhuma tabela foi transcrita manualmente — e o experimento completo é reproduzível com dois comandos a partir do repositório público.
+
+\subsection{Protocolo Experimental}
+
+\textbf{Corpus.} A avaliação utilizou o corpus C1, composto por 5 documentos em português (domínios jurídico, licitatório, contratual, normativo e operacional) e 18 consultas, das quais 16 possuem resposta no corpus e 2 são casos negativos explícitos, cuja resposta correta é não recuperar nada. As consultas positivas são estratificadas em três variantes: \emph{literal} (a consulta reutiliza termos do trecho-alvo, servindo de controle de teto), \emph{paráfrase} (a mesma necessidade de informação expressa com outras palavras) e \emph{ruidosa} (consulta com termos irrelevantes adicionados). A relevância é graduada de 0 a 3.
+
+Três regras anti-circularidade foram aplicadas na construção do corpus e estão travadas por testes automatizados que falham o build caso sejam violadas: (i) o gabarito referencia documentos por identificador, nunca por título produzido pelo próprio pipeline; (ii) as consultas não literais não podem compartilhar termos com o trecho-alvo além de um limiar verificado automaticamente; (iii) os casos negativos são marcados explicitamente, distinguindo ``nada é relevante'' de ``ninguém anotou''.
+
+\textbf{Braços comparados.} Seis estratégias de recuperação foram avaliadas sobre o mesmo corpus, em delineamento pareado por consulta:
+
+\begin{itemize}
+  \item \textbf{A — relacional}: o scorer de produção do ThingIndex (casamento de substring sobre as estruturas relacionais, sem IDF), reproduzido fielmente, defeitos inclusive — o experimento mede o sistema como ele é, não uma versão idealizada;
+  \item \textbf{B — BM25}: a baseline lexical clássica~\cite{robertson2009bm25}, com $k_1{=}1{,}2$ e $b{=}0{,}75$;
+  \item \textbf{C — denso (exato)}: embeddings do modelo \texttt{multilingual-e5-base}~\cite{wang2022e5} (768 dimensões), com varredura exata por similaridade de cosseno;
+  \item \textbf{C′ — denso-IVF}: os mesmos embeddings sob índice aproximado IVF-Flat, reimplementado com os nomes e valores padrão do pgvector (\texttt{lists}${=}\sqrt{N}$, \texttt{probes}${=}1$), que é o regime em que a busca densa efetivamente escala;
+  \item \textbf{D — RRF}: fusão dos braços A e B por Reciprocal Rank Fusion~\cite{cormack2009rrf}, com $k{=}60$;
+  \item \textbf{E — RRF denso}: fusão de B e C, o híbrido léxico-denso do estado da prática.
+\end{itemize}
+
+Para preservar a hermeticidade do harness (execução em CI sem GPU, sem rede e sem dependência da versão local de bibliotecas de inferência), os embeddings são computados uma única vez e versionados como artefato. Dois guardas independentes, baseados em hash SHA-256 do texto submetido ao modelo, impedem que o artefato dessincronize silenciosamente do corpus: um teste de CI falha o build e o próprio harness aborta a medição antes de emitir qualquer número.
+
+\textbf{Métricas.} Foi adotado o painel padrão da área de RI~\cite{manning2008ir}: P@1, P@3, R@5, MRR e nDCG@10 com ganho exponencial~\cite{jarvelin2002cumulated}. Cada implementação de métrica possui teste automatizado cujo valor esperado foi calculado manualmente a partir da definição publicada — nunca a partir da saída da própria implementação.
+
+\textbf{Análise estatística.} As comparações entre braços usam o teste pareado de postos sinalizados de Wilcoxon~\cite{wilcoxon1945individual}, adequado a métricas limitadas ao intervalo $[0,1]$, com correção de Bonferroni para as 75 comparações realizadas. O tamanho de efeito é reportado por $\delta$ de Cliff, com os limiares de interpretação de Romano et al.~\cite{romano2006appropriate}. Os intervalos de confiança de 95\% são obtidos por bootstrap sobre as consultas (10.000 reamostragens, semente fixa). A implementação do teste de Wilcoxon foi validada contra a biblioteca de referência \texttt{scipy}, com divergência máxima de $1{,}4\times10^{-16}$.
+
+\subsection{Desempenho de Recuperação}
+
+A Tabela~\ref{tab:retrieval-summary} apresenta o desempenho dos seis braços nas consultas positivas.
+
+\input{tables/retrieval-summary}
+
+Os braços de fusão e o BM25 obtiveram os melhores valores agregados (nDCG@10 entre 0,890 e 0,900), seguidos do relacional (0,869), do denso exato (0,844) e do denso aproximado (0,797). O resultado central para a pergunta de pesquisa é de não-inferioridade: a recuperação relacional não foi inferior à densa neste corpus, com intervalos de confiança amplamente sobrepostos em todas as métricas.
+
+A Tabela~\ref{tab:retrieval-variants} decompõe a P@1 por variante de consulta, medindo a dependência de casamento lexical de cada braço.
+
+\input{tables/retrieval-variants}
+
+Os braços lexicais acertam 100\% quando a consulta reutiliza os termos do alvo e caem para 57--71\% quando a mesma necessidade de informação é parafraseada. A queda é maior no relacional (0,429) do que no BM25 (0,286), o que é coerente com a ausência de ponderação IDF no scorer de produção~\cite{salton1989automatic}. O braço denso inverte o padrão: sua precisão praticamente não depende de a consulta reutilizar as palavras do documento (queda de 0,029), embora seu teto na variante literal seja mais baixo (0,600). Os dois paradigmas falham, portanto, por razões diferentes — o que constitui a justificativa empírica dos braços híbridos.
+
+\subsection{Reconhecimento da Ausência de Resposta}
+
+A Tabela~\ref{tab:retrieval-negatives} apresenta o comportamento dos braços nos dois casos negativos, em que a resposta correta é não recuperar nada.
+
+\input{tables/retrieval-negatives}
+
+Nenhum braço reconhece a ausência de resposta: a taxa de falso positivo é 1,000 nos seis. Nos braços lexicais, a causa é qualquer termo em comum gerar score positivo. No braço denso, a causa é estrutural: a análise de separabilidade das similaridades de cosseno mostrou que as distribuições de pares relevantes ($n{=}18$, entre 0,7852 e 0,8810) e irrelevantes ($n{=}62$, entre 0,7626 e 0,8483) se sobrepõem em quase toda a extensão, de modo que nenhum limiar preserva os relevantes e corta os irrelevantes. Esse comportamento é consistente com a anisotropia dos espaços de embeddings contextuais~\cite{ethayarajh2019contextual}: a similaridade de cosseno é informativa como ordem, não como magnitude. Por essa razão, o piso de similaridade inicialmente previsto para o braço denso foi removido do protocolo — mantê-lo penalizaria a baseline concorrente sem fundamento empírico.
+
+\subsection{Significância Estatística}
+
+Nenhuma das 75 comparações pareadas atingiu significância após a correção de Bonferroni (todos os $p$ corrigidos iguais a 1,000), e quase todos os tamanhos de efeito são desprezíveis pelos limiares de Romano et al.~\cite{romano2006appropriate}. A tabela completa das comparações encontra-se no Apêndice B. Como discutido na Seção de Discussão, esse resultado deve ser lido como limitação de poder amostral — com 16 consultas positivas, o teste de Wilcoxon não tem sensibilidade para detectar efeitos da magnitude observada — e não como evidência de equivalência entre os braços.
+
+\subsection{Determinismo do Ranking}
+
+A propriedade central reivindicada pela abordagem relacional é o determinismo da recuperação. Para medi-la, cada braço foi executado repetidamente e os rankings completos (identificadores e scores) foram comparados por hash SHA-256. Os braços A, B e D produziram rankings idênticos em 100\% das consultas ao longo de 30 execuções. A Tabela~\ref{tab:dense-determinism} apresenta o resultado para os braços densos, variando fatores que não são propriedades da consulta.
+
+\input{tables/dense-determinism}
+
+A varredura densa exata também é 100\% estável — o que a torna o controle do experimento: a instabilidade observada no IVF não provém do modelo de embeddings nem da aritmética de ponto flutuante, mas do próprio índice aproximado. Sob IVF-Flat, variar apenas a semente do $k$-means produziu até 4 rankings distintos para a mesma pergunta, com perda média de 48,4\% de recall em relação à varredura exata. Variar apenas a ordem de inserção dos documentos, com semente fixa, produziu o mesmo efeito — e esse é o fator de maior consequência prática, porque ordem de inserção não é um parâmetro de configuração: é histórico de uso. Dois usuários que inseriram os mesmos documentos em ordens diferentes podem receber respostas diferentes para a mesma pergunta, sem que nenhum dos dois tenha como perceber.
+
+% =============================================================================
+% DISCUSSAO
+% =============================================================================
+\section{Discussão}
+
+Os resultados sustentam uma resposta matizada à pergunta de pesquisa formulada na Introdução, e cada achado merece leitura à luz de suas condições de validade.
+
+\textbf{A queda literal$\rightarrow$paráfrase quantifica o que métricas ingênuas escondem.} Uma versão anterior do benchmark do projeto reportava 100\% de acerto em todos os indicadores — resultado que não evidenciava qualidade de recuperação, mas incapacidade da métrica de discriminar: o gabarito era circular e as consultas copiavam termos dos trechos-alvo. O protocolo atual, com variantes de consulta e regras anti-circularidade travadas por teste, expõe o que aqueles números ocultavam: a precisão dos braços lexicais é função direta do reúso vocabular da consulta. Esse achado reposiciona a limitação clássica do casamento léxico~\cite{manning2008ir} de argumento teórico para medida concreta sobre o sistema real.
+
+\textbf{Relacional e denso falham por razões diferentes, e isso importa mais do que qual pontua mais alto.} O braço denso é o único cuja precisão independe do vocabulário da consulta, mas seu teto é mais baixo e sua variante aproximada degrada tanto a qualidade quanto a estabilidade. O braço relacional tem teto máximo no regime literal e a maior queda sob paráfrase. Como as forças são complementares, a fusão por RRF obtém os melhores agregados sem exigir nenhum componente novo de infraestrutura — um caminho de evolução para o ThingIndex que preserva a camada relacional como base auditável.
+
+\textbf{A não-inferioridade observada é evidência favorável, não demonstração.} O nDCG@10 de 0,869 do braço relacional contra 0,844 do denso exato é exatamente a forma da hipótese central do trabalho — a de que uma baseline relacional pode sustentar cenários de inteligência documental usualmente atribuídos a soluções vetoriais. Contudo, nenhuma diferença entre braços é estatisticamente significativa, e a leitura honesta é de limitação de poder: com 16 consultas positivas, o experimento não distingue efeitos reais de ruído amostral. A infraestrutura de avaliação está pronta e testada; o que falta para transformar evidência em demonstração é anotação humana em escala (aproximadamente 150 consultas sobre pelo menos 30 documentos).
+
+\textbf{Nenhum paradigma sabe dizer ``não encontrei'', e as causas são distintas.} A taxa de falso positivo de 1,000 nos seis braços é uma limitação real do estado da prática, raramente medida. Nos braços lexicais ela é corrigível em princípio (limiares sobre scores com semântica conhecida); no denso, a sobreposição das distribuições de similaridade indica que não se trata de ajuste de parâmetro, mas de geometria do espaço de embeddings~\cite{ethayarajh2019contextual}. Para um sistema cuja tese é auditabilidade, responder com confiança quando não há resposta é o modo de falha mais grave — e nenhuma das abordagens avaliadas, incluindo a proposta, o resolve hoje.
+
+\textbf{O preço do índice aproximado é o resultado que sustenta a contribuição.} A afirmação que este trabalho pode fazer após a medição é mais específica — e mais defensável — do que a formulação original da proposta: não ``a recuperação relacional é determinística e o RAG vetorial não é'', que é falsa para a varredura exata, mas: \emph{a busca densa exata é determinística, porém custa $O(N)$ por consulta; o índice aproximado escala, porém torna o resultado dependente de decisões de indexação que o usuário não controla nem observa; a recuperação relacional não paga nenhum dos dois preços.} A instabilidade por ordem de inserção é a manifestação mais séria desse custo, por ser função do histórico de uso e invisível ao usuário — a antítese da proveniência que fundamenta este trabalho~\cite{buneman2001provenance}.
+
+\subsection{Ameaças à Validade}
+
+\textbf{Validade de conclusão.} O corpus C1 possui 16 consultas positivas, insuficientes para que o teste de Wilcoxon detecte efeitos da magnitude observada. Por essa razão, nenhuma comparação de qualidade entre braços é apresentada como conclusiva. O script de análise devolve explicitamente $p{=}1{,}0$ quando o número de pares com diferença é inferior ao mínimo do teste, em vez de fabricar um número de aparência precisa.
+
+\textbf{Validade interna.} O gabarito de relevância foi anotado por um único autor, sem dupla anotação nem coeficiente de concordância (Cohen's $\kappa$). As regras anti-circularidade travadas por teste mitigam o viés de construção das consultas, mas não substituem anotação independente.
+
+\textbf{Validade externa.} Com 5 documentos, o índice IVF opera em regime degenerado (\texttt{lists}${=}2$), o que amplifica a perda de recall. Essa objeção foi medida em vez de argumentada: a Tabela~\ref{tab:ivf-escala} reporta o mesmo protocolo sobre corpora sintéticos de 768 dimensões em escalas maiores.
+
+\begin{table}[htb]
+\centering
+\caption{Instabilidade do IVF-Flat em função da escala do corpus (corpora sintéticos, 768 dimensões, 8 clusters, 20 consultas, 10 sementes por consulta).}
+\label{tab:ivf-escala}
+\begin{tabular}{cccc}
+\hline
+$N$ & \texttt{lists} & Recall@10 do IVF vs.\ exato & Consultas instáveis entre sementes \\
+\hline
+5 & 2 & 31,2\% & 20/20 \\
+50 & 7 & 69,0\% & 20/20 \\
+200 & 14 & 81,3\% & 20/20 \\
+1000 & 32 & 50,5\% & 20/20 \\
+\hline
+\end{tabular}
+\end{table}
+
+A leitura tem duas partes. A objeção procede quanto à \emph{magnitude} da perda de recall: o regime de corpus minúsculo de fato a amplifica, e o número de 48,4\% reportado na Seção de Resultados deve ser lido com essa ressalva. A objeção não procede, porém, quanto à \emph{instabilidade}, que é a afirmação que o trabalho efetivamente faz: em todas as escalas medidas, incluindo $N{=}1000$, 100\% das consultas mudam de ranking quando apenas a semente muda. A instabilidade é propriedade do algoritmo, não artefato do corpus. Ambas as conclusões estão travadas por testes automatizados.
+
+\textbf{Validade de construto.} O braço A reproduz o scorer de produção do ThingIndex, defeitos inclusive — decisão deliberada para medir o sistema real, não uma versão idealizada. O braço C′ é uma reimplementação do IVF-Flat com os nomes e valores padrão do pgvector, não o pgvector em si, e o índice HNSW (padrão do pgvector a partir da versão 0.5.0), que possui fontes próprias de não-determinismo, não foi medido. A incerteza reportada é de amostragem sobre o conjunto de consultas, não de variabilidade de execução: o pipeline é determinístico, e repetir a mesma execução não gera variância.
+
+\FloatBarrier
+
 
 % =============================================================================
 % 8. ARQUITETURA E MODELAGEM DO SISTEMA
@@ -827,13 +940,13 @@ O desenvolvimento do ThingIndex será realizado entre junho e dezembro de 2026, 
 
 % \FloatBarrier
 
-\section{Considerações Finais}
+\section{Conclusão}
 
-Este artigo apresentou a proposta do ThingIndex, uma plataforma de inteligência documental baseada em modelagem relacional, concebida para organizar, processar, indexar e recuperar contexto documental com auditabilidade e potencial de evolução. A partir da fundamentação teórica, da definição metodológica, do levantamento de requisitos e da modelagem arquitetural realizados neste trabalho, foi possível consolidar as bases conceituais e estruturais necessárias para o desenvolvimento da plataforma na etapa seguinte da pesquisa.
+Este artigo apresentou o ThingIndex, uma plataforma open source de inteligência documental baseada em modelagem relacional, da concepção à avaliação experimental. A pergunta de pesquisa formulada na Introdução — se é possível sustentar um sistema de inteligência documental com auditabilidade utilizando exclusivamente modelagem relacional, sem bancos vetoriais ou grafos como camada primária de recuperação — recebe, com base nos resultados, uma resposta afirmativa e delimitada: no corpus avaliado, a recuperação relacional não foi inferior à densa em qualidade de ranking (nDCG@10 de 0,869 contra 0,844, sem diferença estatisticamente significativa) e é a única abordagem, entre as seis avaliadas, que combina estabilidade total do resultado com custo de consulta que não cresce linearmente com uma varredura exaustiva de vetores: a busca densa exata é determinística mas custa $O(N)$ por consulta, e o índice aproximado escala mas torna o ranking dependente de fatores que o usuário não controla nem observa, como a semente do algoritmo de particionamento e a ordem de inserção dos documentos.
 
-Como contribuição do TCC I, destaca-se a formulação de uma hipótese de investigação clara: a de que uma baseline relacional pode atender a cenários de inteligência documental frequentemente associados a soluções baseadas em vetores ou grafos. Essa hipótese não rejeita a utilidade de técnicas de IA, mas propõe que uma base determinística, testável e de custo prevísivel seja considerada como alternativa ou complemento às abordagens mais usuais.
+As contribuições do trabalho são quatro. Primeira, um artefato completo e aberto: o sistema especificado na Proposta foi implementado como monorepo executável, com pipeline assíncrono de indexação, recuperação por consultas SQL determinísticas, trilha de proveniência por chaves estrangeiras e testes automatizados, disponível publicamente para replicação e extensão. Segunda, um protocolo de avaliação reproduzível com regras anti-circularidade travadas por teste, construído após a constatação de que o benchmark original do projeto — que reportava 100\% de acerto em todos os indicadores — media casamento lexical, e não recuperação. Terceira, a quantificação do custo de determinismo dos índices vetoriais aproximados, incluindo a medição da ameaça de escala em vez de sua mera discussão: a instabilidade do ranking sob variação de semente persiste em 100\% das consultas em todas as escalas medidas, até $N{=}1000$. Quarta, a evidência, inédita para este sistema, de que nenhum dos paradigmas avaliados — relacional, lexical, denso ou híbrido — reconhece a ausência de resposta, com causas distintas e mensuradas em cada caso.
 
-A validação dessa hipótese, bem como a implementação efetiva da arquitetura proposta, será efetuada no TCC II, quando serão desenvolvidos o protótipo, os testes de desempenho e a avaliação prática da plataforma frente a cenários documentais estruturados. Espera-se, com isso, que o ThingIndex venha a representar uma contribuição técnica e acadêmica relevante, ainda que sua validação completa dependa das etapas futuras de desenvolvimento e experimentação.
+O trabalho tem limitações claras, detalhadas nas Ameaças à Validade: o poder amostral do corpus (16 consultas positivas) impede conclusões comparativas definitivas, o gabarito foi anotado por um único autor e o índice HNSW não foi medido. Delas decorrem os trabalhos futuros prioritários: expandir o corpus para aproximadamente 150 consultas sobre pelo menos 30 documentos; realizar dupla anotação em ao menos 20\% do gabarito com Cohen's $\kappa$ reportado; adicionar um braço HNSW ao experimento de determinismo; e medir o caminho de documentos digitalizados (OCR). Como evolução do sistema, os resultados apontam um caminho concreto: a fusão por RRF dos sinais relacional e BM25 obteve os melhores agregados do experimento sem exigir nenhum componente novo de infraestrutura, preservando a camada relacional — e sua proveniência — como base auditável do sistema.
 
 % \subsection{Contribuições Esperadas}
 
@@ -881,6 +994,12 @@ No desenvolvimento deste manuscrito, os autores utilizaram o serviço ChatGPT, b
 O esquema relacional completo do ThingIndex, contendo todas as 21 tabelas, tipos de dados, chaves primárias, chaves estrangeiras e índices, está disponível em formato DBML no repositório do projeto, no arquivo \texttt{docs/schema/thingindex.dbml}. O arquivo pode ser importado no \texttt{dbdiagram.io} para visualização interativa.
 
 O arquivo é gerado a partir dos mesmos modelos que a aplicação submete à migração automática, e não redigido manualmente (\texttt{api/cmd/schema-dbml}). A escolha é deliberada: um apêndice escrito à mão descreve o esquema que o autor acredita ter, enquanto um apêndice derivado descreve o esquema que o sistema efetivamente cria. Um teste de regressão falha caso o arquivo versionado divirja dos modelos, de modo que a documentação não pode silenciosamente envelhecer em relação ao código.
+
+\subsection*{Apêndice B: Comparações Pareadas Completas}
+
+A Tabela~\ref{tab:retrieval-significance} apresenta as 75 comparações pareadas entre os seis braços do experimento (Wilcoxon com correção de Bonferroni e $\delta$ de Cliff), resumidas na Seção de Resultados. Como o apêndice A, a tabela é gerada por script (\texttt{scripts/analyze.py}) a partir da saída bruta do experimento.
+
+\input{tables/retrieval-significance}
 
 % \noindent\textit{Nota: este artigo utilizou ferramentas de IA (ChatGPT) exclusivamente para correção ortográfica e gramatical, conforme orientação do professor orientador. Todo o conteúdo técnico e conceitual foi escrito pelo autor.}
 
