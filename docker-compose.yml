@@ -173,7 +173,12 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "3000:8080"
+      # A porta do host e configuravel porque 3000 e a porta padrao de todo
+      # projeto Next e colide na maquina de desenvolvimento -- a subida da stack
+      # falhava com "Bind for 0.0.0.0:3000 failed: port is already allocated"
+      # por causa de outro projeto do usuario. Mesma convencao do servico ocr.
+      # Para trocar: FRONTEND_PORT=3987 ./scripts/stack.sh dev
+      - "${FRONTEND_PORT:-3000}:8080"
     depends_on:
       api:
         condition: service_started
