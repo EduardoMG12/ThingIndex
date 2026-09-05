@@ -234,9 +234,21 @@ O LlamaIndex (originalmente GPT Index), criado por Jerry Liu em 2022, é um fram
 
 A limitação do LlamaIndex está na opacidade do pipeline de recuperação: o desenvolvedor escolhe configurações de chunking e embedding, mas tem baixa visibilidade sobre como o contexto é montado. A dependência de bancos vetoriais torna o custo variável, e a auditabilidade do contexto recuperado é limitada: não há garantia de que cada trecho retornado possa ser rastreado até o documento e página de origem.
 
+\subsection{PageIndex}
+
+O PageIndex~\cite{pageindex2025} é o trabalho mais próximo desta proposta e, por isso, o mais relevante para delimitá-la. Trata-se de uma ferramenta de indexação de PDFs que extrai a hierarquia estrutural do documento --- seções, subseções e intervalos de página --- e a materializa como uma árvore navegável, deliberadamente sem embeddings e sem banco vetorial. A recuperação percorre essa árvore em vez de comparar vetores, e a resposta aponta para o nó e a página de origem.
+
+A convergência é considerável: a premissa de que a estrutura já presente no documento é sinal suficiente para recuperação, e a rejeição do índice vetorial como camada primária, são as mesmas deste trabalho. Registrar a semelhança é mais honesto do que apresentar a abordagem como inédita.
+
+Três diferenças delimitam a contribuição. A primeira é a unidade de persistência: o PageIndex produz um artefato de árvore por documento, enquanto o ThingIndex normaliza a estrutura em tabelas relacionais consultáveis por SQL, o que permite consulta transversal ao acervo sem carregar cada árvore em memória. A segunda é o escopo do sistema: o PageIndex resolve indexação e recuperação, sem tratar do ciclo operacional --- fila com retry e \emph{dead-letter}, catálogo de provedores, trilha de auditoria. A terceira, e a mais relevante para a questão de pesquisa, é o objeto da avaliação: o PageIndex reporta qualidade de recuperação, enquanto este trabalho mede também a estabilidade da ordenação sob reindexação e a completude da proveniência, dimensões que a comparação entre paradigmas exige e que raramente aparecem quantificadas.
+
+O PageIndex é usado neste projeto como referência de qualidade estrutural. O benchmark de indexação compara o perfil produzido pelo indexador determinístico contra artefatos normalizados de três documentos processados pela ferramenta --- um relatório anual corporativo, um documento técnico e um processo judicial brasileiro --- em profundidade da árvore, aninhamento, cobertura de resumos e concisão de títulos. Cabe a ressalva registrada no próprio artefato: esses arquivos são \emph{barra de qualidade}, não gabarito perfeito. Um deles contém intervalo de página invertido, e a comparação existe para detectar regressão estrutural, não para afirmar superioridade.
+
 \subsection{Lacunas de pesquisa}
 
-Nenhuma das ferramentas analisadas oferece simultaneamente: (i) pipeline assíncrono de indexação com retry e DLQ; (ii) recuperação de contexto por consultas SQL determinísticas com rastreabilidade total da origem; (iii) desacoplamento de provedores de IA; (iv) custo previsível sem dependência obrigatória de vector DB. 
+Nenhuma das ferramentas analisadas oferece simultaneamente: (i) pipeline assíncrono de indexação com retry e DLQ; (ii) recuperação de contexto por consultas SQL determinísticas com rastreabilidade total da origem; (iii) desacoplamento de provedores de IA; (iv) custo previsível sem dependência obrigatória de vector DB.
+
+A lacuna mais específica, contudo, não é de funcionalidade e sim de evidência. O PageIndex demonstra que recuperação estrutural sem vetores é viável, mas a literatura de comparação entre paradigmas de recuperação raramente reporta duas propriedades que este trabalho mede: a estabilidade da ordenação quando o índice é reconstruído, e a fração de itens recuperados cuja origem pode ser apontada com precisão de página. É nesse espaço --- medir o que costuma ser afirmado --- que a contribuição se posiciona.
 % O ThingIndex se propõe a ocupar esse espaço, priorizando auditabilidade e determinismo sobre flexibilidade semântica, sem excluir a possibilidade de extensões futuras com embeddings ou grafos.
 
 % =============================================================================
