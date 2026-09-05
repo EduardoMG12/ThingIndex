@@ -525,11 +525,11 @@ O experimento consistirá em:
 
 \subsubsection{Auditabilidade}
 
-A auditabilidade será verificada rastreando a origem de cada parágrafo recuperado. Para cada elemento do contexto retornado, o sistema deve ser capaz de informar: documento de origem, número da página, posição sequencial e tipo de estrutura (parágrafo, tabela, metadado). O teste consiste em percorrer o JSON de resposta e confirmar que todos os campos de proveniência estão preenchidos e apontam para registros existentes no banco.
+A auditabilidade foi verificada rastreando a origem de cada item indexado. Para cada elemento do índice, o sistema deve ser capaz de informar documento de origem, número da página, posição sequencial e tipo de estrutura. Duas métricas operacionalizam essa verificação --- a taxa de proveniência completa (TPC) e a taxa de citação verificável (TCV), definidas e medidas na Seção~\ref{sec:auditabilidade} ---, reportadas por tipo estrutural para que uma média global não oculte um tipo com proveniência ausente.
 
 \subsubsection{Custo Operacional}
 
-O custo será medido em duas categorias: (i) custo de armazenamento por documento no object storage e no PostgreSQL; (ii) custo de processamento por documento (tempo de CPU, memória e chamadas a LLM, quando aplicável). O objetivo é demonstrar que a baseline relacional tem custo previsível e independente de serviços externos de vector DB.
+O custo operacional não foi medido neste ciclo, e é declarado aqui como lacuna em vez de omitido. A instrumentação necessária existe --- o pipeline registra tempo por etapa e o campo \texttt{usage} das respostas de provedores é recebido, ainda que descartado ---, mas a agregação em custo por documento não foi implementada a tempo. As estimativas de custo apresentadas em trabalhos anteriores do projeto são rotuladas como estimativas, e não como medição.
 
 \subsection{Cronograma}
 
@@ -607,6 +607,26 @@ A propriedade central reivindicada pela abordagem relacional é o determinismo d
 \input{tables/dense-determinism}
 
 A varredura densa exata também é 100\% estável — o que a torna o controle do experimento: a instabilidade observada no IVF não provém do modelo de embeddings nem da aritmética de ponto flutuante, mas do próprio índice aproximado. Sob IVF-Flat, variar apenas a semente do $k$-means produziu até 4 rankings distintos para a mesma pergunta, com perda média de 48,4\% de recall em relação à varredura exata. Variar apenas a ordem de inserção dos documentos, com semente fixa, produziu o mesmo efeito — e esse é o fator de maior consequência prática, porque ordem de inserção não é um parâmetro de configuração: é histórico de uso. Dois usuários que inseriram os mesmos documentos em ordens diferentes podem receber respostas diferentes para a mesma pergunta, sem que nenhum dos dois tenha como perceber.
+
+\subsection{Auditabilidade do Índice}
+\label{sec:auditabilidade}
+
+Auditabilidade é a propriedade central reivindicada por este trabalho, mas o termo só se torna verificável quando associado a uma medida. Definem-se aqui duas métricas, calculadas sobre o índice persistido:
+
+\begin{itemize}
+  \item \textbf{TPC (taxa de proveniência completa)}: fração de itens indexados cuja origem é integralmente resolvível --- documento, página, posição sequencial e conteúdo, todos presentes. O critério é deliberadamente rígido: saber que uma informação veio do documento 7 sem saber de qual página não permite apontar o trecho no original, e apontar o trecho é precisamente o que auditoria significa.
+  \item \textbf{TCV (taxa de citação verificável)}: fração de trechos citados que existem literalmente na fonte apontada. Separa ``citou'' de ``citou corretamente'' --- um sistema pode indicar o documento certo e ainda assim exibir um trecho inexistente ali, modo de falha particularmente grave em um sistema que se apresenta como auditável.
+\end{itemize}
+
+\input{tables/provenance}
+
+O resultado agregado (TPC global de 0,329) seria enganoso se reportado isoladamente, e por isso a Tabela~\ref{tab:provenance} é apresentada por tipo estrutural. A leitura correta é bimodal: a proveniência é \emph{completa} (1,000) em parágrafos, páginas e nós de sumário, e \emph{inexistente} (0,000) em chunks e metadados. A causa é única e foi confirmada por teste --- as 104 incompletudes são, todas, ausência de número de página; não há um único caso de identificador de documento ausente, posição inválida ou conteúdo vazio.
+
+A origem do defeito está no próprio esquema: as entidades \texttt{TableSection}, \texttt{MetadataPair} e \texttt{DocumentChunk} não possuem coluna de página. Para o chunk, a proveniência é indireta --- resolve-se através dos parágrafos de origem, e não diretamente ---, o que a métrica contabiliza como incompleta por exigir resolução em um único passo. Trata-se de limitação de modelagem, endereçável pela adição da coluna, e não de falha do paradigma relacional: onde o esquema registra a coordenada, a recuperação a devolve sem exceção.
+
+A TCV de 1,000 sobre 20 citações verificadas indica que a fragmentação em tabelas tipadas preserva integralmente o conteúdo textual: todo trecho recuperado existe literalmente no documento de origem. Esse resultado é o complemento necessário da TPC --- de nada adiantaria localizar a página se o texto exibido divergisse do original.
+
+Cabe registrar o contraste com a alternativa densa, em que a unidade de proveniência é o \emph{chunk} de embedding, não a posição no documento: recuperar o vetor mais próximo não produz, por construção, a coordenada de origem. A TPC não é aplicável a esse braço --- não por deficiência de implementação, mas porque a informação necessária não existe na representação.
 
 % =============================================================================
 % DISCUSSAO
