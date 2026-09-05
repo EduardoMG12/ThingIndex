@@ -47,6 +47,41 @@ type Document struct {
 	// tabular, escaneado...). Sem estrato, uma media global esconde que a
 	// abordagem vai bem num tipo e mal em outro.
 	Stratum string `json:"stratum,omitempty"`
+	// Sections declara as unidades INTRA-documento sobre as quais o
+	// experimento pode ranquear.
+	//
+	// Existe porque ranquear documento inteiro descasa da tese: o trabalho
+	// afirma proveniencia de paragrafo e media recuperacao de documento. Com 5
+	// documentos e 1 relevante por consulta, R@5 era 1,000 por aritmetica e a
+	// baseline aleatoria de P@1 era 0,200 -- o experimento nao discriminava.
+	//
+	// Vazio e valido: o documento entra como unidade unica (degradacao
+	// prevista no RNF-1 da spec 001).
+	Sections []Section `json:"sections,omitempty"`
+}
+
+// Section e uma unidade recuperavel dentro de um documento.
+//
+// O ID e AUTORAL e ESTAVEL, jamais derivado da saida do extrator. Essa e a
+// licao mais cara ja aprendida neste corpus: o gabarito antigo usava
+// `expected_top_node_title`, copia literal do titulo que o proprio pipeline
+// extraia, entao renomear a heuristica de heading derrubava a metrica sem que a
+// recuperacao tivesse mudado. O corpus media autoconsistencia.
+//
+// Anchor e o texto do DOCUMENTO que marca o inicio da secao. Serve para casar a
+// extracao com o gabarito sem que o gabarito dependa do extrator: se a ancora
+// nao existir no texto-fonte, a carga falha (Validate) em vez de produzir um
+// numero plausivel e errado.
+type Section struct {
+	ID     string `json:"id"`
+	Anchor string `json:"anchor"`
+	// CharStart e um desempate deterministico para quando a mesma ancora
+	// aparece mais de uma vez no documento. Zero significa "primeira
+	// ocorrencia".
+	CharStart int `json:"char_start,omitempty"`
+	// Title e rotulo humano para as tabelas do artigo. Nao participa de
+	// nenhuma decisao de casamento -- e texto para leitura.
+	Title string `json:"title,omitempty"`
 }
 
 // Query e uma necessidade de informacao com gabarito graduado.
@@ -64,6 +99,11 @@ type Query struct {
 	// Relevance mapeia document_id -> grau 0-3. Um mapa VAZIO marca um caso
 	// negativo: a resposta correta e nao devolver nada.
 	Relevance map[string]int `json:"relevance"`
+	// RelevanceSections mapeia section_id -> grau 0-3, o gabarito em nivel de
+	// no. Coexiste com Relevance de proposito: os dois niveis sao reportados
+	// lado a lado no artigo, e manter ambos permite comparar o mesmo braco nas
+	// duas granularidades.
+	RelevanceSections map[string]int `json:"relevance_sections,omitempty"`
 	// Negative torna o caso negativo explicito, em vez de inferido pela
 	// ausencia de julgamentos. Distinguir "sem gabarito porque ninguem anotou"
 	// de "sem gabarito porque nada e relevante" evita contar erro de anotacao
@@ -105,6 +145,11 @@ func (c *Corpus) Validate() error {
 	}
 
 	seenDocs := map[string]bool{}
+	// secoesPorDoc guarda os ids validos por documento; seenSections e o
+	// universo global, porque o gabarito de consulta referencia a secao pelo
+	// id sem repetir o documento.
+	secoesPorDoc := map[string][]Section{}
+	seenSections := map[string]bool{}
 	for _, doc := range c.Documents {
 		if strings.TrimSpace(doc.ID) == "" {
 			return fmt.Errorf("documento sem id")
@@ -116,6 +161,37 @@ func (c *Corpus) Validate() error {
 			return fmt.Errorf("documento %q sem conteudo", doc.ID)
 		}
 		seenDocs[doc.ID] = true
+
+		for _, section := range doc.Sections {
+			if strings.TrimSpace(section.ID) == "" {
+				return fmt.Errorf("documento %q tem secao sem id", doc.ID)
+			}
+			if seenSections[section.ID] {
+				return fmt.Errorf("secao duplicada: %q", section.ID)
+			}
+			seenSections[section.ID] = true
+
+			if strings.TrimSpace(section.Anchor) == "" {
+				return fmt.Errorf("secao %q sem ancora", section.ID)
+			}
+			// A ancora precisa existir no texto-fonte. Uma ancora com erro de
+			// digitacao nao falharia em lugar nenhum: ela simplesmente nunca
+			// casaria com a extracao, e o braco levaria a culpa por um erro de
+			// anotacao.
+			if !strings.Contains(doc.Content, section.Anchor) {
+				return fmt.Errorf(
+					"secao %q tem ancora %q que nao existe no conteudo do documento %q",
+					section.ID, section.Anchor, doc.ID,
+				)
+			}
+			if section.CharStart < 0 || section.CharStart > len(doc.Content) {
+				return fmt.Errorf(
+					"secao %q tem char_start %d fora do documento %q (0..%d)",
+					section.ID, section.CharStart, doc.ID, len(doc.Content),
+				)
+			}
+		}
+		secoesPorDoc[doc.ID] = doc.Sections
 	}
 
 	seenQueries := map[string]bool{}
@@ -150,11 +226,53 @@ func (c *Corpus) Validate() error {
 			}
 		}
 
+		// Mesma checagem em nivel de no.
+		for sectionID, grade := range query.RelevanceSections {
+			if !seenSections[sectionID] {
+				return fmt.Errorf("consulta %q julga a secao inexistente %q", query.ID, sectionID)
+			}
+			if grade < 0 || grade > 3 {
+				return fmt.Errorf("consulta %q tem grau %d para a secao %q; a escala e 0-3", query.ID, grade, sectionID)
+			}
+		}
+
 		if query.Negative && len(query.Relevance) > 0 {
 			return fmt.Errorf("consulta %q e negativa mas tem julgamentos de relevancia", query.ID)
 		}
+		if query.Negative && len(query.RelevanceSections) > 0 {
+			return fmt.Errorf("consulta %q e negativa mas tem julgamentos de secao", query.ID)
+		}
 		if !query.Negative && len(query.Relevance) == 0 {
 			return fmt.Errorf("consulta %q nao tem julgamento nenhum; marque negative:true se a ausencia for proposital", query.ID)
+		}
+
+		// Coerencia entre os dois niveis: se o documento julgado relevante tem
+		// secoes declaradas, a consulta precisa dizer QUAL delas responde.
+		// Sem isso o gabarito de no ficaria incompleto em silencio, e a
+		// metrica cairia sem que a recuperacao tivesse piorado -- o mesmo modo
+		// de falha que a ancora invalida provoca.
+		for docID := range query.Relevance {
+			if len(secoesPorDoc[docID]) == 0 {
+				continue
+			}
+			temSecaoDoDoc := false
+			for sectionID := range query.RelevanceSections {
+				for _, section := range secoesPorDoc[docID] {
+					if section.ID == sectionID {
+						temSecaoDoDoc = true
+						break
+					}
+				}
+				if temSecaoDoDoc {
+					break
+				}
+			}
+			if !temSecaoDoDoc {
+				return fmt.Errorf(
+					"consulta %q julga o documento %q, que tem secoes declaradas, mas nao julga nenhuma secao dele",
+					query.ID, docID,
+				)
+			}
 		}
 	}
 
@@ -216,6 +334,59 @@ func (c *Corpus) CheckCircularity(tokenize func(string) []string) []string {
 
 	sort.Strings(warnings)
 	return warnings
+}
+
+// CheckSectionAnchoring procura o defeito que invalidou o benchmark anterior,
+// agora na sua forma mais provavel de reaparecer: um id de secao derivado do
+// titulo que o EXTRATOR produz.
+//
+// O corpus antigo usava `expected_top_node_title`, copia literal da saida
+// estrutural do proprio pipeline. Renomear a heuristica de heading de
+// "3 DISPOSITIVO" para "3. Dispositivo" derrubava a metrica -- nao porque a
+// recuperacao piorou, mas porque a ROTULACAO mudou. O benchmark media
+// autoconsistencia.
+//
+// Ao introduzir gabarito em nivel de no o risco volta: e tentador nomear a
+// secao com o titulo dela. A regra e simples e mecanica: o id precisa ser um
+// identificador ESTAVEL, nao uma frase do documento. Se o id (ignorando o
+// prefixo do documento e a pontuacao) coincidir com a ancora, o gabarito
+// voltou a depender do extrator.
+func (c *Corpus) CheckSectionAnchoring() []string {
+	var warnings []string
+
+	for _, doc := range c.Documents {
+		for _, section := range doc.Sections {
+			// Considera so o sufixo apos '#': "doc-a#s3" -> "s3". Um id sem
+			// '#' e avaliado inteiro, o que tambem pega "1 RELATORIO".
+			sufixo := section.ID
+			if idx := strings.LastIndex(section.ID, "#"); idx >= 0 {
+				sufixo = section.ID[idx+1:]
+			}
+
+			if normalizarRotulo(sufixo) == normalizarRotulo(section.Anchor) {
+				warnings = append(warnings, fmt.Sprintf(
+					"secao %q do documento %q usa a propria ancora como identificador: o gabarito passa a depender do titulo que o extrator produz, exatamente o defeito que invalidou o benchmark anterior. Use um id estavel (ex.: %q)",
+					section.ID, doc.ID, doc.ID+"#s1",
+				))
+			}
+		}
+	}
+
+	sort.Strings(warnings)
+	return warnings
+}
+
+// normalizarRotulo reduz um rotulo a letras e digitos minusculos, para que a
+// comparacao nao dependa de pontuacao, acento de largura ou espacamento --
+// "3 DISPOSITIVO", "3. Dispositivo" e "3-dispositivo" colapsam no mesmo valor.
+func normalizarRotulo(s string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(s) {
+		if ('a' <= r && r <= 'z') || ('0' <= r && r <= '9') {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 // Stats resume o corpus para reporte no artigo.
