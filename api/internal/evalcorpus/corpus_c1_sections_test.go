@@ -10,6 +10,16 @@ import "testing"
 const (
 	// documentosC1 e secoesC1 sao os universos de recuperacao. A razao entre
 	// eles e o que da poder de discriminacao ao experimento.
+	//
+	// ATENCAO a uma confusao facil: o extrator estrutural devolve 26 nos para
+	// este corpus, nao 19. A diferenca sao os titulos de capa -- "ACORDAO",
+	// "RECURSO ORDINARIO 0001234-...", "CONTRATO DE PRESTACAO...",
+	// "ANEXO II - NIVEIS DE SERVICO". Sao estrutura legitima, mas nao sao
+	// unidades que respondem a uma consulta: ninguem pergunta algo cuja
+	// resposta seja "ACORDAO".
+	//
+	// O universo de RECUPERACAO e o do gabarito: 19 secoes de conteudo. E esse
+	// o numero que entra nas metricas do artigo.
 	documentosC1 = 5
 	secoesC1     = 19
 	// paresSecaoJulgadosC1 e o total de julgamentos (consulta, secao).
