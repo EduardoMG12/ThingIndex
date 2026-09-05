@@ -48,6 +48,18 @@ princípio VI: produzir evidência inválida é pior que não produzir nenhuma).
 
 ## Ordem de execução
 
+> **Status em 2026-09-05:** Fases 0 a 3 **concluídas** (issues #16, #17 e #18
+> fechadas). Resultados medidos registrados abaixo e no handover §10. A Fase 4
+> (Workspace) segue não iniciada, por depender de decisão do autor.
+>
+> | Fase | Entregue | Achado principal |
+> |---|---|---|
+> | 0 | ✅ | 26 nós brutos / 19 seções anotadas; baseline `P@1` de 0,200 → 0,053 |
+> | 1 | ✅ | Queda literal→paráfrase do relacional: `−0,429` → **`−0,857`** |
+> | 2 | ✅ | TPC bimodal: 1,000 onde há `page_number`, 0,000 onde não há |
+> | 3 | ✅ | Existe limiar: falso positivo 1,000 → 0,500, Youden `J = 0,673` |
+> | 4 | ⬜ | não iniciada |
+
 ### Fase 0 — Antes de qualquer código (0,5 dia)
 
 1. Enviar o artigo atual ao orientador. É o único item que não depende de mim e
