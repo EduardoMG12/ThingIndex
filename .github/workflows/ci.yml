@@ -110,7 +110,25 @@ jobs:
       - name: script de analise estatistica
         run: |
           python3 scripts/test_analyze.py
-          python3 scripts/analyze.py /tmp/results.csv --outdir /tmp/tables
+          python3 scripts/analyze.py /tmp/results.csv --outdir /tmp/tables --granularity document
+          python3 scripts/analyze.py /tmp/results.csv --outdir /tmp/tables --granularity section
+
+      # A TPC e a TCV sao afirmadas na Secao de Auditabilidade com valores
+      # exatos (0,329 e 1,000). Os testes do comando travam essas constantes,
+      # entao uma mudanca no indexador que altere a proveniencia quebra o CI em
+      # vez de deixar o artigo citando um numero que nao vale mais.
+      - name: metricas de auditabilidade batem com o artigo
+        working-directory: api
+        run: |
+          go test ./cmd/provenance-eval/
+          go run ./cmd/provenance-eval -tex /tmp/provenance.tex
+
+      # O artigo cita numeros do corpus (5 documentos, 19 secoes, 22 pares
+      # julgados) e a mudanca de granularidade depende deles. Travar aqui
+      # impede que a anotacao mude sem revisao do texto.
+      - name: corpus de avaliacao bate com o artigo
+        working-directory: api
+        run: go test ./internal/evalcorpus/ ./cmd/retrieval-eval/
 
   # Os testes de integracao do repositorio validam as propriedades que o artigo
   # afirma: ordem de leitura por sequence_order, isolamento por usuario,
