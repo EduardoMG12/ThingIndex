@@ -159,17 +159,18 @@ jobs:
         working-directory: api
         run: go test ./internal/evalcorpus/ ./cmd/retrieval-eval/
 
-  # Os testes de integracao do repositorio validam as propriedades que o artigo
-  # afirma: ordem de leitura por sequence_order, isolamento por usuario,
-  # fidelidade da reconstrucao e numero fixo de consultas (sem N+1). Precisam de
-  # Postgres de verdade, entao rodam em job proprio.
+  # Os testes de integracao validam as propriedades que o artigo afirma: ordem
+  # de leitura por sequence_order, isolamento por usuario, fidelidade da
+  # reconstrucao, numero fixo de consultas (sem N+1), round-trip de storage e o
+  # comportamento de retry/DLQ da fila. Precisam de servicos de verdade, entao
+  # rodam em job proprio.
   #
-  # Escopo proposital em ./internal/repository: os demais pacotes com tag
-  # integration (processing, usecase, pkg/storage, queue, indeximport,
-  # pkg/provider) tambem exigem MinIO, RabbitMQ ou chamadas reais de LLM.
-  # Adicione-os aqui conforme os servicos correspondentes forem configurados.
+  # Escopo: repository (Postgres), queue (RabbitMQ), pkg/storage (MinIO) e
+  # indeximport. Ficam de fora processing, usecase e pkg/provider, que exigem
+  # chamadas reais de LLM -- essas dependem de credencial e de rede externa, e
+  # um CI que depende de provedor pago falha por motivo alheio ao codigo.
   backend-integration:
-    name: backend (integracao com postgres)
+    name: backend (integracao com postgres, rabbitmq e minio)
     runs-on: ubuntu-latest
 
     services:
@@ -186,6 +187,32 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+
+      rabbitmq:
+        image: rabbitmq:3.13-management-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: thingindex
+          RABBITMQ_DEFAULT_PASS: thingindex
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 10s
+          --health-retries 12
+
+      minio:
+        image: bitnami/minio:latest
+        env:
+          MINIO_ROOT_USER: thingindexminio
+          MINIO_ROOT_PASSWORD: thingindexminio
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "mc ready local || curl -f http://localhost:9000/minio/health/live"
+          --health-interval 10s
+          --health-timeout 10s
+          --health-retries 12
 
     steps:
       - uses: actions/checkout@v4
@@ -204,7 +231,28 @@ jobs:
           THINGINDEX_TEST_DB_PASSWORD: thingindex
           THINGINDEX_TEST_DB_NAME: thingindex_test
           THINGINDEX_TEST_DB_SSLMODE: disable
-        run: go test -tags=integration ./internal/repository/ -v
+        run: go test -tags=integration ./internal/repository/ ./internal/indeximport/ -v
+
+      # A fila e o ponto onde o worker morria em silencio quando o broker caia
+      # (ver ErrDeliveriesChannelClosed). O teste que distingue queda do broker
+      # de encerramento limpo so tem valor contra um RabbitMQ real.
+      - name: testes de integracao da fila
+        working-directory: api
+        env:
+          THINGINDEX_TEST_RABBITMQ_URL: amqp://thingindex:thingindex@127.0.0.1:5672/
+        run: go test -tags=integration ./internal/queue/ -v
+
+      # O round-trip de storage (upload, leitura, existencia, remocao) e o que
+      # sustenta a afirmacao de que o documento original permanece recuperavel
+      # para auditoria.
+      - name: testes de integracao do storage
+        working-directory: api
+        env:
+          MINIO_ENDPOINT: 127.0.0.1:9000
+          MINIO_ACCESS_KEY: thingindexminio
+          MINIO_SECRET_KEY: thingindexminio
+          MINIO_USE_SSL: "false"
+        run: go test -tags=integration ./internal/pkg/storage/ -run Minio -v
 
   frontend:
     name: frontend (next)
