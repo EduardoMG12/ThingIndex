@@ -766,7 +766,7 @@ func ToIndexMonitoringResponse(result *domain.IndexMonitoringResult) *IndexMonit
 		TreeVerificationPassed: result.TreeVerificationPassed,
 		TreeState:              result.TreeState,
 		TreeStateDetail:        result.TreeStateDetail,
-		TreeConcernCodes:       append([]string(nil), result.TreeConcernCodes...),
+		TreeConcernCodes:       copiaDeTextos(result.TreeConcernCodes),
 		EstimatedQualityScore:  result.EstimatedQualityScore,
 		LLM:                    ToLLMMonitoringResponse(result.LLM),
 	}
