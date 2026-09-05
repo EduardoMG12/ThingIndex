@@ -85,6 +85,19 @@ jobs:
       - name: referencias de tabela do artigo sao consistentes
         run: bash scripts/check-article-tables.sh
 
+      # Prosa se descola do artefato que descreve. O caso perigoso nao e o
+      # numero obviamente errado -- e o que ficou desatualizado apos uma
+      # remedicao: continua plausivel e ninguem relê a frase. Este script
+      # recalcula do CSV cada numero afirmado no texto.
+      - name: numeros do artigo batem com a medicao
+        run: python3 scripts/check-article-numbers.py
+
+      # Afirmacoes falsificaveis em segundos numa arguicao: repositorio dito
+      # publico enquanto esta privado, tempo futuro descrevendo trabalho ja
+      # feito, e metrica prometida na Metodologia que os Resultados nao usam.
+      - name: artigo nao contem afirmacao falsificavel
+        run: bash scripts/check-article-claims.sh
+
       # O .dbml e lido em runtime, entao o test cache do Go nao o enxerga como
       # entrada -- por isso o -count=1. Sem ele um cache quente esconderia a
       # divergencia.

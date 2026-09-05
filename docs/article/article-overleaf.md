@@ -503,25 +503,21 @@ A tela de configurações permite ao usuário gerenciar provedores de IA e stora
 
 \subsection{Avaliação da Qualidade}
 
-Para validar se o ThingIndex atende aos objetivos propostos, serão aplicados critérios de avaliação divididos em três dimensões: precisão na recuperação, auditabilidade e custo operacional apresentadas a seguir.
+Para validar se o ThingIndex atende aos objetivos propostos, foram aplicados critérios de avaliação divididos em três dimensões: precisão na recuperação, auditabilidade e custo operacional, apresentadas a seguir.
 
 \subsubsection{Precisão na Recuperação de Contexto}
 
-A precisão será medida por meio de testes funcionais com corpus controlado. Um conjunto de documentos PDF com conteúdo conhecido será inserido no sistema, e consultas de contexto serão realizadas sobre coleções específicas. A métrica principal será a taxa de acerto: para cada consulta, verificar se todos os documentos relevantes da coleção foram retornados e se a ordem dos parágrafos e tabelas foi preservada.
+A precisão foi medida por meio de experimento controlado sobre o corpus C1, descrito no Protocolo Experimental. Adotou-se o painel padrão da área de Recuperação de Informação --- P@1, P@3, R@5, MRR e nDCG@10 --- em lugar de uma taxa de acerto binária. A razão é de validade de construto: uma taxa de acerto trata igualmente o sistema que devolve o documento correto em primeiro lugar e o que o devolve em quinto, e a ordenação é precisamente o que distingue uma recuperação útil de uma inútil quando o resultado alimenta um modelo de linguagem com janela de contexto limitada.
 
-O experimento consistirá em:
+O experimento consistiu em:
 \begin{enumerate}
-  \item Inserir N documentos PDF com estrutura conhecida (parágrafos numerados, tabelas identificadas);
-  \item Executar consulta de contexto para cada coleção;
-  \item Comparar o JSON retornado com o conteúdo original, verificando:
-    \begin{itemize}
-      \item presença de todos os documentos da coleção;
-      \item ordem correta dos parágrafos;
-      \item integridade dos metadados extraídos;
-      \item correspondência entre fontes citadas e parágrafos de origem.
-    \end{itemize}
-  \item Calcular a proporção de acertos sobre o total de elementos esperados.
+  \item construir um corpus com documentos de estrutura conhecida e gabarito de relevância graduada, sob regras anti-circularidade travadas por teste;
+  \item executar cada consulta em seis braços de recuperação, em delineamento pareado;
+  \item registrar uma linha por par (consulta, braço) na saída bruta, preservando os valores individuais exigidos pelo teste estatístico pareado;
+  \item comparar os braços por Wilcoxon com correção de Bonferroni, reportando tamanho de efeito e intervalos de confiança por \emph{bootstrap}.
 \end{enumerate}
+
+A medição foi conduzida em duas granularidades --- documento e seção ---, pelas razões de validade de construto detalhadas na Seção~\ref{sec:granularidade}.
 
 \subsubsection{Auditabilidade}
 
@@ -533,7 +529,7 @@ O custo operacional não foi medido neste ciclo, e é declarado aqui como lacuna
 
 \subsection{Cronograma}
 
-O desenvolvimento do ThingIndex será realizado entre junho e dezembro de 2026, conforme ilustrado na Figura~\ref{fig:cronograma}.
+O desenvolvimento do ThingIndex foi conduzido ao longo de 2026, conforme ilustrado na Figura~\ref{fig:cronograma}.
 
 \begin{figure}[!ht]
   \centering
@@ -549,7 +545,7 @@ O desenvolvimento do ThingIndex será realizado entre junho e dezembro de 2026, 
 % =============================================================================
 \section{Resultados}
 
-Esta seção apresenta os resultados do ciclo de avaliação da DSR~\cite{hevner2004design}. O artefato descrito na Seção anterior foi integralmente implementado como monorepo executável (API e workers em Go, frontend em Next.js, PostgreSQL com as 21 tabelas do Apêndice A, pipeline assíncrono com outbox, retry e DLQ), com testes automatizados nos níveis unitário, de integração e end-to-end. Sobre esse artefato foi conduzido um experimento comparativo de recuperação de informação, cujo protocolo e resultados são descritos a seguir. Todos os números reportados são gerados por scripts a partir da saída bruta do experimento — nenhuma tabela foi transcrita manualmente — e o experimento completo é reproduzível com dois comandos a partir do repositório público.
+Esta seção apresenta os resultados do ciclo de avaliação da DSR~\cite{hevner2004design}. O artefato descrito na Seção anterior foi integralmente implementado como monorepo executável (API e workers em Go, frontend em Next.js, PostgreSQL com as 21 tabelas do Apêndice A, pipeline assíncrono com outbox, retry e DLQ), com testes automatizados nos níveis unitário, de integração e end-to-end. Sobre esse artefato foi conduzido um experimento comparativo de recuperação de informação, cujo protocolo e resultados são descritos a seguir. Todos os números reportados são gerados por scripts a partir da saída bruta do experimento — nenhuma tabela foi transcrita manualmente — e o experimento completo é reproduzível com dois comandos a partir do repositório do projeto.
 
 \subsection{Protocolo Experimental}
 
@@ -1002,9 +998,9 @@ A leitura tem duas partes. A objeção procede quanto à \emph{magnitude} da per
 
 \section{Conclusão}
 
-Este artigo apresentou o ThingIndex, uma plataforma open source de inteligência documental baseada em modelagem relacional, da concepção à avaliação experimental. A pergunta de pesquisa formulada na Introdução — se é possível sustentar um sistema de inteligência documental com auditabilidade utilizando exclusivamente modelagem relacional, sem bancos vetoriais ou grafos como camada primária de recuperação — recebe, com base nos resultados, uma resposta afirmativa e delimitada: no corpus avaliado, a recuperação relacional não foi inferior à densa em qualidade de ranking (nDCG@10 de 0,869 contra 0,844, sem diferença estatisticamente significativa) e é a única abordagem, entre as seis avaliadas, que combina estabilidade total do resultado com custo de consulta que não cresce linearmente com uma varredura exaustiva de vetores: a busca densa exata é determinística mas custa $O(N)$ por consulta, e o índice aproximado escala mas torna o ranking dependente de fatores que o usuário não controla nem observa, como a semente do algoritmo de particionamento e a ordem de inserção dos documentos.
+Este artigo apresentou o ThingIndex, uma plataforma de inteligência documental baseada em modelagem relacional, da concepção à avaliação experimental. A pergunta de pesquisa formulada na Introdução — se é possível sustentar um sistema de inteligência documental com auditabilidade utilizando exclusivamente modelagem relacional, sem bancos vetoriais ou grafos como camada primária de recuperação — recebe, com base nos resultados, uma resposta afirmativa e delimitada: no corpus avaliado, a recuperação relacional não foi inferior à densa em qualidade de ranking (nDCG@10 de 0,869 contra 0,844, sem diferença estatisticamente significativa) e é a única abordagem, entre as seis avaliadas, que combina estabilidade total do resultado com custo de consulta que não cresce linearmente com uma varredura exaustiva de vetores: a busca densa exata é determinística mas custa $O(N)$ por consulta, e o índice aproximado escala mas torna o ranking dependente de fatores que o usuário não controla nem observa, como a semente do algoritmo de particionamento e a ordem de inserção dos documentos.
 
-As contribuições do trabalho são quatro. Primeira, um artefato completo e aberto: o sistema especificado na Proposta foi implementado como monorepo executável, com pipeline assíncrono de indexação, recuperação por consultas SQL determinísticas, trilha de proveniência por chaves estrangeiras e testes automatizados, disponível publicamente para replicação e extensão. Segunda, um protocolo de avaliação reproduzível com regras anti-circularidade travadas por teste, construído após a constatação de que o benchmark original do projeto — que reportava 100\% de acerto em todos os indicadores — media casamento lexical, e não recuperação. Terceira, a quantificação do custo de determinismo dos índices vetoriais aproximados, incluindo a medição da ameaça de escala em vez de sua mera discussão: a instabilidade do ranking sob variação de semente persiste em 100\% das consultas em todas as escalas medidas, até $N{=}1000$. Quarta, a evidência, inédita para este sistema, de que nenhum dos paradigmas avaliados — relacional, lexical, denso ou híbrido — reconhece a ausência de resposta, com causas distintas e mensuradas em cada caso.
+As contribuições do trabalho são quatro. Primeira, um artefato completo: o sistema especificado na Proposta foi implementado como monorepo executável, com pipeline assíncrono de indexação, recuperação por consultas SQL determinísticas, trilha de proveniência por chaves estrangeiras e testes automatizados, versionado e disponível para replicação e extensão mediante solicitação. Segunda, um protocolo de avaliação reproduzível com regras anti-circularidade travadas por teste, construído após a constatação de que o benchmark original do projeto — que reportava 100\% de acerto em todos os indicadores — media casamento lexical, e não recuperação. Terceira, a quantificação do custo de determinismo dos índices vetoriais aproximados, incluindo a medição da ameaça de escala em vez de sua mera discussão: a instabilidade do ranking sob variação de semente persiste em 100\% das consultas em todas as escalas medidas, até $N{=}1000$. Quarta, a evidência, inédita para este sistema, de que nenhum dos paradigmas avaliados — relacional, lexical, denso ou híbrido — reconhece a ausência de resposta, com causas distintas e mensuradas em cada caso.
 
 O trabalho tem limitações claras, detalhadas nas Ameaças à Validade: o poder amostral do corpus (16 consultas positivas) impede conclusões comparativas definitivas, o gabarito foi anotado por um único autor e o índice HNSW não foi medido. Delas decorrem os trabalhos futuros prioritários: expandir o corpus para aproximadamente 150 consultas sobre pelo menos 30 documentos; realizar dupla anotação em ao menos 20\% do gabarito com Cohen's $\kappa$ reportado; adicionar um braço HNSW ao experimento de determinismo; e medir o caminho de documentos digitalizados (OCR). Como evolução do sistema, os resultados apontam um caminho concreto: a fusão por RRF dos sinais relacional e BM25 obteve os melhores agregados do experimento sem exigir nenhum componente novo de infraestrutura, preservando a camada relacional — e sua proveniência — como base auditável do sistema.
 
