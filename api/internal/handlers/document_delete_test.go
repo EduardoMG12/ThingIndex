@@ -173,6 +173,10 @@ func (s *documentUseCaseAuditCaptureStub) GetCollectionContext(context.Context, 
 	return nil, nil
 }
 
+func (s *documentUseCaseAuditCaptureStub) GetNodeConnections(context.Context, uint, uint, string, int) ([]domain.NodeConnection, error) {
+	return nil, nil
+}
+
 func (s *documentUseCaseAuditCaptureStub) StoreParagraphNodes(context.Context, uint, uint, []models.ParagraphNode) ([]models.ParagraphNode, error) {
 	return nil, nil
 }

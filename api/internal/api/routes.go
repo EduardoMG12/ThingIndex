@@ -151,6 +151,9 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 			documents.POST("/collections", docHandler.CreateCollection)
 			documents.GET("/collections", docHandler.ListCollections)
 			documents.GET("/collections/:id/context", docHandler.GetCollectionContext)
+			// Conexoes derivadas entre nos de documentos distintos da colecao.
+			// Recalculadas a cada chamada; nenhuma aresta e persistida.
+			documents.GET("/collections/:id/connections", docHandler.GetNodeConnections)
 			documents.GET("/collections/:id", docHandler.GetCollection)
 			documents.DELETE("/collections/:id/documents", docHandler.DeleteCollectionDocuments)
 			documents.PATCH("/collections/:collection/category", docHandler.UpdateCollectionCategory)
