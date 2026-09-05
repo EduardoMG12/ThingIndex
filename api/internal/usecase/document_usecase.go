@@ -167,7 +167,11 @@ func (u *documentCatalogUseCase) ensureCollectionForUpload(ctx context.Context, 
 			collection.Category = category
 		}
 
-		if err := u.collectionRepo.CreateCollection(ctx, collection); err != nil {
+		// EnsureCollection e nao CreateCollection: entre a busca acima que nao
+		// encontrou e esta criacao, outra requisicao pode ter criado a mesma
+		// colecao. Com 20 uploads simultaneos isso acontecia e o usuario
+		// recebia HTTP 500 por enviar varios documentos de uma vez.
+		if err := u.collectionRepo.EnsureCollection(ctx, collection); err != nil {
 			return nil, fmt.Errorf("%w: %v", domain.ErrCollectionCreate, err)
 		}
 
@@ -297,7 +301,9 @@ func (u *documentCatalogUseCase) CreateCollection(ctx context.Context, userID ui
 		collection.Category = category
 	}
 
-	if err := u.collectionRepo.CreateCollection(ctx, collection); err != nil {
+	// EnsureCollection resolve a corrida no banco: ver o comentario da
+	// interface em domain.CollectionRepository.
+	if err := u.collectionRepo.EnsureCollection(ctx, collection); err != nil {
 		return nil, fmt.Errorf("%w: %v", domain.ErrCollectionCreate, err)
 	}
 

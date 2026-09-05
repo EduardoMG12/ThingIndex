@@ -157,6 +157,13 @@ func (r *collectionRepoStub) CreateCollection(context.Context, *models.Collectio
 	return nil
 }
 
+// EnsureCollection espelha CreateCollection no stub: a resolucao da corrida
+// acontece no banco, e o teste de concorrencia real vive em
+// internal/repository (com a tag integration).
+func (r *collectionRepoStub) EnsureCollection(context.Context, *models.Collection) error {
+	return nil
+}
+
 func (r *collectionRepoStub) UpdateCollection(context.Context, *models.Collection) error {
 	return nil
 }
