@@ -52,15 +52,41 @@ princípio VI: produzir evidência inválida é pior que não produzir nenhuma).
 
 1. Enviar o artigo atual ao orientador. É o único item que não depende de mim e
    pode reordenar tudo.
-2. Rodar o indexador sobre os 5 documentos do corpus e **contar os nós reais**
-   que a extração produz hoje. Se produzir menos de ~3 nós por documento, P1 vira
-   "ranquear páginas" em vez de "ranquear seções" — mesma granularidade fina,
-   menos trabalho de fixture.
+2. ~~Rodar o indexador e contar os nós reais.~~ **FEITO — 2026-09-04.**
 
-Comando de medição:
-```bash
-cd api && go run ./cmd/index-import --corpus internal/evalcorpus/testdata/corpus-c1.json --dry-run
-```
+#### Resultado da medição (risco principal eliminado)
+
+Rodei `parsePlainTextStructure` (a função que o corpus de texto puro usa) sobre
+os 5 documentos:
+
+| Documento | Nós extraídos |
+|---|---|
+| acordao-trabalhista | 5 |
+| edital-pregao | 5 |
+| contrato-sla | 6 |
+| politica-privacidade | 5 |
+| manual-onboarding | 5 |
+| **Total** | **26** |
+
+**26 nós contra 5 documentos.** O corpus sustenta P1 sem escrever documento novo
+— o risco de "outline raso demais" está descartado por medição, não por
+estimativa.
+
+Impacto direto nos tetos que hoje invalidam a tabela de resultados:
+
+| Métrica | Hoje (unidade = documento) | Com nó |
+|---|---|---|
+| `R@5` | **1,000 sempre** — recupera 5 de 5, é aritmética, não resultado | 5 de 26: volta a discriminar |
+| `P@3` | teto médio **0,375**, não declarado na tabela | teto sobe; e o acaso despenca |
+| `P@1` aleatório | **0,200** | **0,038** |
+
+A baseline aleatória cair de 0,200 para 0,038 é o número que mais importa: hoje
+acertar por acaso é fácil, e é por isso que os braços empatam. Com nós, o
+experimento passa a ter poder de discriminação real.
+
+> A extração já produz hierarquia (`L1`/`L2` em `acordao-trabalhista` e
+> `contrato-sla`), então `ParentID` tem conteúdo verdadeiro para a sidebar de P4.
+
 
 ### Fase 1 — P1: unidade de recuperação (3-5 dias)
 
