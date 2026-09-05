@@ -27,7 +27,19 @@ import (
 
 var newDefaultStorageProvider = providerpkg.NewDefaultStorageProvider
 
+// SetupRoutes registra as rotas com um contexto de fundo desvinculado.
+//
+// Mantida para os testes, que nao precisam controlar o ciclo de vida das
+// tarefas de fundo. Producao usa SetupRoutesWithContext, para que a goroutine
+// de sync do catalogo encerre junto com o processo em vez de depender dele
+// morrer.
 func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
+	return SetupRoutesWithContext(context.Background(), router, db, cfg)
+}
+
+// SetupRoutesWithContext registra as rotas e amarra as tarefas de fundo ao
+// contexto recebido. Cancelar o contexto encerra a goroutine de sync.
+func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 	if err := router.SetTrustedProxies(cfg.TrustedProxyList()); err != nil {
 		return fmt.Errorf("failed to configure trusted proxies: %w", err)
 	}
@@ -68,7 +80,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 	providerRepo := repository.NewGormProviderRepository(db)
 	providerUseCase := usecase.NewProviderUseCase(providerRepo, cfg)
 	providerHandler := handlers.NewProviderHandler(providerUseCase)
-	startProviderModelCatalogSync(context.Background(), providerUseCase, cfg.ModelCatalogSyncInterval)
+	startProviderModelCatalogSync(ctx, providerUseCase, cfg.ModelCatalogSyncInterval)
 	pricingRepo := repository.NewGormPricingRepository(db)
 	pricingUseCase := usecase.NewPricingUseCase(pricingRepo)
 	pricingHandler := handlers.NewPricingHandler(pricingUseCase)
