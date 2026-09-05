@@ -286,9 +286,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
+      # A versao do pnpm vem do campo packageManager do frontend/package.json
+      # (hoje pnpm@10.28.0). Fixar 'version: 10' aqui duplicaria a informacao em
+      # dois lugares que podem divergir sem ninguem notar -- o CI passaria a
+      # instalar dependencias com um pnpm diferente do que o desenvolvedor usa.
+      - uses: pnpm/action-setup@v6
 
       - uses: actions/setup-node@v7
         with:
