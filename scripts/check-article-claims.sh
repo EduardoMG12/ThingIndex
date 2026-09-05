@@ -79,6 +79,17 @@ for termo in "TPC" "TCV" "proveniência completa"; do
   fi
 done
 
+# --- Afirmacao de que o consumo de tokens e descartado ----------------------
+# O campo usage passou a ser capturado (tokenUsage / TokenUsageReporter em
+# api/internal/pkg/provider). Se o texto voltar a dizer que ele e descartado, a
+# prosa contradiz o codigo, e o avaliador que abrir o repositorio ve a
+# divergencia.
+if grep -qEi "usage[^.]{0,80}(descartad|ignorad)" "$ARTIGO"; then
+  echo "FALHA: o artigo afirma que o campo usage e descartado, mas ele e capturado." >&2
+  echo "  Ver tokenUsage e TokenUsageReporter em api/internal/pkg/provider/." >&2
+  falhas=$((falhas + 1))
+fi
+
 echo "repositorio privado: $repo_privado"
 
 if [[ $falhas -gt 0 ]]; then
