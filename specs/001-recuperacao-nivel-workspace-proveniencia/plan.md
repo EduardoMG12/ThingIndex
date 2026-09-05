@@ -59,33 +59,45 @@ princípio VI: produzir evidência inválida é pior que não produzir nenhuma).
 Rodei `parsePlainTextStructure` (a função que o corpus de texto puro usa) sobre
 os 5 documentos:
 
-| Documento | Nós extraídos |
-|---|---|
-| acordao-trabalhista | 5 |
-| edital-pregao | 5 |
-| contrato-sla | 6 |
-| politica-privacidade | 5 |
-| manual-onboarding | 5 |
-| **Total** | **26** |
-
-**26 nós contra 5 documentos.** O corpus sustenta P1 sem escrever documento novo
-— o risco de "outline raso demais" está descartado por medição, não por
-estimativa.
-
-Impacto direto nos tetos que hoje invalidam a tabela de resultados:
-
-| Métrica | Hoje (unidade = documento) | Com nó |
+| Documento | Nós brutos do extrator | Seções de conteúdo anotadas |
 |---|---|---|
-| `R@5` | **1,000 sempre** — recupera 5 de 5, é aritmética, não resultado | 5 de 26: volta a discriminar |
-| `P@3` | teto médio **0,375**, não declarado na tabela | teto sobe; e o acaso despenca |
-| `P@1` aleatório | **0,200** | **0,038** |
+| acordao-trabalhista | 5 | 3 |
+| edital-pregao | 5 | 4 |
+| contrato-sla | 6 | 4 |
+| politica-privacidade | 5 | 4 |
+| manual-onboarding | 5 | 4 |
+| **Total** | **26** | **19** |
 
-A baseline aleatória cair de 0,200 para 0,038 é o número que mais importa: hoje
-acertar por acaso é fácil, e é por isso que os braços empatam. Com nós, o
+> **Os dois números medem coisas diferentes e ambos importam.** O extrator devolve
+> 26 nós porque conta os títulos de capa (`ACÓRDÃO`, `RECURSO ORDINÁRIO
+> 0001234-56.2025.5.09.0011`, `CONTRATO DE PRESTAÇÃO...`, `ANEXO II — NÍVEIS DE
+> SERVIÇO`). Eles são estrutura legítima, mas **não são unidades que respondem a
+> uma consulta** — ninguém pergunta algo cuja resposta seja "ACÓRDÃO". O gabarito
+> anota as **19 seções de conteúdo**, e é esse o universo de recuperação.
+>
+> O número travado em teste (`secoesC1 = 19`) é o do gabarito, porque é ele que
+> entra nas métricas do artigo.
+
+**O corpus sustenta P1 sem escrever documento novo** — o risco de "outline raso
+demais" está descartado por medição, não por estimativa.
+
+Impacto nos tetos que hoje invalidam a tabela de resultados, calculado sobre as
+19 seções anotadas:
+
+| Métrica | Hoje (unidade = documento) | Com seção |
+|---|---|---|
+| `R@5` | **1,000 sempre** — recupera 5 de 5, é aritmética, não resultado | 5 de 19: volta a discriminar |
+| `P@3` teto médio | **0,375**, não declarado na tabela | **0,458** |
+| `P@1` aleatório | **0,200** | **0,053** |
+| Consultas com >1 alvo | 2/16 | **6/16** |
+
+A baseline aleatória cair de 0,200 para 0,053 é o número que mais importa: hoje
+acertar por acaso é fácil, e é por isso que os braços empatam. Com seções, o
 experimento passa a ter poder de discriminação real.
 
 > A extração já produz hierarquia (`L1`/`L2` em `acordao-trabalhista` e
 > `contrato-sla`), então `ParentID` tem conteúdo verdadeiro para a sidebar de P4.
+
 
 
 ### Fase 1 — P1: unidade de recuperação (3-5 dias)
