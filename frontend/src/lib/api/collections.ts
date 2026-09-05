@@ -10,6 +10,10 @@ import {
     type CollectionContext,
     type CollectionSummary,
 } from "@/lib/api/contracts/document-context";
+import {
+    normalizeNodeConnections,
+    type NodeConnectionsResult,
+} from "@/lib/api/contracts/node-connections";
 import { fetchWithAuthRedirect } from "@/lib/api/fetch-with-auth-redirect";
 
 export async function fetchCollections(signal?: AbortSignal): Promise<CollectionSummary[]> {
@@ -50,4 +54,45 @@ export async function fetchCollectionContext(
     }
 
     return normalized;
+}
+
+/**
+ * Busca as conexoes derivadas de um no do sumario.
+ *
+ * `minScore` e explicito de proposito. Subir o limiar faz as conexoes
+ * desaparecerem, e esse e o comportamento correto quando nao ha relacao real --
+ * o oposto do falso positivo de 1,000 que este projeto mede nos seis bracos
+ * avaliados. Esconder o parametro tiraria da interface a unica demonstracao de
+ * que o sistema sabe se calar.
+ */
+export async function fetchNodeConnections(
+    collectionId: number,
+    nodeId: string,
+    minScore?: number,
+    signal?: AbortSignal
+): Promise<NodeConnectionsResult> {
+    const params = new URLSearchParams({ node_id: nodeId });
+    if (typeof minScore === "number") {
+        params.set("min_score", String(minScore));
+    }
+
+    const response = await fetchWithAuthRedirect(
+        `/api/documents/collections/${collectionId}/connections?${params.toString()}`,
+        {
+            method: "GET",
+            cache: "no-store",
+            signal,
+        }
+    );
+
+    const payload = (await response.json().catch(() => null)) as
+        | ApiSuccessResponse<unknown>
+        | ApiErrorResponse
+        | null;
+
+    if (!response.ok) {
+        throw new Error(payload?.message || apiErrorMessage("collections.connections"));
+    }
+
+    return normalizeNodeConnections(hasResponseData(payload) ? payload.data : null);
 }
