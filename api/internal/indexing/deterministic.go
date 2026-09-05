@@ -96,7 +96,15 @@ func NewDeterministicIndexer() *DeterministicIndexer {
 
 	return &DeterministicIndexer{
 		pdfTextExtractor: pdfExtractor,
-		pdfOCRExtractor:  newCommandPDFOCRExtractor(),
+		// newPDFOCRExtractor, e nao newCommandPDFOCRExtractor: a primeira tenta
+		// o provider remoto (THINGINDEX_OCR_ENDPOINT) e cai para o tesseract
+		// local quando ele nao esta configurado.
+		//
+		// Chamar o construtor local direto tornava o provider remoto codigo
+		// morto: configurar o endpoint nao mudava nada, o indice sempre gravava
+		// ocr_engine='local_tesseract' e o servico `ocr` do compose ficava
+		// inalcancavel -- sem erro e sem log, so a funcionalidade ausente.
+		pdfOCRExtractor: newPDFOCRExtractor(),
 	}
 }
 
