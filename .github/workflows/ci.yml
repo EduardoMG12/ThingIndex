@@ -123,6 +123,15 @@ jobs:
           go test ./cmd/provenance-eval/
           go run ./cmd/provenance-eval -tex /tmp/provenance.tex
 
+      # A Secao de Limiar afirma que existe sinal exploravel nos scores e que o
+      # corte reduz o falso positivo. Se o scorer mudar e a separabilidade
+      # sumir, a conclusao do artigo deixa de valer -- o teste falha antes.
+      - name: limiar de corte reduz o falso positivo
+        working-directory: api
+        run: |
+          go test ./cmd/threshold-eval/
+          go run ./cmd/threshold-eval -tex /tmp/threshold.tex
+
       # O artigo cita numeros do corpus (5 documentos, 19 secoes, 22 pares
       # julgados) e a mudanca de granularidade depende deles. Travar aqui
       # impede que a anotacao mude sem revisao do texto.
