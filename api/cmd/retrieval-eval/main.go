@@ -153,8 +153,47 @@ func main() {
 		}
 	}
 
-	arms := buildArms(corpus, dense)
-	rows := evaluate(corpus, arms)
+	// O experimento roda nas DUAS granularidades na mesma execucao.
+	//
+	// Ranquear documento inteiro descasa da tese (o trabalho afirma
+	// proveniencia de paragrafo) e satura as metricas: com 5 documentos e um
+	// relevante por consulta, R@5 e 1,000 por aritmetica. Ranquear secao
+	// corrige isso -- o universo passa a 19 unidades e a baseline aleatoria de
+	// P@1 cai de 0,200 para 0,053.
+	//
+	// As duas ficam lado a lado, e nao so a nova, por duas razoes: a
+	// comparacao entre granularidades e ela propria um resultado do artigo, e
+	// os bracos densos so tem vetor POR DOCUMENTO (o artefato traz 5 vetores).
+	// Re-embutir por secao exigiria chamada de rede, que o principio II da
+	// constituicao proibe no caminho principal.
+	var allRows []row
+
+	docUnits := evalcorpus.RetrievalUnits(documentosComoUnidadeUnica(corpus))
+	docArms := buildArms(docUnits, dense)
+	allRows = append(allRows, evaluate(corpus, docArms, "document", func(q evalcorpus.Query) map[string]int {
+		return q.Relevance
+	})...)
+
+	sectionUnits := evalcorpus.RetrievalUnits(corpus.Documents)
+	if len(sectionUnits) > len(corpus.Documents) {
+		// Os bracos densos ficam de fora desta granularidade: sem vetor por
+		// secao, eles devolveriam vazio e apareceriam como falha do metodo, e
+		// nao como ausencia de artefato. Declarar a ausencia e melhor que
+		// medir errado.
+		sectionArms := buildArms(sectionUnits, nil)
+		allRows = append(allRows, evaluate(corpus, sectionArms, "section", func(q evalcorpus.Query) map[string]int {
+			return q.RelevanceSections
+		})...)
+
+		fmt.Fprintf(os.Stderr,
+			"retrieval-eval: granularidade de secao ativa (%d unidades); bracos densos ausentes nela por falta de vetor por secao\n",
+			len(sectionUnits))
+	} else {
+		fmt.Fprintln(os.Stderr,
+			"retrieval-eval: corpus sem secoes declaradas; medindo so em nivel de documento")
+	}
+
+	rows := allRows
 
 	writer := os.Stdout
 	if *outPath != "" {
@@ -181,6 +220,22 @@ func main() {
 	}
 }
 
+// documentosComoUnidadeUnica remove as secoes declaradas para que
+// RetrievalUnits produza uma unidade por documento.
+//
+// Existe para a granularidade de documento continuar sendo medida EXATAMENTE
+// como antes da issue #16, garantindo que os numeros historicos do artigo
+// permanecam comparaveis. Sem isso, a mesma funcao devolveria secoes e a
+// comparacao entre granularidades perderia o ponto de referencia.
+func documentosComoUnidadeUnica(corpus *evalcorpus.Corpus) []evalcorpus.Document {
+	docs := make([]evalcorpus.Document, 0, len(corpus.Documents))
+	for _, doc := range corpus.Documents {
+		doc.Sections = nil
+		docs = append(docs, doc)
+	}
+	return docs
+}
+
 // buildArms monta os bracos do experimento.
 //
 // O artefato de embeddings e OPCIONAL: quando ausente, os bracos densos
@@ -188,10 +243,13 @@ func main() {
 // que mantem o harness executavel em CI sem depender do artefato -- mas a
 // ausencia e ANUNCIADA no stderr, nunca silenciosa. Um braco que some sem
 // aviso viraria uma tabela incompleta no artigo sem ninguem perceber.
-func buildArms(corpus *evalcorpus.Corpus, dense *retrieval.DenseArtifact) []arm {
-	docs := make([]retrieval.Document, 0, len(corpus.Documents))
-	for _, doc := range corpus.Documents {
-		docs = append(docs, retrieval.Document{ID: doc.ID, Text: doc.Title + "\n" + doc.Content})
+//
+// `units` define a granularidade: documentos inteiros ou secoes. Ver
+// buildUnits e o comentario de granularity em main.
+func buildArms(units []evalcorpus.RetrievalUnit, dense *retrieval.DenseArtifact) []arm {
+	docs := make([]retrieval.Document, 0, len(units))
+	for _, unit := range units {
+		docs = append(docs, retrieval.Document{ID: unit.ID, Text: unit.Title + "\n" + unit.Text})
 	}
 
 	bm25 := retrieval.NewBM25Index(docs, retrieval.DefaultBM25Params())
@@ -339,15 +397,26 @@ func checkDenseSync(corpus *evalcorpus.Corpus, dense *retrieval.DenseArtifact) [
 	return problems
 }
 
-// row e uma linha do CSV: um par (consulta, braco).
+// row e uma linha do CSV: um par (consulta, braco) numa granularidade.
 type row struct {
 	metrics  retrieval.QueryMetrics
 	variant  string
 	negative bool
 	falsePos float64
+	// granularity distingue as duas unidades de recuperacao medidas na mesma
+	// execucao ("document" ou "section"). Sem essa coluna as duas medicoes
+	// ficariam indistinguiveis no CSV e a analise somaria maca com laranja.
+	granularity string
 }
 
-func evaluate(corpus *evalcorpus.Corpus, arms []arm) []row {
+// evaluate mede cada braco contra o gabarito da granularidade em uso.
+//
+// `judgments` escolhe o gabarito: por documento ou por secao. Passar o gabarito
+// errado para a granularidade em uso nao falharia em lugar nenhum -- produziria
+// zeros plausiveis, porque nenhum id casaria. Por isso quem chama e obrigado a
+// dizer explicitamente qual usa, e main aborta antes de medir quando o corpus
+// nao tem o gabarito pedido.
+func evaluate(corpus *evalcorpus.Corpus, arms []arm, granularity string, judgments func(evalcorpus.Query) map[string]int) []row {
 	rows := make([]row, 0, len(corpus.Queries)*len(arms))
 
 	for _, query := range corpus.Queries {
@@ -356,13 +425,14 @@ func evaluate(corpus *evalcorpus.Corpus, arms []arm) []row {
 			results := current.search(query)
 			elapsed := time.Since(start)
 
-			metrics := retrieval.Evaluate(query.ID, current.name, results, query.Relevance)
+			metrics := retrieval.Evaluate(query.ID, current.name, results, judgments(query))
 			metrics.LatencyMillis = float64(elapsed.Nanoseconds()) / 1e6
 
 			item := row{
-				metrics:  metrics,
-				variant:  query.Variant,
-				negative: query.Negative,
+				metrics:     metrics,
+				variant:     query.Variant,
+				negative:    query.Negative,
+				granularity: granularity,
 			}
 			if query.Negative {
 				item.falsePos = retrieval.FalsePositiveRate(results)
@@ -380,7 +450,7 @@ func writeCSV(file *os.File, rows []row) error {
 	defer writer.Flush()
 
 	header := []string{
-		"query_id", "arm", "variant", "negative",
+		"query_id", "arm", "granularity", "variant", "negative",
 		"p_at_1", "p_at_3", "p_at_5",
 		"r_at_5", "r_at_10",
 		"reciprocal_rank", "ndcg_at_10",
@@ -394,6 +464,7 @@ func writeCSV(file *os.File, rows []row) error {
 		record := []string{
 			item.metrics.QueryID,
 			item.metrics.Arm,
+			item.granularity,
 			item.variant,
 			strconv.FormatBool(item.negative),
 			formatFloat(item.metrics.PrecisionAt1),
