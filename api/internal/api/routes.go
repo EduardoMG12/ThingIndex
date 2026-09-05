@@ -11,7 +11,6 @@ import (
 	"thing-index/internal/handlers"
 	"thing-index/internal/mailer"
 	providerpkg "thing-index/internal/pkg/provider"
-	"thing-index/internal/pkg/response"
 	"thing-index/internal/repository"
 	"thing-index/internal/usecase"
 	"time"
@@ -112,9 +111,10 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 
 	v1 := router.Group("/api/v1")
 	{
-		v1.GET("/health", func(c *gin.Context) {
-			response.Success(c, http.StatusOK, "success", "API Thing-Index no ar! 🚀", nil)
-		})
+		// O health checa a dependencia critica em vez de devolver texto fixo:
+		// sem isso um orquestrador mantem no balanceador uma instancia que nao
+		// consegue servir requisicao nenhuma.
+		v1.GET("/health", healthHandler(sqlDBParaHealth(db)))
 		v1.GET("/meta/runtime-profile", metaHandler.GetRuntimeProfile)
 		v1.GET("/meta/indexing-benchmark", metaHandler.GetIndexingBenchmark)
 		v1.GET("/providers/support", providerHandler.ListSupportMatrix)
