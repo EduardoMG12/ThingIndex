@@ -25,6 +25,7 @@ from analyze import (  # noqa: E402
     build_significance_table,
     build_summary_table,
     build_variant_table,
+    ceiling_key,
     cliffs_delta,
     filter_granularity,
     mean,
@@ -328,6 +329,77 @@ class TestGranularidade(unittest.TestCase):
         ]
         resultado = filter_granularity(antigas, "document")
         self.assertEqual(len(resultado), 1)
+
+
+class TestTetos(unittest.TestCase):
+    """A tabela precisa declarar o maximo alcancavel de cada metrica.
+
+    P@k divide por k, entao uma consulta com um unico item relevante limita P@3
+    a 1/3 mesmo sob ranking perfeito. Publicar 0,312 sem dizer que o teto e
+    0,375 leva o leitor a concluir que o sistema acerta 31%, quando o real e 83%
+    do maximo possivel.
+    """
+
+    def _linhas_com_teto(self, teto_p3="0.333333"):
+        return [
+            {
+                "query_id": f"q{i:02d}",
+                "arm": "A-relacional",
+                "granularity": "section",
+                "variant": "literal",
+                "negative": "false",
+                "p_at_1": "1.000000",
+                "p_at_3": "0.333333",
+                "p_at_5": "0.200000",
+                "r_at_5": "1.000000",
+                "r_at_10": "1.000000",
+                "reciprocal_rank": "1.000000",
+                "ndcg_at_10": "1.000000",
+                "false_positive": "0.000000",
+                "result_count": "3",
+                "latency_ms": "0.100000",
+                "p_at_1_ceiling": "1.000000",
+                "p_at_3_ceiling": teto_p3,
+                "p_at_5_ceiling": "0.200000",
+                "r_at_5_ceiling": "1.000000",
+                "r_at_10_ceiling": "1.000000",
+                "relevant_count": "1",
+            }
+            for i in range(12)
+        ]
+
+    def test_tabela_publica_a_linha_de_teto(self):
+        tabela = build_summary_table(self._linhas_com_teto())
+        self.assertIn("Teto alcançável", tabela)
+        self.assertIn("0.333", tabela, "o teto de P@3 precisa aparecer na tabela")
+
+    def test_teto_de_ndcg_nao_e_publicado(self):
+        # nDCG e MRR ja sao normalizados pelo ideal do proprio gabarito: o teto
+        # e 1,000 por construcao e publica-lo nao informa nada.
+        self.assertIsNone(ceiling_key("ndcg_at_10"))
+        self.assertIsNone(ceiling_key("reciprocal_rank"))
+        self.assertEqual(ceiling_key("p_at_3"), "p_at_3_ceiling")
+
+    def test_csv_antigo_sem_teto_nao_quebra(self):
+        # Retrocompatibilidade: resultados gerados antes da issue #16 nao tem as
+        # colunas de teto, e a tabela precisa continuar sendo gerada.
+        linhas = self._linhas_com_teto()
+        for linha in linhas:
+            for chave in list(linha):
+                if chave.endswith("_ceiling"):
+                    del linha[chave]
+
+        tabela = build_summary_table(linhas)
+        self.assertIn(r"\begin{table}", tabela)
+        self.assertNotIn("Teto alcançável", tabela)
+
+    def test_teto_reflete_o_gabarito_e_nao_o_braco(self):
+        # O teto e propriedade do gabarito: mudar o numero de relevantes muda o
+        # teto, mesmo com as metricas medidas identicas.
+        tabela_um = build_summary_table(self._linhas_com_teto(teto_p3="0.333333"))
+        tabela_dois = build_summary_table(self._linhas_com_teto(teto_p3="0.666667"))
+        self.assertIn("0.333", tabela_um)
+        self.assertIn("0.667", tabela_dois)
 
 
 if __name__ == "__main__":
