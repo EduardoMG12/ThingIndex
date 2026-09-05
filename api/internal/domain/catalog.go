@@ -215,6 +215,17 @@ type CategoryCatalogRepository interface {
 
 type CollectionRepository interface {
 	CreateCollection(ctx context.Context, collection *models.Collection) error
+	// EnsureCollection cria a colecao ou devolve a existente, resolvendo a
+	// corrida no banco.
+	//
+	// Existe porque buscar-e-criar no usecase e um check-then-act: entre a
+	// busca que nao encontra e a criacao, outra requisicao cria a mesma colecao
+	// e a segunda recebe violacao de unicidade. Medido com 20 uploads
+	// simultaneos para a mesma colecao: um deles voltava HTTP 500.
+	//
+	// So o banco pode arbitrar quem ganha a corrida; reexecutar a busca no
+	// usecase apenas moveria a janela.
+	EnsureCollection(ctx context.Context, collection *models.Collection) error
 	UpdateCollection(ctx context.Context, collection *models.Collection) error
 	GetCollectionByID(ctx context.Context, id uint, userID uint) (*models.Collection, error)
 	GetCollectionByNormalizedName(ctx context.Context, normalizedName string, userID uint) (*models.Collection, error)
