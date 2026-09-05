@@ -65,20 +65,24 @@ type Config struct {
 	DocumentIndexHandlerTimeout time.Duration
 	StuckDocumentThreshold      time.Duration
 	StuckDocumentPollInterval   time.Duration
-	UploadRateLimitRequests     int
-	UploadRateLimitWindow       time.Duration
-	ChatRateLimitRequests       int
-	ChatRateLimitWindow         time.Duration
-	ConsumerPrefetchCount       int
-	DocumentIndexRetryDelay     time.Duration
-	DocumentIndexMaxRetries     int
-	PricingSyncInterval         time.Duration
-	ModelCatalogSyncInterval    time.Duration
-	MaxUploadSizeBytes          int64
-	MasterEncryptionKey         string
-	ServerReadTimeout           time.Duration
-	ServerWriteTimeout          time.Duration
-	ServerIdleTimeout           time.Duration
+	// ConsumerReconnectInterval e a espera entre tentativas quando o RabbitMQ
+	// fecha o canal de entregas. Sem espera, um broker fora do ar vira laco
+	// quente; espera longa demais atrasa a volta do pipeline.
+	ConsumerReconnectInterval time.Duration
+	UploadRateLimitRequests   int
+	UploadRateLimitWindow     time.Duration
+	ChatRateLimitRequests     int
+	ChatRateLimitWindow       time.Duration
+	ConsumerPrefetchCount     int
+	DocumentIndexRetryDelay   time.Duration
+	DocumentIndexMaxRetries   int
+	PricingSyncInterval       time.Duration
+	ModelCatalogSyncInterval  time.Duration
+	MaxUploadSizeBytes        int64
+	MasterEncryptionKey       string
+	ServerReadTimeout         time.Duration
+	ServerWriteTimeout        time.Duration
+	ServerIdleTimeout         time.Duration
 }
 
 var AppConfig *Config
@@ -123,6 +127,7 @@ func Load() {
 		JWTSecret:                    getEnv("JWT_SECRET", defaultValueForEnvironment(environment, defaultDevelopmentJWT)),
 		AuthRateLimitRequests:        getEnvInt("AUTH_RATE_LIMIT_REQUESTS", 10),
 		AuthRateLimitWindow:          getEnvDurationSeconds("AUTH_RATE_LIMIT_WINDOW_SECONDS", 60),
+		ConsumerReconnectInterval:    getEnvDurationSeconds("CONSUMER_RECONNECT_INTERVAL_SECONDS", 5),
 		UploadRateLimitRequests:      getEnvInt("UPLOAD_RATE_LIMIT_REQUESTS", 30),
 		UploadRateLimitWindow:        getEnvDurationSeconds("UPLOAD_RATE_LIMIT_WINDOW_SECONDS", 60),
 		ChatRateLimitRequests:        getEnvInt("CHAT_RATE_LIMIT_REQUESTS", 20),
@@ -262,6 +267,11 @@ func (c *Config) Validate() error {
 	}
 	if c.UploadRateLimitRequests <= 0 {
 		return errors.New("UPLOAD_RATE_LIMIT_REQUESTS must be greater than zero")
+	}
+	// Zero ou negativo viraria laco quente de reconexao contra um broker fora
+	// do ar: falhar na subida e melhor do que consumir CPU em silencio.
+	if c.ConsumerReconnectInterval <= 0 {
+		return errors.New("CONSUMER_RECONNECT_INTERVAL_SECONDS must be greater than zero")
 	}
 	if c.UploadRateLimitWindow <= 0 {
 		return errors.New("UPLOAD_RATE_LIMIT_WINDOW_SECONDS must be greater than zero")
