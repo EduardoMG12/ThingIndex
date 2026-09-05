@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
@@ -321,4 +321,85 @@ describe("DocumentAuditExplorer", () => {
             );
         });
     });
+
+    it("descarta a pagina em voo quando o filtro muda antes de ela chegar", async () => {
+        // O efeito de carga sempre teve flag de cancelamento; o handleLoadMore
+        // nao tinha. Clicar num filtro com a paginacao em voo fazia a resposta
+        // antiga chegar depois e sobrescrever summary/page_info com os da
+        // consulta anterior -- a tela mostrava contadores de um filtro e itens
+        // de outro, sem erro nenhum.
+        const primeiraPagina = {
+            items: [
+                {
+                    id: 1,
+                    user_id: 9,
+                    document_id: 7,
+                    collection_id: 3,
+                    actor_type: "USER" as const,
+                    action: "DOCUMENT_UPLOAD",
+                    status: "SUCCESS",
+                    title: "Antigo.pdf",
+                    detail: "uploaded",
+                    metadata: {},
+                    created_at: "2026-03-20T12:00:00Z",
+                },
+            ],
+            summary: {
+                total_events: 99,
+                unique_documents: 1,
+                unique_collections: 1,
+                unique_requests: 1,
+                last_event_at: "2026-03-20T12:00:00Z",
+                action_breakdown: [{ key: "DOCUMENT_UPLOAD", count: 99 }],
+                status_breakdown: [{ key: "SUCCESS", count: 99 }],
+            },
+            page_info: { limit: 12, returned: 1, has_next: true, next_cursor: "cursor-1" },
+        };
+
+        // A pagina seguinte fica pendente ate o teste liberar: e assim que a
+        // corrida vira deterministica em vez de depender de temporizacao.
+        let liberarPaginaEmVoo: (valor: typeof primeiraPagina) => void = () => {};
+        const paginaEmVoo = new Promise<typeof primeiraPagina>((resolve) => {
+            liberarPaginaEmVoo = resolve;
+        });
+
+        const paginaDoNovoFiltro = {
+            ...primeiraPagina,
+            items: [{ ...primeiraPagina.items[0], id: 42, title: "Novo filtro.pdf" }],
+            summary: { ...primeiraPagina.summary, total_events: 1 },
+            page_info: { limit: 12, returned: 1, has_next: false, next_cursor: undefined },
+        };
+
+        vi.mocked(fetchDocumentAuditEvents)
+            .mockResolvedValueOnce(primeiraPagina)
+            .mockReturnValueOnce(paginaEmVoo as never)
+            .mockResolvedValueOnce(paginaDoNovoFiltro);
+
+        render(<DocumentAuditExplorer locale="pt-BR" />);
+        await screen.findByText("Antigo.pdf");
+
+        await userEvent.click(screen.getByRole("button", { name: /Carregar mais eventos/i }));
+
+        await userEvent.type(screen.getByLabelText("Encontre um evento"), "contrato");
+        await userEvent.click(screen.getByRole("button", { name: /Buscar no historico/i }));
+
+        await screen.findByText("Novo filtro.pdf");
+
+        // A resposta antiga chega atrasada e nao pode entrar na tela.
+        liberarPaginaEmVoo({
+            ...primeiraPagina,
+            items: [{ ...primeiraPagina.items[0], id: 2, title: "Pagina atrasada.pdf" }],
+        });
+
+        // waitFor de ausencia passa no primeiro tick, antes de a promessa
+        // atrasada resolver -- nao detectaria nada. Espera-se a fila de
+        // microtarefas drenar e so entao afirma.
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 50));
+        });
+
+        expect(screen.queryByText("Pagina atrasada.pdf")).not.toBeInTheDocument();
+        expect(screen.getByText("Novo filtro.pdf")).toBeInTheDocument();
+    });
+
 });
