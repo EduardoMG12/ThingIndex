@@ -184,4 +184,26 @@ describe("WorkspaceCanvas", () => {
 
         expect(screen.getByText(/sem estrutura indexada/i)).toBeInTheDocument();
     });
+
+    it("empilha painel e sidebar em telas estreitas", () => {
+        // Regressao medida no navegador: com `flex` e sidebar de largura fixa
+        // (w-80), num viewport de 780px o canvas era espremido para 72px e os
+        // cartoes ficavam ilegiveis atras da sidebar.
+        //
+        // Duas garantias: a coluna so aparece a partir de lg, e o canvas tem
+        // min-w-0 -- sem ele um item flex assume a largura do conteudo e volta
+        // a estourar o container, que foi exatamente a causa do bug.
+        const { container } = render(<WorkspaceCanvas context={contexto} />);
+
+        const raiz = container.firstElementChild as HTMLElement;
+        expect(raiz.className).toContain("flex-col");
+        expect(raiz.className).toContain("lg:flex-row");
+
+        const canvas = screen.getByTestId("workspace-canvas");
+        expect(canvas.className).toContain("min-w-0");
+
+        const sidebar = screen.getByLabelText("Detalhes do documento");
+        expect(sidebar.className).toContain("w-full");
+        expect(sidebar.className).toContain("lg:w-80");
+    });
 });
