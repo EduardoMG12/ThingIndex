@@ -58,7 +58,21 @@ princípio VI: produzir evidência inválida é pior que não produzir nenhuma).
 > | 1 | ✅ | Queda literal→paráfrase do relacional: `−0,429` → **`−0,857`** |
 > | 2 | ✅ | TPC bimodal: 1,000 onde há `page_number`, 0,000 onde não há |
 > | 3 | ✅ | Existe limiar: falso positivo 1,000 → 0,500, Youden `J = 0,673` |
-> | 4 | ⬜ | não iniciada |
+> | 4 | ✅ | Conexões derivadas funcionando; **React Flow descartado** (ver abaixo) |
+>
+> **Decisão revista na Fase 4: não usar React Flow.**
+>
+> A spec previa a biblioteca. Ao implementar ficou claro que ela resolveria um
+> problema que este painel não tem — não há arestas persistentes para rotear nem
+> grafo para fazer layout automático. O que existe são cartões arrastáveis e uma
+> sidebar: ~150 linhas de CSS transform contra uma dependência de ~50 kB gzipped
+> com modelo de estado próprio. YAGNI. Se o painel evoluir para arestas
+> desenhadas entre cartões, a decisão deve ser revisitada.
+>
+> **Dois defeitos que só o navegador revelou**, ambos corrigidos e travados por
+> teste: o canvas colapsava para 72px num viewport de 780px (sidebar de largura
+> fixa sem `min-w-0`), e a tela exibia conexão justificada por `1, de, do` —
+> palavras vazias promovidas a evidência pela contagem simples de termos.
 
 ### Fase 0 — Antes de qualquer código (0,5 dia)
 
