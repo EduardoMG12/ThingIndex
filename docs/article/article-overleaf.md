@@ -557,6 +557,12 @@ Esta seção apresenta os resultados do ciclo de avaliação da DSR~\cite{hevner
 
 Três regras anti-circularidade foram aplicadas na construção do corpus e estão travadas por testes automatizados que falham o build caso sejam violadas: (i) o gabarito referencia documentos por identificador, nunca por título produzido pelo próprio pipeline; (ii) as consultas não literais não podem compartilhar termos com o trecho-alvo além de um limiar verificado automaticamente; (iii) os casos negativos são marcados explicitamente, distinguindo ``nada é relevante'' de ``ninguém anotou''.
 
+\textbf{Unidade de recuperação.} O experimento é executado em duas granularidades sobre o mesmo corpus. Na granularidade de \emph{documento}, cada um dos 5 documentos é uma unidade recuperável --- configuração que corresponde à avaliação clássica de RI, mas que descasa da tese deste trabalho, cuja contribuição é proveniência de parágrafo. Na granularidade de \emph{seção}, o corpus é fragmentado nas 19 seções de conteúdo declaradas em seu gabarito, e o ranking passa a operar sobre elas.
+
+A distinção não é cosmética. Com 5 documentos e um único relevante por consulta, R@5 vale 1,000 por aritmética --- recuperar cinco de cinco sempre encontra o alvo --- e a linha de base aleatória de P@1 é 0,200. Com 19 seções, a linha de base cai para 0,053 e a métrica volta a discriminar. O gabarito de seção segue as mesmas regras anti-circularidade: cada seção recebe identificador autoral estável e uma âncora textual que deve existir no documento-fonte, de modo que o rótulo dependa do texto e nunca da saída do extrator estrutural.
+
+Os braços densos são avaliados apenas na granularidade de documento. O artefato de embeddings contém um vetor por documento, e produzir vetores por seção exigiria chamada de rede a um serviço de inferência --- incompatível com a hermeticidade exigida do harness. A ausência é declarada, não silenciosa: o harness a anuncia em cada execução.
+
 \textbf{Braços comparados.} Seis estratégias de recuperação foram avaliadas sobre o mesmo corpus, em delineamento pareado por consulta:
 
 \begin{itemize}
@@ -587,6 +593,25 @@ A Tabela~\ref{tab:retrieval-variants} decompõe a P@1 por variante de consulta, 
 \input{tables/retrieval-variants}
 
 Os braços lexicais acertam 100\% quando a consulta reutiliza os termos do alvo e caem para 57--71\% quando a mesma necessidade de informação é parafraseada. A queda é maior no relacional (0,429) do que no BM25 (0,286), o que é coerente com a ausência de ponderação IDF no scorer de produção~\cite{salton1989automatic}. O braço denso inverte o padrão: sua precisão praticamente não depende de a consulta reutilizar as palavras do documento (queda de 0,029), embora seu teto na variante literal seja mais baixo (0,600). Os dois paradigmas falham, portanto, por razões diferentes — o que constitui a justificativa empírica dos braços híbridos.
+
+\subsection{Efeito da Unidade de Recuperação}
+\label{sec:granularidade}
+
+Repetindo a medição sobre as 19 seções em vez dos 5 documentos, obtêm-se os resultados da Tabela~\ref{tab:retrieval-summary-section}.
+
+\input{tables/retrieval-summary-section}
+
+A comparação entre as duas granularidades revela um efeito de saturação que a avaliação por documento ocultava. Em nível de documento, R@5 vale exatamente 1,000 para \emph{todos} os braços lexicais, o que não é evidência de qualidade: com cinco documentos e profundidade de corte cinco, a métrica não tem como discriminar. Em nível de seção, os mesmos braços obtêm 0,719 e 0,812 --- valores que finalmente os separam.
+
+O mesmo ocorre com a distância entre os braços. A diferença de P@1 entre o relacional e o BM25 é de 0,062 em nível de documento (0,750 contra 0,812) e de 0,188 em nível de seção (0,562 contra 0,750): triplica quando a unidade de recuperação corresponde à unidade de proveniência que o sistema oferece.
+
+A Tabela~\ref{tab:retrieval-variants-section} decompõe esse resultado por variante de consulta.
+
+\input{tables/retrieval-variants-section}
+
+O achado mais consequente está na dependência de casamento lexical. A queda de P@1 de consultas literais para parafraseadas, no braço relacional, passa de $-0{,}429$ em nível de documento para $-0{,}857$ em nível de seção: o \emph{scorer} de produção acerta a totalidade das consultas que reutilizam termos do alvo e apenas 14\% daquelas que expressam a mesma necessidade com outras palavras. A granularidade grossa ocultava metade da dependência lexical --- exatamente a limitação que este trabalho identifica como central na abordagem relacional.
+
+Esse resultado tem consequência direta para a leitura das seções anteriores: os números de não-inferioridade reportados em nível de documento devem ser interpretados como \emph{limite superior} do desempenho relacional, não como estimativa não enviesada. A avaliação em unidade grossa é sistematicamente mais generosa com o casamento lexical, porque um documento inteiro oferece muito mais oportunidades de correspondência de termo do que a seção que efetivamente responde à pergunta.
 
 \subsection{Reconhecimento da Ausência de Resposta}
 
@@ -633,7 +658,7 @@ Cabe registrar o contraste com a alternativa densa, em que a unidade de proveni�
 
 A taxa de falso positivo de 1,000 registrada na Seção anterior é a limitação mais grave medida neste trabalho: os braços sempre devolvem algo, inclusive quando a resposta correta é o silêncio. Resta perguntar se essa limitação é intrínseca ou corrigível --- em outras palavras, se existe um score a partir do qual uma correspondência pode ser considerada real.
 
-Para responder, coletaram-se as distribuições de score de itens relevantes e irrelevantes e buscou-se o corte que maximiza o índice de Youden ($J = \text{sensibilidade} + \text{especificidade} - 1$). Usou-se $J$, e não acurácia, porque as classes são fortemente desbalanceadas: com aproximadamente dez vezes mais itens irrelevantes que relevantes, um classificador que rejeitasse tudo teria acurácia alta e utilidade nula.
+Para responder, coletaram-se as distribuições de score de itens relevantes e irrelevantes e buscou-se o corte que maximiza o índice de Youden ($J = \text{sensibilidade} + \text{especificidade} - 1$). Usou-se $J$, e não acurácia, porque as classes são fortemente desbalanceadas: com aproximadamente dez vezes mais itens irrelevantes que relevantes, um classificador que rejeitasse tudo teria acurácia alta e utilidade nula. A Tabela~\ref{tab:threshold} apresenta o diagnóstico.
 
 \input{tables/threshold}
 

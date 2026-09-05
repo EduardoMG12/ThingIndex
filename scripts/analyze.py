@@ -270,7 +270,7 @@ def build_ceiling_row(positives: list[dict]) -> str | None:
     return r"\textit{Teto alcançável} & " + " & ".join(cells) + r" \\"
 
 
-def build_summary_table(rows: list[dict]) -> str:
+def build_summary_table(rows: list[dict], label_suffix: str = "") -> str:
     positives = [r for r in rows if not is_negative(r)]
     arms = sorted({r["arm"] for r in positives})
 
@@ -279,7 +279,7 @@ def build_summary_table(rows: list[dict]) -> str:
         r"\begin{table}[htb]",
         r"\centering",
         r"\caption{Desempenho de recuperação por braço. Intervalos de confiança de 95\% obtidos por bootstrap sobre as consultas (10.000 reamostragens). A última linha traz o teto alcançável de cada métrica dado o gabarito: P@k divide por $k$, então uma consulta com um único item relevante limita P@3 a $1/3$ mesmo sob ranking perfeito.}",
-        r"\label{tab:retrieval-summary}",
+        f"\\label{{tab:retrieval-summary{label_suffix}}}",
         r"\begin{tabular}{l" + "c" * len(METRICS) + "}",
         r"\hline",
         "Braço & " + " & ".join(label for _, label in METRICS) + r" \\",
@@ -306,7 +306,7 @@ def build_summary_table(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def build_variant_table(rows: list[dict]) -> str:
+def build_variant_table(rows: list[dict], label_suffix: str = "") -> str:
     """P@1 por variante de consulta.
 
     A queda de literal para paraphrase e noisy mede a dependencia de casamento
@@ -322,7 +322,7 @@ def build_variant_table(rows: list[dict]) -> str:
         r"\begin{table}[htb]",
         r"\centering",
         r"\caption{P@1 por variante de consulta. A queda de \emph{literal} para \emph{paraphrase} e \emph{noisy} mede a dependência de casamento lexical de cada braço.}",
-        r"\label{tab:retrieval-variants}",
+        f"\\label{{tab:retrieval-variants{label_suffix}}}",
         r"\begin{tabular}{lcccc}",
         r"\hline",
         r"Braço & Literal & Paráfrase & Ruidosa & Queda literal$\rightarrow$paráfrase \\",
@@ -344,7 +344,7 @@ def build_variant_table(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def build_significance_table(rows: list[dict]) -> str:
+def build_significance_table(rows: list[dict], label_suffix: str = "") -> str:
     positives = [r for r in rows if not is_negative(r)]
     arms = sorted({r["arm"] for r in positives})
 
@@ -360,7 +360,7 @@ def build_significance_table(rows: list[dict]) -> str:
         r"\begin{table}[htb]",
         r"\centering",
         rf"\caption{{Comparações pareadas (Wilcoxon signed-rank) com correção de Bonferroni para {comparisons} comparações. Tamanho de efeito por Cliff's $\delta$.}}",
-        r"\label{tab:retrieval-significance}",
+        f"\\label{{tab:retrieval-significance{label_suffix}}}",
         r"\begin{tabular}{llcccl}",
         r"\hline",
         r"Comparação & Métrica & $\Delta$ média & $p$ & $p$ corrigido & Cliff's $\delta$ \\",
@@ -387,7 +387,7 @@ def build_significance_table(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def build_negative_table(rows: list[dict]) -> str:
+def build_negative_table(rows: list[dict], label_suffix: str = "") -> str:
     """Comportamento em casos negativos.
 
     Um sistema que sempre responde alguma coisa pontua igual a um que sabe dizer
@@ -405,7 +405,7 @@ def build_negative_table(rows: list[dict]) -> str:
         r"\begin{table}[htb]",
         r"\centering",
         r"\caption{Comportamento em casos negativos (consultas cuja resposta correta é não recuperar nada). Taxa de falso positivo: 0{,}0 significa reconhecer a ausência de resposta; 1{,}0 significa responder mesmo assim.}",
-        r"\label{tab:retrieval-negatives}",
+        f"\\label{{tab:retrieval-negatives{label_suffix}}}",
         r"\begin{tabular}{lcc}",
         r"\hline",
         r"Braço & Taxa de falso positivo & Itens devolvidos (média) \\",
@@ -446,10 +446,10 @@ def main() -> int:
     sufixo = "" if args.granularity == DEFAULT_GRANULARITY else f"-{args.granularity}"
 
     tables = {
-        f"retrieval-summary{sufixo}.tex": build_summary_table(rows),
-        f"retrieval-variants{sufixo}.tex": build_variant_table(rows),
-        f"retrieval-significance{sufixo}.tex": build_significance_table(rows),
-        f"retrieval-negatives{sufixo}.tex": build_negative_table(rows),
+        f"retrieval-summary{sufixo}.tex": build_summary_table(rows, sufixo),
+        f"retrieval-variants{sufixo}.tex": build_variant_table(rows, sufixo),
+        f"retrieval-significance{sufixo}.tex": build_significance_table(rows, sufixo),
+        f"retrieval-negatives{sufixo}.tex": build_negative_table(rows, sufixo),
     }
 
     if args.stdout or not args.outdir:
