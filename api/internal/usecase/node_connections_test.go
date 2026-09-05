@@ -175,8 +175,56 @@ func TestConexaoExplicaSeMesma(t *testing.T) {
 	}
 }
 
-// TestOrigemSemTextoNaoProduzConexao cobre o no vazio: sem texto nao ha
-// evidencia, e inventar conexao a partir de nada e o pior caso possivel.
+// TestPalavrasVaziasNaoSustentamConexao trava o defeito visto no navegador: a
+// tela exibiu uma conexao justificada por "1, de, do, servico" -- artigos e
+// preposicoes que ligam qualquer par de documentos em portugues.
+//
+// Isto e o falso positivo de 1,000 se manifestando na camada visual. No ranking
+// ele se esconde na quarta posicao; numa aresta desenhada vira artefato que o
+// avaliador aponta no projetor. Termo vazio nao e evidencia de relacao.
+func TestPalavrasVaziasNaoSustentamConexao(t *testing.T) {
+	// A origem compartilha com o candidato APENAS conectivos e a numeracao de
+	// secao. Nenhum substantivo em comum -- se houvesse, a conexao seria
+	// legitima e o teste nao provaria nada sobre o filtro.
+	origem := noDeTeste(1, "doc1#s1", "1 DA GARANTIA", "o prazo e de trinta dias para a entrega")
+	nos := []models.DocumentOutlineNode{
+		origem,
+		noDeTeste(2, "doc2#s1", "1 DO OBJETO", "a licitacao e para o fornecimento de equipamentos"),
+	}
+
+	conexoes := BuildNodeConnections(origem, nos, 2)
+
+	// Sem termos significativos em comum, nao pode haver conexao nenhuma.
+	if len(conexoes) != 0 {
+		t.Fatalf("conexao criada apenas por conectivos: %+v", conexoes[0].MatchedTerms)
+	}
+}
+
+// TestTermoSubstantivoAindaSustentaConexao garante que o filtro nao esvaziou o
+// sinal legitimo -- remover palavras vazias nao pode matar a feature.
+func TestTermoSubstantivoAindaSustentaConexao(t *testing.T) {
+	origem := noDeTeste(1, "doc1#s1", "2 PENALIDADES", "multa de 5 por cento sobre a fatura mensal")
+	nos := []models.DocumentOutlineNode{
+		origem,
+		noDeTeste(2, "doc2#s1", "2 DAS PENALIDADES", "a multa sera de 5 por cento sobre a fatura mensal"),
+	}
+
+	conexoes := BuildNodeConnections(origem, nos, 2)
+	if len(conexoes) == 0 {
+		t.Fatal("o filtro de palavras vazias matou uma conexao legitima")
+	}
+
+	temSubstantivo := false
+	for _, termo := range conexoes[0].MatchedTerms {
+		if termo == "multa" || termo == "fatura" || termo == "penalidades" || termo == "mensal" {
+			temSubstantivo = true
+		}
+	}
+	if !temSubstantivo {
+		t.Fatalf("conexao legitima perdeu os termos que a explicam: %v", conexoes[0].MatchedTerms)
+	}
+}
+
 func TestOrigemSemTextoNaoProduzConexao(t *testing.T) {
 	origem := noDeTeste(1, "doc1#s1", "", "")
 	nos := []models.DocumentOutlineNode{

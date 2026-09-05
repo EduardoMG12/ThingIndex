@@ -187,11 +187,17 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
     const documentoAtual = documentos.find((documento) => documento.id === documentoFocado);
 
     return (
-        <div className="flex h-full w-full gap-4">
+        // Empilha em telas estreitas e divide em duas colunas a partir de lg.
+        //
+        // A versao anterior usava `flex` com sidebar de largura fixa (320px):
+        // num viewport de 780px o canvas era espremido para 72px e os cartoes
+        // ficavam ilegiveis atras da sidebar. Medido no navegador, nao suposto.
+        // `min-w-0` e obrigatorio aqui -- sem ele o item flex assume a largura
+        // do conteudo e volta a estourar o container.
+        <div className="flex h-full w-full flex-col gap-4 lg:flex-row">
             <div
-                className="relative flex-1 overflow-auto rounded-lg border border-border bg-muted/20"
+                className="relative min-h-[320px] w-full min-w-0 flex-1 overflow-auto rounded-lg border border-border bg-muted/20"
                 data-testid="workspace-canvas"
-                style={{ minHeight: 420 }}
             >
                 {documentos.map((documento, indice) => {
                     const posicao = posicaoDe(documento.id, indice);
@@ -240,7 +246,7 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
             </div>
 
             <aside
-                className="w-80 shrink-0 overflow-y-auto rounded-lg border border-border bg-card p-4"
+                className="w-full shrink-0 overflow-y-auto rounded-lg border border-border bg-card p-4 lg:w-80"
                 aria-label="Detalhes do documento"
             >
                 {documentoFocado === null ? (

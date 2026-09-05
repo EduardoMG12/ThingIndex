@@ -50,6 +50,22 @@ func BuildNodeConnections(
 		return nil
 	}
 
+	// Palavras vazias saem ANTES da pontuacao, nao so da justificativa.
+	//
+	// Filtrar apenas na exibicao produziria o pior dos mundos: a conexao
+	// continuaria existindo com score inflado por conectivos, mas apareceria
+	// na tela sem nenhum termo que a explicasse -- uma aresta muda, que e
+	// exatamente o tipo de resposta nao auditavel que este trabalho critica.
+	significantTerms := make([]string, 0, len(queryTerms))
+	for _, term := range queryTerms {
+		if !ehPalavraVazia(term) {
+			significantTerms = append(significantTerms, term)
+		}
+	}
+	if len(significantTerms) == 0 {
+		return nil
+	}
+
 	// Score zero nunca vira conexao, mesmo com minScore <= 0: aceitar zero
 	// devolveria todo par do acervo como relacionado.
 	threshold := minScore
@@ -67,7 +83,7 @@ func BuildNodeConnections(
 		}
 
 		text := outlineNodeSearchText(candidate)
-		score := retrievalScore(text, queryTerms)
+		score := retrievalScore(text, significantTerms)
 		if score < threshold {
 			continue
 		}
@@ -79,7 +95,7 @@ func BuildNodeConnections(
 			Summary:      candidate.Summary,
 			StartPage:    candidate.StartPage,
 			Score:        score,
-			MatchedTerms: matchedTerms(text, queryTerms),
+			MatchedTerms: matchedTerms(text, significantTerms),
 		})
 	}
 
@@ -97,8 +113,44 @@ func BuildNodeConnections(
 	return connections
 }
 
+// palavrasVaziasPT sao termos que ligam qualquer par de documentos em portugues
+// sem indicar relacao de conteudo.
+//
+// Existe por causa de um defeito observado no navegador: a tela exibiu uma
+// conexao justificada por "1, de, do, servico". Artigos, preposicoes e
+// numeracao de secao nao sao evidencia -- sao ruido que a contagem simples de
+// termos promove a sinal.
+//
+// E a manifestacao visual do falso positivo de 1,000 medido nos seis bracos: no
+// ranking o erro se esconde na quarta posicao, numa aresta desenhada ele fica
+// exposto. A lista e curta e conservadora de proposito; ampliar demais correria
+// o risco oposto, o de descartar termo com carga semantica no dominio
+// (por exemplo "prazo", "valor", "parte").
+var palavrasVaziasPT = map[string]struct{}{
+	"a": {}, "ao": {}, "aos": {}, "as": {}, "com": {}, "como": {}, "da": {},
+	"das": {}, "de": {}, "do": {}, "dos": {}, "e": {}, "em": {}, "entre": {},
+	"na": {}, "nas": {}, "no": {}, "nos": {}, "o": {}, "os": {}, "ou": {},
+	"para": {}, "pela": {}, "pelas": {}, "pelo": {}, "pelos": {}, "por": {},
+	"que": {}, "se": {}, "sem": {}, "ser": {}, "sera": {}, "sobre": {},
+	"um": {}, "uma": {}, "sao": {}, "foi": {}, "seu": {}, "sua": {},
+}
+
+// ehPalavraVazia diz se o termo e conectivo ou numeracao de secao.
+//
+// Numeros isolados ("1", "2") entram porque sao numeracao de titulo --
+// "1 DO OBJETO" e "1 DA DISPONIBILIDADE" casariam pelo "1" sem qualquer
+// relacao de conteudo. Numeros com mais de um digito ficam de fora: "99,5",
+// "30" e "2025" costumam ser valores contratuais com significado real.
+func ehPalavraVazia(termo string) bool {
+	if len(termo) == 1 {
+		return true
+	}
+	_, vazia := palavrasVaziasPT[termo]
+	return vazia
+}
+
 // matchedTerms devolve, em ordem estavel, os termos da origem presentes no
-// candidato. E a justificativa auditavel da aresta.
+// candidato -- descartando palavras vazias, que nao justificam nada.
 func matchedTerms(text string, queryTerms []string) []string {
 	normalized := strings.ToLower(strings.TrimSpace(text))
 	if normalized == "" {
@@ -107,6 +159,9 @@ func matchedTerms(text string, queryTerms []string) []string {
 
 	terms := make([]string, 0, len(queryTerms))
 	for _, term := range queryTerms {
+		if ehPalavraVazia(term) {
+			continue
+		}
 		if strings.Contains(normalized, term) {
 			terms = append(terms, term)
 		}
