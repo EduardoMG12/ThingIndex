@@ -525,7 +525,11 @@ A auditabilidade foi verificada rastreando a origem de cada item indexado. Para 
 
 \subsubsection{Custo Operacional}
 
-O custo operacional não foi medido neste ciclo, e é declarado aqui como lacuna em vez de omitido. A instrumentação necessária existe --- o pipeline registra tempo por etapa e o campo \texttt{usage} das respostas de provedores é recebido, ainda que descartado ---, mas a agregação em custo por documento não foi implementada a tempo. As estimativas de custo apresentadas em trabalhos anteriores do projeto são rotuladas como estimativas, e não como medição.
+O custo operacional é a dimensão menos desenvolvida deste ciclo, e é declarada aqui como lacuna parcial em vez de omitida. A instrumentação foi implementada: o pipeline registra tempo por etapa, e o consumo de tokens reportado pelos provedores (campo \texttt{usage} das respostas) passou a ser capturado e exposto ao chamador, fechando o circuito com a tabela de preços que o sistema já sincronizava. O que não foi feito a tempo é a agregação desses valores em custo por documento sobre um corpus representativo, com variação por provedor.
+
+A distinção importa para a leitura dos resultados: o que existe hoje é a capacidade de medir, não a medição. Duas decisões de projeto preservam a honestidade dessa métrica quando ela for produzida. Primeiro, provedores que não reportam consumo --- como instâncias locais de Ollama --- são registrados como \emph{não informado}, categoria distinta de \emph{zero}: agregar os dois no mesmo balde subestimaria o custo de qualquer configuração híbrida. Segundo, o consumo é lido do que o provedor devolve, e não estimado por contagem local de caracteres; estimativa de tokens a partir do texto enviado ignora tokens de sistema e de formatação, e o erro cresce justamente nos prompts longos que dominam o custo real.
+
+As estimativas de custo apresentadas em trabalhos anteriores do projeto permanecem rotuladas como estimativas, e não como medição.
 
 \subsection{Cronograma}
 
