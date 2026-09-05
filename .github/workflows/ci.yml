@@ -201,19 +201,6 @@ jobs:
           --health-timeout 10s
           --health-retries 12
 
-      minio:
-        image: bitnami/minio:latest
-        env:
-          MINIO_ROOT_USER: thingindexminio
-          MINIO_ROOT_PASSWORD: thingindexminio
-        ports:
-          - 9000:9000
-        options: >-
-          --health-cmd "mc ready local || curl -f http://localhost:9000/minio/health/live"
-          --health-interval 10s
-          --health-timeout 10s
-          --health-retries 12
-
     steps:
       - uses: actions/checkout@v4
 
@@ -221,6 +208,45 @@ jobs:
         with:
           go-version-file: api/go.mod
           cache-dependency-path: api/go.sum
+
+      # MinIO sobe como passo, nao como service.
+      #
+      # A imagem oficial minio/minio exige `server /data` como comando, e
+      # `services:` do GitHub Actions nao aceita `command`. A alternativa
+      # bitnami/minio (que nao precisa de comando) teve a tag `latest`
+      # descontinuada -- o CI falhou com "manifest unknown" antes mesmo do
+      # checkout.
+      #
+      # Rodar via docker run resolve os dois problemas e usa a MESMA imagem do
+      # docker-compose do projeto, o que evita a divergencia de testar contra um
+      # MinIO diferente do que roda em desenvolvimento.
+      - name: subir minio
+        run: |
+          docker run -d --name minio-ci \
+            -p 9000:9000 \
+            -e MINIO_ROOT_USER=thingindexminio \
+            -e MINIO_ROOT_PASSWORD=thingindexminio \
+            minio/minio server /data
+
+          # Espera ativa em vez de sleep fixo: o endpoint de health e a unica
+          # evidencia de que o servico aceita conexao. Sem o `pronto`, um
+          # timeout silencioso deixaria os testes falharem por "connection
+          # refused" e a causa real ficaria escondida.
+          pronto=0
+          for tentativa in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:9000/minio/health/live >/dev/null; then
+              echo "minio pronto na tentativa $tentativa"
+              pronto=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$pronto" -ne 1 ]; then
+            echo "minio nao respondeu ao health check em 60s"
+            docker logs minio-ci
+            exit 1
+          fi
 
       - name: testes de integracao do repositorio
         working-directory: api
