@@ -78,6 +78,13 @@ jobs:
       - name: citacoes com entrada no .bib
         run: bash scripts/check-article-citations.sh
 
+      # O LaTeX nao trata como erro: \ref sem \label sai como '??' no PDF,
+      # label duplicado faz toda referencia apontar para a ultima tabela, e
+      # tabela inserida sem ser citada e defeito de escrita academica. Todos
+      # sobrevivem ate a defesa se ninguem verificar.
+      - name: referencias de tabela do artigo sao consistentes
+        run: bash scripts/check-article-tables.sh
+
       # O .dbml e lido em runtime, entao o test cache do Go nao o enxerga como
       # entrada -- por isso o -count=1. Sem ele um cache quente esconderia a
       # divergencia.

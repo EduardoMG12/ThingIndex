@@ -402,5 +402,61 @@ class TestTetos(unittest.TestCase):
         self.assertIn("0.667", tabela_dois)
 
 
+class TestLabelsUnicos(unittest.TestCase):
+    """Tabelas das duas granularidades convivem no mesmo documento LaTeX.
+
+    Sem sufixo no \\label, as duas versoes de cada tabela usariam o mesmo
+    identificador e todo \\ref apontaria para a ultima definida -- o LaTeX
+    apenas avisa 'multiply defined' e compila, entao o artigo sairia com
+    referencias cruzadas erradas sem ninguem perceber.
+    """
+
+    def _linhas(self):
+        return [
+            {
+                "query_id": f"q{i:02d}",
+                "arm": "A-relacional",
+                "granularity": "section",
+                "variant": ["literal", "paraphrase", "noisy"][i % 3],
+                "negative": "false" if i < 10 else "true",
+                "p_at_1": "0.500000",
+                "p_at_3": "0.200000",
+                "p_at_5": "0.100000",
+                "r_at_5": "0.500000",
+                "r_at_10": "0.500000",
+                "reciprocal_rank": "0.500000",
+                "ndcg_at_10": "0.500000",
+                "false_positive": "1.000000" if i >= 10 else "0.000000",
+                "result_count": "3",
+                "latency_ms": "0.100000",
+            }
+            for i in range(12)
+        ]
+
+    def test_sufixo_diferencia_os_labels(self):
+        linhas = self._linhas()
+        for build in (
+            build_summary_table,
+            build_variant_table,
+            build_significance_table,
+            build_negative_table,
+        ):
+            sem_sufixo = build(linhas)
+            com_sufixo = build(linhas, "-section")
+
+            self.assertNotIn("-section}", sem_sufixo, f"{build.__name__}: label padrao nao deveria ter sufixo")
+            self.assertIn("-section}", com_sufixo, f"{build.__name__}: sufixo nao chegou ao label")
+
+    def test_labels_das_duas_granularidades_nao_colidem(self):
+        linhas = self._linhas()
+        import re
+
+        for build in (build_summary_table, build_variant_table):
+            label_doc = re.findall(r"\\label\{([^}]+)\}", build(linhas))
+            label_sec = re.findall(r"\\label\{([^}]+)\}", build(linhas, "-section"))
+            self.assertTrue(label_doc and label_sec)
+            self.assertNotEqual(label_doc[0], label_sec[0])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
