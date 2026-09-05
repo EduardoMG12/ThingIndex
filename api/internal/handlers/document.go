@@ -190,6 +190,78 @@ func (h *DocumentHandler) GetCollectionContext(c *gin.Context) {
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_collection_context_get"), dto.ToCollectionContextResponse(collectionContext))
 }
 
+// defaultNodeConnectionMinScore e o limiar padrao das conexoes derivadas.
+//
+// O valor 2 exige que ao menos dois termos da origem apareçam no destino. Um
+// unico termo em comum e ruido: "contrato" liga qualquer par de documentos
+// juridicos sem que exista relacao de conteudo. E o mesmo raciocinio da Secao
+// de Limiar do artigo, onde a taxa de falso positivo de 1,000 mostrou que
+// devolver "o menos ruim" e pior do que devolver nada.
+const defaultNodeConnectionMinScore = 2
+
+// GetNodeConnections devolve as conexoes de um no do sumario com nos de outros
+// documentos da mesma colecao.
+//
+// As conexoes sao DERIVADAS a cada chamada e nunca persistidas: nao existe
+// tabela de arestas no esquema, e essa ausencia e deliberada (principio II da
+// constituicao -- grafo jamais como camada primaria de recuperacao).
+//
+// @Summary      List derived connections for an outline node
+// @Description  Returns outline nodes from OTHER documents in the same collection whose text overlaps the given node. Connections are recomputed on every request and never stored; each one carries the terms that justify it.
+// @Tags         documents
+// @Produce      json
+// @Param        id path int true "Collection ID"
+// @Param        node_id query string true "Outline node identifier"
+// @Param        min_score query int false "Minimum overlap score (default 2)"
+// @Success      200 {object} dto.NodeConnectionsResponse
+// @Failure      400 {object} response.Response
+// @Failure      401 {object} response.Response
+// @Failure      404 {object} response.Response
+// @Failure      500 {object} response.Response
+// @Security     BearerAuth
+// @Router       /documents/collections/{id}/connections [get]
+func (h *DocumentHandler) GetNodeConnections(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	collectionID, ok := parseUintParam(c, "id", i18n.T(lang, "error.invalid_collection_id"))
+	if !ok {
+		return
+	}
+
+	nodeID := strings.TrimSpace(c.Query("node_id"))
+	if nodeID == "" {
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_outline_node_required"), nil)
+		return
+	}
+
+	minScore := defaultNodeConnectionMinScore
+	if raw := strings.TrimSpace(c.Query("min_score")); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil {
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_invalid_min_score"), nil)
+			return
+		}
+		minScore = parsed
+	}
+
+	connections, err := h.useCase.GetNodeConnections(c.Request.Context(), userID, collectionID, nodeID, minScore)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrCollectionNotFound):
+			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_collection_not_found"), nil)
+		case errors.Is(err, domain.ErrOutlineNodeNotFound):
+			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_outline_node_not_found"), nil)
+		default:
+			h.respondInternalError(c, lang, err)
+		}
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_node_connections_get"),
+		dto.ToNodeConnectionsResponse(nodeID, minScore, connections))
+}
+
 func (h *DocumentHandler) RetryIndexing(c *gin.Context) {
 	lang := c.GetString("language")
 	userID := c.GetUint("user_id")

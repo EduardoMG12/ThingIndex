@@ -38,6 +38,10 @@ var (
 	ErrCollectionFind               = errors.New("failed to find collection")
 	ErrCollectionDuplicate          = errors.New("collection already exists")
 	ErrCollectionNotFound           = errors.New("collection not found")
+	// ErrOutlineNodeNotFound e devolvido quando o no do sumario pedido nao
+	// existe na colecao do usuario. Distinto de ErrCollectionNotFound: a
+	// colecao existe e e dele, mas o no nao.
+	ErrOutlineNodeNotFound          = errors.New("outline node not found")
 	ErrCollectionCategoryConflict   = errors.New("collection category conflicts with existing category")
 	ErrDocumentNotFound             = errors.New("document not found")
 	ErrDocumentSourceMissing        = errors.New("document source file is missing")

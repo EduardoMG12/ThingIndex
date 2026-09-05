@@ -1042,6 +1042,46 @@ func (u *documentCatalogUseCase) GetCollectionContext(ctx context.Context, userI
 	return collectionContext, nil
 }
 
+// GetNodeConnections devolve as conexoes de um no do sumario com nos de outros
+// documentos da MESMA colecao.
+//
+// A posse e validada por GetCollectionContext, que ja filtra por userID no
+// repositorio -- um usuario nao alcanca colecao alheia nem por engano, porque
+// nao existe caminho que ignore esse filtro.
+//
+// Nada e persistido: as conexoes sao derivadas do texto do proprio no a cada
+// chamada. Ver domain.NodeConnection e BuildNodeConnections para a razao
+// (principio II da constituicao: grafo nunca como camada primaria).
+func (u *documentCatalogUseCase) GetNodeConnections(
+	ctx context.Context,
+	userID, collectionID uint,
+	nodeID string,
+	minScore int,
+) ([]domain.NodeConnection, error) {
+	trimmedNodeID := strings.TrimSpace(nodeID)
+	if trimmedNodeID == "" {
+		return nil, domain.ErrOutlineNodeNotFound
+	}
+
+	collectionContext, err := u.GetCollectionContext(ctx, userID, collectionID, "")
+	if err != nil {
+		return nil, err
+	}
+
+	var origin *models.DocumentOutlineNode
+	for i := range collectionContext.OutlineNodes {
+		if collectionContext.OutlineNodes[i].NodeID == trimmedNodeID {
+			origin = &collectionContext.OutlineNodes[i]
+			break
+		}
+	}
+	if origin == nil {
+		return nil, domain.ErrOutlineNodeNotFound
+	}
+
+	return BuildNodeConnections(*origin, collectionContext.OutlineNodes, minScore), nil
+}
+
 func (u *documentCatalogUseCase) StoreParagraphNodes(ctx context.Context, userID, documentID uint, nodes []models.ParagraphNode) ([]models.ParagraphNode, error) {
 	if _, err := u.GetDocument(ctx, userID, documentID); err != nil {
 		return nil, err
