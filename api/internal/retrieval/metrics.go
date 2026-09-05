@@ -197,6 +197,81 @@ type QueryMetrics struct {
 	NDCGAt10       float64 `json:"ndcg_at_10"`
 	LatencyMillis  float64 `json:"latency_ms"`
 	ResultCount    int     `json:"result_count"`
+
+	// Tetos: o valor MAXIMO ALCANCAVEL de cada metrica dado o gabarito desta
+	// consulta. Viajam junto do valor medido porque uma tabela que publica
+	// "P@3 = 0,312" sem dizer que o teto e 0,375 induz o leitor a concluir que
+	// o sistema acerta 31%, quando o real e 83% do maximo possivel.
+	PrecisionAt1Ceiling float64 `json:"p_at_1_ceiling"`
+	PrecisionAt3Ceiling float64 `json:"p_at_3_ceiling"`
+	PrecisionAt5Ceiling float64 `json:"p_at_5_ceiling"`
+	RecallAt5Ceiling    float64 `json:"r_at_5_ceiling"`
+	RecallAt10Ceiling   float64 `json:"r_at_10_ceiling"`
+	// RelevantCount e o numero de itens com grau > 0. E ele que explica o teto
+	// e permite auditar a tabela sem reabrir o corpus.
+	RelevantCount int `json:"relevant_count"`
+}
+
+// PrecisionCeiling e o valor MAXIMO ALCANCAVEL de P@k dado o gabarito.
+//
+// P@k divide por k, nao pelo numero de resultados devolvidos. Entao uma
+// consulta com um unico item relevante tem teto 1/3 em P@3: nem um sistema
+// perfeito, que coloca o alvo em primeiro lugar, consegue acertar mais de 1 dos
+// 3 primeiros.
+//
+// Publicar o valor sem o teto ao lado leva o leitor a conclusao errada: uma
+// tabela que reporta "P@3 = 0,312" parece dizer que o sistema acerta 31%,
+// quando o real e "83% do maximo possivel". E o mesmo defeito de construto que
+// este trabalho denuncia no benchmark antigo -- metrica que nao discrimina,
+// apresentada como se discriminasse.
+func PrecisionCeiling(relevant map[string]int, k int) float64 {
+	if k <= 0 {
+		return 0
+	}
+
+	disponiveis := countRelevant(relevant)
+	if disponiveis == 0 {
+		return 0
+	}
+	if disponiveis >= k {
+		return 1
+	}
+	return float64(disponiveis) / float64(k)
+}
+
+// RecallCeiling e o valor MAXIMO ALCANCAVEL de R@k.
+//
+// Vale 1,000 sempre que o corte alcanca todos os relevantes -- e e justamente
+// por isso que R@5 saturava em 1,000 quando o universo tinha 5 documentos e
+// cada consulta um unico alvo: a metrica nao tinha como distinguir os bracos.
+func RecallCeiling(relevant map[string]int, k int) float64 {
+	if k <= 0 {
+		return 0
+	}
+
+	disponiveis := countRelevant(relevant)
+	if disponiveis == 0 {
+		return 0
+	}
+	if k >= disponiveis {
+		return 1
+	}
+	return float64(k) / float64(disponiveis)
+}
+
+// countRelevant conta os itens com grau > 0.
+//
+// Grau 0 significa "julgado e considerado irrelevante", que e diferente de
+// ausente do gabarito. Conta-lo inflaria o teto e faria o sistema parecer pior
+// do que e.
+func countRelevant(relevant map[string]int) int {
+	total := 0
+	for _, grade := range relevant {
+		if grade > 0 {
+			total++
+		}
+	}
+	return total
 }
 
 // Evaluate calcula o painel completo de uma consulta.
@@ -212,6 +287,17 @@ func Evaluate(queryID string, arm string, results []Result, relevant map[string]
 		ReciprocalRank: ReciprocalRank(results, relevant),
 		NDCGAt10:       NDCGAtK(results, relevant, 10),
 		ResultCount:    len(results),
+
+		// Os tetos viajam junto das metricas para o CSV se explicar sozinho.
+		// Deixa-los para a analise recalcular obrigaria a reabrir o corpus, e
+		// um arquivo de resultados que depende de outro arquivo para ser
+		// interpretado e um arquivo que alguem vai interpretar errado.
+		PrecisionAt1Ceiling: PrecisionCeiling(relevant, 1),
+		PrecisionAt3Ceiling: PrecisionCeiling(relevant, 3),
+		PrecisionAt5Ceiling: PrecisionCeiling(relevant, 5),
+		RecallAt5Ceiling:    RecallCeiling(relevant, 5),
+		RecallAt10Ceiling:   RecallCeiling(relevant, 10),
+		RelevantCount:       countRelevant(relevant),
 	}
 }
 

@@ -229,6 +229,47 @@ def latex_escape(text: str) -> str:
     return text.replace("_", r"\_").replace("&", r"\&").replace("%", r"\%")
 
 
+def ceiling_key(metric_key: str) -> str | None:
+    """Nome da coluna de teto correspondente a uma metrica, se houver.
+
+    nDCG e MRR nao entram: os dois ja sao normalizados pelo ideal do proprio
+    gabarito, entao o teto e 1,000 por construcao e publica-lo nao informa nada.
+    """
+    if metric_key in ("ndcg_at_10", "reciprocal_rank"):
+        return None
+    candidato = f"{metric_key}_ceiling"
+    return candidato
+
+
+def build_ceiling_row(positives: list[dict]) -> str | None:
+    """Linha 'Teto alcancavel' da tabela de resumo.
+
+    Existe porque publicar P@3 = 0,312 sem dizer que o maximo possivel e 0,375
+    induz o leitor a concluir que o sistema acerta 31% -- quando o real e 83% do
+    maximo. O teto e propriedade do GABARITO, nao do braco, entao e uma linha
+    unica no rodape em vez de uma coluna por braco.
+
+    Devolve None quando o CSV nao traz as colunas de teto (resultados anteriores
+    a issue #16), para nao quebrar a geracao das tabelas historicas.
+    """
+    if not positives:
+        return None
+
+    cells = []
+    for key, _ in METRICS:
+        chave = ceiling_key(key)
+        if chave is None:
+            cells.append("---")
+            continue
+        if chave not in positives[0]:
+            return None
+        # O teto e por consulta; a media entre consultas e o teto medio da
+        # tabela, que e o numero comparavel com a media das metricas.
+        cells.append(f"{mean([to_float(r[chave]) for r in positives]):.3f}")
+
+    return r"\textit{Teto alcançável} & " + " & ".join(cells) + r" \\"
+
+
 def build_summary_table(rows: list[dict]) -> str:
     positives = [r for r in rows if not is_negative(r)]
     arms = sorted({r["arm"] for r in positives})
@@ -237,7 +278,7 @@ def build_summary_table(rows: list[dict]) -> str:
         r"% GERADO POR scripts/analyze.py -- nao edite a mao.",
         r"\begin{table}[htb]",
         r"\centering",
-        r"\caption{Desempenho de recuperação por braço. Intervalos de confiança de 95\% obtidos por bootstrap sobre as consultas (10.000 reamostragens).}",
+        r"\caption{Desempenho de recuperação por braço. Intervalos de confiança de 95\% obtidos por bootstrap sobre as consultas (10.000 reamostragens). A última linha traz o teto alcançável de cada métrica dado o gabarito: P@k divide por $k$, então uma consulta com um único item relevante limita P@3 a $1/3$ mesmo sob ranking perfeito.}",
         r"\label{tab:retrieval-summary}",
         r"\begin{tabular}{l" + "c" * len(METRICS) + "}",
         r"\hline",
@@ -256,6 +297,10 @@ def build_summary_table(rows: list[dict]) -> str:
                 f"\\shortstack{{{mean(values):.3f} \\\\ \\scriptsize[{lo:.3f}, {hi:.3f}]}}"
             )
         lines.append(latex_escape(arm) + " & " + " & ".join(cells) + r" \\")
+
+    ceiling = build_ceiling_row(positives)
+    if ceiling:
+        lines += [r"\hline", ceiling]
 
     lines += [r"\hline", r"\end{tabular}", r"\end{table}"]
     return "\n".join(lines)

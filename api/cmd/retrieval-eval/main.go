@@ -455,6 +455,10 @@ func writeCSV(file *os.File, rows []row) error {
 		"r_at_5", "r_at_10",
 		"reciprocal_rank", "ndcg_at_10",
 		"false_positive", "result_count", "latency_ms",
+		// Tetos: o maximo alcancavel dado o gabarito. Sem eles a tabela nao se
+		// explica -- "P@3 = 0,312" parece 31% de acerto quando o teto e 0,375.
+		"p_at_1_ceiling", "p_at_3_ceiling", "p_at_5_ceiling",
+		"r_at_5_ceiling", "r_at_10_ceiling", "relevant_count",
 	}
 	if err := writer.Write(header); err != nil {
 		return err
@@ -477,6 +481,12 @@ func writeCSV(file *os.File, rows []row) error {
 			formatFloat(item.falsePos),
 			strconv.Itoa(item.metrics.ResultCount),
 			formatFloat(item.metrics.LatencyMillis),
+			formatFloat(item.metrics.PrecisionAt1Ceiling),
+			formatFloat(item.metrics.PrecisionAt3Ceiling),
+			formatFloat(item.metrics.PrecisionAt5Ceiling),
+			formatFloat(item.metrics.RecallAt5Ceiling),
+			formatFloat(item.metrics.RecallAt10Ceiling),
+			strconv.Itoa(item.metrics.RelevantCount),
 		}
 		if err := writer.Write(record); err != nil {
 			return err
