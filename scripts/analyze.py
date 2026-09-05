@@ -77,6 +77,39 @@ def is_negative(row: dict) -> bool:
     return row["negative"].strip().lower() == "true"
 
 
+# Granularidade padrao quando o CSV nao declara: resultados gerados antes da
+# issue #16 so mediam documento inteiro.
+DEFAULT_GRANULARITY = "document"
+
+
+def filter_granularity(rows: list[dict], granularity: str) -> list[dict]:
+    """Isola uma unidade de recuperacao do CSV.
+
+    A partir da issue #16 o harness mede DUAS granularidades na mesma execucao
+    (documento e secao). Agregar as duas juntas produz a media entre grandezas
+    diferentes: um numero plausivel que nao corresponde a medicao nenhuma, e
+    que nao levanta erro algum -- o modo de falha mais perigoso numa analise.
+
+    Foi exatamente o que aconteceu na primeira execucao apos a mudanca: o
+    braco A-relacional apareceu com P@1 = 0,656, que e a media entre 0,750
+    (documento) e 0,562 (secao).
+
+    Uma granularidade pedida e inexistente ABORTA em vez de devolver lista
+    vazia, porque tabela vazia passa despercebida e tabela ausente nao.
+    """
+    presentes = {row.get("granularity") or DEFAULT_GRANULARITY for row in rows}
+    if granularity not in presentes:
+        raise SystemExit(
+            f"analyze: granularidade {granularity!r} nao existe no CSV; "
+            f"presentes: {', '.join(sorted(presentes))}"
+        )
+    return [
+        row
+        for row in rows
+        if (row.get("granularity") or DEFAULT_GRANULARITY) == granularity
+    ]
+
+
 def mean(values: list[float]) -> float:
     return sum(values) / len(values) if values else 0.0
 
@@ -349,15 +382,29 @@ def main() -> int:
     parser.add_argument("csv", type=Path, help="CSV emitido por cmd/retrieval-eval")
     parser.add_argument("--outdir", type=Path, help="diretorio onde escrever os .tex")
     parser.add_argument("--stdout", action="store_true", help="imprime as tabelas em vez de escrever arquivos")
+    parser.add_argument(
+        "--granularity",
+        default=DEFAULT_GRANULARITY,
+        help=(
+            "unidade de recuperacao a analisar: 'document' ou 'section'. "
+            "O CSV traz as duas na mesma execucao, e agregar juntas produz a "
+            "media entre grandezas diferentes (padrao: %(default)s)"
+        ),
+    )
     args = parser.parse_args()
 
-    rows = load(args.csv)
+    rows = filter_granularity(load(args.csv), args.granularity)
+
+    # O sufixo mantem as tabelas das duas granularidades lado a lado sem uma
+    # sobrescrever a outra. 'document' fica sem sufixo para nao quebrar os
+    # \input{} que o artigo ja tem.
+    sufixo = "" if args.granularity == DEFAULT_GRANULARITY else f"-{args.granularity}"
 
     tables = {
-        "retrieval-summary.tex": build_summary_table(rows),
-        "retrieval-variants.tex": build_variant_table(rows),
-        "retrieval-significance.tex": build_significance_table(rows),
-        "retrieval-negatives.tex": build_negative_table(rows),
+        f"retrieval-summary{sufixo}.tex": build_summary_table(rows),
+        f"retrieval-variants{sufixo}.tex": build_variant_table(rows),
+        f"retrieval-significance{sufixo}.tex": build_significance_table(rows),
+        f"retrieval-negatives{sufixo}.tex": build_negative_table(rows),
     }
 
     if args.stdout or not args.outdir:

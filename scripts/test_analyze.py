@@ -26,6 +26,7 @@ from analyze import (  # noqa: E402
     build_summary_table,
     build_variant_table,
     cliffs_delta,
+    filter_granularity,
     mean,
     wilcoxon_signed_rank,
 )
@@ -244,6 +245,89 @@ class TestExecucaoFimAFim(unittest.TestCase):
                 "retrieval-negatives.tex",
             }
             self.assertEqual({p.name for p in outdir.glob("*.tex")}, esperados)
+
+
+class TestGranularidade(unittest.TestCase):
+    """O CSV traz as duas unidades de recuperacao na mesma execucao.
+
+    Misturar as duas produz uma media entre grandezas diferentes -- um numero
+    plausivel e sem significado, que e o modo de falha mais perigoso de uma
+    analise: nao levanta erro nenhum.
+    """
+
+    def _linhas_das_duas_granularidades(self):
+        linhas = []
+        for granularity, base in (("document", 0.8), ("section", 0.4)):
+            for i in range(12):
+                linhas.append(
+                    {
+                        "query_id": f"q{i:02d}",
+                        "arm": "A-relacional",
+                        "granularity": granularity,
+                        "variant": ["literal", "paraphrase", "noisy"][i % 3],
+                        "negative": "false",
+                        "p_at_1": f"{base:.6f}",
+                        "p_at_3": f"{base / 3:.6f}",
+                        "r_at_5": f"{base:.6f}",
+                        "reciprocal_rank": f"{base:.6f}",
+                        "ndcg_at_10": f"{base:.6f}",
+                        "false_positive": "0.000000",
+                        "result_count": "3",
+                        "latency_ms": "0.100000",
+                    }
+                )
+        return linhas
+
+    def test_filtra_uma_granularidade_por_vez(self):
+        linhas = self._linhas_das_duas_granularidades()
+
+        so_documento = filter_granularity(linhas, "document")
+        self.assertEqual(len(so_documento), 12)
+        self.assertTrue(all(r["granularity"] == "document" for r in so_documento))
+
+        so_secao = filter_granularity(linhas, "section")
+        self.assertEqual(len(so_secao), 12)
+        self.assertTrue(all(r["granularity"] == "section" for r in so_secao))
+
+    def test_media_nao_mistura_as_duas(self):
+        linhas = self._linhas_das_duas_granularidades()
+
+        tabela_doc = build_summary_table(filter_granularity(linhas, "document"))
+        tabela_sec = build_summary_table(filter_granularity(linhas, "section"))
+
+        # 0.800 e 0.400 sao os valores reais de cada granularidade. A media
+        # entre elas seria 0.600 -- um numero que nao corresponde a medicao
+        # nenhuma e que apareceria se o filtro nao existisse.
+        self.assertIn("0.800", tabela_doc)
+        self.assertNotIn("0.600", tabela_doc)
+        self.assertIn("0.400", tabela_sec)
+        self.assertNotIn("0.600", tabela_sec)
+
+    def test_granularidade_inexistente_falha_em_vez_de_devolver_vazio(self):
+        linhas = self._linhas_das_duas_granularidades()
+        with self.assertRaises(SystemExit):
+            filter_granularity(linhas, "paragrafo")
+
+    def test_csv_sem_a_coluna_e_tratado_como_documento(self):
+        # Retrocompatibilidade com resultados gerados antes da issue #16.
+        antigas = [
+            {
+                "query_id": "q00",
+                "arm": "A-relacional",
+                "variant": "literal",
+                "negative": "false",
+                "p_at_1": "1.000000",
+                "p_at_3": "0.333333",
+                "r_at_5": "1.000000",
+                "reciprocal_rank": "1.000000",
+                "ndcg_at_10": "1.000000",
+                "false_positive": "0.000000",
+                "result_count": "3",
+                "latency_ms": "0.100000",
+            }
+        ]
+        resultado = filter_granularity(antigas, "document")
+        self.assertEqual(len(resultado), 1)
 
 
 if __name__ == "__main__":
