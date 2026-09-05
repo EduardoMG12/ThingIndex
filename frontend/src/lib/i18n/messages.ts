@@ -56,6 +56,7 @@ export const messages: LocaleMessages = {
                 list: "Nao foi possivel carregar as collections.",
                 context: "Nao foi possivel carregar o contexto da collection.",
                 contextInvalid: "Resposta invalida ao carregar o contexto da collection.",
+                connections: "Nao foi possivel carregar as conexoes deste trecho.",
             },
             pricing: {
                 sources: "Nao foi possivel carregar as fontes de pricing.",
@@ -284,6 +285,10 @@ export const messages: LocaleMessages = {
                     title: "Documentos | ThingIndex",
                     description: "Explore previews, outlines e estruturas indexadas dos seus documentos processados.",
                 },
+                workspace: {
+                    title: "Área de trabalho | ThingIndex",
+                    description: "Explore os documentos da coleção em um painel navegável e veja as conexões entre seus trechos.",
+                },
                 costVisibility: {
                     title: "Visibilidade de custos | ThingIndex",
                     description: "Acompanhe a estimativa operacional de custos com base em runtime ativo, pricing sincronizado e telemetria real.",
@@ -304,6 +309,7 @@ export const messages: LocaleMessages = {
                 dashboard: "Dashboard",
                 chat: "Chat",
                 documents: "Documentos",
+                workspace: "Área de trabalho",
                 futureFeature: "Feature futura",
                 documentation: "Documentação",
                 settings: "Configurações",
@@ -1273,6 +1279,7 @@ export const messages: LocaleMessages = {
                 list: "Could not load collections.",
                 context: "Could not load the collection context.",
                 contextInvalid: "Invalid response while loading the collection context.",
+                connections: "Could not load the connections for this passage.",
             },
             pricing: {
                 sources: "Could not load pricing sources.",
@@ -1501,6 +1508,10 @@ export const messages: LocaleMessages = {
                     title: "Documents | ThingIndex",
                     description: "Explore previews, outlines, and indexed structures for your processed documents.",
                 },
+                workspace: {
+                    title: "Workspace | ThingIndex",
+                    description: "Explore the collection documents on a navigable canvas and see the connections between passages.",
+                },
                 costVisibility: {
                     title: "Cost visibility | ThingIndex",
                     description: "Track the operational cost estimate using active runtime data, synced pricing, and real telemetry.",
@@ -1521,6 +1532,7 @@ export const messages: LocaleMessages = {
                 dashboard: "Dashboard",
                 chat: "Chat",
                 documents: "Documents",
+                workspace: "Workspace",
                 futureFeature: "Future feature",
                 documentation: "Documentation",
                 settings: "Settings",
@@ -2490,6 +2502,7 @@ export const messages: LocaleMessages = {
                 list: "No se pudieron cargar las collections.",
                 context: "No se pudo cargar el contexto de la collection.",
                 contextInvalid: "Respuesta inválida al cargar el contexto de la collection.",
+                connections: "No se pudieron cargar las conexiones de este fragmento.",
             },
             pricing: {
                 sources: "No se pudieron cargar las fuentes de pricing.",
@@ -2718,6 +2731,10 @@ export const messages: LocaleMessages = {
                     title: "Documentos | ThingIndex",
                     description: "Explora previews, outlines y estructuras indexadas de tus documentos procesados.",
                 },
+                workspace: {
+                    title: "Área de trabajo | ThingIndex",
+                    description: "Explora los documentos de la colección en un panel navegable y observa las conexiones entre sus fragmentos.",
+                },
                 costVisibility: {
                     title: "Visibilidad de costos | ThingIndex",
                     description: "Sigue la estimación operativa de costos con base en el runtime activo, pricing sincronizado y telemetría real.",
@@ -2738,6 +2755,7 @@ export const messages: LocaleMessages = {
                 dashboard: "Dashboard",
                 chat: "Chat",
                 documents: "Documentos",
+                workspace: "Área de trabajo",
                 futureFeature: "Feature futura",
                 documentation: "Documentación",
                 settings: "Configuración",

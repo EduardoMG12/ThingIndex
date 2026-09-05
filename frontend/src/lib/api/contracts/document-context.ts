@@ -59,6 +59,13 @@ export type MetadataPair = {
 
 export type OutlineNode = {
     id: number | string;
+    /**
+     * Identificador estavel do no dentro do documento, produzido pela indexacao
+     * deterministica. E a chave usada para pedir conexoes derivadas -- sem ele a
+     * interface consegue exibir a estrutura, mas nao consegue perguntar "com o
+     * que este trecho se relaciona".
+     */
+    nodeId: string;
     documentId: number;
     sequenceOrder: number;
     level: number;
@@ -206,6 +213,8 @@ type MetadataPairApiRecord = {
 
 type OutlineNodeApiRecord = {
     id?: number | string;
+    node_id?: string;
+    nodeId?: string;
     document_id?: number;
     documentId?: number;
     sequence_order?: number;
@@ -323,6 +332,7 @@ function normalizeOutlineNode(value: unknown): OutlineNode | null {
 
     return {
         id: record.id ?? `outline:${documentId}:${sequenceOrder}`,
+        nodeId: record.nodeId ?? record.node_id ?? "",
         documentId,
         sequenceOrder,
         level,

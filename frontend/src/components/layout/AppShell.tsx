@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { Camera, Loader2, LogOut, Settings, LayoutDashboard, Database, BookOpen, MessageSquare, ChevronDown, ChevronRight, Pencil, Check, X, MessageSquarePlus, Trash2, Coins } from "lucide-react";
+import { Camera, Loader2, LogOut, Settings, LayoutDashboard, LayoutGrid, Database, BookOpen, MessageSquare, ChevronDown, ChevronRight, Pencil, Check, X, MessageSquarePlus, Trash2, Coins } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -76,6 +76,7 @@ const AppShell = ({ children, contentClassName }: AppShellProps) => {
         { label: t("shell.nav.dashboard"), icon: LayoutDashboard, href: href("/dashboard") },
         { label: t("shell.nav.chat"), icon: MessageSquare, href: href("/chat") },
         { label: t("shell.nav.documents"), icon: Database, href: href("/documents") },
+        { label: t("shell.nav.workspace"), icon: LayoutGrid, href: href("/workspace") },
         { label: t("shell.nav.futureFeature"), icon: Coins, href: href("/cost-visibility") },
         { label: t("shell.nav.documentation"), icon: BookOpen, href: href("/documentation") },
         { label: t("shell.nav.settings"), icon: Settings, href: href("/settings") },
