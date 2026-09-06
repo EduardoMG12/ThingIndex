@@ -332,3 +332,77 @@ jobs:
       - name: e2e (suite completa)
         working-directory: frontend
         run: pnpm exec playwright test --reporter=list
+
+  # ---------------------------------------------------------------------------
+  # Testes de caos: derruba cada dependencia com o sistema em uso e verifica a
+  # RECUPERACAO COMPLETA, nao apenas a reconexao.
+  #
+  # Existe porque os quatro defeitos mais graves da rodada de 2026-09 so
+  # apareceram quando a infraestrutura foi derrubada ou o sistema foi posto sob
+  # carga -- nenhum teste unitario os teria encontrado. Os testes unitarios
+  # provam que o supervisor reconecta; este job prova que o documento chega a
+  # INDEXED depois da queda.
+  #
+  # Usa docker compose em vez de `services:` porque precisa PARAR e RELIGAR
+  # containers no meio da execucao, o que `services:` nao permite.
+  #
+  # continue-on-error e deliberado: o job e lento (~5 min) e mexe com timing de
+  # rede, entao um vermelho intermitente nao pode travar o PR de quem nao mexeu
+  # em resiliencia. A validacao obrigatoria e antes do merge para main, onde o
+  # push dispara o mesmo job sem essa tolerancia.
+  caos:
+    name: caos (recuperacao sob falha de infraestrutura)
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: preparar variaveis de ambiente
+        run: cp .env.example .env
+
+      - name: subir a stack
+        run: |
+          docker compose -f docker-compose.yml up -d --build db minio rabbitmq
+          # Espera as dependencias ficarem saudaveis antes de subir a aplicacao:
+          # subir tudo de uma vez faria a api falhar na migracao e o job
+          # reportaria erro de infraestrutura como se fosse defeito de codigo.
+          for _ in $(seq 1 40); do
+            saudaveis=$(docker compose -f docker-compose.yml ps --format '{{.Health}}' \
+              | grep -c healthy || true)
+            [ "$saudaveis" -ge 3 ] && break
+            sleep 5
+          done
+          docker compose -f docker-compose.yml up -d --build api indexer
+
+      - name: esperar a api responder
+        run: |
+          for _ in $(seq 1 40); do
+            codigo=$(curl -s -o /dev/null -w '%{http_code}' \
+              --max-time 5 http://localhost:8000/api/v1/health || true)
+            if [ "$codigo" = "200" ]; then
+              echo "api pronta"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "api nao respondeu 200 em 200s"
+          docker compose -f docker-compose.yml logs api --tail 40
+          exit 1
+
+      - name: cenarios de caos
+        env:
+          # Sem o compose de dev: no CI a imagem e compilada, e o hot-reload do
+          # air encerraria o processo a cada recompilacao, confundindo a
+          # verificacao de sobrevivencia do worker.
+          THINGINDEX_CAOS_COMPOSE: "-f docker-compose.yml"
+        run: bash scripts/teste-caos.sh
+
+      - name: logs em caso de falha
+        if: failure()
+        run: |
+          echo "=== api ==="
+          docker compose -f docker-compose.yml logs api --tail 60
+          echo "=== indexer ==="
+          docker compose -f docker-compose.yml logs indexer --tail 60
