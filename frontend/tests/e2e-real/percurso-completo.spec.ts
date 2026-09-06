@@ -1,0 +1,208 @@
+import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+/**
+ * Percurso completo na stack REAL, sem nenhum mock.
+ *
+ * Os 23 testes E2E existentes interceptam as rotas de API: provam que a
+ * interface reage corretamente a uma resposta conhecida. Este prova que o
+ * sistema inteiro funciona junto -- API, fila, indexador, banco e storage.
+ *
+ * Cada etapa falha com mensagem que identifica QUAL etapa quebrou. Um E2E que
+ * falha dizendo "elemento nao encontrado" esconde a causa e custa mais caro que
+ * nao ter teste.
+ *
+ * Pre-requisito: stack de pe (./scripts/stack.sh dev).
+ */
+
+const API = process.env.THINGINDEX_REAL_API ?? "http://localhost:8000/api/v1";
+const SENHA = "SenhaForte#123";
+
+// O PDF vem do testdata do backend: e um documento com estrutura conhecida
+// (DECISAO / 1 RELATORIO / 2 FUNDAMENTACAO / 3 DISPOSITIVO), entao as asserções
+// podem ser especificas em vez de "algo apareceu".
+const PDF_DE_TESTE = resolve(
+    __dirname,
+    "../../../api/internal/usecase/testdata/indexing-benchmark/court-order.pdf",
+);
+
+type Credenciais = { email: string; token: string };
+
+async function registrarUsuario(): Promise<Credenciais> {
+    const email = `e2ereal${Date.now()}@test.local`;
+
+    const registro = await fetch(`${API}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "E2E Real", email, password: SENHA }),
+    });
+    if (!registro.ok) {
+        throw new Error(`etapa 1 (registro): API devolveu ${registro.status}. A stack esta de pe?`);
+    }
+
+    const login = await fetch(`${API}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password: SENHA }),
+    });
+    if (!login.ok) {
+        throw new Error(`etapa 1 (login): API devolveu ${login.status}`);
+    }
+
+    const corpo = (await login.json()) as { data?: { token?: string } };
+    const token = corpo.data?.token;
+    if (!token) {
+        throw new Error("etapa 1 (login): resposta sem token");
+    }
+
+    return { email, token };
+}
+
+async function enviarPDF(token: string, colecao: string): Promise<number> {
+    const arquivo = readFileSync(PDF_DE_TESTE);
+    const form = new FormData();
+    // O titulo PRECISA carregar a extensao: resolveContentType faz sniffing a
+    // partir dela, e sem o .pdf o upload e rejeitado com 400.
+    form.append("file", new Blob([arquivo], { type: "application/pdf" }), "court-order.pdf");
+    form.append("title", "court-order.pdf");
+    form.append("collection", colecao);
+
+    const resposta = await fetch(`${API}/documents/upload`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+    });
+    if (resposta.status !== 201) {
+        throw new Error(`etapa 3 (upload): esperado 201, veio ${resposta.status}`);
+    }
+
+    const corpo = (await resposta.json()) as { data?: { id?: number } };
+    const id = corpo.data?.id;
+    if (!id) {
+        throw new Error("etapa 3 (upload): resposta sem id de documento");
+    }
+    return id;
+}
+
+// Espera por CONDICAO, nunca por tempo fixo: a indexacao real passa por fila e
+// extracao, e o tempo varia com a carga da maquina.
+async function esperarIndexacao(token: string, documentoID: number): Promise<void> {
+    for (let tentativa = 0; tentativa < 60; tentativa += 1) {
+        const resposta = await fetch(`${API}/documents/${documentoID}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (resposta.ok) {
+            const corpo = (await resposta.json()) as { data?: { status?: string } };
+            const status = corpo.data?.status;
+            if (status === "INDEXED") {
+                return;
+            }
+            if (status === "FAILED") {
+                throw new Error(`etapa 4 (indexacao): documento ${documentoID} terminou FAILED`);
+            }
+        }
+        await new Promise((r) => setTimeout(r, 3000));
+    }
+    throw new Error(`etapa 4 (indexacao): documento ${documentoID} nao chegou a INDEXED em 180s`);
+}
+
+test.describe("percurso completo na stack real", () => {
+    test("login, upload de PDF, indexacao, estrutura e conexoes", async ({ page, context }) => {
+        const errosDeConsole: string[] = [];
+        page.on("console", (msg) => {
+            if (msg.type() === "error") {
+                errosDeConsole.push(msg.text());
+            }
+        });
+
+        // Etapa 1-2: usuario real e sessao pelo cookie que o middleware valida.
+        //
+        // A url do cookie e a baseURL fixa, e nao page.url(): antes da primeira
+        // navegacao a pagina esta em branco e o Playwright recusa com
+        // "Blank page can not have cookie".
+        const { token } = await registrarUsuario();
+        const baseURL = process.env.THINGINDEX_REAL_BASE_URL ?? "http://localhost:3988";
+        await context.addCookies([{ name: "token", value: token, url: baseURL }]);
+
+        // Etapa 3-4: upload e indexacao de verdade, pela API.
+        const colecao = `E2EReal${Date.now()}`;
+        const documentoID = await enviarPDF(token, colecao);
+        await esperarIndexacao(token, documentoID);
+
+        // Etapa 5: a tela precisa refletir o documento indexado.
+        //
+        // A asserção NAO procura o titulo solto: a biblioteca agrupa por
+        // categoria e collection, e o titulo so aparece ao expandir o grupo.
+        // Investiguei por CDP antes de acusar a tela -- o comportamento esta
+        // certo, minha primeira expectativa e que estava errada.
+        await page.goto("/pt-BR/documents", { waitUntil: "domcontentloaded" });
+
+        await expect(
+            page.getByText(/1 documento\(s\) indexado\(s\)/i).first(),
+            "etapa 5: a tela nao contabilizou o documento indexado",
+        ).toBeVisible({ timeout: 30_000 });
+
+        // E a collection recem-criada precisa aparecer na arvore.
+        await expect(
+            page.getByText(colecao, { exact: false }).first(),
+            `etapa 5: a collection ${colecao} nao apareceu na biblioteca`,
+        ).toBeVisible({ timeout: 30_000 });
+
+        // Etapa 6: workspace abre com o acervo real.
+        await page.goto("/pt-BR/workspace", { waitUntil: "domcontentloaded" });
+        await expect(
+            page.getByRole("heading", { level: 1 }),
+            "etapa 6: o workspace nao montou",
+        ).toBeVisible({ timeout: 30_000 });
+
+        // Etapa 7: nenhum erro de console no percurso inteiro. Erro aqui e
+        // defeito real -- a suite com mock nao alcanca esse caminho.
+        const relevantes = errosDeConsole.filter(
+            (erro) => !erro.includes("favicon") && !erro.includes("Download the React DevTools"),
+        );
+        expect(relevantes, `etapa 7: erros de console no percurso: ${relevantes.join(" | ")}`)
+            .toEqual([]);
+    });
+
+    test("a estrutura do PDF chega a API com nos e paginas", async () => {
+        // Complementa o teste de interface: confere o CONTEUDO do indice, nao
+        // apenas que a tela montou. Uma tela pode renderizar vazia sem erro.
+        const { token } = await registrarUsuario();
+        const colecao = `E2EEstrutura${Date.now()}`;
+        const documentoID = await enviarPDF(token, colecao);
+        await esperarIndexacao(token, documentoID);
+
+        const resposta = await fetch(`${API}/documents/${documentoID}/index`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        expect(resposta.ok, `indice devolveu ${resposta.status}`).toBe(true);
+
+        const corpo = (await resposta.json()) as {
+            data?: {
+                outline_nodes?: Array<{ node_id?: string; title?: string }>;
+                document_pages?: Array<{ page_number?: number; content?: string }>;
+            };
+        };
+
+        const nos = corpo.data?.outline_nodes ?? [];
+        const paginas = corpo.data?.document_pages ?? [];
+
+        expect(nos.length, "o PDF nao produziu nos de sumario").toBeGreaterThanOrEqual(3);
+        expect(paginas.length, "o PDF nao produziu paginas").toBe(2);
+
+        // node_id e o campo que permite pedir conexoes; ja sumiu uma vez neste
+        // projeto e o defeito so apareceu quando a feature precisou dele.
+        for (const no of nos) {
+            expect(no.node_id, `no "${no.title}" veio sem node_id`).toBeTruthy();
+        }
+
+        // Pagina vazia em PDF com camada de texto significa extrator quebrado.
+        for (const pagina of paginas) {
+            expect(
+                (pagina.content ?? "").trim().length,
+                `pagina ${pagina.page_number} veio vazia`,
+            ).toBeGreaterThan(0);
+        }
+    });
+});
