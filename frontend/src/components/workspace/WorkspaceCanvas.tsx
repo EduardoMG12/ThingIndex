@@ -1,24 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Maximize2, Minus, Plus } from "lucide-react";
 
 import { fetchNodeConnections } from "@/lib/api/collections";
 import type { CollectionContext, OutlineNode } from "@/lib/api/contracts/document-context";
 import type { NodeConnection } from "@/lib/api/contracts/node-connections";
+import type { Rect } from "@/lib/workspace/geometry";
+import { useViewport } from "@/components/workspace/useViewport";
 
 /**
- * Painel navegavel dos documentos de uma colecao.
+ * Canvas navegavel dos documentos de uma colecao: pan, zoom e quadros
+ * arrastaveis num "mundo" em CSS transform, mais a sidebar de estrutura.
  *
  * # Por que nao React Flow
  *
  * A spec 001 previa React Flow. Ao implementar ficou claro que a biblioteca
- * resolveria um problema que este painel nao tem: nao ha arestas persistentes
- * para rotear, nem grafo para fazer layout automatico. O que existe sao cartoes
- * arrastaveis e uma sidebar -- cerca de 150 linhas de CSS transform contra uma
- * dependencia de ~50 kB gzipped que traria seu proprio modelo de estado.
- *
- * YAGNI: se o painel evoluir para arestas desenhadas entre cartoes, a decisao
- * deve ser revisitada. Hoje seria peso sem contrapartida.
+ * resolveria um problema que este painel nao tem: nao ha grafo persistido para
+ * fazer layout automatico. Pan, zoom e arrasto cabem em ~150 linhas de CSS
+ * transform (useViewport + lib/workspace/geometry), testaveis sem DOM. Se
+ * minimapa ou layout automatico entrarem em escopo, revisitar.
  *
  * # O que este componente NAO faz
  *
@@ -34,6 +35,7 @@ type WorkspaceCanvasProps = {
 type Posicao = { x: number; y: number };
 
 const LARGURA_CARTAO = 260;
+const ALTURA_CARTAO = 96;
 const ESPACO_ENTRE_CARTOES = 40;
 const CARTOES_POR_LINHA = 3;
 
@@ -83,18 +85,33 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
     const documentos = useMemo(() => context.documents ?? [], [context.documents]);
     const nosDoSumario = useMemo(() => context.outlineNodes ?? [], [context.outlineNodes]);
 
-    const [posicoes, setPosicoes] = useState<Record<string, Posicao>>({});
+    // Lazy init + `key={collectionId}` na pagina: trocar de colecao remonta o
+    // canvas, entao nao precisa de efeito para recarregar as posicoes.
+    const [posicoes, setPosicoes] = useState<Record<string, Posicao>>(() => lerPosicoesSalvas(collectionId));
     const [documentoFocado, setDocumentoFocado] = useState<number | null>(null);
     const [noSelecionado, setNoSelecionado] = useState<string | null>(null);
     const [conexoes, setConexoes] = useState<NodeConnection[] | null>(null);
     const [carregandoConexoes, setCarregandoConexoes] = useState(false);
     const [erroConexoes, setErroConexoes] = useState<string | null>(null);
 
-    const arrastando = useRef<{ documentId: number; offsetX: number; offsetY: number } | null>(null);
+    const {
+        containerRef,
+        viewport,
+        arrastandoFundo,
+        handlers,
+        aproximar,
+        afastar,
+        enquadrar,
+        clienteParaMundo,
+    } = useViewport();
 
+    // Arrasto de cartao em coordenadas do MUNDO: o offset e medido depois de
+    // desfazer o transform, senao o cartao "foge" do cursor em qualquer zoom.
+    const arrastando = useRef<{ documentId: number; offset: Posicao } | null>(null);
+    const clienteParaMundoRef = useRef(clienteParaMundo);
     useEffect(() => {
-        setPosicoes(lerPosicoesSalvas(collectionId));
-    }, [collectionId]);
+        clienteParaMundoRef.current = clienteParaMundo;
+    }, [clienteParaMundo]);
 
     const posicaoDe = useCallback(
         (documentId: number, indice: number): Posicao =>
@@ -102,13 +119,23 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
         [posicoes]
     );
 
+    const quadros = useMemo<Rect[]>(
+        () =>
+            documentos.map((documento, indice) => {
+                const p = posicaoDe(documento.id, indice);
+                return { x: p.x, y: p.y, largura: LARGURA_CARTAO, altura: ALTURA_CARTAO };
+            }),
+        [documentos, posicaoDe]
+    );
+
     const aoIniciarArrasto = useCallback(
         (event: React.PointerEvent<HTMLButtonElement>, documentId: number, indice: number) => {
+            event.stopPropagation();
             const atual = posicaoDe(documentId, indice);
+            const mundo = clienteParaMundoRef.current(event.clientX, event.clientY);
             arrastando.current = {
                 documentId,
-                offsetX: event.clientX - atual.x,
-                offsetY: event.clientY - atual.y,
+                offset: { x: mundo.x - atual.x, y: mundo.y - atual.y },
             };
         },
         [posicaoDe]
@@ -120,11 +147,12 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
             if (!estado) {
                 return;
             }
+            const mundo = clienteParaMundoRef.current(event.clientX, event.clientY);
             setPosicoes((anterior) => ({
                 ...anterior,
                 [String(estado.documentId)]: {
-                    x: event.clientX - estado.offsetX,
-                    y: event.clientY - estado.offsetY,
+                    x: mundo.x - estado.offset.x,
+                    y: mundo.y - estado.offset.y,
                 },
             }));
         }
@@ -155,6 +183,22 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
             window.removeEventListener("pointerup", aoSoltar);
         };
     }, [collectionId]);
+
+    const limparSelecao = useCallback(() => {
+        setDocumentoFocado(null);
+        setNoSelecionado(null);
+        setConexoes(null);
+    }, []);
+
+    useEffect(() => {
+        function aoTeclar(event: KeyboardEvent) {
+            if (event.key === "Escape") {
+                limparSelecao();
+            }
+        }
+        window.addEventListener("keydown", aoTeclar);
+        return () => window.removeEventListener("keydown", aoTeclar);
+    }, [limparSelecao]);
 
     const nosDoDocumentoFocado = useMemo<OutlineNode[]>(() => {
         if (documentoFocado === null) {
@@ -188,61 +232,104 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
 
     return (
         // Empilha em telas estreitas e divide em duas colunas a partir de lg.
-        //
-        // A versao anterior usava `flex` com sidebar de largura fixa (320px):
-        // num viewport de 780px o canvas era espremido para 72px e os cartoes
-        // ficavam ilegiveis atras da sidebar. Medido no navegador, nao suposto.
-        // `min-w-0` e obrigatorio aqui -- sem ele o item flex assume a largura
-        // do conteudo e volta a estourar o container.
+        // `min-w-0` e obrigatorio: sem ele o item flex assume a largura do
+        // conteudo e o canvas colapsa para dezenas de pixels em 780px (medido).
         <div className="flex h-full w-full flex-col gap-4 lg:flex-row">
             <div
-                className="relative min-h-[320px] w-full min-w-0 flex-1 overflow-auto rounded-lg border border-border bg-muted/20"
+                ref={containerRef}
+                className={`relative min-h-[320px] w-full min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-muted/20 touch-none ${
+                    arrastandoFundo ? "cursor-grabbing" : "cursor-grab"
+                }`}
                 data-testid="workspace-canvas"
+                {...handlers}
             >
-                {documentos.map((documento, indice) => {
-                    const posicao = posicaoDe(documento.id, indice);
-                    const focado = documento.id === documentoFocado;
+                <div
+                    className="absolute left-0 top-0 origin-top-left"
+                    style={{
+                        transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.escala})`,
+                    }}
+                    data-testid="workspace-mundo"
+                >
+                    {documentos.map((documento, indice) => {
+                        const posicao = posicaoDe(documento.id, indice);
+                        const focado = documento.id === documentoFocado;
 
-                    return (
-                        <div
-                            key={documento.id}
-                            className="absolute"
-                            style={{
-                                transform: `translate(${posicao.x}px, ${posicao.y}px)`,
-                                width: LARGURA_CARTAO,
-                            }}
-                        >
-                            <button
-                                type="button"
-                                onPointerDown={(event) =>
-                                    aoIniciarArrasto(event, documento.id, indice)
-                                }
-                                onClick={() => {
-                                    setDocumentoFocado(documento.id);
-                                    setConexoes(null);
-                                    setNoSelecionado(null);
+                        return (
+                            <div
+                                key={documento.id}
+                                className="absolute"
+                                style={{
+                                    transform: `translate(${posicao.x}px, ${posicao.y}px)`,
+                                    width: LARGURA_CARTAO,
                                 }}
-                                className={`w-full cursor-grab rounded-lg border p-4 text-left transition ${
-                                    focado
-                                        ? "border-primary bg-card shadow-lg"
-                                        : "border-border bg-card/80 hover:border-primary/50"
-                                }`}
                             >
-                                <span className="block text-sm font-medium">
-                                    {documento.title}
-                                </span>
-                                <span className="mt-1 block text-xs text-muted-foreground">
-                                    {
-                                        nosDoSumario.filter(
-                                            (no) => no.documentId === documento.id
-                                        ).length
-                                    }{" "}
-                                    trechos indexados
-                                </span>
-                            </button>
-                        </div>
-                    );
-                })}
+                                <button
+                                    type="button"
+                                    onPointerDown={(event) =>
+                                        aoIniciarArrasto(event, documento.id, indice)
+                                    }
+                                    onClick={() => {
+                                        setDocumentoFocado(documento.id);
+                                        setConexoes(null);
+                                        setNoSelecionado(null);
+                                    }}
+                                    className={`w-full cursor-grab rounded-lg border p-4 text-left transition ${
+                                        focado
+                                            ? "border-primary bg-card shadow-lg"
+                                            : "border-border bg-card/80 hover:border-primary/50"
+                                    }`}
+                                >
+                                    <span className="block text-sm font-medium">
+                                        {documento.title}
+                                    </span>
+                                    <span className="mt-1 block text-xs text-muted-foreground">
+                                        {
+                                            nosDoSumario.filter(
+                                                (no) => no.documentId === documento.id
+                                            ).length
+                                        }{" "}
+                                        trechos indexados
+                                    </span>
+                                </button>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                <div
+                    className="absolute bottom-3 right-3 flex items-center gap-1 rounded-md border border-border bg-card/95 p-1 shadow-sm"
+                    role="toolbar"
+                    aria-label="Zoom do canvas"
+                    onPointerDown={(event) => event.stopPropagation()}
+                >
+                    <button
+                        type="button"
+                        onClick={afastar}
+                        aria-label="Afastar"
+                        className="rounded p-1.5 hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                    >
+                        <Minus className="h-4 w-4" aria-hidden />
+                    </button>
+                    <span className="min-w-[3.5rem] text-center text-xs tabular-nums text-muted-foreground" aria-live="polite">
+                        {Math.round(viewport.escala * 100)}%
+                    </span>
+                    <button
+                        type="button"
+                        onClick={aproximar}
+                        aria-label="Aproximar"
+                        className="rounded p-1.5 hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                    >
+                        <Plus className="h-4 w-4" aria-hidden />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => enquadrar(quadros)}
+                        aria-label="Ajustar à tela"
+                        className="rounded p-1.5 hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                    >
+                        <Maximize2 className="h-4 w-4" aria-hidden />
+                    </button>
+                </div>
             </div>
 
             <aside

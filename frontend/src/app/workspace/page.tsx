@@ -133,7 +133,7 @@ export default function WorkspacePage() {
                     </p>
                 ) : context ? (
                     <div className="flex-1">
-                        <WorkspaceCanvas context={context} />
+                        <WorkspaceCanvas key={String(context.collection.id)} context={context} />
                     </div>
                 ) : null}
             </div>
