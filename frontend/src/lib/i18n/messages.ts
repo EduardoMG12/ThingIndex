@@ -63,6 +63,7 @@ export const messages: LocaleMessages = {
                 term: "1 termo",
                 terms: "{count} termos",
                 centerOnTarget: "Centralizar no destino",
+                goToPage: "Ir para p. {page}",
             },
             connections: {
                 label: "Conexões entre trechos",
@@ -1369,6 +1370,7 @@ export const messages: LocaleMessages = {
                 term: "1 term",
                 terms: "{count} terms",
                 centerOnTarget: "Center on target",
+                goToPage: "Go to p. {page}",
             },
             connections: {
                 label: "Connections between passages",
@@ -2675,6 +2677,7 @@ export const messages: LocaleMessages = {
                 term: "1 término",
                 terms: "{count} términos",
                 centerOnTarget: "Centrar en el destino",
+                goToPage: "Ir a la p. {page}",
             },
             connections: {
                 label: "Conexiones entre fragmentos",

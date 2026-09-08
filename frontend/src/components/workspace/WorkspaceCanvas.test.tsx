@@ -26,11 +26,11 @@ vi.mock("next/navigation", () => ({
 import { createTestWrapper } from "@/test/test-utils";
 import { deleteHighlight, putHighlight } from "@/lib/api/collections";
 
-// pdf.js mockado: um documento de uma pagina carta, para o overlay de grifos
+// pdf.js mockado: documentos de tres paginas carta, para o overlay de grifos
 // (e a barra de cor) existir no teste do canvas.
 vi.mock("@/components/workspace/pdf", () => ({
     abrirDocumento: vi.fn(async () => ({
-        numPages: 1,
+        numPages: 3,
         fingerprints: ["fake"],
         getPage: async () => ({
             getViewport: ({ scale }: { scale: number }) => ({ width: 612 * scale, height: 792 * scale }),
@@ -38,7 +38,7 @@ vi.mock("@/components/workspace/pdf", () => ({
         }),
     })),
     fecharDocumento: vi.fn(),
-    medirPaginas: vi.fn(async () => [{ largura: 612, altura: 792 }]),
+    medirPaginas: vi.fn(async () => Array.from({ length: 3 }, () => ({ largura: 612, altura: 792 }))),
 }));
 
 const BOX = { x_min: 72, x_max: 540, y_min: 100, y_max: 120, page_width: 612, page_height: 792 };
@@ -308,6 +308,47 @@ describe("WorkspaceCanvas", () => {
         expect(deleteHighlight).toHaveBeenCalledWith(7, 301);
         } finally {
             globalThis.ResizeObserver = original;
+        }
+    });
+
+    it("em 'uma pagina', conexao para outra pagina mostra 'Ir para p. N' e o botao troca a pagina do quadro destino", async () => {
+        const original = globalThis.ResizeObserver;
+        globalThis.ResizeObserver = class {
+            private cb: ResizeObserverCallback;
+            constructor(cb: ResizeObserverCallback) {
+                this.cb = cb;
+            }
+            observe() {
+                this.cb([{ contentRect: { width: 1400, height: 900 } } as ResizeObserverEntry], this as unknown as ResizeObserver);
+            }
+            unobserve() {}
+            disconnect() {}
+        } as unknown as typeof ResizeObserver;
+        // Destino: documento 4, secao que comeca na pagina 3. Quadro em 'uma pagina' na 1.
+        window.localStorage.setItem("thingindex.workspace.apresentacao.7", JSON.stringify({ "4": { modo: "pagina", paginaAtual: 1 } }));
+        vi.mocked(fetchNodeConnections).mockResolvedValue({
+            nodeId: "termo#a",
+            minScore: 2,
+            connections: [{ documentId: 4, nodeId: "outro#c", title: "3 PRAZOS", summary: "", startPage: 3, score: 4, matchedTerms: ["prazo"] }],
+        });
+        const contexto = {
+            ...contextoComPdf,
+            documents: [...contextoComPdf.documents, { id: 4, title: "Outro", status: "INDEXED", mimeType: "application/pdf", filePath: "docs/outro.pdf" }],
+            outlineNodes: [...contextoComPdf.outlineNodes, { documentId: 4, nodeId: "outro#c", title: "3 PRAZOS", level: 1, slug: "c", startPage: 3 }],
+        } as unknown as CollectionContext;
+        try {
+            render(<WorkspaceCanvas context={contexto} />, opcoes);
+            fireEvent.click(await screen.findByTestId("grifo", {}, { timeout: 3000 }));
+            // A barra flutuante e a sidebar tem 'Ver conexoes'; aqui e a da barra.
+            fireEvent.click(within(await screen.findByTestId("barra-de-grifo")).getByRole("button", { name: /Ver conexões/ }));
+            const botao = await screen.findByTestId("ir-para-pagina");
+            expect(botao).toHaveTextContent("Ir para p. 3");
+            fireEvent.click(botao);
+            await waitFor(() => expect(screen.getByTestId("pdf-frame-4")).toHaveAttribute("data-modo", "pagina"));
+            expect(JSON.parse(window.localStorage.getItem("thingindex.workspace.apresentacao.7") ?? "{}")["4"]).toEqual({ modo: "pagina", paginaAtual: 3 });
+        } finally {
+            globalThis.ResizeObserver = original;
+            window.localStorage.removeItem("thingindex.workspace.apresentacao.7");
         }
     });
 });

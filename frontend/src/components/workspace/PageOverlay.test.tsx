@@ -78,6 +78,38 @@ describe("PageOverlay", () => {
     });
 });
 
+describe("PageOverlay: cores", () => {
+    it("grifo marcado usa a classe da cor e o aria-label ganha o rotulo; secundario segue a cor de origem", () => {
+        render(
+            <PageOverlay
+                numero={1}
+                tamanho={{ largura: 612, altura: 792 }}
+                paragrafos={[
+                    { no: paragrafo(1), secao: SECAO },
+                    { no: paragrafo(2, { metadata: { box: { ...BOX, y_min: 200, y_max: 230 }, section_key: "1-relatorio" } }), secao: SECAO },
+                ]}
+                secoes={[]}
+                ancoraDaSecao={() => null}
+                origem={null}
+                selecionadoId={null}
+                secundarios={new Set([2])}
+                onSelecionar={() => undefined}
+                marcas={new Map([[1, "verde"]])}
+                legenda={{ verde: "requisito" }}
+                corSecundaria="verde"
+                onMarcar={() => undefined}
+            />,
+            opcoes
+        );
+        const [marcado, secundario] = screen.getAllByTestId("grifo");
+        expect(marcado).toHaveAttribute("data-cor", "verde");
+        expect(marcado.className).toContain("bg-green-300/40");
+        expect(marcado).toHaveAttribute("aria-label", expect.stringContaining("grifo requisito"));
+        expect(secundario.className).toContain("bg-green-200/30");
+        expect(secundario).not.toHaveAttribute("data-cor");
+    });
+});
+
 describe("distribuirMarcadores", () => {
     it("empurra para baixo marcadores que colidiriam e mantem a ordem pela ancora", () => {
         const saida = distribuirMarcadores([
