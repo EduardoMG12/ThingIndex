@@ -7,6 +7,8 @@ import { useI18n } from "@/lib/i18n/provider";
 import { retryDocumentIndexing } from "@/lib/api/documents";
 import { boxParaPixels } from "@/lib/workspace/geometry";
 import type { TamanhoDePagina } from "@/components/workspace/pdf";
+import { HighlightToolbar } from "@/components/workspace/HighlightToolbar";
+import { classesDaCor, rotuloDaCor, type HighlightColor, type Legend } from "@/lib/workspace/highlights";
 
 /**
  * Camada desenhada sobre uma pagina do PDF: um grifo por paragrafo com
@@ -38,6 +40,13 @@ export type PageOverlayProps = {
     /** Paragrafos da secao destino de uma conexao ativa, em cor secundaria. */
     secundarios: ReadonlySet<ParagraphNode["id"]>;
     onSelecionar: (paragrafo: ParagraphNode, secao: OutlineNode | null) => void;
+    /** Marcas coloridas do usuario, por id de paragrafo. */
+    marcas?: ReadonlyMap<ParagraphNode["id"], HighlightColor>;
+    legenda?: Legend;
+    /** Cor de origem de uma conexao ativa: os secundarios seguem essa cor. */
+    corSecundaria?: HighlightColor | null;
+    onMarcar?: (paragrafo: ParagraphNode, cor: HighlightColor | null) => void;
+    onVerConexoes?: (paragrafo: ParagraphNode, secao: OutlineNode) => void;
 };
 
 /** Marcadores so ate o nivel 2: um edital tem 300+ nos de sumario, e cada "1.1" virando etiqueta e ruido, nao mapa. */
@@ -98,8 +107,16 @@ export function PageOverlay({
     selecionadoId,
     secundarios,
     onSelecionar,
+    marcas,
+    legenda = {},
+    corSecundaria = null,
+    onMarcar,
+    onVerConexoes,
 }: PageOverlayProps) {
     const { t } = useI18n();
+    const nomeDaCor = (cor: HighlightColor) => t(`workspace.highlight.colors.${cor}`);
+    const selecionado = paragrafos.find(({ no }) => no.id === selecionadoId) ?? null;
+    const boxSelecionado = selecionado ? readBox(selecionado.no) : null;
     return (
         <div className="pointer-events-none absolute inset-0" data-testid={`overlay-pagina-${numero}`}>
             <span
@@ -142,6 +159,18 @@ export function PageOverlay({
                 const px = boxParaPixels(box, tamanho.largura, tamanho.altura);
                 const selecionado = no.id === selecionadoId;
                 const secundario = secundarios.has(no.id);
+                const cor = marcas?.get(no.id) ?? null;
+                const rotuloBase = secao
+                    ? t("workspace.page.paragraphInSection", { number: no.sequenceOrder + 1, page: numero, section: secao.title })
+                    : t("workspace.page.paragraph", { number: no.sequenceOrder + 1, page: numero });
+                const rotulo = cor ? `${rotuloBase}, ${t("workspace.highlight.marked", { label: rotuloDaCor(legenda, cor, nomeDaCor) })}` : rotuloBase;
+                const classeDeCor = cor
+                    ? `${classesDaCor(cor).grifo} border`
+                    : secundario
+                      ? corSecundaria
+                          ? `${classesDaCor(corSecundaria).secundario} border`
+                          : "border-amber-500/70 bg-amber-400/30"
+                      : "border-transparent bg-primary/10 hover:bg-primary/25";
                 return (
                     <button
                         key={String(no.id)}
@@ -151,25 +180,29 @@ export function PageOverlay({
                             onSelecionar(no, secao);
                         }}
                         onPointerDown={(event) => event.stopPropagation()}
-                        className={`pointer-events-auto absolute rounded-sm border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${
-                            selecionado
-                                ? "border-primary bg-primary/35"
-                                : secundario
-                                  ? "border-amber-500/70 bg-amber-400/30"
-                                  : "border-transparent bg-primary/10 hover:bg-primary/25"
+                        className={`pointer-events-auto absolute rounded-sm border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${classeDeCor} ${
+                            selecionado ? "ring-2 ring-primary ring-offset-1" : ""
                         }`}
                         style={{ left: px.left, top: px.top, width: px.width, height: px.height }}
-                        aria-label={
-                            secao
-                                ? t("workspace.page.paragraphInSection", { number: no.sequenceOrder + 1, page: numero, section: secao.title })
-                                : t("workspace.page.paragraph", { number: no.sequenceOrder + 1, page: numero })
-                        }
+                        aria-label={rotulo}
                         aria-pressed={selecionado}
                         data-testid="grifo"
                         data-paragrafo={String(no.id)}
+                        data-cor={cor ?? undefined}
                     />
                 );
             })}
+
+            {selecionado && boxSelecionado && onMarcar ? (
+                <HighlightToolbar
+                    rect={boxParaPixels(boxSelecionado, tamanho.largura, tamanho.altura)}
+                    corAtual={marcas?.get(selecionado.no.id) ?? null}
+                    legenda={legenda}
+                    onMarcar={(cor) => onMarcar(selecionado.no, cor)}
+                    onVerConexoes={() => selecionado.secao && onVerConexoes?.(selecionado.no, selecionado.secao)}
+                    podeVerConexoes={Boolean(selecionado.secao && onVerConexoes)}
+                />
+            ) : null}
         </div>
     );
 }

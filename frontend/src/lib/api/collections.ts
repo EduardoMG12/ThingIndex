@@ -108,7 +108,13 @@ export async function fetchNodeConnections(
 // ---------------------------------------------------------------------------
 // Anotacoes do workspace: marcas coloridas por paragrafo e legenda da colecao.
 // Persistidas por usuario no backend; nada aqui e recuperacao.
+//
+// Sem redirecionar em 401: sao dados secundarios da tela. Quem decide se a
+// sessao acabou e o carregamento do contexto; um 401 aqui vira erro na
+// sidebar, nao uma navegacao inteira para o login.
 // ---------------------------------------------------------------------------
+
+const SEM_REDIRECIONAR = { redirectOnUnauthorized: false } as const;
 
 async function lerJson(response: Response, chaveDeErro: string): Promise<unknown> {
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<unknown> | ApiErrorResponse | null;
@@ -123,7 +129,7 @@ export async function fetchHighlights(collectionId: number, signal?: AbortSignal
         method: "GET",
         cache: "no-store",
         signal,
-    });
+    }, SEM_REDIRECIONAR);
     return normalizeHighlights(await lerJson(response, "collections.highlights"));
 }
 
@@ -132,14 +138,14 @@ export async function putHighlight(collectionId: number, paragraphNodeId: number
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ color }),
-    });
+    }, SEM_REDIRECIONAR);
     return normalizeHighlight(await lerJson(response, "collections.highlightSave"));
 }
 
 export async function deleteHighlight(collectionId: number, paragraphNodeId: number): Promise<void> {
     const response = await fetchWithAuthRedirect(`/api/documents/collections/${collectionId}/highlights/${paragraphNodeId}`, {
         method: "DELETE",
-    });
+    }, SEM_REDIRECIONAR);
     await lerJson(response, "collections.highlightRemove");
 }
 
@@ -148,7 +154,7 @@ export async function fetchLegend(collectionId: number, signal?: AbortSignal): P
         method: "GET",
         cache: "no-store",
         signal,
-    });
+    }, SEM_REDIRECIONAR);
     return normalizeLegend(await lerJson(response, "collections.legend"));
 }
 
@@ -157,6 +163,6 @@ export async function putLegend(collectionId: number, labels: Legend): Promise<L
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ labels }),
-    });
+    }, SEM_REDIRECIONAR);
     return normalizeLegend(await lerJson(response, "collections.legendSave"));
 }

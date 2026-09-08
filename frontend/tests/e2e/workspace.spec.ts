@@ -82,6 +82,16 @@ const CONTEXTO = {
     chunks: [],
 };
 
+/** Marcas e legenda vazias: sem isto as rotas batem na API real com token falso. */
+async function mockarAnotacoesVazias(context: BrowserContext) {
+    await context.route("**/api/documents/collections/*/highlights**", async (route) => {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(success({ highlights: [] })) });
+    });
+    await context.route("**/api/documents/collections/*/legend", async (route) => {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(success({ labels: {}, colors: [] })) });
+    });
+}
+
 async function mockarColecao(context: BrowserContext) {
     await context.route("**/api/collections", async (route) => {
         await route.fulfill({
@@ -98,6 +108,7 @@ async function mockarColecao(context: BrowserContext) {
             body: JSON.stringify(success(CONTEXTO)),
         });
     });
+    await mockarAnotacoesVazias(context);
 }
 
 test.use({ locale: "pt-BR" });
@@ -269,6 +280,7 @@ async function mockarColecaoComPdf(context: BrowserContext, contexto: unknown = 
     await context.route("**/api/collections/7/context**", async (route) => {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(success(contexto)) });
     });
+    await mockarAnotacoesVazias(context);
     await context.route("**/api/documents/*/preview", async (route) => {
         await route.fulfill({ status: 200, contentType: "application/pdf", path: FIXTURE_UMA_PAGINA });
     });
