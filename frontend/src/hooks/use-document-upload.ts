@@ -258,7 +258,7 @@ export function useDocumentUpload() {
                 return;
             }
 
-            const queuedFiles = filesRef.current.filter((file) => !file.backendDocumentId && (file.status === "pending" || file.status === "upload_error"));
+            const queuedFiles = filesRef.current.filter(isQueued);
 
             if (queuedFiles.length === 0) {
                 return;
@@ -322,7 +322,16 @@ export function useDocumentUpload() {
         [isProcessing, mapDocumentStatus, monitorIndexing, updateFileState]
     );
 
-    return { files, isProcessing, addFiles, removeFile, processQueue };
+    // Mesmo predicado do processQueue: e o que o botao "enviar" pode contar.
+    // Contar files.length fazia o botao anunciar "Upload 1 document" com o
+    // documento ja indexado -- e o clique nao fazia nada.
+    const queuedCount = files.filter(isQueued).length;
+
+    return { files, isProcessing, queuedCount, addFiles, removeFile, processQueue };
+}
+
+function isQueued(file: DocumentUploadFile): boolean {
+    return !file.backendDocumentId && (file.status === "pending" || file.status === "upload_error");
 }
 
 function resolvePollingFallbackStatus(status: UploadLifecycleStatus): UploadLifecycleStatus {
