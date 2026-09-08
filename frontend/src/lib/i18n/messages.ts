@@ -67,6 +67,14 @@ export const messages: LocaleMessages = {
             connections: {
                 label: "Conexões entre trechos",
             },
+            highlight: {
+                toolbar: "Cor do trecho",
+                noColor: "Sem cor",
+                marked: "grifo {label}",
+                loadError: "Não foi possível carregar as marcas.",
+                saveError: "Não foi possível salvar a marca.",
+                colors: { amarelo: "Amarelo", verde: "Verde", azul: "Azul", vermelho: "Vermelho", roxo: "Roxo" },
+            },
         },
         common: {
             appName: "ThingIndex",
@@ -1354,6 +1362,14 @@ export const messages: LocaleMessages = {
             connections: {
                 label: "Connections between passages",
             },
+            highlight: {
+                toolbar: "Passage color",
+                noColor: "No color",
+                marked: "{label} highlight",
+                loadError: "Could not load the highlights.",
+                saveError: "Could not save the highlight.",
+                colors: { amarelo: "Yellow", verde: "Green", azul: "Blue", vermelho: "Red", roxo: "Purple" },
+            },
         },
         common: {
             appName: "ThingIndex",
@@ -2640,6 +2656,14 @@ export const messages: LocaleMessages = {
             },
             connections: {
                 label: "Conexiones entre fragmentos",
+            },
+            highlight: {
+                toolbar: "Color del fragmento",
+                noColor: "Sin color",
+                marked: "marca {label}",
+                loadError: "No se pudieron cargar las marcas.",
+                saveError: "No se pudo guardar la marca.",
+                colors: { amarelo: "Amarillo", verde: "Verde", azul: "Azul", vermelho: "Rojo", roxo: "Morado" },
             },
         },
         common: {

@@ -6,6 +6,10 @@ import type { CollectionContext } from "@/lib/api/contracts/document-context";
 
 vi.mock("@/lib/api/collections", () => ({
     fetchNodeConnections: vi.fn(),
+    fetchHighlights: vi.fn(async () => []),
+    fetchLegend: vi.fn(async () => ({})),
+    putHighlight: vi.fn(async () => null),
+    deleteHighlight: vi.fn(async () => undefined),
 }));
 
 const navegacao = {
@@ -20,6 +24,34 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { createTestWrapper } from "@/test/test-utils";
+import { deleteHighlight, putHighlight } from "@/lib/api/collections";
+
+// pdf.js mockado: um documento de uma pagina carta, para o overlay de grifos
+// (e a barra de cor) existir no teste do canvas.
+vi.mock("@/components/workspace/pdf", () => ({
+    abrirDocumento: vi.fn(async () => ({
+        numPages: 1,
+        fingerprints: ["fake"],
+        getPage: async () => ({
+            getViewport: ({ scale }: { scale: number }) => ({ width: 612 * scale, height: 792 * scale }),
+            render: () => ({ promise: Promise.resolve(), cancel: () => undefined }),
+        }),
+    })),
+    fecharDocumento: vi.fn(),
+    medirPaginas: vi.fn(async () => [{ largura: 612, altura: 792 }]),
+}));
+
+const BOX = { x_min: 72, x_max: 540, y_min: 100, y_max: 120, page_width: 612, page_height: 792 };
+const contextoComPdf = {
+    collection: { id: 7, name: "Processo XYZ", metadata: {} },
+    documents: [{ id: 3, title: "Termo", status: "INDEXED", mimeType: "application/pdf", filePath: "docs/termo.pdf" }],
+    outlineNodes: [{ documentId: 3, nodeId: "termo#a", title: "1 A", level: 1, slug: "a", startPage: 1, metadata: { paragraph_start: 0 } }],
+    paragraphNodes: [
+        { id: 301, documentId: 3, sequenceOrder: 0, content: "Multa de 5 por cento.", pageNumber: 1, metadata: { box: BOX, section_key: "a" } },
+    ],
+    tableSections: [],
+    metadataPairs: [],
+} as unknown as CollectionContext;
 
 const opcoes = { wrapper: createTestWrapper("pt-BR") };
 
@@ -236,5 +268,46 @@ describe("WorkspaceCanvas", () => {
         fireEvent.click(screen.getByRole("button", { name: /Contrato SLA/i }));
         expect(navegacao.replace).toHaveBeenCalledWith("/pt-BR/workspace?doc=1", { scroll: false });
         navegacao.searchParams = new URLSearchParams();
+    });
+
+    it("marca com cor de forma otimista e desfaz quando a API falha", async () => {
+        vi.mocked(putHighlight).mockRejectedValueOnce(new Error("Cor invalida"));
+        // O quadro so abre quando entra no viewport, e o viewport vem do
+        // ResizeObserver; o stub do jsdom nunca dispara, entao este avisa um
+        // tamanho de tela de verdade.
+        const original = globalThis.ResizeObserver;
+        globalThis.ResizeObserver = class {
+            private cb: ResizeObserverCallback;
+            constructor(cb: ResizeObserverCallback) {
+                this.cb = cb;
+            }
+            observe() {
+                this.cb([{ contentRect: { width: 1400, height: 900 } } as ResizeObserverEntry], this as unknown as ResizeObserver);
+            }
+            unobserve() {}
+            disconnect() {}
+        } as unknown as typeof ResizeObserver;
+        try {
+        render(<WorkspaceCanvas context={contextoComPdf} />, opcoes);
+        const grifo = await screen.findByTestId("grifo", {}, { timeout: 3000 });
+        fireEvent.click(grifo);
+        const chip = await screen.findByTestId("chip-verde");
+        fireEvent.click(chip);
+        // Otimista: a cor entra antes da resposta.
+        expect(screen.getByTestId("grifo")).toHaveAttribute("data-cor", "verde");
+        expect(putHighlight).toHaveBeenCalledWith(7, 301, "verde");
+        // Rollback: a API falhou, a cor sai e o erro aparece na sidebar.
+        await waitFor(() => expect(screen.getByTestId("grifo")).not.toHaveAttribute("data-cor"));
+        expect(screen.getByTestId("erro-de-marca")).toHaveTextContent("Cor invalida");
+
+        // Sem falha: marca e, ao clicar de novo na mesma cor, remove com DELETE.
+        fireEvent.click(screen.getByTestId("chip-verde"));
+        await waitFor(() => expect(screen.getByTestId("grifo")).toHaveAttribute("data-cor", "verde"));
+        fireEvent.click(screen.getByTestId("chip-verde"));
+        await waitFor(() => expect(screen.getByTestId("grifo")).not.toHaveAttribute("data-cor"));
+        expect(deleteHighlight).toHaveBeenCalledWith(7, 301);
+        } finally {
+            globalThis.ResizeObserver = original;
+        }
     });
 });

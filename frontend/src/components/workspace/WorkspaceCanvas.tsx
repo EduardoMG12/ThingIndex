@@ -6,7 +6,8 @@ import { Maximize2, Minus, Plus } from "lucide-react";
 
 import { useI18n } from "@/lib/i18n/provider";
 
-import { fetchNodeConnections } from "@/lib/api/collections";
+import { deleteHighlight, fetchHighlights, fetchLegend, fetchNodeConnections, putHighlight } from "@/lib/api/collections";
+import type { HighlightColor, Legend } from "@/lib/api/contracts/highlights";
 import { readBox, type CollectionContext, type OutlineNode, type ParagraphNode } from "@/lib/api/contracts/document-context";
 import type { NodeConnection } from "@/lib/api/contracts/node-connections";
 import { rectVisivel, type Rect } from "@/lib/workspace/geometry";
@@ -231,6 +232,76 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
 
     const [paragrafoSelecionado, setParagrafoSelecionado] = useState<{ no: ParagraphNode; secao: OutlineNode | null } | null>(null);
     const [linhaRealcada, setLinhaRealcada] = useState<string | null>(null);
+
+    // Marcas coloridas e legenda: carregadas junto com a colecao, salvas de
+    // forma otimista (a cor aparece na hora; se a API falhar, volta e avisa).
+    const [marcas, setMarcas] = useState<Map<ParagraphNode["id"], HighlightColor>>(() => new Map());
+    const [legenda, setLegenda] = useState<Legend>({});
+    const [erroDeMarca, setErroDeMarca] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!collectionId) {
+            return;
+        }
+        const controller = new AbortController();
+        fetchHighlights(collectionId, controller.signal)
+            .then((lista) => {
+                if (!controller.signal.aborted) {
+                    setMarcas(new Map(lista.map((m) => [m.paragraphNodeId as ParagraphNode["id"], m.color])));
+                }
+            })
+            .catch((falha: unknown) => {
+                if (!controller.signal.aborted) {
+                    setErroDeMarca(falha instanceof Error ? falha.message : t("workspace.highlight.loadError"));
+                }
+            });
+        fetchLegend(collectionId, controller.signal)
+            .then((valor) => {
+                if (!controller.signal.aborted) {
+                    setLegenda(valor);
+                }
+            })
+            .catch(() => undefined);
+        return () => controller.abort();
+    }, [collectionId, t]);
+
+    const marcar = useCallback(
+        (no: ParagraphNode, cor: HighlightColor | null) => {
+            const id = Number(no.id);
+            if (!Number.isFinite(id)) {
+                return;
+            }
+            const anterior = marcas.get(no.id) ?? null;
+            if (anterior === cor) {
+                return;
+            }
+            setErroDeMarca(null);
+            setMarcas((atual) => {
+                const proxima = new Map(atual);
+                if (cor) {
+                    proxima.set(no.id, cor);
+                } else {
+                    proxima.delete(no.id);
+                }
+                return proxima;
+            });
+            const pedido = cor ? putHighlight(collectionId, id, cor) : deleteHighlight(collectionId, id);
+            pedido.catch((falha: unknown) => {
+                // Rollback: a cor volta ao que era e o erro aparece na sidebar.
+                setMarcas((atual) => {
+                    const proxima = new Map(atual);
+                    if (anterior) {
+                        proxima.set(no.id, anterior);
+                    } else {
+                        proxima.delete(no.id);
+                    }
+                    return proxima;
+                });
+                setErroDeMarca(falha instanceof Error ? falha.message : t("workspace.highlight.saveError"));
+            });
+        },
+        [collectionId, marcas, t]
+    );
 
     // Lazy init + `key={collectionId}` na pagina: trocar de colecao remonta o
     // canvas, entao nao precisa de efeito para recarregar as posicoes.
@@ -701,6 +772,11 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                                                     selecionadoId={paragrafoSelecionado?.no.id ?? null}
                                                     secundarios={secundarios}
                                                     onSelecionar={selecionarParagrafo}
+                                                    marcas={marcas}
+                                                    legenda={legenda}
+                                                    corSecundaria={paragrafoSelecionado ? (marcas.get(paragrafoSelecionado.no.id) ?? null) : null}
+                                                    onMarcar={marcar}
+                                                    onVerConexoes={(_, secao) => pedirConexoes(secao.nodeId)}
                                                 />
                                             );
                                         }}
@@ -814,6 +890,12 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                                 </p>
                             ) : null;
                         })()}
+
+                        {erroDeMarca ? (
+                            <p className="text-xs text-destructive" role="alert" data-testid="erro-de-marca">
+                                {erroDeMarca}
+                            </p>
+                        ) : null}
 
                         {paragrafoSelecionado && paragrafoSelecionado.no.documentId === documentoFocado ? (
                             <div className="rounded-md border border-primary/60 bg-primary/5 p-3" data-testid="trecho-selecionado">
