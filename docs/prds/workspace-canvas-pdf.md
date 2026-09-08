@@ -1,6 +1,6 @@
 # Workspace de proveniência como canvas (estilo Figma/Miro) com o PDF renderizado
 
-**Status:** rascunho
+**Status:** entregue (2026-09-08)
 **Data:** 2026-09-08
 **Origem:** pedido do autor ("como se fosse um figma mesmo, um miro, e no meio renderizasse o pdf"), sobre a aba Workspace entregue na spec 001 (P4)
 
