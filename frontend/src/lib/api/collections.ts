@@ -1,4 +1,12 @@
 import {
+    normalizeHighlight,
+    normalizeHighlights,
+    normalizeLegend,
+    type Highlight,
+    type HighlightColor,
+    type Legend,
+} from "@/lib/api/contracts/highlights";
+import {
     hasResponseData,
     type ApiErrorResponse,
     type ApiSuccessResponse,
@@ -95,4 +103,60 @@ export async function fetchNodeConnections(
     }
 
     return normalizeNodeConnections(hasResponseData(payload) ? payload.data : null);
+}
+
+// ---------------------------------------------------------------------------
+// Anotacoes do workspace: marcas coloridas por paragrafo e legenda da colecao.
+// Persistidas por usuario no backend; nada aqui e recuperacao.
+// ---------------------------------------------------------------------------
+
+async function lerJson(response: Response, chaveDeErro: string): Promise<unknown> {
+    const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<unknown> | ApiErrorResponse | null;
+    if (!response.ok) {
+        throw new Error(payload?.message || apiErrorMessage(chaveDeErro));
+    }
+    return payload && "data" in payload ? payload.data : null;
+}
+
+export async function fetchHighlights(collectionId: number, signal?: AbortSignal): Promise<Highlight[]> {
+    const response = await fetchWithAuthRedirect(`/api/documents/collections/${collectionId}/highlights`, {
+        method: "GET",
+        cache: "no-store",
+        signal,
+    });
+    return normalizeHighlights(await lerJson(response, "collections.highlights"));
+}
+
+export async function putHighlight(collectionId: number, paragraphNodeId: number, color: HighlightColor): Promise<Highlight | null> {
+    const response = await fetchWithAuthRedirect(`/api/documents/collections/${collectionId}/highlights/${paragraphNodeId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ color }),
+    });
+    return normalizeHighlight(await lerJson(response, "collections.highlightSave"));
+}
+
+export async function deleteHighlight(collectionId: number, paragraphNodeId: number): Promise<void> {
+    const response = await fetchWithAuthRedirect(`/api/documents/collections/${collectionId}/highlights/${paragraphNodeId}`, {
+        method: "DELETE",
+    });
+    await lerJson(response, "collections.highlightRemove");
+}
+
+export async function fetchLegend(collectionId: number, signal?: AbortSignal): Promise<Legend> {
+    const response = await fetchWithAuthRedirect(`/api/documents/collections/${collectionId}/legend`, {
+        method: "GET",
+        cache: "no-store",
+        signal,
+    });
+    return normalizeLegend(await lerJson(response, "collections.legend"));
+}
+
+export async function putLegend(collectionId: number, labels: Legend): Promise<Legend> {
+    const response = await fetchWithAuthRedirect(`/api/documents/collections/${collectionId}/legend`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ labels }),
+    });
+    return normalizeLegend(await lerJson(response, "collections.legendSave"));
 }

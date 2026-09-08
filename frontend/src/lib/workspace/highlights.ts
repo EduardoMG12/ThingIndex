@@ -12,10 +12,9 @@
  * 11,8:1, roxo 11,1:1 -- todos acima de 4,5:1.
  */
 
-export const CORES = ["amarelo", "verde", "azul", "vermelho", "roxo"] as const;
-export type HighlightColor = (typeof CORES)[number];
+import { CORES, ehCor, type HighlightColor, type Legend } from "@/lib/api/contracts/highlights";
 
-export type Legend = Partial<Record<HighlightColor, string>>;
+export { CORES, ehCor, type HighlightColor, type Legend };
 
 export type ClassesDaCor = {
     /** Fundo + borda do grifo marcado. */
@@ -36,10 +35,6 @@ const CLASSES: Record<HighlightColor, ClassesDaCor> = {
 
 export function classesDaCor(cor: HighlightColor): ClassesDaCor {
     return CLASSES[cor];
-}
-
-export function ehCor(valor: unknown): valor is HighlightColor {
-    return typeof valor === "string" && (CORES as readonly string[]).includes(valor);
 }
 
 /** Rotulo da legenda, ou o nome da cor (traduzido por quem chama) quando vazio. */
