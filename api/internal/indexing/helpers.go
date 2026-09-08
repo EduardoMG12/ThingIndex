@@ -455,10 +455,11 @@ func mostlyNumeric(text string) bool {
 			numeric++
 		}
 	}
-	// Dois ou mais numeros soltos que sao pelo menos metade das palavras:
-	// "1 2 3 1 Feriado Nacional" (4 de 6), "9 a 13 Confirmacao" (2 de 4).
-	// "1 DAS DISPOSICOES PRELIMINARES" (1 de 4) continua titulo.
-	return numeric >= 2 && numeric*2 >= len(fields)
+	// Tres ou mais numeros soltos nunca sao titulo ("15 16 17 18 19 20 21 2 a
+	// 6 Rematricula..."); dois numeros soltos so quando sao pelo menos metade
+	// das palavras ("9 a 13 Confirmacao"). "1 DAS DISPOSICOES PRELIMINARES"
+	// (1 de 4) e "2.3 Da inscricao" continuam titulos.
+	return numeric >= 3 || (numeric >= 2 && numeric*2 >= len(fields))
 }
 
 func isNumericToken(field string) bool {

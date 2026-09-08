@@ -10,6 +10,9 @@ func TestLooksLikeHeadingRejeitaLinhaDominadaPorNumeros(t *testing.T) {
 		"22 23 24 25 26 27 28",
 		"4 5 6 7 8 9 10",
 		"9 a 13 Confirmacao",
+		"1 2 3 1 Feriado Nacional - Confraternizacao Universal",
+		"15 16 17 18 19 20 21 2 a 6 Rematricula dos estudantes veteranos - Ensino Superior 17 Carnaval",
+		"14 dias letivos 6 23 Prazo de entrega dos Planos de Ensino para 2026-1",
 	}
 	for _, linha := range rejeitar {
 		if looksLikeHeading(linha) {
