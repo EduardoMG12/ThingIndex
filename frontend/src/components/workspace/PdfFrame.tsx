@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
+import { ChevronLeft, ChevronRight, File, Rows3 } from "lucide-react";
 
 import { abrirDocumento, fecharDocumento, medirPaginas, type TamanhoDePagina } from "@/components/workspace/pdf";
 import { useI18n } from "@/lib/i18n/provider";
+import { APRESENTACAO_PADRAO, limitarPagina, type Apresentacao } from "@/lib/workspace/highlights";
 
 /**
  * Quadro de um PDF no canvas: cabecalho, e as paginas empilhadas com o tamanho
@@ -41,15 +43,22 @@ export type PdfFrameProps = {
     /** Camada desenhada sobre cada pagina (grifos, marcadores). */
     renderizarSobreposicao?: (numeroDaPagina: number, tamanho: TamanhoDePagina) => React.ReactNode;
     children?: React.ReactNode;
+    /** Folhas empilhadas (padrao) ou uma pagina por vez com avancar/voltar. */
+    apresentacao?: Apresentacao;
+    onMudarApresentacao?: (documentId: number, apresentacao: Apresentacao) => void;
 };
 
 export function larguraDoQuadro(paginas: TamanhoDePagina[] | undefined): number {
     return paginas && paginas.length > 0 ? Math.max(...paginas.map((p) => p.largura)) : LARGURA_ESTIMADA;
 }
 
-export function alturaDoQuadro(paginas: TamanhoDePagina[] | undefined): number {
+export function alturaDoQuadro(paginas: TamanhoDePagina[] | undefined, apresentacao: Apresentacao = APRESENTACAO_PADRAO): number {
     if (!paginas || paginas.length === 0) {
         return ALTURA_DO_CABECALHO + ALTURA_ESTIMADA;
+    }
+    if (apresentacao.modo === "pagina") {
+        const atual = paginas[limitarPagina(apresentacao.paginaAtual, paginas.length) - 1];
+        return ALTURA_DO_CABECALHO + atual.altura;
     }
     return (
         ALTURA_DO_CABECALHO +
@@ -58,8 +67,14 @@ export function alturaDoQuadro(paginas: TamanhoDePagina[] | undefined): number {
     );
 }
 
-/** Deslocamento vertical da pagina N (1-based) dentro do quadro. */
-export function topoDaPagina(paginas: TamanhoDePagina[], numero: number): number {
+/**
+ * Deslocamento vertical da pagina N (1-based) dentro do quadro. Em "pagina"
+ * qualquer pagina, quando mostrada, fica logo abaixo do cabecalho.
+ */
+export function topoDaPagina(paginas: TamanhoDePagina[], numero: number, apresentacao: Apresentacao = APRESENTACAO_PADRAO): number {
+    if (apresentacao.modo === "pagina") {
+        return ALTURA_DO_CABECALHO;
+    }
     let topo = ALTURA_DO_CABECALHO;
     for (let i = 0; i < numero - 1 && i < paginas.length; i += 1) {
         topo += paginas[i].altura + ESPACO_ENTRE_PAGINAS;
@@ -81,6 +96,8 @@ export function PdfFrame({
     onPointerDownCabecalho,
     renderizarSobreposicao,
     children,
+    apresentacao = APRESENTACAO_PADRAO,
+    onMudarApresentacao,
 }: PdfFrameProps) {
     const { t } = useI18n();
     const [documento, setDocumento] = useState<PDFDocumentProxy | null>(null);
@@ -145,22 +162,99 @@ export function PdfFrame({
     }, [documento, paginas, documentId, onMedidas]);
 
     const largura = larguraDoQuadro(paginas ?? undefined);
+    const total = paginas?.length ?? 0;
+    const modoPagina = apresentacao.modo === "pagina";
+    const paginaAtual = limitarPagina(apresentacao.paginaAtual, Math.max(total, 1));
+
+    const mudar = (proxima: Apresentacao) => onMudarApresentacao?.(documentId, proxima);
+    const irParaPagina = (numero: number) => mudar({ modo: "pagina", paginaAtual: limitarPagina(numero, Math.max(total, 1)) });
+
+    // Botoes do cabecalho nao podem iniciar arrasto nem contar como foco.
+    const pararPonteiro = (event: React.SyntheticEvent) => event.stopPropagation();
 
     return (
         <div
-            className={`rounded-lg border bg-card shadow-sm ${focado ? "border-primary ring-2 ring-primary/30" : "border-border"}`}
+            className={`rounded-lg border bg-card shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/60 ${focado ? "border-primary ring-2 ring-primary/30" : "border-border"}`}
             style={{ width: largura }}
             data-testid={`pdf-frame-${documentId}`}
-            data-paginas={paginas?.length ?? 0}
+            data-paginas={total}
+            data-modo={apresentacao.modo}
+            tabIndex={0}
+            onKeyDown={(event) => {
+                if (!modoPagina || total === 0) {
+                    return;
+                }
+                if (event.key === "PageDown") {
+                    event.preventDefault();
+                    irParaPagina(paginaAtual + 1);
+                } else if (event.key === "PageUp") {
+                    event.preventDefault();
+                    irParaPagina(paginaAtual - 1);
+                }
+            }}
         >
             <header
-                className="flex cursor-grab items-baseline justify-between gap-3 px-3 text-left"
+                className="flex cursor-grab items-center justify-between gap-3 px-3 text-left"
                 style={{ height: ALTURA_DO_CABECALHO }}
                 onPointerDown={onPointerDownCabecalho}
                 onClick={() => onFocar(documentId)}
             >
                 <span className="truncate text-sm font-medium">{titulo}</span>
-                <span className="shrink-0 text-xs text-muted-foreground">{subtitulo}</span>
+                <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                    <span className="mr-1">{subtitulo}</span>
+                    {onMudarApresentacao && total > 0 ? (
+                        <>
+                            {modoPagina ? (
+                                <>
+                                    <button
+                                        type="button"
+                                        onPointerDown={pararPonteiro}
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            irParaPagina(paginaAtual - 1);
+                                        }}
+                                        disabled={paginaAtual <= 1}
+                                        aria-label={t("workspace.frame.prevPage")}
+                                        className="rounded p-0.5 hover:bg-muted disabled:opacity-40"
+                                    >
+                                        <ChevronLeft className="h-4 w-4" aria-hidden />
+                                    </button>
+                                    <span className="tabular-nums" data-testid="pagina-de">
+                                        {t("workspace.frame.pageOf", { page: paginaAtual, total })}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onPointerDown={pararPonteiro}
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            irParaPagina(paginaAtual + 1);
+                                        }}
+                                        disabled={paginaAtual >= total}
+                                        aria-label={t("workspace.frame.nextPage")}
+                                        className="rounded p-0.5 hover:bg-muted disabled:opacity-40"
+                                    >
+                                        <ChevronRight className="h-4 w-4" aria-hidden />
+                                    </button>
+                                </>
+                            ) : null}
+                            <button
+                                type="button"
+                                onPointerDown={pararPonteiro}
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    mudar(modoPagina ? { modo: "folhas", paginaAtual } : { modo: "pagina", paginaAtual });
+                                }}
+                                aria-label={modoPagina ? t("workspace.frame.modeSheets") : t("workspace.frame.modeSingle")}
+                                aria-pressed={modoPagina}
+                                title={modoPagina ? t("workspace.frame.modeSheets") : t("workspace.frame.modeSingle")}
+                                className="ml-1 rounded p-0.5 hover:bg-muted"
+                                data-testid="alternar-modo"
+                            >
+                                {modoPagina ? <Rows3 className="h-4 w-4" aria-hidden /> : <File className="h-4 w-4" aria-hidden />}
+                            </button>
+                        </>
+                    ) : null}
+                </span>
             </header>
 
             {erro ? (
@@ -186,6 +280,9 @@ export function PdfFrame({
             ) : (
                 paginas.map((tamanho, indice) => {
                     const numero = indice + 1;
+                    if (modoPagina && numero !== paginaAtual) {
+                        return null;
+                    }
                     return (
                         <div
                             key={numero}
@@ -193,7 +290,7 @@ export function PdfFrame({
                             style={{
                                 width: tamanho.largura,
                                 height: tamanho.altura,
-                                marginTop: indice === 0 ? 0 : ESPACO_ENTRE_PAGINAS,
+                                marginTop: indice === 0 || modoPagina ? 0 : ESPACO_ENTRE_PAGINAS,
                             }}
                             data-testid={`pdf-pagina-${documentId}-${numero}`}
                         >

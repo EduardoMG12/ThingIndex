@@ -29,6 +29,7 @@ import {
 import { ConnectionLayer } from "@/components/workspace/ConnectionLayer";
 import { idDaLinha, montarLinhas, paragrafosSecundarios, type Linha } from "@/lib/workspace/connections";
 import { boxParaPixels } from "@/lib/workspace/geometry";
+import { APRESENTACAO_PADRAO, limitarPagina, regraIrAte, type Apresentacao } from "@/lib/workspace/highlights";
 
 /**
  * Canvas navegavel dos documentos de uma colecao: pan, zoom e quadros
@@ -74,6 +75,33 @@ function ehPdf(documento: { mimeType?: string; filePath?: string }): boolean {
 
 function chaveDeArmazenamento(collectionId: number | string): string {
     return `thingindex.workspace.positions.${collectionId}`;
+}
+
+function chaveDeApresentacao(collectionId: number | string): string {
+    return `thingindex.workspace.apresentacao.${collectionId}`;
+}
+
+function lerApresentacoesSalvas(collectionId: number | string): Record<string, Apresentacao> {
+    if (typeof window === "undefined") {
+        return {};
+    }
+    try {
+        const bruto = window.localStorage.getItem(chaveDeApresentacao(collectionId));
+        const analisado = bruto ? (JSON.parse(bruto) as unknown) : null;
+        if (typeof analisado !== "object" || analisado === null) {
+            return {};
+        }
+        const saida: Record<string, Apresentacao> = {};
+        for (const [id, valor] of Object.entries(analisado as Record<string, unknown>)) {
+            const v = valor as Partial<Apresentacao> | null;
+            if (v && (v.modo === "folhas" || v.modo === "pagina") && typeof v.paginaAtual === "number") {
+                saida[id] = { modo: v.modo, paginaAtual: v.paginaAtual };
+            }
+        }
+        return saida;
+    } catch {
+        return {};
+    }
 }
 
 /**
@@ -207,6 +235,27 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
     // Lazy init + `key={collectionId}` na pagina: trocar de colecao remonta o
     // canvas, entao nao precisa de efeito para recarregar as posicoes.
     const [posicoes, setPosicoes] = useState<Record<string, Posicao>>(() => lerPosicoesSalvas(collectionId));
+    // Modo de apresentacao por documento: preferencia de tela, fica so no
+    // navegador (nem servidor, nem URL).
+    const [apresentacoes, setApresentacoes] = useState<Record<string, Apresentacao>>(() => lerApresentacoesSalvas(collectionId));
+    const apresentacaoDe = useCallback(
+        (documentId: number): Apresentacao => apresentacoes[String(documentId)] ?? APRESENTACAO_PADRAO,
+        [apresentacoes]
+    );
+    const mudarApresentacao = useCallback(
+        (documentId: number, proxima: Apresentacao) => {
+            setApresentacoes((atual) => {
+                const seguinte = { ...atual, [String(documentId)]: proxima };
+                try {
+                    window.localStorage.setItem(chaveDeApresentacao(collectionId), JSON.stringify(seguinte));
+                } catch {
+                    // Sem localStorage a preferencia vale so na sessao.
+                }
+                return seguinte;
+            });
+        },
+        [collectionId]
+    );
     // Foco compartilhavel pela URL (?doc=): lido uma vez ao montar (o canvas
     // remonta por colecao), escrito com replace para nao empilhar historico.
     const [documentoFocadoBruto, setDocumentoFocado] = useState<number | null>(() => {
@@ -287,9 +336,14 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                     return { x: p.x, y: p.y, largura: LARGURA_CARTAO, altura: ALTURA_CARTAO };
                 }
                 const paginas = medidas[documento.id];
-                return { x: p.x, y: p.y, largura: larguraDoQuadro(paginas), altura: alturaDoQuadro(paginas) };
+                return {
+                    x: p.x,
+                    y: p.y,
+                    largura: larguraDoQuadro(paginas),
+                    altura: alturaDoQuadro(paginas, apresentacaoDe(documento.id)),
+                };
             }),
-        [documentos, posicaoDe, medidas]
+        [documentos, posicaoDe, medidas, apresentacaoDe]
     );
 
     // Orcamento global: quais paginas, somando todos os PDFs, ganham canvas.
@@ -301,12 +355,17 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                 return;
             }
             const quadro = quadros[indice];
+            const apresentacao = apresentacaoDe(documento.id);
             paginas.forEach((pagina, i) => {
+                // Em "pagina" so a pagina atual existe no canvas.
+                if (apresentacao.modo === "pagina" && i + 1 !== limitarPagina(apresentacao.paginaAtual, paginas.length)) {
+                    return;
+                }
                 candidatas.push({
                     id: `${documento.id}:${i + 1}`,
                     rect: {
                         x: quadro.x + (quadro.largura - pagina.largura) / 2,
-                        y: quadro.y + topoDaPagina(paginas, i + 1),
+                        y: quadro.y + topoDaPagina(paginas, i + 1, apresentacao),
                         largura: pagina.largura,
                         altura: pagina.altura,
                     },
@@ -322,30 +381,68 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
             porDocumento.set(Number(doc), conjunto);
         }
         return porDocumento;
-    }, [documentos, medidas, quadros, viewport, tamanho]);
+    }, [documentos, medidas, quadros, viewport, tamanho, apresentacaoDe]);
 
     const conjuntoVazio = useMemo(() => new Set<number>(), []);
 
     const indiceDoDocumento = useMemo(() => new Map(documentos.map((d, i) => [d.id, i])), [documentos]);
 
-    /** Rect, em coordenadas do mundo, da pagina N de um documento medido. */
+    /**
+     * Rect, em coordenadas do mundo, da pagina N de um documento medido.
+     * `comoMostrada` calcula onde a pagina VAI ficar se virar a atual (para
+     * centralizar depois de trocar de pagina); sem ele, pagina fora da tela em
+     * modo "pagina" devolve null, e a linha de conexao cai na borda do quadro.
+     */
     const rectDaPagina = useCallback(
-        (documentId: number, numero: number): Rect | null => {
+        (documentId: number, numero: number, comoMostrada = false): Rect | null => {
             const i = indiceDoDocumento.get(documentId);
             const paginas = medidas[documentId];
             if (i === undefined || !paginas || numero < 1 || numero > paginas.length) {
+                return null;
+            }
+            const apresentacao = apresentacaoDe(documentId);
+            if (apresentacao.modo === "pagina" && !comoMostrada && limitarPagina(apresentacao.paginaAtual, paginas.length) !== numero) {
                 return null;
             }
             const quadro = quadros[i];
             const pagina = paginas[numero - 1];
             return {
                 x: quadro.x + (quadro.largura - pagina.largura) / 2,
-                y: quadro.y + topoDaPagina(paginas, numero),
+                y: quadro.y + topoDaPagina(paginas, numero, apresentacao),
                 largura: pagina.largura,
                 altura: pagina.altura,
             };
         },
-        [indiceDoDocumento, medidas, quadros]
+        [indiceDoDocumento, medidas, quadros, apresentacaoDe]
+    );
+
+    /**
+     * Ir ate uma pagina de um documento: em "pagina" troca a pagina atual do
+     * quadro antes de centralizar; em "folhas" so centraliza.
+     */
+    const irAte = useCallback(
+        (documentId: number, pagina: number | null, rectPreferido: Rect | null) => {
+            const paginas = medidas[documentId];
+            const apresentacao = apresentacaoDe(documentId);
+            if (pagina !== null && paginas) {
+                const alvoPagina = limitarPagina(pagina, paginas.length);
+                const { trocarPagina } = regraIrAte(apresentacao, alvoPagina);
+                if (trocarPagina !== null) {
+                    mudarApresentacao(documentId, { modo: "pagina", paginaAtual: trocarPagina });
+                }
+                const rect = (trocarPagina === null ? rectPreferido : null) ?? rectDaPagina(documentId, alvoPagina, true);
+                if (rect) {
+                    centralizarEm({ ...rect, altura: Math.min(rect.altura, 600) }, 1);
+                    return;
+                }
+            }
+            const i = indiceDoDocumento.get(documentId);
+            const quadro = rectPreferido ?? (i === undefined ? null : quadros[i]);
+            if (quadro) {
+                centralizarEm({ ...quadro, altura: Math.min(quadro.altura, 600) }, 1);
+            }
+        },
+        [medidas, apresentacaoDe, mudarApresentacao, rectDaPagina, indiceDoDocumento, quadros, centralizarEm]
     );
 
     /** Rect do grifo de um paragrafo no mundo, ou null sem box ou sem pagina medida. */
@@ -490,15 +587,9 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
     const irParaSecao = useCallback(
         (no: OutlineNode) => {
             const a = ancoraDaSecao(no);
-            const alvo =
-                (a ? rectDoParagrafo(a) : null) ??
-                (no.startPage ? rectDaPagina(no.documentId, no.startPage) : null) ??
-                (indiceDoDocumento.has(no.documentId) ? quadros[indiceDoDocumento.get(no.documentId)!] : null);
-            if (alvo) {
-                centralizarEm({ ...alvo, altura: Math.min(alvo.altura, 600) }, 1);
-            }
+            irAte(no.documentId, a?.pageNumber ?? no.startPage ?? null, a ? rectDoParagrafo(a) : null);
         },
-        [ancoraDaSecao, rectDoParagrafo, rectDaPagina, indiceDoDocumento, quadros, centralizarEm]
+        [ancoraDaSecao, rectDoParagrafo, irAte]
     );
 
     const documentoAtual = documentos.find((documento) => documento.id === documentoFocado);
@@ -537,15 +628,13 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
     }, [conexoes, noSelecionado, paragrafoSelecionado, documentoFocado, indiceDoContexto, indiceDoDocumento, quadros, ancoraDaSecao, rectDoParagrafo]);
 
     const irParaConexao = useCallback(
-        (conexao: { documentId: number; nodeId: string }) => {
+        (conexao: { documentId: number; nodeId: string; startPage?: number | null }) => {
             const no = indiceDoContexto.porNodeId.get(conexao.nodeId);
             const a = no ? ancoraDaSecao(no) : null;
-            const alvo = (a ? rectDoParagrafo(a) : null) ?? (indiceDoDocumento.has(conexao.documentId) ? quadros[indiceDoDocumento.get(conexao.documentId)!] : null);
-            if (alvo) {
-                centralizarEm({ ...alvo, altura: Math.min(alvo.altura, 600) }, 1);
-            }
+            const pagina = a?.pageNumber ?? no?.startPage ?? conexao.startPage ?? null;
+            irAte(conexao.documentId, pagina, a ? rectDoParagrafo(a) : null);
         },
-        [indiceDoContexto, ancoraDaSecao, rectDoParagrafo, indiceDoDocumento, quadros, centralizarEm]
+        [indiceDoContexto, ancoraDaSecao, rectDoParagrafo, irAte]
     );
 
     return (
@@ -596,6 +685,8 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                                             setNoSelecionado(null);
                                         }}
                                         onPointerDownCabecalho={(event) => aoIniciarArrasto(event, documento.id, indice)}
+                                        apresentacao={apresentacaoDe(documento.id)}
+                                        onMudarApresentacao={mudarApresentacao}
                                         renderizarSobreposicao={(numero, tamanhoDaPagina) => {
                                             const nosDaPagina = indiceDoContexto.porPagina.get(documento.id)?.get(numero) ?? [];
                                             const secoes = indiceDoContexto.secoesPorPagina.get(documento.id)?.get(numero) ?? [];
