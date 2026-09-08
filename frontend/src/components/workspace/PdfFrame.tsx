@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 
 import { abrirDocumento, fecharDocumento, medirPaginas, type TamanhoDePagina } from "@/components/workspace/pdf";
+import { useI18n } from "@/lib/i18n/provider";
 
 /**
  * Quadro de um PDF no canvas: cabecalho, e as paginas empilhadas com o tamanho
@@ -81,6 +82,7 @@ export function PdfFrame({
     renderizarSobreposicao,
     children,
 }: PdfFrameProps) {
+    const { t } = useI18n();
     const [documento, setDocumento] = useState<PDFDocumentProxy | null>(null);
     const [paginas, setPaginas] = useState<TamanhoDePagina[] | null>(null);
     const [erro, setErro] = useState<string | null>(null);
@@ -113,13 +115,13 @@ export function PdfFrame({
             })
             .catch((falha: unknown) => {
                 if (!cancelado) {
-                    setErro(falha instanceof Error ? falha.message : "Falha ao abrir o PDF.");
+                    setErro(falha instanceof Error ? falha.message : t("workspace.frame.openError"));
                 }
             });
         return () => {
             cancelado = true;
         };
-    }, [visivel, documentId, documento]);
+    }, [visivel, documentId, documento, t]);
 
     // Medir e um efeito separado de proposito: se estivesse no mesmo efeito,
     // o setDocumento acima o reexecutaria e o cleanup cancelaria a medicao em
@@ -225,6 +227,7 @@ type PdfPaginaProps = {
  * por CSS ate a proxima re-renderizacao, que so acontece quando `escala` muda.
  */
 function PdfPagina({ documento, numero, tamanho, escala }: PdfPaginaProps) {
+    const { t } = useI18n();
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
     useEffect(() => {
@@ -270,7 +273,7 @@ function PdfPagina({ documento, numero, tamanho, escala }: PdfPaginaProps) {
             className="absolute left-0 top-0"
             style={{ width: tamanho.largura, height: tamanho.altura }}
             data-pagina={numero}
-            aria-label={`Página ${numero}`}
+            aria-label={t("workspace.page.label", { number: numero })}
         />
     );
 }

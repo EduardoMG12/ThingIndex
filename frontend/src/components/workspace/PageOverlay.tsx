@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { readBox, type OutlineNode, type ParagraphNode } from "@/lib/api/contracts/document-context";
+import { useI18n } from "@/lib/i18n/provider";
 import { retryDocumentIndexing } from "@/lib/api/documents";
 import { boxParaPixels } from "@/lib/workspace/geometry";
 import type { TamanhoDePagina } from "@/components/workspace/pdf";
@@ -98,13 +99,14 @@ export function PageOverlay({
     secundarios,
     onSelecionar,
 }: PageOverlayProps) {
+    const { t } = useI18n();
     return (
         <div className="pointer-events-none absolute inset-0" data-testid={`overlay-pagina-${numero}`}>
             <span
                 className="absolute right-1 top-1 rounded bg-background/80 px-1.5 py-0.5 text-[10px] leading-none text-muted-foreground"
                 data-testid="cabecalho-pagina"
             >
-                p. {numero}
+                {t("workspace.page.header", { number: numero })}
                 {origem ? ` · ${origem}` : ""}
             </span>
 
@@ -157,7 +159,11 @@ export function PageOverlay({
                                   : "border-transparent bg-primary/10 hover:bg-primary/25"
                         }`}
                         style={{ left: px.left, top: px.top, width: px.width, height: px.height }}
-                        aria-label={`Parágrafo ${no.sequenceOrder + 1}, página ${numero}${secao ? `, seção ${secao.title}` : ""}`}
+                        aria-label={
+                            secao
+                                ? t("workspace.page.paragraphInSection", { number: no.sequenceOrder + 1, page: numero, section: secao.title })
+                                : t("workspace.page.paragraph", { number: no.sequenceOrder + 1, page: numero })
+                        }
                         aria-pressed={selecionado}
                         data-testid="grifo"
                         data-paragrafo={String(no.id)}
@@ -179,6 +185,7 @@ type AvisoSemPosicaoProps = {
  * dinheiro, e a decisao e de quem esta olhando.
  */
 export function AvisoSemPosicao({ documentId, totalParagrafos }: AvisoSemPosicaoProps) {
+    const { t } = useI18n();
     const [estado, setEstado] = useState<"parado" | "enviando" | "na-fila" | "erro">("parado");
 
     async function reindexar() {
@@ -197,11 +204,9 @@ export function AvisoSemPosicao({ documentId, totalParagrafos }: AvisoSemPosicao
             role="status"
             data-testid="aviso-sem-posicao"
         >
-            <span>
-                {totalParagrafos} trechos indexados sem posição na página. Reindexe para ganhar os grifos.
-            </span>
+            <span>{t("workspace.warning.noBoxes", { count: totalParagrafos })}</span>
             {estado === "na-fila" ? (
-                <span className="shrink-0 font-medium">Na fila de indexação</span>
+                <span className="shrink-0 font-medium">{t("workspace.warning.queued")}</span>
             ) : (
                 <button
                     type="button"
@@ -210,7 +215,11 @@ export function AvisoSemPosicao({ documentId, totalParagrafos }: AvisoSemPosicao
                     onPointerDown={(event) => event.stopPropagation()}
                     className="shrink-0 rounded border border-amber-700/50 px-2 py-1 font-medium hover:bg-amber-200/60 disabled:opacity-60"
                 >
-                    {estado === "enviando" ? "Enviando…" : estado === "erro" ? "Tentar de novo" : "Reindexar"}
+                    {estado === "enviando"
+                        ? t("workspace.warning.sending")
+                        : estado === "erro"
+                          ? t("workspace.warning.retry")
+                          : t("workspace.warning.reindex")}
                 </button>
             )}
         </div>

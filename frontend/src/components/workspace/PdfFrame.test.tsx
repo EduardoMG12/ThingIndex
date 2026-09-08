@@ -2,6 +2,12 @@ import { act, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PdfFrame } from "@/components/workspace/PdfFrame";
+import { createTestWrapper } from "@/test/test-utils";
+
+// O I18nProvider le o locale do pathname; sem o mock cai em ingles.
+vi.mock("next/navigation", () => ({
+    usePathname: () => "/pt-BR/workspace",
+}));
 
 // pdf.js mockado: 30 paginas carta, render instantaneo, sem worker.
 const documentoFalso = {
@@ -36,7 +42,8 @@ function montar(paginasVivas: Set<number>, extra: Partial<React.ComponentProps<t
             onFocar={() => undefined}
             onPointerDownCabecalho={() => undefined}
             {...extra}
-        />
+        />,
+        { wrapper: createTestWrapper("pt-BR") }
     );
     return { onMedidas };
 }

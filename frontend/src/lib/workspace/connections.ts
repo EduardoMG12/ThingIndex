@@ -33,10 +33,6 @@ export function espessuraPorScore(score: number): number {
     return 1.5 + Math.min(Math.max(score, 0), 6) * 0.5;
 }
 
-export function rotuloDoScore(score: number): string {
-    return score === 1 ? "1 termo" : `${score} termos`;
-}
-
 export function slugDoNodeId(nodeId: string, sumario: OutlineNode[]): string | null {
     return sumario.find((no) => no.nodeId === nodeId)?.slug ?? null;
 }

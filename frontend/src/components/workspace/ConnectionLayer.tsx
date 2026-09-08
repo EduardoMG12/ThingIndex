@@ -1,6 +1,7 @@
 "use client";
 
-import { caminhoDaLinha, espessuraPorScore, rotuloDoScore, type Linha } from "@/lib/workspace/connections";
+import { useI18n } from "@/lib/i18n/provider";
+import { caminhoDaLinha, espessuraPorScore, type Linha } from "@/lib/workspace/connections";
 
 /**
  * Linhas de conexao em SVG, em coordenadas do mundo (o <svg> vive dentro do
@@ -17,6 +18,7 @@ export type ConnectionLayerProps = {
 };
 
 export function ConnectionLayer({ linhas, realcada, onRealcar, onEscolher }: ConnectionLayerProps) {
+    const { t } = useI18n();
     if (linhas.length === 0) {
         return null;
     }
@@ -26,13 +28,13 @@ export function ConnectionLayer({ linhas, realcada, onRealcar, onEscolher }: Con
             width={1}
             height={1}
             data-testid="camada-de-conexoes"
-            aria-label="Conexões entre trechos"
+            aria-label={t("workspace.connections.label")}
             role="img"
         >
             {linhas.map((linha) => {
                 const ativa = realcada === null || realcada === linha.id;
                 const meio = { x: (linha.de.x + linha.para.x) / 2, y: (linha.de.y + linha.para.y) / 2 };
-                const rotulo = rotuloDoScore(linha.score);
+                const rotulo = linha.score === 1 ? t("workspace.sidebar.term") : t("workspace.sidebar.terms", { count: linha.score });
                 return (
                     <g
                         key={linha.id}

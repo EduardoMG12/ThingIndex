@@ -8,6 +8,21 @@ vi.mock("@/lib/api/collections", () => ({
     fetchNodeConnections: vi.fn(),
 }));
 
+const navegacao = {
+    replace: vi.fn(),
+    searchParams: new URLSearchParams(),
+};
+
+vi.mock("next/navigation", () => ({
+    usePathname: () => "/pt-BR/workspace",
+    useRouter: () => ({ replace: navegacao.replace }),
+    useSearchParams: () => navegacao.searchParams,
+}));
+
+import { createTestWrapper } from "@/test/test-utils";
+
+const opcoes = { wrapper: createTestWrapper("pt-BR") };
+
 import { fetchNodeConnections } from "@/lib/api/collections";
 
 const contexto = {
@@ -80,14 +95,14 @@ describe("WorkspaceCanvas", () => {
     });
 
     it("mostra um cartao por documento da colecao", () => {
-        render(<WorkspaceCanvas context={contexto} />);
+        render(<WorkspaceCanvas context={contexto} />, opcoes);
 
         expect(screen.getByText("Contrato SLA")).toBeInTheDocument();
         expect(screen.getByText("Edital")).toBeInTheDocument();
     });
 
     it("abre a sidebar com o outline ao focar um documento", () => {
-        render(<WorkspaceCanvas context={contexto} />);
+        render(<WorkspaceCanvas context={contexto} />, opcoes);
 
         fireEvent.click(screen.getByRole("button", { name: /Contrato SLA/i }));
 
@@ -118,7 +133,7 @@ describe("WorkspaceCanvas", () => {
             ],
         });
 
-        render(<WorkspaceCanvas context={contexto} />);
+        render(<WorkspaceCanvas context={contexto} />, opcoes);
         fireEvent.click(screen.getByRole("button", { name: /Contrato SLA/i }));
         fireEvent.click(screen.getAllByRole("button", { name: /conex/i })[0]);
 
@@ -147,7 +162,7 @@ describe("WorkspaceCanvas", () => {
             connections: [],
         });
 
-        render(<WorkspaceCanvas context={contexto} />);
+        render(<WorkspaceCanvas context={contexto} />, opcoes);
         fireEvent.click(screen.getByRole("button", { name: /Contrato SLA/i }));
         fireEvent.click(screen.getAllByRole("button", { name: /conex/i })[0]);
 
@@ -157,7 +172,7 @@ describe("WorkspaceCanvas", () => {
     });
 
     it("persiste a posicao do cartao arrastado", () => {
-        const { unmount } = render(<WorkspaceCanvas context={contexto} />);
+        const { unmount } = render(<WorkspaceCanvas context={contexto} />, opcoes);
 
         const cartao = screen.getByRole("button", { name: /Contrato SLA/i });
         fireEvent.pointerDown(cartao, { clientX: 0, clientY: 0, pointerId: 1 });
@@ -171,7 +186,7 @@ describe("WorkspaceCanvas", () => {
         unmount();
 
         // Ao remontar, a posicao salva e reaplicada.
-        render(<WorkspaceCanvas context={contexto} />);
+        render(<WorkspaceCanvas context={contexto} />, opcoes);
         const remontado = screen.getByRole("button", { name: /Contrato SLA/i });
         expect(remontado.parentElement?.style.transform).toContain("translate");
     });
@@ -182,7 +197,7 @@ describe("WorkspaceCanvas", () => {
             outlineNodes: [],
         } as unknown as CollectionContext;
 
-        render(<WorkspaceCanvas context={vazio} />);
+        render(<WorkspaceCanvas context={vazio} />, opcoes);
         fireEvent.click(screen.getByRole("button", { name: /Contrato SLA/i }));
 
         expect(screen.getByText(/sem estrutura indexada/i)).toBeInTheDocument();
@@ -196,7 +211,7 @@ describe("WorkspaceCanvas", () => {
         // Duas garantias: a coluna so aparece a partir de lg, e o canvas tem
         // min-w-0 -- sem ele um item flex assume a largura do conteudo e volta
         // a estourar o container, que foi exatamente a causa do bug.
-        const { container } = render(<WorkspaceCanvas context={contexto} />);
+        const { container } = render(<WorkspaceCanvas context={contexto} />, opcoes);
 
         const raiz = container.firstElementChild as HTMLElement;
         expect(raiz.className).toContain("flex-col");
@@ -208,5 +223,18 @@ describe("WorkspaceCanvas", () => {
         const sidebar = screen.getByLabelText("Detalhes do documento");
         expect(sidebar.className).toContain("w-full");
         expect(sidebar.className).toContain("lg:w-80");
+    });
+
+    it("le o foco de ?doc= ao montar e escreve na URL ao focar outro documento", () => {
+        navegacao.replace.mockClear();
+        navegacao.searchParams = new URLSearchParams("doc=2");
+        render(<WorkspaceCanvas context={contexto} />, opcoes);
+        // Documento 2 ja aparece focado na sidebar, sem clique.
+        expect(within(screen.getByLabelText("Detalhes do documento")).getByText("Edital")).toBeInTheDocument();
+        expect(navegacao.replace).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByRole("button", { name: /Contrato SLA/i }));
+        expect(navegacao.replace).toHaveBeenCalledWith("/pt-BR/workspace?doc=1", { scroll: false });
+        navegacao.searchParams = new URLSearchParams();
     });
 });

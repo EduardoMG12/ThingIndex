@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import AppShell from "@/components/layout/AppShell";
+import { useI18n } from "@/lib/i18n/provider";
 import { WorkspaceCanvas } from "@/components/workspace/WorkspaceCanvas";
 import { fetchCollectionContext, fetchCollections } from "@/lib/api/collections";
 import type {
@@ -20,6 +21,7 @@ import type {
  * derivadas sob demanda pelo mesmo scorer relacional das consultas normais.
  */
 export default function WorkspacePage() {
+    const { t } = useI18n();
     const [collections, setCollections] = useState<CollectionSummary[]>([]);
     const [selecionada, setSelecionada] = useState<number | null>(null);
     const [context, setContext] = useState<CollectionContext | null>(null);
@@ -42,7 +44,7 @@ export default function WorkspacePage() {
                 }
             } catch (falha) {
                 if (!controller.signal.aborted) {
-                    setErro(falha instanceof Error ? falha.message : "Falha ao carregar coleções.");
+                    setErro(falha instanceof Error ? falha.message : t("workspace.loadCollectionsError"));
                 }
             } finally {
                 if (!controller.signal.aborted) {
@@ -53,7 +55,7 @@ export default function WorkspacePage() {
 
         void carregarColecoes();
         return () => controller.abort();
-    }, []);
+    }, [t]);
 
     const carregarContexto = useCallback((collectionId: number, signal: AbortSignal) => {
         setCarregando(true);
@@ -67,9 +69,7 @@ export default function WorkspacePage() {
             })
             .catch((falha: unknown) => {
                 if (!signal.aborted) {
-                    setErro(
-                        falha instanceof Error ? falha.message : "Falha ao carregar a coleção."
-                    );
+                    setErro(falha instanceof Error ? falha.message : t("workspace.loadContextError"));
                 }
             })
             .finally(() => {
@@ -77,7 +77,7 @@ export default function WorkspacePage() {
                     setCarregando(false);
                 }
             });
-    }, []);
+    }, [t]);
 
     useEffect(() => {
         if (selecionada === null) {
@@ -93,15 +93,13 @@ export default function WorkspacePage() {
             <div className="flex h-full flex-col gap-4 p-6">
                 <header className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <h1 className="text-xl font-semibold">Área de trabalho</h1>
-                        <p className="text-sm text-muted-foreground">
-                            Explore os documentos da coleção e as conexões entre seus trechos.
-                        </p>
+                        <h1 className="text-xl font-semibold">{t("workspace.title")}</h1>
+                        <p className="text-sm text-muted-foreground">{t("workspace.description")}</p>
                     </div>
 
                     {collections.length > 0 ? (
                         <label className="flex items-center gap-2 text-sm">
-                            <span className="text-muted-foreground">Coleção</span>
+                            <span className="text-muted-foreground">{t("workspace.collectionLabel")}</span>
                             <select
                                 value={selecionada ?? ""}
                                 onChange={(event) => setSelecionada(Number(event.target.value))}
@@ -128,9 +126,7 @@ export default function WorkspacePage() {
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                     </div>
                 ) : collections.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                        Nenhuma coleção ainda. Envie um documento para começar.
-                    </p>
+                    <p className="text-sm text-muted-foreground">{t("workspace.noCollections")}</p>
                 ) : context ? (
                     <div className="flex-1">
                         <WorkspaceCanvas key={String(context.collection.id)} context={context} />

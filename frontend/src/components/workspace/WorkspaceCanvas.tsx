@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Maximize2, Minus, Plus } from "lucide-react";
+
+import { useI18n } from "@/lib/i18n/provider";
 
 import { fetchNodeConnections } from "@/lib/api/collections";
 import { readBox, type CollectionContext, type OutlineNode, type ParagraphNode } from "@/lib/api/contracts/document-context";
@@ -102,6 +105,10 @@ function lerPosicoesSalvas(collectionId: number | string): Record<string, Posica
 }
 
 export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
+    const { t } = useI18n();
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const collectionIdBruto = context.collection?.id ?? 0;
     // A API aceita id numerico; o contrato do frontend admite string porque
     // algumas respostas antigas devolviam assim.
@@ -200,7 +207,29 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
     // Lazy init + `key={collectionId}` na pagina: trocar de colecao remonta o
     // canvas, entao nao precisa de efeito para recarregar as posicoes.
     const [posicoes, setPosicoes] = useState<Record<string, Posicao>>(() => lerPosicoesSalvas(collectionId));
-    const [documentoFocado, setDocumentoFocado] = useState<number | null>(null);
+    // Foco compartilhavel pela URL (?doc=): lido uma vez ao montar (o canvas
+    // remonta por colecao), escrito com replace para nao empilhar historico.
+    const [documentoFocadoBruto, setDocumentoFocado] = useState<number | null>(() => {
+        const doc = Number(searchParams.get("doc"));
+        return Number.isFinite(doc) && doc > 0 ? doc : null;
+    });
+    // Um ?doc= de outra colecao nao aponta para nada aqui: vale como "nenhum".
+    const documentoFocado = documentoFocadoBruto !== null && documentos.some((d) => d.id === documentoFocadoBruto) ? documentoFocadoBruto : null;
+
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (documentoFocado === null) {
+            params.delete("doc");
+        } else {
+            params.set("doc", String(documentoFocado));
+        }
+        const next = params.toString();
+        if (next !== searchParams.toString()) {
+            router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+        }
+        // Converge: o replace muda searchParams, o efeito roda de novo e
+        // next === current impede a segunda escrita (mesmo padrao do chat).
+    }, [documentoFocado, pathname, router, searchParams]);
     const [noSelecionado, setNoSelecionado] = useState<string | null>(null);
     const [conexoes, setConexoes] = useState<NodeConnection[] | null>(null);
     const [carregandoConexoes, setCarregandoConexoes] = useState(false);
@@ -449,14 +478,27 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                 const resultado = await fetchNodeConnections(collectionId, nodeId);
                 setConexoes(resultado.connections);
             } catch (erro) {
-                setErroConexoes(
-                    erro instanceof Error ? erro.message : "Falha ao buscar conexoes."
-                );
+                setErroConexoes(erro instanceof Error ? erro.message : t("workspace.sidebar.connectionsError"));
             } finally {
                 setCarregandoConexoes(false);
             }
         },
-        [collectionId]
+        [collectionId, t]
+    );
+
+    /** Centraliza a pagina em que a secao comeca (ou o quadro do documento). */
+    const irParaSecao = useCallback(
+        (no: OutlineNode) => {
+            const a = ancoraDaSecao(no);
+            const alvo =
+                (a ? rectDoParagrafo(a) : null) ??
+                (no.startPage ? rectDaPagina(no.documentId, no.startPage) : null) ??
+                (indiceDoDocumento.has(no.documentId) ? quadros[indiceDoDocumento.get(no.documentId)!] : null);
+            if (alvo) {
+                centralizarEm({ ...alvo, altura: Math.min(alvo.altura, 600) }, 1);
+            }
+        },
+        [ancoraDaSecao, rectDoParagrafo, rectDaPagina, indiceDoDocumento, quadros, centralizarEm]
     );
 
     const documentoAtual = documentos.find((documento) => documento.id === documentoFocado);
@@ -541,7 +583,7 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                                     <PdfFrame
                                         documentId={documento.id}
                                         titulo={documento.title}
-                                        subtitulo={`${trechos} trechos`}
+                                        subtitulo={t("workspace.frame.chunks", { count: trechos })}
                                         visivel={quadroVisivel(quadros[indice])}
                                         paginasVivas={paginasVivasPorDocumento.get(documento.id) ?? conjuntoVazio}
                                         escalaDeRenderizacao={escalaRender}
@@ -612,7 +654,7 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                                         {documento.title}
                                     </span>
                                     <span className="mt-1 block text-xs text-muted-foreground">
-                                        {trechos} trechos indexados
+                                        {t("workspace.frame.chunksIndexed", { count: trechos })}
                                     </span>
                                 </button>
                             </div>
@@ -629,13 +671,13 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                 <div
                     className="absolute bottom-3 right-3 flex items-center gap-1 rounded-md border border-border bg-card/95 p-1 shadow-sm"
                     role="toolbar"
-                    aria-label="Zoom do canvas"
+                    aria-label={t("workspace.canvas.toolbar")}
                     onPointerDown={(event) => event.stopPropagation()}
                 >
                     <button
                         type="button"
                         onClick={afastar}
-                        aria-label="Afastar"
+                        aria-label={t("workspace.canvas.zoomOut")}
                         className="rounded p-1.5 hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                     >
                         <Minus className="h-4 w-4" aria-hidden />
@@ -646,7 +688,7 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                     <button
                         type="button"
                         onClick={aproximar}
-                        aria-label="Aproximar"
+                        aria-label={t("workspace.canvas.zoomIn")}
                         className="rounded p-1.5 hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                     >
                         <Plus className="h-4 w-4" aria-hidden />
@@ -654,7 +696,7 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                     <button
                         type="button"
                         onClick={() => enquadrar(quadros)}
-                        aria-label="Ajustar à tela"
+                        aria-label={t("workspace.canvas.fit")}
                         className="rounded p-1.5 hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                     >
                         <Maximize2 className="h-4 w-4" aria-hidden />
@@ -664,12 +706,10 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
 
             <aside
                 className="w-full shrink-0 overflow-y-auto rounded-lg border border-border bg-card p-4 lg:w-80"
-                aria-label="Detalhes do documento"
+                aria-label={t("workspace.sidebar.label")}
             >
                 {documentoFocado === null ? (
-                    <p className="text-sm text-muted-foreground">
-                        Selecione um documento no painel para ver sua estrutura.
-                    </p>
+                    <p className="text-sm text-muted-foreground">{t("workspace.sidebar.empty")}</p>
                 ) : (
                     <div className="space-y-4">
                         <h2 className="text-sm font-semibold">{documentoAtual?.title}</h2>
@@ -679,7 +719,7 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                             const semPosicao = c ? c.total - c.comBox : 0;
                             return semPosicao > 0 ? (
                                 <p className="text-xs text-muted-foreground" data-testid="sem-posicao">
-                                    {semPosicao} de {c!.total} trechos sem posição na página.
+                                    {t("workspace.sidebar.noPosition", { count: semPosicao, total: c!.total })}
                                 </p>
                             ) : null;
                         })()}
@@ -687,7 +727,7 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                         {paragrafoSelecionado && paragrafoSelecionado.no.documentId === documentoFocado ? (
                             <div className="rounded-md border border-primary/60 bg-primary/5 p-3" data-testid="trecho-selecionado">
                                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                                    Trecho selecionado · p. {paragrafoSelecionado.no.pageNumber ?? "?"}
+                                    {t("workspace.sidebar.selected")} · {t("workspace.sidebar.page", { page: paragrafoSelecionado.no.pageNumber ?? "?" })}
                                     {paragrafoSelecionado.secao ? ` · ${paragrafoSelecionado.secao.title}` : ""}
                                 </p>
                                 <p className="mt-1 line-clamp-6 text-xs">{paragrafoSelecionado.no.content}</p>
@@ -695,18 +735,16 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                                     type="button"
                                     onClick={() => paragrafoSelecionado.secao && pedirConexoes(paragrafoSelecionado.secao.nodeId)}
                                     disabled={!paragrafoSelecionado.secao}
-                                    title={paragrafoSelecionado.secao ? undefined : "Trecho sem seção no sumário: não há nó para consultar."}
+                                    title={paragrafoSelecionado.secao ? undefined : t("workspace.sidebar.noSectionTooltip")}
                                     className="mt-2 text-xs font-medium text-primary underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
                                 >
-                                    Ver conexões
+                                    {t("workspace.sidebar.viewConnections")}
                                 </button>
                             </div>
                         ) : null}
 
                         {nosDoDocumentoFocado.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                                Documento sem estrutura indexada.
-                            </p>
+                            <p className="text-sm text-muted-foreground">{t("workspace.sidebar.noStructure")}</p>
                         ) : (
                             <ul className="space-y-3">
                                 {nosDoDocumentoFocado.map((no) => (
@@ -718,7 +756,14 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                                                 : "border-border"
                                         }`}
                                     >
-                                        <p className="text-sm font-medium">{no.title}</p>
+                                        <button
+                                            type="button"
+                                            onClick={() => irParaSecao(no)}
+                                            className="w-full text-left text-sm font-medium hover:text-primary"
+                                            title={t("workspace.sidebar.goToSection")}
+                                        >
+                                            {no.title}
+                                        </button>
                                         {no.summary ? (
                                             <p className="mt-1 text-xs text-muted-foreground">
                                                 {no.summary}
@@ -729,7 +774,7 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                                             onClick={() => pedirConexoes(no.nodeId)}
                                             className="mt-2 text-xs font-medium text-primary underline-offset-2 hover:underline"
                                         >
-                                            Ver conexões
+                                            {t("workspace.sidebar.viewConnections")}
                                         </button>
                                     </li>
                                 ))}
@@ -737,7 +782,7 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                         )}
 
                         {carregandoConexoes ? (
-                            <p className="text-xs text-muted-foreground">Buscando conexões…</p>
+                            <p className="text-xs text-muted-foreground">{t("workspace.sidebar.loadingConnections")}</p>
                         ) : null}
 
                         {erroConexoes ? (
@@ -750,14 +795,12 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                                 // regiao vazia seria lida como falha de
                                 // carregamento, e o sistema perderia credito no
                                 // unico ponto em que sabe dizer "nao encontrei".
-                                <p className="text-xs text-muted-foreground">
-                                    Nenhuma conexão acima do limiar para este trecho.
-                                </p>
+                                <p className="text-xs text-muted-foreground">{t("workspace.sidebar.noConnections")}</p>
                             ) : (
                                 <ul className="space-y-2 border-t border-border pt-3">
                                     {conexoes.length > LINHAS_MAXIMAS ? (
                                         <li className="text-[11px] text-muted-foreground" data-testid="aviso-linhas-limitadas">
-                                            {conexoes.length} conexões acima do limiar; as {LINHAS_MAXIMAS} mais fortes estão desenhadas no canvas.
+                                            {t("workspace.sidebar.tooManyLines", { total: conexoes.length, max: LINHAS_MAXIMAS })}
                                         </li>
                                     ) : null}
                                     {conexoes.map((conexao) => {
@@ -773,16 +816,16 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                                                     type="button"
                                                     onClick={() => irParaConexao(conexao)}
                                                     className="w-full text-left"
-                                                    title="Centralizar no destino"
+                                                    title={t("workspace.sidebar.centerOnTarget")}
                                                 >
                                                     <p className="text-xs font-medium">
                                                         {conexao.title}
                                                         <span className="ml-2 rounded bg-primary/10 px-1 text-[10px] text-primary">
-                                                            {conexao.score} termos
+                                                            {conexao.score === 1 ? t("workspace.sidebar.term") : t("workspace.sidebar.terms", { count: conexao.score })}
                                                         </span>
                                                     </p>
                                                     <p className="mt-1 text-[11px] text-muted-foreground">
-                                                        Termos em comum:{" "}
+                                                        {t("workspace.sidebar.commonTerms")}{" "}
                                                         {conexao.matchedTerms.join(", ")}
                                                     </p>
                                                 </button>

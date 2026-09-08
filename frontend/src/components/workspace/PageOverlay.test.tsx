@@ -3,6 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { OutlineNode, ParagraphNode } from "@/lib/api/contracts/document-context";
 import { AvisoSemPosicao, distribuirMarcadores, origemMajoritaria, PageOverlay } from "@/components/workspace/PageOverlay";
+import { createTestWrapper } from "@/test/test-utils";
+
+// O I18nProvider le o locale do pathname; sem o mock cai em ingles.
+vi.mock("next/navigation", () => ({
+    usePathname: () => "/pt-BR/workspace",
+}));
+
+const opcoes = { wrapper: createTestWrapper("pt-BR") };
 
 vi.mock("@/lib/api/documents", () => ({
     retryDocumentIndexing: vi.fn(async () => ({ id: 9, status: "QUEUED" })),
@@ -34,7 +42,8 @@ describe("PageOverlay", () => {
                 selecionadoId={2}
                 secundarios={new Set()}
                 onSelecionar={onSelecionar}
-            />
+            />,
+            opcoes
         );
         const grifos = screen.getAllByTestId("grifo");
         expect(grifos).toHaveLength(2);
@@ -58,7 +67,8 @@ describe("PageOverlay", () => {
                 selecionadoId={null}
                 secundarios={new Set()}
                 onSelecionar={() => undefined}
-            />
+            />,
+            opcoes
         );
         // O no de nivel 3 nao vira marcador: so ate o nivel 2.
         expect(screen.getAllByTestId("marcador-secao")).toHaveLength(1);
@@ -90,7 +100,7 @@ describe("origemMajoritaria", () => {
 describe("AvisoSemPosicao", () => {
     it("so reindexa ao clicar e mostra que entrou na fila", async () => {
         const { retryDocumentIndexing } = await import("@/lib/api/documents");
-        render(<AvisoSemPosicao documentId={9} totalParagrafos={47} />);
+        render(<AvisoSemPosicao documentId={9} totalParagrafos={47} />, opcoes);
         expect(retryDocumentIndexing).not.toHaveBeenCalled();
         fireEvent.click(screen.getByRole("button", { name: "Reindexar" }));
         expect(retryDocumentIndexing).toHaveBeenCalledWith(9);
