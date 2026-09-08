@@ -1,6 +1,6 @@
 # Workspace: grifos coloridos com legenda, folhear página a página e ir até a conexão
 
-**Status:** rascunho
+**Status:** entregue (2026-09-08)
 **Data:** 2026-09-08
 **Base:** `docs/prds/workspace-canvas-pdf.md` (entregue em WS1–WS8, commits `8b53910`…`a3220f9`)
 **Origem:** pedido do autor depois de testar o canvas com o corpus da faculdade
@@ -103,7 +103,13 @@ Ordem: backend → BFF e cliente → lib pura → folhear → cores e barra → 
 
 ## Discoveries
 
-(vazio)
+- `createForwardHeaders` devolve um `Headers`; espalhar com `{...}` perde o `Authorization` e o PUT via BFF dá 401. Usar `new Headers(...)`.
+- As classes de cor moram em `lib/workspace/highlights.ts` e o Tailwind só varria `app/` e `components/`: chips e grifos coloridos saíam invisíveis no purge. `src/lib` entrou no `content`.
+- As buscas de marcas e legenda não podem redirecionar em 401: no E2E com token falso a página inteira ia para o login. São dados secundários; viram erro na sidebar.
+- No jsdom o `ResizeObserver` nunca dispara, o viewport fica 0×0 e nenhum quadro "entra na tela". Os testes do canvas informam um tamanho real.
+- A legenda no canto superior direito cobria o cabeçalho do último quadro; foi para o inferior esquerdo.
+- Uma seção de edital devolve 30 a 100 conexões: em "uma página" cada uma ganha "Ir para p. N", e o botão só faz sentido com a página do destino ao lado.
+- Entregue em 8 issues (#34 a #41). Stack real: marca amarela sobrevive ao reload, usuário B recebe 404 na coleção de A; Edital 57 folheado vai para a p. 18 ao clicar em "Ir para p. 18" a partir de um grifo verde do Edital 56, com 13 secundários verdes na página.
 
 ## Ambiguity Report (grill-me, modo spec, 2026-09-08)
 
