@@ -107,6 +107,21 @@ async function esperarIndexacao(token: string, documentoID: number): Promise<voi
     throw new Error(`etapa 4 (indexacao): documento ${documentoID} nao chegou a INDEXED em 180s`);
 }
 
+async function contarParagrafosComBox(token: string, colecao: string, documentoID: number): Promise<number> {
+    const cabecalhos = { Authorization: `Bearer ${token}` };
+    const lista = (await (await fetch(`${API}/documents/collections`, { headers: cabecalhos })).json()) as {
+        data?: Array<{ id: number; name: string }>;
+    };
+    const alvo = lista.data?.find((c) => c.name === colecao);
+    if (!alvo) {
+        throw new Error(`etapa 6: collection ${colecao} nao esta na lista da API`);
+    }
+    const contexto = (await (await fetch(`${API}/documents/collections/${alvo.id}/context`, { headers: cabecalhos })).json()) as {
+        data?: { paragraph_nodes?: Array<{ document_id: number; metadata?: { box?: unknown } }> };
+    };
+    return (contexto.data?.paragraph_nodes ?? []).filter((no) => no.document_id === documentoID && no.metadata?.box).length;
+}
+
 test.describe("percurso completo na stack real", () => {
     test("login, upload de PDF, indexacao, estrutura e conexoes", async ({ page, context }) => {
         const errosDeConsole: string[] = [];
@@ -149,12 +164,27 @@ test.describe("percurso completo na stack real", () => {
             `etapa 5: a collection ${colecao} nao apareceu na biblioteca`,
         ).toBeVisible({ timeout: 30_000 });
 
-        // Etapa 6: workspace abre com o acervo real.
+        // Etapa 6: workspace abre com o acervo real e o PDF vira paginas com
+        // grifos. A contagem de grifos e comparada com o que a API diz ter de
+        // paragrafos com bounding box -- e a prova de que a proveniencia
+        // posicional chegou inteira do indexador ate a tela.
         await page.goto("/pt-BR/workspace", { waitUntil: "domcontentloaded" });
         await expect(
             page.getByRole("heading", { level: 1 }),
             "etapa 6: o workspace nao montou",
         ).toBeVisible({ timeout: 30_000 });
+        await page.selectOption("select", { label: colecao });
+        await expect(
+            page.getByTestId(`pdf-frame-${documentoID}`),
+            "etapa 6: o quadro do PDF nao apareceu",
+        ).toHaveAttribute("data-paginas", /^[1-9]\d*$/, { timeout: 60_000 });
+
+        const comBox = await contarParagrafosComBox(token, colecao, documentoID);
+        expect(comBox, "etapa 6: a API nao devolveu paragrafo com box; o indexador tem pdftotext?").toBeGreaterThan(0);
+        await expect(
+            page.getByTestId("grifo"),
+            "etapa 6: grifos na tela diferem dos paragrafos com box na API",
+        ).toHaveCount(comBox, { timeout: 30_000 });
 
         // Etapa 7: nenhum erro de console no percurso inteiro. Erro aqui e
         // defeito real -- a suite com mock nao alcanca esse caminho.

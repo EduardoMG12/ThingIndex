@@ -124,6 +124,13 @@ Ordem de execução em uma entrega só, como pedido, mas commits atômicos: corp
 ## Discoveries
 
 - 2026-09-08: imagem dev do indexador sem poppler; nenhum box no banco local. Corrigido antes deste PRD (`f02b2a5`).
+- O build padrão do pdf.js 6 usa `Map.prototype.getOrInsertComputed`; o Chromium 144 não tem e a página ficava branca com TypeError. O projeto usa o build `legacy`, que traz os polyfills.
+- Abrir o PDF e medir as páginas no mesmo efeito não funciona: o `setDocumento` reexecuta o efeito e o cleanup cancela a medição em voo. São dois efeitos.
+- "Ajustar à tela" pela altura jogava o zoom em 10% com quadros de 19 mil px. Ajusta pela largura, topo alinhado.
+- O `section_key` do parágrafo só cobre 175 das 321 seções do Edital 56; a âncora do marcador usa `metadata.paragraph_start` do nó de sumário, que a indexação já grava. Marcadores só até o nível 2 e dentro da margem esquerda; sem âncora, sem marcador.
+- Uma seção do Edital 56 devolve 109 conexões acima do limiar. O canvas desenha as 12 mais fortes; a sidebar lista todas.
+- Quadros só abrem quando entram no viewport. Um teste que põe o PDF em terceiro lugar numa tela de 1280 px nunca o vê abrir, e isso é o comportamento certo.
+- Entregue em 8 issues (#26 a #33), commits `8b53910` a WS8. Corpus da faculdade: 6/6 documentos, 6.752 parágrafos com box, conexões em todas as collections.
 
 ## Ambiguity Report (grill-me, modo spec, 2026-09-08)
 
