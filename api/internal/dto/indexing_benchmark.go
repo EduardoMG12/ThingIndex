@@ -183,7 +183,7 @@ func ToIndexingBenchmarkReportResponse(report *domain.IndexingBenchmarkReport) *
 			MimeType:              item.MimeType,
 			Focus:                 item.Focus,
 			QueryCount:            item.QueryCount,
-			ExpectedOutlineTitles: append([]string(nil), item.ExpectedOutlineTitles...),
+			ExpectedOutlineTitles: copiaDeTextos(item.ExpectedOutlineTitles),
 			ExpectedTableCount:    item.ExpectedTableCount,
 			OutlineNodeCount:      item.OutlineNodeCount,
 			TableCount:            item.TableCount,
@@ -238,9 +238,9 @@ func ToIndexingBenchmarkReportResponse(report *domain.IndexingBenchmarkReport) *
 		CorpusSourcePath:     report.CorpusSourcePath,
 		LastReviewedOn:       report.LastReviewedOn,
 		Summary:              report.Summary,
-		Methodology:          append([]string(nil), report.Methodology...),
-		PassCriteria:         append([]string(nil), report.PassCriteria...),
-		Limitations:          append([]string(nil), report.Limitations...),
+		Methodology:          copiaDeTextos(report.Methodology),
+		PassCriteria:         copiaDeTextos(report.PassCriteria),
+		Limitations:          copiaDeTextos(report.Limitations),
 		HeuristicQualityNote: report.HeuristicQualityNote,
 		Corpus:               corpus,
 		Metrics: IndexingBenchmarkMetricsResponse{
@@ -365,7 +365,7 @@ func toIndexingBenchmarkReferenceComparisonResponse(
 			InvalidRangeCount:    artifact.InvalidRangeCount,
 			AverageTitleLength:   artifact.AverageTitleLength,
 			AverageSummaryLength: artifact.AverageSummaryLength,
-			Notes:                append([]string(nil), artifact.Notes...),
+			Notes:                copiaDeTextos(artifact.Notes),
 		})
 	}
 
@@ -437,7 +437,26 @@ func toIndexingBenchmarkRetrievalComparisonResponse(
 	return &IndexingBenchmarkRetrievalComparisonResponse{
 		Summary:    item.Summary,
 		BaselineID: item.BaselineID,
-		Notes:      append([]string(nil), item.Notes...),
+		Notes:      copiaDeTextos(item.Notes),
 		Variants:   variants,
 	}
+}
+
+// copiaDeTextos devolve uma copia da lista que NUNCA e nil.
+//
+// Substitui copiaDeTextos(origem), que preserva a copia mas devolve
+// nil quando a origem esta vazia -- e nil serializa como `null` no JSON, nao
+// como `[]`. O cliente que faz .map direto quebra com
+// "Cannot read properties of null".
+//
+// O frontend atual se protege com normalizeStringList, mas a inconsistencia de
+// contrato continua sendo dele: o resto do pacote devolve [] e estes seis
+// campos devolviam null.
+//
+// A copia continua sendo necessaria: sem ela, o chamador que altera a resposta
+// corromperia a fixture carregada em memoria, e o pedido seguinte veria dado
+// adulterado.
+func copiaDeTextos(origem []string) []string {
+	copia := make([]string, 0, len(origem))
+	return append(copia, origem...)
 }

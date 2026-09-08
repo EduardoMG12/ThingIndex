@@ -6,31 +6,136 @@
       "id": "acordao-trabalhista",
       "stratum": "juridico",
       "title": "Acórdão — Recurso Ordinário 0001234-56.2025.5.09.0011",
-      "content": "ACÓRDÃO\nRECURSO ORDINÁRIO 0001234-56.2025.5.09.0011\n\n1 RELATÓRIO\nA reclamante ajuizou ação postulando o reconhecimento de vínculo empregatício no período de março de 2021 a agosto de 2023, além do pagamento de horas extraordinárias e adicional noturno.\n\n2 FUNDAMENTAÇÃO\nA prova testemunhal confirmou a pessoalidade e a não eventualidade da prestação de serviços. O depoimento do preposto confirmou a existência de escala fixa, o que descaracteriza a alegada autonomia. Quanto à jornada, os controles de ponto apresentados são britânicos e, portanto, inválidos como meio de prova, invertendo-se o ônus probatório.\n\n3 DISPOSITIVO\nAnte o exposto, conheço do recurso e, no mérito, dou-lhe parcial provimento para reconhecer o vínculo empregatício e condenar a reclamada ao pagamento de horas extraordinárias excedentes à 8a diária, com adicional de 50%, e reflexos em férias, décimo terceiro e FGTS. Custas pela reclamada."
+      "content": "ACÓRDÃO\nRECURSO ORDINÁRIO 0001234-56.2025.5.09.0011\n\n1 RELATÓRIO\nA reclamante ajuizou ação postulando o reconhecimento de vínculo empregatício no período de março de 2021 a agosto de 2023, além do pagamento de horas extraordinárias e adicional noturno.\n\n2 FUNDAMENTAÇÃO\nA prova testemunhal confirmou a pessoalidade e a não eventualidade da prestação de serviços. O depoimento do preposto confirmou a existência de escala fixa, o que descaracteriza a alegada autonomia. Quanto à jornada, os controles de ponto apresentados são britânicos e, portanto, inválidos como meio de prova, invertendo-se o ônus probatório.\n\n3 DISPOSITIVO\nAnte o exposto, conheço do recurso e, no mérito, dou-lhe parcial provimento para reconhecer o vínculo empregatício e condenar a reclamada ao pagamento de horas extraordinárias excedentes à 8a diária, com adicional de 50%, e reflexos em férias, décimo terceiro e FGTS. Custas pela reclamada.",
+      "sections": [
+        {
+          "id": "acordao-trabalhista#s1",
+          "anchor": "1 RELATÓRIO",
+          "title": "Relatório"
+        },
+        {
+          "id": "acordao-trabalhista#s2",
+          "anchor": "2 FUNDAMENTAÇÃO",
+          "title": "Fundamentação"
+        },
+        {
+          "id": "acordao-trabalhista#s3",
+          "anchor": "3 DISPOSITIVO",
+          "title": "Dispositivo"
+        }
+      ]
     },
     {
       "id": "edital-pregao",
       "stratum": "licitacao",
       "title": "Edital de Pregão Eletrônico 042/2025",
-      "content": "EDITAL DE PREGÃO ELETRÔNICO Nº 042/2025\n\n1 DO OBJETO\nContratação de empresa especializada na prestação de serviços continuados de limpeza e conservação predial, com fornecimento de materiais e equipamentos.\n\n2 DA HABILITAÇÃO\nOs licitantes deverão apresentar certidão negativa de débitos relativos a tributos federais, prova de regularidade com o FGTS e atestado de capacidade técnica emitido por pessoa jurídica de direito público ou privado.\n\n3 DA PROPOSTA E DOS PREÇOS\nO valor máximo estimado para a contratação é de R$ 1.480.000,00 (um milhão, quatrocentos e oitenta mil reais) para o período de doze meses.\n\nItem | Descrição | Quantidade | Valor unitário\n1 | Posto de servente diurno | 12 | R$ 4.320,00\n2 | Posto de servente noturno | 4 | R$ 5.870,00\n3 | Posto de encarregado | 2 | R$ 7.150,00\n\n4 DOS PRAZOS\nA vigência contratual será de 12 (doze) meses, prorrogável na forma da Lei 14.133/2021. O pagamento será efetuado em até 30 (trinta) dias após o atesto da nota fiscal."
+      "content": "EDITAL DE PREGÃO ELETRÔNICO Nº 042/2025\n\n1 DO OBJETO\nContratação de empresa especializada na prestação de serviços continuados de limpeza e conservação predial, com fornecimento de materiais e equipamentos.\n\n2 DA HABILITAÇÃO\nOs licitantes deverão apresentar certidão negativa de débitos relativos a tributos federais, prova de regularidade com o FGTS e atestado de capacidade técnica emitido por pessoa jurídica de direito público ou privado.\n\n3 DA PROPOSTA E DOS PREÇOS\nO valor máximo estimado para a contratação é de R$ 1.480.000,00 (um milhão, quatrocentos e oitenta mil reais) para o período de doze meses.\n\nItem | Descrição | Quantidade | Valor unitário\n1 | Posto de servente diurno | 12 | R$ 4.320,00\n2 | Posto de servente noturno | 4 | R$ 5.870,00\n3 | Posto de encarregado | 2 | R$ 7.150,00\n\n4 DOS PRAZOS\nA vigência contratual será de 12 (doze) meses, prorrogável na forma da Lei 14.133/2021. O pagamento será efetuado em até 30 (trinta) dias após o atesto da nota fiscal.",
+      "sections": [
+        {
+          "id": "edital-pregao#s1",
+          "anchor": "1 DO OBJETO",
+          "title": "Do objeto"
+        },
+        {
+          "id": "edital-pregao#s2",
+          "anchor": "2 DA HABILITAÇÃO",
+          "title": "Da habilitação"
+        },
+        {
+          "id": "edital-pregao#s3",
+          "anchor": "3 DA PROPOSTA E DOS PREÇOS",
+          "title": "Da proposta e dos preços"
+        },
+        {
+          "id": "edital-pregao#s4",
+          "anchor": "4 DOS PRAZOS",
+          "title": "Dos prazos"
+        }
+      ]
     },
     {
       "id": "contrato-sla",
       "stratum": "contratual",
       "title": "Contrato de Prestação de Serviços de TI — Anexo de Níveis de Serviço",
-      "content": "CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE TECNOLOGIA DA INFORMAÇÃO\nANEXO II — NÍVEIS DE SERVIÇO\n\n1 DISPONIBILIDADE\nA CONTRATADA garante disponibilidade mensal mínima de 99,5% para o ambiente de produção, apurada mensalmente, excluídas as janelas de manutenção programada comunicadas com 72 horas de antecedência.\n\n2 TEMPO DE ATENDIMENTO\nIncidentes classificados como severidade 1 deverão ter início de atendimento em até 30 minutos e solução de contorno em até 4 horas. Severidade 2: início em 2 horas, contorno em 8 horas.\n\n3 PENALIDADES\nO descumprimento dos níveis pactuados sujeita a CONTRATADA a desconto de 5% sobre a fatura mensal por ponto percentual de indisponibilidade excedente, limitado a 20% do valor mensal.\n\n4 REAJUSTE\nOs valores serão reajustados anualmente pela variação acumulada do IPCA."
+      "content": "CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE TECNOLOGIA DA INFORMAÇÃO\nANEXO II — NÍVEIS DE SERVIÇO\n\n1 DISPONIBILIDADE\nA CONTRATADA garante disponibilidade mensal mínima de 99,5% para o ambiente de produção, apurada mensalmente, excluídas as janelas de manutenção programada comunicadas com 72 horas de antecedência.\n\n2 TEMPO DE ATENDIMENTO\nIncidentes classificados como severidade 1 deverão ter início de atendimento em até 30 minutos e solução de contorno em até 4 horas. Severidade 2: início em 2 horas, contorno em 8 horas.\n\n3 PENALIDADES\nO descumprimento dos níveis pactuados sujeita a CONTRATADA a desconto de 5% sobre a fatura mensal por ponto percentual de indisponibilidade excedente, limitado a 20% do valor mensal.\n\n4 REAJUSTE\nOs valores serão reajustados anualmente pela variação acumulada do IPCA.",
+      "sections": [
+        {
+          "id": "contrato-sla#s1",
+          "anchor": "1 DISPONIBILIDADE",
+          "title": "Disponibilidade"
+        },
+        {
+          "id": "contrato-sla#s2",
+          "anchor": "2 TEMPO DE ATENDIMENTO",
+          "title": "Tempo de atendimento"
+        },
+        {
+          "id": "contrato-sla#s3",
+          "anchor": "3 PENALIDADES",
+          "title": "Penalidades"
+        },
+        {
+          "id": "contrato-sla#s4",
+          "anchor": "4 REAJUSTE",
+          "title": "Reajuste"
+        }
+      ]
     },
     {
       "id": "politica-privacidade",
       "stratum": "normativo",
       "title": "Política de Privacidade e Tratamento de Dados Pessoais",
-      "content": "POLÍTICA DE PRIVACIDADE E TRATAMENTO DE DADOS PESSOAIS\n\n1 FINALIDADE DO TRATAMENTO\nOs dados pessoais coletados destinam-se à execução do contrato, ao cumprimento de obrigação legal e ao legítimo interesse do controlador, nos termos do artigo 7º da Lei 13.709/2018.\n\n2 COMPARTILHAMENTO\nNão há compartilhamento de dados pessoais com terceiros para fins publicitários. O compartilhamento com operadores ocorre exclusivamente para viabilizar a hospedagem e o processamento das informações.\n\n3 DIREITOS DO TITULAR\nO titular pode requerer confirmação de tratamento, acesso, correção, anonimização, portabilidade e eliminação dos dados, mediante solicitação ao encarregado.\n\n4 RETENÇÃO\nOs registros de acesso a aplicações são mantidos por 6 (seis) meses, conforme o Marco Civil da Internet."
+      "content": "POLÍTICA DE PRIVACIDADE E TRATAMENTO DE DADOS PESSOAIS\n\n1 FINALIDADE DO TRATAMENTO\nOs dados pessoais coletados destinam-se à execução do contrato, ao cumprimento de obrigação legal e ao legítimo interesse do controlador, nos termos do artigo 7º da Lei 13.709/2018.\n\n2 COMPARTILHAMENTO\nNão há compartilhamento de dados pessoais com terceiros para fins publicitários. O compartilhamento com operadores ocorre exclusivamente para viabilizar a hospedagem e o processamento das informações.\n\n3 DIREITOS DO TITULAR\nO titular pode requerer confirmação de tratamento, acesso, correção, anonimização, portabilidade e eliminação dos dados, mediante solicitação ao encarregado.\n\n4 RETENÇÃO\nOs registros de acesso a aplicações são mantidos por 6 (seis) meses, conforme o Marco Civil da Internet.",
+      "sections": [
+        {
+          "id": "politica-privacidade#s1",
+          "anchor": "1 FINALIDADE DO TRATAMENTO",
+          "title": "Finalidade do tratamento"
+        },
+        {
+          "id": "politica-privacidade#s2",
+          "anchor": "2 COMPARTILHAMENTO",
+          "title": "Compartilhamento"
+        },
+        {
+          "id": "politica-privacidade#s3",
+          "anchor": "3 DIREITOS DO TITULAR",
+          "title": "Direitos do titular"
+        },
+        {
+          "id": "politica-privacidade#s4",
+          "anchor": "4 RETENÇÃO",
+          "title": "Retenção"
+        }
+      ]
     },
     {
       "id": "manual-onboarding",
       "stratum": "operacional",
       "title": "Manual de Integração de Novos Colaboradores",
-      "content": "MANUAL DE INTEGRAÇÃO DE NOVOS COLABORADORES\n\n1 PRIMEIRO DIA\nO novo colaborador deve comparecer ao setor de gestão de pessoas para conferência documental e assinatura do termo de responsabilidade sobre equipamentos.\n\n2 ACESSOS E FERRAMENTAS\nA solicitação de credenciais é feita pelo gestor imediato com antecedência mínima de 48 horas. O acesso à rede corporativa exige a conclusão do treinamento de segurança da informação.\n\n3 PERÍODO DE EXPERIÊNCIA\nO contrato de experiência tem duração de 45 dias, prorrogável por igual período, com avaliação formal ao final de cada etapa.\n\n4 BENEFÍCIOS\nVale-refeição, plano de saúde e auxílio-creche passam a vigorar a partir do primeiro dia útil do mês subsequente à admissão."
+      "content": "MANUAL DE INTEGRAÇÃO DE NOVOS COLABORADORES\n\n1 PRIMEIRO DIA\nO novo colaborador deve comparecer ao setor de gestão de pessoas para conferência documental e assinatura do termo de responsabilidade sobre equipamentos.\n\n2 ACESSOS E FERRAMENTAS\nA solicitação de credenciais é feita pelo gestor imediato com antecedência mínima de 48 horas. O acesso à rede corporativa exige a conclusão do treinamento de segurança da informação.\n\n3 PERÍODO DE EXPERIÊNCIA\nO contrato de experiência tem duração de 45 dias, prorrogável por igual período, com avaliação formal ao final de cada etapa.\n\n4 BENEFÍCIOS\nVale-refeição, plano de saúde e auxílio-creche passam a vigorar a partir do primeiro dia útil do mês subsequente à admissão.",
+      "sections": [
+        {
+          "id": "manual-onboarding#s1",
+          "anchor": "1 PRIMEIRO DIA",
+          "title": "Primeiro dia"
+        },
+        {
+          "id": "manual-onboarding#s2",
+          "anchor": "2 ACESSOS E FERRAMENTAS",
+          "title": "Acessos e ferramentas"
+        },
+        {
+          "id": "manual-onboarding#s3",
+          "anchor": "3 PERÍODO DE EXPERIÊNCIA",
+          "title": "Período de experiência"
+        },
+        {
+          "id": "manual-onboarding#s4",
+          "anchor": "4 BENEFÍCIOS",
+          "title": "Benefícios"
+        }
+      ]
     }
   ],
   "queries": [
@@ -40,6 +145,10 @@
       "variant": "literal",
       "relevance": {
         "acordao-trabalhista": 3
+      },
+      "relevance_sections": {
+        "acordao-trabalhista#s1": 3,
+        "acordao-trabalhista#s3": 2
       }
     },
     {
@@ -48,6 +157,9 @@
       "variant": "literal",
       "relevance": {
         "edital-pregao": 3
+      },
+      "relevance_sections": {
+        "edital-pregao#s2": 3
       }
     },
     {
@@ -56,6 +168,10 @@
       "variant": "literal",
       "relevance": {
         "contrato-sla": 3
+      },
+      "relevance_sections": {
+        "contrato-sla#s1": 3,
+        "contrato-sla#s2": 3
       }
     },
     {
@@ -64,6 +180,9 @@
       "variant": "literal",
       "relevance": {
         "politica-privacidade": 3
+      },
+      "relevance_sections": {
+        "politica-privacidade#s3": 3
       }
     },
     {
@@ -72,6 +191,9 @@
       "variant": "literal",
       "relevance": {
         "manual-onboarding": 3
+      },
+      "relevance_sections": {
+        "manual-onboarding#s3": 3
       }
     },
     {
@@ -81,6 +203,10 @@
       "relevance": {
         "edital-pregao": 3,
         "contrato-sla": 1
+      },
+      "relevance_sections": {
+        "edital-pregao#s4": 3,
+        "contrato-sla#s2": 1
       }
     },
     {
@@ -89,6 +215,10 @@
       "variant": "paraphrase",
       "relevance": {
         "contrato-sla": 3
+      },
+      "relevance_sections": {
+        "contrato-sla#s3": 3,
+        "contrato-sla#s1": 2
       }
     },
     {
@@ -97,6 +227,9 @@
       "variant": "paraphrase",
       "relevance": {
         "politica-privacidade": 3
+      },
+      "relevance_sections": {
+        "politica-privacidade#s4": 3
       }
     },
     {
@@ -105,6 +238,9 @@
       "variant": "paraphrase",
       "relevance": {
         "acordao-trabalhista": 3
+      },
+      "relevance_sections": {
+        "acordao-trabalhista#s2": 3
       }
     },
     {
@@ -113,6 +249,9 @@
       "variant": "paraphrase",
       "relevance": {
         "manual-onboarding": 3
+      },
+      "relevance_sections": {
+        "manual-onboarding#s4": 3
       }
     },
     {
@@ -121,6 +260,9 @@
       "variant": "paraphrase",
       "relevance": {
         "edital-pregao": 3
+      },
+      "relevance_sections": {
+        "edital-pregao#s3": 3
       }
     },
     {
@@ -130,6 +272,10 @@
       "relevance": {
         "contrato-sla": 3,
         "edital-pregao": 1
+      },
+      "relevance_sections": {
+        "contrato-sla#s4": 3,
+        "edital-pregao#s4": 1
       }
     },
     {
@@ -138,6 +284,9 @@
       "variant": "noisy",
       "relevance": {
         "edital-pregao": 3
+      },
+      "relevance_sections": {
+        "edital-pregao#s4": 3
       }
     },
     {
@@ -146,6 +295,9 @@
       "variant": "noisy",
       "relevance": {
         "contrato-sla": 3
+      },
+      "relevance_sections": {
+        "contrato-sla#s3": 3
       }
     },
     {
@@ -154,6 +306,9 @@
       "variant": "noisy",
       "relevance": {
         "politica-privacidade": 3
+      },
+      "relevance_sections": {
+        "politica-privacidade#s3": 3
       }
     },
     {
@@ -162,6 +317,10 @@
       "variant": "noisy",
       "relevance": {
         "manual-onboarding": 3
+      },
+      "relevance_sections": {
+        "manual-onboarding#s2": 3,
+        "manual-onboarding#s1": 1
       }
     },
     {

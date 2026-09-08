@@ -25,7 +25,9 @@ from analyze import (  # noqa: E402
     build_significance_table,
     build_summary_table,
     build_variant_table,
+    ceiling_key,
     cliffs_delta,
+    filter_granularity,
     mean,
     wilcoxon_signed_rank,
 )
@@ -244,6 +246,216 @@ class TestExecucaoFimAFim(unittest.TestCase):
                 "retrieval-negatives.tex",
             }
             self.assertEqual({p.name for p in outdir.glob("*.tex")}, esperados)
+
+
+class TestGranularidade(unittest.TestCase):
+    """O CSV traz as duas unidades de recuperacao na mesma execucao.
+
+    Misturar as duas produz uma media entre grandezas diferentes -- um numero
+    plausivel e sem significado, que e o modo de falha mais perigoso de uma
+    analise: nao levanta erro nenhum.
+    """
+
+    def _linhas_das_duas_granularidades(self):
+        linhas = []
+        for granularity, base in (("document", 0.8), ("section", 0.4)):
+            for i in range(12):
+                linhas.append(
+                    {
+                        "query_id": f"q{i:02d}",
+                        "arm": "A-relacional",
+                        "granularity": granularity,
+                        "variant": ["literal", "paraphrase", "noisy"][i % 3],
+                        "negative": "false",
+                        "p_at_1": f"{base:.6f}",
+                        "p_at_3": f"{base / 3:.6f}",
+                        "r_at_5": f"{base:.6f}",
+                        "reciprocal_rank": f"{base:.6f}",
+                        "ndcg_at_10": f"{base:.6f}",
+                        "false_positive": "0.000000",
+                        "result_count": "3",
+                        "latency_ms": "0.100000",
+                    }
+                )
+        return linhas
+
+    def test_filtra_uma_granularidade_por_vez(self):
+        linhas = self._linhas_das_duas_granularidades()
+
+        so_documento = filter_granularity(linhas, "document")
+        self.assertEqual(len(so_documento), 12)
+        self.assertTrue(all(r["granularity"] == "document" for r in so_documento))
+
+        so_secao = filter_granularity(linhas, "section")
+        self.assertEqual(len(so_secao), 12)
+        self.assertTrue(all(r["granularity"] == "section" for r in so_secao))
+
+    def test_media_nao_mistura_as_duas(self):
+        linhas = self._linhas_das_duas_granularidades()
+
+        tabela_doc = build_summary_table(filter_granularity(linhas, "document"))
+        tabela_sec = build_summary_table(filter_granularity(linhas, "section"))
+
+        # 0.800 e 0.400 sao os valores reais de cada granularidade. A media
+        # entre elas seria 0.600 -- um numero que nao corresponde a medicao
+        # nenhuma e que apareceria se o filtro nao existisse.
+        self.assertIn("0.800", tabela_doc)
+        self.assertNotIn("0.600", tabela_doc)
+        self.assertIn("0.400", tabela_sec)
+        self.assertNotIn("0.600", tabela_sec)
+
+    def test_granularidade_inexistente_falha_em_vez_de_devolver_vazio(self):
+        linhas = self._linhas_das_duas_granularidades()
+        with self.assertRaises(SystemExit):
+            filter_granularity(linhas, "paragrafo")
+
+    def test_csv_sem_a_coluna_e_tratado_como_documento(self):
+        # Retrocompatibilidade com resultados gerados antes da issue #16.
+        antigas = [
+            {
+                "query_id": "q00",
+                "arm": "A-relacional",
+                "variant": "literal",
+                "negative": "false",
+                "p_at_1": "1.000000",
+                "p_at_3": "0.333333",
+                "r_at_5": "1.000000",
+                "reciprocal_rank": "1.000000",
+                "ndcg_at_10": "1.000000",
+                "false_positive": "0.000000",
+                "result_count": "3",
+                "latency_ms": "0.100000",
+            }
+        ]
+        resultado = filter_granularity(antigas, "document")
+        self.assertEqual(len(resultado), 1)
+
+
+class TestTetos(unittest.TestCase):
+    """A tabela precisa declarar o maximo alcancavel de cada metrica.
+
+    P@k divide por k, entao uma consulta com um unico item relevante limita P@3
+    a 1/3 mesmo sob ranking perfeito. Publicar 0,312 sem dizer que o teto e
+    0,375 leva o leitor a concluir que o sistema acerta 31%, quando o real e 83%
+    do maximo possivel.
+    """
+
+    def _linhas_com_teto(self, teto_p3="0.333333"):
+        return [
+            {
+                "query_id": f"q{i:02d}",
+                "arm": "A-relacional",
+                "granularity": "section",
+                "variant": "literal",
+                "negative": "false",
+                "p_at_1": "1.000000",
+                "p_at_3": "0.333333",
+                "p_at_5": "0.200000",
+                "r_at_5": "1.000000",
+                "r_at_10": "1.000000",
+                "reciprocal_rank": "1.000000",
+                "ndcg_at_10": "1.000000",
+                "false_positive": "0.000000",
+                "result_count": "3",
+                "latency_ms": "0.100000",
+                "p_at_1_ceiling": "1.000000",
+                "p_at_3_ceiling": teto_p3,
+                "p_at_5_ceiling": "0.200000",
+                "r_at_5_ceiling": "1.000000",
+                "r_at_10_ceiling": "1.000000",
+                "relevant_count": "1",
+            }
+            for i in range(12)
+        ]
+
+    def test_tabela_publica_a_linha_de_teto(self):
+        tabela = build_summary_table(self._linhas_com_teto())
+        self.assertIn("Teto alcançável", tabela)
+        self.assertIn("0.333", tabela, "o teto de P@3 precisa aparecer na tabela")
+
+    def test_teto_de_ndcg_nao_e_publicado(self):
+        # nDCG e MRR ja sao normalizados pelo ideal do proprio gabarito: o teto
+        # e 1,000 por construcao e publica-lo nao informa nada.
+        self.assertIsNone(ceiling_key("ndcg_at_10"))
+        self.assertIsNone(ceiling_key("reciprocal_rank"))
+        self.assertEqual(ceiling_key("p_at_3"), "p_at_3_ceiling")
+
+    def test_csv_antigo_sem_teto_nao_quebra(self):
+        # Retrocompatibilidade: resultados gerados antes da issue #16 nao tem as
+        # colunas de teto, e a tabela precisa continuar sendo gerada.
+        linhas = self._linhas_com_teto()
+        for linha in linhas:
+            for chave in list(linha):
+                if chave.endswith("_ceiling"):
+                    del linha[chave]
+
+        tabela = build_summary_table(linhas)
+        self.assertIn(r"\begin{table}", tabela)
+        self.assertNotIn("Teto alcançável", tabela)
+
+    def test_teto_reflete_o_gabarito_e_nao_o_braco(self):
+        # O teto e propriedade do gabarito: mudar o numero de relevantes muda o
+        # teto, mesmo com as metricas medidas identicas.
+        tabela_um = build_summary_table(self._linhas_com_teto(teto_p3="0.333333"))
+        tabela_dois = build_summary_table(self._linhas_com_teto(teto_p3="0.666667"))
+        self.assertIn("0.333", tabela_um)
+        self.assertIn("0.667", tabela_dois)
+
+
+class TestLabelsUnicos(unittest.TestCase):
+    """Tabelas das duas granularidades convivem no mesmo documento LaTeX.
+
+    Sem sufixo no \\label, as duas versoes de cada tabela usariam o mesmo
+    identificador e todo \\ref apontaria para a ultima definida -- o LaTeX
+    apenas avisa 'multiply defined' e compila, entao o artigo sairia com
+    referencias cruzadas erradas sem ninguem perceber.
+    """
+
+    def _linhas(self):
+        return [
+            {
+                "query_id": f"q{i:02d}",
+                "arm": "A-relacional",
+                "granularity": "section",
+                "variant": ["literal", "paraphrase", "noisy"][i % 3],
+                "negative": "false" if i < 10 else "true",
+                "p_at_1": "0.500000",
+                "p_at_3": "0.200000",
+                "p_at_5": "0.100000",
+                "r_at_5": "0.500000",
+                "r_at_10": "0.500000",
+                "reciprocal_rank": "0.500000",
+                "ndcg_at_10": "0.500000",
+                "false_positive": "1.000000" if i >= 10 else "0.000000",
+                "result_count": "3",
+                "latency_ms": "0.100000",
+            }
+            for i in range(12)
+        ]
+
+    def test_sufixo_diferencia_os_labels(self):
+        linhas = self._linhas()
+        for build in (
+            build_summary_table,
+            build_variant_table,
+            build_significance_table,
+            build_negative_table,
+        ):
+            sem_sufixo = build(linhas)
+            com_sufixo = build(linhas, "-section")
+
+            self.assertNotIn("-section}", sem_sufixo, f"{build.__name__}: label padrao nao deveria ter sufixo")
+            self.assertIn("-section}", com_sufixo, f"{build.__name__}: sufixo nao chegou ao label")
+
+    def test_labels_das_duas_granularidades_nao_colidem(self):
+        linhas = self._linhas()
+        import re
+
+        for build in (build_summary_table, build_variant_table):
+            label_doc = re.findall(r"\\label\{([^}]+)\}", build(linhas))
+            label_sec = re.findall(r"\\label\{([^}]+)\}", build(linhas, "-section"))
+            self.assertTrue(label_doc and label_sec)
+            self.assertNotEqual(label_doc[0], label_sec[0])
 
 
 if __name__ == "__main__":

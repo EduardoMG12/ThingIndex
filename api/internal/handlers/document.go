@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -57,7 +58,7 @@ func (h *DocumentHandler) Upload(c *gin.Context) {
 
 	file, err := fileHeader.Open()
 	if err != nil {
-		h.respondInternalError(c, lang)
+		h.respondInternalError(c, lang, err)
 		return
 	}
 	defer file.Close()
@@ -90,9 +91,13 @@ func (h *DocumentHandler) Upload(c *gin.Context) {
 		case errors.Is(err, domain.ErrStorageProviderUnavailable):
 			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_storage_provider"), nil)
 		case errors.Is(err, domain.ErrUploadFailed):
+			// Este 500 tambem precisa registrar a causa: e justamente o
+			// caminho de storage indisponivel, o mais dificil de diagnosticar
+			// sem log.
+			log.Printf("erro interno em %s %s: %v", c.Request.Method, c.Request.URL.Path, err)
 			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "doc.error_upload"), nil)
 		default:
-			h.respondInternalError(c, lang)
+			h.respondInternalError(c, lang, err)
 		}
 		return
 	}
@@ -118,7 +123,7 @@ func (h *DocumentHandler) CreateCollection(c *gin.Context) {
 		case errors.Is(err, domain.ErrCollectionDuplicate):
 			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_collection_duplicate"), nil)
 		default:
-			h.respondInternalError(c, lang)
+			h.respondInternalError(c, lang, err)
 		}
 		return
 	}
@@ -132,7 +137,7 @@ func (h *DocumentHandler) ListCollections(c *gin.Context) {
 
 	collections, err := h.useCase.ListCollections(c.Request.Context(), userID)
 	if err != nil {
-		h.respondInternalError(c, lang)
+		h.respondInternalError(c, lang, err)
 		return
 	}
 
@@ -154,7 +159,7 @@ func (h *DocumentHandler) GetCollection(c *gin.Context) {
 		case errors.Is(err, domain.ErrCollectionNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_collection_not_found"), nil)
 		default:
-			h.respondInternalError(c, lang)
+			h.respondInternalError(c, lang, err)
 		}
 		return
 	}
@@ -177,12 +182,84 @@ func (h *DocumentHandler) GetCollectionContext(c *gin.Context) {
 		case errors.Is(err, domain.ErrCollectionNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_collection_not_found"), nil)
 		default:
-			h.respondInternalError(c, lang)
+			h.respondInternalError(c, lang, err)
 		}
 		return
 	}
 
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_collection_context_get"), dto.ToCollectionContextResponse(collectionContext))
+}
+
+// defaultNodeConnectionMinScore e o limiar padrao das conexoes derivadas.
+//
+// O valor 2 exige que ao menos dois termos da origem apareçam no destino. Um
+// unico termo em comum e ruido: "contrato" liga qualquer par de documentos
+// juridicos sem que exista relacao de conteudo. E o mesmo raciocinio da Secao
+// de Limiar do artigo, onde a taxa de falso positivo de 1,000 mostrou que
+// devolver "o menos ruim" e pior do que devolver nada.
+const defaultNodeConnectionMinScore = 2
+
+// GetNodeConnections devolve as conexoes de um no do sumario com nos de outros
+// documentos da mesma colecao.
+//
+// As conexoes sao DERIVADAS a cada chamada e nunca persistidas: nao existe
+// tabela de arestas no esquema, e essa ausencia e deliberada (principio II da
+// constituicao -- grafo jamais como camada primaria de recuperacao).
+//
+// @Summary      List derived connections for an outline node
+// @Description  Returns outline nodes from OTHER documents in the same collection whose text overlaps the given node. Connections are recomputed on every request and never stored; each one carries the terms that justify it.
+// @Tags         documents
+// @Produce      json
+// @Param        id path int true "Collection ID"
+// @Param        node_id query string true "Outline node identifier"
+// @Param        min_score query int false "Minimum overlap score (default 2)"
+// @Success      200 {object} dto.NodeConnectionsResponse
+// @Failure      400 {object} response.Response
+// @Failure      401 {object} response.Response
+// @Failure      404 {object} response.Response
+// @Failure      500 {object} response.Response
+// @Security     BearerAuth
+// @Router       /documents/collections/{id}/connections [get]
+func (h *DocumentHandler) GetNodeConnections(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+
+	collectionID, ok := parseUintParam(c, "id", i18n.T(lang, "error.invalid_collection_id"))
+	if !ok {
+		return
+	}
+
+	nodeID := strings.TrimSpace(c.Query("node_id"))
+	if nodeID == "" {
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_outline_node_required"), nil)
+		return
+	}
+
+	minScore := defaultNodeConnectionMinScore
+	if raw := strings.TrimSpace(c.Query("min_score")); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil {
+			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "doc.error_invalid_min_score"), nil)
+			return
+		}
+		minScore = parsed
+	}
+
+	connections, err := h.useCase.GetNodeConnections(c.Request.Context(), userID, collectionID, nodeID, minScore)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrCollectionNotFound):
+			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_collection_not_found"), nil)
+		case errors.Is(err, domain.ErrOutlineNodeNotFound):
+			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_outline_node_not_found"), nil)
+		default:
+			h.respondInternalError(c, lang, err)
+		}
+		return
+	}
+
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_node_connections_get"),
+		dto.ToNodeConnectionsResponse(nodeID, minScore, connections))
 }
 
 func (h *DocumentHandler) RetryIndexing(c *gin.Context) {
@@ -200,7 +277,7 @@ func (h *DocumentHandler) RetryIndexing(c *gin.Context) {
 		case errors.Is(err, domain.ErrDocumentNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_not_found"), nil)
 		default:
-			h.respondInternalError(c, lang)
+			h.respondInternalError(c, lang, err)
 		}
 		return
 	}
@@ -214,7 +291,7 @@ func (h *DocumentHandler) ListCategories(c *gin.Context) {
 
 	categories, err := h.useCase.ListCategories(c.Request.Context(), userID)
 	if err != nil {
-		h.respondInternalError(c, lang)
+		h.respondInternalError(c, lang, err)
 		return
 	}
 
@@ -239,7 +316,7 @@ func (h *DocumentHandler) CreateCategory(c *gin.Context) {
 		case errors.Is(err, domain.ErrCategoryDuplicate):
 			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_category_duplicate"), nil)
 		default:
-			h.respondInternalError(c, lang)
+			h.respondInternalError(c, lang, err)
 		}
 		return
 	}
@@ -277,7 +354,7 @@ func (h *DocumentHandler) UpdateCategory(c *gin.Context) {
 		case errors.Is(err, domain.ErrCategoryDuplicate):
 			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_category_duplicate"), nil)
 		default:
-			h.respondInternalError(c, lang)
+			h.respondInternalError(c, lang, err)
 		}
 		return
 	}
@@ -310,7 +387,7 @@ func (h *DocumentHandler) UpdateCollectionCategory(c *gin.Context) {
 		case errors.Is(err, domain.ErrCollectionNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_collection_not_found"), nil)
 		default:
-			h.respondInternalError(c, lang)
+			h.respondInternalError(c, lang, err)
 		}
 		return
 	}
@@ -327,7 +404,7 @@ func (h *DocumentHandler) ListDocuments(c *gin.Context) {
 
 	docs, err := h.useCase.ListDocuments(c.Request.Context(), userID)
 	if err != nil {
-		h.respondInternalError(c, lang)
+		h.respondInternalError(c, lang, err)
 		return
 	}
 
@@ -408,7 +485,7 @@ func (h *DocumentHandler) ListDocumentAuditEvents(c *gin.Context) {
 		case errors.Is(err, domain.ErrAuditTimeRangeInvalid):
 			response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.invalid_audit_range"), nil)
 		default:
-			h.respondInternalError(c, lang)
+			h.respondInternalError(c, lang, err)
 		}
 		return
 	}
@@ -431,7 +508,7 @@ func (h *DocumentHandler) GetDocument(c *gin.Context) {
 		case errors.Is(err, domain.ErrDocumentNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
 		default:
-			h.respondInternalError(c, lang)
+			h.respondInternalError(c, lang, err)
 		}
 		return
 	}
@@ -458,7 +535,7 @@ func (h *DocumentHandler) GetDocumentContent(c *gin.Context) {
 		case errors.Is(err, domain.ErrStorageProviderUnavailable):
 			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_storage_provider"), nil)
 		default:
-			h.respondInternalError(c, lang)
+			h.respondInternalError(c, lang, err)
 		}
 		return
 	}
@@ -513,7 +590,7 @@ func (h *DocumentHandler) GetDocumentIndex(c *gin.Context) {
 		case errors.Is(err, domain.ErrDocumentNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
 		default:
-			h.respondInternalError(c, lang)
+			h.respondInternalError(c, lang, err)
 		}
 		return
 	}
@@ -548,7 +625,7 @@ func (h *DocumentHandler) ExportDocumentIndex(c *gin.Context) {
 		case errors.Is(err, domain.ErrDocumentNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
 		default:
-			h.respondInternalError(c, lang)
+			h.respondInternalError(c, lang, err)
 		}
 		return
 	}
@@ -556,7 +633,7 @@ func (h *DocumentHandler) ExportDocumentIndex(c *gin.Context) {
 	indexResponse := dto.ToDocumentIndexResponse(index)
 	exported := indexio.NewDocumentIndexExport(resolveDocumentIndexExportOrigin(c), indexResponse, time.Now().UTC())
 	if exported == nil {
-		h.respondInternalError(c, lang)
+		h.respondInternalError(c, lang, err)
 		return
 	}
 
@@ -584,7 +661,7 @@ func (h *DocumentHandler) GetDocumentMonitoringSummary(c *gin.Context) {
 
 	summary, err := h.useCase.GetDocumentMonitoringSummary(c.Request.Context(), userID)
 	if err != nil {
-		h.respondInternalError(c, lang)
+		h.respondInternalError(c, lang, err)
 		return
 	}
 
@@ -625,7 +702,7 @@ func (h *DocumentHandler) ListDocumentsByCategory(c *gin.Context) {
 
 	docs, err := h.useCase.ListDocumentsByCategory(c.Request.Context(), categoryID, userID)
 	if err != nil {
-		h.respondInternalError(c, lang)
+		h.respondInternalError(c, lang, err)
 		return
 	}
 
@@ -650,7 +727,7 @@ func (h *DocumentHandler) DeleteDocument(c *gin.Context) {
 		case errors.Is(err, domain.ErrStorageProviderUnavailable):
 			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_storage_provider"), nil)
 		default:
-			h.respondInternalError(c, lang)
+			h.respondInternalError(c, lang, err)
 		}
 		return
 	}
@@ -677,7 +754,7 @@ func (h *DocumentHandler) DeleteCollectionDocuments(c *gin.Context) {
 		case errors.Is(err, domain.ErrStorageProviderUnavailable):
 			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_storage_provider"), nil)
 		default:
-			h.respondInternalError(c, lang)
+			h.respondInternalError(c, lang, err)
 		}
 		return
 	}
@@ -719,7 +796,7 @@ func (h *DocumentHandler) StoreParagraphNodes(c *gin.Context) {
 		case errors.Is(err, domain.ErrDocumentNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
 		default:
-			h.respondInternalError(c, lang)
+			h.respondInternalError(c, lang, err)
 		}
 		return
 	}
@@ -759,7 +836,7 @@ func (h *DocumentHandler) StoreTableSections(c *gin.Context) {
 		case errors.Is(err, domain.ErrDocumentNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
 		default:
-			h.respondInternalError(c, lang)
+			h.respondInternalError(c, lang, err)
 		}
 		return
 	}
@@ -797,7 +874,7 @@ func (h *DocumentHandler) StoreMetadataPairs(c *gin.Context) {
 		case errors.Is(err, domain.ErrDocumentNotFound):
 			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
 		default:
-			h.respondInternalError(c, lang)
+			h.respondInternalError(c, lang, err)
 		}
 		return
 	}
@@ -816,7 +893,23 @@ func parseUintParam(c *gin.Context, paramName string, invalidMessage string) (ui
 	return uint(parsed), true
 }
 
-func (h *DocumentHandler) respondInternalError(c *gin.Context, lang string) {
+// respondInternalError devolve 500 ao cliente e REGISTRA a causa no log do
+// servidor.
+//
+// A versao anterior nao recebia o erro: toda falha 5xx virava um 500 generico
+// e a causa real morria ali. Na pratica isso significava que um upload
+// quebrado por storage fora do ar aparecia no log de acesso apenas como
+// `500 | POST /api/v1/documents/upload`, sem uma linha sequer explicando o
+// motivo -- o operador ficava cego justamente no momento em que mais precisa
+// enxergar. Para um sistema cuja tese e auditabilidade, engolir a causa do
+// erro e o comportamento errado.
+//
+// A mensagem devolvida ao cliente continua generica de proposito: detalhe de
+// infraestrutura nao vaza para fora, so vai para o log.
+func (h *DocumentHandler) respondInternalError(c *gin.Context, lang string, err error) {
+	if err != nil {
+		log.Printf("erro interno em %s %s: %v", c.Request.Method, c.Request.URL.Path, err)
+	}
 	response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "error.internal"), nil)
 }
 

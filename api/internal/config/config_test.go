@@ -171,6 +171,7 @@ func validConfig() *Config {
 		StuckDocumentPollInterval:    300 * time.Second,
 		UploadRateLimitRequests:      30,
 		UploadRateLimitWindow:        60 * time.Second,
+		ConsumerReconnectInterval:    5 * time.Second,
 		ChatRateLimitRequests:        20,
 		ChatRateLimitWindow:          60 * time.Second,
 		PricingSyncInterval:          24 * time.Hour,

@@ -180,6 +180,31 @@ type CollectionPageHit struct {
 	Score      int
 }
 
+// NodeConnection e uma relacao DERIVADA entre um no do sumario e um no de outro
+// documento do acervo.
+//
+// "Derivada" e a palavra que importa: a conexao e recalculada a cada consulta
+// pelo scorer relacional, e nunca persistida. O principio II da constituicao
+// admite grafos apenas como trilha comparativa, jamais como camada primaria de
+// recuperacao -- uma tabela de arestas seria exatamente isso e refutaria a tese
+// do trabalho. Aqui a aresta e a saida do recuperador, nao uma estrutura
+// consultada por ele.
+//
+// Nao existe repositorio, migration ou modelo GORM correspondente a este tipo,
+// e essa ausencia e deliberada.
+type NodeConnection struct {
+	DocumentID uint
+	NodeID     string
+	Title      string
+	Summary    string
+	StartPage  *int
+	Score      int
+	// MatchedTerms sao os termos da origem encontrados no destino. Respondem
+	// "por que esta flecha existe?" -- sem isso a conexao seria tao opaca
+	// quanto a vizinhanca vetorial que este trabalho critica.
+	MatchedTerms []string
+}
+
 type CategoryCatalogRepository interface {
 	CreateCategory(ctx context.Context, category *models.DocumentCategory) error
 	UpdateCategory(ctx context.Context, category *models.DocumentCategory) error
@@ -190,8 +215,22 @@ type CategoryCatalogRepository interface {
 
 type CollectionRepository interface {
 	CreateCollection(ctx context.Context, collection *models.Collection) error
+	// EnsureCollection cria a colecao ou devolve a existente, resolvendo a
+	// corrida no banco.
+	//
+	// Existe porque buscar-e-criar no usecase e um check-then-act: entre a
+	// busca que nao encontra e a criacao, outra requisicao cria a mesma colecao
+	// e a segunda recebe violacao de unicidade. Medido com 20 uploads
+	// simultaneos para a mesma colecao: um deles voltava HTTP 500.
+	//
+	// So o banco pode arbitrar quem ganha a corrida; reexecutar a busca no
+	// usecase apenas moveria a janela.
+	EnsureCollection(ctx context.Context, collection *models.Collection) error
 	UpdateCollection(ctx context.Context, collection *models.Collection) error
 	GetCollectionByID(ctx context.Context, id uint, userID uint) (*models.Collection, error)
+	// UpdateCollectionMetadataKey grava uma unica chave de collections.metadata
+	// preservando as outras; ErrCollectionNotFound se a colecao nao e do usuario.
+	UpdateCollectionMetadataKey(ctx context.Context, userID, collectionID uint, key string, valueJSON []byte) error
 	GetCollectionByNormalizedName(ctx context.Context, normalizedName string, userID uint) (*models.Collection, error)
 	ListCollectionsByUserID(ctx context.Context, userID uint) ([]models.Collection, error)
 	CountDocuments(ctx context.Context, userID uint, collectionID uint) (int64, error)
@@ -255,6 +294,9 @@ type DocumentCatalogUseCase interface {
 	ListDocumentsByCategory(ctx context.Context, categoryID uint, userID uint) ([]models.Document, error)
 	ListCollections(ctx context.Context, userID uint) ([]models.Collection, error)
 	GetCollectionContext(ctx context.Context, userID, collectionID uint, query string) (*CollectionContext, error)
+	// GetNodeConnections devolve conexoes DERIVADAS entre um no e nos de outros
+	// documentos da colecao. Nada e persistido; ver NodeConnection.
+	GetNodeConnections(ctx context.Context, userID, collectionID uint, nodeID string, minScore int) ([]NodeConnection, error)
 	StoreParagraphNodes(ctx context.Context, userID, documentID uint, nodes []models.ParagraphNode) ([]models.ParagraphNode, error)
 	StoreTableSections(ctx context.Context, userID, documentID uint, sections []models.TableSection) ([]models.TableSection, error)
 	StoreMetadataPairs(ctx context.Context, userID, documentID uint, pairs []models.MetadataPair) ([]models.MetadataPair, error)

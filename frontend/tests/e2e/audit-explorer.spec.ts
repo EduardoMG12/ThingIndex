@@ -245,6 +245,8 @@ test("provider audit explorer filters by the active provider scope", async ({ ba
             contentType: "application/json",
             body: JSON.stringify(success([
                 {
+                    id: 1,
+                    user_id: 1,
                     provider_type: "MINIO",
                     family: "STORAGE",
                     is_enabled: true,
@@ -253,6 +255,8 @@ test("provider audit explorer filters by the active provider scope", async ({ ba
                     public_metadata: {},
                 },
                 {
+                    id: 2,
+                    user_id: 1,
                     provider_type: "OPENAI",
                     family: "LLM",
                     is_enabled: false,

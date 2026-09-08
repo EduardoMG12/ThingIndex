@@ -15,9 +15,9 @@ jobs:
     name: backend (go)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: api/go.mod
           cache-dependency-path: api/go.sum
@@ -68,15 +68,35 @@ jobs:
     name: artigo (citacoes e esquema)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: api/go.mod
           cache-dependency-path: api/go.sum
 
       - name: citacoes com entrada no .bib
         run: bash scripts/check-article-citations.sh
+
+      # O LaTeX nao trata como erro: \ref sem \label sai como '??' no PDF,
+      # label duplicado faz toda referencia apontar para a ultima tabela, e
+      # tabela inserida sem ser citada e defeito de escrita academica. Todos
+      # sobrevivem ate a defesa se ninguem verificar.
+      - name: referencias de tabela do artigo sao consistentes
+        run: bash scripts/check-article-tables.sh
+
+      # Prosa se descola do artefato que descreve. O caso perigoso nao e o
+      # numero obviamente errado -- e o que ficou desatualizado apos uma
+      # remedicao: continua plausivel e ninguem relê a frase. Este script
+      # recalcula do CSV cada numero afirmado no texto.
+      - name: numeros do artigo batem com a medicao
+        run: python3 scripts/check-article-numbers.py
+
+      # Afirmacoes falsificaveis em segundos numa arguicao: repositorio dito
+      # publico enquanto esta privado, tempo futuro descrevendo trabalho ja
+      # feito, e metrica prometida na Metodologia que os Resultados nao usam.
+      - name: artigo nao contem afirmacao falsificavel
+        run: bash scripts/check-article-claims.sh
 
       # O .dbml e lido em runtime, entao o test cache do Go nao o enxerga como
       # entrada -- por isso o -count=1. Sem ele um cache quente esconderia a
@@ -89,26 +109,68 @@ jobs:
       # harness no CI garante que o numero publicado corresponde ao codigo
       # publicado -- e que o corpus nao voltou a ser circular, ja que
       # retrieval-eval aborta quando detecta circularidade.
+      #
+      # Este passo tambem exercita o guard de sincronia dos embeddings: o
+      # harness aborta se o artefato versionado nao corresponder ao corpus
+      # atual (conferencia por hash SHA-256 do texto). Sem ele, editar o corpus
+      # sem regerar os vetores produziria numeros do braco denso calculados
+      # sobre uma versao anterior -- sem erro, sem aviso, sem sintoma.
       - name: experimento de recuperacao roda e o corpus nao e circular
         working-directory: api
         run: go run ./cmd/retrieval-eval -out /tmp/results.csv
 
+      # O determinismo e a afirmacao central do artigo, e a comparacao denso
+      # exato (100% estavel) vs denso aproximado (0%) e a evidencia que a
+      # sustenta. Rodar no CI impede que uma mudanca no IVF altere o resultado
+      # publicado sem ninguem perceber.
+      - name: estabilidade do ranking dos bracos densos
+        working-directory: api
+        run: go run ./cmd/dense-determinism
+
       - name: script de analise estatistica
         run: |
           python3 scripts/test_analyze.py
-          python3 scripts/analyze.py /tmp/results.csv --outdir /tmp/tables
+          python3 scripts/analyze.py /tmp/results.csv --outdir /tmp/tables --granularity document
+          python3 scripts/analyze.py /tmp/results.csv --outdir /tmp/tables --granularity section
 
-  # Os testes de integracao do repositorio validam as propriedades que o artigo
-  # afirma: ordem de leitura por sequence_order, isolamento por usuario,
-  # fidelidade da reconstrucao e numero fixo de consultas (sem N+1). Precisam de
-  # Postgres de verdade, entao rodam em job proprio.
+      # A TPC e a TCV sao afirmadas na Secao de Auditabilidade com valores
+      # exatos (0,329 e 1,000). Os testes do comando travam essas constantes,
+      # entao uma mudanca no indexador que altere a proveniencia quebra o CI em
+      # vez de deixar o artigo citando um numero que nao vale mais.
+      - name: metricas de auditabilidade batem com o artigo
+        working-directory: api
+        run: |
+          go test ./cmd/provenance-eval/
+          go run ./cmd/provenance-eval -tex /tmp/provenance.tex
+
+      # A Secao de Limiar afirma que existe sinal exploravel nos scores e que o
+      # corte reduz o falso positivo. Se o scorer mudar e a separabilidade
+      # sumir, a conclusao do artigo deixa de valer -- o teste falha antes.
+      - name: limiar de corte reduz o falso positivo
+        working-directory: api
+        run: |
+          go test ./cmd/threshold-eval/
+          go run ./cmd/threshold-eval -tex /tmp/threshold.tex
+
+      # O artigo cita numeros do corpus (5 documentos, 19 secoes, 22 pares
+      # julgados) e a mudanca de granularidade depende deles. Travar aqui
+      # impede que a anotacao mude sem revisao do texto.
+      - name: corpus de avaliacao bate com o artigo
+        working-directory: api
+        run: go test ./internal/evalcorpus/ ./cmd/retrieval-eval/
+
+  # Os testes de integracao validam as propriedades que o artigo afirma: ordem
+  # de leitura por sequence_order, isolamento por usuario, fidelidade da
+  # reconstrucao, numero fixo de consultas (sem N+1), round-trip de storage e o
+  # comportamento de retry/DLQ da fila. Precisam de servicos de verdade, entao
+  # rodam em job proprio.
   #
-  # Escopo proposital em ./internal/repository: os demais pacotes com tag
-  # integration (processing, usecase, pkg/storage, queue, indeximport,
-  # pkg/provider) tambem exigem MinIO, RabbitMQ ou chamadas reais de LLM.
-  # Adicione-os aqui conforme os servicos correspondentes forem configurados.
+  # Escopo: repository (Postgres), queue (RabbitMQ), pkg/storage (MinIO) e
+  # indeximport. Ficam de fora processing, usecase e pkg/provider, que exigem
+  # chamadas reais de LLM -- essas dependem de credencial e de rede externa, e
+  # um CI que depende de provedor pago falha por motivo alheio ao codigo.
   backend-integration:
-    name: backend (integracao com postgres)
+    name: backend (integracao com postgres, rabbitmq e minio)
     runs-on: ubuntu-latest
 
     services:
@@ -126,13 +188,65 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
-    steps:
-      - uses: actions/checkout@v4
+      rabbitmq:
+        image: rabbitmq:3.13-management-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: thingindex
+          RABBITMQ_DEFAULT_PASS: thingindex
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 10s
+          --health-retries 12
 
-      - uses: actions/setup-go@v5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
         with:
           go-version-file: api/go.mod
           cache-dependency-path: api/go.sum
+
+      # MinIO sobe como passo, nao como service.
+      #
+      # A imagem oficial minio/minio exige `server /data` como comando, e
+      # `services:` do GitHub Actions nao aceita `command`. A alternativa
+      # bitnami/minio (que nao precisa de comando) teve a tag `latest`
+      # descontinuada -- o CI falhou com "manifest unknown" antes mesmo do
+      # checkout.
+      #
+      # Rodar via docker run resolve os dois problemas e usa a MESMA imagem do
+      # docker-compose do projeto, o que evita a divergencia de testar contra um
+      # MinIO diferente do que roda em desenvolvimento.
+      - name: subir minio
+        run: |
+          docker run -d --name minio-ci \
+            -p 9000:9000 \
+            -e MINIO_ROOT_USER=thingindexminio \
+            -e MINIO_ROOT_PASSWORD=thingindexminio \
+            minio/minio server /data
+
+          # Espera ativa em vez de sleep fixo: o endpoint de health e a unica
+          # evidencia de que o servico aceita conexao. Sem o `pronto`, um
+          # timeout silencioso deixaria os testes falharem por "connection
+          # refused" e a causa real ficaria escondida.
+          pronto=0
+          for tentativa in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:9000/minio/health/live >/dev/null; then
+              echo "minio pronto na tentativa $tentativa"
+              pronto=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$pronto" -ne 1 ]; then
+            echo "minio nao respondeu ao health check em 60s"
+            docker logs minio-ci
+            exit 1
+          fi
 
       - name: testes de integracao do repositorio
         working-directory: api
@@ -143,19 +257,49 @@ jobs:
           THINGINDEX_TEST_DB_PASSWORD: thingindex
           THINGINDEX_TEST_DB_NAME: thingindex_test
           THINGINDEX_TEST_DB_SSLMODE: disable
-        run: go test -tags=integration ./internal/repository/ -v
+        run: go test -tags=integration ./internal/repository/ ./internal/indeximport/ -v
+
+      # A fila e o ponto onde o worker morria em silencio quando o broker caia
+      # (ver ErrDeliveriesChannelClosed). O teste que distingue queda do broker
+      # de encerramento limpo so tem valor contra um RabbitMQ real.
+      - name: testes de integracao da fila
+        working-directory: api
+        env:
+          THINGINDEX_TEST_RABBITMQ_URL: amqp://thingindex:thingindex@127.0.0.1:5672/
+        run: go test -tags=integration ./internal/queue/ -v
+
+      # O round-trip de storage (upload, leitura, existencia, remocao) e o que
+      # sustenta a afirmacao de que o documento original permanece recuperavel
+      # para auditoria.
+      - name: testes de integracao do storage
+        working-directory: api
+        env:
+          MINIO_ENDPOINT: 127.0.0.1:9000
+          MINIO_ACCESS_KEY: thingindexminio
+          MINIO_SECRET_KEY: thingindexminio
+          MINIO_USE_SSL: "false"
+        run: go test -tags=integration ./internal/pkg/storage/ -run Minio -v
 
   frontend:
     name: frontend (next)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      # A versao do pnpm vem do campo packageManager do frontend/package.json
+      # (hoje pnpm@10.28.0), e nao de um numero fixo aqui: duplicar a versao em
+      # dois lugares que podem divergir faria o CI instalar dependencias com um
+      # pnpm diferente do que o desenvolvedor usa, e a divergencia so apareceria
+      # num bug de resolucao.
+      #
+      # package_json_file e obrigatorio porque a raiz do repositorio NAO tem
+      # package.json -- o frontend vive em frontend/. Sem apontar o caminho, a
+      # action falha com "No pnpm version is specified".
+      - uses: pnpm/action-setup@v6
         with:
-          version: 10
+          package_json_file: frontend/package.json
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -188,3 +332,77 @@ jobs:
       - name: e2e (suite completa)
         working-directory: frontend
         run: pnpm exec playwright test --reporter=list
+
+  # ---------------------------------------------------------------------------
+  # Testes de caos: derruba cada dependencia com o sistema em uso e verifica a
+  # RECUPERACAO COMPLETA, nao apenas a reconexao.
+  #
+  # Existe porque os quatro defeitos mais graves da rodada de 2026-09 so
+  # apareceram quando a infraestrutura foi derrubada ou o sistema foi posto sob
+  # carga -- nenhum teste unitario os teria encontrado. Os testes unitarios
+  # provam que o supervisor reconecta; este job prova que o documento chega a
+  # INDEXED depois da queda.
+  #
+  # Usa docker compose em vez de `services:` porque precisa PARAR e RELIGAR
+  # containers no meio da execucao, o que `services:` nao permite.
+  #
+  # continue-on-error e deliberado: o job e lento (~5 min) e mexe com timing de
+  # rede, entao um vermelho intermitente nao pode travar o PR de quem nao mexeu
+  # em resiliencia. A validacao obrigatoria e antes do merge para main, onde o
+  # push dispara o mesmo job sem essa tolerancia.
+  caos:
+    name: caos (recuperacao sob falha de infraestrutura)
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: preparar variaveis de ambiente
+        run: cp .env.example .env
+
+      - name: subir a stack
+        run: |
+          docker compose -f docker-compose.yml up -d --build db minio rabbitmq
+          # Espera as dependencias ficarem saudaveis antes de subir a aplicacao:
+          # subir tudo de uma vez faria a api falhar na migracao e o job
+          # reportaria erro de infraestrutura como se fosse defeito de codigo.
+          for _ in $(seq 1 40); do
+            saudaveis=$(docker compose -f docker-compose.yml ps --format '{{.Health}}' \
+              | grep -c healthy || true)
+            [ "$saudaveis" -ge 3 ] && break
+            sleep 5
+          done
+          docker compose -f docker-compose.yml up -d --build api indexer
+
+      - name: esperar a api responder
+        run: |
+          for _ in $(seq 1 40); do
+            codigo=$(curl -s -o /dev/null -w '%{http_code}' \
+              --max-time 5 http://localhost:8000/api/v1/health || true)
+            if [ "$codigo" = "200" ]; then
+              echo "api pronta"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "api nao respondeu 200 em 200s"
+          docker compose -f docker-compose.yml logs api --tail 40
+          exit 1
+
+      - name: cenarios de caos
+        env:
+          # Sem o compose de dev: no CI a imagem e compilada, e o hot-reload do
+          # air encerraria o processo a cada recompilacao, confundindo a
+          # verificacao de sobrevivencia do worker.
+          THINGINDEX_CAOS_COMPOSE: "-f docker-compose.yml"
+        run: bash scripts/teste-caos.sh
+
+      - name: logs em caso de falha
+        if: failure()
+        run: |
+          echo "=== api ==="
+          docker compose -f docker-compose.yml logs api --tail 60
+          echo "=== indexer ==="
+          docker compose -f docker-compose.yml logs indexer --tail 60

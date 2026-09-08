@@ -59,14 +59,67 @@ export type MetadataPair = {
 
 export type OutlineNode = {
     id: number | string;
+    /**
+     * Identificador estavel do no dentro do documento, produzido pela indexacao
+     * deterministica. E a chave usada para pedir conexoes derivadas -- sem ele a
+     * interface consegue exibir a estrutura, mas nao consegue perguntar "com o
+     * que este trecho se relaciona".
+     */
+    nodeId: string;
     documentId: number;
     sequenceOrder: number;
     level: number;
     title: string;
     slug?: string;
     summary?: string;
+    /** Pagina em que a secao comeca (1-based), quando a indexacao soube. */
+    startPage?: number;
     metadata?: Record<string, unknown>;
 };
+
+/**
+ * Caixa de um paragrafo na pagina, em pontos PDF com origem no topo esquerdo.
+ * So existe para texto vindo de `pdftotext -bbox-layout` ou do OCR com layout;
+ * tesseract, HTML e XLSX nao a produzem. `pageWidth`/`pageHeight` vem junto
+ * para a conversao em pixels ser linear e nao depender de mais nada.
+ */
+export type ParagraphBox = {
+    xMin: number;
+    xMax: number;
+    yMin: number;
+    yMax: number;
+    pageWidth: number;
+    pageHeight: number;
+};
+
+function finito(value: unknown): value is number {
+    return typeof value === "number" && Number.isFinite(value);
+}
+
+/** Le `metadata.box` de um paragrafo; `null` quando ausente ou malformado. */
+export function readBox(node: Pick<ParagraphNode, "metadata">): ParagraphBox | null {
+    const raw = node.metadata?.box;
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+        return null;
+    }
+    const r = raw as Record<string, unknown>;
+    const xMin = r.x_min, xMax = r.x_max, yMin = r.y_min, yMax = r.y_max;
+    const pageWidth = r.page_width, pageHeight = r.page_height;
+    if (![xMin, xMax, yMin, yMax, pageWidth, pageHeight].every(finito)) {
+        return null;
+    }
+    if ((pageWidth as number) <= 0 || (pageHeight as number) <= 0 || (xMax as number) < (xMin as number) || (yMax as number) < (yMin as number)) {
+        return null;
+    }
+    return {
+        xMin: xMin as number,
+        xMax: xMax as number,
+        yMin: yMin as number,
+        yMax: yMax as number,
+        pageWidth: pageWidth as number,
+        pageHeight: pageHeight as number,
+    };
+}
 
 export type CollectionContext = {
     collection: CollectionSummary;
@@ -206,6 +259,8 @@ type MetadataPairApiRecord = {
 
 type OutlineNodeApiRecord = {
     id?: number | string;
+    node_id?: string;
+    nodeId?: string;
     document_id?: number;
     documentId?: number;
     sequence_order?: number;
@@ -214,6 +269,8 @@ type OutlineNodeApiRecord = {
     title?: string;
     slug?: string;
     summary?: string;
+    start_page?: number;
+    startPage?: number;
     metadata?: Record<string, unknown>;
 };
 
@@ -323,12 +380,14 @@ function normalizeOutlineNode(value: unknown): OutlineNode | null {
 
     return {
         id: record.id ?? `outline:${documentId}:${sequenceOrder}`,
+        nodeId: record.nodeId ?? record.node_id ?? "",
         documentId,
         sequenceOrder,
         level,
         title: record.title!,
         slug: record.slug,
         summary: record.summary,
+        startPage: finito(record.startPage ?? record.start_page) ? (record.startPage ?? record.start_page) : undefined,
         metadata: isRecord(record.metadata) ? record.metadata : {},
     };
 }

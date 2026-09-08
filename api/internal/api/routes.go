@@ -11,7 +11,6 @@ import (
 	"thing-index/internal/handlers"
 	"thing-index/internal/mailer"
 	providerpkg "thing-index/internal/pkg/provider"
-	"thing-index/internal/pkg/response"
 	"thing-index/internal/repository"
 	"thing-index/internal/usecase"
 	"time"
@@ -27,7 +26,19 @@ import (
 
 var newDefaultStorageProvider = providerpkg.NewDefaultStorageProvider
 
+// SetupRoutes registra as rotas com um contexto de fundo desvinculado.
+//
+// Mantida para os testes, que nao precisam controlar o ciclo de vida das
+// tarefas de fundo. Producao usa SetupRoutesWithContext, para que a goroutine
+// de sync do catalogo encerre junto com o processo em vez de depender dele
+// morrer.
 func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
+	return SetupRoutesWithContext(context.Background(), router, db, cfg)
+}
+
+// SetupRoutesWithContext registra as rotas e amarra as tarefas de fundo ao
+// contexto recebido. Cancelar o contexto encerra a goroutine de sync.
+func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 	if err := router.SetTrustedProxies(cfg.TrustedProxyList()); err != nil {
 		return fmt.Errorf("failed to configure trusted proxies: %w", err)
 	}
@@ -68,7 +79,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 	providerRepo := repository.NewGormProviderRepository(db)
 	providerUseCase := usecase.NewProviderUseCase(providerRepo, cfg)
 	providerHandler := handlers.NewProviderHandler(providerUseCase)
-	startProviderModelCatalogSync(context.Background(), providerUseCase, cfg.ModelCatalogSyncInterval)
+	startProviderModelCatalogSync(ctx, providerUseCase, cfg.ModelCatalogSyncInterval)
 	pricingRepo := repository.NewGormPricingRepository(db)
 	pricingUseCase := usecase.NewPricingUseCase(pricingRepo)
 	pricingHandler := handlers.NewPricingHandler(pricingUseCase)
@@ -86,6 +97,11 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 	docHandler := handlers.NewDocumentHandler(docUseCase, cfg.UploadRequestLimitBytes())
 	chatUseCase := usecase.NewChatUseCase(collectionContextRepo, chatConversationRepo, providerUseCase)
 	chatHandler := handlers.NewChatHandler(chatUseCase)
+	// Anotacoes do workspace: marcas coloridas e legenda. Anotacao, nao
+	// recuperacao -- nada aqui entra no caminho de contexto ou de conexoes.
+	highlightRepo := repository.NewGormParagraphHighlightRepository(db)
+	viewStateRepo := repository.NewGormWorkspaceViewStateRepository(db)
+	workspaceHandler := handlers.NewWorkspaceHandler(usecase.NewWorkspaceUseCase(highlightRepo, collectionRepo, viewStateRepo))
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.GET("/docs", func(c *gin.Context) {
@@ -100,9 +116,10 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 
 	v1 := router.Group("/api/v1")
 	{
-		v1.GET("/health", func(c *gin.Context) {
-			response.Success(c, http.StatusOK, "success", "API Thing-Index no ar! 🚀", nil)
-		})
+		// O health checa a dependencia critica em vez de devolver texto fixo:
+		// sem isso um orquestrador mantem no balanceador uma instancia que nao
+		// consegue servir requisicao nenhuma.
+		v1.GET("/health", healthHandler(sqlDBParaHealth(db)))
 		v1.GET("/meta/runtime-profile", metaHandler.GetRuntimeProfile)
 		v1.GET("/meta/indexing-benchmark", metaHandler.GetIndexingBenchmark)
 		v1.GET("/providers/support", providerHandler.ListSupportMatrix)
@@ -151,7 +168,17 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 			documents.POST("/collections", docHandler.CreateCollection)
 			documents.GET("/collections", docHandler.ListCollections)
 			documents.GET("/collections/:id/context", docHandler.GetCollectionContext)
+			// Conexoes derivadas entre nos de documentos distintos da colecao.
+			// Recalculadas a cada chamada; nenhuma aresta e persistida.
+			documents.GET("/collections/:id/connections", docHandler.GetNodeConnections)
 			documents.GET("/collections/:id", docHandler.GetCollection)
+			documents.GET("/collections/:id/highlights", workspaceHandler.ListHighlights)
+			documents.PUT("/collections/:id/highlights/:paragraphNodeId", workspaceHandler.SetHighlight)
+			documents.DELETE("/collections/:id/highlights/:paragraphNodeId", workspaceHandler.RemoveHighlight)
+			documents.GET("/collections/:id/legend", workspaceHandler.GetLegend)
+			documents.PUT("/collections/:id/legend", workspaceHandler.SetLegend)
+			documents.GET("/collections/:id/view-state", workspaceHandler.GetViewState)
+			documents.PUT("/collections/:id/view-state", workspaceHandler.SetViewState)
 			documents.DELETE("/collections/:id/documents", docHandler.DeleteCollectionDocuments)
 			documents.PATCH("/collections/:collection/category", docHandler.UpdateCollectionCategory)
 			documents.POST("/categories", docHandler.CreateCategory)

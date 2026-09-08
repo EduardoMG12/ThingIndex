@@ -105,7 +105,7 @@ func ToProviderSupportResponse(item domain.ProviderSupportEntry) ProviderSupport
 			RequiresExplicitBaseURL:        item.Capabilities.RequiresExplicitBaseURL,
 			RequiresOpenAICompatibleBridge: item.Capabilities.RequiresOpenAICompatibleBridge,
 		},
-		Notes: append([]string(nil), item.Notes...),
+		Notes: copiaDeTextos(item.Notes),
 	}
 }
 

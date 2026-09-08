@@ -38,6 +38,7 @@ import {
     deleteChatConversation,
     fetchChatConversation,
     fetchChatConversations,
+    streamCollectionChat,
 } from "@/lib/api/chat";
 import { createTestWrapper } from "@/test/test-utils";
 
@@ -177,5 +178,84 @@ describe("useChatWorkspace", () => {
 
         expect(deleteChatConversation).toHaveBeenCalledWith(10);
         expect(result.current.conversations.map((conversation) => conversation.id)).toEqual([11]);
+    });
+
+    it("carrega a conversa escolhida mesmo com outra recebendo stream", async () => {
+        // Cenario: o usuario envia uma pergunta na conversa 10 e, enquanto a
+        // resposta ainda esta chegando, clica na conversa 11 na barra lateral.
+        //
+        // O guard do efeito de carga era `if (isLoading) return`, ou seja,
+        // bloqueava QUALQUER carga durante o streaming. O cabecalho passava a
+        // mostrar o titulo da conversa 11 enquanto a area de mensagens seguia
+        // exibindo o conteudo da 10 -- por dezenas de segundos, e com os deltas
+        // da 10 sendo escritos sob o rotulo da 11. Agora o guard so protege a
+        // conversa que esta de fato streamando.
+        vi.mocked(fetchChatConversations).mockResolvedValue([
+            createConversation(10, "Em streaming"),
+            createConversation(11, "Outra conversa"),
+        ]);
+        vi.mocked(fetchChatConversation).mockImplementation(async (id: number) => ({
+            conversation: createConversation(id, id === 10 ? "Em streaming" : "Outra conversa"),
+            messages: [
+                {
+                    id,
+                    role: "assistant" as const,
+                    content: id === 10 ? "Resposta da conversa 10" : "Resposta da conversa 11",
+                    sources: [],
+                    createdAt: "2026-03-20T12:00:00Z",
+                    updatedAt: "2026-03-20T12:00:00Z",
+                },
+            ],
+        }));
+
+        // Stream que NAO resolve: mantem isLoading === true durante o teste,
+        // que e exatamente a condicao em que o bug se manifestava.
+        let liberarStream: (() => void) | undefined;
+        vi.mocked(streamCollectionChat).mockImplementation(
+            () =>
+                new Promise<void>((resolve) => {
+                    liberarStream = resolve;
+                })
+        );
+
+        const { result } = renderHook(() => useChatWorkspace(), { wrapper: createTestWrapper("en") });
+
+        await waitFor(() => {
+            expect(result.current.activeConversationId).toBe(10);
+        });
+        await waitFor(() => {
+            expect(result.current.messages[0]?.content).toBe("Resposta da conversa 10");
+        });
+
+        // Dispara a pergunta na conversa 10 e deixa o stream pendurado.
+        act(() => {
+            result.current.setInput("Pergunta na conversa 10");
+        });
+        act(() => {
+            void result.current.sendMessage();
+        });
+
+        await waitFor(() => {
+            expect(result.current.isLoading).toBe(true);
+        });
+
+        // Com o stream da 10 em andamento, troca para a conversa 11.
+        act(() => {
+            result.current.selectConversation(11);
+        });
+
+        await waitFor(() => {
+            expect(result.current.activeConversationId).toBe(11);
+        });
+
+        // O conteudo precisa acompanhar o titulo. Com o guard antigo as
+        // mensagens continuariam sendo as da conversa 10.
+        await waitFor(() => {
+            expect(result.current.messages.some((m) => m.content === "Resposta da conversa 11")).toBe(true);
+        });
+
+        act(() => {
+            liberarStream?.();
+        });
     });
 });

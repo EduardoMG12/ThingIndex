@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Clock3, Loader2, RefreshCw, Search, Settings2 } from "lucide-react";
 
 import AuditMetadataList from "@/components/audit/AuditMetadataList";
@@ -130,14 +130,20 @@ export default function ProviderAuditExplorer({
     const [filters, setFilters] = useState<ProviderFilters>(initialFilters);
     const [appliedFilters, setAppliedFilters] = useState<ProviderFilters>(initialFilters);
     const [result, setResult] = useState<ProviderAuditQueryResult>(emptyResult);
+    // Mesmo defeito e mesma correcao do DocumentAuditExplorer: uma pagina em
+    // voo disparada antes da troca de filtro chega depois e sobrescreveria
+    // summary/page_info com os da consulta abandonada.
+    const consultaAtivaRef = useRef(0);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+    // Mesmo defeito corrigido em DocumentAuditExplorer: com
+    // `...appliedFilters` depois de `...filters`, o clique num filtro rapido
+    // descartava o texto que o usuario estava digitando e ainda nao submetera.
     function applyImmediateFilters(partial: Partial<ProviderFilters>) {
         const nextFilters = {
             ...filters,
-            ...appliedFilters,
             ...partial,
         };
         setFilters(nextFilters);
@@ -146,6 +152,7 @@ export default function ProviderAuditExplorer({
 
     useEffect(() => {
         let cancelled = false;
+        consultaAtivaRef.current += 1;
 
         async function load() {
             setIsLoading(true);
@@ -193,6 +200,8 @@ export default function ProviderAuditExplorer({
             return;
         }
 
+        const consultaDoClique = consultaAtivaRef.current;
+
         setIsLoadingMore(true);
         setError(null);
 
@@ -212,11 +221,18 @@ export default function ProviderAuditExplorer({
                 createdTo: toRFC3339FromDateTimeLocal(appliedFilters.createdTo),
             });
 
+            if (consultaDoClique !== consultaAtivaRef.current) {
+                return;
+            }
+
             setResult((current) => ({
                 ...nextPage,
                 items: [...current.items, ...nextPage.items],
             }));
         } catch (nextError) {
+            if (consultaDoClique !== consultaAtivaRef.current) {
+                return;
+            }
             setError(nextError instanceof Error ? nextError.message : translate(locale, "audit.providers.errors.loadMore"));
         } finally {
             setIsLoadingMore(false);

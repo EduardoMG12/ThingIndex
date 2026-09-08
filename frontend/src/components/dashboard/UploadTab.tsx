@@ -24,7 +24,7 @@ const UploadTab = () => {
     const { locale, t } = useI18n();
     const [defaultCategory, setDefaultCategory] = useState("");
     const [defaultCollection, setDefaultCollection] = useState("");
-    const { files, isProcessing, addFiles, removeFile, processQueue } = useDocumentUpload();
+    const { files, isProcessing, queuedCount, addFiles, removeFile, processQueue } = useDocumentUpload();
     const hasFilesWithoutCollection = files.some((file) => !file.collection.trim());
 
     const reportUploadRejections = (rejections: Array<DocumentUploadValidationRejection | { file: File; code: "unknown" }>) => {
@@ -110,7 +110,7 @@ const UploadTab = () => {
 
                 <UploadFileList files={files} isProcessing={isProcessing} onRemove={removeFile} />
 
-                {files.length > 0 && (
+                {queuedCount > 0 && (
                     <Button onClick={handleProcessAll} disabled={isProcessing || hasFilesWithoutCollection} className="w-full gap-2">
                         {isProcessing ? (
                             <ArrowRight className="h-4 w-4 animate-pulse" />
@@ -119,9 +119,9 @@ const UploadTab = () => {
                         )}
                         {isProcessing
                             ? t("dashboard.upload.sending")
-                            : files.length > 1
-                                ? t("dashboard.upload.sendDocumentsPlural", { count: files.length })
-                                : t("dashboard.upload.sendDocuments", { count: files.length })}
+                            : queuedCount > 1
+                                ? t("dashboard.upload.sendDocumentsPlural", { count: queuedCount })
+                                : t("dashboard.upload.sendDocuments", { count: queuedCount })}
                     </Button>
                 )}
                 {files.length > 0 && hasFilesWithoutCollection && (

@@ -142,6 +142,21 @@ export function useChatWorkspace() {
     const streamingCardTimerRef = useRef<number | null>(null);
     const hasShownDeltaRef = useRef(false);
     const shouldAutoScrollRef = useRef(true);
+    // Qual conversa esta recebendo o stream neste momento.
+    //
+    // Existe para o guard do efeito de carga ser PRECISO. Antes ele era
+    // `if (isLoading) return`, o que bloqueava a carga para qualquer conversa
+    // enquanto houvesse streaming: trocar de conversa no meio de uma resposta
+    // deixava o cabecalho com o titulo da conversa nova e a area de mensagens
+    // com o conteudo da antiga -- por dezenas de segundos, e com os deltas da
+    // conversa antiga sendo escritos sob o rotulo da nova.
+    //
+    // O guard amplo tinha razao de existir: ao enviar a primeira mensagem de
+    // uma conversa nova, `setActiveConversationId(created.id)` muda o id no
+    // meio do stream, e sem guard o efeito buscaria do servidor e apagaria o
+    // texto que esta chegando. Guardar o id resolve os dois casos: bloqueia so
+    // a conversa que esta streamando, e libera a carga de qualquer outra.
+    const streamingConversationIdRef = useRef<number | null>(null);
     const previousMessageCountRef = useRef(0);
     const hasHydratedRouteRef = useRef(false);
     const previousNewTriggerRef = useRef<string | null>(null);
@@ -251,6 +266,7 @@ export function useChatWorkspace() {
         pendingDeltaRef.current = "";
         streamMessageIdRef.current = null;
         stopDeltaFlush();
+        streamingConversationIdRef.current = null;
         setActiveConversationId(null);
         setMessages([]);
         setInput("");
@@ -406,7 +422,10 @@ export function useChatWorkspace() {
             return;
         }
 
-        if (isLoading) {
+        // Bloqueia apenas a conversa que esta recebendo o stream: recarregar
+        // do servidor no meio dele apagaria os deltas que ja chegaram. Trocar
+        // para OUTRA conversa carrega normalmente.
+        if (isLoading && streamingConversationIdRef.current === activeConversationId) {
             return;
         }
 
@@ -506,6 +525,7 @@ export function useChatWorkspace() {
         }
 
         setIsLoading(true);
+        streamingConversationIdRef.current = activeConversationId;
         setStreamError(null);
         setActiveSubQueries(buildInitialSteps(t));
         displayStreamingCard();
@@ -515,6 +535,7 @@ export function useChatWorkspace() {
             conversation = await ensureConversation(prompt);
         } catch (error) {
             setIsLoading(false);
+            streamingConversationIdRef.current = null;
             setActiveSubQueries([]);
             setStreamError(error instanceof Error ? error.message : t("dashboard.chat.error"));
             return;
@@ -522,6 +543,11 @@ export function useChatWorkspace() {
 
         const userMessage = createDraftMessage("user", prompt);
         const assistantMessage = createDraftMessage("assistant");
+
+        // ensureConversation pode ter CRIADO a conversa agora (primeira
+        // mensagem), trocando o activeConversationId. Reaponta a ref para o id
+        // definitivo, senao o guard protegeria a conversa errada.
+        streamingConversationIdRef.current = conversation.id;
 
         pendingDeltaRef.current = "";
         streamMessageIdRef.current = assistantMessage.id;
@@ -587,6 +613,7 @@ export function useChatWorkspace() {
             );
         } finally {
             flushAllPendingDelta();
+            streamingConversationIdRef.current = null;
             if (!controller.signal.aborted) {
                 setIsLoading(false);
                 setActiveSubQueries([]);
@@ -601,6 +628,7 @@ export function useChatWorkspace() {
         abortRef.current?.abort();
         abortRef.current = null;
         flushAllPendingDelta();
+        streamingConversationIdRef.current = null;
         setIsLoading(false);
         setActiveSubQueries([]);
         setStreamError(t("dashboard.chat.cancelled"));
@@ -643,6 +671,7 @@ export function useChatWorkspace() {
                 pendingDeltaRef.current = "";
                 streamMessageIdRef.current = null;
                 stopDeltaFlush();
+                streamingConversationIdRef.current = null;
                 setIsLoading(false);
                 setMessages([]);
                 setInput("");

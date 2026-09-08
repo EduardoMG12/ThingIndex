@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"thing-index/internal/config"
@@ -44,6 +45,15 @@ type RabbitMQPublisher struct {
 	channel    *amqp.Channel
 	exchange   string
 	routingKey string
+
+	// Guardada para reabrir a conexao quando o broker cai e volta. Sem isso,
+	// todo Publish apos uma queda falhava com "channel/connection is not open"
+	// para sempre, e os eventos do outbox iam para FAILED mesmo com o RabbitMQ
+	// ja no ar.
+	cfg *config.Config
+	// Protege a troca de conn/channel: o dispatcher publica em lote e a
+	// reconexao nao pode acontecer no meio de outra publicacao.
+	mu sync.Mutex
 }
 
 type RabbitMQConsumer struct {
@@ -83,6 +93,7 @@ func NewRabbitMQPublisher(cfg *config.Config) (*RabbitMQPublisher, error) {
 	}
 
 	return &RabbitMQPublisher{
+		cfg:        cfg,
 		conn:       conn,
 		channel:    channel,
 		exchange:   cfg.DocumentIndexExchange,
@@ -172,15 +183,21 @@ func (p *RabbitMQPublisher) PublishDocumentIndexRequested(ctx context.Context, e
 		return err
 	}
 
-	return p.channel.PublishWithContext(ctx, p.exchange, p.routingKey, false, false, amqp.Publishing{
-		ContentType:  "application/json",
-		DeliveryMode: amqp.Persistent,
-		Body:         body,
-		Type:         domain.OutboxEventDocumentIndexRequested,
-		Headers: amqp.Table{
-			retryHeader: int32(0),
-		},
-	})
+	return publicarComReconexao(ctx, func(ctx context.Context) error {
+		p.mu.Lock()
+		canal := p.channel
+		p.mu.Unlock()
+
+		return canal.PublishWithContext(ctx, p.exchange, p.routingKey, false, false, amqp.Publishing{
+			ContentType:  "application/json",
+			DeliveryMode: amqp.Persistent,
+			Body:         body,
+			Type:         domain.OutboxEventDocumentIndexRequested,
+			Headers: amqp.Table{
+				retryHeader: int32(0),
+			},
+		})
+	}, p.reconectar)
 }
 
 func (p *RabbitMQPublisher) Close() error {
@@ -200,6 +217,25 @@ func (c *RabbitMQConsumer) SetFailureCallbacks(callbacks DocumentIndexFailureCal
 	c.failureCallbacks = callbacks
 }
 
+// ErrDeliveriesChannelClosed sinaliza que o RabbitMQ fechou o canal de
+// entregas por conta propria -- queda do broker, restart, corte de rede ou
+// channel.Close() remoto.
+//
+// Antes desta distincao o consumidor devolvia `nil` nesse caso, exatamente
+// como no encerramento limpo por cancelamento de contexto. O efeito era grave
+// e silencioso: `cmd/indexer/main.go` so chama log.Fatalf quando o erro nao e
+// nil, entao o processo saia com codigo 0. Para o supervisor (Docker,
+// Kubernetes, systemd) isso e uma parada bem-sucedida, e a politica
+// `restart: unless-stopped` NAO reinicia o container. O worker sumia, a fila
+// parava de ser consumida e nenhum documento era indexado -- sem alarme, sem
+// log de erro e sem sintoma ate alguem reparar que os uploads ficam eternamente
+// em QUEUED.
+//
+// Devolver um erro distinto faz o processo morrer com codigo diferente de zero
+// e o supervisor reinicia, que e o comportamento correto para uma dependencia
+// que caiu.
+var ErrDeliveriesChannelClosed = errors.New("rabbitmq fechou o canal de entregas")
+
 func (c *RabbitMQConsumer) ConsumeDocumentIndexRequested(ctx context.Context, handler func(context.Context, domain.DocumentIndexRequestedEvent) error) error {
 	deliveries, err := c.channel.Consume(c.queue, "", false, false, false, false, nil)
 	if err != nil {
@@ -212,7 +248,9 @@ func (c *RabbitMQConsumer) ConsumeDocumentIndexRequested(ctx context.Context, ha
 			return ctx.Err()
 		case delivery, ok := <-deliveries:
 			if !ok {
-				return nil
+				// O canal so fecha por iniciativa do broker: encerramento
+				// limpo chega por ctx.Done() no case acima.
+				return ErrDeliveriesChannelClosed
 			}
 
 			var event domain.DocumentIndexRequestedEvent
@@ -408,5 +446,45 @@ func (c *RabbitMQConsumer) Close() error {
 	if c.conn != nil {
 		return c.conn.Close()
 	}
+	return nil
+}
+
+// reconectar reabre conexao e canal do publicador.
+//
+// Fecha o que sobrou antes de abrir o novo: sem isso, cada queda do broker
+// deixaria um socket orfao para tras, e um dia de instabilidade esgotaria os
+// descritores do processo.
+func (p *RabbitMQPublisher) reconectar() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.channel != nil {
+		_ = p.channel.Close()
+	}
+	if p.conn != nil {
+		_ = p.conn.Close()
+	}
+
+	conn, err := amqp.Dial(p.cfg.RabbitMQURL)
+	if err != nil {
+		return fmt.Errorf("dial rabbitmq: %w", err)
+	}
+
+	channel, err := conn.Channel()
+	if err != nil {
+		_ = conn.Close()
+		return fmt.Errorf("create rabbitmq channel: %w", err)
+	}
+
+	// A topologia e redeclarada porque o broker pode ter voltado sem estado --
+	// container recriado, volume novo. Declarar de novo e idempotente.
+	if err := declareTopology(channel, p.cfg); err != nil {
+		_ = channel.Close()
+		_ = conn.Close()
+		return err
+	}
+
+	p.conn = conn
+	p.channel = channel
 	return nil
 }

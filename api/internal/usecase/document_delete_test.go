@@ -157,6 +157,13 @@ func (r *collectionRepoStub) CreateCollection(context.Context, *models.Collectio
 	return nil
 }
 
+// EnsureCollection espelha CreateCollection no stub: a resolucao da corrida
+// acontece no banco, e o teste de concorrencia real vive em
+// internal/repository (com a tag integration).
+func (r *collectionRepoStub) EnsureCollection(context.Context, *models.Collection) error {
+	return nil
+}
+
 func (r *collectionRepoStub) UpdateCollection(context.Context, *models.Collection) error {
 	return nil
 }
@@ -422,4 +429,8 @@ func TestDeleteCollectionDocumentsMarksPartialRemovalsAsOrphanedAndAuditsFailure
 	if len(repo.recordedAuditEvents) != 2 {
 		t.Fatalf("expected failure audits for the failed and partially removed documents, got %d", len(repo.recordedAuditEvents))
 	}
+}
+
+func (s *collectionRepoStub) UpdateCollectionMetadataKey(context.Context, uint, uint, string, []byte) error {
+	return nil
 }

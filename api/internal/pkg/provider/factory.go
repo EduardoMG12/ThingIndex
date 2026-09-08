@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"thing-index/internal/domain"
@@ -28,6 +29,40 @@ type openAICompatibleLLMClient struct {
 	model      string
 	pricing    domain.LLMPricing
 	hasPricing bool
+
+	// Consumo da ultima chamada. Protegido por mutex porque o mesmo cliente e
+	// compartilhado entre as goroutines do enriquecimento -- sem isso o
+	// go test -race acusaria, e a metrica de custo sairia corrompida sob carga.
+	usageMu       sync.Mutex
+	lastUsage     tokenUsage
+	usageReported bool
+}
+
+// LastTokenUsage implementa domain.TokenUsageReporter.
+func (c *openAICompatibleLLMClient) LastTokenUsage() (int, int, int, bool) {
+	c.usageMu.Lock()
+	defer c.usageMu.Unlock()
+
+	if !c.usageReported {
+		return 0, 0, 0, false
+	}
+	return c.lastUsage.PromptTokens, c.lastUsage.CompletionTokens, c.lastUsage.Total(), true
+}
+
+// registrarConsumo guarda o que o provedor reportou.
+//
+// Resposta sem `usage` NAO apaga o registro anterior nem marca como reportado:
+// distinguir "nao informou" de "informou zero" e o que impede a metrica de
+// custo mentir por omissao do provedor.
+func (c *openAICompatibleLLMClient) registrarConsumo(usage *tokenUsage) {
+	if usage == nil {
+		return
+	}
+
+	c.usageMu.Lock()
+	defer c.usageMu.Unlock()
+	c.lastUsage = *usage
+	c.usageReported = true
 }
 
 type ollamaNativeLLMClient struct {
@@ -53,10 +88,45 @@ type chatCompletionMessage struct {
 	Content string `json:"content"`
 }
 
+// tokenUsage e o consumo reportado pelo provedor numa chamada.
+//
+// Existe porque a Metodologia do artigo promete avaliar custo operacional e o
+// parser descartava o campo `usage` da resposta em silencio -- o dado chegava
+// pela rede e sumia no unmarshal. Sem ele, qualquer afirmacao de custo seria
+// estimativa por contagem local de caracteres, o tipo de numero que este
+// trabalho critica.
+//
+// Ponteiro, e nao valor: provedor que nao reporta consumo (Ollama local, por
+// exemplo) precisa ser distinguivel de provedor que reportou zero.
+type tokenUsage struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+	TotalTokens      int `json:"total_tokens"`
+}
+
+// Total devolve o consumo somado, tolerando as duas omissoes comuns.
+//
+// Alguns provedores compativeis mandam as partes sem o total; somar no cliente
+// evita metrica agregada zerada por omissao alheia. Quando o provedor informa o
+// total, ele manda -- pode incluir tokens de sistema que as partes nao mostram.
+//
+// Receptor nulo devolve zero para o chamador nao precisar checar nil antes de
+// somar.
+func (u *tokenUsage) Total() int {
+	if u == nil {
+		return 0
+	}
+	if u.TotalTokens > 0 {
+		return u.TotalTokens
+	}
+	return u.PromptTokens + u.CompletionTokens
+}
+
 type chatCompletionResponse struct {
 	Choices []struct {
 		Message chatCompletionMessage `json:"message"`
 	} `json:"choices"`
+	Usage *tokenUsage `json:"usage,omitempty"`
 	Error *struct {
 		Message string `json:"message"`
 	} `json:"error,omitempty"`
@@ -347,6 +417,8 @@ func (c *openAICompatibleLLMClient) GenerateText(ctx context.Context, systemProm
 	if err != nil {
 		return "", err
 	}
+
+	c.registrarConsumo(completion.Usage)
 
 	if len(completion.Choices) == 0 {
 		return "", errors.New("llm response returned no choices")
