@@ -97,6 +97,10 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 	docHandler := handlers.NewDocumentHandler(docUseCase, cfg.UploadRequestLimitBytes())
 	chatUseCase := usecase.NewChatUseCase(collectionContextRepo, chatConversationRepo, providerUseCase)
 	chatHandler := handlers.NewChatHandler(chatUseCase)
+	// Anotacoes do workspace: marcas coloridas e legenda. Anotacao, nao
+	// recuperacao -- nada aqui entra no caminho de contexto ou de conexoes.
+	highlightRepo := repository.NewGormParagraphHighlightRepository(db)
+	workspaceHandler := handlers.NewWorkspaceHandler(usecase.NewWorkspaceUseCase(highlightRepo, collectionRepo))
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.GET("/docs", func(c *gin.Context) {
@@ -167,6 +171,11 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 			// Recalculadas a cada chamada; nenhuma aresta e persistida.
 			documents.GET("/collections/:id/connections", docHandler.GetNodeConnections)
 			documents.GET("/collections/:id", docHandler.GetCollection)
+			documents.GET("/collections/:id/highlights", workspaceHandler.ListHighlights)
+			documents.PUT("/collections/:id/highlights/:paragraphNodeId", workspaceHandler.SetHighlight)
+			documents.DELETE("/collections/:id/highlights/:paragraphNodeId", workspaceHandler.RemoveHighlight)
+			documents.GET("/collections/:id/legend", workspaceHandler.GetLegend)
+			documents.PUT("/collections/:id/legend", workspaceHandler.SetLegend)
 			documents.DELETE("/collections/:id/documents", docHandler.DeleteCollectionDocuments)
 			documents.PATCH("/collections/:collection/category", docHandler.UpdateCollectionCategory)
 			documents.POST("/categories", docHandler.CreateCategory)

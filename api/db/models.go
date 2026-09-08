@@ -30,6 +30,7 @@ func ManagedModels() []any {
 		&models.DocumentProcessingAttempt{},
 		&models.DocumentPage{},
 		&models.ParagraphNode{},
+		&models.ParagraphHighlight{},
 		&models.TableSection{},
 		&models.MetadataPair{},
 		&models.DocumentChunk{},

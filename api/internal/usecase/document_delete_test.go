@@ -430,3 +430,7 @@ func TestDeleteCollectionDocumentsMarksPartialRemovalsAsOrphanedAndAuditsFailure
 		t.Fatalf("expected failure audits for the failed and partially removed documents, got %d", len(repo.recordedAuditEvents))
 	}
 }
+
+func (s *collectionRepoStub) UpdateCollectionMetadataKey(context.Context, uint, uint, string, []byte) error {
+	return nil
+}

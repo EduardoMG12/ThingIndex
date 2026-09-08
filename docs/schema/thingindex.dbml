@@ -6,7 +6,7 @@
 //
 // Importavel em https://dbdiagram.io para visualizacao interativa.
 //
-// Total: 21 tabelas.
+// Total: 22 tabelas.
 
 Table users {
   id serial [pk, increment]
@@ -150,6 +150,26 @@ Table paragraph_nodes {
     deleted_at [name: "idx_paragraph_nodes_deleted_at"]
     document_id [name: "idx_paragraph_nodes_document_id"]
     (document_id, sequence_order) [name: "idx_paragraph_nodes_document_sequence", unique]
+  }
+}
+
+Table paragraph_highlights {
+  id serial [pk, increment]
+  user_id integer [not null]
+  collection_id integer [not null]
+  document_id integer [not null]
+  paragraph_node_id integer [not null]
+  color varchar(16) [not null]
+  created_at timestamptz
+  updated_at timestamptz
+  deleted_at timestamptz
+
+  indexes {
+    collection_id [name: "idx_paragraph_highlights_collection_id"]
+    deleted_at [name: "idx_paragraph_highlights_deleted_at"]
+    document_id [name: "idx_paragraph_highlights_document_id"]
+    user_id [name: "idx_paragraph_highlights_user_id"]
+    (user_id, paragraph_node_id) [name: "idx_paragraph_highlights_user_node", unique]
   }
 }
 
@@ -479,3 +499,4 @@ Ref: document_outline_nodes.parent_id > document_outline_nodes.id
 Ref: document_processing_attempts.document_id > documents.id
 Ref: documents.category_id > document_categories.id
 Ref: documents.collection_id > collections.id
+Ref: paragraph_highlights.paragraph_node_id > paragraph_nodes.id
