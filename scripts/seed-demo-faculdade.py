@@ -42,6 +42,10 @@ MANIFESTO = [
     ("regimento-interno-comum-campi-res-08-2014.pdf", "Regimento Interno Comum aos Campi (Res. 08/2014)", "Normas", "Regimento e resolucoes"),
     ("ppc-sistemas-de-informacao-palmas-2019.pdf", "PPC Sistemas de Informacao - Palmas (2019)", "Cursos", "Sistemas de Informacao - Palmas"),
     ("calendario-academico-palmas-2026.pdf", "Calendario Academico Palmas 2026 - Graduacao", "Cursos", "Sistemas de Informacao - Palmas"),
+    # Documentos que conversam com o PPC: a matriz lista as mesmas disciplinas
+    # e as ementas detalham cada uma.
+    ("matriz-curricular-si-palmas-2023.pdf", "Matriz Curricular SI - Palmas (2023)", "Cursos", "Sistemas de Informacao - Palmas"),
+    ("ementas-si-palmas-ppc-2023.pdf", "Ementas SI - Palmas (PPC 2023)", "Cursos", "Sistemas de Informacao - Palmas"),
 ]
 
 
@@ -168,8 +172,17 @@ def main():
     print(f"usuario {EMAIL} autenticado em {API}")
     # --relatorio: so mede o que ja esta no banco (util depois de um retry).
     if "--relatorio" not in sys.argv:
+        # Idempotente: o que ja esta na conta (mesmo titulo) nao sobe de novo.
+        _, lista = chamar("GET", "/documents", token)
+        dados = lista.get("data") or []
+        if isinstance(dados, dict):
+            dados = dados.get("documents") or dados.get("items") or []
+        existentes = {d.get("title") for d in dados if isinstance(d, dict)}
         ids = {}
         for arquivo, titulo, categoria, collection in MANIFESTO:
+            if titulo in existentes:
+                print(f"  ja existe {arquivo}")
+                continue
             ids[enviar(token, arquivo, titulo, categoria, collection)] = arquivo
             print(f"  enviado  {arquivo} -> {categoria} / {collection}")
         print("aguardando indexacao...")
