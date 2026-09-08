@@ -150,8 +150,13 @@ test("workspace mostra a estrutura do documento e justifica cada conexao @smoke"
     // A conexao precisa vir acompanhada dos termos que a justificam: uma aresta
     // sem explicacao seria tao opaca quanto a vizinhanca vetorial que este
     // projeto evita.
-    await expect(page.getByText("2 DAS PENALIDADES")).toBeVisible();
-    await expect(page.getByText(/multa/)).toBeVisible();
+    // Escopo na sidebar: a linha SVG tambem repete titulo e termos no <title>.
+    const sidebar = page.getByLabel("Detalhes do documento");
+    await expect(sidebar.getByText("2 DAS PENALIDADES")).toBeVisible();
+    await expect(sidebar.getByText(/multa/)).toBeVisible();
+    // E a conexao existe como linha desenhada, com o score em termos.
+    await expect(page.getByTestId("linha-de-conexao")).toHaveCount(1);
+    await expect(page.getByTestId("rotulo-da-linha")).toHaveText("8 termos");
 });
 
 test("workspace declara ausencia de conexao em vez de area vazia @smoke", async ({

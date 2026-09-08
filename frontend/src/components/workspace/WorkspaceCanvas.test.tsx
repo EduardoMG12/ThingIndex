@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { WorkspaceCanvas } from "@/components/workspace/WorkspaceCanvas";
@@ -128,8 +128,11 @@ describe("WorkspaceCanvas", () => {
 
         // A aresta precisa dizer POR QUE existe: sem isso seria tao opaca
         // quanto a vizinhanca vetorial que este projeto evita.
-        expect(screen.getByText(/multa/)).toBeInTheDocument();
-        expect(screen.getByText(/descumprimento/)).toBeInTheDocument();
+        // A justificativa precisa estar na sidebar (a linha SVG tambem repete
+        // os termos no <title>, entao o escopo e o painel de detalhes).
+        const sidebar = within(screen.getByLabelText("Detalhes do documento"));
+        expect(sidebar.getByText(/multa/)).toBeInTheDocument();
+        expect(sidebar.getByText(/descumprimento/)).toBeInTheDocument();
     });
 
     it("declara ausencia de conexao em vez de mostrar area vazia", async () => {
