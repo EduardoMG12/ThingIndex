@@ -26,6 +26,11 @@ type ChatSource struct {
 	DocName string `json:"docName"`
 	Page    int    `json:"page"`
 	Snippet string `json:"snippet"`
+	// DocumentID e NodeID deixam o frontend ir ao documento (e a secao, quando
+	// o hit e de um no do sumario) sem parsear o ID. Ambos opcionais para as
+	// mensagens gravadas antes de existirem.
+	DocumentID uint   `json:"documentId,omitempty"`
+	NodeID     string `json:"nodeId,omitempty"`
 }
 
 type ChatStreamEvent struct {
