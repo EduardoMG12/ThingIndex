@@ -39,6 +39,9 @@ export type ChatSource = {
     docName: string;
     page: number;
     snippet: string;
+    /** Ausentes em mensagens gravadas antes de o backend envia-los. */
+    documentId?: number;
+    nodeId?: string;
 };
 
 export type ChatStreamEvent =
@@ -306,7 +309,12 @@ function parseSSEEvent(rawEvent: string): ChatStreamEvent | null {
             case "delta":
                 return typeof delta === "string" ? { type: "delta", delta } : null;
             case "sources":
-                return { type: "sources", sources: Array.isArray(sources) ? sources : [] };
+                return {
+                    type: "sources",
+                    sources: Array.isArray(sources)
+                        ? sources.map(normalizeSource).filter((source): source is ChatSource => source !== null)
+                        : [],
+                };
             case "done":
                 return { type: "done", stage, message };
             case "error":
@@ -398,11 +406,14 @@ function normalizeSource(value: unknown): ChatSource | null {
         return null;
     }
 
+    // O stream (dominio) usa camelCase e o historico (DTO) usa snake_case.
     const record = value as Record<string, unknown>;
     const id = typeof record.id === "string" ? record.id : "";
-    const docName = typeof record.doc_name === "string" ? record.doc_name : "";
+    const docName = typeof record.doc_name === "string" ? record.doc_name : typeof record.docName === "string" ? record.docName : "";
     const page = Number(record.page);
     const snippet = typeof record.snippet === "string" ? record.snippet : "";
+    const documentId = Number(record.document_id ?? record.documentId);
+    const nodeId = typeof record.node_id === "string" ? record.node_id : typeof record.nodeId === "string" ? record.nodeId : "";
 
     if (!id || !docName || !Number.isFinite(page)) {
         return null;
@@ -413,5 +424,7 @@ function normalizeSource(value: unknown): ChatSource | null {
         docName,
         page,
         snippet,
+        ...(Number.isFinite(documentId) && documentId > 0 ? { documentId } : {}),
+        ...(nodeId ? { nodeId } : {}),
     };
 }

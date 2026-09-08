@@ -10,6 +10,9 @@ type LocaleMessages = Record<AppLocale, TranslationTree>;
 export const messages: LocaleMessages = {
     "pt-BR": {
         workspace: {
+            chat: {
+                viewInDocument: "Ver no documento",
+            },
             title: "Área de trabalho",
             description: "Explore os documentos da coleção e as conexões entre seus trechos.",
             collectionLabel: "Coleção",
@@ -1332,6 +1335,9 @@ export const messages: LocaleMessages = {
     },
     en: {
         workspace: {
+            chat: {
+                viewInDocument: "View in document",
+            },
             title: "Workspace",
             description: "Explore the collection's documents and the connections between their passages.",
             collectionLabel: "Collection",
@@ -2654,6 +2660,9 @@ export const messages: LocaleMessages = {
     },
     es: {
         workspace: {
+            chat: {
+                viewInDocument: "Ver en el documento",
+            },
             title: "Área de trabajo",
             description: "Explora los documentos de la colección y las conexiones entre sus fragmentos.",
             collectionLabel: "Colección",
