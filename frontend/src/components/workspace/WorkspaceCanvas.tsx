@@ -23,6 +23,9 @@ import {
     sectionKeyDe,
     type ParagrafoNaPagina,
 } from "@/components/workspace/PageOverlay";
+import { ConnectionLayer } from "@/components/workspace/ConnectionLayer";
+import { idDaLinha, montarLinhas, paragrafosSecundarios, type Linha } from "@/lib/workspace/connections";
+import { boxParaPixels } from "@/lib/workspace/geometry";
 
 /**
  * Canvas navegavel dos documentos de uma colecao: pan, zoom e quadros
@@ -53,6 +56,12 @@ const LARGURA_CARTAO = 260;
 const ALTURA_CARTAO = 96;
 /** Quadros de PDF tem ~612 px de largura; uma coluna por documento. */
 const PASSO_ENTRE_QUADROS = 760;
+/**
+ * Linhas desenhadas por vez. Uma secao de edital devolveu 109 conexoes acima
+ * do limiar: desenhar todas vira um novelo ilegivel. A API ja ordena por
+ * score, entao as N primeiras sao as mais fortes; a sidebar lista todas.
+ */
+export const LINHAS_MAXIMAS = 12;
 /** Folga para comecar a abrir o PDF um pouco antes de ele entrar na tela. */
 const FOLGA_DE_VISIBILIDADE = 240;
 
@@ -116,8 +125,13 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
             mapa.set(no.slug, no);
             secaoPorSlug.set(no.documentId, mapa);
         }
+        const porNodeId = new Map<string, OutlineNode>();
+        for (const no of nosDoSumario) {
+            porNodeId.set(no.nodeId, no);
+        }
         const porPagina = new Map<number, Map<number, ParagrafoNaPagina[]>>();
         const ancora = new Map<number, Map<string, ParagraphNode>>();
+        const porSequencia = new Map<number, Map<number, ParagraphNode>>();
         const contagem = new Map<number, { total: number; comBox: number }>();
         for (const no of paragrafos) {
             const c = contagem.get(no.documentId) ?? { total: 0, comBox: 0 };
@@ -125,6 +139,9 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
             const box = readBox(no);
             if (box) {
                 c.comBox += 1;
+                const seq = porSequencia.get(no.documentId) ?? new Map<number, ParagraphNode>();
+                seq.set(no.sequenceOrder, no);
+                porSequencia.set(no.documentId, seq);
             }
             contagem.set(no.documentId, c);
             const chave = sectionKeyDe(no);
@@ -156,11 +173,29 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
             paginas.set(no.startPage, lista);
             secoesPorPagina.set(no.documentId, paginas);
         }
-        return { secaoPorSlug, porPagina, ancora, contagem, secoesPorPagina };
+        return { secaoPorSlug, porNodeId, porPagina, ancora, porSequencia, contagem, secoesPorPagina };
     }, [nosDoSumario, paragrafos]);
 
+    // Ancora de uma secao: o paragrafo em que ela comeca (paragraph_start, que
+    // a indexacao grava no no) se ele tiver box; senao o primeiro paragrafo
+    // com o section_key dela; senao nada -- um marcador em posicao inventada
+    // seria pior que nenhum.
+    const ancoraDaSecao = useCallback(
+        (secao: OutlineNode): ParagraphNode | null => {
+            const inicio = secao.metadata?.paragraph_start;
+            if (typeof inicio === "number") {
+                const porInicio = indiceDoContexto.porSequencia.get(secao.documentId)?.get(inicio);
+                if (porInicio) {
+                    return porInicio;
+                }
+            }
+            return secao.slug ? (indiceDoContexto.ancora.get(secao.documentId)?.get(secao.slug) ?? null) : null;
+        },
+        [indiceDoContexto]
+    );
+
     const [paragrafoSelecionado, setParagrafoSelecionado] = useState<{ no: ParagraphNode; secao: OutlineNode | null } | null>(null);
-    const semSecundarios = useMemo(() => new Set<ParagraphNode["id"]>(), []);
+    const [linhaRealcada, setLinhaRealcada] = useState<string | null>(null);
 
     // Lazy init + `key={collectionId}` na pagina: trocar de colecao remonta o
     // canvas, entao nao precisa de efeito para recarregar as posicoes.
@@ -180,6 +215,7 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
         aproximar,
         afastar,
         enquadrar,
+        centralizarEm,
         clienteParaMundo,
     } = useViewport();
 
@@ -260,6 +296,45 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
     }, [documentos, medidas, quadros, viewport, tamanho]);
 
     const conjuntoVazio = useMemo(() => new Set<number>(), []);
+
+    const indiceDoDocumento = useMemo(() => new Map(documentos.map((d, i) => [d.id, i])), [documentos]);
+
+    /** Rect, em coordenadas do mundo, da pagina N de um documento medido. */
+    const rectDaPagina = useCallback(
+        (documentId: number, numero: number): Rect | null => {
+            const i = indiceDoDocumento.get(documentId);
+            const paginas = medidas[documentId];
+            if (i === undefined || !paginas || numero < 1 || numero > paginas.length) {
+                return null;
+            }
+            const quadro = quadros[i];
+            const pagina = paginas[numero - 1];
+            return {
+                x: quadro.x + (quadro.largura - pagina.largura) / 2,
+                y: quadro.y + topoDaPagina(paginas, numero),
+                largura: pagina.largura,
+                altura: pagina.altura,
+            };
+        },
+        [indiceDoDocumento, medidas, quadros]
+    );
+
+    /** Rect do grifo de um paragrafo no mundo, ou null sem box ou sem pagina medida. */
+    const rectDoParagrafo = useCallback(
+        (no: ParagraphNode): Rect | null => {
+            const box = readBox(no);
+            if (!box || !no.pageNumber) {
+                return null;
+            }
+            const pagina = rectDaPagina(no.documentId, no.pageNumber);
+            if (!pagina) {
+                return null;
+            }
+            const px = boxParaPixels(box, pagina.largura, pagina.altura);
+            return { x: pagina.x + px.left, y: pagina.y + px.top, largura: px.width, altura: px.height };
+        },
+        [rectDaPagina]
+    );
 
     const quadroVisivel = useCallback(
         (rect: Rect) =>
@@ -386,6 +461,51 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
 
     const documentoAtual = documentos.find((documento) => documento.id === documentoFocado);
 
+    const secundarios = useMemo(
+        () => (conexoes ? paragrafosSecundarios(conexoes, nosDoSumario, paragrafos) : new Set<ParagraphNode["id"]>()),
+        [conexoes, nosDoSumario, paragrafos]
+    );
+
+    const linhas = useMemo<Linha[]>(() => {
+        if (!conexoes || conexoes.length === 0) {
+            return [];
+        }
+        // Origem: o grifo do paragrafo selecionado; sem ele, o marcador da
+        // secao pedida na sidebar; sem box, o quadro do documento focado.
+        const secaoDeOrigem = noSelecionado ? indiceDoContexto.porNodeId.get(noSelecionado) : undefined;
+        const origem =
+            (paragrafoSelecionado ? rectDoParagrafo(paragrafoSelecionado.no) : null) ??
+            (secaoDeOrigem ? (() => { const a = ancoraDaSecao(secaoDeOrigem); return a ? rectDoParagrafo(a) : null; })() : null) ??
+            (documentoFocado !== null && indiceDoDocumento.has(documentoFocado) ? quadros[indiceDoDocumento.get(documentoFocado)!] : null);
+        return montarLinhas(conexoes.slice(0, LINHAS_MAXIMAS), {
+            origem,
+            destinoPreciso: (conexao) => {
+                const no = indiceDoContexto.porNodeId.get(conexao.nodeId);
+                if (!no || no.documentId !== conexao.documentId) {
+                    return null;
+                }
+                const a = ancoraDaSecao(no);
+                return a ? rectDoParagrafo(a) : null;
+            },
+            quadroDoDocumento: (documentId) => {
+                const i = indiceDoDocumento.get(documentId);
+                return i === undefined ? null : quadros[i];
+            },
+        });
+    }, [conexoes, noSelecionado, paragrafoSelecionado, documentoFocado, indiceDoContexto, indiceDoDocumento, quadros, ancoraDaSecao, rectDoParagrafo]);
+
+    const irParaConexao = useCallback(
+        (conexao: { documentId: number; nodeId: string }) => {
+            const no = indiceDoContexto.porNodeId.get(conexao.nodeId);
+            const a = no ? ancoraDaSecao(no) : null;
+            const alvo = (a ? rectDoParagrafo(a) : null) ?? (indiceDoDocumento.has(conexao.documentId) ? quadros[indiceDoDocumento.get(conexao.documentId)!] : null);
+            if (alvo) {
+                centralizarEm({ ...alvo, altura: Math.min(alvo.altura, 600) }, 1);
+            }
+        },
+        [indiceDoContexto, ancoraDaSecao, rectDoParagrafo, indiceDoDocumento, quadros, centralizarEm]
+    );
+
     return (
         // Empilha em telas estreitas e divide em duas colunas a partir de lg.
         // `min-w-0` e obrigatorio: sem ele o item flex assume a largura do
@@ -443,12 +563,10 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                                                     tamanho={tamanhoDaPagina}
                                                     paragrafos={nosDaPagina}
                                                     secoes={secoes}
-                                                    ancoraDaSecao={(secao) =>
-                                                        secao.slug ? (indiceDoContexto.ancora.get(documento.id)?.get(secao.slug) ?? null) : null
-                                                    }
+                                                    ancoraDaSecao={ancoraDaSecao}
                                                     origem={origemMajoritaria(nosDaPagina.map((p) => p.no))}
                                                     selecionadoId={paragrafoSelecionado?.no.id ?? null}
-                                                    secundarios={semSecundarios}
+                                                    secundarios={secundarios}
                                                     onSelecionar={selecionarParagrafo}
                                                 />
                                             );
@@ -500,6 +618,12 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                             </div>
                         );
                     })}
+                    <ConnectionLayer
+                        linhas={linhas}
+                        realcada={linhaRealcada}
+                        onRealcar={setLinhaRealcada}
+                        onEscolher={irParaConexao}
+                    />
                 </div>
 
                 <div
@@ -567,6 +691,15 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                                     {paragrafoSelecionado.secao ? ` · ${paragrafoSelecionado.secao.title}` : ""}
                                 </p>
                                 <p className="mt-1 line-clamp-6 text-xs">{paragrafoSelecionado.no.content}</p>
+                                <button
+                                    type="button"
+                                    onClick={() => paragrafoSelecionado.secao && pedirConexoes(paragrafoSelecionado.secao.nodeId)}
+                                    disabled={!paragrafoSelecionado.secao}
+                                    title={paragrafoSelecionado.secao ? undefined : "Trecho sem seção no sumário: não há nó para consultar."}
+                                    className="mt-2 text-xs font-medium text-primary underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    Ver conexões
+                                </button>
                             </div>
                         ) : null}
 
@@ -622,18 +755,40 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                                 </p>
                             ) : (
                                 <ul className="space-y-2 border-t border-border pt-3">
-                                    {conexoes.map((conexao) => (
-                                        <li
-                                            key={`${conexao.documentId}-${conexao.nodeId}`}
-                                            className="rounded-md bg-muted/40 p-2"
-                                        >
-                                            <p className="text-xs font-medium">{conexao.title}</p>
-                                            <p className="mt-1 text-[11px] text-muted-foreground">
-                                                Termos em comum:{" "}
-                                                {conexao.matchedTerms.join(", ")}
-                                            </p>
+                                    {conexoes.length > LINHAS_MAXIMAS ? (
+                                        <li className="text-[11px] text-muted-foreground" data-testid="aviso-linhas-limitadas">
+                                            {conexoes.length} conexões acima do limiar; as {LINHAS_MAXIMAS} mais fortes estão desenhadas no canvas.
                                         </li>
-                                    ))}
+                                    ) : null}
+                                    {conexoes.map((conexao) => {
+                                        const id = idDaLinha(conexao);
+                                        return (
+                                            <li
+                                                key={id}
+                                                className={`rounded-md p-2 ${linhaRealcada === id ? "bg-primary/15 ring-1 ring-primary/50" : "bg-muted/40"}`}
+                                                onMouseEnter={() => setLinhaRealcada(id)}
+                                                onMouseLeave={() => setLinhaRealcada(null)}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onClick={() => irParaConexao(conexao)}
+                                                    className="w-full text-left"
+                                                    title="Centralizar no destino"
+                                                >
+                                                    <p className="text-xs font-medium">
+                                                        {conexao.title}
+                                                        <span className="ml-2 rounded bg-primary/10 px-1 text-[10px] text-primary">
+                                                            {conexao.score} termos
+                                                        </span>
+                                                    </p>
+                                                    <p className="mt-1 text-[11px] text-muted-foreground">
+                                                        Termos em comum:{" "}
+                                                        {conexao.matchedTerms.join(", ")}
+                                                    </p>
+                                                </button>
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
                             )
                         ) : null}

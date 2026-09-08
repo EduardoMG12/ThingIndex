@@ -114,8 +114,10 @@ export function PageOverlay({
                     .map((secao) => {
                         const ancora = ancoraDaSecao(secao);
                         const box = ancora ? readBox(ancora) : null;
-                        return { item: secao, top: box ? boxParaPixels(box, tamanho.largura, tamanho.altura).top : 0 };
+                        // Sem ancora nao ha marcador: posicao inventada engana.
+                        return box ? { item: secao, top: boxParaPixels(box, tamanho.largura, tamanho.altura).top } : null;
                     })
+                    .filter((m): m is { item: OutlineNode; top: number } => m !== null)
             ).map(({ item: secao, top }) => (
                 // Dentro da margem esquerda da pagina (72 pt num A4/carta), para
                 // nunca invadir o quadro vizinho nem o texto.
