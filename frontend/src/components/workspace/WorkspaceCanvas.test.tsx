@@ -10,6 +10,8 @@ vi.mock("@/lib/api/collections", () => ({
     fetchLegend: vi.fn(async () => ({})),
     putHighlight: vi.fn(async () => null),
     deleteHighlight: vi.fn(async () => undefined),
+    fetchViewState: vi.fn(async () => ({})),
+    putViewState: vi.fn(async () => undefined),
 }));
 
 const navegacao = {
@@ -24,7 +26,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { createTestWrapper } from "@/test/test-utils";
-import { deleteHighlight, putHighlight } from "@/lib/api/collections";
+import { deleteHighlight, putHighlight, putViewState } from "@/lib/api/collections";
 
 // pdf.js mockado: documentos de tres paginas carta, para o overlay de grifos
 // (e a barra de cor) existir no teste do canvas.
@@ -203,7 +205,7 @@ describe("WorkspaceCanvas", () => {
         });
     });
 
-    it("persiste a posicao do cartao arrastado", () => {
+    it("persiste a posicao do cartao arrastado", async () => {
         const { unmount } = render(<WorkspaceCanvas context={contexto} />, opcoes);
 
         const cartao = screen.getByRole("button", { name: /Contrato SLA/i });
@@ -211,9 +213,11 @@ describe("WorkspaceCanvas", () => {
         fireEvent.pointerMove(window, { clientX: 120, clientY: 80, pointerId: 1 });
         fireEvent.pointerUp(window, { pointerId: 1 });
 
-        const salvo = window.localStorage.getItem("thingindex.workspace.positions.7");
-        expect(salvo).toBeTruthy();
-        expect(JSON.parse(salvo as string)).toHaveProperty("1");
+        // A posicao vai para o servidor (debounce de 800 ms), nao mais para o localStorage.
+        await waitFor(() => expect(putViewState).toHaveBeenCalled(), { timeout: 2500 });
+        const enviado = vi.mocked(putViewState).mock.calls.at(-1)?.[1];
+        expect(enviado?.quadros).toHaveProperty("1");
+        expect(window.localStorage.getItem("thingindex.workspace.positions.7")).toBeNull();
 
         unmount();
 
@@ -326,8 +330,7 @@ describe("WorkspaceCanvas", () => {
             unobserve() {}
             disconnect() {}
         } as unknown as typeof ResizeObserver;
-        // Destino: documento 4, secao que comeca na pagina 3. Quadro em 'uma pagina' na 1.
-        window.localStorage.setItem("thingindex.workspace.apresentacao.7", JSON.stringify({ "4": { modo: "pagina", paginaAtual: 1 } }));
+        // Destino: documento 4, secao que comeca na pagina 3. Quadro em 'uma pagina' na 1 (estado salvo).
         vi.mocked(fetchNodeConnections).mockResolvedValue({
             nodeId: "termo#a",
             minScore: 2,
@@ -339,7 +342,7 @@ describe("WorkspaceCanvas", () => {
             outlineNodes: [...contextoComPdf.outlineNodes, { documentId: 4, nodeId: "outro#c", title: "3 PRAZOS", level: 1, slug: "c", startPage: 3 }],
         } as unknown as CollectionContext;
         try {
-            render(<WorkspaceCanvas context={contexto} />, opcoes);
+            render(<WorkspaceCanvas context={contexto} estadoInicial={{ apresentacao: { "4": { modo: "pagina", paginaAtual: 1 } } }} />, opcoes);
             fireEvent.click(await screen.findByTestId("grifo", {}, { timeout: 3000 }));
             // A barra flutuante e a sidebar tem 'Ver conexoes'; aqui e a da barra.
             fireEvent.click(within(await screen.findByTestId("barra-de-grifo")).getByRole("button", { name: /Ver conexões/ }));
@@ -347,10 +350,63 @@ describe("WorkspaceCanvas", () => {
             expect(botao).toHaveTextContent("Ir para p. 3");
             fireEvent.click(botao);
             await waitFor(() => expect(screen.getByTestId("pdf-frame-4")).toHaveAttribute("data-modo", "pagina"));
-            expect(JSON.parse(window.localStorage.getItem("thingindex.workspace.apresentacao.7") ?? "{}")["4"]).toEqual({ modo: "pagina", paginaAtual: 3 });
+            await waitFor(() => expect(within(screen.getByTestId("pdf-frame-4")).getByTestId("pagina-de")).toHaveTextContent("p. 3 de 3"));
         } finally {
             globalThis.ResizeObserver = original;
-            window.localStorage.removeItem("thingindex.workspace.apresentacao.7");
         }
+    });
+
+    it("abre ja no estado salvo: zoom, pagina do quadro e marcadores escondidos, sem esperar efeito", async () => {
+        const original = globalThis.ResizeObserver;
+        globalThis.ResizeObserver = class {
+            private cb: ResizeObserverCallback;
+            constructor(cb: ResizeObserverCallback) {
+                this.cb = cb;
+            }
+            observe() {
+                this.cb([{ contentRect: { width: 1400, height: 900 } } as ResizeObserverEntry], this as unknown as ResizeObserver);
+            }
+            unobserve() {}
+            disconnect() {}
+        } as unknown as typeof ResizeObserver;
+        try {
+            vi.mocked(putViewState).mockClear();
+            render(
+                <WorkspaceCanvas
+                    context={contextoComPdf}
+                    estadoInicial={{ viewport: { x: 0, y: 0, escala: 0.75 }, apresentacao: { "3": { modo: "pagina", paginaAtual: 2 } }, marcadoresVisiveis: false }}
+                />,
+                opcoes
+            );
+            // Primeiro render: 75% e modo pagina ja aplicados.
+            expect(screen.getByRole("toolbar", { name: "Zoom do canvas" })).toHaveTextContent("75%");
+            expect(screen.getByTestId("pdf-frame-3")).toHaveAttribute("data-modo", "pagina");
+            await screen.findByTestId("pagina-de");
+            expect(screen.getByTestId("pagina-de")).toHaveTextContent("p. 2 de 3");
+            expect(screen.getByTestId("alternar-marcadores")).toHaveAttribute("aria-pressed", "false");
+            // Nada mudou: nada e salvo de volta.
+            await new Promise((r) => setTimeout(r, 1000));
+            expect(putViewState).not.toHaveBeenCalled();
+            // Mostrar marcadores muda o estado e salva.
+            fireEvent.click(screen.getByTestId("alternar-marcadores"));
+            await waitFor(() => expect(putViewState).toHaveBeenCalled(), { timeout: 2500 });
+            expect(vi.mocked(putViewState).mock.calls.at(-1)?.[1]?.marcadoresVisiveis).toBe(true);
+        } finally {
+            globalThis.ResizeObserver = original;
+        }
+    });
+
+    it("migra posicoes e apresentacao do localStorage uma vez e apaga as chaves", async () => {
+        vi.mocked(putViewState).mockClear();
+        window.localStorage.setItem("thingindex.workspace.positions.7", JSON.stringify({ "1": { x: 300, y: 40 } }));
+        window.localStorage.setItem("thingindex.workspace.apresentacao.7", JSON.stringify({ "1": { modo: "pagina", paginaAtual: 2 } }));
+        render(<WorkspaceCanvas context={contexto} />, opcoes);
+        const cartao = screen.getByRole("button", { name: /Contrato SLA/i });
+        expect(cartao.parentElement?.style.transform).toContain("translate(300px, 40px)");
+        expect(window.localStorage.getItem("thingindex.workspace.positions.7")).toBeNull();
+        await waitFor(() => expect(putViewState).toHaveBeenCalled(), { timeout: 2500 });
+        const enviado = vi.mocked(putViewState).mock.calls.at(-1)?.[1];
+        expect(enviado?.quadros).toEqual({ "1": { x: 300, y: 40 } });
+        expect(enviado?.apresentacao).toEqual({ "1": { modo: "pagina", paginaAtual: 2 } });
     });
 });

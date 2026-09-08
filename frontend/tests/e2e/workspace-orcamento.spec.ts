@@ -63,6 +63,9 @@ test("nunca ha mais de 12 canvases de pagina vivos, mesmo rolando tres PDFs de 3
     await context.route("**/api/documents/collections/*/legend", async (route) => {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(success({ labels: {} })) });
     });
+    await context.route("**/api/documents/collections/*/view-state", async (route) => {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(success({ state: {} })) });
+    });
     await context.route("**/api/documents/*/preview", async (route) => {
         await route.fulfill({ status: 200, contentType: "application/pdf", path: FIXTURE });
     });

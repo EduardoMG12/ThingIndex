@@ -29,9 +29,9 @@ const PASSO_DOS_BOTOES = 1.25;
 type EstadoDeArrasto = { ultimo: Ponto };
 type EstadoDePinch = { distancia: number };
 
-export function useViewport() {
+export function useViewport(inicial?: Viewport) {
     const containerRef = useRef<HTMLDivElement | null>(null);
-    const [viewport, setViewport] = useState<Viewport>(VIEWPORT_INICIAL);
+    const [viewport, setViewport] = useState<Viewport>(inicial ?? VIEWPORT_INICIAL);
     const [tamanho, setTamanho] = useState<Tamanho>({ largura: 0, altura: 0 });
     const [arrastandoFundo, setArrastandoFundo] = useState(false);
 

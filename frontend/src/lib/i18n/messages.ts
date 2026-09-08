@@ -21,6 +21,7 @@ export const messages: LocaleMessages = {
                 zoomIn: "Aproximar",
                 zoomOut: "Afastar",
                 fit: "Ajustar à tela",
+                markers: "Marcadores de seção",
             },
             frame: {
                 chunks: "{count} trechos",
@@ -75,6 +76,9 @@ export const messages: LocaleMessages = {
                 loadError: "Não foi possível carregar as marcas.",
                 saveError: "Não foi possível salvar a marca.",
                 colors: { amarelo: "Amarelo", verde: "Verde", azul: "Azul", vermelho: "Vermelho", roxo: "Roxo" },
+            },
+            state: {
+                saveError: "Não foi possível salvar o estado de visualização.",
             },
             legend: {
                 title: "Legenda",
@@ -1330,6 +1334,7 @@ export const messages: LocaleMessages = {
                 zoomIn: "Zoom in",
                 zoomOut: "Zoom out",
                 fit: "Fit to screen",
+                markers: "Section markers",
             },
             frame: {
                 chunks: "{count} passages",
@@ -1384,6 +1389,9 @@ export const messages: LocaleMessages = {
                 loadError: "Could not load the highlights.",
                 saveError: "Could not save the highlight.",
                 colors: { amarelo: "Yellow", verde: "Green", azul: "Blue", vermelho: "Red", roxo: "Purple" },
+            },
+            state: {
+                saveError: "Could not save the view state.",
             },
             legend: {
                 title: "Legend",
@@ -2639,6 +2647,7 @@ export const messages: LocaleMessages = {
                 zoomIn: "Acercar",
                 zoomOut: "Alejar",
                 fit: "Ajustar a la pantalla",
+                markers: "Marcadores de sección",
             },
             frame: {
                 chunks: "{count} fragmentos",
@@ -2693,6 +2702,9 @@ export const messages: LocaleMessages = {
                 loadError: "No se pudieron cargar las marcas.",
                 saveError: "No se pudo guardar la marca.",
                 colors: { amarelo: "Amarillo", verde: "Verde", azul: "Azul", vermelho: "Rojo", roxo: "Morado" },
+            },
+            state: {
+                saveError: "No se pudo guardar el estado de visualización.",
             },
             legend: {
                 title: "Leyenda",
