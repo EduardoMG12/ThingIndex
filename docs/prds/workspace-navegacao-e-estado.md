@@ -1,6 +1,6 @@
 # Workspace: navegar entre conexões a partir do grifo, estado de visualização no servidor e marcadores sob controle
 
-**Status:** rascunho
+**Status:** entregue (2026-09-08)
 **Data:** 2026-09-08
 **Base:** `docs/prds/workspace-anotacoes-e-folhear.md` (entregue em WA1–WA8)
 **Origem:** pedido do autor depois de usar o corpus da faculdade
@@ -95,4 +95,10 @@ Ambiguity Report:
 
 ## Discoveries
 
-(vazio)
+- Dois PDFs "digitalizados" do IFPR (Resolução 55/2011 com 22 MB, Portaria 195/2017, Regulamento do Corpo Discente) não têm camada de texto: o OCR por tesseract não produz bounding box, então não há grifo. Descartados; a matriz e as ementas de SI entraram no lugar.
+- O servidor do IFPR corta downloads grandes no meio; `wget -c` com retomada resolveu onde o `curl` não resolvia.
+- O calendário virava 59 seções: linhas de tabela com muitos números casam com o padrão de título numerado. Três números soltos nunca são título; dois só quando são metade das palavras. 59 → 21.
+- A matriz curricular (SAGRES) traz um ESC dentro de uma `<word>` do `pdftotext -bbox-layout`; o decoder XML do Go abortava o documento inteiro. Controles proibidos viram espaço antes do parse.
+- A barra flutuante com ◀ ▶ fica no parágrafo de origem, que sai da tela ao centralizar o destino; os mesmos botões vivem no bloco "Conexão atual" da sidebar.
+- Aplicar o estado antes do primeiro paint exigiu carregar contexto, marcas, legenda e estado em paralelo em `page.tsx` e passar tudo por props; o canvas não carrega mais nada por efeito.
+- Entregue em 6 issues (#42 a #47). Stack real: folhear até a p. 4, esconder marcadores, abrir outro contexto → p. 4, 57% de zoom, marcadores escondidos; grifo verde do Edital 56 abre "1 de 36".
