@@ -3,7 +3,7 @@
 import { Bot, Loader2, User } from "lucide-react";
 
 import { ChatRichText } from "@/components/chat/ChatRichText";
-import SourceReference from "@/components/chat/SourceReference";
+import SourceReference, { type Source } from "@/components/chat/SourceReference";
 import type { ChatWorkspaceMessage } from "@/components/chat/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { cn } from "@/lib/utils";
@@ -20,9 +20,11 @@ function StreamingPlaceholder({ label }: { label: string }) {
 export function ChatMessageCard({
     message,
     isStreaming,
+    onVerNoDocumento,
 }: {
     message: ChatWorkspaceMessage;
     isStreaming: boolean;
+    onVerNoDocumento?: (source: Source) => void;
 }) {
     const { t, locale } = useI18n();
     const isUser = message.role === "user";
@@ -84,7 +86,7 @@ export function ChatMessageCard({
                 {message.sources && message.sources.length > 0 ? (
                     <div className="grid gap-2 pt-1 sm:grid-cols-2">
                         {message.sources.map((source) => (
-                            <SourceReference key={source.id} source={source} />
+                            <SourceReference key={source.id} source={source} onVerNoDocumento={onVerNoDocumento} />
                         ))}
                     </div>
                 ) : null}

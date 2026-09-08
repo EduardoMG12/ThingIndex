@@ -6,6 +6,7 @@ import { FolderOpen, Loader2 } from "lucide-react";
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ChatEmptyState } from "@/components/chat/ChatEmptyState";
 import { ChatMessageCard } from "@/components/chat/ChatMessageCard";
+import type { Source } from "@/components/chat/SourceReference";
 import SubQueryProgress from "@/components/chat/SubQueryProgress";
 import ProviderRuntimeCallout from "@/components/runtime/ProviderRuntimeCallout";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -31,8 +32,18 @@ function StreamingCard() {
     );
 }
 
-const ChatTab = ({ className }: { className?: string }) => {
+type ChatTabProps = {
+    className?: string;
+    /** Colecao escolhida por quem embute o chat; esconde o seletor proprio. */
+    collectionId?: number | null;
+    /** Cabecalho de uma linha, sem acoes rapidas: para caber num painel. */
+    compacto?: boolean;
+    onVerNoDocumento?: (source: Source) => void;
+};
+
+const ChatTab = ({ className, collectionId = null, compacto = false, onVerNoDocumento }: ChatTabProps) => {
     const { t } = useI18n();
+    const controlado = collectionId !== null;
     const {
         activeCollection,
         activeConversation,
@@ -62,7 +73,7 @@ const ChatTab = ({ className }: { className?: string }) => {
         streamError,
         streamMessageId,
         textareaRef,
-    } = useChatWorkspace();
+    } = useChatWorkspace({ collectionId });
 
     const showsRuntimeCallout = messages.length === 0 && !isConversationLoading;
 
@@ -94,8 +105,8 @@ const ChatTab = ({ className }: { className?: string }) => {
 
     return (
         <section className={cn("flex h-full min-h-0 min-w-0 flex-col bg-background", className)}>
-            <header className="border-b border-border/70 px-4 py-3 sm:px-6">
-                <div className="mx-auto flex max-w-4xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <header className={cn("border-b border-border/70", compacto ? "px-3 py-2" : "px-4 py-3 sm:px-6")}>
+                <div className={cn("mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between", compacto ? "" : "max-w-4xl")}>
                     <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-foreground">
                             {conversationTitle}
@@ -110,6 +121,7 @@ const ChatTab = ({ className }: { className?: string }) => {
                         ) : null}
                     </div>
 
+                    {controlado ? null : (
                     <div className="w-full max-w-sm">
                         <label htmlFor="chat-collection-select" className="sr-only">
                             {t("dashboard.chat.collectionSelectLabel")}
@@ -143,11 +155,12 @@ const ChatTab = ({ className }: { className?: string }) => {
                             ) : null}
                         </div>
                     </div>
+                    )}
                 </div>
             </header>
 
-            <ScrollArea ref={scrollAreaRef} className="flex-1 px-4 py-6 sm:px-6">
-                <div className="mx-auto max-w-3xl space-y-6">
+            <ScrollArea ref={scrollAreaRef} className={cn("flex-1", compacto ? "px-3 py-3" : "px-4 py-6 sm:px-6")}>
+                <div className={cn("mx-auto space-y-6", compacto ? "" : "max-w-3xl")}>
                     {/* Ate aqui a tela de documentos mostrava qual LLM estava
                         ativo e o chat nao — o usuario nao tinha como saber quem
                         estava respondendo. O componente, a copia e o teste
@@ -188,6 +201,7 @@ const ChatTab = ({ className }: { className?: string }) => {
                                 <ChatMessageCard
                                     message={message}
                                     isStreaming={isStreaming && message.id === streamMessageId}
+                                    onVerNoDocumento={onVerNoDocumento}
                                 />
                             </motion.div>
                         ))}
@@ -227,7 +241,7 @@ const ChatTab = ({ className }: { className?: string }) => {
                 collectionName={activeCollection?.name ?? null}
                 textareaRef={textareaRef}
                 quickActions={quickActions}
-                showQuickActions={messages.length === 0 && !isConversationLoading && hasCollections}
+                showQuickActions={!compacto && messages.length === 0 && !isConversationLoading && hasCollections}
             />
         </section>
     );
