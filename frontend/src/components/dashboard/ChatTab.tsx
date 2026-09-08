@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { FolderOpen, Loader2 } from "lucide-react";
+import { FolderOpen, Loader2, MessageSquarePlus } from "lucide-react";
 
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ChatEmptyState } from "@/components/chat/ChatEmptyState";
@@ -47,7 +47,11 @@ const ChatTab = ({ className, collectionId = null, compacto = false, onVerNoDocu
     const {
         activeCollection,
         activeConversation,
+        activeConversationId,
         activeSubQueries,
+        conversations,
+        selectConversation,
+        startNewConversation,
         canSubmit,
         canType,
         cancelStreaming,
@@ -121,6 +125,43 @@ const ChatTab = ({ className, collectionId = null, compacto = false, onVerNoDocu
                         ) : null}
                     </div>
 
+                    {compacto ? (
+                        // Sem o rail do menu lateral, a lista de conversas vive aqui.
+                        <div className="flex items-center gap-1">
+                            <label htmlFor="chat-conversation-select" className="sr-only">
+                                {t("dashboard.chat.conversationsLabel")}
+                            </label>
+                            <select
+                                id="chat-conversation-select"
+                                value={activeConversationId ?? ""}
+                                onChange={(event) => {
+                                    const id = Number(event.target.value);
+                                    if (Number.isFinite(id) && id > 0) {
+                                        selectConversation(id);
+                                    }
+                                }}
+                                disabled={isLoading}
+                                className="max-w-[160px] rounded-md border border-border/70 bg-background px-2 py-1 text-xs"
+                            >
+                                <option value="">{t("dashboard.chat.newConversation")}</option>
+                                {conversations.map((conversation) => (
+                                    <option key={conversation.id} value={conversation.id}>
+                                        {conversation.title}
+                                    </option>
+                                ))}
+                            </select>
+                            <button
+                                type="button"
+                                onClick={startNewConversation}
+                                disabled={isLoading}
+                                aria-label={t("dashboard.chat.newConversation")}
+                                title={t("dashboard.chat.newConversation")}
+                                className="rounded-md border border-border/70 p-1 text-primary hover:bg-primary/10 disabled:opacity-50"
+                            >
+                                <MessageSquarePlus className="h-4 w-4" aria-hidden />
+                            </button>
+                        </div>
+                    ) : null}
                     {controlado ? null : (
                     <div className="w-full max-w-sm">
                         <label htmlFor="chat-collection-select" className="sr-only">

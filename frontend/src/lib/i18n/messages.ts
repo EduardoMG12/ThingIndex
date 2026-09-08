@@ -12,6 +12,7 @@ export const messages: LocaleMessages = {
         workspace: {
             chat: {
                 viewInDocument: "Ver no documento",
+                toggle: "Chat",
             },
             title: "Área de trabalho",
             description: "Explore os documentos da coleção e as conexões entre seus trechos.",
@@ -1337,6 +1338,7 @@ export const messages: LocaleMessages = {
         workspace: {
             chat: {
                 viewInDocument: "View in document",
+                toggle: "Chat",
             },
             title: "Workspace",
             description: "Explore the collection's documents and the connections between their passages.",
@@ -2662,6 +2664,7 @@ export const messages: LocaleMessages = {
         workspace: {
             chat: {
                 viewInDocument: "Ver en el documento",
+                toggle: "Chat",
             },
             title: "Área de trabajo",
             description: "Explora los documentos de la colección y las conexiones entre sus fragmentos.",
