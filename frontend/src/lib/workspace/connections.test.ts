@@ -7,7 +7,6 @@ import {
     espessuraPorScore,
     montarLinhas,
     paragrafosSecundarios,
-    rotuloDoScore,
 } from "@/lib/workspace/connections";
 
 const SUMARIO: OutlineNode[] = [
@@ -68,9 +67,7 @@ describe("montarLinhas", () => {
 });
 
 describe("rotulos e espessura", () => {
-    it("fala em termos, nunca em porcentagem, e engrossa com o score ate um teto", () => {
-        expect(rotuloDoScore(1)).toBe("1 termo");
-        expect(rotuloDoScore(3)).toBe("3 termos");
+    it("engrossa com o score ate um teto", () => {
         expect(espessuraPorScore(2)).toBe(2.5);
         expect(espessuraPorScore(60)).toBe(espessuraPorScore(6));
     });
