@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Maximize2, Minus, Plus } from "lucide-react";
 
 import { fetchNodeConnections } from "@/lib/api/collections";
-import type { CollectionContext, OutlineNode } from "@/lib/api/contracts/document-context";
+import { readBox, type CollectionContext, type OutlineNode, type ParagraphNode } from "@/lib/api/contracts/document-context";
 import type { NodeConnection } from "@/lib/api/contracts/node-connections";
 import { rectVisivel, type Rect } from "@/lib/workspace/geometry";
 import { escalaDeRenderizacao, escolherPaginasVivas, ZOOM_MINIMO_PARA_PAGINAS } from "@/lib/workspace/render-budget";
@@ -16,6 +16,13 @@ import {
     topoDaPagina,
 } from "@/components/workspace/PdfFrame";
 import type { TamanhoDePagina } from "@/components/workspace/pdf";
+import {
+    AvisoSemPosicao,
+    origemMajoritaria,
+    PageOverlay,
+    sectionKeyDe,
+    type ParagrafoNaPagina,
+} from "@/components/workspace/PageOverlay";
 
 /**
  * Canvas navegavel dos documentos de uma colecao: pan, zoom e quadros
@@ -93,6 +100,67 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
         typeof collectionIdBruto === "number" ? collectionIdBruto : Number(collectionIdBruto) || 0;
     const documentos = useMemo(() => context.documents ?? [], [context.documents]);
     const nosDoSumario = useMemo(() => context.outlineNodes ?? [], [context.outlineNodes]);
+    const paragrafos = useMemo(() => context.paragraphNodes ?? [], [context.paragraphNodes]);
+
+    // Indices por documento: secao por slug, paragrafos por pagina (com a secao
+    // resolvida por section_key === slug), secoes por pagina de inicio, e a
+    // contagem de box para o aviso de reindexacao. Tudo derivado do contexto
+    // ja carregado -- nenhuma chamada extra.
+    const indiceDoContexto = useMemo(() => {
+        const secaoPorSlug = new Map<number, Map<string, OutlineNode>>();
+        for (const no of nosDoSumario) {
+            if (!no.slug) {
+                continue;
+            }
+            const mapa = secaoPorSlug.get(no.documentId) ?? new Map<string, OutlineNode>();
+            mapa.set(no.slug, no);
+            secaoPorSlug.set(no.documentId, mapa);
+        }
+        const porPagina = new Map<number, Map<number, ParagrafoNaPagina[]>>();
+        const ancora = new Map<number, Map<string, ParagraphNode>>();
+        const contagem = new Map<number, { total: number; comBox: number }>();
+        for (const no of paragrafos) {
+            const c = contagem.get(no.documentId) ?? { total: 0, comBox: 0 };
+            c.total += 1;
+            const box = readBox(no);
+            if (box) {
+                c.comBox += 1;
+            }
+            contagem.set(no.documentId, c);
+            const chave = sectionKeyDe(no);
+            const secao = chave ? (secaoPorSlug.get(no.documentId)?.get(chave) ?? null) : null;
+            if (box && chave) {
+                const mapa = ancora.get(no.documentId) ?? new Map<string, ParagraphNode>();
+                if (!mapa.has(chave)) {
+                    mapa.set(chave, no);
+                }
+                ancora.set(no.documentId, mapa);
+            }
+            if (!no.pageNumber) {
+                continue;
+            }
+            const paginas = porPagina.get(no.documentId) ?? new Map<number, ParagrafoNaPagina[]>();
+            const lista = paginas.get(no.pageNumber) ?? [];
+            lista.push({ no, secao });
+            paginas.set(no.pageNumber, lista);
+            porPagina.set(no.documentId, paginas);
+        }
+        const secoesPorPagina = new Map<number, Map<number, OutlineNode[]>>();
+        for (const no of nosDoSumario) {
+            if (!no.startPage) {
+                continue;
+            }
+            const paginas = secoesPorPagina.get(no.documentId) ?? new Map<number, OutlineNode[]>();
+            const lista = paginas.get(no.startPage) ?? [];
+            lista.push(no);
+            paginas.set(no.startPage, lista);
+            secoesPorPagina.set(no.documentId, paginas);
+        }
+        return { secaoPorSlug, porPagina, ancora, contagem, secoesPorPagina };
+    }, [nosDoSumario, paragrafos]);
+
+    const [paragrafoSelecionado, setParagrafoSelecionado] = useState<{ no: ParagraphNode; secao: OutlineNode | null } | null>(null);
+    const semSecundarios = useMemo(() => new Set<ParagraphNode["id"]>(), []);
 
     // Lazy init + `key={collectionId}` na pagina: trocar de colecao remonta o
     // canvas, entao nao precisa de efeito para recarregar as posicoes.
@@ -268,6 +336,14 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
         setDocumentoFocado(null);
         setNoSelecionado(null);
         setConexoes(null);
+        setParagrafoSelecionado(null);
+    }, []);
+
+    const selecionarParagrafo = useCallback((no: ParagraphNode, secao: OutlineNode | null) => {
+        setParagrafoSelecionado({ no, secao });
+        setDocumentoFocado(no.documentId);
+        setNoSelecionado(secao?.nodeId ?? null);
+        setConexoes(null);
     }, []);
 
     useEffect(() => {
@@ -358,7 +434,33 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                                             setNoSelecionado(null);
                                         }}
                                         onPointerDownCabecalho={(event) => aoIniciarArrasto(event, documento.id, indice)}
-                                    />
+                                        renderizarSobreposicao={(numero, tamanhoDaPagina) => {
+                                            const nosDaPagina = indiceDoContexto.porPagina.get(documento.id)?.get(numero) ?? [];
+                                            const secoes = indiceDoContexto.secoesPorPagina.get(documento.id)?.get(numero) ?? [];
+                                            return (
+                                                <PageOverlay
+                                                    numero={numero}
+                                                    tamanho={tamanhoDaPagina}
+                                                    paragrafos={nosDaPagina}
+                                                    secoes={secoes}
+                                                    ancoraDaSecao={(secao) =>
+                                                        secao.slug ? (indiceDoContexto.ancora.get(documento.id)?.get(secao.slug) ?? null) : null
+                                                    }
+                                                    origem={origemMajoritaria(nosDaPagina.map((p) => p.no))}
+                                                    selecionadoId={paragrafoSelecionado?.no.id ?? null}
+                                                    secundarios={semSecundarios}
+                                                    onSelecionar={selecionarParagrafo}
+                                                />
+                                            );
+                                        }}
+                                    >
+                                        {(() => {
+                                            const c = indiceDoContexto.contagem.get(documento.id);
+                                            return c && c.total > 0 && c.comBox === 0 ? (
+                                                <AvisoSemPosicao documentId={documento.id} totalParagrafos={c.total} />
+                                            ) : null;
+                                        })()}
+                                    </PdfFrame>
                                 </div>
                             );
                         }
@@ -447,6 +549,26 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                 ) : (
                     <div className="space-y-4">
                         <h2 className="text-sm font-semibold">{documentoAtual?.title}</h2>
+
+                        {(() => {
+                            const c = indiceDoContexto.contagem.get(documentoFocado);
+                            const semPosicao = c ? c.total - c.comBox : 0;
+                            return semPosicao > 0 ? (
+                                <p className="text-xs text-muted-foreground" data-testid="sem-posicao">
+                                    {semPosicao} de {c!.total} trechos sem posição na página.
+                                </p>
+                            ) : null;
+                        })()}
+
+                        {paragrafoSelecionado && paragrafoSelecionado.no.documentId === documentoFocado ? (
+                            <div className="rounded-md border border-primary/60 bg-primary/5 p-3" data-testid="trecho-selecionado">
+                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                    Trecho selecionado · p. {paragrafoSelecionado.no.pageNumber ?? "?"}
+                                    {paragrafoSelecionado.secao ? ` · ${paragrafoSelecionado.secao.title}` : ""}
+                                </p>
+                                <p className="mt-1 line-clamp-6 text-xs">{paragrafoSelecionado.no.content}</p>
+                            </div>
+                        ) : null}
 
                         {nosDoDocumentoFocado.length === 0 ? (
                             <p className="text-sm text-muted-foreground">
