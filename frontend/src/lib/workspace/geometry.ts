@@ -96,19 +96,24 @@ export function uniaoDeRects(rects: Rect[]): Rect | null {
     return { x: x0, y: y0, largura: x1 - x0, altura: y1 - y0 };
 }
 
-/** "Ajustar a tela": todos os quadros visiveis, com margem, centralizados. */
+/**
+ * "Ajustar a tela": todos os quadros lado a lado cabem na largura, com margem.
+ * Quadros de PDF sao altissimos (um edital de 24 paginas tem ~19 mil px), entao
+ * caber na altura tambem jogaria o zoom no minimo e ninguem leria nada; o topo
+ * dos quadros fica alinhado ao topo da tela e o resto se alcanca rolando.
+ * Se a uniao couber inteira, centraliza na vertical tambem.
+ */
 export function enquadrar(quadros: Rect[], tela: Tamanho, margem = 48): Viewport {
     const caixa = uniaoDeRects(quadros);
     if (!caixa || caixa.largura <= 0 || caixa.altura <= 0) {
         return { x: margem, y: margem, escala: 1 };
     }
-    const escala = limitarZoom(
-        Math.min((tela.largura - 2 * margem) / caixa.largura, (tela.altura - 2 * margem) / caixa.altura)
-    );
+    const escala = limitarZoom(Math.min((tela.largura - 2 * margem) / caixa.largura, 1));
+    const cabeNaAltura = caixa.altura * escala <= tela.altura - 2 * margem;
     return {
         escala,
         x: (tela.largura - caixa.largura * escala) / 2 - caixa.x * escala,
-        y: (tela.altura - caixa.altura * escala) / 2 - caixa.y * escala,
+        y: cabeNaAltura ? (tela.altura - caixa.altura * escala) / 2 - caixa.y * escala : margem - caixa.y * escala,
     };
 }
 

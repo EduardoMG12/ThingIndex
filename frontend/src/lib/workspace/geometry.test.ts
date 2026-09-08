@@ -45,13 +45,23 @@ describe("enquadrar e centralizarEm", () => {
     ];
     const tela = { largura: 800, altura: 600 };
 
-    it("deixa todos os quadros visiveis com margem", () => {
+    it("cabe na largura e centraliza quando a uniao tambem cabe na altura", () => {
         const vp = enquadrar(quadros, tela, 40);
         for (const q of quadros) {
             expect(rectVisivel(q, vp, tela)).toBe(true);
         }
-        // Uniao 1200x900 em 720x520 -> escala limitada pela altura.
-        expect(vp.escala).toBeCloseTo(Math.min(720 / 1200, 520 / 900));
+        // Uniao 1200x900: escala pela largura (720/1200 = 0,6); 900*0,6 = 540
+        // nao cabe em 520, entao o topo alinha na margem.
+        expect(vp.escala).toBeCloseTo(720 / 1200);
+        expect(vp.y).toBe(40);
+    });
+
+    it("com quadros altissimos nao joga o zoom no minimo", () => {
+        const edital = { x: 0, y: 0, largura: 612, altura: 19000 };
+        const vp = enquadrar([edital, { ...edital, x: 760 }], tela, 40);
+        expect(vp.escala).toBeCloseTo(720 / 1372);
+        expect(vp.y).toBe(40);
+        expect(rectVisivel(edital, vp, tela)).toBe(true);
     });
 
     it("poe o centro do rect no centro da tela", () => {
