@@ -2,7 +2,7 @@ FROM golang:1.26.0-alpine
 
 WORKDIR /app
 
-RUN apk add --no-cache git build-base
+RUN apk add --no-cache git build-base poppler-utils tesseract-ocr
 RUN go install github.com/air-verse/air@v1.63.0
 
 COPY go.mod go.sum ./
