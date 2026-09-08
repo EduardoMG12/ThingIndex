@@ -1,7 +1,8 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PdfFrame } from "@/components/workspace/PdfFrame";
+import { alturaDoQuadro, PdfFrame, topoDaPagina } from "@/components/workspace/PdfFrame";
+import { abrirDocumento } from "@/components/workspace/pdf";
 import { createTestWrapper } from "@/test/test-utils";
 
 // O I18nProvider le o locale do pathname; sem o mock cai em ingles.
@@ -80,5 +81,55 @@ describe("PdfFrame", () => {
         });
         expect(document.querySelectorAll("canvas[data-pagina]")).toHaveLength(0);
         expect(screen.queryByTestId("pdf-pagina-7-1")).toBeNull();
+    });
+
+    it("em modo 'pagina' so a pagina atual esta no DOM e os botoes respeitam os limites", async () => {
+        const onMudar = vi.fn();
+        montar(new Set([1]), { apresentacao: { modo: "pagina", paginaAtual: 1 }, onMudarApresentacao: onMudar });
+        await screen.findByTestId("pdf-pagina-7-1");
+        expect(screen.queryByTestId("pdf-pagina-7-2")).toBeNull();
+        expect(document.querySelectorAll('[data-testid^="pdf-pagina-7-"]')).toHaveLength(1);
+        expect(screen.getByTestId("pagina-de")).toHaveTextContent("p. 1 de 30");
+        expect(screen.getByRole("button", { name: "Página anterior" })).toBeDisabled();
+
+        fireEvent.click(screen.getByRole("button", { name: "Próxima página" }));
+        expect(onMudar).toHaveBeenCalledWith(7, { modo: "pagina", paginaAtual: 2 });
+
+        // Na ultima pagina, avancar fica desabilitado; PageUp volta.
+        const chamadas = vi.mocked(abrirDocumento).mock.calls.length;
+        cleanup();
+        montar(new Set([30]), { apresentacao: { modo: "pagina", paginaAtual: 30 }, onMudarApresentacao: onMudar });
+        await screen.findByTestId("pdf-pagina-7-30");
+        expect(screen.getByRole("button", { name: "Próxima página" })).toBeDisabled();
+        fireEvent.keyDown(screen.getByTestId("pdf-frame-7"), { key: "PageUp" });
+        expect(onMudar).toHaveBeenLastCalledWith(7, { modo: "pagina", paginaAtual: 29 });
+        // Trocar de pagina nao reabre o documento: o cache de abrirDocumento
+        // e chamado, mas a ideia e que o quadro nao dependa disso.
+        expect(vi.mocked(abrirDocumento).mock.calls.length).toBeLessThanOrEqual(chamadas + 1);
+    });
+
+    it("o seletor alterna entre folhas e uma pagina mantendo a pagina atual", async () => {
+        const onMudar = vi.fn();
+        montar(new Set([1]), { apresentacao: { modo: "folhas", paginaAtual: 4 }, onMudarApresentacao: onMudar });
+        await screen.findByTestId("pdf-pagina-7-30");
+        fireEvent.click(screen.getByTestId("alternar-modo"));
+        expect(onMudar).toHaveBeenCalledWith(7, { modo: "pagina", paginaAtual: 4 });
+    });
+});
+
+describe("geometria por modo", () => {
+    const paginas = [
+        { largura: 612, altura: 792 },
+        { largura: 612, altura: 500 },
+        { largura: 612, altura: 792 },
+    ];
+    it("em 'pagina' o quadro tem a altura da pagina atual e ela fica sob o cabecalho", () => {
+        expect(alturaDoQuadro(paginas, { modo: "pagina", paginaAtual: 2 })).toBe(40 + 500);
+        expect(topoDaPagina(paginas, 2, { modo: "pagina", paginaAtual: 2 })).toBe(40);
+        expect(topoDaPagina(paginas, 3, { modo: "pagina", paginaAtual: 3 })).toBe(40);
+    });
+    it("em 'folhas' empilha todas com o espaco entre elas", () => {
+        expect(alturaDoQuadro(paginas)).toBe(40 + 792 + 500 + 792 + 16 * 2);
+        expect(topoDaPagina(paginas, 3)).toBe(40 + 792 + 16 + 500 + 16);
     });
 });
