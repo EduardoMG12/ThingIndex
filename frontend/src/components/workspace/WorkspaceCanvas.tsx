@@ -32,7 +32,7 @@ import {
 import { ConnectionLayer } from "@/components/workspace/ConnectionLayer";
 import { idDaLinha, montarLinhas, paragrafosSecundarios, type Linha } from "@/lib/workspace/connections";
 import { boxParaPixels } from "@/lib/workspace/geometry";
-import { APRESENTACAO_PADRAO, limitarPagina, regraIrAte, type Apresentacao } from "@/lib/workspace/highlights";
+import { APRESENTACAO_PADRAO, limitarPagina, precisaDoBotaoIrPara, regraIrAte, type Apresentacao } from "@/lib/workspace/highlights";
 
 /**
  * Canvas navegavel dos documentos de uma colecao: pan, zoom e quadros
@@ -1064,6 +1064,14 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                                     ) : null}
                                     {conexoes.map((conexao) => {
                                         const id = idDaLinha(conexao);
+                                        const noDestino = indiceDoContexto.porNodeId.get(conexao.nodeId);
+                                        const ancoraDestino = noDestino ? ancoraDaSecao(noDestino) : null;
+                                        const paginaDestino = ancoraDestino?.pageNumber ?? noDestino?.startPage ?? conexao.startPage ?? null;
+                                        const mostrarIrPara = precisaDoBotaoIrPara(
+                                            apresentacaoDe(conexao.documentId),
+                                            paginasVivasPorDocumento.get(conexao.documentId) ?? conjuntoVazio,
+                                            paginaDestino
+                                        );
                                         return (
                                             <li
                                                 key={id}
@@ -1084,10 +1092,25 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                                                         </span>
                                                     </p>
                                                     <p className="mt-1 text-[11px] text-muted-foreground">
+                                                        {paginaDestino !== null ? (
+                                                            <span className="mr-2" data-testid="pagina-destino">
+                                                                {t("workspace.sidebar.page", { page: paginaDestino })}
+                                                            </span>
+                                                        ) : null}
                                                         {t("workspace.sidebar.commonTerms")}{" "}
                                                         {conexao.matchedTerms.join(", ")}
                                                     </p>
                                                 </button>
+                                                {mostrarIrPara && paginaDestino !== null ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => irAte(conexao.documentId, paginaDestino, ancoraDestino ? rectDoParagrafo(ancoraDestino) : null)}
+                                                        className="mt-1 rounded border border-primary/40 px-2 py-0.5 text-[11px] font-medium text-primary hover:bg-primary/10"
+                                                        data-testid="ir-para-pagina"
+                                                    >
+                                                        {t("workspace.sidebar.goToPage", { page: paginaDestino })}
+                                                    </button>
+                                                ) : null}
                                             </li>
                                         );
                                     })}
