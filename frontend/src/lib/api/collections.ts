@@ -1,3 +1,4 @@
+import { normalizeViewState, type WorkspaceViewState } from "@/lib/api/contracts/view-state";
 import {
     normalizeHighlight,
     normalizeHighlights,
@@ -165,4 +166,28 @@ export async function putLegend(collectionId: number, labels: Legend): Promise<L
         body: JSON.stringify({ labels }),
     }, SEM_REDIRECIONAR);
     return normalizeLegend(await lerJson(response, "collections.legendSave"));
+}
+
+export async function fetchViewState(collectionId: number, signal?: AbortSignal): Promise<WorkspaceViewState> {
+    const response = await fetchWithAuthRedirect(
+        `/api/documents/collections/${collectionId}/view-state`,
+        { method: "GET", cache: "no-store", signal },
+        SEM_REDIRECIONAR
+    );
+    return normalizeViewState(await lerJson(response, "collections.viewState"));
+}
+
+/** `keepalive` deixa o envio sobreviver ao fechamento da aba (pagehide). */
+export async function putViewState(collectionId: number, estado: WorkspaceViewState, opcoes: { keepalive?: boolean } = {}): Promise<void> {
+    const response = await fetchWithAuthRedirect(
+        `/api/documents/collections/${collectionId}/view-state`,
+        {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ state: estado }),
+            keepalive: opcoes.keepalive ?? false,
+        },
+        SEM_REDIRECIONAR
+    );
+    await lerJson(response, "collections.viewStateSave");
 }
