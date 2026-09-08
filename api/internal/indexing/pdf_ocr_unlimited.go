@@ -32,7 +32,11 @@ import (
 // newPDFOCRExtractor.
 
 const (
-	defaultUnlimitedOCRModel   = "Unlimited-OCR"
+	defaultUnlimitedOCRModel = "Unlimited-OCR"
+	// unlimitedOCREngineName e gravado como ocr_engine no indice e e a unica
+	// evidencia de qual motor processou o documento. Constante para o teste
+	// afirmar o mesmo valor que a producao grava, em vez de repetir a string.
+	unlimitedOCREngineName     = "unlimited_ocr"
 	defaultUnlimitedOCRPrompt  = "<image>document parsing."
 	defaultUnlimitedOCRTimeout = 120 * time.Second
 	defaultUnlimitedOCRDPI     = 150
@@ -109,7 +113,7 @@ func newUnlimitedOCRExtractor() pdfOCRExtractor {
 }
 
 func (e *unlimitedOCRExtractor) Name() string {
-	return "unlimited_ocr"
+	return unlimitedOCREngineName
 }
 
 func (e *unlimitedOCRExtractor) Extract(

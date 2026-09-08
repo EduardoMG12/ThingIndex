@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Clock3, FileSearch, Filter, Loader2, RefreshCw, Search } from "lucide-react";
 
 import AuditMetadataList from "@/components/audit/AuditMetadataList";
@@ -135,15 +135,32 @@ export default function DocumentAuditExplorer({
     const [filters, setFilters] = useState<AuditFilters>(initialFilters);
     const [appliedFilters, setAppliedFilters] = useState<AuditFilters>(initialFilters);
     const [result, setResult] = useState<DocumentAuditQueryResult>(emptyResult);
+    // Identifica a consulta ativa. Uma pagina em voo disparada antes de o
+    // usuario trocar o filtro chega depois e nao pode entrar na tela: os itens
+    // seriam do filtro antigo, e o `...nextPage` sobrescreveria summary e
+    // page_info com os da consulta anterior -- contadores de um filtro com
+    // itens de outro, sem erro nenhum.
+    //
+    // Ref, e nao estado: precisa sobreviver ao render sem provocar outro, e ser
+    // lida dentro da funcao assincrona apos o await.
+    const consultaAtivaRef = useRef(0);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
+    // Os filtros rapidos aplicam uma mudanca pontual sem passar pelo submit do
+    // formulario. A versao anterior montava o proximo estado como
+    // `{...filters, ...appliedFilters, ...partial}`: o spread de
+    // appliedFilters vinha DEPOIS e sobrescrevia o que o usuario tinha
+    // digitado e ainda nao submetido -- clicar em "Falhas" apagava o termo de
+    // busca do campo, na frente dele, sem aviso.
+    //
+    // A base correta e o estado atual do formulario (`filters`), que ja contem
+    // tudo que foi submetido mais o que esta sendo editado.
     function applyImmediateFilters(partial: Partial<AuditFilters>) {
         const nextFilters = {
             ...filters,
-            ...appliedFilters,
             ...partial,
         };
         setFilters(nextFilters);
@@ -176,6 +193,7 @@ export default function DocumentAuditExplorer({
 
     useEffect(() => {
         let cancelled = false;
+        consultaAtivaRef.current += 1;
 
         const resolvedScope =
             appliedFilters.scope === "DOCUMENT" && selectedDocument?.id
@@ -237,6 +255,11 @@ export default function DocumentAuditExplorer({
                   ? "COLLECTION"
                   : "ALL";
 
+        // Identidade da consulta no momento do clique. Se ela mudar enquanto a
+        // requisicao esta em voo, a resposta pertence a um filtro que o usuario
+        // ja abandonou.
+        const consultaDoClique = consultaAtivaRef.current;
+
         setIsLoadingMore(true);
         setError(null);
 
@@ -256,13 +279,22 @@ export default function DocumentAuditExplorer({
                 createdTo: toRFC3339FromDateTimeLocal(appliedFilters.createdTo),
             });
 
+            if (consultaDoClique !== consultaAtivaRef.current) {
+                return;
+            }
+
             setResult((current) => ({
                 ...nextPage,
                 items: [...current.items, ...nextPage.items],
             }));
         } catch (nextError) {
+            if (consultaDoClique !== consultaAtivaRef.current) {
+                return;
+            }
             setError(nextError instanceof Error ? nextError.message : translate(locale, "audit.documents.errors.loadMore"));
         } finally {
+            // O finally roda mesmo no caminho abandonado, e deve: o spinner
+            // pertence a esta requisicao e precisa ser desligado de todo jeito.
             setIsLoadingMore(false);
         }
     }

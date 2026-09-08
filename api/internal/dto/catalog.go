@@ -766,7 +766,7 @@ func ToIndexMonitoringResponse(result *domain.IndexMonitoringResult) *IndexMonit
 		TreeVerificationPassed: result.TreeVerificationPassed,
 		TreeState:              result.TreeState,
 		TreeStateDetail:        result.TreeStateDetail,
-		TreeConcernCodes:       append([]string(nil), result.TreeConcernCodes...),
+		TreeConcernCodes:       copiaDeTextos(result.TreeConcernCodes),
 		EstimatedQualityScore:  result.EstimatedQualityScore,
 		LLM:                    ToLLMMonitoringResponse(result.LLM),
 	}
@@ -834,5 +834,54 @@ func ToCollectionRetrievalResponse(result *domain.CollectionRetrievalResult) *Co
 		NodeHits:     nodeHits,
 		PageHits:     pageHits,
 		Strategy:     result.Strategy,
+	}
+}
+
+// NodeConnectionResponse e uma conexao derivada entre nos de documentos
+// diferentes.
+//
+// O campo matched_terms nao e decorativo: e ele que torna a aresta auditavel.
+// Uma conexao que nao consegue dizer por que existe e tao opaca quanto a
+// vizinhanca vetorial que este projeto evita.
+type NodeConnectionResponse struct {
+	DocumentID   uint     `json:"document_id"`
+	NodeID       string   `json:"node_id"`
+	Title        string   `json:"title,omitempty"`
+	Summary      string   `json:"summary,omitempty"`
+	StartPage    *int     `json:"start_page,omitempty"`
+	Score        int      `json:"score"`
+	MatchedTerms []string `json:"matched_terms"`
+}
+
+// NodeConnectionsResponse envelopa a lista e declara o limiar aplicado.
+//
+// Devolver o limiar junto e deliberado: sem ele o cliente nao consegue
+// distinguir "nao ha conexao" de "o corte estava alto demais", e essa
+// diferenca e exatamente o que a taxa de falso positivo de 1,000 torna
+// relevante neste trabalho.
+type NodeConnectionsResponse struct {
+	NodeID      string                   `json:"node_id"`
+	MinScore    int                      `json:"min_score"`
+	Connections []NodeConnectionResponse `json:"connections"`
+}
+
+func ToNodeConnectionsResponse(nodeID string, minScore int, connections []domain.NodeConnection) NodeConnectionsResponse {
+	items := make([]NodeConnectionResponse, 0, len(connections))
+	for _, connection := range connections {
+		items = append(items, NodeConnectionResponse{
+			DocumentID:   connection.DocumentID,
+			NodeID:       connection.NodeID,
+			Title:        connection.Title,
+			Summary:      connection.Summary,
+			StartPage:    connection.StartPage,
+			Score:        connection.Score,
+			MatchedTerms: connection.MatchedTerms,
+		})
+	}
+
+	return NodeConnectionsResponse{
+		NodeID:      nodeID,
+		MinScore:    minScore,
+		Connections: items,
 	}
 }

@@ -107,9 +107,25 @@ type pdfBBoxLine struct {
 	Words []string `xml:"word"`
 }
 
+// sanitizeXMLControlChars troca por espaco os caracteres de controle que o
+// XML 1.0 proibe (C0 exceto tab, LF e CR). O pdftotext copia o que esta no
+// PDF, e a matriz curricular do IFPR (SAGRES) traz um ESC (U+001B) dentro de
+// uma <word>: o decoder abortava o documento inteiro por um byte.
+func sanitizeXMLControlChars(raw []byte) []byte {
+	saida := make([]byte, len(raw))
+	for i, b := range raw {
+		if b < 0x20 && b != '\t' && b != '\n' && b != '\r' {
+			saida[i] = ' '
+			continue
+		}
+		saida[i] = b
+	}
+	return saida
+}
+
 func parsePDFBBoxLayout(raw []byte) (pdfTextExtraction, error) {
 	var document pdfBBoxDocument
-	decoder := xml.NewDecoder(bytes.NewReader(raw))
+	decoder := xml.NewDecoder(bytes.NewReader(sanitizeXMLControlChars(raw)))
 	// A saida e XHTML e declara entidades HTML que o parser estrito rejeita.
 	decoder.Strict = false
 	decoder.AutoClose = xml.HTMLAutoClose
@@ -426,8 +442,43 @@ var attachmentHeadingKeywords = []string{
 	"demonstrativo de calculo",
 }
 
+// mostlyNumeric: linha em que os digitos dominam os caracteres alfanumericos.
+// Linha de calendario ("1 2 3 1 Feriado Nacional") ou de tabela de datas
+// ("22 23 24 25 26 27 28") casa com o padrao de titulo numerado e virava
+// secao do sumario -- achado com o calendario academico do IFPR: 30 secoes
+// de lixo em 5 paginas.
+func mostlyNumeric(text string) bool {
+	fields := strings.Fields(text)
+	numeric := 0
+	for _, field := range fields {
+		if isNumericToken(field) {
+			numeric++
+		}
+	}
+	// Tres ou mais numeros soltos nunca sao titulo ("15 16 17 18 19 20 21 2 a
+	// 6 Rematricula..."); dois numeros soltos so quando sao pelo menos metade
+	// das palavras ("9 a 13 Confirmacao"). "1 DAS DISPOSICOES PRELIMINARES"
+	// (1 de 4) e "2.3 Da inscricao" continuam titulos.
+	return numeric >= 3 || (numeric >= 2 && numeric*2 >= len(fields))
+}
+
+func isNumericToken(field string) bool {
+	if field == "" {
+		return false
+	}
+	for _, r := range field {
+		if !unicode.IsDigit(r) {
+			return false
+		}
+	}
+	return true
+}
+
 func looksLikeHeading(text string) bool {
 	if text == "" || strings.Contains(text, ". ") && len(text) > 120 {
+		return false
+	}
+	if mostlyNumeric(text) {
 		return false
 	}
 	// Reject markdown table rows and separators
@@ -863,12 +914,19 @@ func buildOutlineNodePath(parts []string) string {
 	return clampIdentifierWithHash(strings.Join(parts, "/"), maxOutlineNodePathLength)
 }
 
+// clampIdentifierWithHash limita o identificador em CARACTERES, nao em bytes.
+// As colunas sao varchar(N), que o Postgres conta em caracteres, e a slug
+// preserva letras acentuadas. Cortar por byte partia "ã" (0xc3 0xa3) ao meio
+// e o INSERT caia com "invalid byte sequence for encoding UTF8: 0xc3 0x2d" --
+// achado com o Edital 56/2026 do IFPR, cujo titulo de secao longo termina
+// justamente num acento.
 func clampIdentifierWithHash(value string, limit int) string {
-	if len(value) <= limit {
+	runes := []rune(value)
+	if len(runes) <= limit {
 		return value
 	}
 	if limit <= 9 {
-		return value[:limit]
+		return string(runes[:limit])
 	}
 
 	hash := shortStableHash(value)
@@ -877,7 +935,7 @@ func clampIdentifierWithHash(value string, limit int) string {
 		keep = 1
 	}
 
-	return value[:keep] + "-" + hash
+	return string(runes[:keep]) + "-" + hash
 }
 
 func shortStableHash(value string) string {

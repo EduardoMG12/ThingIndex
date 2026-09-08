@@ -77,6 +77,39 @@ def is_negative(row: dict) -> bool:
     return row["negative"].strip().lower() == "true"
 
 
+# Granularidade padrao quando o CSV nao declara: resultados gerados antes da
+# issue #16 so mediam documento inteiro.
+DEFAULT_GRANULARITY = "document"
+
+
+def filter_granularity(rows: list[dict], granularity: str) -> list[dict]:
+    """Isola uma unidade de recuperacao do CSV.
+
+    A partir da issue #16 o harness mede DUAS granularidades na mesma execucao
+    (documento e secao). Agregar as duas juntas produz a media entre grandezas
+    diferentes: um numero plausivel que nao corresponde a medicao nenhuma, e
+    que nao levanta erro algum -- o modo de falha mais perigoso numa analise.
+
+    Foi exatamente o que aconteceu na primeira execucao apos a mudanca: o
+    braco A-relacional apareceu com P@1 = 0,656, que e a media entre 0,750
+    (documento) e 0,562 (secao).
+
+    Uma granularidade pedida e inexistente ABORTA em vez de devolver lista
+    vazia, porque tabela vazia passa despercebida e tabela ausente nao.
+    """
+    presentes = {row.get("granularity") or DEFAULT_GRANULARITY for row in rows}
+    if granularity not in presentes:
+        raise SystemExit(
+            f"analyze: granularidade {granularity!r} nao existe no CSV; "
+            f"presentes: {', '.join(sorted(presentes))}"
+        )
+    return [
+        row
+        for row in rows
+        if (row.get("granularity") or DEFAULT_GRANULARITY) == granularity
+    ]
+
+
 def mean(values: list[float]) -> float:
     return sum(values) / len(values) if values else 0.0
 
@@ -196,7 +229,48 @@ def latex_escape(text: str) -> str:
     return text.replace("_", r"\_").replace("&", r"\&").replace("%", r"\%")
 
 
-def build_summary_table(rows: list[dict]) -> str:
+def ceiling_key(metric_key: str) -> str | None:
+    """Nome da coluna de teto correspondente a uma metrica, se houver.
+
+    nDCG e MRR nao entram: os dois ja sao normalizados pelo ideal do proprio
+    gabarito, entao o teto e 1,000 por construcao e publica-lo nao informa nada.
+    """
+    if metric_key in ("ndcg_at_10", "reciprocal_rank"):
+        return None
+    candidato = f"{metric_key}_ceiling"
+    return candidato
+
+
+def build_ceiling_row(positives: list[dict]) -> str | None:
+    """Linha 'Teto alcancavel' da tabela de resumo.
+
+    Existe porque publicar P@3 = 0,312 sem dizer que o maximo possivel e 0,375
+    induz o leitor a concluir que o sistema acerta 31% -- quando o real e 83% do
+    maximo. O teto e propriedade do GABARITO, nao do braco, entao e uma linha
+    unica no rodape em vez de uma coluna por braco.
+
+    Devolve None quando o CSV nao traz as colunas de teto (resultados anteriores
+    a issue #16), para nao quebrar a geracao das tabelas historicas.
+    """
+    if not positives:
+        return None
+
+    cells = []
+    for key, _ in METRICS:
+        chave = ceiling_key(key)
+        if chave is None:
+            cells.append("---")
+            continue
+        if chave not in positives[0]:
+            return None
+        # O teto e por consulta; a media entre consultas e o teto medio da
+        # tabela, que e o numero comparavel com a media das metricas.
+        cells.append(f"{mean([to_float(r[chave]) for r in positives]):.3f}")
+
+    return r"\textit{Teto alcançável} & " + " & ".join(cells) + r" \\"
+
+
+def build_summary_table(rows: list[dict], label_suffix: str = "") -> str:
     positives = [r for r in rows if not is_negative(r)]
     arms = sorted({r["arm"] for r in positives})
 
@@ -204,8 +278,8 @@ def build_summary_table(rows: list[dict]) -> str:
         r"% GERADO POR scripts/analyze.py -- nao edite a mao.",
         r"\begin{table}[htb]",
         r"\centering",
-        r"\caption{Desempenho de recuperação por braço. Intervalos de confiança de 95\% obtidos por bootstrap sobre as consultas (10.000 reamostragens).}",
-        r"\label{tab:retrieval-summary}",
+        r"\caption{Desempenho de recuperação por braço. Intervalos de confiança de 95\% obtidos por bootstrap sobre as consultas (10.000 reamostragens). A última linha traz o teto alcançável de cada métrica dado o gabarito: P@k divide por $k$, então uma consulta com um único item relevante limita P@3 a $1/3$ mesmo sob ranking perfeito.}",
+        f"\\label{{tab:retrieval-summary{label_suffix}}}",
         r"\begin{tabular}{l" + "c" * len(METRICS) + "}",
         r"\hline",
         "Braço & " + " & ".join(label for _, label in METRICS) + r" \\",
@@ -218,14 +292,21 @@ def build_summary_table(rows: list[dict]) -> str:
         for key, _ in METRICS:
             values = [to_float(r[key]) for r in arm_rows]
             lo, hi = bootstrap_ci(values)
-            cells.append(f"{mean(values):.3f} \\newline \\scriptsize[{lo:.3f}, {hi:.3f}]")
+            # \newline nao funciona em coluna `c` de tabular; \shortstack sim.
+            cells.append(
+                f"\\shortstack{{{mean(values):.3f} \\\\ \\scriptsize[{lo:.3f}, {hi:.3f}]}}"
+            )
         lines.append(latex_escape(arm) + " & " + " & ".join(cells) + r" \\")
+
+    ceiling = build_ceiling_row(positives)
+    if ceiling:
+        lines += [r"\hline", ceiling]
 
     lines += [r"\hline", r"\end{tabular}", r"\end{table}"]
     return "\n".join(lines)
 
 
-def build_variant_table(rows: list[dict]) -> str:
+def build_variant_table(rows: list[dict], label_suffix: str = "") -> str:
     """P@1 por variante de consulta.
 
     A queda de literal para paraphrase e noisy mede a dependencia de casamento
@@ -241,7 +322,7 @@ def build_variant_table(rows: list[dict]) -> str:
         r"\begin{table}[htb]",
         r"\centering",
         r"\caption{P@1 por variante de consulta. A queda de \emph{literal} para \emph{paraphrase} e \emph{noisy} mede a dependência de casamento lexical de cada braço.}",
-        r"\label{tab:retrieval-variants}",
+        f"\\label{{tab:retrieval-variants{label_suffix}}}",
         r"\begin{tabular}{lcccc}",
         r"\hline",
         r"Braço & Literal & Paráfrase & Ruidosa & Queda literal$\rightarrow$paráfrase \\",
@@ -263,7 +344,7 @@ def build_variant_table(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def build_significance_table(rows: list[dict]) -> str:
+def build_significance_table(rows: list[dict], label_suffix: str = "") -> str:
     positives = [r for r in rows if not is_negative(r)]
     arms = sorted({r["arm"] for r in positives})
 
@@ -279,7 +360,7 @@ def build_significance_table(rows: list[dict]) -> str:
         r"\begin{table}[htb]",
         r"\centering",
         rf"\caption{{Comparações pareadas (Wilcoxon signed-rank) com correção de Bonferroni para {comparisons} comparações. Tamanho de efeito por Cliff's $\delta$.}}",
-        r"\label{tab:retrieval-significance}",
+        f"\\label{{tab:retrieval-significance{label_suffix}}}",
         r"\begin{tabular}{llcccl}",
         r"\hline",
         r"Comparação & Métrica & $\Delta$ média & $p$ & $p$ corrigido & Cliff's $\delta$ \\",
@@ -306,7 +387,7 @@ def build_significance_table(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def build_negative_table(rows: list[dict]) -> str:
+def build_negative_table(rows: list[dict], label_suffix: str = "") -> str:
     """Comportamento em casos negativos.
 
     Um sistema que sempre responde alguma coisa pontua igual a um que sabe dizer
@@ -324,7 +405,7 @@ def build_negative_table(rows: list[dict]) -> str:
         r"\begin{table}[htb]",
         r"\centering",
         r"\caption{Comportamento em casos negativos (consultas cuja resposta correta é não recuperar nada). Taxa de falso positivo: 0{,}0 significa reconhecer a ausência de resposta; 1{,}0 significa responder mesmo assim.}",
-        r"\label{tab:retrieval-negatives}",
+        f"\\label{{tab:retrieval-negatives{label_suffix}}}",
         r"\begin{tabular}{lcc}",
         r"\hline",
         r"Braço & Taxa de falso positivo & Itens devolvidos (média) \\",
@@ -346,15 +427,29 @@ def main() -> int:
     parser.add_argument("csv", type=Path, help="CSV emitido por cmd/retrieval-eval")
     parser.add_argument("--outdir", type=Path, help="diretorio onde escrever os .tex")
     parser.add_argument("--stdout", action="store_true", help="imprime as tabelas em vez de escrever arquivos")
+    parser.add_argument(
+        "--granularity",
+        default=DEFAULT_GRANULARITY,
+        help=(
+            "unidade de recuperacao a analisar: 'document' ou 'section'. "
+            "O CSV traz as duas na mesma execucao, e agregar juntas produz a "
+            "media entre grandezas diferentes (padrao: %(default)s)"
+        ),
+    )
     args = parser.parse_args()
 
-    rows = load(args.csv)
+    rows = filter_granularity(load(args.csv), args.granularity)
+
+    # O sufixo mantem as tabelas das duas granularidades lado a lado sem uma
+    # sobrescrever a outra. 'document' fica sem sufixo para nao quebrar os
+    # \input{} que o artigo ja tem.
+    sufixo = "" if args.granularity == DEFAULT_GRANULARITY else f"-{args.granularity}"
 
     tables = {
-        "retrieval-summary.tex": build_summary_table(rows),
-        "retrieval-variants.tex": build_variant_table(rows),
-        "retrieval-significance.tex": build_significance_table(rows),
-        "retrieval-negatives.tex": build_negative_table(rows),
+        f"retrieval-summary{sufixo}.tex": build_summary_table(rows, sufixo),
+        f"retrieval-variants{sufixo}.tex": build_variant_table(rows, sufixo),
+        f"retrieval-significance{sufixo}.tex": build_significance_table(rows, sufixo),
+        f"retrieval-negatives{sufixo}.tex": build_negative_table(rows, sufixo),
     }
 
     if args.stdout or not args.outdir:

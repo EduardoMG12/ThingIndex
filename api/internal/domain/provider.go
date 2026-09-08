@@ -74,6 +74,23 @@ type LLMService interface {
 	GenerateText(ctx context.Context, systemPrompt, userPrompt string) (string, error)
 }
 
+// TokenUsageReporter e implementado por clientes de LLM capazes de informar o
+// consumo da ULTIMA chamada.
+//
+// Interface separada, e opcional, de proposito: a Metodologia do artigo promete
+// avaliar custo operacional, mas nem todo provedor reporta consumo (Ollama
+// local nao reporta). Acrescentar o retorno em LLMService obrigaria todo
+// implementador a fingir um numero que nao tem -- e numero fingido em metrica
+// de custo e pior do que metrica ausente.
+//
+// Quem quiser medir faz type assertion; quem nao implementa segue funcionando.
+type TokenUsageReporter interface {
+	// LastTokenUsage devolve prompt, completion e total da ultima chamada.
+	// reported=false significa que o provedor nao informou -- diferente de ter
+	// informado zero.
+	LastTokenUsage() (prompt, completion, total int, reported bool)
+}
+
 type LLMStreamingService interface {
 	StreamText(ctx context.Context, systemPrompt, userPrompt string, onDelta func(string) error) error
 }

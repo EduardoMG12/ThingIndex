@@ -65,14 +65,14 @@
 
 \selectlanguage{brazil}
 \begin{resumo}
-Este artigo apresenta o ThingIndex, uma plataforma open source voltada a inteligência documental, organização de coleções e recuperação de contexto com base em modelagem relacional. O trabalho parte do problema de que fluxos documentais frequentemente se apoiam em ferramentas fragmentadas, com baixa auditabilidade e pouca rastreabilidade do contexto reconstruído para busca, indexação e interação assistida por IA. O objetivo geral é propor e especificar o ThingIndex como uma plataforma open source de inteligência documental baseada em modelagem relacional, capaz de organizar, processar, indexar e recuperar contexto documental de forma auditável. Dessa forma, o artigo descreve as motivações, a relevância, os objetivos e o planejamento arquitetural do sistema, estabelecendo a base conceitual e metodológica para o desenvolvimento e a avaliação futura do projeto.
+Este artigo apresenta o ThingIndex, uma plataforma open source voltada a inteligência documental, organização de coleções e recuperação de contexto com base em modelagem relacional. O trabalho parte do problema de que fluxos documentais frequentemente se apoiam em ferramentas fragmentadas, com baixa auditabilidade e pouca rastreabilidade do contexto reconstruído para busca, indexação e interação assistida por IA. O objetivo geral é propor, especificar e avaliar o ThingIndex como uma plataforma open source de inteligência documental baseada em modelagem relacional, capaz de organizar, processar, indexar e recuperar contexto documental de forma auditável. O sistema foi implementado e avaliado em um experimento comparativo com seis braços de recuperação (relacional, BM25, denso exato, denso aproximado e duas fusões por Reciprocal Rank Fusion) sobre corpus controlado com regras anti-circularidade. Os resultados indicam que a recuperação relacional não foi inferior à densa neste corpus (nDCG@10 de 0,869 contra 0,844) e que o índice vetorial aproximado, necessário para escalar a busca densa, torna o ranking instável sob fatores que o usuário não controla: variar apenas a semente ou a ordem de inserção dos documentos alterou o resultado em 100\% das consultas, com perda média de 48,4\% de recall. A recuperação relacional não paga nem o custo de varredura exata nem o preço de não-determinismo do índice aproximado.
 \end{resumo}
 
 \noindent\textbf{Palavras-chave}: inteligência documental, recuperação de informação, RAG relacional, baseline relacional, open source.
 
 \selectlanguage{english}
 \begin{abstract}
- This paper presents ThingIndex, an open-source platform focused on document intelligence, collection organization, and context retrieval based on relational modeling. The work starts from the problem that document workflows often rely on fragmented tools, with low auditability and limited traceability of the reconstructed context for search, indexing, and AI-assisted interaction. The general objective is to propose and specify ThingIndex as an open-source document intelligence platform based on relational modeling, capable of organizing, processing, indexing, and retrieving document context in an auditable manner. Thus, the paper describes the motivations, relevance, objectives, and architectural planning of the system, establishing the conceptual and methodological basis for the future development and evaluation of the project.
+ This paper presents ThingIndex, an open-source platform focused on document intelligence, collection organization, and context retrieval based on relational modeling. The work starts from the problem that document workflows often rely on fragmented tools, with low auditability and limited traceability of the reconstructed context for search, indexing, and AI-assisted interaction. The general objective is to propose, specify, and evaluate ThingIndex as an open-source document intelligence platform based on relational modeling, capable of organizing, processing, indexing, and retrieving document context in an auditable manner. The system was implemented and evaluated in a comparative experiment with six retrieval arms (relational, BM25, exact dense, approximate dense, and two Reciprocal Rank Fusion combinations) over a controlled corpus with anti-circularity rules. The results indicate that relational retrieval was not inferior to dense retrieval on this corpus (nDCG@10 of 0.869 versus 0.844) and that the approximate vector index required to scale dense search makes the ranking unstable under factors the user does not control: varying only the seed or the document insertion order changed the result in 100\% of the queries, with an average recall loss of 48.4\%. Relational retrieval pays neither the cost of exact scanning nor the non-determinism price of the approximate index.
 \end{abstract}
 
 \noindent\textbf{Keywords}: document intelligence, information retrieval, relational RAG, relational baseline, open source.
@@ -95,7 +95,7 @@ Para investigar essa questão, propõe-se o ThingIndex, um sistema de inteligên
 
 Além de sua relevância prática, o projeto apresenta interesse acadêmico ao integrar conceitos de engenharia de software, arquitetura de sistemas, modelagem de dados, processamento assíncrono e recuperação de informação, passível de implementação, avaliação e evolução.
 
-Portanto, este documento tem como propósito a qualificação da proposta de pesquisa. São apresentados nas próximas seções os objetivos, a fundamentação teórica, os trabalhos relacionados, a arquitetura proposta, a metodologia de avaliação e o cronograma de desenvolvimento. A implementação do sistema será objeto do TCC II.
+Portanto, este documento apresenta a pesquisa completa: são descritos nas próximas seções os objetivos, a fundamentação teórica, os trabalhos relacionados, a metodologia, a proposta arquitetural do sistema e, em seguida, os resultados da avaliação experimental da recuperação, a discussão desses resultados com suas ameaças à validade e a conclusão do trabalho.
 
 % O ThingIndex será desenvolvido como um artefato executável, composto por frontend, backend, pipeline assíncrono de indexação, mecanismos de observabilidade, suporte à avaliação experimental de desempenho e integração com sistemas externos. Assim, este artigo apresenta a motivação da pesquisa, a arquitetura proposta, o planejamento de desenvolvimento e a consolidação do sistema como um artefato de engenharia para gestão e recuperação de conhecimento documental.
 
@@ -234,9 +234,21 @@ O LlamaIndex (originalmente GPT Index), criado por Jerry Liu em 2022, é um fram
 
 A limitação do LlamaIndex está na opacidade do pipeline de recuperação: o desenvolvedor escolhe configurações de chunking e embedding, mas tem baixa visibilidade sobre como o contexto é montado. A dependência de bancos vetoriais torna o custo variável, e a auditabilidade do contexto recuperado é limitada: não há garantia de que cada trecho retornado possa ser rastreado até o documento e página de origem.
 
+\subsection{PageIndex}
+
+O PageIndex~\cite{pageindex2025} é o trabalho mais próximo desta proposta e, por isso, o mais relevante para delimitá-la. Trata-se de uma ferramenta de indexação de PDFs que extrai a hierarquia estrutural do documento --- seções, subseções e intervalos de página --- e a materializa como uma árvore navegável, deliberadamente sem embeddings e sem banco vetorial. A recuperação percorre essa árvore em vez de comparar vetores, e a resposta aponta para o nó e a página de origem.
+
+A convergência é considerável: a premissa de que a estrutura já presente no documento é sinal suficiente para recuperação, e a rejeição do índice vetorial como camada primária, são as mesmas deste trabalho. Registrar a semelhança é mais honesto do que apresentar a abordagem como inédita.
+
+Três diferenças delimitam a contribuição. A primeira é a unidade de persistência: o PageIndex produz um artefato de árvore por documento, enquanto o ThingIndex normaliza a estrutura em tabelas relacionais consultáveis por SQL, o que permite consulta transversal ao acervo sem carregar cada árvore em memória. A segunda é o escopo do sistema: o PageIndex resolve indexação e recuperação, sem tratar do ciclo operacional --- fila com retry e \emph{dead-letter}, catálogo de provedores, trilha de auditoria. A terceira, e a mais relevante para a questão de pesquisa, é o objeto da avaliação: o PageIndex reporta qualidade de recuperação, enquanto este trabalho mede também a estabilidade da ordenação sob reindexação e a completude da proveniência, dimensões que a comparação entre paradigmas exige e que raramente aparecem quantificadas.
+
+O PageIndex é usado neste projeto como referência de qualidade estrutural. O benchmark de indexação compara o perfil produzido pelo indexador determinístico contra artefatos normalizados de três documentos processados pela ferramenta --- um relatório anual corporativo, um documento técnico e um processo judicial brasileiro --- em profundidade da árvore, aninhamento, cobertura de resumos e concisão de títulos. Cabe a ressalva registrada no próprio artefato: esses arquivos são \emph{barra de qualidade}, não gabarito perfeito. Um deles contém intervalo de página invertido, e a comparação existe para detectar regressão estrutural, não para afirmar superioridade.
+
 \subsection{Lacunas de pesquisa}
 
-Nenhuma das ferramentas analisadas oferece simultaneamente: (i) pipeline assíncrono de indexação com retry e DLQ; (ii) recuperação de contexto por consultas SQL determinísticas com rastreabilidade total da origem; (iii) desacoplamento de provedores de IA; (iv) custo previsível sem dependência obrigatória de vector DB. 
+Nenhuma das ferramentas analisadas oferece simultaneamente: (i) pipeline assíncrono de indexação com retry e DLQ; (ii) recuperação de contexto por consultas SQL determinísticas com rastreabilidade total da origem; (iii) desacoplamento de provedores de IA; (iv) custo previsível sem dependência obrigatória de vector DB.
+
+A lacuna mais específica, contudo, não é de funcionalidade e sim de evidência. O PageIndex demonstra que recuperação estrutural sem vetores é viável, mas a literatura de comparação entre paradigmas de recuperação raramente reporta duas propriedades que este trabalho mede: a estabilidade da ordenação quando o índice é reconstruído, e a fração de itens recuperados cuja origem pode ser apontada com precisão de página. É nesse espaço --- medir o que costuma ser afirmado --- que a contribuição se posiciona.
 % O ThingIndex se propõe a ocupar esse espaço, priorizando auditabilidade e determinismo sobre flexibilidade semântica, sem excluir a possibilidade de extensões futuras com embeddings ou grafos.
 
 % =============================================================================
@@ -244,7 +256,7 @@ Nenhuma das ferramentas analisadas oferece simultaneamente: (i) pipeline assínc
 % =============================================================================
 \section{Metodologia}
 
-Este trabalho caracteriza-se como uma pesquisa aplicada orientada pela Design Science Research (DSR)~\cite{hevner2004design}, que estabelece que a construção de um artefato de software e sua avaliação segundo critérios explícitos de utilidade e rigor são inseparáveis da investigação do problema. A pesquisa investiga o problema de fragmentação documental, propõe o artefato ThingIndex como solução, descreve sua arquitetura e define critérios para sua avaliação futura.
+Este trabalho caracteriza-se como uma pesquisa aplicada orientada pela Design Science Research (DSR)~\cite{hevner2004design}, que estabelece que a construção de um artefato de software e sua avaliação segundo critérios explícitos de utilidade e rigor são inseparáveis da investigação do problema. A pesquisa investiga o problema de fragmentação documental, propõe o artefato ThingIndex como solução, descreve sua arquitetura, implementa o sistema e o avalia experimentalmente segundo critérios definidos a priori.
 
 Quanto aos procedimentos, o trabalho segue os ciclos da DSR propostos por Hevner et al.~\cite{hevner2004design}: (i) conscientização do problema, (ii) sugestão, (iii) desenvolvimento, (iv) avaliação e (v) conclusão.
 
@@ -503,37 +515,37 @@ A tela de configurações permite ao usuário gerenciar provedores de IA e stora
 
 \subsection{Avaliação da Qualidade}
 
-Para validar se o ThingIndex atende aos objetivos propostos, serão aplicados critérios de avaliação divididos em três dimensões: precisão na recuperação, auditabilidade e custo operacional apresentadas a seguir.
+Para validar se o ThingIndex atende aos objetivos propostos, foram aplicados critérios de avaliação divididos em três dimensões: precisão na recuperação, auditabilidade e custo operacional, apresentadas a seguir.
 
 \subsubsection{Precisão na Recuperação de Contexto}
 
-A precisão será medida por meio de testes funcionais com corpus controlado. Um conjunto de documentos PDF com conteúdo conhecido será inserido no sistema, e consultas de contexto serão realizadas sobre coleções específicas. A métrica principal será a taxa de acerto: para cada consulta, verificar se todos os documentos relevantes da coleção foram retornados e se a ordem dos parágrafos e tabelas foi preservada.
+A precisão foi medida por meio de experimento controlado sobre o corpus C1, descrito no Protocolo Experimental. Adotou-se o painel padrão da área de Recuperação de Informação --- P@1, P@3, R@5, MRR e nDCG@10 --- em lugar de uma taxa de acerto binária. A razão é de validade de construto: uma taxa de acerto trata igualmente o sistema que devolve o documento correto em primeiro lugar e o que o devolve em quinto, e a ordenação é precisamente o que distingue uma recuperação útil de uma inútil quando o resultado alimenta um modelo de linguagem com janela de contexto limitada.
 
-O experimento consistirá em:
+O experimento consistiu em:
 \begin{enumerate}
-  \item Inserir N documentos PDF com estrutura conhecida (parágrafos numerados, tabelas identificadas);
-  \item Executar consulta de contexto para cada coleção;
-  \item Comparar o JSON retornado com o conteúdo original, verificando:
-    \begin{itemize}
-      \item presença de todos os documentos da coleção;
-      \item ordem correta dos parágrafos;
-      \item integridade dos metadados extraídos;
-      \item correspondência entre fontes citadas e parágrafos de origem.
-    \end{itemize}
-  \item Calcular a proporção de acertos sobre o total de elementos esperados.
+  \item construir um corpus com documentos de estrutura conhecida e gabarito de relevância graduada, sob regras anti-circularidade travadas por teste;
+  \item executar cada consulta em seis braços de recuperação, em delineamento pareado;
+  \item registrar uma linha por par (consulta, braço) na saída bruta, preservando os valores individuais exigidos pelo teste estatístico pareado;
+  \item comparar os braços por Wilcoxon com correção de Bonferroni, reportando tamanho de efeito e intervalos de confiança por \emph{bootstrap}.
 \end{enumerate}
+
+A medição foi conduzida em duas granularidades --- documento e seção ---, pelas razões de validade de construto detalhadas na Seção~\ref{sec:granularidade}.
 
 \subsubsection{Auditabilidade}
 
-A auditabilidade será verificada rastreando a origem de cada parágrafo recuperado. Para cada elemento do contexto retornado, o sistema deve ser capaz de informar: documento de origem, número da página, posição sequencial e tipo de estrutura (parágrafo, tabela, metadado). O teste consiste em percorrer o JSON de resposta e confirmar que todos os campos de proveniência estão preenchidos e apontam para registros existentes no banco.
+A auditabilidade foi verificada rastreando a origem de cada item indexado. Para cada elemento do índice, o sistema deve ser capaz de informar documento de origem, número da página, posição sequencial e tipo de estrutura. Duas métricas operacionalizam essa verificação --- a taxa de proveniência completa (TPC) e a taxa de citação verificável (TCV), definidas e medidas na Seção~\ref{sec:auditabilidade} ---, reportadas por tipo estrutural para que uma média global não oculte um tipo com proveniência ausente.
 
 \subsubsection{Custo Operacional}
 
-O custo será medido em duas categorias: (i) custo de armazenamento por documento no object storage e no PostgreSQL; (ii) custo de processamento por documento (tempo de CPU, memória e chamadas a LLM, quando aplicável). O objetivo é demonstrar que a baseline relacional tem custo previsível e independente de serviços externos de vector DB.
+O custo operacional é a dimensão menos desenvolvida deste ciclo, e é declarada aqui como lacuna parcial em vez de omitida. A instrumentação foi implementada: o pipeline registra tempo por etapa, e o consumo de tokens reportado pelos provedores (campo \texttt{usage} das respostas) passou a ser capturado e exposto ao chamador, fechando o circuito com a tabela de preços que o sistema já sincronizava. O que não foi feito a tempo é a agregação desses valores em custo por documento sobre um corpus representativo, com variação por provedor.
+
+A distinção importa para a leitura dos resultados: o que existe hoje é a capacidade de medir, não a medição. Duas decisões de projeto preservam a honestidade dessa métrica quando ela for produzida. Primeiro, provedores que não reportam consumo --- como instâncias locais de Ollama --- são registrados como \emph{não informado}, categoria distinta de \emph{zero}: agregar os dois no mesmo balde subestimaria o custo de qualquer configuração híbrida. Segundo, o consumo é lido do que o provedor devolve, e não estimado por contagem local de caracteres; estimativa de tokens a partir do texto enviado ignora tokens de sistema e de formatação, e o erro cresce justamente nos prompts longos que dominam o custo real.
+
+As estimativas de custo apresentadas em trabalhos anteriores do projeto permanecem rotuladas como estimativas, e não como medição.
 
 \subsection{Cronograma}
 
-O desenvolvimento do ThingIndex será realizado entre junho e dezembro de 2026, conforme ilustrado na Figura~\ref{fig:cronograma}.
+O desenvolvimento do ThingIndex foi conduzido ao longo de 2026, conforme ilustrado na Figura~\ref{fig:cronograma}.
 
 \begin{figure}[!ht]
   \centering
@@ -541,6 +553,179 @@ O desenvolvimento do ThingIndex será realizado entre junho e dezembro de 2026, 
   \caption{Cronograma de desenvolvimento do ThingIndex.}
   \label{fig:cronograma}
 \end{figure}
+
+\FloatBarrier
+
+% =============================================================================
+% RESULTADOS
+% =============================================================================
+\section{Resultados}
+
+Esta seção apresenta os resultados do ciclo de avaliação da DSR~\cite{hevner2004design}. O artefato descrito na Seção anterior foi integralmente implementado como monorepo executável (API e workers em Go, frontend em Next.js, PostgreSQL com as 21 tabelas do Apêndice A, pipeline assíncrono com outbox, retry e DLQ), com testes automatizados nos níveis unitário, de integração e end-to-end. Sobre esse artefato foi conduzido um experimento comparativo de recuperação de informação, cujo protocolo e resultados são descritos a seguir. Todos os números reportados são gerados por scripts a partir da saída bruta do experimento — nenhuma tabela foi transcrita manualmente — e o experimento completo é reproduzível com dois comandos a partir do repositório do projeto.
+
+\subsection{Protocolo Experimental}
+
+\textbf{Corpus.} A avaliação utilizou o corpus C1, composto por 5 documentos em português (domínios jurídico, licitatório, contratual, normativo e operacional) e 18 consultas, das quais 16 possuem resposta no corpus e 2 são casos negativos explícitos, cuja resposta correta é não recuperar nada. As consultas positivas são estratificadas em três variantes: \emph{literal} (a consulta reutiliza termos do trecho-alvo, servindo de controle de teto), \emph{paráfrase} (a mesma necessidade de informação expressa com outras palavras) e \emph{ruidosa} (consulta com termos irrelevantes adicionados). A relevância é graduada de 0 a 3.
+
+Três regras anti-circularidade foram aplicadas na construção do corpus e estão travadas por testes automatizados que falham o build caso sejam violadas: (i) o gabarito referencia documentos por identificador, nunca por título produzido pelo próprio pipeline; (ii) as consultas não literais não podem compartilhar termos com o trecho-alvo além de um limiar verificado automaticamente; (iii) os casos negativos são marcados explicitamente, distinguindo ``nada é relevante'' de ``ninguém anotou''.
+
+\textbf{Unidade de recuperação.} O experimento é executado em duas granularidades sobre o mesmo corpus. Na granularidade de \emph{documento}, cada um dos 5 documentos é uma unidade recuperável --- configuração que corresponde à avaliação clássica de RI, mas que descasa da tese deste trabalho, cuja contribuição é proveniência de parágrafo. Na granularidade de \emph{seção}, o corpus é fragmentado nas 19 seções de conteúdo declaradas em seu gabarito, e o ranking passa a operar sobre elas.
+
+A distinção não é cosmética. Com 5 documentos e um único relevante por consulta, R@5 vale 1,000 por aritmética --- recuperar cinco de cinco sempre encontra o alvo --- e a linha de base aleatória de P@1 é 0,200. Com 19 seções, a linha de base cai para 0,053 e a métrica volta a discriminar. O gabarito de seção segue as mesmas regras anti-circularidade: cada seção recebe identificador autoral estável e uma âncora textual que deve existir no documento-fonte, de modo que o rótulo dependa do texto e nunca da saída do extrator estrutural.
+
+Os braços densos são avaliados apenas na granularidade de documento. O artefato de embeddings contém um vetor por documento, e produzir vetores por seção exigiria chamada de rede a um serviço de inferência --- incompatível com a hermeticidade exigida do harness. A ausência é declarada, não silenciosa: o harness a anuncia em cada execução.
+
+\textbf{Braços comparados.} Seis estratégias de recuperação foram avaliadas sobre o mesmo corpus, em delineamento pareado por consulta:
+
+\begin{itemize}
+  \item \textbf{A — relacional}: o scorer de produção do ThingIndex (casamento de substring sobre as estruturas relacionais, sem IDF), reproduzido fielmente, defeitos inclusive — o experimento mede o sistema como ele é, não uma versão idealizada;
+  \item \textbf{B — BM25}: a baseline lexical clássica~\cite{robertson2009bm25}, com $k_1{=}1{,}2$ e $b{=}0{,}75$;
+  \item \textbf{C — denso (exato)}: embeddings do modelo \texttt{multilingual-e5-base}~\cite{wang2022e5} (768 dimensões), com varredura exata por similaridade de cosseno;
+  \item \textbf{C′ — denso-IVF}: os mesmos embeddings sob índice aproximado IVF-Flat, reimplementado com os nomes e valores padrão do pgvector (\texttt{lists}${=}\sqrt{N}$, \texttt{probes}${=}1$), que é o regime em que a busca densa efetivamente escala;
+  \item \textbf{D — RRF}: fusão dos braços A e B por Reciprocal Rank Fusion~\cite{cormack2009rrf}, com $k{=}60$;
+  \item \textbf{E — RRF denso}: fusão de B e C, o híbrido léxico-denso do estado da prática.
+\end{itemize}
+
+Para preservar a hermeticidade do harness (execução em CI sem GPU, sem rede e sem dependência da versão local de bibliotecas de inferência), os embeddings são computados uma única vez e versionados como artefato. Dois guardas independentes, baseados em hash SHA-256 do texto submetido ao modelo, impedem que o artefato dessincronize silenciosamente do corpus: um teste de CI falha o build e o próprio harness aborta a medição antes de emitir qualquer número.
+
+\textbf{Métricas.} Foi adotado o painel padrão da área de RI~\cite{manning2008ir}: P@1, P@3, R@5, MRR e nDCG@10 com ganho exponencial~\cite{jarvelin2002cumulated}. Cada implementação de métrica possui teste automatizado cujo valor esperado foi calculado manualmente a partir da definição publicada — nunca a partir da saída da própria implementação.
+
+\textbf{Análise estatística.} As comparações entre braços usam o teste pareado de postos sinalizados de Wilcoxon~\cite{wilcoxon1945individual}, adequado a métricas limitadas ao intervalo $[0,1]$, com correção de Bonferroni para as 75 comparações realizadas. O tamanho de efeito é reportado por $\delta$ de Cliff, com os limiares de interpretação de Romano et al.~\cite{romano2006appropriate}. Os intervalos de confiança de 95\% são obtidos por bootstrap sobre as consultas (10.000 reamostragens, semente fixa). A implementação do teste de Wilcoxon foi validada contra a biblioteca de referência \texttt{scipy}, com divergência máxima de $1{,}4\times10^{-16}$.
+
+\subsection{Desempenho de Recuperação}
+
+A Tabela~\ref{tab:retrieval-summary} apresenta o desempenho dos seis braços nas consultas positivas.
+
+\input{tables/retrieval-summary}
+
+Os braços de fusão e o BM25 obtiveram os melhores valores agregados (nDCG@10 entre 0,890 e 0,900), seguidos do relacional (0,869), do denso exato (0,844) e do denso aproximado (0,797). O resultado central para a pergunta de pesquisa é de não-inferioridade: a recuperação relacional não foi inferior à densa neste corpus, com intervalos de confiança amplamente sobrepostos em todas as métricas.
+
+A Tabela~\ref{tab:retrieval-variants} decompõe a P@1 por variante de consulta, medindo a dependência de casamento lexical de cada braço.
+
+\input{tables/retrieval-variants}
+
+Os braços lexicais acertam 100\% quando a consulta reutiliza os termos do alvo e caem para 57--71\% quando a mesma necessidade de informação é parafraseada. A queda é maior no relacional (0,429) do que no BM25 (0,286), o que é coerente com a ausência de ponderação IDF no scorer de produção~\cite{salton1989automatic}. O braço denso inverte o padrão: sua precisão praticamente não depende de a consulta reutilizar as palavras do documento (queda de 0,029), embora seu teto na variante literal seja mais baixo (0,600). Os dois paradigmas falham, portanto, por razões diferentes — o que constitui a justificativa empírica dos braços híbridos.
+
+\subsection{Efeito da Unidade de Recuperação}
+\label{sec:granularidade}
+
+Repetindo a medição sobre as 19 seções em vez dos 5 documentos, obtêm-se os resultados da Tabela~\ref{tab:retrieval-summary-section}.
+
+\input{tables/retrieval-summary-section}
+
+A comparação entre as duas granularidades revela um efeito de saturação que a avaliação por documento ocultava. Em nível de documento, R@5 vale exatamente 1,000 para \emph{todos} os braços lexicais, o que não é evidência de qualidade: com cinco documentos e profundidade de corte cinco, a métrica não tem como discriminar. Em nível de seção, os mesmos braços obtêm 0,719 e 0,812 --- valores que finalmente os separam.
+
+O mesmo ocorre com a distância entre os braços. A diferença de P@1 entre o relacional e o BM25 é de 0,062 em nível de documento (0,750 contra 0,812) e de 0,188 em nível de seção (0,562 contra 0,750): triplica quando a unidade de recuperação corresponde à unidade de proveniência que o sistema oferece.
+
+A Tabela~\ref{tab:retrieval-variants-section} decompõe esse resultado por variante de consulta.
+
+\input{tables/retrieval-variants-section}
+
+O achado mais consequente está na dependência de casamento lexical. A queda de P@1 de consultas literais para parafraseadas, no braço relacional, passa de $-0{,}429$ em nível de documento para $-0{,}857$ em nível de seção: o \emph{scorer} de produção acerta a totalidade das consultas que reutilizam termos do alvo e apenas 14\% daquelas que expressam a mesma necessidade com outras palavras. A granularidade grossa ocultava metade da dependência lexical --- exatamente a limitação que este trabalho identifica como central na abordagem relacional.
+
+Esse resultado tem consequência direta para a leitura das seções anteriores: os números de não-inferioridade reportados em nível de documento devem ser interpretados como \emph{limite superior} do desempenho relacional, não como estimativa não enviesada. A avaliação em unidade grossa é sistematicamente mais generosa com o casamento lexical, porque um documento inteiro oferece muito mais oportunidades de correspondência de termo do que a seção que efetivamente responde à pergunta.
+
+\subsection{Reconhecimento da Ausência de Resposta}
+
+A Tabela~\ref{tab:retrieval-negatives} apresenta o comportamento dos braços nos dois casos negativos, em que a resposta correta é não recuperar nada.
+
+\input{tables/retrieval-negatives}
+
+Nenhum braço reconhece a ausência de resposta: a taxa de falso positivo é 1,000 nos seis. Nos braços lexicais, a causa é qualquer termo em comum gerar score positivo. No braço denso, a causa é estrutural: a análise de separabilidade das similaridades de cosseno mostrou que as distribuições de pares relevantes ($n{=}18$, entre 0,7852 e 0,8810) e irrelevantes ($n{=}62$, entre 0,7626 e 0,8483) se sobrepõem em quase toda a extensão, de modo que nenhum limiar preserva os relevantes e corta os irrelevantes. Esse comportamento é consistente com a anisotropia dos espaços de embeddings contextuais~\cite{ethayarajh2019contextual}: a similaridade de cosseno é informativa como ordem, não como magnitude. Por essa razão, o piso de similaridade inicialmente previsto para o braço denso foi removido do protocolo — mantê-lo penalizaria a baseline concorrente sem fundamento empírico.
+
+\subsection{Significância Estatística}
+
+Nenhuma das 75 comparações pareadas atingiu significância após a correção de Bonferroni (todos os $p$ corrigidos iguais a 1,000), e quase todos os tamanhos de efeito são desprezíveis pelos limiares de Romano et al.~\cite{romano2006appropriate}. A tabela completa das comparações encontra-se no Apêndice B. Como discutido na Seção de Discussão, esse resultado deve ser lido como limitação de poder amostral — com 16 consultas positivas, o teste de Wilcoxon não tem sensibilidade para detectar efeitos da magnitude observada — e não como evidência de equivalência entre os braços.
+
+\subsection{Determinismo do Ranking}
+
+A propriedade central reivindicada pela abordagem relacional é o determinismo da recuperação. Para medi-la, cada braço foi executado repetidamente e os rankings completos (identificadores e scores) foram comparados por hash SHA-256. Os braços A, B e D produziram rankings idênticos em 100\% das consultas ao longo de 30 execuções. A Tabela~\ref{tab:dense-determinism} apresenta o resultado para os braços densos, variando fatores que não são propriedades da consulta.
+
+\input{tables/dense-determinism}
+
+A varredura densa exata também é 100\% estável — o que a torna o controle do experimento: a instabilidade observada no IVF não provém do modelo de embeddings nem da aritmética de ponto flutuante, mas do próprio índice aproximado. Sob IVF-Flat, variar apenas a semente do $k$-means produziu até 4 rankings distintos para a mesma pergunta, com perda média de 48,4\% de recall em relação à varredura exata. Variar apenas a ordem de inserção dos documentos, com semente fixa, produziu o mesmo efeito — e esse é o fator de maior consequência prática, porque ordem de inserção não é um parâmetro de configuração: é histórico de uso. Dois usuários que inseriram os mesmos documentos em ordens diferentes podem receber respostas diferentes para a mesma pergunta, sem que nenhum dos dois tenha como perceber.
+
+\subsection{Auditabilidade do Índice}
+\label{sec:auditabilidade}
+
+Auditabilidade é a propriedade central reivindicada por este trabalho, mas o termo só se torna verificável quando associado a uma medida. Definem-se aqui duas métricas, calculadas sobre o índice persistido:
+
+\begin{itemize}
+  \item \textbf{TPC (taxa de proveniência completa)}: fração de itens indexados cuja origem é integralmente resolvível --- documento, página, posição sequencial e conteúdo, todos presentes. O critério é deliberadamente rígido: saber que uma informação veio do documento 7 sem saber de qual página não permite apontar o trecho no original, e apontar o trecho é precisamente o que auditoria significa.
+  \item \textbf{TCV (taxa de citação verificável)}: fração de trechos citados que existem literalmente na fonte apontada. Separa ``citou'' de ``citou corretamente'' --- um sistema pode indicar o documento certo e ainda assim exibir um trecho inexistente ali, modo de falha particularmente grave em um sistema que se apresenta como auditável.
+\end{itemize}
+
+\input{tables/provenance}
+
+O resultado agregado (TPC global de 0,329) seria enganoso se reportado isoladamente, e por isso a Tabela~\ref{tab:provenance} é apresentada por tipo estrutural. A leitura correta é bimodal: a proveniência é \emph{completa} (1,000) em parágrafos, páginas e nós de sumário, e \emph{inexistente} (0,000) em chunks e metadados. A causa é única e foi confirmada por teste --- as 104 incompletudes são, todas, ausência de número de página; não há um único caso de identificador de documento ausente, posição inválida ou conteúdo vazio.
+
+A origem do defeito está no próprio esquema: as entidades \texttt{TableSection}, \texttt{MetadataPair} e \texttt{DocumentChunk} não possuem coluna de página. Para o chunk, a proveniência é indireta --- resolve-se através dos parágrafos de origem, e não diretamente ---, o que a métrica contabiliza como incompleta por exigir resolução em um único passo. Trata-se de limitação de modelagem, endereçável pela adição da coluna, e não de falha do paradigma relacional: onde o esquema registra a coordenada, a recuperação a devolve sem exceção.
+
+A TCV de 1,000 sobre 20 citações verificadas indica que a fragmentação em tabelas tipadas preserva integralmente o conteúdo textual: todo trecho recuperado existe literalmente no documento de origem. Esse resultado é o complemento necessário da TPC --- de nada adiantaria localizar a página se o texto exibido divergisse do original.
+
+Cabe registrar o contraste com a alternativa densa, em que a unidade de proveniência é o \emph{chunk} de embedding, não a posição no documento: recuperar o vetor mais próximo não produz, por construção, a coordenada de origem. A TPC não é aplicável a esse braço --- não por deficiência de implementação, mas porque a informação necessária não existe na representação.
+
+\subsection{Limiar de Corte e Reconhecimento de Ausência}
+\label{sec:limiar}
+
+A taxa de falso positivo de 1,000 registrada na Seção anterior é a limitação mais grave medida neste trabalho: os braços sempre devolvem algo, inclusive quando a resposta correta é o silêncio. Resta perguntar se essa limitação é intrínseca ou corrigível --- em outras palavras, se existe um score a partir do qual uma correspondência pode ser considerada real.
+
+Para responder, coletaram-se as distribuições de score de itens relevantes e irrelevantes e buscou-se o corte que maximiza o índice de Youden ($J = \text{sensibilidade} + \text{especificidade} - 1$). Usou-se $J$, e não acurácia, porque as classes são fortemente desbalanceadas: com aproximadamente dez vezes mais itens irrelevantes que relevantes, um classificador que rejeitasse tudo teria acurácia alta e utilidade nula. A Tabela~\ref{tab:threshold} apresenta o diagnóstico.
+
+\input{tables/threshold}
+
+Os dois braços lexicais admitem um corte que reduz o falso positivo pela metade, mas por margens muito distintas. No BM25 a sobreposição das distribuições é de 0,980 --- quase todo item irrelevante pontua acima do pior item relevante --- e ainda assim o limiar alcança $J = 0{,}673$, porque a densidade dos scores relevantes se concentra na cauda superior. No braço relacional a sobreposição é menor (0,782), mas o poder discriminativo do corte também é ($J = 0{,}288$): o \emph{scorer} por substring produz scores inteiros de baixa granularidade, o que limita a resolução de qualquer limiar.
+
+Duas ressalvas são obrigatórias na leitura desses números. A primeira: o corpus contém apenas \textbf{duas} consultas negativas, de modo que a redução observada de 1,000 para 0,500 corresponde a um acerto em dois casos. Trata-se de indício de viabilidade, não de demonstração de eficácia --- a estimativa da taxa com esse tamanho amostral tem intervalo de confiança que abrange praticamente todo o domínio. A segunda: o limiar foi selecionado sobre o mesmo conjunto em que é avaliado, o que produz estimativa otimista por construção; uma avaliação honesta exigiria conjuntos de ajuste e de teste separados, inviável com 18 consultas.
+
+O que a medição sustenta, portanto, é uma afirmação modesta e verificável: \emph{a incapacidade de reconhecer ausência de resposta não é intrínseca aos braços lexicais}. Existe sinal nos scores, e ele é explorável. Transformar esse indício em mecanismo confiável requer corpus com número substancial de casos negativos e separação entre ajuste e teste --- trabalho de anotação, não de infraestrutura.
+
+% =============================================================================
+% DISCUSSAO
+% =============================================================================
+\section{Discussão}
+
+Os resultados sustentam uma resposta matizada à pergunta de pesquisa formulada na Introdução, e cada achado merece leitura à luz de suas condições de validade.
+
+\textbf{A queda literal$\rightarrow$paráfrase quantifica o que métricas ingênuas escondem.} Uma versão anterior do benchmark do projeto reportava 100\% de acerto em todos os indicadores — resultado que não evidenciava qualidade de recuperação, mas incapacidade da métrica de discriminar: o gabarito era circular e as consultas copiavam termos dos trechos-alvo. O protocolo atual, com variantes de consulta e regras anti-circularidade travadas por teste, expõe o que aqueles números ocultavam: a precisão dos braços lexicais é função direta do reúso vocabular da consulta. Esse achado reposiciona a limitação clássica do casamento léxico~\cite{manning2008ir} de argumento teórico para medida concreta sobre o sistema real.
+
+\textbf{Relacional e denso falham por razões diferentes, e isso importa mais do que qual pontua mais alto.} O braço denso é o único cuja precisão independe do vocabulário da consulta, mas seu teto é mais baixo e sua variante aproximada degrada tanto a qualidade quanto a estabilidade. O braço relacional tem teto máximo no regime literal e a maior queda sob paráfrase. Como as forças são complementares, a fusão por RRF obtém os melhores agregados sem exigir nenhum componente novo de infraestrutura — um caminho de evolução para o ThingIndex que preserva a camada relacional como base auditável.
+
+\textbf{A não-inferioridade observada é evidência favorável, não demonstração.} O nDCG@10 de 0,869 do braço relacional contra 0,844 do denso exato é exatamente a forma da hipótese central do trabalho — a de que uma baseline relacional pode sustentar cenários de inteligência documental usualmente atribuídos a soluções vetoriais. Contudo, nenhuma diferença entre braços é estatisticamente significativa, e a leitura honesta é de limitação de poder: com 16 consultas positivas, o experimento não distingue efeitos reais de ruído amostral. A infraestrutura de avaliação está pronta e testada; o que falta para transformar evidência em demonstração é anotação humana em escala (aproximadamente 150 consultas sobre pelo menos 30 documentos).
+
+\textbf{Nenhum paradigma sabe dizer ``não encontrei'', mas a limitação não é intrínseca.} A taxa de falso positivo de 1,000 nos seis braços é uma limitação real do estado da prática, raramente medida. A investigação da Seção~\ref{sec:limiar} mostra que, nos braços lexicais, existe sinal explorável nos scores: um limiar de corte reduz o falso positivo pela metade, com índice de Youden de 0,673 no BM25. A ressalva é de tamanho amostral --- duas consultas negativas não demonstram eficácia, e o limiar foi selecionado no mesmo conjunto em que é avaliado. No braço denso, a sobreposição das distribuições de similaridade indica que não se trata de ajuste de parâmetro, mas de geometria do espaço de embeddings~\cite{ethayarajh2019contextual}. Para um sistema cuja tese é auditabilidade, responder com confiança quando não há resposta é o modo de falha mais grave --- e nenhuma das abordagens avaliadas, incluindo a proposta, o resolve hoje. A diferença que a medição estabelece é que, para a abordagem relacional, o caminho de correção existe e é conhecido.
+
+\textbf{O preço do índice aproximado é o resultado que sustenta a contribuição.} A afirmação que este trabalho pode fazer após a medição é mais específica — e mais defensável — do que a formulação original da proposta: não ``a recuperação relacional é determinística e o RAG vetorial não é'', que é falsa para a varredura exata, mas: \emph{a busca densa exata é determinística, porém custa $O(N)$ por consulta; o índice aproximado escala, porém torna o resultado dependente de decisões de indexação que o usuário não controla nem observa; a recuperação relacional não paga nenhum dos dois preços.} A instabilidade por ordem de inserção é a manifestação mais séria desse custo, por ser função do histórico de uso e invisível ao usuário — a antítese da proveniência que fundamenta este trabalho~\cite{buneman2001provenance}.
+
+\subsection{Ameaças à Validade}
+
+\textbf{Validade de conclusão.} O corpus C1 possui 16 consultas positivas, insuficientes para que o teste de Wilcoxon detecte efeitos da magnitude observada. Por essa razão, nenhuma comparação de qualidade entre braços é apresentada como conclusiva. O script de análise devolve explicitamente $p{=}1{,}0$ quando o número de pares com diferença é inferior ao mínimo do teste, em vez de fabricar um número de aparência precisa.
+
+\textbf{Validade interna.} O gabarito de relevância foi anotado por um único autor, sem dupla anotação nem coeficiente de concordância (Cohen's $\kappa$). As regras anti-circularidade travadas por teste mitigam o viés de construção das consultas, mas não substituem anotação independente.
+
+\textbf{Validade externa.} Com 5 documentos, o índice IVF opera em regime degenerado (\texttt{lists}${=}2$), o que amplifica a perda de recall. Essa objeção foi medida em vez de argumentada: a Tabela~\ref{tab:ivf-escala} reporta o mesmo protocolo sobre corpora sintéticos de 768 dimensões em escalas maiores.
+
+\begin{table}[htb]
+\centering
+\caption{Instabilidade do IVF-Flat em função da escala do corpus (corpora sintéticos, 768 dimensões, 8 clusters, 20 consultas, 10 sementes por consulta).}
+\label{tab:ivf-escala}
+\begin{tabular}{cccc}
+\hline
+$N$ & \texttt{lists} & Recall@10 do IVF vs.\ exato & Consultas instáveis entre sementes \\
+\hline
+5 & 2 & 31,2\% & 20/20 \\
+50 & 7 & 69,0\% & 20/20 \\
+200 & 14 & 81,3\% & 20/20 \\
+1000 & 32 & 50,5\% & 20/20 \\
+\hline
+\end{tabular}
+\end{table}
+
+A leitura tem duas partes. A objeção procede quanto à \emph{magnitude} da perda de recall: o regime de corpus minúsculo de fato a amplifica, e o número de 48,4\% reportado na Seção de Resultados deve ser lido com essa ressalva. A objeção não procede, porém, quanto à \emph{instabilidade}, que é a afirmação que o trabalho efetivamente faz: em todas as escalas medidas, incluindo $N{=}1000$, 100\% das consultas mudam de ranking quando apenas a semente muda. A instabilidade é propriedade do algoritmo, não artefato do corpus. Ambas as conclusões estão travadas por testes automatizados.
+
+\textbf{Validade de construto.} O braço A reproduz o scorer de produção do ThingIndex, defeitos inclusive — decisão deliberada para medir o sistema real, não uma versão idealizada. O braço C′ é uma reimplementação do IVF-Flat com os nomes e valores padrão do pgvector, não o pgvector em si, e o índice HNSW (padrão do pgvector a partir da versão 0.5.0), que possui fontes próprias de não-determinismo, não foi medido. A incerteza reportada é de amostragem sobre o conjunto de consultas, não de variabilidade de execução: o pipeline é determinístico, e repetir a mesma execução não gera variância.
+
+\FloatBarrier
 
 
 % =============================================================================
@@ -827,13 +1012,13 @@ O desenvolvimento do ThingIndex será realizado entre junho e dezembro de 2026, 
 
 % \FloatBarrier
 
-\section{Considerações Finais}
+\section{Conclusão}
 
-Este artigo apresentou a proposta do ThingIndex, uma plataforma de inteligência documental baseada em modelagem relacional, concebida para organizar, processar, indexar e recuperar contexto documental com auditabilidade e potencial de evolução. A partir da fundamentação teórica, da definição metodológica, do levantamento de requisitos e da modelagem arquitetural realizados neste trabalho, foi possível consolidar as bases conceituais e estruturais necessárias para o desenvolvimento da plataforma na etapa seguinte da pesquisa.
+Este artigo apresentou o ThingIndex, uma plataforma de inteligência documental baseada em modelagem relacional, da concepção à avaliação experimental. A pergunta de pesquisa formulada na Introdução — se é possível sustentar um sistema de inteligência documental com auditabilidade utilizando exclusivamente modelagem relacional, sem bancos vetoriais ou grafos como camada primária de recuperação — recebe, com base nos resultados, uma resposta afirmativa e delimitada: no corpus avaliado, a recuperação relacional não foi inferior à densa em qualidade de ranking (nDCG@10 de 0,869 contra 0,844, sem diferença estatisticamente significativa) e é a única abordagem, entre as seis avaliadas, que combina estabilidade total do resultado com custo de consulta que não cresce linearmente com uma varredura exaustiva de vetores: a busca densa exata é determinística mas custa $O(N)$ por consulta, e o índice aproximado escala mas torna o ranking dependente de fatores que o usuário não controla nem observa, como a semente do algoritmo de particionamento e a ordem de inserção dos documentos.
 
-Como contribuição do TCC I, destaca-se a formulação de uma hipótese de investigação clara: a de que uma baseline relacional pode atender a cenários de inteligência documental frequentemente associados a soluções baseadas em vetores ou grafos. Essa hipótese não rejeita a utilidade de técnicas de IA, mas propõe que uma base determinística, testável e de custo prevísivel seja considerada como alternativa ou complemento às abordagens mais usuais.
+As contribuições do trabalho são quatro. Primeira, um artefato completo: o sistema especificado na Proposta foi implementado como monorepo executável, com pipeline assíncrono de indexação, recuperação por consultas SQL determinísticas, trilha de proveniência por chaves estrangeiras e testes automatizados, versionado e disponível para replicação e extensão mediante solicitação. Segunda, um protocolo de avaliação reproduzível com regras anti-circularidade travadas por teste, construído após a constatação de que o benchmark original do projeto — que reportava 100\% de acerto em todos os indicadores — media casamento lexical, e não recuperação. Terceira, a quantificação do custo de determinismo dos índices vetoriais aproximados, incluindo a medição da ameaça de escala em vez de sua mera discussão: a instabilidade do ranking sob variação de semente persiste em 100\% das consultas em todas as escalas medidas, até $N{=}1000$. Quarta, a evidência, inédita para este sistema, de que nenhum dos paradigmas avaliados — relacional, lexical, denso ou híbrido — reconhece a ausência de resposta, com causas distintas e mensuradas em cada caso.
 
-A validação dessa hipótese, bem como a implementação efetiva da arquitetura proposta, será efetuada no TCC II, quando serão desenvolvidos o protótipo, os testes de desempenho e a avaliação prática da plataforma frente a cenários documentais estruturados. Espera-se, com isso, que o ThingIndex venha a representar uma contribuição técnica e acadêmica relevante, ainda que sua validação completa dependa das etapas futuras de desenvolvimento e experimentação.
+O trabalho tem limitações claras, detalhadas nas Ameaças à Validade: o poder amostral do corpus (16 consultas positivas) impede conclusões comparativas definitivas, o gabarito foi anotado por um único autor e o índice HNSW não foi medido. Delas decorrem os trabalhos futuros prioritários: expandir o corpus para aproximadamente 150 consultas sobre pelo menos 30 documentos; realizar dupla anotação em ao menos 20\% do gabarito com Cohen's $\kappa$ reportado; adicionar um braço HNSW ao experimento de determinismo; e medir o caminho de documentos digitalizados (OCR). Como evolução do sistema, os resultados apontam um caminho concreto: a fusão por RRF dos sinais relacional e BM25 obteve os melhores agregados do experimento sem exigir nenhum componente novo de infraestrutura, preservando a camada relacional — e sua proveniência — como base auditável do sistema.
 
 % \subsection{Contribuições Esperadas}
 
@@ -881,6 +1066,12 @@ No desenvolvimento deste manuscrito, os autores utilizaram o serviço ChatGPT, b
 O esquema relacional completo do ThingIndex, contendo todas as 21 tabelas, tipos de dados, chaves primárias, chaves estrangeiras e índices, está disponível em formato DBML no repositório do projeto, no arquivo \texttt{docs/schema/thingindex.dbml}. O arquivo pode ser importado no \texttt{dbdiagram.io} para visualização interativa.
 
 O arquivo é gerado a partir dos mesmos modelos que a aplicação submete à migração automática, e não redigido manualmente (\texttt{api/cmd/schema-dbml}). A escolha é deliberada: um apêndice escrito à mão descreve o esquema que o autor acredita ter, enquanto um apêndice derivado descreve o esquema que o sistema efetivamente cria. Um teste de regressão falha caso o arquivo versionado divirja dos modelos, de modo que a documentação não pode silenciosamente envelhecer em relação ao código.
+
+\subsection*{Apêndice B: Comparações Pareadas Completas}
+
+A Tabela~\ref{tab:retrieval-significance} apresenta as 75 comparações pareadas entre os seis braços do experimento (Wilcoxon com correção de Bonferroni e $\delta$ de Cliff), resumidas na Seção de Resultados. Como o apêndice A, a tabela é gerada por script (\texttt{scripts/analyze.py}) a partir da saída bruta do experimento.
+
+\input{tables/retrieval-significance}
 
 % \noindent\textit{Nota: este artigo utilizou ferramentas de IA (ChatGPT) exclusivamente para correção ortográfica e gramatical, conforme orientação do professor orientador. Todo o conteúdo técnico e conceitual foi escrito pelo autor.}
 

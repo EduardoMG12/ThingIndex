@@ -7,6 +7,17 @@
 > cd api && go run ./cmd/retrieval-eval -out ../docs/article/results/results.csv -summary
 > python3 scripts/analyze.py docs/article/results/results.csv --outdir docs/article/tables
 > ```
+>
+> **Braços densos (C e E):** os embeddings são gerados uma vez e versionados.
+> Regerar só é necessário quando o corpus muda — e um teste falha se você
+> esquecer.
+>
+> ```bash
+> python3 scripts/embed-corpus.py \
+>   --corpus api/internal/evalcorpus/testdata/corpus-c1.json \
+>   --out    api/internal/evalcorpus/testdata/embeddings-c1.json
+> cd api && go run ./cmd/dense-determinism -tex ../docs/article/tables/dense-determinism.tex
+> ```
 
 ---
 
@@ -37,17 +48,84 @@ não discrimina. Três defeitos a tornavam tautológica:
 |---|---|---|
 | **A — relacional** | Scorer atual do ThingIndex: contagem de substring, sem IDF | `internal/retrieval/lexical.go` |
 | **B — BM25** | Robertson & Zaragoza (2009), `k1=1.2`, `b=0.75` | `internal/retrieval/lexical.go` |
+| **C — denso** | `multilingual-e5-base` (768d), varredura exata por cosseno | `internal/retrieval/dense.go` |
+| **C′ — denso-IVF** | O mesmo modelo sob índice **aproximado** IVF-Flat, o do pgvector | `internal/retrieval/ivf.go` |
 | **D — RRF** | Fusão de A e B por Reciprocal Rank Fusion, `k=60` (Cormack et al., 2009) | `internal/retrieval/metrics.go` |
+| **E — RRF denso** | Fusão de B e C — o híbrido do estado da prática | `cmd/retrieval-eval/main.go` |
 
 O braço A é **reprodução fiel** do scorer de produção, defeitos inclusive. Isso
 é o ponto: o experimento mede o sistema como ele é, não uma versão idealizada.
 
-> **O braço C (denso, pgvector + embeddings) não está implementado, e a ausência
-> é declarada em vez de escondida.** Ele exige um modelo de embedding rodando, o
-> que tira a execução do regime hermético e reproduzível em CI. A estrutura já o
-> acomoda — basta implementar a interface `arm` em `cmd/retrieval-eval`.
-> Prometer um braço que não roda seria repetir exatamente o erro do Apêndice A,
-> que anunciava arquivos DBML inexistentes.
+### 2.1.1 Como o braço denso roda sem quebrar a hermeticidade
+
+Uma versão anterior deste documento declarava o braço C como não implementável,
+porque carregar um modelo de 1,1 GB tiraria a execução do regime hermético e
+reproduzível em CI. **O diagnóstico estava certo; a conclusão, não.**
+
+A solução é a que a literatura de replicabilidade em RI usa: separar geração de
+busca. Os embeddings são computados **uma vez**, por `scripts/embed-corpus.py`,
+e versionados como artefato JSON. O harness em Go só faz aritmética de ponto
+flutuante sobre vetores lidos do arquivo.
+
+Três consequências, todas desejáveis:
+
+- o harness continua rodando em CI sem GPU, sem torch e sem rede;
+- a latência medida deixa de estar contaminada por tempo de inferência;
+- o resultado deixa de depender da versão de `transformers` da máquina.
+
+**O risco que isso cria é o artefato dessincronizar do corpus** — e ele é fatal
+justamente por ser silencioso: nada quebra, os números apenas passam a
+descrever uma versão anterior do corpus. Dois guards independentes fecham a
+brecha, ambos por hash SHA-256 do texto enviado ao modelo:
+
+| Guard | Onde | Comportamento |
+|---|---|---|
+| Teste de CI | `internal/evalcorpus/embeddings_test.go` | falha o build, aponta o item divergente e imprime o comando de regeração |
+| Guard de execução | `checkDenseSync` em `cmd/retrieval-eval` | **aborta a medição** antes de escrever qualquer número |
+
+Verificados em RED→GREEN: editar uma consulta do corpus faz os dois falharem
+identificando exatamente `q01-literal` / `q11-para`.
+
+### 2.1.2 Por que duas variantes de denso, e por que isso importa
+
+Medir apenas o denso **exato** produziria uma comparação enviesada **a favor da
+tese deste trabalho**. A afirmação "o denso também é determinístico" é
+verdadeira na varredura exata e falsa no índice aproximado — e é o aproximado
+que se usa em escala, porque a varredura exata é O(N) por consulta. A premissa
+de escalabilidade do RAG vetorial repousa inteiramente sobre IVF-Flat e HNSW.
+
+O braço C′ reimplementa o IVF-Flat com os nomes e defaults do pgvector
+(`lists = sqrt(N)`, `probes = 1`), para que o leitor consiga mapear o que foi
+medido aqui no que ele configura em produção.
+
+### 2.1.3 O piso de similaridade: uma hipótese que a medição refutou
+
+A primeira implementação do braço denso usava um piso de similaridade de 0,80,
+sob a hipótese razoável de que um limiar separaria relevantes de irrelevantes e
+permitiria ao braço responder "nada encontrado" nos casos negativos.
+
+**A medição refutou a hipótese** (`scripts/dense-floor-diagnostic.py`):
+
+| Grupo | n | mín | mediana | máx |
+|---|---|---|---|---|
+| Pares relevantes | 18 | 0,7852 | 0,8335 | 0,8810 |
+| Pares irrelevantes | 62 | 0,7626 | 0,8029 | **0,8483** |
+
+As distribuições **se sobrepõem em quase toda a extensão**. Não existe limiar
+que preserve os relevantes e corte os irrelevantes: em 0,80 o corte já descarta
+2 relevantes enquanto 32 irrelevantes sobrevivem; em 0,84 restam 6 de 18
+relevantes.
+
+A causa tem nome na literatura: **anisotropia** do espaço de embeddings.
+Modelos treinados com objetivo contrastivo concentram os vetores num cone
+estreito, de modo que o cosseno tem piso alto mesmo entre textos sem relação. A
+similaridade é útil como **ordem**, não como **magnitude**.
+
+O piso foi zerado, e a decisão está travada por teste. Manter 0,80 teria dois
+efeitos, ambos inaceitáveis: **prejudicaria a baseline concorrente** (vencer um
+espantalho construído por mim) e **esconderia um achado** — a incapacidade de
+dizer "não encontrei" atinge todos os braços, e agora sabemos que por razões
+*diferentes*.
 
 ### 2.2 Corpus C1
 
@@ -101,46 +179,130 @@ Corpus C1: 5 documentos, 18 consultas (2 negativas), 18 pares julgados.
 
 | Braço | P@1 | MRR | nDCG@10 | Falso+ (negativas) |
 |---|---|---|---|---|
-| A — relacional | 0,750 | 0,830 | 0,869 | **1,000** |
-| B — BM25 | 0,812 | 0,862 | 0,894 | **1,000** |
-| D — RRF | 0,812 | 0,870 | 0,900 | **1,000** |
+| A — relacional | 0,750 | 0,830 | **0,869** | 1,000 |
+| B — BM25 | 0,812 | 0,862 | 0,894 | 1,000 |
+| C — denso (exato) | 0,688 | 0,823 | **0,844** | 1,000 |
+| C′ — denso IVF | 0,688 | 0,781 | 0,797 | 1,000 |
+| D — RRF (A+B) | 0,812 | 0,870 | **0,900** | 1,000 |
+| E — RRF denso (B+C) | 0,812 | **0,880** | 0,890 | 1,000 |
 
 ### P@1 por variante de consulta
 
 | Braço | Literal | Paráfrase | Ruidosa | Queda literal→paráfrase |
 |---|---|---|---|---|
 | A — relacional | 1,000 | 0,571 | 0,750 | **−0,429** |
-| B — BM25 | 1,000 | 0,714 | 0,750 | **−0,286** |
+| B — BM25 | 1,000 | 0,714 | 0,750 | −0,286 |
+| C — denso | 0,600 | 0,571 | 1,000 | **−0,029** |
+| C′ — denso IVF | 0,600 | 0,714 | 0,750 | **+0,114** |
 | D — RRF | 1,000 | 0,571 | 1,000 | −0,429 |
+| E — RRF denso | 0,800 | 0,714 | 1,000 | −0,086 |
+
+### Estabilidade do ranking sob fatores que não são a pergunta
+
+`go run ./cmd/dense-determinism` — 30 repetições, comparação por hash SHA-256
+do ranking completo (identificador + score).
+
+| Fator variado | Consultas estáveis | Máx. rankings distintos | Perda de recall |
+|---|---|---|---|
+| **C — denso exato**, 30 execuções | **100%** | 1 | — |
+| C′ — IVF, 30 seeds | **0%** | 4 | **48,4%** |
+| C′ — IVF, 30 ordens de inserção (seed fixa) | **0%** | 4 | — |
+| C′ — IVF, `probes` de 1 a `lists` | **0%** | 2 | — |
 
 ---
 
 ## 4. Leitura honesta dos resultados
 
-**Achado 1 — a queda literal→paráfrase é o resultado central.** Todos os braços
-acertam 100% quando a consulta copia termos do alvo, e despencam para 57–71%
-quando a mesma necessidade é expressa com outras palavras. Isso quantifica
-exatamente o que o benchmark antigo escondia: os 100/100/100 mediam casamento
-lexical, não recuperação. **A queda é maior no braço relacional (−0,429) do que
-no BM25 (−0,286)**, o que é coerente com a ausência de IDF e de normalização por
-comprimento no scorer atual.
+**Achado 1 — a queda literal→paráfrase é o resultado central, e o braço denso
+mostra por quê.** Os braços lexicais acertam 100% quando a consulta copia
+termos do alvo e despencam para 57–71% quando a mesma necessidade é expressa
+com outras palavras. Isso quantifica exatamente o que o benchmark antigo
+escondia: os 100/100/100 mediam casamento lexical, não recuperação. A queda é
+maior no relacional (−0,429) do que no BM25 (−0,286), coerente com a ausência
+de IDF.
 
-**Achado 2 — nenhum braço reconhece a ausência de resposta.** Taxa de falso
-positivo **1,000 nos três**: em toda consulta cujo gabarito é "nada é
-relevante", todos devolveram algo. Esta é uma limitação real do sistema, medida
-pela primeira vez, e não aparecia em nenhuma métrica de ranking.
+O braço denso **inverte o padrão**: 0,600 em literal e 0,571 em paráfrase — ele
+é o único cuja precisão praticamente não depende de a consulta reusar as
+palavras do documento (queda de −0,029). É a evidência mais direta de que os
+dois paradigmas falham por razões diferentes, e a justificativa empírica para
+os braços híbridos.
 
-**Achado 3 — as diferenças entre braços NÃO são estatisticamente
-significativas.** Todos os *p* corrigidos dão 1,000 e todos os Cliff's δ são
-desprezíveis. **Isso é uma limitação de poder amostral, não evidência de
-empate.** Com 16 consultas positivas, poucos pares diferem e o Wilcoxon não tem
-como detectar efeito. O script devolve `p = 1.0` explicitamente quando *n* < 10
-em vez de fabricar um número que parece preciso.
+**Achado 2 — o relacional não é inferior ao denso neste corpus.** nDCG@10 de
+0,869 (A) contra 0,844 (C), com IC 95% amplamente sobrepostos. É exatamente a
+forma de H1, e o resultado é favorável — **com a ressalva do achado 4**, que é
+o que impede tratá-lo como demonstração.
 
-> **Consequência direta para o TCC II:** o corpus precisa crescer para ~150
-> consultas antes que qualquer afirmação comparativa seja defensável. A
-> infraestrutura está pronta e testada; o que falta é anotação, que é trabalho
-> humano e não comprime no fim do semestre.
+**Achado 3 — nenhum braço reconhece a ausência de resposta, e agora sabemos por
+quê.** Falso positivo 1,000 nos seis. Nos lexicais, porque qualquer termo em
+comum gera score positivo. No denso, por uma razão mais interessante e mais
+difícil de corrigir: a análise de separabilidade (§2.1.3) mostra que as
+similaridades de pares relevantes e irrelevantes **se sobrepõem**, então nenhum
+limiar resolve. Não é ajuste de parâmetro — é geometria do espaço de
+embeddings.
+
+**Achado 4 — as diferenças entre braços NÃO são estatisticamente
+significativas.** Todos os *p* corrigidos dão 1,000 (75 comparações,
+Bonferroni) e quase todos os Cliff's δ são desprezíveis. **Isso é limitação de
+poder amostral, não evidência de empate.** Com 16 consultas positivas, o
+Wilcoxon não tem como detectar efeito. O script devolve `p = 1.0` explicitamente
+quando *n* < 10 em vez de fabricar um número que parece preciso.
+
+**Achado 5 — o índice aproximado troca determinismo por escala, e o preço é
+mensurável.** Este é o resultado que sustenta a contribuição do trabalho, e ele
+é qualitativamente diferente dos anteriores:
+
+- a varredura exata é **100% estável** em 30 execuções — é o controle, e ele
+  isola a causa: a variação observada no IVF não vem do modelo nem da
+  aritmética de ponto flutuante;
+- trocar **apenas a seed** do k-means, sem tocar em corpus, modelo ou consulta,
+  produz até **4 rankings distintos para a mesma pergunta**, com perda média de
+  **48,4% de recall** em relação à varredura exata;
+- trocar **apenas a ordem de inserção** dos documentos, com a seed fixa, produz
+  o mesmo efeito. Este é o fator mais grave na prática, porque ordem de
+  inserção não é configuração: é histórico de uso. **Dois usuários que subiram
+  os mesmos documentos em ordem diferente podem receber respostas diferentes
+  para a mesma pergunta**, e nenhum dos dois tem como perceber.
+
+> **A afirmação que o artigo pode fazer agora é mais específica e mais
+> defensável do que a original.** Não "somos determinísticos e o RAG vetorial
+> não é" — que é falso para o denso exato — mas:
+>
+> *o denso exato é determinístico mas custa O(N) por consulta; o denso
+> aproximado escala mas torna o resultado dependente de decisões de indexação
+> que o usuário não controla nem observa. A recuperação relacional não paga
+> nenhum dos dois preços.*
+
+### 4.1 Ameaça à validade do achado 5, medida em vez de argumentada
+
+A objeção óbvia ao achado 5 é de escala: *"o corpus C1 tem 5 documentos, logo
+`lists = sqrt(5) = 2`. Você colocou o IVF num regime degenerado; com um corpus
+realista o k-means converge para partições estáveis e o efeito some."*
+
+A objeção é legítima e não se responde com argumento. `TestIVFInstabilidadePersisteEmEscala`
+mede, sobre corpora sintéticos de 768 dimensões com 8 clusters, 20 consultas e
+10 seeds por consulta:
+
+| N | `lists` | Recall@10 do IVF vs. exato | Consultas instáveis entre seeds |
+|---|---|---|---|
+| 5 | 2 | **31,2%** | **20/20** |
+| 50 | 7 | 69,0% | **20/20** |
+| 200 | 14 | **81,3%** | **20/20** |
+| 1000 | 32 | 50,5% | **20/20** |
+
+**A leitura tem duas partes, e reportar as duas é o que torna o achado
+defensável:**
+
+1. **A objeção procede quanto à magnitude da perda.** Em N=5 o IVF recupera
+   31% do que a varredura exata recupera; em N=200, 81%. O regime de corpus
+   minúsculo **de fato amplifica** a perda de recall. Isso entra em Ameaças à
+   Validade, e o número de 48,4% do corpus C1 precisa vir com essa ressalva.
+2. **A objeção não procede quanto à instabilidade** — que é a afirmação que o
+   trabalho realmente faz. Em **todas** as escalas, incluindo N=1000, **100%
+   das consultas devolvem rankings diferentes quando só a seed muda**. A
+   instabilidade não é artefato de corpus pequeno: é propriedade do algoritmo.
+
+As duas conclusões estão travadas por teste — inclusive a primeira, para que
+"melhorar" o IVF sem revisar o texto de Ameaças à Validade quebre o build.
 
 ---
 
@@ -148,24 +310,29 @@ em vez de fabricar um número que parece preciso.
 
 | Item | Por quê |
 |---|---|
-| Corpus para ~150 consultas, ≥30 documentos | Sem isso não há poder estatístico (§4, achado 3) |
+| Corpus para ~150 consultas, ≥30 documentos | Sem isso não há poder estatístico (§4, achado 4). **É o gargalo único** |
 | Dupla anotação em ≥20% com Cohen's κ reportado | Sem κ, "gabarito" é opinião do autor |
-| Braço C (pgvector + `multilingual-e5-base`) | Sem ele não há comparação com RAG denso — o alvo declarado do artigo |
+| Braço denso com HNSW além de IVF-Flat | HNSW é o default do pgvector desde a 0.5.0 e tem fontes de não-determinismo próprias (`ef_construction`, ordem de inserção nos grafos) |
 | Documentos escaneados (curva CER × dpi) | O caminho de OCR nunca foi medido |
-| Métricas de auditabilidade (TPC, TCV, determinismo) | São a contribuição própria do trabalho, e a vitória mais barata disponível |
 
 ---
 
 ## 6. Arquivos
 
 ```
-api/internal/retrieval/metrics.go      métricas de RI + RRF
-api/internal/retrieval/lexical.go      braços A (substring) e B (BM25)
-api/internal/evalcorpus/corpus.go      carga, validação e checagem de circularidade
-api/internal/evalcorpus/testdata/      corpus C1
-api/cmd/retrieval-eval/main.go         harness: roda os braços, emite CSV
-scripts/analyze.py                     Wilcoxon, Bonferroni, Cliff's δ, bootstrap → LaTeX
-scripts/test_analyze.py                19 testes do script de análise
-docs/article/results/results.csv       saída bruta (uma linha por consulta × braço)
-docs/article/tables/*.tex              tabelas prontas para \input{} no Overleaf
+api/internal/retrieval/metrics.go       métricas de RI + RRF
+api/internal/retrieval/lexical.go       braços A (substring) e B (BM25)
+api/internal/retrieval/dense.go         braço C: artefato, validação, busca exata
+api/internal/retrieval/ivf.go           braço C′: IVF-Flat (k-means + probes)
+api/internal/evalcorpus/corpus.go       carga, validação e checagem de circularidade
+api/internal/evalcorpus/embeddings_test.go  guard de sincronia corpus × embeddings
+api/internal/evalcorpus/testdata/       corpus C1 + embeddings versionados
+api/cmd/retrieval-eval/main.go          harness: roda os 6 braços, emite CSV
+api/cmd/dense-determinism/main.go       estabilidade do ranking por fator
+scripts/embed-corpus.py                 gera os embeddings (uma vez, versionado)
+scripts/dense-floor-diagnostic.py       análise de separabilidade do piso
+scripts/analyze.py                      Wilcoxon, Bonferroni, Cliff's δ, bootstrap → LaTeX
+scripts/test_analyze.py                 19 testes do script de análise
+docs/article/results/results.csv        saída bruta (uma linha por consulta × braço)
+docs/article/tables/*.tex               tabelas prontas para \input{} no Overleaf
 ```

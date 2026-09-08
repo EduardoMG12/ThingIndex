@@ -114,8 +114,18 @@ export default function CategoryCombobox({ value, onChange, className }: Categor
             <Input
                 value={query}
                 onChange={(event) => {
-                    setQuery(event.target.value);
-                    onChange(event.target.value);
+                    const textoDigitado = event.target.value;
+                    setQuery(textoDigitado);
+                    // O campo mostra o texto cru (aparar enquanto o usuario
+                    // digita apagaria o espaco entre duas palavras no momento
+                    // em que ele o teclou), mas o valor PROPAGADO vai aparado.
+                    //
+                    // Quem consome envia esse valor direto no upload: digitar
+                    // " Contratos " e enviar sem sair do campo criava categoria
+                    // com espacos, duplicando a existente -- a deduplicacao em
+                    // use-categories compara por nome aparado e nao via as
+                    // duas como iguais.
+                    onChange(textoDigitado.trim());
                     setIsOpen(true);
                 }}
                 onFocus={() => setIsOpen(true)}

@@ -189,4 +189,35 @@ describe("useDocumentUpload", () => {
             });
         });
     });
+
+    it("conta na fila so o que ainda pode ser enviado, nao o que ja indexou", async () => {
+        vi.mocked(uploadDocument).mockResolvedValue(createDocument({ status: "INDEXED" }));
+        vi.mocked(fetchDocument).mockResolvedValue(createDocument({ status: "INDEXED" }));
+
+        const { result } = renderHook(() => useDocumentUpload(), {
+            wrapper: createTestWrapper(),
+        });
+
+        act(() => {
+            result.current.addFiles([new File(["<p>case</p>"], "case.html", { type: "text/html" })], {
+                collection: "Case A",
+            });
+        });
+
+        await waitFor(() => {
+            expect(result.current.queuedCount).toBe(1);
+        });
+
+        await act(async () => {
+            await result.current.processQueue();
+        });
+
+        await waitFor(() => {
+            expect(result.current.files[0].status).toBe("indexed");
+        });
+        // O arquivo continua listado (o usuario ve "Indexed"), mas nao conta
+        // como enviavel: e isso que esconde o botao "Upload 1 document".
+        expect(result.current.files).toHaveLength(1);
+        expect(result.current.queuedCount).toBe(0);
+    });
 });
