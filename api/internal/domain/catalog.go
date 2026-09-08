@@ -228,6 +228,9 @@ type CollectionRepository interface {
 	EnsureCollection(ctx context.Context, collection *models.Collection) error
 	UpdateCollection(ctx context.Context, collection *models.Collection) error
 	GetCollectionByID(ctx context.Context, id uint, userID uint) (*models.Collection, error)
+	// UpdateCollectionMetadataKey grava uma unica chave de collections.metadata
+	// preservando as outras; ErrCollectionNotFound se a colecao nao e do usuario.
+	UpdateCollectionMetadataKey(ctx context.Context, userID, collectionID uint, key string, valueJSON []byte) error
 	GetCollectionByNormalizedName(ctx context.Context, normalizedName string, userID uint) (*models.Collection, error)
 	ListCollectionsByUserID(ctx context.Context, userID uint) ([]models.Collection, error)
 	CountDocuments(ctx context.Context, userID uint, collectionID uint) (int64, error)
