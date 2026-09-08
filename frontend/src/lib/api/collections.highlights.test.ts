@@ -5,7 +5,7 @@ vi.mock("@/lib/api/fetch-with-auth-redirect", () => ({
 }));
 
 import { fetchWithAuthRedirect } from "@/lib/api/fetch-with-auth-redirect";
-import { deleteHighlight, fetchHighlights, fetchLegend, putHighlight, putLegend } from "@/lib/api/collections";
+import { deleteHighlight, fetchHighlights, fetchLegend, fetchViewState, putHighlight, putLegend, putViewState } from "@/lib/api/collections";
 
 function resposta(status: number, corpo: unknown): Response {
     return { ok: status >= 200 && status < 300, status, json: async () => corpo } as unknown as Response;
@@ -49,5 +49,19 @@ describe("cliente de marcas e legenda", () => {
     it("erro da API vira Error com a mensagem da API", async () => {
         vi.mocked(fetchWithAuthRedirect).mockResolvedValue(resposta(400, { message: "Cor invalida" }));
         await expect(putHighlight(7, 5, "amarelo")).rejects.toThrow("Cor invalida");
+    });
+
+    it("estado de visualizacao: GET normalizado e PUT com {state} e keepalive", async () => {
+        vi.mocked(fetchWithAuthRedirect).mockResolvedValue(resposta(200, { data: { state: { viewport: { x: 1, y: 2, escala: 0.5 } } } }));
+        expect(await fetchViewState(7)).toEqual({ viewport: { x: 1, y: 2, escala: 0.5 } });
+        expect(vi.mocked(fetchWithAuthRedirect).mock.calls[0][0]).toBe("/api/documents/collections/7/view-state");
+
+        vi.mocked(fetchWithAuthRedirect).mockResolvedValue(resposta(200, { data: { state: {} } }));
+        await putViewState(7, { marcadoresVisiveis: false }, { keepalive: true });
+        const [, init, opcoes] = vi.mocked(fetchWithAuthRedirect).mock.calls[1];
+        expect(init?.method).toBe("PUT");
+        expect(JSON.parse(String(init?.body))).toEqual({ state: { marcadoresVisiveis: false } });
+        expect(init?.keepalive).toBe(true);
+        expect(opcoes).toEqual({ redirectOnUnauthorized: false });
     });
 });

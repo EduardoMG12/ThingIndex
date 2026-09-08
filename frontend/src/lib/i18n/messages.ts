@@ -141,6 +141,8 @@ export const messages: LocaleMessages = {
                 highlightRemove: "Nao foi possivel remover a marca.",
                 legend: "Nao foi possivel carregar a legenda.",
                 legendSave: "Nao foi possivel salvar a legenda.",
+                viewState: "Nao foi possivel carregar o estado de visualizacao.",
+                viewStateSave: "Nao foi possivel salvar o estado de visualizacao.",
             },
             pricing: {
                 sources: "Nao foi possivel carregar as fontes de pricing.",
@@ -1448,6 +1450,8 @@ export const messages: LocaleMessages = {
                 highlightRemove: "Could not remove the highlight.",
                 legend: "Could not load the legend.",
                 legendSave: "Could not save the legend.",
+                viewState: "Could not load the view state.",
+                viewStateSave: "Could not save the view state.",
             },
             pricing: {
                 sources: "Could not load pricing sources.",
@@ -2755,6 +2759,8 @@ export const messages: LocaleMessages = {
                 highlightRemove: "No se pudo eliminar la marca.",
                 legend: "No se pudo cargar la leyenda.",
                 legendSave: "No se pudo guardar la leyenda.",
+                viewState: "No se pudo cargar el estado de visualización.",
+                viewStateSave: "No se pudo guardar el estado de visualización.",
             },
             pricing: {
                 sources: "No se pudieron cargar las fuentes de pricing.",
