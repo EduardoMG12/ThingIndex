@@ -254,7 +254,9 @@ describe("WorkspaceCanvas", () => {
 
         const sidebar = screen.getByLabelText("Detalhes do documento");
         expect(sidebar.className).toContain("w-full");
-        expect(sidebar.className).toContain("lg:w-80");
+        expect(sidebar.className).toContain("lg:w-72");
+        expect(sidebar.className).toContain("overflow-y-auto");
+        expect(sidebar.className).toContain("lg:max-h-[calc(100vh-9rem)]");
     });
 
     it("le o foco de ?doc= ao montar e escreve na URL ao focar outro documento", () => {
