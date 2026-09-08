@@ -863,12 +863,19 @@ func buildOutlineNodePath(parts []string) string {
 	return clampIdentifierWithHash(strings.Join(parts, "/"), maxOutlineNodePathLength)
 }
 
+// clampIdentifierWithHash limita o identificador em CARACTERES, nao em bytes.
+// As colunas sao varchar(N), que o Postgres conta em caracteres, e a slug
+// preserva letras acentuadas. Cortar por byte partia "ã" (0xc3 0xa3) ao meio
+// e o INSERT caia com "invalid byte sequence for encoding UTF8: 0xc3 0x2d" --
+// achado com o Edital 56/2026 do IFPR, cujo titulo de secao longo termina
+// justamente num acento.
 func clampIdentifierWithHash(value string, limit int) string {
-	if len(value) <= limit {
+	runes := []rune(value)
+	if len(runes) <= limit {
 		return value
 	}
 	if limit <= 9 {
-		return value[:limit]
+		return string(runes[:limit])
 	}
 
 	hash := shortStableHash(value)
@@ -877,7 +884,7 @@ func clampIdentifierWithHash(value string, limit int) string {
 		keep = 1
 	}
 
-	return value[:keep] + "-" + hash
+	return string(runes[:keep]) + "-" + hash
 }
 
 func shortStableHash(value string) string {
