@@ -6,8 +6,16 @@ import { Maximize2, Minus, Plus } from "lucide-react";
 import { fetchNodeConnections } from "@/lib/api/collections";
 import type { CollectionContext, OutlineNode } from "@/lib/api/contracts/document-context";
 import type { NodeConnection } from "@/lib/api/contracts/node-connections";
-import type { Rect } from "@/lib/workspace/geometry";
+import { rectVisivel, type Rect } from "@/lib/workspace/geometry";
+import { escalaDeRenderizacao, escolherPaginasVivas, ZOOM_MINIMO_PARA_PAGINAS } from "@/lib/workspace/render-budget";
 import { useViewport } from "@/components/workspace/useViewport";
+import {
+    alturaDoQuadro,
+    larguraDoQuadro,
+    PdfFrame,
+    topoDaPagina,
+} from "@/components/workspace/PdfFrame";
+import type { TamanhoDePagina } from "@/components/workspace/pdf";
 
 /**
  * Canvas navegavel dos documentos de uma colecao: pan, zoom e quadros
@@ -36,8 +44,14 @@ type Posicao = { x: number; y: number };
 
 const LARGURA_CARTAO = 260;
 const ALTURA_CARTAO = 96;
-const ESPACO_ENTRE_CARTOES = 40;
-const CARTOES_POR_LINHA = 3;
+/** Quadros de PDF tem ~612 px de largura; uma coluna por documento. */
+const PASSO_ENTRE_QUADROS = 760;
+/** Folga para comecar a abrir o PDF um pouco antes de ele entrar na tela. */
+const FOLGA_DE_VISIBILIDADE = 240;
+
+function ehPdf(documento: { mimeType?: string; filePath?: string }): boolean {
+    return documento.mimeType === "application/pdf" || /\.pdf$/i.test(documento.filePath ?? "");
+}
 
 function chaveDeArmazenamento(collectionId: number | string): string {
     return `thingindex.workspace.positions.${collectionId}`;
@@ -48,12 +62,7 @@ function chaveDeArmazenamento(collectionId: number | string): string {
  * sempre com o mesmo arranjo, o que torna a tela reproduzivel numa demonstracao.
  */
 function posicaoInicial(indice: number): Posicao {
-    const coluna = indice % CARTOES_POR_LINHA;
-    const linha = Math.floor(indice / CARTOES_POR_LINHA);
-    return {
-        x: coluna * (LARGURA_CARTAO + ESPACO_ENTRE_CARTOES),
-        y: linha * 190,
-    };
+    return { x: indice * PASSO_ENTRE_QUADROS, y: 0 };
 }
 
 function lerPosicoesSalvas(collectionId: number | string): Record<string, Posicao> {
@@ -97,6 +106,7 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
     const {
         containerRef,
         viewport,
+        tamanho,
         arrastandoFundo,
         handlers,
         aproximar,
@@ -104,6 +114,23 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
         enquadrar,
         clienteParaMundo,
     } = useViewport();
+
+    // Medidas das paginas de cada PDF (pontos), reportadas pelo quadro ao abrir.
+    const [medidas, setMedidas] = useState<Record<number, TamanhoDePagina[]>>({});
+    const aoMedir = useCallback((documentId: number, paginas: TamanhoDePagina[]) => {
+        setMedidas((atual) => ({ ...atual, [documentId]: paginas }));
+    }, []);
+
+    // Escala de rasterizacao so muda 150 ms depois de o zoom parar: no meio
+    // do gesto o canvas escala por CSS, sem re-renderizar a cada tick.
+    const [escalaEstavel, setEscalaEstavel] = useState(viewport.escala);
+    useEffect(() => {
+        const timer = window.setTimeout(() => setEscalaEstavel(viewport.escala), 150);
+        return () => window.clearTimeout(timer);
+    }, [viewport.escala]);
+    const dpr = typeof window === "undefined" ? 1 : window.devicePixelRatio;
+    const escalaRender = escalaDeRenderizacao(escalaEstavel, dpr);
+    const modoMiniatura = viewport.escala < ZOOM_MINIMO_PARA_PAGINAS;
 
     // Arrasto de cartao em coordenadas do MUNDO: o offset e medido depois de
     // desfazer o transform, senao o cartao "foge" do cursor em qualquer zoom.
@@ -123,13 +150,66 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
         () =>
             documentos.map((documento, indice) => {
                 const p = posicaoDe(documento.id, indice);
-                return { x: p.x, y: p.y, largura: LARGURA_CARTAO, altura: ALTURA_CARTAO };
+                if (!ehPdf(documento)) {
+                    return { x: p.x, y: p.y, largura: LARGURA_CARTAO, altura: ALTURA_CARTAO };
+                }
+                const paginas = medidas[documento.id];
+                return { x: p.x, y: p.y, largura: larguraDoQuadro(paginas), altura: alturaDoQuadro(paginas) };
             }),
-        [documentos, posicaoDe]
+        [documentos, posicaoDe, medidas]
+    );
+
+    // Orcamento global: quais paginas, somando todos os PDFs, ganham canvas.
+    const paginasVivasPorDocumento = useMemo(() => {
+        const candidatas: { id: string; rect: Rect }[] = [];
+        documentos.forEach((documento, indice) => {
+            const paginas = medidas[documento.id];
+            if (!paginas) {
+                return;
+            }
+            const quadro = quadros[indice];
+            paginas.forEach((pagina, i) => {
+                candidatas.push({
+                    id: `${documento.id}:${i + 1}`,
+                    rect: {
+                        x: quadro.x + (quadro.largura - pagina.largura) / 2,
+                        y: quadro.y + topoDaPagina(paginas, i + 1),
+                        largura: pagina.largura,
+                        altura: pagina.altura,
+                    },
+                });
+            });
+        });
+        const vivas = escolherPaginasVivas(candidatas, viewport, tamanho);
+        const porDocumento = new Map<number, Set<number>>();
+        for (const id of vivas) {
+            const [doc, pagina] = id.split(":");
+            const conjunto = porDocumento.get(Number(doc)) ?? new Set<number>();
+            conjunto.add(Number(pagina));
+            porDocumento.set(Number(doc), conjunto);
+        }
+        return porDocumento;
+    }, [documentos, medidas, quadros, viewport, tamanho]);
+
+    const conjuntoVazio = useMemo(() => new Set<number>(), []);
+
+    const quadroVisivel = useCallback(
+        (rect: Rect) =>
+            rectVisivel(
+                {
+                    x: rect.x - FOLGA_DE_VISIBILIDADE,
+                    y: rect.y - FOLGA_DE_VISIBILIDADE,
+                    largura: rect.largura + 2 * FOLGA_DE_VISIBILIDADE,
+                    altura: rect.altura + 2 * FOLGA_DE_VISIBILIDADE,
+                },
+                viewport,
+                tamanho
+            ),
+        [viewport, tamanho]
     );
 
     const aoIniciarArrasto = useCallback(
-        (event: React.PointerEvent<HTMLButtonElement>, documentId: number, indice: number) => {
+        (event: React.PointerEvent<HTMLElement>, documentId: number, indice: number) => {
             event.stopPropagation();
             const atual = posicaoDe(documentId, indice);
             const mundo = clienteParaMundoRef.current(event.clientX, event.clientY);
@@ -237,7 +317,7 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
         <div className="flex h-full w-full flex-col gap-4 lg:flex-row">
             <div
                 ref={containerRef}
-                className={`relative min-h-[320px] w-full min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-muted/20 touch-none ${
+                className={`relative h-[60vh] w-full min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-muted/20 touch-none lg:h-[calc(100vh-11rem)] ${
                     arrastandoFundo ? "cursor-grabbing" : "cursor-grab"
                 }`}
                 data-testid="workspace-canvas"
@@ -253,6 +333,35 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                     {documentos.map((documento, indice) => {
                         const posicao = posicaoDe(documento.id, indice);
                         const focado = documento.id === documentoFocado;
+                        const trechos = nosDoSumario.filter((no) => no.documentId === documento.id).length;
+
+                        if (ehPdf(documento)) {
+                            return (
+                                <div
+                                    key={documento.id}
+                                    className="absolute"
+                                    style={{ transform: `translate(${posicao.x}px, ${posicao.y}px)` }}
+                                >
+                                    <PdfFrame
+                                        documentId={documento.id}
+                                        titulo={documento.title}
+                                        subtitulo={`${trechos} trechos`}
+                                        visivel={quadroVisivel(quadros[indice])}
+                                        paginasVivas={paginasVivasPorDocumento.get(documento.id) ?? conjuntoVazio}
+                                        escalaDeRenderizacao={escalaRender}
+                                        modoMiniatura={modoMiniatura}
+                                        focado={focado}
+                                        onMedidas={aoMedir}
+                                        onFocar={(id) => {
+                                            setDocumentoFocado(id);
+                                            setConexoes(null);
+                                            setNoSelecionado(null);
+                                        }}
+                                        onPointerDownCabecalho={(event) => aoIniciarArrasto(event, documento.id, indice)}
+                                    />
+                                </div>
+                            );
+                        }
 
                         return (
                             <div
@@ -283,12 +392,7 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                                         {documento.title}
                                     </span>
                                     <span className="mt-1 block text-xs text-muted-foreground">
-                                        {
-                                            nosDoSumario.filter(
-                                                (no) => no.documentId === documento.id
-                                            ).length
-                                        }{" "}
-                                        trechos indexados
+                                        {trechos} trechos indexados
                                     </span>
                                 </button>
                             </div>
