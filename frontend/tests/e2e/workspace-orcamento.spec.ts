@@ -17,6 +17,10 @@ function success(data: unknown) {
 }
 
 async function authenticate(context: BrowserContext, baseURL: string | undefined) {
+    // A Area de trabalho agora embute o chat: sem estes mocks as buscas de
+    // runtime e de conversas recebem 401 da API real e a pagina cai no login.
+    await context.route("**/api/user/providers/runtime", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: 200, type: "success", message: "ok", data: {} }) }));
+    await context.route("**/api/chat/conversations**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: 200, type: "success", message: "ok", data: [] }) }));
     await context.route("**/api/user/me", async (route) => {
         await route.fulfill({
             status: 200,

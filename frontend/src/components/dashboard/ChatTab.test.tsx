@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import ChatTab from "@/components/dashboard/ChatTab";
@@ -17,7 +17,11 @@ vi.mock("@/hooks/use-chat-workspace", () => ({
         return {
             activeCollection: { id: 3, name: "SI" },
             activeConversation: null,
+            activeConversationId: null,
             activeSubQueries: [],
+            conversations: [],
+            selectConversation: vi.fn(),
+            startNewConversation: vi.fn(),
             canSubmit: false,
             canType: true,
             cancelStreaming: vi.fn(),

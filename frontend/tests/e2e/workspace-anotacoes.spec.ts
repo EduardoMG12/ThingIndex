@@ -45,6 +45,10 @@ type Gravado = { metodo: string; url: string; corpo: unknown };
 
 async function mockar(context: BrowserContext, opcoes: { marcas?: unknown[]; legenda?: Record<string, string>; gravados?: Gravado[] } = {}) {
     const gravados = opcoes.gravados ?? [];
+    // A Area de trabalho agora embute o chat: sem estes mocks as buscas de
+    // runtime e de conversas recebem 401 da API real e a pagina cai no login.
+    await context.route("**/api/user/providers/runtime", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: 200, type: "success", message: "ok", data: {} }) }));
+    await context.route("**/api/chat/conversations**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: 200, type: "success", message: "ok", data: [] }) }));
     await context.route("**/api/user/me", (route) =>
         route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(success({ id: 1, name: "Playwright", email: "p@x", avatarUrl: null, updatedAt: "2026-01-01T00:00:00Z" })) })
     );
@@ -103,6 +107,8 @@ test("marcar com cor salva com PUT, 'sem cor' apaga com DELETE, e a marca carreg
     const gravados = await mockar(context);
     await context.addCookies([{ name: "token", value: "playwright-token", url: baseURL ?? "http://127.0.0.1:3000" }]);
     await page.goto("/pt-BR/workspace");
+    // O painel de chat aberto tira o segundo quadro da tela; estes testes contam grifos nos dois.
+    await page.getByTestId("alternar-chat").click();
     const grifos = page.getByTestId("grifo");
     await expect(grifos).toHaveCount(4);
 
@@ -126,6 +132,8 @@ test("marca vinda da API ja abre colorida e a legenda editada entra no aria-labe
     const gravados = await mockar(context, { marcas: [{ paragraph_node_id: 304, document_id: 3, color: "roxo" }], legenda: { roxo: "risco" } });
     await context.addCookies([{ name: "token", value: "playwright-token", url: baseURL ?? "http://127.0.0.1:3000" }]);
     await page.goto("/pt-BR/workspace");
+    // O painel de chat aberto tira o segundo quadro da tela; estes testes contam grifos nos dois.
+    await page.getByTestId("alternar-chat").click();
     const grifo = page.getByTestId("grifo").nth(2);
     await expect(grifo).toHaveAttribute("data-cor", "roxo");
     await expect(grifo).toHaveAttribute("aria-label", /grifo risco$/);
@@ -145,6 +153,8 @@ test("'uma pagina' mostra so a pagina atual, e 'Ir para p. 7' troca a pagina do 
     await context.addCookies([{ name: "token", value: "playwright-token", url: baseURL ?? "http://127.0.0.1:3000" }]);
     await page.setViewportSize({ width: 1600, height: 1000 });
     await page.goto("/pt-BR/workspace");
+    // O painel de chat aberto tira o segundo quadro da tela; estes testes contam grifos nos dois.
+    await page.getByTestId("alternar-chat").click();
     await page.getByRole("button", { name: "Ajustar à tela" }).click();
     const edital = page.getByTestId("pdf-frame-4");
     await expect(edital).toHaveAttribute("data-paginas", "30", { timeout: 30_000 });

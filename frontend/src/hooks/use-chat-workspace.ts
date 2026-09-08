@@ -761,11 +761,14 @@ export function useChatWorkspace(opcoes: { collectionId?: number | null } = {}) 
             return;
         }
 
-        const params = new URLSearchParams();
+        // Preserva o que nao e nosso (a Area de trabalho usa ?doc=).
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete("collection");
+        params.delete("conversation");
+        params.delete("new");
         if (selectedCollectionId) {
             params.set("collection", String(selectedCollectionId));
         }
-
         if (activeConversationId) {
             params.set("conversation", String(activeConversationId));
         }
