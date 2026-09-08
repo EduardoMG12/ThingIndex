@@ -90,6 +90,9 @@ async function mockarAnotacoesVazias(context: BrowserContext) {
     await context.route("**/api/documents/collections/*/legend", async (route) => {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(success({ labels: {}, colors: [] })) });
     });
+    await context.route("**/api/documents/collections/*/view-state", async (route) => {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(success({ state: {} })) });
+    });
 }
 
 async function mockarColecao(context: BrowserContext) {

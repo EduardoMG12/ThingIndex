@@ -73,6 +73,9 @@ async function mockar(context: BrowserContext, opcoes: { marcas?: unknown[]; leg
         }
         return registrar(route, { labels: (route.request().postDataJSON() as { labels: unknown }).labels, colors: [] });
     });
+    await context.route("**/api/documents/collections/7/view-state", (route) =>
+        route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(success({ state: {} })) })
+    );
     await context.route("**/api/documents/collections/7/connections**", (route) =>
         route.fulfill({
             status: 200,

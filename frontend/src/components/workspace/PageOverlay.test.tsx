@@ -78,6 +78,28 @@ describe("PageOverlay", () => {
     });
 });
 
+describe("PageOverlay: marcadores escondidos", () => {
+    it("com mostrarMarcadores=false nao desenha marcador nenhum, e os grifos continuam", () => {
+        render(
+            <PageOverlay
+                numero={1}
+                tamanho={{ largura: 612, altura: 792 }}
+                paragrafos={[{ no: paragrafo(1), secao: SECAO }]}
+                secoes={[SECAO]}
+                ancoraDaSecao={() => paragrafo(1)}
+                origem={null}
+                selecionadoId={null}
+                secundarios={new Set()}
+                onSelecionar={() => undefined}
+                mostrarMarcadores={false}
+            />,
+            opcoes
+        );
+        expect(screen.queryAllByTestId("marcador-secao")).toHaveLength(0);
+        expect(screen.getAllByTestId("grifo")).toHaveLength(1);
+    });
+});
+
 describe("PageOverlay: cores", () => {
     it("grifo marcado usa a classe da cor e o aria-label ganha o rotulo; secundario segue a cor de origem", () => {
         render(

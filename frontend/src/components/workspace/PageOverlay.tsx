@@ -47,6 +47,8 @@ export type PageOverlayProps = {
     corSecundaria?: HighlightColor | null;
     onMarcar?: (paragrafo: ParagraphNode, cor: HighlightColor | null) => void;
     onVerConexoes?: (paragrafo: ParagraphNode, secao: OutlineNode) => void;
+    /** Marcadores de secao na margem podem ser escondidos pelo usuario. */
+    mostrarMarcadores?: boolean;
 };
 
 /** Marcadores so ate o nivel 2: um edital tem 300+ nos de sumario, e cada "1.1" virando etiqueta e ruido, nao mapa. */
@@ -112,6 +114,7 @@ export function PageOverlay({
     corSecundaria = null,
     onMarcar,
     onVerConexoes,
+    mostrarMarcadores = true,
 }: PageOverlayProps) {
     const { t } = useI18n();
     const nomeDaCor = (cor: HighlightColor) => t(`workspace.highlight.colors.${cor}`);
@@ -128,7 +131,7 @@ export function PageOverlay({
             </span>
 
             {distribuirMarcadores(
-                secoes
+                (mostrarMarcadores ? secoes : [])
                     .filter((secao) => secao.level <= NIVEL_MAXIMO_DO_MARCADOR)
                     .map((secao) => {
                         const ancora = ancoraDaSecao(secao);

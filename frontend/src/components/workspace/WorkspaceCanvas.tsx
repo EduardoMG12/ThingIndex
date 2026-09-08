@@ -6,10 +6,13 @@ import { Maximize2, Minus, Plus } from "lucide-react";
 
 import { useI18n } from "@/lib/i18n/provider";
 
-import { deleteHighlight, fetchHighlights, fetchLegend, fetchNodeConnections, putHighlight, putLegend } from "@/lib/api/collections";
+import { deleteHighlight, fetchNodeConnections, putHighlight, putLegend } from "@/lib/api/collections";
+import type { WorkspaceViewState } from "@/lib/api/contracts/view-state";
+import { useSalvarEstado } from "@/components/workspace/useSalvarEstado";
+import { Tag } from "lucide-react";
 import { LegendPanel } from "@/components/workspace/LegendPanel";
 import { classesDaCor, CORES, rotuloDaCor, type HighlightColor as CorDeMarca } from "@/lib/workspace/highlights";
-import type { HighlightColor, Legend } from "@/lib/api/contracts/highlights";
+import type { Highlight, HighlightColor, Legend } from "@/lib/api/contracts/highlights";
 import { readBox, type CollectionContext, type OutlineNode, type ParagraphNode } from "@/lib/api/contracts/document-context";
 import type { NodeConnection } from "@/lib/api/contracts/node-connections";
 import { rectVisivel, type Rect } from "@/lib/workspace/geometry";
@@ -55,6 +58,10 @@ import { APRESENTACAO_PADRAO, limitarPagina, precisaDoBotaoIrPara, regraIrAte, t
 
 type WorkspaceCanvasProps = {
     context: CollectionContext;
+    /** Carregados pela pagina junto com o contexto, para o canvas abrir ja no estado certo. */
+    marcasIniciais?: Highlight[];
+    legendaInicial?: Legend;
+    estadoInicial?: WorkspaceViewState;
 };
 
 type Posicao = { x: number; y: number };
@@ -82,6 +89,29 @@ function chaveDeArmazenamento(collectionId: number | string): string {
 
 function chaveDeApresentacao(collectionId: number | string): string {
     return `thingindex.workspace.apresentacao.${collectionId}`;
+}
+
+/**
+ * Migracao unica do que ficava no localStorage (posicoes e apresentacao)
+ * para o estado no servidor: le, apaga as chaves e devolve o que achou.
+ * Quando o servidor ja tem estado, o local e so apagado.
+ */
+function migrarDoLocalStorage(collectionId: number | string, servidorTemEstado: boolean): Pick<WorkspaceViewState, "quadros" | "apresentacao"> | null {
+    if (typeof window === "undefined") {
+        return null;
+    }
+    const quadros = lerPosicoesSalvas(collectionId);
+    const apresentacao = lerApresentacoesSalvas(collectionId);
+    try {
+        window.localStorage.removeItem(chaveDeArmazenamento(collectionId));
+        window.localStorage.removeItem(chaveDeApresentacao(collectionId));
+    } catch {
+        // sem localStorage nao ha o que migrar
+    }
+    if (servidorTemEstado || (Object.keys(quadros).length === 0 && Object.keys(apresentacao).length === 0)) {
+        return null;
+    }
+    return { quadros, apresentacao };
 }
 
 function lerApresentacoesSalvas(collectionId: number | string): Record<string, Apresentacao> {
@@ -135,7 +165,7 @@ function lerPosicoesSalvas(collectionId: number | string): Record<string, Posica
     }
 }
 
-export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
+export function WorkspaceCanvas({ context, marcasIniciais = [], legendaInicial = {}, estadoInicial = {} }: WorkspaceCanvasProps) {
     const { t } = useI18n();
     const router = useRouter();
     const pathname = usePathname();
@@ -237,35 +267,12 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
 
     // Marcas coloridas e legenda: carregadas junto com a colecao, salvas de
     // forma otimista (a cor aparece na hora; se a API falhar, volta e avisa).
-    const [marcas, setMarcas] = useState<Map<ParagraphNode["id"], HighlightColor>>(() => new Map());
-    const [legenda, setLegenda] = useState<Legend>({});
+    const [marcas, setMarcas] = useState<Map<ParagraphNode["id"], HighlightColor>>(
+        () => new Map(marcasIniciais.map((m) => [m.paragraphNodeId as ParagraphNode["id"], m.color]))
+    );
+    const [legenda, setLegenda] = useState<Legend>(legendaInicial);
     const [erroDeMarca, setErroDeMarca] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (!collectionId) {
-            return;
-        }
-        const controller = new AbortController();
-        fetchHighlights(collectionId, controller.signal)
-            .then((lista) => {
-                if (!controller.signal.aborted) {
-                    setMarcas(new Map(lista.map((m) => [m.paragraphNodeId as ParagraphNode["id"], m.color])));
-                }
-            })
-            .catch((falha: unknown) => {
-                if (!controller.signal.aborted) {
-                    setErroDeMarca(falha instanceof Error ? falha.message : t("workspace.highlight.loadError"));
-                }
-            });
-        fetchLegend(collectionId, controller.signal)
-            .then((valor) => {
-                if (!controller.signal.aborted) {
-                    setLegenda(valor);
-                }
-            })
-            .catch(() => undefined);
-        return () => controller.abort();
-    }, [collectionId, t]);
 
     const marcar = useCallback(
         (no: ParagraphNode, cor: HighlightColor | null) => {
@@ -307,33 +314,31 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
 
     // Lazy init + `key={collectionId}` na pagina: trocar de colecao remonta o
     // canvas, entao nao precisa de efeito para recarregar as posicoes.
-    const [posicoes, setPosicoes] = useState<Record<string, Posicao>>(() => lerPosicoesSalvas(collectionId));
-    // Modo de apresentacao por documento: preferencia de tela, fica so no
-    // navegador (nem servidor, nem URL).
-    const [apresentacoes, setApresentacoes] = useState<Record<string, Apresentacao>>(() => lerApresentacoesSalvas(collectionId));
+    // Estado de visualizacao: vem do servidor (props); o que estava no
+    // localStorage e migrado uma vez e apagado.
+    const servidorTemEstado = Boolean(estadoInicial.viewport || estadoInicial.quadros || estadoInicial.apresentacao);
+    const [migrado] = useState(() => migrarDoLocalStorage(collectionId, servidorTemEstado));
+    const [posicoes, setPosicoes] = useState<Record<string, Posicao>>(() => estadoInicial.quadros ?? migrado?.quadros ?? {});
+    const [apresentacoes, setApresentacoes] = useState<Record<string, Apresentacao>>(
+        () => estadoInicial.apresentacao ?? migrado?.apresentacao ?? {}
+    );
+    const [marcadoresVisiveis, setMarcadoresVisiveis] = useState<boolean>(estadoInicial.marcadoresVisiveis ?? true);
     const apresentacaoDe = useCallback(
         (documentId: number): Apresentacao => apresentacoes[String(documentId)] ?? APRESENTACAO_PADRAO,
         [apresentacoes]
     );
     const mudarApresentacao = useCallback(
         (documentId: number, proxima: Apresentacao) => {
-            setApresentacoes((atual) => {
-                const seguinte = { ...atual, [String(documentId)]: proxima };
-                try {
-                    window.localStorage.setItem(chaveDeApresentacao(collectionId), JSON.stringify(seguinte));
-                } catch {
-                    // Sem localStorage a preferencia vale so na sessao.
-                }
-                return seguinte;
-            });
+            setApresentacoes((atual) => ({ ...atual, [String(documentId)]: proxima }));
         },
-        [collectionId]
+        []
     );
     // Foco compartilhavel pela URL (?doc=): lido uma vez ao montar (o canvas
     // remonta por colecao), escrito com replace para nao empilhar historico.
     const [documentoFocadoBruto, setDocumentoFocado] = useState<number | null>(() => {
         const doc = Number(searchParams.get("doc"));
-        return Number.isFinite(doc) && doc > 0 ? doc : null;
+        // ?doc= vence o estado salvo; sem ele, volta ao ultimo documento focado.
+        return Number.isFinite(doc) && doc > 0 ? doc : (estadoInicial.documentoFocado ?? null);
     });
     // Um ?doc= de outra colecao nao aponta para nada aqui: vale como "nenhum".
     const documentoFocado = documentoFocadoBruto !== null && documentos.some((d) => d.id === documentoFocadoBruto) ? documentoFocadoBruto : null;
@@ -368,7 +373,7 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
         enquadrar,
         centralizarEm,
         clienteParaMundo,
-    } = useViewport();
+    } = useViewport(estadoInicial.viewport);
 
     // Medidas das paginas de cada PDF (pontos), reportadas pelo quadro ao abrir.
     const [medidas, setMedidas] = useState<Record<number, TamanhoDePagina[]>>({});
@@ -584,18 +589,6 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                 return;
             }
             arrastando.current = null;
-            setPosicoes((atual) => {
-                try {
-                    window.localStorage.setItem(
-                        chaveDeArmazenamento(collectionId),
-                        JSON.stringify(atual)
-                    );
-                } catch {
-                    // Quota estourada ou modo privativo: o arrasto continua
-                    // valendo na sessao, so nao sobrevive ao recarregamento.
-                }
-                return atual;
-            });
         }
 
         window.addEventListener("pointermove", aoMover);
@@ -604,7 +597,7 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
             window.removeEventListener("pointermove", aoMover);
             window.removeEventListener("pointerup", aoSoltar);
         };
-    }, [collectionId]);
+    }, []);
 
     /**
      * Focar um documento e tambem traze-lo ao centro da tela, no zoom atual:
@@ -686,6 +679,22 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
     );
 
     const documentoAtual = documentos.find((documento) => documento.id === documentoFocado);
+
+    const estadoAtual = useMemo<WorkspaceViewState>(
+        () => ({
+            viewport,
+            quadros: posicoes,
+            apresentacao: apresentacoes,
+            marcadoresVisiveis,
+            documentoFocado: documentoFocado ?? undefined,
+        }),
+        [viewport, posicoes, apresentacoes, marcadoresVisiveis, documentoFocado]
+    );
+    const aoFalharSalvar = useCallback(
+        (erro: unknown) => setErroDeMarca(erro instanceof Error ? erro.message : t("workspace.state.saveError")),
+        [t]
+    );
+    useSalvarEstado(collectionId, estadoAtual, { ativo: collectionId > 0, salvarLogo: migrado !== null, aoFalhar: aoFalharSalvar });
 
     const salvarLegenda = useCallback(
         (proxima: Legend) => {
@@ -828,6 +837,7 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                                                     corSecundaria={paragrafoSelecionado ? (marcas.get(paragrafoSelecionado.no.id) ?? null) : null}
                                                     onMarcar={marcar}
                                                     onVerConexoes={(_, secao) => pedirConexoes(secao.nodeId)}
+                                                    mostrarMarcadores={marcadoresVisiveis}
                                                 />
                                             );
                                         }}
@@ -908,6 +918,17 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                         className="rounded p-1.5 hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                     >
                         <Plus className="h-4 w-4" aria-hidden />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setMarcadoresVisiveis((v) => !v)}
+                        aria-label={t("workspace.canvas.markers")}
+                        aria-pressed={marcadoresVisiveis}
+                        title={t("workspace.canvas.markers")}
+                        data-testid="alternar-marcadores"
+                        className={`rounded p-1.5 hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${marcadoresVisiveis ? "" : "opacity-50"}`}
+                    >
+                        <Tag className="h-4 w-4" aria-hidden />
                     </button>
                     <button
                         type="button"

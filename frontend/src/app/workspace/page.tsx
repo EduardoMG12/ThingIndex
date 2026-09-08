@@ -6,7 +6,9 @@ import { Loader2 } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import { useI18n } from "@/lib/i18n/provider";
 import { WorkspaceCanvas } from "@/components/workspace/WorkspaceCanvas";
-import { fetchCollectionContext, fetchCollections } from "@/lib/api/collections";
+import { fetchCollectionContext, fetchCollections, fetchHighlights, fetchLegend, fetchViewState } from "@/lib/api/collections";
+import type { Highlight, Legend } from "@/lib/api/contracts/highlights";
+import type { WorkspaceViewState } from "@/lib/api/contracts/view-state";
 import type {
     CollectionContext,
     CollectionSummary,
@@ -25,6 +27,9 @@ export default function WorkspacePage() {
     const [collections, setCollections] = useState<CollectionSummary[]>([]);
     const [selecionada, setSelecionada] = useState<number | null>(null);
     const [context, setContext] = useState<CollectionContext | null>(null);
+    // Marcas, legenda e estado chegam junto com o contexto para o canvas abrir
+    // ja no lugar certo, sem pulo; falha neles nao impede a tela.
+    const [anexos, setAnexos] = useState<{ marcas: Highlight[]; legenda: Legend; estado: WorkspaceViewState }>({ marcas: [], legenda: {}, estado: {} });
     const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState<string | null>(null);
 
@@ -61,9 +66,15 @@ export default function WorkspacePage() {
         setCarregando(true);
         setErro(null);
 
-        fetchCollectionContext(collectionId, signal)
-            .then((resultado) => {
+        Promise.all([
+            fetchCollectionContext(collectionId, signal),
+            fetchHighlights(collectionId, signal).catch(() => [] as Highlight[]),
+            fetchLegend(collectionId, signal).catch(() => ({}) as Legend),
+            fetchViewState(collectionId, signal).catch(() => ({}) as WorkspaceViewState),
+        ])
+            .then(([resultado, marcas, legenda, estado]) => {
                 if (!signal.aborted) {
+                    setAnexos({ marcas, legenda, estado });
                     setContext(resultado);
                 }
             })
@@ -129,7 +140,13 @@ export default function WorkspacePage() {
                     <p className="text-sm text-muted-foreground">{t("workspace.noCollections")}</p>
                 ) : context ? (
                     <div className="flex-1">
-                        <WorkspaceCanvas key={String(context.collection.id)} context={context} />
+                        <WorkspaceCanvas
+                            key={String(context.collection.id)}
+                            context={context}
+                            marcasIniciais={anexos.marcas}
+                            legendaInicial={anexos.legenda}
+                            estadoInicial={anexos.estado}
+                        />
                     </div>
                 ) : null}
             </div>
