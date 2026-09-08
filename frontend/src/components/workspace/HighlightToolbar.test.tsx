@@ -48,4 +48,29 @@ describe("HighlightToolbar", () => {
         fireEvent.click(screen.getByRole("button", { name: /Ver conexões/ }));
         expect(onVer).toHaveBeenCalled();
     });
+
+    it("com navegador mostra 'i de N', respeita os limites e aceita as setas", () => {
+        const onIr = vi.fn();
+        const { rerender } = render(
+            <HighlightToolbar rect={rect} corAtual="verde" legenda={{}} onMarcar={() => undefined} onVerConexoes={() => undefined} podeVerConexoes navegador={{ total: 3, indice: 0, carregando: false, onIr }} />,
+            opcoes
+        );
+        expect(screen.getByTestId("conexao-i-de-n")).toHaveTextContent("1 de 3");
+        expect(screen.getByRole("button", { name: "Conexão anterior" })).toBeDisabled();
+        fireEvent.click(screen.getByRole("button", { name: "Próxima conexão" }));
+        expect(onIr).toHaveBeenCalledWith(1);
+        fireEvent.keyDown(screen.getByTestId("barra-de-grifo"), { key: "ArrowRight" });
+        expect(onIr).toHaveBeenLastCalledWith(1);
+        // "Ver conexoes" some quando o navegador esta presente.
+        expect(screen.queryByRole("button", { name: /Ver conexões/ })).toBeNull();
+
+        rerender(
+            <HighlightToolbar rect={rect} corAtual="verde" legenda={{}} onMarcar={() => undefined} onVerConexoes={() => undefined} podeVerConexoes navegador={{ total: 3, indice: 2, carregando: false, onIr }} />
+        );
+        expect(screen.getByRole("button", { name: "Próxima conexão" })).toBeDisabled();
+        rerender(
+            <HighlightToolbar rect={rect} corAtual="verde" legenda={{}} onMarcar={() => undefined} onVerConexoes={() => undefined} podeVerConexoes navegador={{ total: 0, indice: -1, carregando: false, onIr }} />
+        );
+        expect(screen.getByTestId("navegador-de-conexoes")).toHaveTextContent("nenhuma conexão acima do limiar");
+    });
 });

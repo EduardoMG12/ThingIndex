@@ -80,6 +80,15 @@ export const messages: LocaleMessages = {
             state: {
                 saveError: "Não foi possível salvar o estado de visualização.",
             },
+            navigator: {
+                of: "{i} de {total}",
+                prev: "Conexão anterior",
+                next: "Próxima conexão",
+                loading: "buscando…",
+                none: "nenhuma conexão acima do limiar",
+                current: "Conexão atual",
+                goTo: "Ir até",
+            },
             legend: {
                 title: "Legenda",
                 labelFor: "Rótulo da cor {color}",
@@ -1393,6 +1402,15 @@ export const messages: LocaleMessages = {
             state: {
                 saveError: "Could not save the view state.",
             },
+            navigator: {
+                of: "{i} of {total}",
+                prev: "Previous connection",
+                next: "Next connection",
+                loading: "searching…",
+                none: "no connection above the threshold",
+                current: "Current connection",
+                goTo: "Go there",
+            },
             legend: {
                 title: "Legend",
                 labelFor: "Label for {color}",
@@ -2705,6 +2723,15 @@ export const messages: LocaleMessages = {
             },
             state: {
                 saveError: "No se pudo guardar el estado de visualización.",
+            },
+            navigator: {
+                of: "{i} de {total}",
+                prev: "Conexión anterior",
+                next: "Siguiente conexión",
+                loading: "buscando…",
+                none: "ninguna conexión por encima del umbral",
+                current: "Conexión actual",
+                goTo: "Ir allí",
             },
             legend: {
                 title: "Leyenda",

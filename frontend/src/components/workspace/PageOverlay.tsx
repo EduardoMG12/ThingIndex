@@ -7,7 +7,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { retryDocumentIndexing } from "@/lib/api/documents";
 import { boxParaPixels } from "@/lib/workspace/geometry";
 import type { TamanhoDePagina } from "@/components/workspace/pdf";
-import { HighlightToolbar } from "@/components/workspace/HighlightToolbar";
+import { HighlightToolbar, type NavegadorDeConexoes } from "@/components/workspace/HighlightToolbar";
 import { classesDaCor, rotuloDaCor, type HighlightColor, type Legend } from "@/lib/workspace/highlights";
 
 /**
@@ -49,6 +49,7 @@ export type PageOverlayProps = {
     onVerConexoes?: (paragrafo: ParagraphNode, secao: OutlineNode) => void;
     /** Marcadores de secao na margem podem ser escondidos pelo usuario. */
     mostrarMarcadores?: boolean;
+    navegador?: NavegadorDeConexoes | null;
 };
 
 /** Marcadores so ate o nivel 2: um edital tem 300+ nos de sumario, e cada "1.1" virando etiqueta e ruido, nao mapa. */
@@ -115,6 +116,7 @@ export function PageOverlay({
     onMarcar,
     onVerConexoes,
     mostrarMarcadores = true,
+    navegador = null,
 }: PageOverlayProps) {
     const { t } = useI18n();
     const nomeDaCor = (cor: HighlightColor) => t(`workspace.highlight.colors.${cor}`);
@@ -204,6 +206,7 @@ export function PageOverlay({
                     onMarcar={(cor) => onMarcar(selecionado.no, cor)}
                     onVerConexoes={() => selecionado.secao && onVerConexoes?.(selecionado.no, selecionado.secao)}
                     podeVerConexoes={Boolean(selecionado.secao && onVerConexoes)}
+                    navegador={navegador}
                 />
             ) : null}
         </div>
