@@ -409,4 +409,60 @@ describe("WorkspaceCanvas", () => {
         expect(enviado?.quadros).toEqual({ "1": { x: 300, y: 40 } });
         expect(enviado?.apresentacao).toEqual({ "1": { modo: "pagina", paginaAtual: 2 } });
     });
+
+    it("clicar num grifo colorido busca as conexoes na hora e o navegador anda ate o destino", async () => {
+        const original = globalThis.ResizeObserver;
+        globalThis.ResizeObserver = class {
+            private cb: ResizeObserverCallback;
+            constructor(cb: ResizeObserverCallback) {
+                this.cb = cb;
+            }
+            observe() {
+                this.cb([{ contentRect: { width: 1400, height: 900 } } as ResizeObserverEntry], this as unknown as ResizeObserver);
+            }
+            unobserve() {}
+            disconnect() {}
+        } as unknown as typeof ResizeObserver;
+        vi.mocked(fetchNodeConnections).mockClear();
+        vi.mocked(fetchNodeConnections).mockResolvedValue({
+            nodeId: "termo#a",
+            minScore: 2,
+            connections: [
+                { documentId: 4, nodeId: "outro#b", title: "2 X", summary: "", startPage: 2, score: 3, matchedTerms: ["x"] },
+                { documentId: 4, nodeId: "outro#c", title: "3 PRAZOS", summary: "", startPage: 3, score: 2, matchedTerms: ["prazo"] },
+            ],
+        });
+        const contexto = {
+            ...contextoComPdf,
+            documents: [...contextoComPdf.documents, { id: 4, title: "Outro", status: "INDEXED", mimeType: "application/pdf", filePath: "docs/outro.pdf" }],
+            outlineNodes: [
+                ...contextoComPdf.outlineNodes,
+                { documentId: 4, nodeId: "outro#b", title: "2 X", level: 1, slug: "b", startPage: 2 },
+                { documentId: 4, nodeId: "outro#c", title: "3 PRAZOS", level: 1, slug: "c", startPage: 3 },
+            ],
+        } as unknown as CollectionContext;
+        try {
+            render(
+                <WorkspaceCanvas
+                    context={contexto}
+                    marcasIniciais={[{ paragraphNodeId: 301, documentId: 3, color: "verde" }]}
+                    estadoInicial={{ apresentacao: { "4": { modo: "pagina", paginaAtual: 1 } } }}
+                />,
+                opcoes
+            );
+            const grifo = await screen.findByTestId("grifo", {}, { timeout: 3000 });
+            expect(grifo).toHaveAttribute("data-cor", "verde");
+            fireEvent.click(grifo);
+            // Sem clicar em "Ver conexoes": o grifo colorido ja dispara a busca.
+            await waitFor(() => expect(fetchNodeConnections).toHaveBeenCalledWith(7, "termo#a"));
+            const iDeN = await screen.findByTestId("conexao-i-de-n");
+            expect(iDeN).toHaveTextContent("1 de 2");
+            fireEvent.click(screen.getByRole("button", { name: "Próxima conexão" }));
+            expect(screen.getByTestId("conexao-i-de-n")).toHaveTextContent("2 de 2");
+            await waitFor(() => expect(within(screen.getByTestId("pdf-frame-4")).getByTestId("pagina-de")).toHaveTextContent("p. 3 de 3"));
+            expect(screen.getByTestId("conexao-atual")).toHaveTextContent("3 PRAZOS");
+        } finally {
+            globalThis.ResizeObserver = original;
+        }
+    });
 });

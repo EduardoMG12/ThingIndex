@@ -626,30 +626,6 @@ export function WorkspaceCanvas({ context, marcasIniciais = [], legendaInicial =
         setParagrafoSelecionado(null);
     }, []);
 
-    const selecionarParagrafo = useCallback((no: ParagraphNode, secao: OutlineNode | null) => {
-        setParagrafoSelecionado({ no, secao });
-        setDocumentoFocado(no.documentId);
-        setNoSelecionado(secao?.nodeId ?? null);
-        setConexoes(null);
-    }, []);
-
-    useEffect(() => {
-        function aoTeclar(event: KeyboardEvent) {
-            if (event.key === "Escape") {
-                limparSelecao();
-            }
-        }
-        window.addEventListener("keydown", aoTeclar);
-        return () => window.removeEventListener("keydown", aoTeclar);
-    }, [limparSelecao]);
-
-    const nosDoDocumentoFocado = useMemo<OutlineNode[]>(() => {
-        if (documentoFocado === null) {
-            return [];
-        }
-        return nosDoSumario.filter((no) => no.documentId === documentoFocado);
-    }, [documentoFocado, nosDoSumario]);
-
     const pedirConexoes = useCallback(
         async (nodeId: string) => {
             setNoSelecionado(nodeId);
@@ -668,6 +644,42 @@ export function WorkspaceCanvas({ context, marcasIniciais = [], legendaInicial =
         },
         [collectionId, t]
     );
+
+    // Indice da conexao atual no navegador (-1 = nenhuma escolhida ainda).
+    const [indiceConexao, setIndiceConexao] = useState(-1);
+
+    const selecionarParagrafo = useCallback(
+        (no: ParagraphNode, secao: OutlineNode | null) => {
+            setParagrafoSelecionado({ no, secao });
+            setDocumentoFocado(no.documentId);
+            setNoSelecionado(secao?.nodeId ?? null);
+            setConexoes(null);
+            setIndiceConexao(-1);
+            // Grifo colorido ja e um "quero ver com quem isso conversa": busca na hora.
+            if (secao && marcas.has(no.id)) {
+                void pedirConexoes(secao.nodeId);
+            }
+        },
+        [marcas, pedirConexoes]
+    );
+
+    useEffect(() => {
+        function aoTeclar(event: KeyboardEvent) {
+            if (event.key === "Escape") {
+                limparSelecao();
+            }
+        }
+        window.addEventListener("keydown", aoTeclar);
+        return () => window.removeEventListener("keydown", aoTeclar);
+    }, [limparSelecao]);
+
+    const nosDoDocumentoFocado = useMemo<OutlineNode[]>(() => {
+        if (documentoFocado === null) {
+            return [];
+        }
+        return nosDoSumario.filter((no) => no.documentId === documentoFocado);
+    }, [documentoFocado, nosDoSumario]);
+
 
     /** Centraliza a pagina em que a secao comeca (ou o quadro do documento). */
     const irParaSecao = useCallback(
@@ -762,6 +774,38 @@ export function WorkspaceCanvas({ context, marcasIniciais = [], legendaInicial =
         });
     }, [conexoes, noSelecionado, paragrafoSelecionado, documentoFocado, indiceDoContexto, indiceDoDocumento, quadros, ancoraDaSecao, rectDoParagrafo]);
 
+    const irParaIndice = useCallback(
+        (indice: number) => {
+            if (!conexoes || indice < 0 || indice >= conexoes.length) {
+                return;
+            }
+            setIndiceConexao(indice);
+            const conexao = conexoes[indice];
+            setLinhaRealcada(idDaLinha(conexao));
+            const no = indiceDoContexto.porNodeId.get(conexao.nodeId);
+            const a = no ? ancoraDaSecao(no) : null;
+            irAte(conexao.documentId, a?.pageNumber ?? no?.startPage ?? conexao.startPage ?? null, a ? rectDoParagrafo(a) : null);
+        },
+        [conexoes, indiceDoContexto, ancoraDaSecao, rectDoParagrafo, irAte]
+    );
+
+    const navegador = useMemo(
+        () =>
+            conexoes !== null || carregandoConexoes
+                ? { total: conexoes?.length ?? 0, indice: indiceConexao, carregando: carregandoConexoes, onIr: irParaIndice }
+                : null,
+        [conexoes, carregandoConexoes, indiceConexao, irParaIndice]
+    );
+    const conexaoAtual = conexoes && indiceConexao >= 0 ? conexoes[indiceConexao] : null;
+    const textoDoDestino = useMemo(() => {
+        if (!conexaoAtual) {
+            return null;
+        }
+        const no = indiceDoContexto.porNodeId.get(conexaoAtual.nodeId);
+        const a = no ? ancoraDaSecao(no) : null;
+        return a ? a.content.slice(0, 300) : null;
+    }, [conexaoAtual, indiceDoContexto, ancoraDaSecao]);
+
     const irParaConexao = useCallback(
         (conexao: { documentId: number; nodeId: string; startPage?: number | null }) => {
             const no = indiceDoContexto.porNodeId.get(conexao.nodeId);
@@ -838,6 +882,7 @@ export function WorkspaceCanvas({ context, marcasIniciais = [], legendaInicial =
                                                     onMarcar={marcar}
                                                     onVerConexoes={(_, secao) => pedirConexoes(secao.nodeId)}
                                                     mostrarMarcadores={marcadoresVisiveis}
+                                                    navegador={navegador}
                                                 />
                                             );
                                         }}
@@ -1081,6 +1126,26 @@ export function WorkspaceCanvas({ context, marcasIniciais = [], legendaInicial =
                             <p className="text-xs text-destructive">{erroConexoes}</p>
                         ) : null}
 
+                        {conexaoAtual ? (
+                            <div className="rounded-md border border-primary/60 bg-primary/5 p-3" data-testid="conexao-atual">
+                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                    {t("workspace.navigator.current")} · {t("workspace.navigator.of", { i: indiceConexao + 1, total: conexoes!.length })}
+                                </p>
+                                <p className="mt-1 text-sm font-medium">{conexaoAtual.title}</p>
+                                <p className="mt-1 text-[11px] text-muted-foreground">
+                                    {t("workspace.sidebar.page", { page: conexaoAtual.startPage ?? "?" })} · {t("workspace.sidebar.commonTerms")} {conexaoAtual.matchedTerms.join(", ")}
+                                </p>
+                                {textoDoDestino ? <p className="mt-2 line-clamp-5 text-xs">{textoDoDestino}</p> : null}
+                                <button
+                                    type="button"
+                                    onClick={() => irParaIndice(indiceConexao)}
+                                    className="mt-2 text-xs font-medium text-primary underline-offset-2 hover:underline"
+                                >
+                                    {t("workspace.navigator.goTo")}
+                                </button>
+                            </div>
+                        ) : null}
+
                         {conexoes !== null && !carregandoConexoes ? (
                             conexoes.length === 0 ? (
                                 // Ausencia DECLARADA, nunca area em branco. Uma
@@ -1114,7 +1179,7 @@ export function WorkspaceCanvas({ context, marcasIniciais = [], legendaInicial =
                                             >
                                                 <button
                                                     type="button"
-                                                    onClick={() => irParaConexao(conexao)}
+                                                    onClick={() => irParaIndice(conexoes.indexOf(conexao))}
                                                     className="w-full text-left"
                                                     title={t("workspace.sidebar.centerOnTarget")}
                                                 >
