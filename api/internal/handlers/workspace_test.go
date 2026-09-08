@@ -40,6 +40,14 @@ func (f *workspaceUseCaseFake) SetLegend(_ context.Context, _, _ uint, legend do
 	return legend, nil
 }
 
+func (f *workspaceUseCaseFake) GetViewState(context.Context, uint, uint) (map[string]any, error) {
+	return map[string]any{}, nil
+}
+
+func (f *workspaceUseCaseFake) SetViewState(_ context.Context, _, _ uint, state map[string]any) (map[string]any, error) {
+	return state, nil
+}
+
 func montarRotaDeMarca(fake *workspaceUseCaseFake) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()

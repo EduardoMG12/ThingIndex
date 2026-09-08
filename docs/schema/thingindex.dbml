@@ -6,7 +6,7 @@
 //
 // Importavel em https://dbdiagram.io para visualizacao interativa.
 //
-// Total: 22 tabelas.
+// Total: 23 tabelas.
 
 Table users {
   id serial [pk, increment]
@@ -57,6 +57,20 @@ Table collections {
     deleted_at [name: "idx_collections_deleted_at"]
     user_id [name: "idx_collections_user_id"]
     (user_id, normalized_name) [name: "idx_user_collection_normalized", unique]
+  }
+}
+
+Table workspace_view_states {
+  id serial [pk, increment]
+  user_id integer [not null]
+  collection_id integer [not null]
+  state jsonb
+  created_at timestamptz
+  updated_at timestamptz
+
+  indexes {
+    (user_id, collection_id) [name: "idx_workspace_view_states_user_collection", unique]
+    user_id [name: "idx_workspace_view_states_user_id"]
   }
 }
 

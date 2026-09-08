@@ -26,6 +26,7 @@ func ManagedModels() []any {
 		&models.User{},
 		&models.DocumentCategory{},
 		&models.Collection{},
+		&models.WorkspaceViewState{},
 		&models.Document{},
 		&models.DocumentProcessingAttempt{},
 		&models.DocumentPage{},

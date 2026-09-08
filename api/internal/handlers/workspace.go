@@ -156,8 +156,61 @@ func (h *WorkspaceHandler) SetLegend(c *gin.Context) {
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "workspace.success_legend_set"), dto.ToLegendResponse(legend))
 }
 
+// GetViewState godoc
+// @Summary      Estado de visualizacao do workspace da collection (por usuario)
+// @Tags         workspace
+// @Produce      json
+// @Param        id path int true "Collection ID"
+// @Success      200 {object} dto.ViewStateResponse
+// @Router       /documents/collections/{id}/view-state [get]
+func (h *WorkspaceHandler) GetViewState(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+	collectionID, ok := parseUintParam(c, "id", i18n.T(lang, "error.invalid_collection_id"))
+	if !ok {
+		return
+	}
+	state, err := h.useCase.GetViewState(c.Request.Context(), userID, collectionID)
+	if err != nil {
+		h.respondError(c, lang, err)
+		return
+	}
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "workspace.success_view_state_get"), dto.ViewStateResponse{State: state})
+}
+
+// SetViewState godoc
+// @Summary      Substitui o estado de visualizacao do workspace da collection
+// @Tags         workspace
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "Collection ID"
+// @Param        request body dto.ViewStateRequest true "Estado (objeto, ate 64 KB)"
+// @Success      200 {object} dto.ViewStateResponse
+// @Router       /documents/collections/{id}/view-state [put]
+func (h *WorkspaceHandler) SetViewState(c *gin.Context) {
+	lang := c.GetString("language")
+	userID := c.GetUint("user_id")
+	collectionID, ok := parseUintParam(c, "id", i18n.T(lang, "error.invalid_collection_id"))
+	if !ok {
+		return
+	}
+	var req dto.ViewStateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
+		return
+	}
+	state, err := h.useCase.SetViewState(c.Request.Context(), userID, collectionID, req.State)
+	if err != nil {
+		h.respondError(c, lang, err)
+		return
+	}
+	response.Success(c, http.StatusOK, "success", i18n.T(lang, "workspace.success_view_state_set"), dto.ViewStateResponse{State: state})
+}
+
 func (h *WorkspaceHandler) respondError(c *gin.Context, lang string, err error) {
 	switch {
+	case errors.Is(err, domain.ErrInvalidViewState):
+		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "workspace.error_invalid_view_state"), nil)
 	case errors.Is(err, domain.ErrInvalidHighlightColor):
 		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "workspace.error_invalid_color"), nil)
 	case errors.Is(err, domain.ErrInvalidLegend):

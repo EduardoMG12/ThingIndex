@@ -22,7 +22,18 @@ var (
 	ErrInvalidHighlightColor    = errors.New("invalid highlight color")
 	ErrParagraphNotInCollection = errors.New("paragraph not in collection")
 	ErrInvalidLegend            = errors.New("invalid legend")
+	ErrInvalidViewState         = errors.New("invalid view state")
 )
+
+// MaxViewStateBytes limita o estado serializado; 64 KB cabem centenas de
+// quadros e e o suficiente para uma colecao inteira.
+const MaxViewStateBytes = 64 * 1024
+
+// WorkspaceViewStateRepository persiste um estado por usuario e colecao.
+type WorkspaceViewStateRepository interface {
+	GetViewState(ctx context.Context, userID, collectionID uint) (map[string]any, error)
+	UpsertViewState(ctx context.Context, userID, collectionID uint, state map[string]any) error
+}
 
 func IsHighlightColor(color string) bool {
 	for _, known := range HighlightColors {
@@ -54,4 +65,6 @@ type WorkspaceUseCase interface {
 	RemoveHighlight(ctx context.Context, userID, collectionID, paragraphNodeID uint) error
 	GetLegend(ctx context.Context, userID, collectionID uint) (Legend, error)
 	SetLegend(ctx context.Context, userID, collectionID uint, legend Legend) (Legend, error)
+	GetViewState(ctx context.Context, userID, collectionID uint) (map[string]any, error)
+	SetViewState(ctx context.Context, userID, collectionID uint, state map[string]any) (map[string]any, error)
 }
