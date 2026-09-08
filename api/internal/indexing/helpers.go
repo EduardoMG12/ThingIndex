@@ -107,9 +107,25 @@ type pdfBBoxLine struct {
 	Words []string `xml:"word"`
 }
 
+// sanitizeXMLControlChars troca por espaco os caracteres de controle que o
+// XML 1.0 proibe (C0 exceto tab, LF e CR). O pdftotext copia o que esta no
+// PDF, e a matriz curricular do IFPR (SAGRES) traz um ESC (U+001B) dentro de
+// uma <word>: o decoder abortava o documento inteiro por um byte.
+func sanitizeXMLControlChars(raw []byte) []byte {
+	saida := make([]byte, len(raw))
+	for i, b := range raw {
+		if b < 0x20 && b != '\t' && b != '\n' && b != '\r' {
+			saida[i] = ' '
+			continue
+		}
+		saida[i] = b
+	}
+	return saida
+}
+
 func parsePDFBBoxLayout(raw []byte) (pdfTextExtraction, error) {
 	var document pdfBBoxDocument
-	decoder := xml.NewDecoder(bytes.NewReader(raw))
+	decoder := xml.NewDecoder(bytes.NewReader(sanitizeXMLControlChars(raw)))
 	// A saida e XHTML e declara entidades HTML que o parser estrito rejeita.
 	decoder.Strict = false
 	decoder.AutoClose = xml.HTMLAutoClose
@@ -426,8 +442,42 @@ var attachmentHeadingKeywords = []string{
 	"demonstrativo de calculo",
 }
 
+// mostlyNumeric: linha em que os digitos dominam os caracteres alfanumericos.
+// Linha de calendario ("1 2 3 1 Feriado Nacional") ou de tabela de datas
+// ("22 23 24 25 26 27 28") casa com o padrao de titulo numerado e virava
+// secao do sumario -- achado com o calendario academico do IFPR: 30 secoes
+// de lixo em 5 paginas.
+func mostlyNumeric(text string) bool {
+	fields := strings.Fields(text)
+	numeric := 0
+	for _, field := range fields {
+		if isNumericToken(field) {
+			numeric++
+		}
+	}
+	// Dois ou mais numeros soltos que sao pelo menos metade das palavras:
+	// "1 2 3 1 Feriado Nacional" (4 de 6), "9 a 13 Confirmacao" (2 de 4).
+	// "1 DAS DISPOSICOES PRELIMINARES" (1 de 4) continua titulo.
+	return numeric >= 2 && numeric*2 >= len(fields)
+}
+
+func isNumericToken(field string) bool {
+	if field == "" {
+		return false
+	}
+	for _, r := range field {
+		if !unicode.IsDigit(r) {
+			return false
+		}
+	}
+	return true
+}
+
 func looksLikeHeading(text string) bool {
 	if text == "" || strings.Contains(text, ". ") && len(text) > 120 {
+		return false
+	}
+	if mostlyNumeric(text) {
 		return false
 	}
 	// Reject markdown table rows and separators
