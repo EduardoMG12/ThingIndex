@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Maximize2, Minus, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2, Minus, Plus } from "lucide-react";
 
 import { useI18n } from "@/lib/i18n/provider";
 
@@ -1128,9 +1128,33 @@ export function WorkspaceCanvas({ context, marcasIniciais = [], legendaInicial =
 
                         {conexaoAtual ? (
                             <div className="rounded-md border border-primary/60 bg-primary/5 p-3" data-testid="conexao-atual">
-                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                                    {t("workspace.navigator.current")} · {t("workspace.navigator.of", { i: indiceConexao + 1, total: conexoes!.length })}
-                                </p>
+                                {/* Os mesmos ◀ ▶ da barra flutuante: a barra fica no paragrafo de
+                                    origem, que sai da tela quando o canvas centraliza o destino. */}
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                        {t("workspace.navigator.current")} · {t("workspace.navigator.of", { i: indiceConexao + 1, total: conexoes!.length })}
+                                    </p>
+                                    <span className="flex items-center gap-0.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => irParaIndice(indiceConexao - 1)}
+                                            disabled={indiceConexao <= 0}
+                                            aria-label={t("workspace.navigator.prev")}
+                                            className="rounded p-0.5 hover:bg-muted disabled:opacity-40"
+                                        >
+                                            <ChevronLeft className="h-4 w-4" aria-hidden />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => irParaIndice(indiceConexao + 1)}
+                                            disabled={indiceConexao >= conexoes!.length - 1}
+                                            aria-label={t("workspace.navigator.next")}
+                                            className="rounded p-0.5 hover:bg-muted disabled:opacity-40"
+                                        >
+                                            <ChevronRight className="h-4 w-4" aria-hidden />
+                                        </button>
+                                    </span>
+                                </div>
                                 <p className="mt-1 text-sm font-medium">{conexaoAtual.title}</p>
                                 <p className="mt-1 text-[11px] text-muted-foreground">
                                     {t("workspace.sidebar.page", { page: conexaoAtual.startPage ?? "?" })} · {t("workspace.sidebar.commonTerms")} {conexaoAtual.matchedTerms.join(", ")}
