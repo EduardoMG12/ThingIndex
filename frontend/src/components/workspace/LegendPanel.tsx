@@ -7,7 +7,8 @@ import { useI18n } from "@/lib/i18n/provider";
 import { classesDaCor, CORES, type HighlightColor, type Legend } from "@/lib/workspace/highlights";
 
 /**
- * Legenda das cores no canto do canvas: um chip e um campo de rotulo por cor.
+ * Legenda das cores no canto inferior esquerdo do canvas (o superior cobria
+ * o cabecalho do ultimo quadro): um chip e um campo de rotulo por cor.
  * O rotulo e salvo ao sair do campo ou com Enter; o painel recolhe e lembra
  * o estado no localStorage (preferencia de tela).
  */
@@ -73,7 +74,7 @@ export function LegendPanel({ legenda, onSalvar, contagem = null }: LegendPanelP
 
     return (
         <section
-            className="absolute right-3 top-3 w-56 rounded-md border border-border bg-card/95 shadow-sm"
+            className="absolute bottom-3 left-3 w-56 rounded-md border border-border bg-card/95 shadow-sm"
             aria-label={t("workspace.legend.title")}
             data-testid="legenda"
             onPointerDown={(event) => event.stopPropagation()}
