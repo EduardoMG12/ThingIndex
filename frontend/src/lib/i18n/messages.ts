@@ -75,6 +75,17 @@ export const messages: LocaleMessages = {
                 saveError: "Não foi possível salvar a marca.",
                 colors: { amarelo: "Amarelo", verde: "Verde", azul: "Azul", vermelho: "Vermelho", roxo: "Roxo" },
             },
+            legend: {
+                title: "Legenda",
+                labelFor: "Rótulo da cor {color}",
+                saveError: "Não foi possível salvar a legenda.",
+            },
+            marks: {
+                title: "Marcas",
+                none: "Nenhum trecho marcado neste documento.",
+                goTo: "Ir até o trecho",
+                page: "p. {page}",
+            },
         },
         common: {
             appName: "ThingIndex",
@@ -1370,6 +1381,17 @@ export const messages: LocaleMessages = {
                 saveError: "Could not save the highlight.",
                 colors: { amarelo: "Yellow", verde: "Green", azul: "Blue", vermelho: "Red", roxo: "Purple" },
             },
+            legend: {
+                title: "Legend",
+                labelFor: "Label for {color}",
+                saveError: "Could not save the legend.",
+            },
+            marks: {
+                title: "Highlights",
+                none: "No highlighted passage in this document.",
+                goTo: "Go to passage",
+                page: "p. {page}",
+            },
         },
         common: {
             appName: "ThingIndex",
@@ -2664,6 +2686,17 @@ export const messages: LocaleMessages = {
                 loadError: "No se pudieron cargar las marcas.",
                 saveError: "No se pudo guardar la marca.",
                 colors: { amarelo: "Amarillo", verde: "Verde", azul: "Azul", vermelho: "Rojo", roxo: "Morado" },
+            },
+            legend: {
+                title: "Leyenda",
+                labelFor: "Etiqueta del color {color}",
+                saveError: "No se pudo guardar la leyenda.",
+            },
+            marks: {
+                title: "Marcas",
+                none: "Ningún fragmento marcado en este documento.",
+                goTo: "Ir al fragmento",
+                page: "p. {page}",
             },
         },
         common: {

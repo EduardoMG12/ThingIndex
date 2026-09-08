@@ -3,6 +3,8 @@ module.exports = {
   content: [
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    // Classes de cor dos grifos moram em lib/workspace/highlights.ts.
+    "./src/lib/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     container: {

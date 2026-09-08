@@ -6,7 +6,9 @@ import { Maximize2, Minus, Plus } from "lucide-react";
 
 import { useI18n } from "@/lib/i18n/provider";
 
-import { deleteHighlight, fetchHighlights, fetchLegend, fetchNodeConnections, putHighlight } from "@/lib/api/collections";
+import { deleteHighlight, fetchHighlights, fetchLegend, fetchNodeConnections, putHighlight, putLegend } from "@/lib/api/collections";
+import { LegendPanel } from "@/components/workspace/LegendPanel";
+import { classesDaCor, CORES, rotuloDaCor, type HighlightColor as CorDeMarca } from "@/lib/workspace/highlights";
 import type { HighlightColor, Legend } from "@/lib/api/contracts/highlights";
 import { readBox, type CollectionContext, type OutlineNode, type ParagraphNode } from "@/lib/api/contracts/document-context";
 import type { NodeConnection } from "@/lib/api/contracts/node-connections";
@@ -665,6 +667,39 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
 
     const documentoAtual = documentos.find((documento) => documento.id === documentoFocado);
 
+    const salvarLegenda = useCallback(
+        (proxima: Legend) => {
+            const anterior = legenda;
+            setLegenda(proxima);
+            putLegend(collectionId, proxima).catch((falha: unknown) => {
+                setLegenda(anterior);
+                setErroDeMarca(falha instanceof Error ? falha.message : t("workspace.legend.saveError"));
+            });
+        },
+        [collectionId, legenda, t]
+    );
+
+    const nomeDaCor = useCallback((cor: CorDeMarca) => t(`workspace.highlight.colors.${cor}`), [t]);
+
+    // Marcas do documento focado, por cor, para a legenda e o bloco da sidebar.
+    const [filtroDeCor, setFiltroDeCor] = useState<CorDeMarca | null>(null);
+    const marcasDoFocado = useMemo(() => {
+        if (documentoFocado === null) {
+            return [];
+        }
+        return paragrafos
+            .filter((no) => no.documentId === documentoFocado && marcas.has(no.id))
+            .map((no) => ({ no, cor: marcas.get(no.id)! }));
+    }, [paragrafos, marcas, documentoFocado]);
+    const contagemDoFocado = useMemo(() => {
+        const saida = Object.fromEntries(CORES.map((c) => [c, 0])) as Record<CorDeMarca, number>;
+        for (const { cor } of marcasDoFocado) {
+            saida[cor] += 1;
+        }
+        return saida;
+    }, [marcasDoFocado]);
+
+
     const secundarios = useMemo(
         () => (conexoes ? paragrafosSecundarios(conexoes, nosDoSumario, paragrafos) : new Set<ParagraphNode["id"]>()),
         [conexoes, nosDoSumario, paragrafos]
@@ -835,6 +870,8 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                     />
                 </div>
 
+                <LegendPanel legenda={legenda} onSalvar={salvarLegenda} contagem={documentoFocado !== null ? contagemDoFocado : null} />
+
                 <div
                     className="absolute bottom-3 right-3 flex items-center gap-1 rounded-md border border-border bg-card/95 p-1 shadow-sm"
                     role="toolbar"
@@ -895,6 +932,55 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                             <p className="text-xs text-destructive" role="alert" data-testid="erro-de-marca">
                                 {erroDeMarca}
                             </p>
+                        ) : null}
+
+                        {marcasDoFocado.length > 0 ? (
+                            <div className="rounded-md border border-border p-3" data-testid="bloco-de-marcas">
+                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t("workspace.marks.title")}</p>
+                                <div className="mt-2 flex flex-wrap gap-1">
+                                    {CORES.filter((cor) => contagemDoFocado[cor] > 0).map((cor) => (
+                                        <button
+                                            key={cor}
+                                            type="button"
+                                            onClick={() => setFiltroDeCor(filtroDeCor === cor ? null : cor)}
+                                            aria-pressed={filtroDeCor === cor}
+                                            className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${
+                                                filtroDeCor === cor ? "border-foreground" : "border-border"
+                                            }`}
+                                            data-testid={`filtro-${cor}`}
+                                        >
+                                            <span className={`h-2.5 w-2.5 rounded-full ${classesDaCor(cor).chip}`} aria-hidden />
+                                            {rotuloDaCor(legenda, cor, nomeDaCor)}
+                                            <span className="tabular-nums text-muted-foreground">{contagemDoFocado[cor]}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                                {filtroDeCor ? (
+                                    <ul className="mt-2 space-y-1" data-testid="lista-de-marcas">
+                                        {marcasDoFocado
+                                            .filter(({ cor }) => cor === filtroDeCor)
+                                            .map(({ no }) => (
+                                                <li key={String(no.id)}>
+                                                    <button
+                                                        type="button"
+                                                        title={t("workspace.marks.goTo")}
+                                                        onClick={() => {
+                                                            const secao = sectionKeyDe(no)
+                                                                ? (indiceDoContexto.secaoPorSlug.get(no.documentId)?.get(sectionKeyDe(no)!) ?? null)
+                                                                : null;
+                                                            selecionarParagrafo(no, secao);
+                                                            irAte(no.documentId, no.pageNumber ?? null, rectDoParagrafo(no));
+                                                        }}
+                                                        className="w-full rounded px-1 py-0.5 text-left text-xs hover:bg-muted"
+                                                    >
+                                                        <span className="mr-1 text-muted-foreground">{t("workspace.marks.page", { page: no.pageNumber ?? "?" })}</span>
+                                                        {no.content.slice(0, 80)}
+                                                    </button>
+                                                </li>
+                                            ))}
+                                    </ul>
+                                ) : null}
+                            </div>
                         ) : null}
 
                         {paragrafoSelecionado && paragrafoSelecionado.no.documentId === documentoFocado ? (
