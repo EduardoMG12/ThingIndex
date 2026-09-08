@@ -606,6 +606,26 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
         };
     }, [collectionId]);
 
+    /**
+     * Focar um documento e tambem traze-lo ao centro da tela, no zoom atual:
+     * o topo do quadro (cabecalho + primeira pagina) fica enquadrado.
+     */
+    const focarDocumento = useCallback(
+        (documentId: number) => {
+            setDocumentoFocado(documentId);
+            setConexoes(null);
+            setNoSelecionado(null);
+            const i = indiceDoDocumento.get(documentId);
+            if (i === undefined) {
+                return;
+            }
+            const quadro = quadros[i];
+            const alturaVisivel = tamanho.altura / Math.max(viewport.escala, 0.1);
+            centralizarEm({ ...quadro, altura: Math.min(quadro.altura, alturaVisivel) }, viewport.escala);
+        },
+        [indiceDoDocumento, quadros, tamanho, viewport.escala, centralizarEm]
+    );
+
     const limparSelecao = useCallback(() => {
         setDocumentoFocado(null);
         setNoSelecionado(null);
@@ -750,7 +770,7 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
         <div className="flex h-full w-full flex-col gap-4 lg:flex-row">
             <div
                 ref={containerRef}
-                className={`relative h-[60vh] w-full min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-muted/20 touch-none lg:h-[calc(100vh-11rem)] ${
+                className={`relative h-[60vh] w-full min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-muted/20 touch-none lg:h-[calc(100vh-9rem)] ${
                     arrastandoFundo ? "cursor-grabbing" : "cursor-grab"
                 }`}
                 data-testid="workspace-canvas"
@@ -785,11 +805,7 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                                         modoMiniatura={modoMiniatura}
                                         focado={focado}
                                         onMedidas={aoMedir}
-                                        onFocar={(id) => {
-                                            setDocumentoFocado(id);
-                                            setConexoes(null);
-                                            setNoSelecionado(null);
-                                        }}
+                                        onFocar={focarDocumento}
                                         onPointerDownCabecalho={(event) => aoIniciarArrasto(event, documento.id, indice)}
                                         apresentacao={apresentacaoDe(documento.id)}
                                         onMudarApresentacao={mudarApresentacao}
@@ -841,11 +857,7 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
                                     onPointerDown={(event) =>
                                         aoIniciarArrasto(event, documento.id, indice)
                                     }
-                                    onClick={() => {
-                                        setDocumentoFocado(documento.id);
-                                        setConexoes(null);
-                                        setNoSelecionado(null);
-                                    }}
+                                    onClick={() => focarDocumento(documento.id)}
                                     className={`w-full cursor-grab rounded-lg border p-4 text-left transition ${
                                         focado
                                             ? "border-primary bg-card shadow-lg"
@@ -909,7 +921,7 @@ export function WorkspaceCanvas({ context }: WorkspaceCanvasProps) {
             </div>
 
             <aside
-                className="w-full shrink-0 overflow-y-auto rounded-lg border border-border bg-card p-4 lg:w-80"
+                className="max-h-[40vh] w-full shrink-0 overflow-y-auto rounded-lg border border-border bg-card p-4 lg:max-h-[calc(100vh-9rem)] lg:w-72"
                 aria-label={t("workspace.sidebar.label")}
             >
                 {documentoFocado === null ? (
