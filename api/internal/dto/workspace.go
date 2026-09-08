@@ -31,6 +31,14 @@ func ToHighlightsResponse(items []models.ParagraphHighlight) HighlightsResponse 
 	return HighlightsResponse{Highlights: out}
 }
 
+type ViewStateRequest struct {
+	State map[string]any `json:"state" binding:"required"`
+}
+
+type ViewStateResponse struct {
+	State map[string]any `json:"state"`
+}
+
 type LegendRequest struct {
 	Labels map[string]string `json:"labels"`
 }

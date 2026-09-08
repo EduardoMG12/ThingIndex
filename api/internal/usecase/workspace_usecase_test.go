@@ -48,9 +48,48 @@ func (f *collectionRepoLegendFake) UpdateCollectionMetadataKey(_ context.Context
 	return nil
 }
 
+type viewStateRepoFake struct {
+	salvo map[string]any
+}
+
+func (f *viewStateRepoFake) GetViewState(context.Context, uint, uint) (map[string]any, error) {
+	if f.salvo == nil {
+		return map[string]any{}, nil
+	}
+	return f.salvo, nil
+}
+
+func (f *viewStateRepoFake) UpsertViewState(_ context.Context, _, _ uint, state map[string]any) error {
+	f.salvo = state
+	return nil
+}
+
+func TestSetViewStateRejeitaNuloEGrande(t *testing.T) {
+	repo := &viewStateRepoFake{}
+	uc := NewWorkspaceUseCase(&highlightRepoFake{}, &collectionRepoLegendFake{}, repo)
+	if _, err := uc.SetViewState(context.Background(), 1, 7, nil); !errors.Is(err, domain.ErrInvalidViewState) {
+		t.Fatalf("estado nulo: quero ErrInvalidViewState, veio %v", err)
+	}
+	grande := map[string]any{"x": strings.Repeat("a", domain.MaxViewStateBytes)}
+	if _, err := uc.SetViewState(context.Background(), 1, 7, grande); !errors.Is(err, domain.ErrInvalidViewState) {
+		t.Fatalf("estado grande: quero ErrInvalidViewState, veio %v", err)
+	}
+	if repo.salvo != nil {
+		t.Fatalf("repositorio nao devia ter sido tocado: %v", repo.salvo)
+	}
+	ok := map[string]any{"viewport": map[string]any{"x": 1, "y": 2, "escala": 0.5}}
+	if _, err := uc.SetViewState(context.Background(), 1, 7, ok); err != nil {
+		t.Fatalf("estado valido: %v", err)
+	}
+	lido, _ := uc.GetViewState(context.Background(), 1, 7)
+	if lido["viewport"] == nil {
+		t.Fatalf("GetViewState nao devolveu o que foi salvo: %v", lido)
+	}
+}
+
 func TestSetHighlightRejeitaCorForaDaPaletaSemTocarNoRepositorio(t *testing.T) {
 	repo := &highlightRepoFake{}
-	uc := NewWorkspaceUseCase(repo, &collectionRepoLegendFake{})
+	uc := NewWorkspaceUseCase(repo, &collectionRepoLegendFake{}, &viewStateRepoFake{})
 
 	for _, cor := range []string{"magenta", "", "yellow", "amarelo "} {
 		_, err := uc.SetHighlight(context.Background(), 1, 1, 1, cor)
@@ -72,7 +111,7 @@ func TestSetHighlightRejeitaCorForaDaPaletaSemTocarNoRepositorio(t *testing.T) {
 
 func TestSetLegendLimpaValidaEGravaSoAChaveDaLegenda(t *testing.T) {
 	repo := &collectionRepoLegendFake{}
-	uc := NewWorkspaceUseCase(&highlightRepoFake{}, repo)
+	uc := NewWorkspaceUseCase(&highlightRepoFake{}, repo, &viewStateRepoFake{})
 
 	saida, err := uc.SetLegend(context.Background(), 1, 7, domain.Legend{"amarelo": "  prazo ", "verde": "   "})
 	if err != nil {
@@ -103,7 +142,7 @@ func TestGetLegendIgnoraLixoNoMetadata(t *testing.T) {
 		domain.LegendKey: map[string]any{"amarelo": "prazo", "magenta": "nao", "verde": 3, "azul": ""},
 		"outra_chave":    "fica",
 	}}
-	uc := NewWorkspaceUseCase(&highlightRepoFake{}, repo)
+	uc := NewWorkspaceUseCase(&highlightRepoFake{}, repo, &viewStateRepoFake{})
 	legenda, err := uc.GetLegend(context.Background(), 1, 7)
 	if err != nil {
 		t.Fatalf("GetLegend: %v", err)

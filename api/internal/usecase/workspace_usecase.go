@@ -17,10 +17,41 @@ import (
 type workspaceUseCase struct {
 	highlights  domain.ParagraphHighlightRepository
 	collections domain.CollectionRepository
+	viewStates  domain.WorkspaceViewStateRepository
 }
 
-func NewWorkspaceUseCase(highlights domain.ParagraphHighlightRepository, collections domain.CollectionRepository) domain.WorkspaceUseCase {
-	return &workspaceUseCase{highlights: highlights, collections: collections}
+func NewWorkspaceUseCase(highlights domain.ParagraphHighlightRepository, collections domain.CollectionRepository, viewStates domain.WorkspaceViewStateRepository) domain.WorkspaceUseCase {
+	return &workspaceUseCase{highlights: highlights, collections: collections, viewStates: viewStates}
+}
+
+func (u *workspaceUseCase) GetViewState(ctx context.Context, userID, collectionID uint) (map[string]any, error) {
+	if _, err := u.ownCollection(ctx, userID, collectionID); err != nil {
+		return nil, err
+	}
+	return u.viewStates.GetViewState(ctx, userID, collectionID)
+}
+
+// SetViewState guarda o objeto como veio, dentro do limite de tamanho. O
+// formato interno e do frontend; o backend so garante que e um objeto
+// pequeno e que a colecao e do usuario.
+func (u *workspaceUseCase) SetViewState(ctx context.Context, userID, collectionID uint, state map[string]any) (map[string]any, error) {
+	if state == nil {
+		return nil, domain.ErrInvalidViewState
+	}
+	encoded, err := json.Marshal(state)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", domain.ErrInvalidViewState, err)
+	}
+	if len(encoded) > domain.MaxViewStateBytes {
+		return nil, fmt.Errorf("%w: %d bytes, maximo %d", domain.ErrInvalidViewState, len(encoded), domain.MaxViewStateBytes)
+	}
+	if _, err := u.ownCollection(ctx, userID, collectionID); err != nil {
+		return nil, err
+	}
+	if err := u.viewStates.UpsertViewState(ctx, userID, collectionID, state); err != nil {
+		return nil, err
+	}
+	return state, nil
 }
 
 func (u *workspaceUseCase) ListHighlights(ctx context.Context, userID, collectionID uint) ([]models.ParagraphHighlight, error) {

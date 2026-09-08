@@ -24,7 +24,7 @@ func TestRenderCobreTodosOsModelosGerenciados(t *testing.T) {
 	// AutoMigrate num container limpo, information_schema.tables devolve
 	// exatamente estas 21 tabelas e 253 colunas (22 com paragraph_highlights, 2026-09-08). O artigo afirmava 20 --
 	// era esse o erro que o Apendice A carregava.
-	const esperado = 22
+	const esperado = 23
 	if len(tables) != esperado {
 		t.Fatalf("esperava %d tabelas no DBML, obtive %d", esperado, len(tables))
 	}
