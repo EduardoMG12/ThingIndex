@@ -1,6 +1,6 @@
 # Chat grounded com o conteúdo das páginas, seções antes de páginas, tokens e custo por resposta
 
-**Status:** rascunho
+**Status:** entregue em PR sem merge (2026-09-09), empilhado sobre o PR #55
 **Data:** 2026-09-09
 **Base:** `docs/prds/workspace-unificado.md` (PR #55, sem merge). Branch a partir de `feat/workspace-unificado`; PR novo, também sem merge.
 **Origem:** teste na stack real com o usuário demo e Ollama Cloud (`gemma4:31b`): três perguntas com resposta nos documentos voltaram "não há informações", uma em inglês.
@@ -90,4 +90,21 @@ Ambiguity Report:
 
 ## Discoveries
 
-(vazio)
+**As três perguntas reais (usuário demo, coleção SI, Ollama Cloud `gemma4:31b`)**
+
+| Pergunta | Antes | Depois |
+|---|---|---|
+| Carga horária total do curso e onde aparece | "there is no information" (em inglês); fontes PPC p. 124, 134, 180, 198, 201 e Matriz p. 3 | **Certa:** 3.600 h/aula = 3.000 h/relógio, citando Matriz p. 3 e PPC p. 54; fontes de seção primeiro (Matriz p. 3, PPC p. 54 e 134) |
+| Início do 1º semestre de 2026 e dias letivos | "não há informações... menciona apenas abril e julho"; fontes Cal. p. 3, 5, 2 e PPC p. 206, 140, 207 | **Metade certa:** 205 dias letivos (105 + 100), citando p. 5; a data de início não foi lida da p. 1 (o modelo citou o ajuste de matrícula de 19 a 25/02 e os sábados letivos) |
+| Período e pré-requisito de Banco de Dados I | "there is no information" (em inglês); fontes só do PPC (p. 40, 26, 176, 194, 27, 28) | **Ainda errada:** "não há informações"; as fontes continuam só do PPC (p. 30, 176, 205, 40, 26, 194). A resposta está na Matriz (doc 265) e nas Ementas (doc 266), que o retrieval não trouxe |
+
+Tokens por resposta: 2.694 a 3.565 de prompt (estimados: o cliente Ollama nativo não reporta consumo), 44 a 150 de resposta. Custo nulo: não há preço cadastrado para o Ollama Cloud.
+
+**O que a rodada ensinou**
+
+- O conteúdo da página resolve quando o retrieval acerta a página. Quando erra (P3), nenhum conteúdo salva. O gargalo agora é o scorer.
+- A causa do erro de P3 está no `tokenizeRetrievalText`: a consulta vira termos sem remover stopwords ("em", "que", "do", "e", "qual", "o", "seu"), e `retrievalScore` conta quantos termos distintos a página contém como substring. Páginas longas do PPC contêm todas as stopwords e vencem a linha da Matriz que tem "Banco de Dados I" e o pré-requisito. Isso é o braço A do experimento, copiado fielmente em `internal/retrieval/lexical.go`; corrigir exige rerodar o experimento e regenerar as tabelas do artigo. Vai para o PRD do experimento, com stopwords e IDF como variante do braço A.
+- Fontes de seção primeiro ajudou em P1 (a Matriz entrou pela seção) mas o sumário ruidoso do PPC também entra: "node-783-digitacao" e "node-823-municipal" são células de tabela viradas seção. A limpeza do sumário (outro PRD) melhora o chat de graça.
+- O modelo passou a responder em português com a instrução repetida no fim dos dois prompts.
+- O cliente Ollama nativo não implementa `TokenUsageReporter`; a estimativa runas/4 fica rotulada ("≈") até a interface. Para números reportados, usar o provedor OpenAI-compatível.
+- Entregue em 4 issues (#56 a #59). Suítes: `go test ./...` ok, Vitest 228, Playwright mock 36, Playwright real 4.
