@@ -310,9 +310,17 @@ function WorkspacePageInner() {
                                         collectionId={Number(context.collection.id)}
                                         compacto
                                         onVerNoDocumento={(source) => {
-                                            if (source.documentId) {
-                                                canvasRef.current?.irAte(source.documentId, source.page, source.nodeId);
+                                            if (!source.documentId) {
+                                                return;
                                             }
+                                            // Fonte de linha de tabela: o id carrega "table-<id>-row-<n>";
+                                            // realcar a tabela e mais util do que so abrir a pagina.
+                                            const tabela = /table-(\d+)-row-/.exec(source.id ?? "");
+                                            if (tabela) {
+                                                canvasRef.current?.realcarTabela(Number(tabela[1]));
+                                                return;
+                                            }
+                                            canvasRef.current?.irAte(source.documentId, source.page, source.nodeId);
                                         }}
                                     />
                                 </div>

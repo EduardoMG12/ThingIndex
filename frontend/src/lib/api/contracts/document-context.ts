@@ -43,6 +43,8 @@ export type TableSection = {
     id: number | string;
     documentId: number;
     sequenceOrder: number;
+    /** Pagina fisica da tabela (PDF); null em HTML e planilha. */
+    pageNumber: number | null;
     title?: string;
     headers: string[];
     rows: string[][];
@@ -241,6 +243,8 @@ type TableSectionApiRecord = {
     documentId?: number;
     sequence_order?: number;
     sequenceOrder?: number;
+    page_number?: number | null;
+    pageNumber?: number | null;
     title?: string;
     headers?: string[];
     rows?: string[][];
@@ -333,6 +337,7 @@ function normalizeTableSection(value: unknown): TableSection | null {
         id: record.id ?? `table:${documentId}:${sequenceOrder}`,
         documentId,
         sequenceOrder,
+        pageNumber: typeof (record.pageNumber ?? record.page_number) === "number" ? (record.pageNumber ?? record.page_number)! : null,
         title: record.title,
         headers: Array.isArray(record.headers) ? record.headers.filter((item): item is string => typeof item === "string") : [],
         rows: Array.isArray(record.rows)
