@@ -329,8 +329,15 @@ function parseSSEEvent(rawEvent: string): ChatStreamEvent | null {
                 };
             case "done":
                 return { type: "done", stage, message, ...(usage ? { usage } : {}) };
-            case "error":
-                return { type: "error", message: typeof message === "string" ? message : "Erro no chat." };
+            case "error": {
+                // A API manda a causa do provedor em `detail` ("monthly usage
+                // limit"); sem ela o usuario ve so "falha ao gerar" e nao sabe
+                // se o problema e credito, modelo ou rede.
+                const rawDetail = readEventField<string>(parsed, "detail", "Detail");
+                const detail = typeof rawDetail === "string" ? rawDetail.trim() : "";
+                const base = typeof message === "string" ? message : "Erro no chat.";
+                return { type: "error", message: detail ? `${base} (${detail})` : base };
+            }
             default:
                 return null;
         }

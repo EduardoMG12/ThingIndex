@@ -143,11 +143,11 @@ func TestCelulaDeTabelaNaoViraSecao(t *testing.T) {
 	}
 	for _, node := range result.OutlineNodes {
 		title := strings.ToLower(node.Title)
-		if strings.Contains(title, "sis07") || strings.Contains(title, "atividade pedag") || strings.Contains(title, "hrs coreq") {
+		if strings.Contains(title, "sis07") || strings.Contains(title, "atividade pedag") || strings.Contains(title, "hrs coreq") || strings.Contains(title, "trilha de") {
 			t.Fatalf("celula de tabela virou secao: %q", node.Title)
 		}
 	}
-	if len(result.OutlineNodes) > 6 {
+	if len(result.OutlineNodes) > 3 {
 		titles := make([]string, 0, len(result.OutlineNodes))
 		for _, n := range result.OutlineNodes {
 			titles = append(titles, n.Title)

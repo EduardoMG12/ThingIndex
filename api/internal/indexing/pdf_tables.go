@@ -490,6 +490,14 @@ func pdfTableFromRows(headerRows, dataRows []pdfVisualRow, title string, pageNum
 	top := dataRows[0].YMin
 	if len(headerRows) > 0 {
 		top = headerRows[0].YMin
+		// O cabecalho rotula colunas que podem estar vazias nesta pagina
+		// ("Trilha de optativas"); a caixa cobre ate ele, senao o rotulo
+		// sobra fora da tabela e vira titulo de secao.
+		for _, row := range headerRows {
+			for _, c := range row.Cells {
+				right = math.Max(right, c.XMax)
+			}
+		}
 	}
 	pageRef := pageNumber
 	return models.TableSection{
