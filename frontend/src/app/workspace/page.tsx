@@ -2,10 +2,12 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Loader2, PanelLeft } from "lucide-react";
+import { Loader2, PanelLeft, X } from "lucide-react";
 import { toast } from "sonner";
 import ChatTab from "@/components/dashboard/ChatTab";
 import { DocumentosDaColecao } from "@/components/workspace/DocumentosDaColecao";
+import UploadTab from "@/components/dashboard/UploadTab";
+import { aindaIndexando } from "@/lib/documents/status";
 import { deleteDocument, retryDocumentIndexing } from "@/lib/api/documents";
 
 import AppShell from "@/components/layout/AppShell";
@@ -39,6 +41,10 @@ function WorkspacePageInner() {
     // nas estreitas (o painel empilha em cima do canvas). Nao persiste.
     const [chatAberto, setChatAberto] = useState(false);
     const [aba, setAba] = useState<"chat" | "documentos">("chat");
+    const [uploadAberto, setUploadAberto] = useState(false);
+    // Depois de um envio, recarrega o contexto a cada 5 s ate nenhum documento
+    // estar mais em indexacao; o quadro novo aparece sem recarregar a pagina.
+    const [acompanhando, setAcompanhando] = useState(false);
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- so na montagem, para ler a largura da tela
         setChatAberto(window.matchMedia("(min-width: 1024px)").matches);
@@ -141,6 +147,28 @@ function WorkspacePageInner() {
             carregarContexto(selecionada, new AbortController().signal, true);
         }
     }, [selecionada, carregarContexto]);
+
+    const contextRef = useRef(context);
+    useEffect(() => {
+        contextRef.current = context;
+    }, [context]);
+    useEffect(() => {
+        if (!acompanhando) {
+            return;
+        }
+        // A decisao de parar e tomada no tick, com o contexto mais recente:
+        // num efeito ela rodaria com o contexto velho (sem o documento novo)
+        // e pararia antes da primeira recarga.
+        const timer = window.setInterval(() => {
+            const atual = contextRef.current;
+            if (atual && !atual.documents.some((d) => aindaIndexando(d.status))) {
+                setAcompanhando(false);
+                return;
+            }
+            recarregarContexto();
+        }, 5000);
+        return () => window.clearInterval(timer);
+    }, [acompanhando, recarregarContexto]);
 
     const acaoNoDocumento = useCallback(
         async (acao: () => Promise<unknown>) => {
@@ -248,6 +276,7 @@ function WorkspacePageInner() {
                                         onFocar={(id) => canvasRef.current?.focarDocumento(id)}
                                         onReindexar={(id) => acaoNoDocumento(() => retryDocumentIndexing(id))}
                                         onApagar={(id) => acaoNoDocumento(() => deleteDocument(id))}
+                                        onEnviar={() => setUploadAberto(true)}
                                     />
                                 </div>
                             </aside>
@@ -265,6 +294,42 @@ function WorkspacePageInner() {
                     </div>
                 ) : null}
             </div>
+            {uploadAberto && context ? (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+                    onClick={() => setUploadAberto(false)}
+                    onKeyDown={(event) => {
+                        if (event.key === "Escape") {
+                            setUploadAberto(false);
+                        }
+                    }}
+                >
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label={t("workspace.documents.uploadTitle", { collection: context.collection.name })}
+                        data-testid="modal-de-upload"
+                        className="w-full max-w-2xl rounded-lg bg-background shadow-xl"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                            <h2 className="text-sm font-semibold">{t("workspace.documents.uploadTitle", { collection: context.collection.name })}</h2>
+                            <button type="button" onClick={() => setUploadAberto(false)} aria-label={t("common.dangerConfirm.closeLabel")} className="rounded p-1 hover:bg-muted">
+                                <X className="h-4 w-4" aria-hidden />
+                            </button>
+                        </div>
+                        <div className="p-4">
+                            <UploadTab
+                                colecaoFixa={context.collection.name}
+                                aoConcluir={() => {
+                                    setAcompanhando(true);
+                                    recarregarContexto();
+                                }}
+                            />
+                        </div>
+                    </div>
+                </div>
+            ) : null}
         </AppShell>
     );
 }
