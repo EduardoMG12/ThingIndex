@@ -24,6 +24,8 @@ export type NodeConnection = {
      * exatamente o que este projeto evita.
      */
     matchedTerms: string[];
+    /** "termo-raro" (padrao) ou "mesma-norma": os dois trechos citam a mesma lei/resolucao. */
+    kind: "termo-raro" | "mesma-norma";
 };
 
 export type NodeConnectionsResult = {
@@ -74,6 +76,7 @@ function normalizeConnection(value: unknown): NodeConnection | null {
         startPage: asNullableNumber(record.start_page),
         score: asNumber(record.score),
         matchedTerms: rawTerms.filter((term): term is string => typeof term === "string"),
+        kind: record.kind === "mesma-norma" ? "mesma-norma" : "termo-raro",
     };
 }
 

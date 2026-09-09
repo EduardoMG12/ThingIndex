@@ -217,6 +217,9 @@ type NodeConnection struct {
 	// "por que esta flecha existe?" -- sem isso a conexao seria tao opaca
 	// quanto a vizinhanca vetorial que este trabalho critica.
 	MatchedTerms []string
+	// Kind: "termo-raro" ou "mesma-norma" (os dois trechos citam a mesma lei,
+	// resolucao, decreto ou portaria).
+	Kind string
 }
 
 type CategoryCatalogRepository interface {

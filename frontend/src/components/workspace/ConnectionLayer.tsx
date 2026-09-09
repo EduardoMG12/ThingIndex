@@ -36,7 +36,10 @@ export function ConnectionLayer({ linhas, realcada, onRealcar, onEscolher }: Con
                 // O rotulo fica na PONTA de destino, nao no meio da curva: no
                 // meio ele flutuava no vazio e nao dizia a que linha pertencia.
                 // Ao passar o mouse, mostra os termos que justificam a aresta.
-                const contagem = linha.score === 1 ? t("workspace.sidebar.term") : t("workspace.sidebar.terms", { count: linha.score });
+                // Aresta "mesma norma" diz isso no rotulo: os dois trechos citam a mesma lei ou resolucao.
+                const contagem = linha.tipo === "mesma-norma"
+                    ? t("workspace.sidebar.sameNorm")
+                    : linha.score === 1 ? t("workspace.sidebar.term") : t("workspace.sidebar.terms", { count: linha.score });
                 const rotulo = realcada === linha.id && linha.termos.length > 0 ? linha.termos.join(", ") : contagem;
                 const larguraDoRotulo = Math.min(rotulo.length * 6.4 + 12, 320);
                 const ancora = { x: linha.para.x + 8, y: linha.para.y - 22 };

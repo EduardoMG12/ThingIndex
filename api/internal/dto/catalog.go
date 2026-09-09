@@ -851,6 +851,7 @@ type NodeConnectionResponse struct {
 	StartPage    *int     `json:"start_page,omitempty"`
 	Score        int      `json:"score"`
 	MatchedTerms []string `json:"matched_terms"`
+	Kind         string   `json:"kind,omitempty"`
 }
 
 // NodeConnectionsResponse envelopa a lista e declara o limiar aplicado.
@@ -876,6 +877,7 @@ func ToNodeConnectionsResponse(nodeID string, minScore int, connections []domain
 			StartPage:    connection.StartPage,
 			Score:        connection.Score,
 			MatchedTerms: connection.MatchedTerms,
+			Kind:         connection.Kind,
 		})
 	}
 
