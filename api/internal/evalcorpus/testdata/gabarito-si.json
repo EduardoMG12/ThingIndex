@@ -1,0 +1,1382 @@
+{
+  "version": "si-2026-09",
+  "notes": "Gabarito de perguntas de coordenador sobre a colecao de SI (5 PDFs de examples/faculdade). Escrito a partir dos PDFs com pdftotext -layout, sem consultar o sistema. answer_patterns: TODAS as regex devem casar na resposta com acentos e caixa dobrados (retrieval.FoldDiacritics + lower). targets: documento e paginas fisicas do PDF (1..N) que contem a resposta. Estrato negativa: a resposta certa e a recusa; targets vazio. origin rodada-cc5 marca perguntas que ja foram usadas para ajustar o sistema; o artigo reporta com e sem elas.",
+  "frozen_sha256": "e3abff439f2bb26925e740f8b413f808b344a6a1b62837a7c4f82961e911d260",
+  "reviewed_by": [],
+  "documents": [
+    {
+      "id": "ppc-si",
+      "file": "ppc-sistemas-de-informacao-palmas-2019.pdf",
+      "title": "PPC Sistemas de Informacao - Palmas (2019)",
+      "pages": 213
+    },
+    {
+      "id": "calendario",
+      "file": "calendario-academico-palmas-2026.pdf",
+      "title": "Calendario Academico Palmas 2026 - Graduacao",
+      "pages": 5
+    },
+    {
+      "id": "matriz",
+      "file": "matriz-curricular-si-palmas-2023.pdf",
+      "title": "Matriz Curricular SI - Palmas (2023)",
+      "pages": 3
+    },
+    {
+      "id": "ementas",
+      "file": "ementas-si-palmas-ppc-2023.pdf",
+      "title": "Ementas SI - Palmas (PPC 2023)",
+      "pages": 66
+    },
+    {
+      "id": "ppc-tec",
+      "file": "ppc-tecnico-informatica-palmas.pdf",
+      "title": "PPC Tecnico em Informatica - Palmas",
+      "pages": 160
+    }
+  ],
+  "questions": [
+    {
+      "id": "t01",
+      "text": "Qual é o pré-requisito de Estrutura de Dados I na grade 07?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "matriz",
+          "pages": [
+            1
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "sis07206|programacao de computadores i\\b"
+      ],
+      "expected": "SIS07206 - Programação de Computadores I",
+      "origin": "pdf"
+    },
+    {
+      "id": "t02",
+      "text": "Quais são os pré-requisitos de Sistemas Operacionais?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "matriz",
+          "pages": [
+            1
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "sis07201|arquitetura e organizacao de computadores"
+      ],
+      "expected": "SIS07201 - Arquitetura e Organização de Computadores",
+      "origin": "rodada-cc5"
+    },
+    {
+      "id": "t03",
+      "text": "Quais disciplinas são pré-requisito de Programação de Computadores III?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "matriz",
+          "pages": [
+            1
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "sis07303|programacao de computadores ii\\b",
+        "sis07304|orientada a objeto"
+      ],
+      "expected": "SIS07303 (Programação de Computadores II) e SIS07304 (POO)",
+      "origin": "pdf"
+    },
+    {
+      "id": "t04",
+      "text": "Em que período está Banco de Dados I e qual é o seu pré-requisito?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "matriz",
+          "pages": [
+            1
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "\\b3\\b|3[ºo°]|terceiro"
+      ],
+      "expected": "3º período; não tem pré-requisito",
+      "origin": "rodada-cc5"
+    },
+    {
+      "id": "t05",
+      "text": "Em que período é ofertada Banco de Dados II e qual disciplina é pré-requisito dela?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "matriz",
+          "pages": [
+            1
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "\\b4\\b|4[ºo°]|quarto",
+        "sis07301|banco de dados i\\b"
+      ],
+      "expected": "4º período; pré-requisito SIS07301 - Banco de Dados I",
+      "origin": "pdf"
+    },
+    {
+      "id": "t06",
+      "text": "Qual é a carga horária de Projeto Comunitário I e a que categoria pertence?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "matriz",
+          "pages": [
+            2
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "\\b150\\b",
+        "extensao"
+      ],
+      "expected": "150 h; Natureza - Extensão (obrigatória)",
+      "origin": "pdf"
+    },
+    {
+      "id": "t07",
+      "text": "Quais são os pré-requisitos de Inteligência Artificial?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "matriz",
+          "pages": [
+            2
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "sis07206|programacao de computadores i\\b",
+        "sis07602|probabilidade e estatistica"
+      ],
+      "expected": "SIS07206 (Programação de Computadores I) e SIS07602 (Probabilidade e Estatística)",
+      "origin": "pdf"
+    },
+    {
+      "id": "t08",
+      "text": "Em que período o aluno cursa Estágio Supervisionado I e com quantas horas?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "matriz",
+          "pages": [
+            2
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "\\b7\\b|7[ºo°]|setimo",
+        "\\b83\\b"
+      ],
+      "expected": "7º período; 83 h",
+      "origin": "pdf"
+    },
+    {
+      "id": "t09",
+      "text": "Qual é o pré-requisito de Redes de Computadores?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "matriz",
+          "pages": [
+            2
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "sis07305|sistemas operacionais"
+      ],
+      "expected": "SIS07305 - Sistemas Operacionais",
+      "origin": "pdf"
+    },
+    {
+      "id": "t10",
+      "text": "Qual é o pré-requisito de Segurança da Informação?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "matriz",
+          "pages": [
+            2
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "sis07505|redes de computadores"
+      ],
+      "expected": "SIS07505 - Redes de Computadores",
+      "origin": "pdf"
+    },
+    {
+      "id": "t11",
+      "text": "Quais são as disciplinas optativas da grade 07 e quantas são?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "matriz",
+          "pages": [
+            3
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "\\b13\\b|treze",
+        "libras",
+        "aprendizado de maquina"
+      ],
+      "expected": "13 optativas (SIS07OP01 a SIS07OP13), entre elas Libras e Aprendizado de Máquina",
+      "origin": "rodada-cc5"
+    },
+    {
+      "id": "t12",
+      "text": "Qual é a carga horária de Libras e ela é obrigatória ou optativa?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "matriz",
+          "pages": [
+            3
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "\\b67\\b",
+        "optativa"
+      ],
+      "expected": "67 h; optativa",
+      "origin": "pdf"
+    },
+    {
+      "id": "t13",
+      "text": "Qual é a duração mínima e máxima do curso em períodos?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "matriz",
+          "pages": [
+            1
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "\\b8\\b|oito",
+        "\\b12\\b|doze"
+      ],
+      "expected": "mínima 8, média 10, máxima 12 períodos",
+      "origin": "pdf"
+    },
+    {
+      "id": "t14",
+      "text": "Qual é a carga horária de Algoritmos e Lógica de Programação?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "matriz",
+          "pages": [
+            1
+          ]
+        },
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            56
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "\\b100\\b|\\b120\\b"
+      ],
+      "expected": "100 h relógio (120 h/aula no PPC)",
+      "origin": "pdf"
+    },
+    {
+      "id": "t15",
+      "text": "Qual é a carga horária de Programação Orientada a Objetos (POO)?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "matriz",
+          "pages": [
+            1
+          ]
+        },
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            57
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "\\b67\\b|\\b80\\b"
+      ],
+      "expected": "67 h relógio (80 h/aula)",
+      "origin": "rodada-cc5"
+    },
+    {
+      "id": "t16",
+      "text": "Em que período está Metodologia da Pesquisa Científica?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "matriz",
+          "pages": [
+            1
+          ]
+        },
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            57
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "\\b2\\b|2[ºo°]|segundo"
+      ],
+      "expected": "2º período",
+      "origin": "rodada-cc5"
+    },
+    {
+      "id": "t17",
+      "text": "Segundo o quadro de carga horária do PPC de 2019, quantas horas de Atividades Complementares o aluno precisa cumprir?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            54,
+            135
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "\\b167\\b|\\b200\\b"
+      ],
+      "expected": "200 h/aula = 167 h/relógio",
+      "origin": "pdf"
+    },
+    {
+      "id": "t18",
+      "text": "Quantas horas-relógio de optativas o curso exige segundo o quadro do PPC?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            54
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "\\b133\\b|\\b160\\b"
+      ],
+      "expected": "160 h/aula = 133 h/relógio",
+      "origin": "pdf"
+    },
+    {
+      "id": "t19",
+      "text": "Qual é o subtotal de horas-relógio do 1º período na Tabela 4 do PPC?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            56
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "\\b333\\b"
+      ],
+      "expected": "333 h/relógio (400 h/aula)",
+      "origin": "pdf"
+    },
+    {
+      "id": "t20",
+      "text": "Quantas aulas por semana tem Banco de Dados I e qual a carga em horas-aula?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "ementas",
+          "pages": [
+            26
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "\\b4\\b|quatro",
+        "\\b80\\b"
+      ],
+      "expected": "4 aulas/semana; 80 h/aula (67 h/relógio)",
+      "origin": "pdf"
+    },
+    {
+      "id": "t21",
+      "text": "Qual é a carga horária total do curso Técnico em Informática para Internet em horas-relógio?",
+      "stratum": "tabela",
+      "targets": [
+        {
+          "document_id": "ppc-tec",
+          "pages": [
+            8,
+            72
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "3\\.?012"
+      ],
+      "expected": "3.012 horas-relógio (3.600 h/aula)",
+      "origin": "pdf"
+    },
+    {
+      "id": "c01",
+      "text": "Quando começa o ano letivo de 2026 e o primeiro semestre?",
+      "stratum": "calendario",
+      "targets": [
+        {
+          "document_id": "calendario",
+          "pages": [
+            1
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "0?9 (de )?fev|0?9/0?2"
+      ],
+      "expected": "9 de fevereiro de 2026",
+      "origin": "rodada-cc5"
+    },
+    {
+      "id": "c02",
+      "text": "Qual é o período de rematrícula dos veteranos para 2026-1?",
+      "stratum": "calendario",
+      "targets": [
+        {
+          "document_id": "calendario",
+          "pages": [
+            1
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "0?2 (a|e|ate|-) 0?6"
+      ],
+      "expected": "2 a 6 de fevereiro de 2026",
+      "origin": "pdf"
+    },
+    {
+      "id": "c03",
+      "text": "Quando termina o primeiro semestre letivo de 2026?",
+      "stratum": "calendario",
+      "targets": [
+        {
+          "document_id": "calendario",
+          "pages": [
+            3
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "0?3 (de )?jul|0?3/0?7"
+      ],
+      "expected": "3 de julho de 2026",
+      "origin": "pdf"
+    },
+    {
+      "id": "c04",
+      "text": "Qual é o período de férias dos estudantes em julho de 2026?",
+      "stratum": "calendario",
+      "targets": [
+        {
+          "document_id": "calendario",
+          "pages": [
+            3
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "0?6 (a|ate|-) 29"
+      ],
+      "expected": "6 a 29 de julho",
+      "origin": "rodada-cc5"
+    },
+    {
+      "id": "c05",
+      "text": "Quando começa o segundo semestre letivo de 2026?",
+      "stratum": "calendario",
+      "targets": [
+        {
+          "document_id": "calendario",
+          "pages": [
+            3
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "30 (de )?jul|30/0?7"
+      ],
+      "expected": "30 de julho de 2026",
+      "origin": "pdf"
+    },
+    {
+      "id": "c06",
+      "text": "Qual é o prazo de ajuste de matrículas do ensino superior para 2026-2?",
+      "stratum": "calendario",
+      "targets": [
+        {
+          "document_id": "calendario",
+          "pages": [
+            3
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "0?7 (a|ate|-) 12"
+      ],
+      "expected": "7 a 12 de agosto de 2026",
+      "origin": "pdf"
+    },
+    {
+      "id": "c07",
+      "text": "Em que dia é o feriado municipal da Emancipação de Palmas?",
+      "stratum": "calendario",
+      "targets": [
+        {
+          "document_id": "calendario",
+          "pages": [
+            2
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "\\b14\\b"
+      ],
+      "expected": "14 de abril",
+      "origin": "pdf"
+    },
+    {
+      "id": "c08",
+      "text": "Quando acontece a Mostra de Cursos em 2026?",
+      "stratum": "calendario",
+      "targets": [
+        {
+          "document_id": "calendario",
+          "pages": [
+            3
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "15 (a|ate|-) 17"
+      ],
+      "expected": "15 a 17 de setembro",
+      "origin": "pdf"
+    },
+    {
+      "id": "c09",
+      "text": "Qual é o prazo final para trancamento de curso em 2026-2?",
+      "stratum": "calendario",
+      "targets": [
+        {
+          "document_id": "calendario",
+          "pages": [
+            4
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "0?2 (de )?out|0?2/10"
+      ],
+      "expected": "2 de outubro de 2026",
+      "origin": "pdf"
+    },
+    {
+      "id": "c10",
+      "text": "Quando termina o segundo semestre letivo de 2026?",
+      "stratum": "calendario",
+      "targets": [
+        {
+          "document_id": "calendario",
+          "pages": [
+            4
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "15 (de )?dez|15/12"
+      ],
+      "expected": "15 de dezembro de 2026",
+      "origin": "pdf"
+    },
+    {
+      "id": "c11",
+      "text": "Quantos dias letivos tem o ano de 2026 no total, e quantos em cada semestre?",
+      "stratum": "calendario",
+      "targets": [
+        {
+          "document_id": "calendario",
+          "pages": [
+            4,
+            5
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "\\b205\\b",
+        "\\b105\\b",
+        "\\b100\\b"
+      ],
+      "expected": "205 dias letivos: 105 no 1º semestre e 100 no 2º",
+      "origin": "rodada-cc5"
+    },
+    {
+      "id": "c12",
+      "text": "Qual é o prazo final para formandos protocolarem as atividades complementares em 2026-1?",
+      "stratum": "calendario",
+      "targets": [
+        {
+          "document_id": "calendario",
+          "pages": [
+            3
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "0?3 (de )?jul|0?3/0?7"
+      ],
+      "expected": "3 de julho de 2026",
+      "origin": "pdf"
+    },
+    {
+      "id": "c13",
+      "text": "Quando é a Semana da Pausa de outubro de 2026?",
+      "stratum": "calendario",
+      "targets": [
+        {
+          "document_id": "calendario",
+          "pages": [
+            4
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "12 (a|ate|-) 16"
+      ],
+      "expected": "12 a 16 de outubro",
+      "origin": "pdf"
+    },
+    {
+      "id": "c14",
+      "text": "Em que dias acontecem os Jogos do Ensino Superior em 2026?",
+      "stratum": "calendario",
+      "targets": [
+        {
+          "document_id": "calendario",
+          "pages": [
+            4
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "17.{0,8}18.{0,8}19|17 (a|ate|-) 19"
+      ],
+      "expected": "17, 18 e 19 de novembro",
+      "origin": "pdf"
+    },
+    {
+      "id": "c15",
+      "text": "Qual é o prazo para confirmação de matrícula dos ingressantes em 2026-1?",
+      "stratum": "calendario",
+      "targets": [
+        {
+          "document_id": "calendario",
+          "pages": [
+            1
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "0?9 (a|ate|-) 13"
+      ],
+      "expected": "9 a 13 de fevereiro",
+      "origin": "pdf"
+    },
+    {
+      "id": "c16",
+      "text": "Qual é o último dia do primeiro bimestre letivo de 2026-1?",
+      "stratum": "calendario",
+      "targets": [
+        {
+          "document_id": "calendario",
+          "pages": [
+            2
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "25 (de )?abr|25/0?4"
+      ],
+      "expected": "25 de abril de 2026",
+      "origin": "pdf"
+    },
+    {
+      "id": "p01",
+      "text": "Qual é a carga horária total do curso de Sistemas de Informação?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            9,
+            54
+          ]
+        },
+        {
+          "document_id": "matriz",
+          "pages": [
+            1
+          ]
+        },
+        {
+          "document_id": "ementas",
+          "pages": [
+            2
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "3\\.?000"
+      ],
+      "expected": "3.600 h/aula = 3.000 h/relógio",
+      "origin": "rodada-cc5"
+    },
+    {
+      "id": "p02",
+      "text": "Em que turno e horário o curso de Sistemas de Informação é ofertado?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            9
+          ]
+        },
+        {
+          "document_id": "ementas",
+          "pages": [
+            2
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "noturno",
+        "19:?30"
+      ],
+      "expected": "Noturno; segunda a sexta 19:30 às 23:05 e sábados 08:00 às 12:00",
+      "origin": "pdf"
+    },
+    {
+      "id": "p03",
+      "text": "Quantas vagas anuais o curso de Sistemas de Informação oferece?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            10
+          ]
+        },
+        {
+          "document_id": "ementas",
+          "pages": [
+            2
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "\\b40\\b|quarenta"
+      ],
+      "expected": "40 vagas anuais (mínimo 20)",
+      "origin": "rodada-cc5"
+    },
+    {
+      "id": "p04",
+      "text": "Qual é o prazo mínimo e máximo de integralização do curso de SI?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ementas",
+          "pages": [
+            2
+          ]
+        },
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            9
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "4 anos|quatro anos",
+        "7 anos|sete anos"
+      ],
+      "expected": "mínimo 4 anos, máximo 7 anos",
+      "origin": "pdf"
+    },
+    {
+      "id": "p05",
+      "text": "Qual é a frequência mínima e o conceito mínimo para aprovação no curso?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            125,
+            126
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "75",
+        "conceito c\\b|\\bc\\b"
+      ],
+      "expected": "75% de frequência e conceito mínimo C",
+      "origin": "pdf"
+    },
+    {
+      "id": "p06",
+      "text": "O que significa o conceito D na avaliação dos cursos superiores do IFPR?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            126
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "insuficiente"
+      ],
+      "expected": "aprendizagem insuficiente, não atingiu os objetivos; reprovação",
+      "origin": "pdf"
+    },
+    {
+      "id": "p07",
+      "text": "Qual é o objetivo geral do curso de Sistemas de Informação?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            31
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "problemas organizacionais|tecnologias da computacao|desenvolver sistemas"
+      ],
+      "expected": "formar recursos humanos para desenvolver sistemas e aplicar tecnologias da computação na solução dos problemas organizacionais",
+      "origin": "pdf"
+    },
+    {
+      "id": "p08",
+      "text": "O que o PPC diz sobre o Trabalho de Conclusão de Curso e em que período ele é apresentado?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            134
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "oitavo|8[ºo°]|\\b8\\b",
+        "banca"
+      ],
+      "expected": "TCC I delimita o tema e passa por banca de qualificação; a monografia é apresentada no oitavo período a banca examinadora",
+      "origin": "rodada-cc5"
+    },
+    {
+      "id": "p09",
+      "text": "Qual é o prazo para entregar a proposta (anteprojeto) de TCC após o início da disciplina de TCC I?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            188
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "30 (\\(trinta\\) )?dias|trinta dias"
+      ],
+      "expected": "até 30 dias após o início de TCC I",
+      "origin": "pdf"
+    },
+    {
+      "id": "p10",
+      "text": "Em quantos dias o resultado da avaliação da proposta de TCC é publicado?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            189
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "7 (\\(sete\\) )?dias|sete dias"
+      ],
+      "expected": "em até 7 dias corridos",
+      "origin": "pdf"
+    },
+    {
+      "id": "p11",
+      "text": "Quanto tempo o aluno tem para adequar uma proposta de TCC que não foi aprovada integralmente?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            189
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "15 (\\(quinze\\) )?dias|quinze dias"
+      ],
+      "expected": "15 dias corridos",
+      "origin": "pdf"
+    },
+    {
+      "id": "p12",
+      "text": "É permitido matricular-se ao mesmo tempo em TCC I e TCC II?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            187
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "vedad|nao (e |esta )?(permitid|possivel|pode)|nao\\b"
+      ],
+      "expected": "não; é vedada a matrícula simultânea e TCC II exige aprovação em TCC I",
+      "origin": "pdf"
+    },
+    {
+      "id": "p13",
+      "text": "Qual é o limite de horas de estágio extracurricular aceito como atividade complementar?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            199
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "\\b80\\b"
+      ],
+      "expected": "80 horas/aula",
+      "origin": "pdf"
+    },
+    {
+      "id": "p14",
+      "text": "Qual é o limite de horas para representação estudantil como atividade complementar?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            200
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "\\b40\\b"
+      ],
+      "expected": "40 horas/aula",
+      "origin": "pdf"
+    },
+    {
+      "id": "p15",
+      "text": "Qual é o limite de horas para participação como ouvinte em defesas de TCC, mestrado ou doutorado como atividade complementar?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            200
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "\\b60\\b"
+      ],
+      "expected": "60 horas/aula",
+      "origin": "pdf"
+    },
+    {
+      "id": "p16",
+      "text": "A partir de quando as atividades complementares passam a ser válidas para o aluno?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            201
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "ingresso"
+      ],
+      "expected": "somente atividades realizadas a partir do ingresso no curso",
+      "origin": "pdf"
+    },
+    {
+      "id": "p17",
+      "text": "Como é composto o Núcleo Docente Estruturante do curso?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            147
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "30 ?%|trinta por cento"
+      ],
+      "expected": "no mínimo 30% do colegiado, com formação na área e tempo integral",
+      "origin": "pdf"
+    },
+    {
+      "id": "p18",
+      "text": "Qual é o regime de trabalho do coordenador do curso de SI?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            10,
+            147
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "dedicacao exclusiva|\\bde\\b|40 horas"
+      ],
+      "expected": "Dedicação exclusiva, 40 horas semanais",
+      "origin": "pdf"
+    },
+    {
+      "id": "p19",
+      "text": "Quais grupos as ações afirmativas do processo seletivo contemplam?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            135
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "escola publica",
+        "pretos|pardos|indigenas"
+      ],
+      "expected": "egressos de escola pública, renda per capita inferior a 1,5 salário-mínimo, pretos, pardos, indígenas e pessoas com deficiência",
+      "origin": "pdf"
+    },
+    {
+      "id": "p20",
+      "text": "Qual é a ementa de Banco de Dados I?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ementas",
+          "pages": [
+            26
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "modelagem",
+        "gerenciadores|sgbd"
+      ],
+      "expected": "conceitos de BD, modelagem conceitual/lógica/física, projeto de BD, linguagens de consulta, SGBDs",
+      "origin": "pdf"
+    },
+    {
+      "id": "p21",
+      "text": "Qual autor clássico de algoritmos aparece na bibliografia básica de Estrutura de Dados I?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ementas",
+          "pages": [
+            27
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "cormen"
+      ],
+      "expected": "Cormen (Algoritmos: Teoria e Prática)",
+      "origin": "pdf"
+    },
+    {
+      "id": "p22",
+      "text": "Qual é a ementa de Estrutura de Dados I?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ementas",
+          "pages": [
+            27
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "pilhas|filas",
+        "arvores|avl"
+      ],
+      "expected": "listas, pilhas, filas; árvores binárias, de busca, balanceadas (AVL, rubro-negras)",
+      "origin": "rodada-cc5"
+    },
+    {
+      "id": "p23",
+      "text": "Qual percentual da carga horária do curso é destinado à extensão?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ementas",
+          "pages": [
+            13,
+            14
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "10 ?%|dez por cento"
+      ],
+      "expected": "10%",
+      "origin": "pdf"
+    },
+    {
+      "id": "p24",
+      "text": "Qual é o eixo tecnológico e a forma de oferta do curso Técnico em Informática para Internet?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-tec",
+          "pages": [
+            7
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "informacao e comunicacao",
+        "integrad"
+      ],
+      "expected": "Eixo Informação e Comunicação; oferta integrada ao ensino médio",
+      "origin": "pdf"
+    },
+    {
+      "id": "p25",
+      "text": "Qual é a duração do curso Técnico em Informática e a escolaridade mínima exigida?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-tec",
+          "pages": [
+            8
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "3 anos|tres anos",
+        "fundamental"
+      ],
+      "expected": "3 anos; ensino fundamental completo",
+      "origin": "pdf"
+    },
+    {
+      "id": "p26",
+      "text": "O curso Técnico em Informática para Internet tem estágio obrigatório?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-tec",
+          "pages": [
+            62
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "nao (ha|existe|possui|tem|preve)|nao e obrigat|nao\\b"
+      ],
+      "expected": "não há estágio obrigatório; o estágio não obrigatório é permitido",
+      "origin": "pdf"
+    },
+    {
+      "id": "p27",
+      "text": "Qual é o horário das aulas da manhã no curso Técnico e quanto dura cada aula?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-tec",
+          "pages": [
+            7,
+            8
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "7:?35",
+        "50 minutos"
+      ],
+      "expected": "manhã 7:35 às 12:00; aula de 50 minutos",
+      "origin": "pdf"
+    },
+    {
+      "id": "p28",
+      "text": "Que aspectos o perfil do egresso de SI considera além da técnica?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            39
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "etica",
+        "ambient"
+      ],
+      "expected": "ética, segurança, legislação e impactos ambientais",
+      "origin": "pdf"
+    },
+    {
+      "id": "p29",
+      "text": "Quem define o orientador de TCC e em que momento?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            187
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "comum acordo|orientador",
+        "tcc i\\b|inicio da disciplina"
+      ],
+      "expected": "docente orientador definido em comum acordo entre docente e discente no início de TCC I",
+      "origin": "pdf"
+    },
+    {
+      "id": "p30",
+      "text": "Quais são as formas de ingresso no IFPR previstas no PPC?",
+      "stratum": "prosa",
+      "targets": [
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            135,
+            136
+          ]
+        }
+      ],
+      "answer_patterns": [
+        "processo seletivo"
+      ],
+      "expected": "processo seletivo por edital com cotas de ações afirmativas, entre outras",
+      "origin": "pdf"
+    },
+    {
+      "id": "n01",
+      "text": "Qual é o valor da mensalidade do curso de Sistemas de Informação?",
+      "stratum": "negativa",
+      "targets": [],
+      "answer_patterns": [
+        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu)|nenhuma informac|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)"
+      ],
+      "expected": "não consta nos documentos (o IFPR é público e gratuito, mas o acervo não trata disso)",
+      "origin": "pdf"
+    },
+    {
+      "id": "n02",
+      "text": "Qual foi a nota de corte do SISU para Sistemas de Informação em 2026?",
+      "stratum": "negativa",
+      "targets": [],
+      "answer_patterns": [
+        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu)|nenhuma informac|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)"
+      ],
+      "expected": "não consta nos documentos",
+      "origin": "pdf"
+    },
+    {
+      "id": "n03",
+      "text": "Quantos alunos estão matriculados atualmente no curso de SI?",
+      "stratum": "negativa",
+      "targets": [],
+      "answer_patterns": [
+        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu)|nenhuma informac|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)"
+      ],
+      "expected": "não consta nos documentos",
+      "origin": "pdf"
+    },
+    {
+      "id": "n04",
+      "text": "Qual é o valor da bolsa de monitoria em 2026?",
+      "stratum": "negativa",
+      "targets": [],
+      "answer_patterns": [
+        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu)|nenhuma informac|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)"
+      ],
+      "expected": "não consta nos documentos",
+      "origin": "pdf"
+    },
+    {
+      "id": "n05",
+      "text": "Quem é o professor responsável por Banco de Dados I em 2026?",
+      "stratum": "negativa",
+      "targets": [],
+      "answer_patterns": [
+        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu)|nenhuma informac|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)"
+      ],
+      "expected": "não consta nos documentos",
+      "origin": "pdf"
+    }
+  ]
+}

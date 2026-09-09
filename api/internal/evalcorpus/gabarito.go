@@ -1,0 +1,164 @@
+package evalcorpus
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"os"
+	"regexp"
+	"sort"
+)
+
+// Gabarito e o conjunto de perguntas de coordenador sobre a colecao real de SI,
+// usado pelo experimento de geracao (cmd/generation-eval).
+//
+// Difere do Corpus C1 de proposito: C1 e hermetico e mede RECUPERACAO sobre
+// documentos sinteticos; o gabarito aponta para PDFs reais, por pagina fisica,
+// e mede a RESPOSTA ponta a ponta. O hash congela as perguntas: ajustar o
+// sistema e depois "ajustar" a pergunta e a forma mais facil de produzir um
+// numero falso, e o teste falha se o arquivo mudar sem o hash acompanhar.
+type Gabarito struct {
+	Version      string             `json:"version"`
+	Notes        string             `json:"notes"`
+	FrozenSHA256 string             `json:"frozen_sha256"`
+	ReviewedBy   []string           `json:"reviewed_by"`
+	Documents    []GabaritoDocument `json:"documents"`
+	Questions    []GabaritoQuestion `json:"questions"`
+}
+
+type GabaritoDocument struct {
+	ID    string `json:"id"`
+	File  string `json:"file"`
+	Title string `json:"title"`
+	Pages int    `json:"pages"`
+}
+
+type GabaritoTarget struct {
+	DocumentID string `json:"document_id"`
+	Pages      []int  `json:"pages"`
+}
+
+type GabaritoQuestion struct {
+	ID      string `json:"id"`
+	Text    string `json:"text"`
+	Stratum string `json:"stratum"`
+	// Targets lista documento e paginas onde a resposta esta. Vazio marca
+	// pergunta negativa: a resposta certa e a recusa.
+	Targets []GabaritoTarget `json:"targets"`
+	// AnswerPatterns sao regex que TODAS precisam casar na resposta, ja com
+	// acentos e caixa dobrados. Uma alternancia dentro da regex cobre as formas
+	// equivalentes ("sis07206|programacao de computadores i").
+	AnswerPatterns []string `json:"answer_patterns"`
+	Expected       string   `json:"expected"`
+	// Origin: "pdf" (escrita a partir do PDF) ou "rodada-cc5" (ja usada para
+	// ajustar o sistema; o artigo reporta com e sem elas).
+	Origin string `json:"origin"`
+}
+
+// GabaritoStrata sao os estratos aceitos e o minimo de perguntas em cada um.
+var GabaritoStrata = map[string]int{"prosa": 20, "tabela": 15, "calendario": 10, "negativa": 5}
+
+const GabaritoMinQuestions = 50
+
+func LoadGabarito(path string) (*Gabarito, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("ler gabarito: %w", err)
+	}
+	var g Gabarito
+	if err := json.Unmarshal(raw, &g); err != nil {
+		return nil, fmt.Errorf("decodificar gabarito: %w", err)
+	}
+	if err := g.Validate(); err != nil {
+		return nil, err
+	}
+	return &g, nil
+}
+
+// QuestionsSHA256 e o hash das perguntas serializadas; e o valor esperado em
+// FrozenSHA256.
+func (g *Gabarito) QuestionsSHA256() string {
+	raw, _ := json.Marshal(g.Questions)
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:])
+}
+
+func (g *Gabarito) Validate() error {
+	if len(g.Questions) < GabaritoMinQuestions {
+		return fmt.Errorf("gabarito tem %d perguntas; minimo %d", len(g.Questions), GabaritoMinQuestions)
+	}
+	if got := g.QuestionsSHA256(); got != g.FrozenSHA256 {
+		return fmt.Errorf("frozen_sha256 nao confere: arquivo %q, perguntas %q (recalcule e registre em Discoveries)", g.FrozenSHA256, got)
+	}
+	pages := map[string]int{}
+	for _, d := range g.Documents {
+		if d.ID == "" || d.File == "" || d.Pages <= 0 {
+			return fmt.Errorf("documento %q invalido", d.ID)
+		}
+		pages[d.ID] = d.Pages
+	}
+	seen := map[string]bool{}
+	perStratum := map[string]int{}
+	for _, q := range g.Questions {
+		if seen[q.ID] {
+			return fmt.Errorf("pergunta %q duplicada", q.ID)
+		}
+		seen[q.ID] = true
+		if _, ok := GabaritoStrata[q.Stratum]; !ok {
+			return fmt.Errorf("pergunta %q: estrato %q desconhecido", q.ID, q.Stratum)
+		}
+		perStratum[q.Stratum]++
+		if q.Origin != "pdf" && q.Origin != "rodada-cc5" {
+			return fmt.Errorf("pergunta %q: origin %q desconhecida", q.ID, q.Origin)
+		}
+		if q.Text == "" || len(q.AnswerPatterns) == 0 {
+			return fmt.Errorf("pergunta %q sem texto ou sem padrao de resposta", q.ID)
+		}
+		for _, p := range q.AnswerPatterns {
+			if _, err := regexp.Compile(p); err != nil {
+				return fmt.Errorf("pergunta %q: regex %q: %w", q.ID, p, err)
+			}
+		}
+		if (q.Stratum == "negativa") != (len(q.Targets) == 0) {
+			return fmt.Errorf("pergunta %q: negativa sem alvo e vice-versa", q.ID)
+		}
+		for _, t := range q.Targets {
+			total, ok := pages[t.DocumentID]
+			if !ok {
+				return fmt.Errorf("pergunta %q: documento %q nao declarado", q.ID, t.DocumentID)
+			}
+			if len(t.Pages) == 0 {
+				return fmt.Errorf("pergunta %q: alvo %q sem paginas", q.ID, t.DocumentID)
+			}
+			for _, p := range t.Pages {
+				if p < 1 || p > total {
+					return fmt.Errorf("pergunta %q: pagina %d fora de 1..%d em %q", q.ID, p, total, t.DocumentID)
+				}
+			}
+		}
+	}
+	names := make([]string, 0, len(GabaritoStrata))
+	for s := range GabaritoStrata {
+		names = append(names, s)
+	}
+	sort.Strings(names)
+	for _, s := range names {
+		if perStratum[s] < GabaritoStrata[s] {
+			return fmt.Errorf("estrato %q tem %d perguntas; minimo %d", s, perStratum[s], GabaritoStrata[s])
+		}
+	}
+	return nil
+}
+
+// IsNegative diz se a resposta certa e a recusa.
+func (q GabaritoQuestion) IsNegative() bool { return len(q.Targets) == 0 }
+
+// TargetPages devolve as paginas-alvo por documento.
+func (q GabaritoQuestion) TargetPages() map[string][]int {
+	out := map[string][]int{}
+	for _, t := range q.Targets {
+		out[t.DocumentID] = append(out[t.DocumentID], t.Pages...)
+	}
+	return out
+}
