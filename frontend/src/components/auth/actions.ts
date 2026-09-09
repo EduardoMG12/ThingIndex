@@ -53,7 +53,7 @@ export async function login(formData: FormData) {
     return { error: "Erro de conexão com o servidor", type: "error" };
   }
 
-  redirect(`/${locale}/dashboard`);
+  redirect(`/${locale}/workspace`);
 }
 
 export async function register(formData: FormData) {
@@ -104,7 +104,7 @@ export async function register(formData: FormData) {
     return { error: "Erro de conexão com o servidor", type: "error" };
   }
 
-  redirect(`/${locale}/dashboard`);
+  redirect(`/${locale}/workspace`);
 }
 
 export async function logout() {

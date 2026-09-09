@@ -51,7 +51,7 @@ async function authenticate(context: BrowserContext, baseURL: string | undefined
 test.use({ locale: "en-US" });
 
 // O explorador de auditoria vive na terceira aba do workspace de documentos
-// (Library / Operations / Audit), que abre na Library.
+// (Operations / Audit), que abre em Operations.
 test("documents audit explorer applies filters and loads the next page", async ({ baseURL, context, page }) => {
     await authenticate(context, baseURL);
 

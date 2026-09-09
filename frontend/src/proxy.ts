@@ -8,7 +8,7 @@ import {
     stripLocaleFromPathname,
 } from "@/lib/i18n/config";
 
-const PROTECTED_PATHS = ["/dashboard", "/documents", "/cost-visibility", "/settings"];
+const PROTECTED_PATHS = ["/workspace", "/documents", "/cost-visibility", "/settings"];
 const AUTH_PATHS = ["/login", "/register"];
 
 function isStaticAsset(pathname: string) {
@@ -63,7 +63,7 @@ export function proxy(request: NextRequest) {
 
     if (token && isAuthPage) {
         const redirectUrl = request.nextUrl.clone();
-        redirectUrl.pathname = `/${preferredLocale}/dashboard`;
+        redirectUrl.pathname = `/${preferredLocale}/workspace`;
         const response = NextResponse.redirect(redirectUrl);
         response.cookies.set(LOCALE_COOKIE_NAME, preferredLocale, {
             path: "/",

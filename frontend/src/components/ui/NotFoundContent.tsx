@@ -66,7 +66,7 @@ export const NotFoundContent = () => {
                     transition={{ delay: 0.4 }}
                     className="mt-10"
                 >
-                    <Link href={href("/dashboard")} className="inline-block">
+                    <Link href={href("/workspace")} className="inline-block">
                         <Button variant="primary" size="lg" className="gap-2 px-8">
                             <Home className="h-4 w-4 text-primary-foreground" />
                             <span>Voltar para o Início</span>

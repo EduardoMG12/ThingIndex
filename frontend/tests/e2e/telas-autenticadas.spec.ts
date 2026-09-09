@@ -15,8 +15,7 @@ import { expect, test, type BrowserContext } from "@playwright/test";
  */
 
 const TELAS = [
-    { nome: "dashboard", caminho: "/pt-BR/dashboard", titulo: /dashboard/i },
-    { nome: "documentos", caminho: "/pt-BR/documents", titulo: /documentos/i },
+    { nome: "operacoes", caminho: "/pt-BR/documents", titulo: /opera/i },
     { nome: "area de trabalho", caminho: "/pt-BR/workspace", titulo: /área de trabalho/i },
     { nome: "configuracoes", caminho: "/pt-BR/settings", titulo: /configura/i },
     { nome: "custos", caminho: "/pt-BR/cost-visibility", titulo: /custos/i },
@@ -97,7 +96,7 @@ test.describe("varredura das telas autenticadas", () => {
         // Rota adicionada ao AppShell mas sem página, ou página sem entrada no
         // menu, são os dois lados do mesmo defeito -- e nenhum aparece em teste
         // de componente isolado.
-        await page.goto("/pt-BR/dashboard", { waitUntil: "domcontentloaded" });
+        await page.goto("/pt-BR/workspace", { waitUntil: "domcontentloaded" });
 
         const destinos = await page
             .locator("nav a[href], aside a[href]")

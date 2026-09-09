@@ -99,8 +99,14 @@ test("shows the active chat runtime in the main chat flow @smoke", async ({ base
         });
     });
 
-    await page.goto("/en/chat");
-
+    await page.route("**/api/collections/*/context**", async (route) => {
+        await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify(success({ collection: { id: 7, name: "Operations", document_count: 0, metadata: {} }, documents: [], outline_nodes: [], paragraph_nodes: [], table_sections: [], metadata_pairs: [], document_pages: [] })),
+        });
+    });
+    await page.goto("/en/workspace");
     await expect(page.getByRole("heading", { name: "Active chat LLM" })).toBeVisible();
     await expect(page.getByTestId("provider-brand-OLLAMA").first()).toBeVisible();
     await expect(page.getByText("Ollama", { exact: true })).toBeVisible();
