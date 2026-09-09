@@ -506,6 +506,16 @@ export function useChatWorkspace(opcoes: { collectionId?: number | null } = {}) 
                 flushAllPendingDelta();
                 hideStreamingCard();
                 setStreamError(event.message);
+                // As fontes ja chegaram antes do modelo falhar: o card fica
+                // com elas e com a causa, em vez de um balao vazio. E a prova
+                // de que a recuperacao funcionou mesmo sem resposta.
+                setMessages((current) =>
+                    current.map((message) =>
+                        message.id === assistantMessageId && !message.content.trim()
+                            ? { ...message, content: event.message }
+                            : message
+                    )
+                );
                 break;
             default:
                 break;
