@@ -54,7 +54,10 @@ test("marca amarela sobrevive ao reload e outro usuario nao a ve", async ({ cont
     await context.addCookies([{ name: "token", value: tokenA, url: baseURL }]);
 
     await page.goto("/pt-BR/workspace", { waitUntil: "domcontentloaded" });
-    await page.selectOption("select", { label: colecao });
+    // O painel de chat aberto tira o quadro da tela e as paginas so sao
+    // renderizadas quando visiveis; o teste conta grifos, entao fecha o painel.
+    await page.getByTestId("alternar-chat").click();
+    await page.locator("header select").first().selectOption({ label: colecao });
     const grifos = page.getByTestId("grifo");
     await expect(grifos.first()).toBeVisible({ timeout: 60_000 });
     await grifos.first().click();
@@ -62,7 +65,8 @@ test("marca amarela sobrevive ao reload e outro usuario nao a ve", async ({ cont
     await expect(grifos.first()).toHaveAttribute("data-cor", "amarelo");
 
     await page.reload({ waitUntil: "domcontentloaded" });
-    await page.selectOption("select", { label: colecao });
+    await page.getByTestId("alternar-chat").click();
+    await page.locator("header select").first().selectOption({ label: colecao });
     await expect(page.locator('[data-testid="grifo"][data-cor="amarelo"]')).toHaveCount(1, { timeout: 60_000 });
 
     // Isolamento: B nao lista a marca de A, nem pela colecao de A.
