@@ -73,6 +73,33 @@ type ollamaNativeLLMClient struct {
 	model      string
 	pricing    domain.LLMPricing
 	hasPricing bool
+
+	usageMu       sync.Mutex
+	lastUsage     tokenUsage
+	usageReported bool
+}
+
+// LastTokenUsage implementa domain.TokenUsageReporter. O /api/chat do Ollama
+// devolve prompt_eval_count e eval_count no pedaco final; sem le-los, o
+// consumo virava estimativa por runas/4 e um prompt truncado pelo contexto do
+// modelo ficava invisivel.
+func (c *ollamaNativeLLMClient) LastTokenUsage() (int, int, int, bool) {
+	c.usageMu.Lock()
+	defer c.usageMu.Unlock()
+	if !c.usageReported {
+		return 0, 0, 0, false
+	}
+	return c.lastUsage.PromptTokens, c.lastUsage.CompletionTokens, c.lastUsage.Total(), true
+}
+
+func (c *ollamaNativeLLMClient) registrarConsumo(chunk *ollamaChatResponse) {
+	if chunk == nil || (chunk.PromptEvalCount == 0 && chunk.EvalCount == 0) {
+		return
+	}
+	c.usageMu.Lock()
+	defer c.usageMu.Unlock()
+	c.lastUsage = tokenUsage{PromptTokens: chunk.PromptEvalCount, CompletionTokens: chunk.EvalCount}
+	c.usageReported = true
 }
 
 type chatCompletionRequest struct {
@@ -160,9 +187,11 @@ type ollamaChatOptions struct {
 }
 
 type ollamaChatResponse struct {
-	Message *chatCompletionMessage `json:"message,omitempty"`
-	Done    bool                   `json:"done"`
-	Error   string                 `json:"error,omitempty"`
+	Message         *chatCompletionMessage `json:"message,omitempty"`
+	Done            bool                   `json:"done"`
+	Error           string                 `json:"error,omitempty"`
+	PromptEvalCount int                    `json:"prompt_eval_count,omitempty"`
+	EvalCount       int                    `json:"eval_count,omitempty"`
 }
 
 type ollamaTagsResponse struct {
@@ -768,6 +797,7 @@ func (c *ollamaNativeLLMClient) GenerateText(ctx context.Context, systemPrompt, 
 	if err != nil {
 		return "", err
 	}
+	c.registrarConsumo(response)
 	if response.Message == nil {
 		return "", errors.New("ollama response returned no message")
 	}
@@ -826,6 +856,7 @@ func (c *ollamaNativeLLMClient) StreamText(ctx context.Context, systemPrompt, us
 		if strings.TrimSpace(chunk.Error) != "" {
 			return errors.New(strings.TrimSpace(chunk.Error))
 		}
+		c.registrarConsumo(&chunk)
 		if chunk.Message == nil {
 			if chunk.Done {
 				return nil
