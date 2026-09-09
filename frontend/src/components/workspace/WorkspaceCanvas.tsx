@@ -207,6 +207,36 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
         for (const no of nosDoSumario) {
             porNodeId.set(no.nodeId, no);
         }
+        // Secoes construidas pela LLM nao tem slug igual ao section_key dos
+        // paragrafos (que vem da passada deterministica); elas trazem o
+        // intervalo paragraph_start..paragraph_end. O paragrafo cai na secao
+        // mais funda cujo intervalo o contem.
+        const porIntervalo = new Map<number, OutlineNode[]>();
+        for (const no of nosDoSumario) {
+            const inicio = no.metadata?.paragraph_start;
+            const fim = no.metadata?.paragraph_end;
+            if (typeof inicio !== "number" || typeof fim !== "number") {
+                continue;
+            }
+            const lista = porIntervalo.get(no.documentId) ?? [];
+            lista.push(no);
+            porIntervalo.set(no.documentId, lista);
+        }
+        const secaoPorIntervalo = (documentId: number, sequencia: number): OutlineNode | null => {
+            let melhor: OutlineNode | null = null;
+            for (const no of porIntervalo.get(documentId) ?? []) {
+                const inicio = no.metadata?.paragraph_start as number;
+                const fim = no.metadata?.paragraph_end as number;
+                if (sequencia >= inicio && sequencia <= fim && (melhor === null || no.level > melhor.level)) {
+                    melhor = no;
+                }
+            }
+            return melhor;
+        };
+        const secaoDoParagrafo = (no: ParagraphNode): OutlineNode | null => {
+            const chave = sectionKeyDe(no);
+            return (chave ? (secaoPorSlug.get(no.documentId)?.get(chave) ?? null) : null) ?? secaoPorIntervalo(no.documentId, no.sequenceOrder);
+        };
         const porPagina = new Map<number, Map<number, ParagrafoNaPagina[]>>();
         const ancora = new Map<number, Map<string, ParagraphNode>>();
         const porSequencia = new Map<number, Map<number, ParagraphNode>>();
@@ -223,7 +253,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
             }
             contagem.set(no.documentId, c);
             const chave = sectionKeyDe(no);
-            const secao = chave ? (secaoPorSlug.get(no.documentId)?.get(chave) ?? null) : null;
+            const secao = secaoDoParagrafo(no);
             if (box && chave) {
                 const mapa = ancora.get(no.documentId) ?? new Map<string, ParagraphNode>();
                 if (!mapa.has(chave)) {
@@ -251,7 +281,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
             paginas.set(no.startPage, lista);
             secoesPorPagina.set(no.documentId, paginas);
         }
-        return { secaoPorSlug, porNodeId, porPagina, ancora, porSequencia, contagem, secoesPorPagina };
+        return { secaoPorSlug, porNodeId, porPagina, ancora, porSequencia, contagem, secoesPorPagina, secaoDoParagrafo };
     }, [nosDoSumario, paragrafos]);
 
     // Ancora de uma secao: o paragrafo em que ela comeca (paragraph_start, que
@@ -729,6 +759,19 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
     );
 
     const documentoAtual = documentos.find((documento) => documento.id === documentoFocado);
+    // Sinopse e topicos gravados pelo enriquecimento por LLM. So a sinopse da
+    // LLM entra (synopsis_source=llm): a de fallback e o texto cru da primeira
+    // pagina, que nao explica nada.
+    const sobreOFocado = useMemo(() => {
+        if (documentoFocado === null) {
+            return null;
+        }
+        const pares = (context.metadataPairs ?? []).filter((p) => p.documentId === documentoFocado);
+        const ultimo = (chave: string) => [...pares].reverse().find((p) => p.key === chave)?.value ?? "";
+        const resumo = ultimo("synopsis_source") === "llm" ? ultimo("document_summary") : "";
+        const topicos = (ultimo("topics") || ultimo("keywords")).split(",").map((s) => s.trim()).filter(Boolean).slice(0, 8);
+        return resumo || topicos.length > 0 ? { resumo, topicos } : null;
+    }, [context.metadataPairs, documentoFocado]);
 
     const estadoAtual = useMemo<WorkspaceViewState>(
         () => ({
@@ -1074,6 +1117,24 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                                 <PanelRightClose className="h-4 w-4" aria-hidden />
                             </button>
                         </div>
+                        {/* Sinopse e topicos que o enriquecimento por LLM gravou nos
+                            metadados: os "topicos importantes" fora da folha. Sem
+                            enriquecimento, nada aparece. */}
+                        {sobreOFocado ? (
+                            <div className="rounded-md border border-border bg-muted/30 p-3 text-xs" data-testid="sobre-o-documento">
+                                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{t("workspace.sidebar.about")}</p>
+                                {sobreOFocado.resumo ? <p className="leading-snug text-foreground/90">{sobreOFocado.resumo}</p> : null}
+                                {sobreOFocado.topicos.length > 0 ? (
+                                    <ul className="mt-2 flex flex-wrap gap-1" aria-label={t("workspace.sidebar.topics")}>
+                                        {sobreOFocado.topicos.map((topico) => (
+                                            <li key={topico} className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] text-primary" data-testid="topico">
+                                                {topico}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : null}
+                            </div>
+                        ) : null}
 
                         {(() => {
                             const c = indiceDoContexto.contagem.get(documentoFocado);
@@ -1122,10 +1183,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                                                         type="button"
                                                         title={t("workspace.marks.goTo")}
                                                         onClick={() => {
-                                                            const secao = sectionKeyDe(no)
-                                                                ? (indiceDoContexto.secaoPorSlug.get(no.documentId)?.get(sectionKeyDe(no)!) ?? null)
-                                                                : null;
-                                                            selecionarParagrafo(no, secao);
+                                                            selecionarParagrafo(no, indiceDoContexto.secaoDoParagrafo(no));
                                                             irAte(no.documentId, no.pageNumber ?? null, rectDoParagrafo(no));
                                                         }}
                                                         className="w-full rounded px-1 py-0.5 text-left text-xs hover:bg-muted"
