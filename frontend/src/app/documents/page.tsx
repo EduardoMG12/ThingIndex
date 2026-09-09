@@ -29,6 +29,7 @@ import {
     X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { formatDocumentStatus } from "@/lib/documents/status";
 
 import AppShell from "@/components/layout/AppShell";
 import ProviderRuntimeCallout from "@/components/runtime/ProviderRuntimeCallout";
@@ -259,29 +260,6 @@ function formatRetryWindow(attempt: DocumentProcessingAttempt | undefined, t: Tr
     }
 
     return null;
-}
-
-function formatDocumentStatus(status: string | undefined, t: TranslateFn) {
-    switch (status) {
-        case "PENDING":
-            return t("dashboard.upload.status.pending");
-        case "UPLOADING":
-            return t("dashboard.upload.status.uploading");
-        case "QUEUED":
-            return t("dashboard.upload.status.queued");
-        case "PROCESSING":
-            return t("dashboard.upload.status.processing");
-        case "INDEXED":
-            return t("dashboard.upload.status.indexed");
-        case "UPLOAD_ERROR":
-            return t("dashboard.upload.status.uploadError");
-        case "FAILED":
-            return t("dashboard.upload.status.failed");
-        case "ORPHANED":
-            return t("dashboard.upload.status.orphaned");
-        default:
-            return status || t("documentsPage.operational.statusUnknown");
-    }
 }
 
 function MonitoringView({
