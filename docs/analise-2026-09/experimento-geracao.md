@@ -96,6 +96,8 @@ Sem crédito de LLM, o que dá para medir é a **recuperação isolada da geraç
 
 Doze perguntas de tabela passaram a ter a linha certa entre as fontes; a única perda (p01) traz a linha "TOTAL 3000" da Matriz p. 3, que responde à pergunta numa página que o gabarito não listou. A primeira tentativa, com linhas ocupando 3 das 6 vagas de fonte, derrubou a prosa para 63%; a versão final deixa as linhas fora das vagas de página (custam 100 caracteres contra 4.000) e corta linha abaixo de metade do score da melhor.
 
+Com as caixas das tabelas em mãos, o sumário deixou de promover célula a título: Matriz 16 → 4 seções, PPC 564 → 492, PPC Técnico 511 → 495, Calendário 18 → 12. O Recall nas fontes foi medido de novo depois dessa limpeza e não mudou (89,6% no total, 100% em tabela): o ganho veio das linhas, não do sumário.
+
 O que ainda não foi medido: se o modelo, recebendo a linha "Disciplina: SIS07302 - Estrutura de Dados I; Pré-requisito Trilha de Disciplina Hrs optativas: SIS07206" como primeira fonte, responde certo. Isso é a rodada 3, quando houver crédito. Confundidor: a reindexação rodou sem LLM, então os resumos e a árvore de seções caíram em fallback e os hits de seção mudaram entre antes e depois.
 
 ## 7. Próximos passos

@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"thing-index/internal/domain"
@@ -276,12 +277,26 @@ func (h *ChatHandler) StreamCollectionChat(c *gin.Context) {
 			_ = writeChatEvent(c, "error", gin.H{"message": i18n.T(lang, "doc.error_collection_not_found")})
 		case errors.Is(err, domain.ErrLLMProviderNotConfigured):
 			_ = writeChatEvent(c, "error", gin.H{"message": i18n.T(lang, "provider.error_llm_not_configured")})
-		case errors.Is(err, domain.ErrLLMProviderUnavailable):
-			_ = writeChatEvent(c, "error", gin.H{"message": i18n.T(lang, "chat.error_stream")})
 		default:
-			_ = writeChatEvent(c, "error", gin.H{"message": i18n.T(lang, "chat.error_stream")})
+			// "Falha ao gerar resposta" sozinho esconde a causa que o usuario
+			// precisa saber ("monthly usage limit", "context length"). O
+			// detalhe vai junto, curto e numa linha.
+			_ = writeChatEvent(c, "error", gin.H{"message": i18n.T(lang, "chat.error_stream"), "detail": chatErrorDetail(err)})
 		}
 	}
+}
+
+// chatErrorDetail devolve a causa do erro do provedor em uma linha de ate 200
+// caracteres, para o usuario entender por que a resposta nao veio.
+func chatErrorDetail(err error) string {
+	if err == nil {
+		return ""
+	}
+	detail := strings.Join(strings.Fields(err.Error()), " ")
+	if runes := []rune(detail); len(runes) > 200 {
+		detail = string(runes[:200]) + "…"
+	}
+	return detail
 }
 
 func parseChatUint(value string) (uint, error) {
