@@ -106,7 +106,7 @@ async function mockar(context: BrowserContext) {
                 // Uma fonte com documento e no (vai ao canvas) e uma antiga, sem documento (nao tem botao).
                 'event: sources\ndata: {"sources":[{"id":"4:12:edital#prazos","docName":"Edital longo","page":12,"snippet":"Prazo de 30 dias.","documentId":4,"nodeId":"edital#prazos"},{"id":"3:1","docName":"Termo assinado","page":1,"snippet":"Assinado."}]}',
                 'event: delta\ndata: {"delta":"O prazo e de 30 dias."}',
-                'event: done\ndata: {"stage":"completed"}',
+                'event: done\ndata: {"stage":"completed","usage":{"promptTokens":1234,"completionTokens":56,"usageReported":true,"model":"gemma4:31b","estimatedCostUsd":0.00027}}',
                 "",
             ].join("\n\n"),
         })
@@ -130,6 +130,8 @@ test("perguntar no painel e clicar em 'Ver no documento' leva o Edital a pagina 
     await painel.getByRole("textbox", { name: "Mensagem do chat" }).fill("Qual e o prazo?");
     await painel.getByRole("textbox", { name: "Mensagem do chat" }).press("Enter");
     await expect(painel.getByText("O prazo e de 30 dias.")).toBeVisible();
+    // Tokens, modelo e custo embaixo da resposta (o artigo compara custo por consulta).
+    await expect(painel.getByTestId("consumo-da-resposta").first()).toContainText("1.290 tokens · gemma4:31b · US$ 0,00027");
     // So a fonte com documentId tem o botao (a do Termo, sem document_id, nao).
     const botao = painel.getByTestId("ver-no-documento").first();
     await expect(botao).toBeVisible();
