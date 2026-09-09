@@ -53,7 +53,7 @@ export default function ProviderRuntimeCallout({
                 className
             )}
         >
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className={compacto ? "flex flex-col gap-3" : "flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"}>
                 <div className="flex items-start gap-3">
                     <div className={cn(
                         "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border bg-background/80",
@@ -111,7 +111,7 @@ export default function ProviderRuntimeCallout({
                         <div className="mt-3 flex items-center gap-3">
                             <ProviderBrandMark providerType={assignment.provider_type} size="sm" />
                             <div>
-                                <p className="text-sm font-semibold text-foreground">
+                                <p className={compacto ? "truncate text-xs font-semibold text-foreground" : "text-sm font-semibold text-foreground"}>
                                     {formatProviderTypeLabel(assignment.provider_type)}
                                 </p>
                                 <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
@@ -124,7 +124,7 @@ export default function ProviderRuntimeCallout({
                         <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                             {t("providerRuntime.modelLabel")}
                         </p>
-                        <p className="mt-3 text-sm font-semibold text-foreground">
+                        <p className={compacto ? "mt-1 truncate text-xs font-semibold text-foreground" : "mt-3 text-sm font-semibold text-foreground"}>
                             {model ?? t("providerRuntime.notConfiguredLabel")}
                         </p>
                     </div>
@@ -132,7 +132,7 @@ export default function ProviderRuntimeCallout({
                         <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                             {t("providerRuntime.updatedLabel")}
                         </p>
-                        <p className="mt-3 text-sm font-semibold text-foreground">
+                        <p className={compacto ? "mt-1 truncate text-xs font-semibold text-foreground" : "mt-3 text-sm font-semibold text-foreground"}>
                             {updatedAt}
                         </p>
                     </div>
