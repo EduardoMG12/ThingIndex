@@ -146,8 +146,12 @@ type chatCompletionStreamResponse struct {
 type ollamaChatRequest struct {
 	Model    string                  `json:"model"`
 	Messages []chatCompletionMessage `json:"messages"`
-	Stream   bool                    `json:"stream,omitempty"`
-	Options  *ollamaChatOptions      `json:"options,omitempty"`
+	// SEM omitempty: o padrao do /api/chat do Ollama e stream=true. Com
+	// omitempty, `false` sumia do JSON, o servidor respondia em NDJSON e o
+	// decoder lia so o primeiro pedaco -- cada resumo do enriquecimento virava
+	// um token, e o pipeline caia em fallback sem nenhum erro registrado.
+	Stream  bool               `json:"stream"`
+	Options *ollamaChatOptions `json:"options,omitempty"`
 }
 
 type ollamaChatOptions struct {

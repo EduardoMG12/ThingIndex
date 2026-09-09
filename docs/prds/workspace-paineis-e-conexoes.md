@@ -92,3 +92,15 @@ O autor mostrou três fotos: pílulas amarelas truncadas na margem do PDF ("3.7 
 - **Sidebar** explica em uma frase o que é uma conexão e como navegar, acima da lista.
 
 Verificado na stack real com a coleção do processo seletivo: 49 grifos, 9 marcadores discretos, 12 linhas com o rótulo na ponta.
+
+## Rodada 4 (2026-09-09): o enriquecimento por LLM nunca tinha funcionado
+
+O autor pediu para conferir "se você está fazendo as perguntas certas para a IA" e se os resumos ajudavam. Ligado o enriquecimento no usuário demo, os cinco pedidos por documento voltaram com cerca de um token cada e tudo caiu em fallback silencioso: sinopse igual ao texto cru da primeira página, "keywords" iguais aos títulos, sem tópicos. Causa: no cliente Ollama nativo o campo `stream` tinha `omitempty`, `false` sumia do JSON, o servidor respondia em NDJSON (o padrão do `/api/chat`) e o decoder lia só o primeiro pedaço. `llm_failed_request_count` ficava em zero porque a chamada "dava certo". Corrigido com teste que reproduz o servidor em streaming; os fallbacks agora vão para o log e `synopsis_source` grava `llm` ou `fallback`.
+
+Com a correção, as perguntas do indexador estão certas e as respostas chegam: sinopse em português, `topics`, `keywords`, `entities`, resumo por seção e por página, e uma árvore de seções construída pela LLM. A árvore trouxe um segundo achado: a LLM só lê as primeiras 12 páginas, e no PPC de 209 páginas devolveu 7 nós de até 130 páginas com `start_page` apontando para a página do sumário onde leu o título. A verificação por cobertura de páginas aceitava. Regra nova, com teste: nó que continua maior que 10 páginas depois das expansões recusa a árvore inteira e o sumário determinístico fica. No demo, a árvore da LLM valeu para calendário (4 seções) e matriz (4); os outros oito ficaram com o determinístico. Em todos os dez a sinopse e os tópicos vieram da LLM.
+
+Na tela, os "tópicos importantes fora da folha" que o autor pediu ficaram na sidebar, no bloco "Sobre este documento": sinopse da LLM e até 8 tópicos como chips, só quando a sinopse é da LLM. Seções da LLM não têm o `section_key` dos parágrafos; o canvas passou a resolver a seção do parágrafo pelo intervalo `paragraph_start..paragraph_end` quando o slug não casa, senão "Ver conexões" morria nesses documentos.
+
+Custo: 5 a 7 chamadas por documento (19 no PPC, pelas tentativas de expansão), cerca de 5 mil tokens de entrada cada, estimados. O enriquecimento ficou ligado no usuário demo.
+
+O que não melhorou: as três perguntas do chat que dependem da tabela da Matriz continuam iguais. Resumo de página ajuda o trecho, não o retrieval; tabela como fonte segue pendente.

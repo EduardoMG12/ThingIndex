@@ -472,3 +472,71 @@ describe("WorkspaceCanvas", () => {
         }
     });
 });
+
+describe("WorkspaceCanvas: enriquecimento por LLM", () => {
+    const comLLM = {
+        ...contexto,
+        outlineNodes: [
+            // Secao construida pela LLM: slug proprio, sem section_key nos paragrafos,
+            // mas com o intervalo de paragrafos que ela cobre.
+            { documentId: 1, nodeId: "llm-1", title: "Primeiro Semestre", level: 1, slug: "primeiro-semestre", startPage: 1, metadata: { paragraph_start: 0, paragraph_end: 5, builder: "llm" } },
+        ],
+        paragraphNodes: [
+            { id: 901, documentId: 1, sequenceOrder: 2, pageNumber: 1, content: "Rematricula de 9 a 13 de fevereiro", metadata: { box: { x_min: 72, x_max: 300, y_min: 100, y_max: 112, page_width: 612, page_height: 792 }, section_key: "chave-que-nao-existe-no-sumario" } },
+        ],
+        metadataPairs: [
+            { id: 1, documentId: 1, sequenceOrder: 0, key: "document_summary", value: "Texto cru da primeira pagina" },
+            { id: 2, documentId: 1, sequenceOrder: 1, key: "synopsis_source", value: "llm" },
+            { id: 3, documentId: 1, sequenceOrder: 2, key: "document_summary", value: "Calendario academico de 2026 com prazos de matricula." },
+            { id: 4, documentId: 1, sequenceOrder: 3, key: "topics", value: "Calendario 2026, Rematricula, Dias letivos" },
+        ],
+    } as unknown as CollectionContext;
+
+    it("mostra 'Sobre este documento' com a sinopse da LLM (a ultima) e os topicos como chips", () => {
+        render(<WorkspaceCanvas context={comLLM} />, opcoes);
+        fireEvent.click(screen.getByRole("button", { name: /Contrato SLA/i }));
+        const sobre = screen.getByTestId("sobre-o-documento");
+        expect(sobre).toHaveTextContent("Calendario academico de 2026 com prazos de matricula.");
+        expect(sobre).not.toHaveTextContent("Texto cru");
+        expect(screen.getAllByTestId("topico").map((el) => el.textContent)).toEqual(["Calendario 2026", "Rematricula", "Dias letivos"]);
+    });
+
+    it("sem sinopse da LLM nao mostra o bloco", () => {
+        render(<WorkspaceCanvas context={{ ...comLLM, metadataPairs: [{ id: 1, documentId: 1, sequenceOrder: 0, key: "document_summary", value: "Texto cru" }] }} />, opcoes);
+        fireEvent.click(screen.getByRole("button", { name: /Contrato SLA/i }));
+        expect(screen.queryByTestId("sobre-o-documento")).toBeNull();
+    });
+
+    it("paragrafo cuja section_key nao existe no sumario cai na secao da LLM pelo intervalo de paragrafos", async () => {
+        const original = globalThis.ResizeObserver;
+        globalThis.ResizeObserver = class {
+            private cb: ResizeObserverCallback;
+            constructor(cb: ResizeObserverCallback) {
+                this.cb = cb;
+            }
+            observe() {
+                this.cb([{ contentRect: { width: 1400, height: 900 } } as ResizeObserverEntry], this as unknown as ResizeObserver);
+            }
+            unobserve() {}
+            disconnect() {}
+        } as unknown as typeof ResizeObserver;
+        const contextoLLM = {
+            ...contextoComPdf,
+            outlineNodes: [
+                { documentId: 3, nodeId: "llm-1", title: "Primeiro Semestre", level: 1, slug: "primeiro-semestre", startPage: 1, metadata: { paragraph_start: 0, paragraph_end: 5, builder: "llm" } },
+            ],
+            paragraphNodes: [
+                { id: 301, documentId: 3, sequenceOrder: 0, content: "Multa de 5 por cento.", pageNumber: 1, metadata: { box: BOX, section_key: "chave-que-nao-existe" } },
+            ],
+        } as unknown as CollectionContext;
+        try {
+            render(<WorkspaceCanvas context={contextoLLM} />, opcoes);
+            const grifo = await screen.findByTestId("grifo");
+            fireEvent.click(grifo);
+            expect(screen.getByTestId("trecho-selecionado")).toHaveTextContent("Primeiro Semestre");
+            expect(within(screen.getByTestId("barra-de-grifo")).getByRole("button", { name: /Ver conexões/ })).toBeEnabled();
+        } finally {
+            globalThis.ResizeObserver = original;
+        }
+    });
+});

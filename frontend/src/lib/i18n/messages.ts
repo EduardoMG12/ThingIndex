@@ -68,6 +68,8 @@ export const messages: LocaleMessages = {
             },
             sidebar: {
                 label: "Detalhes do documento",
+                about: "Sobre este documento",
+                topics: "Tópicos",
                 open: "Abrir estrutura",
                 close: "Fechar estrutura",
                 empty: "Selecione um documento no painel para ver sua estrutura.",
@@ -1417,6 +1419,8 @@ export const messages: LocaleMessages = {
             },
             sidebar: {
                 label: "Document details",
+                about: "About this document",
+                topics: "Topics",
                 open: "Open structure",
                 close: "Close structure",
                 empty: "Select a document on the canvas to see its structure.",
@@ -2766,6 +2770,8 @@ export const messages: LocaleMessages = {
             },
             sidebar: {
                 label: "Detalles del documento",
+                about: "Sobre este documento",
+                topics: "Temas",
                 open: "Abrir estructura",
                 close: "Cerrar estructura",
                 empty: "Selecciona un documento en el lienzo para ver su estructura.",
