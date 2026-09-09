@@ -11,9 +11,15 @@ vi.mock("next/navigation", () => ({
 const opcoes = { wrapper: createTestWrapper("pt-BR") };
 
 describe("LegendPanel", () => {
+    // A legenda comeca recolhida; os testes de edicao a abrem antes.
+    function abrirLegenda() {
+        fireEvent.click(screen.getByRole("button", { name: /Legenda/ }));
+    }
+
     it("mostra o nome da cor como placeholder quando nao ha rotulo e salva a legenda inteira ao sair do campo", () => {
         const onSalvar = vi.fn();
         render(<LegendPanel legenda={{ amarelo: "prazo" }} onSalvar={onSalvar} />, opcoes);
+        abrirLegenda();
         const verde = screen.getByTestId("legenda-verde") as HTMLInputElement;
         expect(verde.placeholder).toBe("Verde");
         expect((screen.getByTestId("legenda-amarelo") as HTMLInputElement).value).toBe("prazo");
@@ -33,6 +39,7 @@ describe("LegendPanel", () => {
             <LegendPanel legenda={{}} onSalvar={onSalvar} contagem={{ amarelo: 3, verde: 0, azul: 1, vermelho: 0, roxo: 0 }} />,
             opcoes
         );
+        abrirLegenda();
         const azul = screen.getByTestId("legenda-azul");
         fireEvent.change(azul, { target: { value: "penalidade" } });
         fireEvent.keyDown(azul, { key: "Enter" });
@@ -42,11 +49,12 @@ describe("LegendPanel", () => {
         expect(screen.getByTestId("contagem-azul")).toHaveTextContent("1");
     });
 
-    it("recolhe e expande", () => {
+    it("comeca recolhida (nao cobre o canto do PDF), expande e recolhe", () => {
         render(<LegendPanel legenda={{}} onSalvar={() => undefined} />, opcoes);
-        fireEvent.click(screen.getByRole("button", { name: /Legenda/ }));
         expect(screen.queryByTestId("legenda-amarelo")).toBeNull();
         fireEvent.click(screen.getByRole("button", { name: /Legenda/ }));
         expect(screen.getByTestId("legenda-amarelo")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: /Legenda/ }));
+        expect(screen.queryByTestId("legenda-amarelo")).toBeNull();
     });
 });
