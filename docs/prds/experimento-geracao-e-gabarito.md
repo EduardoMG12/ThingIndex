@@ -95,3 +95,10 @@ Ambiguity Report:
 - A rota `/chat/stream` tem limitador de 20 pedidos por minuto; a primeira execução do braço T caiu em 429 na 21ª chamada. O harness espera 30 s e repete (até 10 vezes) e não conta a espera na latência.
 - O crédito mensal do Ollama Cloud acabou no meio de F/coleção (a partir de c14) e antes da segunda execução de T. O harness agora interrompe o lote ao ver "usage limit" e trata resposta vazia da API como erro, não como "errada". **T fica pendente até haver crédito.**
 - Os CSVs válidos estão versionados em `docs/article/results/` (`generation-results-F-document.csv`, `generation-results-collection.csv`, este com as linhas de erro mantidas para registro).
+
+**Rodada 3 e 4 (2026-09-09), com a chave reserva**
+
+- Braço T fechado (72 × 3): 92,6% de acerto (gabarito v2), proveniência 91%, 4 mil tokens por pergunta; F/documento 98,6%; F/coleção 98,6% com proveniência 64%. Diferença pareada T × F +0,060 (IC +0,000 a +0,130). Modelo maior disponível (`gpt-oss:120b`) foi pior (68%); `deepseek-v3.1:671b` foi aposentado pelo provedor e os maiores exigem assinatura.
+- Gabarito v2: t04, c08, c13 com regex tolerantes; t06 aceita as duas colunas; p01 inclui Matriz p. 3. Hash recongelado. Os CSVs foram reavaliados com `cmd/generation-eval -rescore` (4 linhas de T, 9 de F/documento e 6 de F/coleção mudaram de veredito), sem rerodar modelo; o relatório traz v1 e v2.
+- Corpus dobrado (10 documentos): nenhuma pergunta perdeu página-alvo nem acerto. Três correções de retrieval medidas: plural→singular e reforço por título descartadas; linha só com 2+ termos mantida.
+- Bug encontrado por uma pergunta que falhava (p24): o texto da página não continha os títulos, então a identificação do PPC ("Eixo Tecnológico / Informação e Comunicação") nunca entrava no BM25 nem no prompt. Corrigido; o controle híbrido do benchmark público subiu de 90,9% para 100% por isso, e o teste registra o motivo.

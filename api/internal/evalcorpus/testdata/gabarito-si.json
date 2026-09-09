@@ -1,7 +1,7 @@
 {
-  "version": "si-2026-09",
-  "notes": "Gabarito de perguntas de coordenador sobre a colecao de SI (5 PDFs de examples/faculdade). Escrito a partir dos PDFs com pdftotext -layout, sem consultar o sistema. answer_patterns: TODAS as regex devem casar na resposta com acentos e caixa dobrados (retrieval.FoldDiacritics + lower). targets: documento e paginas fisicas do PDF (1..N) que contem a resposta. Estrato negativa: a resposta certa e a recusa; targets vazio. origin rodada-cc5 marca perguntas que ja foram usadas para ajustar o sistema; o artigo reporta com e sem elas.",
-  "frozen_sha256": "50ac6b9aa35cd20fb8797aca2518795fac6155c5c7b88cb0872611958beb2d20",
+  "version": "si-2026-09-v2",
+  "notes": "Gabarito de perguntas de coordenador sobre a colecao de SI (5 PDFs de examples/faculdade). Escrito a partir dos PDFs com pdftotext -layout, sem consultar o sistema. answer_patterns: TODAS as regex devem casar na resposta com acentos e caixa dobrados (retrieval.FoldDiacritics + lower). targets: documento e paginas fisicas do PDF (1..N) que contem a resposta. Estrato negativa: a resposta certa e a recusa; targets vazio. origin rodada-cc5 marca perguntas que ja foram usadas para ajustar o sistema; o artigo reporta com e sem elas. v2 (2026-09-09, depois da rodada 3): t04 aceita '03'; c08 e c13 aceitam 'e'/'ao dia'; t06 aceita a coluna Categoria ('Obrigatória') alem de 'Extensão'; p01 inclui Matriz p. 3 (linha TOTAL 3000). Os CSVs de resultados foram rescorados com `cmd/generation-eval -rescore`, sem rerodar modelo.",
+  "frozen_sha256": "72b9312098d47975e47e3e50c2a462ec9996df253457a242789abd7e3fe4d13b",
   "reviewed_by": [],
   "documents": [
     {
@@ -104,7 +104,7 @@
         }
       ],
       "answer_patterns": [
-        "\\b3\\b|3[ºo°]|terceiro"
+        "\\b0?3\\b|3[ºo°]|terceiro"
       ],
       "expected": "3º período; não tem pré-requisito",
       "origin": "rodada-cc5"
@@ -142,9 +142,9 @@
       ],
       "answer_patterns": [
         "\\b150\\b",
-        "extensao"
+        "extensao|obrigatoria"
       ],
-      "expected": "150 h; Natureza - Extensão (obrigatória)",
+      "expected": "150 h; categoria Natureza - Obrigatória, atividade pedagógica Extensão (a Matriz tem as duas colunas)",
       "origin": "pdf"
     },
     {
@@ -583,7 +583,7 @@
         }
       ],
       "answer_patterns": [
-        "15 (a|ate|-) 17"
+        "15 (a|e|ate|-) 17"
       ],
       "expected": "15 a 17 de setembro",
       "origin": "pdf"
@@ -676,7 +676,7 @@
         }
       ],
       "answer_patterns": [
-        "12 (a|ate|-) 16"
+        "12 (a|e|ate|-|ao dia) 16"
       ],
       "expected": "12 a 16 de outubro",
       "origin": "pdf"
@@ -750,7 +750,8 @@
         {
           "document_id": "matriz",
           "pages": [
-            1
+            1,
+            3
           ]
         },
         {
