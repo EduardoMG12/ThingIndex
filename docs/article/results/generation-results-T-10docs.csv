@@ -1,0 +1,71 @@
+question_id,stratum,origin,arm,scope,repeat,model,correct,cited_pages,provenance_ok,retrieval_hit,prompt_tokens,completion_tokens,usage_reported,latency_ms,cost_usd,truncated,error,answer
+t01,tabela,pdf,T,,1,gemma4:31b,true,matriz:1;ppc-si:51;ppc-si:63;matriz:3;matriz:2;ppc-si:61,true,true,4512,64,true,1154,,false,,"Na grade 07, o pré-requisito da disciplina SIS07302 - Estrutura de Dados I é a disciplina SIS07206 (Programação de Computadores I), conforme consta na Matriz Curricular SI - Palmas (2023), página 1."
+t01,tabela,pdf,T,,2,gemma4:31b,true,matriz:1;ppc-si:51;ppc-si:63;matriz:3;matriz:2;ppc-si:61,true,true,4512,54,true,978,,false,,"Na grade 07, o pré-requisito da disciplina SIS07302 - Estrutura de Dados I é a disciplina SIS07206 (Matriz Curricular SI - Palmas (2023), página 1)."
+t01,tabela,pdf,T,,3,gemma4:31b,true,matriz:1;ppc-si:51;ppc-si:63;matriz:3;matriz:2;ppc-si:61,true,true,4512,54,true,879,,false,,"Na grade 07, o pré-requisito da disciplina SIS07302 - Estrutura de Dados I é a disciplina SIS07206 (Matriz Curricular SI - Palmas (2023), página 1)."
+t02,tabela,rodada-cc5,T,,1,gemma4:31b,true,matriz:1;ppc-si:61;ppc-si:52;ementas:29;ppc-si:79;ementas:10;ppc-si:118;ppc-si:55,true,true,3585,60,true,1042,,false,,"O pré-requisito da disciplina de Sistemas Operacionais (SIS07305) é a disciplina SIS07201 (Arquitetura e Organização de Computadores), conforme indicado na Matriz Curricular SI - Palmas (2023), página 1."
+t02,tabela,rodada-cc5,T,,2,gemma4:31b,true,matriz:1;ppc-si:61;ppc-si:52;ementas:29;ppc-si:79;ementas:10;ppc-si:118;ppc-si:55,true,true,3585,60,true,968,,false,,"O pré-requisito da disciplina de Sistemas Operacionais (SIS07305) é a disciplina SIS07201 (Arquitetura e Organização de Computadores), conforme indicado na Matriz Curricular SI - Palmas (2023), página 1."
+t02,tabela,rodada-cc5,T,,3,gemma4:31b,true,matriz:1;ppc-si:61;ppc-si:52;ementas:29;ppc-si:79;ementas:10;ppc-si:118;ppc-si:55,true,true,3585,60,true,1028,,false,,"O pré-requisito da disciplina de Sistemas Operacionais (SIS07305) é a disciplina SIS07201 (Arquitetura e Organização de Computadores), conforme indicado na Matriz Curricular SI - Palmas (2023), página 1."
+t03,tabela,pdf,T,,1,gemma4:31b,true,matriz:1;ppc-si:61;ppc-si:64;ppc-si:51;ppc-si:54;matriz:2,true,true,4228,81,true,1537,,false,,"As disciplinas que são pré-requisito de Programação de Computadores III (SIS07405) são **SIS07303** (Programação de Computadores II) e **SIS07304** (Programação Orientada a Objeto - POO), conforme a Matriz Curricular SI - Palmas (2023), página 1."
+t03,tabela,pdf,T,,2,gemma4:31b,true,matriz:1;ppc-si:61;ppc-si:64;ppc-si:51;ppc-si:54;matriz:2,true,true,4228,87,true,1077,,false,,"As disciplinas que são pré-requisito de Programação de Computadores III (SIS07405) são:
+
+*   **SIS07303** - Programação de Computadores II
+*   **SIS07304** - Programação Orientada a Objeto (POO)
+
+Fonte: Matriz Curricular SI - Palmas (2023), página 1."
+t03,tabela,pdf,T,,3,gemma4:31b,true,matriz:1;ppc-si:61;ppc-si:64;ppc-si:51;ppc-si:54;matriz:2,true,true,4228,87,true,1014,,false,,"As disciplinas que são pré-requisito de Programação de Computadores III (SIS07405) são:
+
+*   **SIS07303** - Programação de Computadores II
+*   **SIS07304** - Programação Orientada a Objeto (POO)
+
+Fonte: Matriz Curricular SI - Palmas (2023), página 1."
+t04,tabela,rodada-cc5,T,,1,gemma4:31b,true,matriz:1;matriz:3;ppc-si:61;ppc-si:80;ppc-si:51;ppc-si:134,true,true,4288,49,true,1222,,false,,"A disciplina Banco de Dados I (SIS07301) está no 03º período e não possui pré-requisito listado (Matriz Curricular SI - Palmas (2023), página 1)."
+t04,tabela,rodada-cc5,T,,2,gemma4:31b,true,matriz:1;matriz:3;ppc-si:61;ppc-si:80;ppc-si:51;ppc-si:134,true,true,4288,49,true,1110,,false,,"A disciplina Banco de Dados I (SIS07301) está no 03º período e não possui pré-requisito listado (Matriz Curricular SI - Palmas (2023), página 1)."
+t04,tabela,rodada-cc5,T,,3,gemma4:31b,true,matriz:1;matriz:3;ppc-si:61;ppc-si:80;ppc-si:51;ppc-si:134,true,true,4288,49,true,981,,false,,"A disciplina Banco de Dados I (SIS07301) está no 03º período e não possui pré-requisito listado (Matriz Curricular SI - Palmas (2023), página 1)."
+t05,tabela,pdf,T,,1,gemma4:31b,true,matriz:1;matriz:3;ppc-si:186;ppc-si:61;ppc-si:80;ppc-si:174,true,true,4394,63,true,1339,,false,,"A disciplina Banco de Dados II (SIS07401) é ofertada no 4º período e tem como pré-requisito a disciplina SIS07301 (Banco de Dados I), conforme a Matriz Curricular SI - Palmas (2023), página 1."
+t05,tabela,pdf,T,,2,gemma4:31b,true,matriz:1;matriz:3;ppc-si:186;ppc-si:61;ppc-si:80;ppc-si:174,true,true,4394,63,true,1274,,false,,"A disciplina Banco de Dados II (SIS07401) é ofertada no 4º período e tem como pré-requisito a disciplina SIS07301 (Banco de Dados I), conforme a Matriz Curricular SI - Palmas (2023), página 1."
+t05,tabela,pdf,T,,3,gemma4:31b,true,matriz:1;matriz:3;ppc-si:186;ppc-si:61;ppc-si:80;ppc-si:174,true,true,4394,63,true,2681,,false,,"A disciplina Banco de Dados II (SIS07401) é ofertada no 4º período e tem como pré-requisito a disciplina SIS07301 (Banco de Dados I), conforme a Matriz Curricular SI - Palmas (2023), página 1."
+t06,tabela,pdf,T,,1,gemma4:31b,true,matriz:2;ppc-si:54;ementas:6;ementas:37;ppc-si:64;ppc-si:34;ppc-si:88,true,true,3453,184,true,1473,,false,,"A carga horária e a categoria da disciplina Projeto Comunitário I variam conforme o documento consultado:
+
+*   **Matriz Curricular SI - Palmas (2023):** A carga horária (Bloco Hrs Coreq) é de **150** e a categoria é **Natureza - Obrigatória** (especificada como Natureza - Extensão Obrigatória na tabela da página 2).
+*   **Ementas SI - Palmas (PPC 2023):** A carga horária total é de **150 horas relógio** e **180 horas aula** (página 37).
+*   **PPC Sistemas de Informacao - Palmas (2019):** A carga horária é de **80 h/a – 67 h/r** (página 88)."
+t06,tabela,pdf,T,,2,gemma4:31b,true,matriz:2;ppc-si:54;ementas:6;ementas:37;ppc-si:64;ppc-si:34;ppc-si:88,true,true,3453,181,true,1315,,false,,"A carga horária e a categoria da disciplina Projeto Comunitário I variam conforme o documento consultado:
+
+*   **Matriz Curricular SI - Palmas (2023):** A carga horária (Bloco Hrs Coreq) é de **150** e a categoria é **Natureza - Obrigatória** (com atividade pedagógica de Extensão) (página 2).
+*   **Ementas SI - Palmas (PPC 2023):** A carga horária total é de **150 horas relógio** e **180 horas aula** (página 37).
+*   **PPC Sistemas de Informacao - Palmas (2019):** A carga horária é de **80 h/a – 67 h/r** (página 88)."
+t06,tabela,pdf,T,,3,gemma4:31b,true,matriz:2;ppc-si:54;ementas:6;ementas:37;ppc-si:64;ppc-si:34;ppc-si:88,true,true,3453,181,true,1730,,false,,"A carga horária e a categoria da disciplina Projeto Comunitário I variam conforme o documento consultado:
+
+*   **Matriz Curricular SI - Palmas (2023):** A carga horária (Bloco Hrs Coreq) é de **150** e a categoria é **Natureza - Obrigatória** (com atividade pedagógica de Extensão) (página 2).
+*   **Ementas SI - Palmas (PPC 2023):** A carga horária total é de **150 horas relógio** e **180 horas aula** (página 37).
+*   **PPC Sistemas de Informacao - Palmas (2019):** A carga horária é de **80 h/a – 67 h/r** (página 88)."
+t07,tabela,pdf,T,,1,gemma4:31b,true,matriz:2;ppc-si:53;ppc-si:59;ppc-si:94;ementas:45;ppc-tec:47;ppc-si:95;ementas:10;ementas:46,true,true,3660,133,true,1236,,false,,"Os pré-requisitos para a disciplina de Inteligência Artificial variam conforme o documento:
+
+*   De acordo com a **Matriz Curricular SI - Palmas (2023) (página 2)**, os pré-requisitos são as disciplinas **SIS07206** ou **SIS07602**.
+*   De acordo com o **PPC Sistemas de Informacao - Palmas (2019) (página 53)**, o pré-requisito é **Computadores I** (indicado na coluna 8, correspondente à coluna 2 ""Inteligência Artificial"")."
+t07,tabela,pdf,T,,2,gemma4:31b,true,matriz:2;ppc-si:53;ppc-si:59;ppc-si:94;ementas:45;ppc-tec:47;ppc-si:95;ementas:10;ementas:46,true,true,3660,113,true,1124,,false,,"Os pré-requisitos para a disciplina de Inteligência Artificial variam conforme o documento:
+
+*   De acordo com a **Matriz Curricular SI - Palmas (2023) (página 2)**, os pré-requisitos são as disciplinas **SIS07206** ou **SIS07602**.
+*   De acordo com o **PPC Sistemas de Informacao - Palmas (2019) (página 53)**, o pré-requisito é **Computadores I**."
+t07,tabela,pdf,T,,3,gemma4:31b,true,matriz:2;ppc-si:53;ppc-si:59;ppc-si:94;ementas:45;ppc-tec:47;ppc-si:95;ementas:10;ementas:46,true,true,3660,113,true,1084,,false,,"Os pré-requisitos para a disciplina de Inteligência Artificial variam conforme o documento:
+
+*   De acordo com a **Matriz Curricular SI - Palmas (2023) (página 2)**, os pré-requisitos são as disciplinas **SIS07206** ou **SIS07602**.
+*   De acordo com o **PPC Sistemas de Informacao - Palmas (2019) (página 53)**, o pré-requisito é **Computadores I**."
+t08,tabela,pdf,T,,1,gemma4:31b,true,matriz:2;ppc-si:54;ppc-si:131;ppc-si:92;ementas:8;ppc-si:175;ppc-si:60,true,true,3612,172,true,1350,,false,,"O aluno cursa a disciplina de Estágio Supervisionado I no **7º Período**, conforme indicado na Matriz Curricular SI - Palmas (2023) (página 2) e no PPC Sistemas de Informacao - Palmas (2019) (página 92).
+
+Quanto à carga horária, as fontes apresentam as seguintes informações:
+*   A **Matriz Curricular SI - Palmas (2023)** (página 2) indica um bloco de **83 horas**.
+*   O **PPC Sistemas de Informacao - Palmas (2019)** (página 54 e 131) detalha que o componente possui **40 horas/aula em sala de aula** e **60 horas/aula de atividades práticas**."
+t08,tabela,pdf,T,,2,gemma4:31b,true,matriz:2;ppc-si:54;ppc-si:131;ppc-si:92;ementas:8;ppc-si:175;ppc-si:60,true,true,3612,164,true,1300,,false,,"O aluno cursa a disciplina de Estágio Supervisionado I no **7º período** (Matriz Curricular SI - Palmas (2023), página 2; PPC Sistemas de Informacao - Palmas (2019), página 92).
+
+Quanto à carga horária, as fontes apresentam as seguintes informações:
+*   A Matriz Curricular SI - Palmas (2023) indica um bloco de **83 horas** (página 2).
+*   O PPC Sistemas de Informacao - Palmas (2019) detalha que a carga horária é composta por **40 horas/aula em sala de aula** e **60 horas/aula de atividades práticas** (página 131 e página 54)."
+t08,tabela,pdf,T,,3,gemma4:31b,true,matriz:2;ppc-si:54;ppc-si:131;ppc-si:92;ementas:8;ppc-si:175;ppc-si:60,true,true,3612,166,true,1135,,false,,"O aluno cursa a disciplina de Estágio Supervisionado I no **7º período** (Matriz Curricular SI - Palmas (2023), página 2; PPC Sistemas de Informacao - Palmas (2019), página 92).
+
+Quanto à carga horária, as fontes apresentam as seguintes informações:
+*   A **Matriz Curricular SI - Palmas (2023)** indica um bloco de **83 horas** (página 2).
+*   O **PPC Sistemas de Informacao - Palmas (2019)** detalha que a carga horária é de **40 horas/aula em sala de aula** e **60 horas/aula de atividades práticas** (página 131 e página 54)."
+t09,tabela,pdf,T,,1,gemma4:31b,true,matriz:2;matriz:3;ppc-si:61;ementas:38;ppc-si:64;ppc-si:51,true,true,3972,47,true,961,,false,,"O pré-requisito da disciplina SIS07505 - Redes de Computadores é a disciplina SIS07305 (Matriz Curricular SI - Palmas (2023), página 2)."
+t09,tabela,pdf,T,,2,gemma4:31b,true,matriz:2;matriz:3;ppc-si:61;ementas:38;ppc-si:64;ppc-si:51,true,true,3972,50,true,1168,,false,,"O pré-requisito da disciplina SIS07505 - Redes de Computadores é a disciplina SIS07305, conforme indicado na Matriz Curricular SI - Palmas (2023), página 2."
+t09,tabela,pdf,T,,3,gemma4:31b,true,matriz:2;matriz:3;ppc-si:61;ementas:38;ppc-si:64;ppc-si:51,true,true,3972,52,true,1542,,false,,"O pré-requisito da disciplina de Redes de Computadores (SIS07505) é a disciplina SIS07305, conforme indicado na Matriz Curricular SI - Palmas (2023), página 2."
