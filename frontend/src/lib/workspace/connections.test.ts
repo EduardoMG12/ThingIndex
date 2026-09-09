@@ -28,7 +28,7 @@ const CONEXAO: NodeConnection = {
     summary: "",
     startPage: 1,
     score: 3,
-    matchedTerms: ["multa", "fatura", "descumprimento"],
+    matchedTerms: ["multa", "fatura", "descumprimento"], kind: "termo-raro" as const,
 };
 
 describe("paragrafosSecundarios", () => {

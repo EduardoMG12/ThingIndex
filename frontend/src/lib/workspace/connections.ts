@@ -19,6 +19,7 @@ export type Linha = {
     titulo: string;
     score: number;
     termos: string[];
+    tipo: NodeConnection["kind"];
     de: Ponto;
     para: Ponto;
     /** true quando a linha termina na borda do quadro, sem ancora precisa. */
@@ -96,6 +97,7 @@ export function montarLinhas(conexoes: NodeConnection[], rects: ResolvedorDeRect
             titulo: conexao.title,
             score: conexao.score,
             termos: conexao.matchedTerms,
+            tipo: conexao.kind,
             de,
             para,
             aproximada: preciso === null,

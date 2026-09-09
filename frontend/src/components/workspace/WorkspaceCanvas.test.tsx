@@ -162,7 +162,7 @@ describe("WorkspaceCanvas", () => {
                     summary: "Multa por descumprimento.",
                     startPage: 1,
                     score: 11,
-                    matchedTerms: ["multa", "fatura", "descumprimento"],
+                    matchedTerms: ["multa", "fatura", "descumprimento"], kind: "termo-raro" as const,
                 },
             ],
         });
@@ -340,7 +340,7 @@ describe("WorkspaceCanvas", () => {
         vi.mocked(fetchNodeConnections).mockResolvedValue({
             nodeId: "termo#a",
             minScore: 2,
-            connections: [{ documentId: 4, nodeId: "outro#c", title: "3 PRAZOS", summary: "", startPage: 3, score: 4, matchedTerms: ["prazo"] }],
+            connections: [{ documentId: 4, nodeId: "outro#c", title: "3 PRAZOS", summary: "", startPage: 3, score: 4, matchedTerms: ["prazo"], kind: "termo-raro" as const, }],
         });
         const contexto = {
             ...contextoComPdf,
@@ -434,8 +434,8 @@ describe("WorkspaceCanvas", () => {
             nodeId: "termo#a",
             minScore: 2,
             connections: [
-                { documentId: 4, nodeId: "outro#b", title: "2 X", summary: "", startPage: 2, score: 3, matchedTerms: ["x"] },
-                { documentId: 4, nodeId: "outro#c", title: "3 PRAZOS", summary: "", startPage: 3, score: 2, matchedTerms: ["prazo"] },
+                { documentId: 4, nodeId: "outro#b", title: "2 X", summary: "", startPage: 2, score: 3, matchedTerms: ["x"], kind: "termo-raro" as const, },
+                { documentId: 4, nodeId: "outro#c", title: "3 PRAZOS", summary: "", startPage: 3, score: 2, matchedTerms: ["prazo"], kind: "termo-raro" as const, },
             ],
         });
         const contexto = {
