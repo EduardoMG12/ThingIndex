@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"math"
 	"sort"
 	"strings"
 
@@ -62,6 +63,16 @@ func BuildNodeConnections(
 			significantTerms = append(significantTerms, term)
 		}
 	}
+	if len(significantTerms) == 0 {
+		return nil
+	}
+	// So termo RARO no acervo sustenta uma aresta. "curso", "edital", "campus"
+	// nao sao conectivos, mas aparecem em centenas de secoes da mesma colecao
+	// e ligavam anexos sem relacao nenhuma ("2 termos" entre duas declaracoes
+	// de formulario). O que a observacao do autor confirmou: a maior parte das
+	// secoes nao tem conexao, e o sistema tem de saber dizer isso. A raridade
+	// e medida aqui mesmo, sobre os candidatos, sem nada persistido.
+	significantTerms = rareTerms(significantTerms, origin, candidates)
 	if len(significantTerms) == 0 {
 		return nil
 	}
@@ -168,4 +179,44 @@ func matchedTerms(text string, queryTerms []string) []string {
 	}
 	sort.Strings(terms)
 	return terms
+}
+
+// NodeConnectionMaxTermShare e a fracao maxima de secoes do acervo em que um
+// termo pode aparecer e ainda contar como evidencia de conexao. Com 1.853
+// secoes no corpus da faculdade, 5% sao 93 secoes: acima disso e vocabulario
+// do acervo, nao relacao. Piso de 2 para conjuntos pequenos.
+const NodeConnectionMaxTermShare = 0.05
+
+// rareTerms devolve os termos da origem presentes em no maximo
+// max(2, ceil(share * N)) dos N candidatos de outros documentos.
+func rareTerms(terms []string, origin models.DocumentOutlineNode, candidates []models.DocumentOutlineNode) []string {
+	texts := make([]string, 0, len(candidates))
+	for _, candidate := range candidates {
+		if candidate.DocumentID == origin.DocumentID {
+			continue
+		}
+		texts = append(texts, strings.ToLower(outlineNodeSearchText(candidate)))
+	}
+	// Teto em secoes: ceil(share * N), com piso de 2 para acervos pequenos
+	// (um termo em 2 de 30 secoes ainda e raro).
+	limit := int(math.Ceil(float64(len(texts)) * NodeConnectionMaxTermShare))
+	if limit < 2 {
+		limit = 2
+	}
+	rare := make([]string, 0, len(terms))
+	for _, term := range terms {
+		df := 0
+		for _, text := range texts {
+			if strings.Contains(text, term) {
+				df++
+				if df > limit {
+					break
+				}
+			}
+		}
+		if df <= limit {
+			rare = append(rare, term)
+		}
+	}
+	return rare
 }

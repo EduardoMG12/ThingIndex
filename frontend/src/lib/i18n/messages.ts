@@ -13,6 +13,8 @@ export const messages: LocaleMessages = {
             chat: {
                 viewInDocument: "Ver no documento",
                 toggle: "Painel",
+                close: "Fechar painel",
+                resize: "Redimensionar painel",
                 tab: "Chat",
             },
             documents: {
@@ -47,6 +49,8 @@ export const messages: LocaleMessages = {
                 modeSingle: "Ver uma página por vez",
                 prevPage: "Página anterior",
                 nextPage: "Próxima página",
+                prevPageEdge: "Voltar pela borda de cima da folha",
+                nextPageEdge: "Avançar pela borda de baixo da folha",
                 pageOf: "p. {page} de {total}",
             },
             page: {
@@ -1357,6 +1361,8 @@ export const messages: LocaleMessages = {
             chat: {
                 viewInDocument: "View in document",
                 toggle: "Panel",
+                close: "Close panel",
+                resize: "Resize panel",
                 tab: "Chat",
             },
             documents: {
@@ -1391,6 +1397,8 @@ export const messages: LocaleMessages = {
                 modeSingle: "Show one page at a time",
                 prevPage: "Previous page",
                 nextPage: "Next page",
+                prevPageEdge: "Back, top edge of the sheet",
+                nextPageEdge: "Forward, bottom edge of the sheet",
                 pageOf: "p. {page} of {total}",
             },
             page: {
@@ -2701,6 +2709,8 @@ export const messages: LocaleMessages = {
             chat: {
                 viewInDocument: "Ver en el documento",
                 toggle: "Panel",
+                close: "Cerrar panel",
+                resize: "Redimensionar panel",
                 tab: "Chat",
             },
             documents: {
@@ -2735,6 +2745,8 @@ export const messages: LocaleMessages = {
                 modeSingle: "Ver una página a la vez",
                 prevPage: "Página anterior",
                 nextPage: "Página siguiente",
+                prevPageEdge: "Retroceder por el borde superior de la hoja",
+                nextPageEdge: "Avanzar por el borde inferior de la hoja",
                 pageOf: "p. {page} de {total}",
             },
             page: {
