@@ -82,3 +82,13 @@ O autor pediu para verificar se a indexação "faz sentido". Não fazia: a pági
 O que sobra no PPC (101 títulos de até duas palavras) são nomes de pessoas e cargos das tabelas de comissão, que só uma heurística de tabela resolveria. Registrado, não feito.
 
 Corpus: entraram a Resolução CONSUP 82/2022 (política de estágios, 15 p., conversa com o Apêndice A do PPC e com o Regimento) e o PPC do Técnico em Informática de Palmas (160 p., cita o curso de SI e compartilha laboratórios e regulamentos). Os dois têm camada de texto e caixas em todos os parágrafos. A coleção de SI passou a 5 documentos; o seed segue idempotente e verificou conexões em todas as coleções. O stub de 273 bytes da Resolução 36/2019 (404 salvo por engano) saiu.
+
+## Rodada 3 (2026-09-09): conexões legíveis
+
+O autor mostrou três fotos: pílulas amarelas truncadas na margem do PDF ("3.7 Redistrib…"), linhas cruzando o canvas com um "4 termos" solto no vazio, e nenhuma explicação do que é uma conexão. Três mudanças, sem tocar no cálculo:
+
+- **Marcador de seção** virou uma barra de 3 px na margem; o título só aparece ao passar o mouse. Continua na mesma posição (âncora do parágrafo inicial da seção), com o mesmo `data-testid`.
+- **Rótulo da linha** saiu do meio da curva e foi para a ponta de destino, colado ao trecho apontado; ao passar o mouse, mostra os termos que justificam a aresta em vez da contagem.
+- **Sidebar** explica em uma frase o que é uma conexão e como navegar, acima da lista.
+
+Verificado na stack real com a coleção do processo seletivo: 49 grifos, 9 marcadores discretos, 12 linhas com o rótulo na ponta.

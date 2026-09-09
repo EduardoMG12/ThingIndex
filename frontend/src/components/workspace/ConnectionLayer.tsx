@@ -33,8 +33,13 @@ export function ConnectionLayer({ linhas, realcada, onRealcar, onEscolher }: Con
         >
             {linhas.map((linha) => {
                 const ativa = realcada === null || realcada === linha.id;
-                const meio = { x: (linha.de.x + linha.para.x) / 2, y: (linha.de.y + linha.para.y) / 2 };
-                const rotulo = linha.score === 1 ? t("workspace.sidebar.term") : t("workspace.sidebar.terms", { count: linha.score });
+                // O rotulo fica na PONTA de destino, nao no meio da curva: no
+                // meio ele flutuava no vazio e nao dizia a que linha pertencia.
+                // Ao passar o mouse, mostra os termos que justificam a aresta.
+                const contagem = linha.score === 1 ? t("workspace.sidebar.term") : t("workspace.sidebar.terms", { count: linha.score });
+                const rotulo = realcada === linha.id && linha.termos.length > 0 ? linha.termos.join(", ") : contagem;
+                const larguraDoRotulo = Math.min(rotulo.length * 6.4 + 12, 320);
+                const ancora = { x: linha.para.x + 8, y: linha.para.y - 22 };
                 return (
                     <g
                         key={linha.id}
@@ -59,19 +64,18 @@ export function ConnectionLayer({ linhas, realcada, onRealcar, onEscolher }: Con
                         />
                         <circle cx={linha.para.x} cy={linha.para.y} r={3} fill="hsl(var(--primary))" />
                         <rect
-                            x={meio.x - rotulo.length * 3.4 - 4}
-                            y={meio.y - 9}
-                            width={rotulo.length * 6.8 + 8}
+                            x={ancora.x}
+                            y={ancora.y}
+                            width={larguraDoRotulo}
                             height={18}
                             rx={4}
                             fill="hsl(var(--card))"
                             stroke="hsl(var(--primary))"
-                            strokeWidth={1}
+                            strokeWidth={realcada === linha.id ? 1.5 : 1}
                         />
                         <text
-                            x={meio.x}
-                            y={meio.y + 4}
-                            textAnchor="middle"
+                            x={ancora.x + 6}
+                            y={ancora.y + 13}
                             fontSize={11}
                             fill="hsl(var(--primary))"
                             data-testid="rotulo-da-linha"
