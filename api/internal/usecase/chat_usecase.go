@@ -375,6 +375,8 @@ const (
 	// (node hits), que entram ANTES das paginas por serem a unidade
 	// estrutural da tese e terem peso 3 no retrieval.
 	ChatNodeSourceLimit = 3
+	// ChatTableRowSourceLimit: linhas de tabela que entram antes das secoes.
+	ChatTableRowSourceLimit = 3
 	// ChatPageCharLimit corta o conteudo de cada pagina enviada ao modelo.
 	ChatPageCharLimit = 4000
 	// ChatContextCharLimit e o teto somado de conteudo de paginas no prompt;
@@ -404,7 +406,33 @@ func buildChatSources(
 	sources := make([]domain.ChatSource, 0, ChatSourceLimit)
 	seen := make(map[string]struct{})
 
-	// Secoes primeiro: a pagina inicial da secao e o menor pedaco com a
+	// Linhas de tabela primeiro: e a fonte mais precisa (documento, pagina,
+	// tabela, linha) e a mais barata no prompt. A pagina inteira da tabela
+	// ainda pode entrar depois pelos hits de pagina.
+	for _, hit := range retrieval.TableRowHits {
+		if len(sources) == ChatTableRowSourceLimit {
+			break
+		}
+		id := fmt.Sprintf("%d:%d:table-%d-row-%d", hit.DocumentID, hit.PageNumber, hit.TableID, hit.RowIndex)
+		if _, exists := seen[id]; exists {
+			continue
+		}
+		body := hit.Text
+		if title := strings.TrimSpace(hit.Title); title != "" {
+			body = title + " | " + body
+		}
+		sources = append(sources, domain.ChatSource{
+			ID:         id,
+			DocName:    documentTitles[hit.DocumentID],
+			Page:       hit.PageNumber,
+			Snippet:    clampRetrievalSnippet(body, 220),
+			DocumentID: hit.DocumentID,
+			Body:       body,
+		})
+		seen[id] = struct{}{}
+	}
+
+	// Secoes depois: a pagina inicial da secao e o menor pedaco com a
 	// proveniencia inteira (documento, secao, pagina).
 	for _, hit := range retrieval.NodeHits {
 		if len(sources) == ChatNodeSourceLimit {
@@ -510,7 +538,7 @@ func buildCollectionChatPrompt(
 			pageContent[fmt.Sprintf("%d:%d", page.DocumentID, page.PageNumber)] = page.Content
 		}
 		remaining := ChatContextCharLimit
-		userPrompt.WriteString("\nPrimary grounded sources (full page content):\n")
+		userPrompt.WriteString("\nPrimary grounded sources (table rows and full page content):\n")
 		for index, source := range sources {
 			userPrompt.WriteString(fmt.Sprintf("%d. %s", index+1, source.DocName))
 			if source.Page > 0 {
@@ -554,6 +582,10 @@ func buildCollectionChatPrompt(
 // teto, ou sem a pagina no contexto, volta ao trecho curto e consome zero.
 func chatSourceBody(source domain.ChatSource, pageContent map[string]string, remaining int) (string, int) {
 	content := strings.Join(strings.Fields(pageContent[fmt.Sprintf("%d:%d", source.DocumentID, source.Page)]), " ")
+	if source.Body != "" {
+		// Fonte menor que a pagina (linha de tabela): vai ela, nao a pagina.
+		content = strings.Join(strings.Fields(source.Body), " ")
+	}
 	if content == "" {
 		return source.Snippet, 0
 	}
