@@ -46,6 +46,11 @@ MANIFESTO = [
     # e as ementas detalham cada uma.
     ("matriz-curricular-si-palmas-2023.pdf", "Matriz Curricular SI - Palmas (2023)", "Cursos", "Sistemas de Informacao - Palmas"),
     ("ementas-si-palmas-ppc-2023.pdf", "Ementas SI - Palmas (PPC 2023)", "Cursos", "Sistemas de Informacao - Palmas"),
+    # Politica de estagios do IFPR: conversa com o Apendice A do PPC e com o
+    # Regimento Geral. PPC do tecnico em Informatica do mesmo campus: cita o
+    # curso de SI e compartilha laboratorios, calendario e regulamentos.
+    ("resolucao-consup-82-2022-politica-de-estagios.pdf", "Resolucao CONSUP 82/2022 - Politica de Estagios", "Normas", "Regimento e resolucoes"),
+    ("ppc-tecnico-informatica-palmas.pdf", "PPC Tecnico em Informatica - Palmas", "Cursos", "Sistemas de Informacao - Palmas"),
 ]
 
 
