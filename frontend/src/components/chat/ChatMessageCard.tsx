@@ -83,6 +83,20 @@ export function ChatMessageCard({
                     )}
                 </div>
 
+                {!isUser && message.usage ? (
+                    <p
+                        className="px-1 text-[11px] text-muted-foreground"
+                        data-testid="consumo-da-resposta"
+                        title={message.usage.usageReported ? undefined : t("dashboard.chat.usage.estimated")}
+                    >
+                        {message.usage.usageReported ? "" : "≈ "}
+                        {t("dashboard.chat.usage.tokens", { count: new Intl.NumberFormat(locale).format(message.usage.promptTokens + message.usage.completionTokens) })}
+                        {message.usage.model ? ` · ${message.usage.model}` : ""}
+                        {typeof message.usage.estimatedCostUsd === "number"
+                            ? ` · ${new Intl.NumberFormat(locale, { style: "currency", currency: "USD", maximumFractionDigits: 6 }).format(message.usage.estimatedCostUsd)}`
+                            : ""}
+                    </p>
+                ) : null}
                 {message.sources && message.sources.length > 0 ? (
                     <div className="grid gap-2 pt-1 sm:grid-cols-2">
                         {message.sources.map((source) => (

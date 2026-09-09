@@ -701,6 +701,10 @@ export const messages: LocaleMessages = {
                 loadingConversation: "Carregando conversa...",
                 userLabel: "Você",
                 assistantLabel: "Resposta grounded",
+                usage: {
+                    tokens: "{count} tokens",
+                    estimated: "Estimativa: o provedor não informou o consumo.",
+                },
                 deleteConversationLabel: "Excluir conversa",
                 renameConversationLabel: "Renomear conversa",
                 stepContext: "Reconstruindo contexto da collection",
@@ -2039,6 +2043,10 @@ export const messages: LocaleMessages = {
                 loadingConversation: "Loading conversation...",
                 userLabel: "You",
                 assistantLabel: "Grounded answer",
+                usage: {
+                    tokens: "{count} tokens",
+                    estimated: "Estimate: the provider did not report usage.",
+                },
                 deleteConversationLabel: "Delete conversation",
                 renameConversationLabel: "Rename conversation",
                 stepContext: "Rebuilding collection context",
@@ -3377,6 +3385,10 @@ export const messages: LocaleMessages = {
                 loadingConversation: "Cargando conversación...",
                 userLabel: "Tú",
                 assistantLabel: "Respuesta grounded",
+                usage: {
+                    tokens: "{count} tokens",
+                    estimated: "Estimación: el proveedor no informó el consumo.",
+                },
                 deleteConversationLabel: "Eliminar conversación",
                 renameConversationLabel: "Renombrar conversación",
                 stepContext: "Reconstruyendo el contexto de la collection",

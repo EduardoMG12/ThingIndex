@@ -86,6 +86,7 @@ function normalizePersistedMessages(messages: PersistedChatMessage[]): ChatWorks
         role: message.role,
         content: message.content,
         sources: normalizeSources(message.sources),
+        usage: message.usage,
         createdAt: message.createdAt,
     }));
 }
@@ -494,6 +495,12 @@ export function useChatWorkspace(opcoes: { collectionId?: number | null } = {}) 
                 flushAllPendingDelta();
                 hideStreamingCard();
                 setActiveSubQueries(mapStageToSteps(event.stage, t));
+                if (event.usage) {
+                    const usage = event.usage;
+                    setMessages((current) =>
+                        current.map((message) => (message.id === assistantMessageId ? { ...message, usage } : message))
+                    );
+                }
                 break;
             case "error":
                 flushAllPendingDelta();
