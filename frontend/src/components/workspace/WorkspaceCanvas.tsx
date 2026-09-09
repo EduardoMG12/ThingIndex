@@ -1258,6 +1258,9 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                                 <p className="text-xs text-muted-foreground">{t("workspace.sidebar.noConnections")}</p>
                             ) : (
                                 <ul className="space-y-2 border-t border-border pt-3">
+                                    <li className="text-[11px] leading-snug text-muted-foreground" data-testid="explicacao-de-conexao">
+                                        {t("workspace.sidebar.connectionsHint")}
+                                    </li>
                                     {conexoes.length > LINHAS_MAXIMAS ? (
                                         <li className="text-[11px] text-muted-foreground" data-testid="aviso-linhas-limitadas">
                                             {t("workspace.sidebar.tooManyLines", { total: conexoes.length, max: LINHAS_MAXIMAS })}

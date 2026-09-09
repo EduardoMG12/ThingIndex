@@ -145,14 +145,20 @@ export function PageOverlay({
             ).map(({ item: secao, top }) => (
                 // Dentro da margem esquerda da pagina (72 pt num A4/carta), para
                 // nunca invadir o quadro vizinho nem o texto.
+                // Uma barra de 3 px na margem; o titulo so aparece ao passar o
+                // mouse. As pilulas com texto truncado nao se liam e brigavam
+                // com o texto da pagina.
                 <span
                     key={secao.nodeId}
-                    className="pointer-events-auto absolute left-0.5 w-[64px] truncate rounded-sm border border-primary/40 bg-primary/10 px-1 text-[8px] leading-[12px] text-primary"
+                    className="group pointer-events-auto absolute left-0.5 flex h-[14px] items-center"
                     style={{ top }}
                     title={secao.title}
                     data-testid="marcador-secao"
                 >
-                    {secao.title}
+                    <span className="block h-full w-[3px] rounded-sm bg-primary/70 group-hover:bg-primary" aria-hidden />
+                    <span className="pointer-events-none ml-1 max-w-[200px] truncate rounded-sm border border-primary/40 bg-card px-1 text-[9px] leading-[12px] text-primary opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+                        {secao.title}
+                    </span>
                 </span>
             ))}
 
