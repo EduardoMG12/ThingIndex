@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { readBox, type OutlineNode, type ParagraphNode } from "@/lib/api/contracts/document-context";
+import { readBox, type OutlineNode, type ParagraphBox, type ParagraphNode } from "@/lib/api/contracts/document-context";
 import { useI18n } from "@/lib/i18n/provider";
 import { retryDocumentIndexing } from "@/lib/api/documents";
 import { boxParaPixels } from "@/lib/workspace/geometry";
@@ -27,8 +27,18 @@ export type ParagrafoNaPagina = {
     secao: OutlineNode | null;
 };
 
+/** Tabela detectada nesta pagina, com a caixa no espaco do PDF. */
+export type TabelaNaPagina = {
+    id: number | string;
+    titulo: string;
+    box: ParagraphBox;
+};
+
 export type PageOverlayProps = {
     numero: number;
+    /** Tabelas da pagina; so a realcada e desenhada, como caixa tracejada. */
+    tabelas?: TabelaNaPagina[];
+    tabelaRealcada?: number | string | null;
     tamanho: TamanhoDePagina;
     paragrafos: ParagrafoNaPagina[];
     /** Secoes cujo start_page e esta pagina. */
@@ -101,7 +111,9 @@ export function origemMajoritaria(nos: Pick<ParagraphNode, "metadata">[]): strin
 }
 
 export function PageOverlay({
-    numero,
+    numero,    tabelas,
+    tabelaRealcada = null,
+
     tamanho,
     paragrafos,
     secoes,
@@ -161,6 +173,26 @@ export function PageOverlay({
                     </span>
                 </span>
             ))}
+
+            {(tabelas ?? [])
+                .filter((tabela) => tabela.id === tabelaRealcada)
+                .map((tabela) => {
+                    const px = boxParaPixels(tabela.box, tamanho.largura, tamanho.altura);
+                    return (
+                        <div
+                            key={`tabela-${String(tabela.id)}`}
+                            className="pointer-events-none absolute rounded-sm border-2 border-dashed border-primary/80 bg-primary/5"
+                            style={{ left: px.left - 4, top: px.top - 4, width: px.width + 8, height: px.height + 8 }}
+                            role="img"
+                            aria-label={t("workspace.page.tableBox", { title: tabela.titulo })}
+                            data-testid="caixa-de-tabela"
+                        >
+                            <span className="absolute -top-5 left-0 rounded bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
+                                {tabela.titulo}
+                            </span>
+                        </div>
+                    );
+                })}
 
             {paragrafos.map(({ no, secao }) => {
                 const box = readBox(no);

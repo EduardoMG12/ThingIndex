@@ -61,6 +61,8 @@ export type WorkspaceCanvasHandle = {
     /** Vai ao documento e a pagina; com nodeId, ao paragrafo em que a secao comeca. */
     irAte: (documentId: number, pagina: number | null, nodeId?: string) => void;
     focarDocumento: (documentId: number) => void;
+    /** Realca a caixa de uma tabela na folha (fonte de linha do chat, lista da sidebar). */
+    realcarTabela: (tableId: number | string) => void;
 };
 
 type WorkspaceCanvasProps = {
@@ -385,6 +387,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
     // A estrutura so ocupa espaco quando ha o que mostrar: abre sozinha ao
     // focar um documento e pode ser recolhida a um trilho de 40 px.
     const [estruturaAberta, setEstruturaAberta] = useState<boolean>(() => documentoFocado !== null);
+    const [tabelaRealcada, setTabelaRealcada] = useState<number | string | null>(null);
     useEffect(() => {
         if (documentoFocado !== null) {
             setEstruturaAberta(true);
@@ -672,10 +675,46 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
         [indiceDoDocumento, quadros, tamanho, viewport.escala, centralizarEm]
     );
 
+    // Tabelas com pagina e caixa, por documento e pagina, para a sidebar e a folha.
+    const tabelasComCaixa = useMemo(() => {
+        return (context.tableSections ?? [])
+            .map((tabela) => {
+                const box = readBox({ metadata: tabela.metadata });
+                if (!box || !tabela.pageNumber) {
+                    return null;
+                }
+                const titulo = tabela.title?.trim() || t("workspace.sidebar.tableLabel", { page: tabela.pageNumber });
+                return { id: tabela.id, documentId: tabela.documentId, pageNumber: tabela.pageNumber, titulo, linhas: tabela.rows.length, box };
+            })
+            .filter((tabela): tabela is NonNullable<typeof tabela> => tabela !== null);
+    }, [context.tableSections, t]);
+
+    const irAteTabela = useCallback(
+        (tabela: (typeof tabelasComCaixa)[number]) => {
+            setTabelaRealcada(tabela.id);
+            focarDocumento(tabela.documentId);
+            const pagina = rectDaPagina(tabela.documentId, tabela.pageNumber);
+            const rect = pagina
+                ? (() => {
+                      const px = boxParaPixels(tabela.box, pagina.largura, pagina.altura);
+                      return { x: pagina.x + px.left, y: pagina.y + px.top, largura: px.width, altura: px.height };
+                  })()
+                : null;
+            irAte(tabela.documentId, tabela.pageNumber, rect);
+        },
+        [focarDocumento, irAte, rectDaPagina]
+    );
+
     useImperativeHandle(
         ref,
         () => ({
             focarDocumento,
+            realcarTabela: (tableId) => {
+                const tabela = tabelasComCaixa.find((item) => item.id === tableId);
+                if (tabela) {
+                    irAteTabela(tabela);
+                }
+            },
             irAte: (documentId, pagina, nodeId) => {
                 focarDocumento(documentId);
                 const secao = nodeId ? indiceDoContexto.porNodeId.get(nodeId) : undefined;
@@ -684,7 +723,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                 irAte(documentId, ancora?.pageNumber ?? pagina, rect);
             },
         }),
-        [focarDocumento, irAte, indiceDoContexto, ancoraDaSecao, rectDoParagrafo]
+        [focarDocumento, irAte, indiceDoContexto, ancoraDaSecao, rectDoParagrafo, tabelasComCaixa, irAteTabela]
     );
 
     const limparSelecao = useCallback(() => {
@@ -964,6 +1003,8 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                                                     onVerConexoes={(_, secao) => pedirConexoes(secao.nodeId)}
                                                     mostrarMarcadores={marcadoresVisiveis}
                                                     navegador={navegador}
+                                                    tabelas={tabelasComCaixa.filter((tabela) => tabela.documentId === documento.id && tabela.pageNumber === numero)}
+                                                    tabelaRealcada={tabelaRealcada}
                                                 />
                                             );
                                         }}
@@ -1135,6 +1176,34 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                                 ) : null}
                             </div>
                         ) : null}
+
+                        {(() => {
+                            const tabelasDoFocado = tabelasComCaixa.filter((tabela) => tabela.documentId === documentoFocado);
+                            return tabelasDoFocado.length > 0 ? (
+                                <div className="rounded-md border border-border p-3" data-testid="bloco-de-tabelas">
+                                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                        {t("workspace.sidebar.tables", { count: tabelasDoFocado.length })}
+                                    </p>
+                                    <ul className="mt-2 space-y-1">
+                                        {tabelasDoFocado.map((tabela) => (
+                                            <li key={String(tabela.id)}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => irAteTabela(tabela)}
+                                                    aria-pressed={tabelaRealcada === tabela.id}
+                                                    className={`w-full rounded px-1 py-0.5 text-left text-xs hover:bg-muted ${tabelaRealcada === tabela.id ? "bg-muted" : ""}`}
+                                                    data-testid="tabela-da-sidebar"
+                                                >
+                                                    <span className="mr-1 text-muted-foreground">{t("workspace.sidebar.page", { page: tabela.pageNumber })}</span>
+                                                    {tabela.titulo}
+                                                    <span className="ml-1 text-muted-foreground">{t("workspace.sidebar.tableRows", { count: tabela.linhas })}</span>
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ) : null;
+                        })()}
 
                         {(() => {
                             const c = indiceDoContexto.contagem.get(documentoFocado);
