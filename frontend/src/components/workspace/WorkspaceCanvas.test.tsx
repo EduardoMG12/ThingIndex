@@ -256,11 +256,17 @@ describe("WorkspaceCanvas", () => {
         const canvas = screen.getByTestId("workspace-canvas");
         expect(canvas.className).toContain("min-w-0");
 
+        // Sem documento focado a estrutura e um trilho de 40 px em lg (e some
+        // abaixo de lg); ao abrir, vira a coluna rolavel de 288 px que empilha
+        // em telas estreitas.
+        const trilho = screen.getByLabelText("Detalhes do documento");
+        expect(trilho.className).toContain("lg:w-10");
+        fireEvent.click(screen.getByTestId("abrir-estrutura"));
         const sidebar = screen.getByLabelText("Detalhes do documento");
         expect(sidebar.className).toContain("w-full");
         expect(sidebar.className).toContain("lg:w-72");
         expect(sidebar.className).toContain("overflow-y-auto");
-        expect(sidebar.className).toContain("lg:max-h-[calc(100vh-9rem)]");
+        expect(sidebar.className).toContain("lg:max-h-full");
     });
 
     it("le o foco de ?doc= ao montar e escreve na URL ao focar outro documento", () => {

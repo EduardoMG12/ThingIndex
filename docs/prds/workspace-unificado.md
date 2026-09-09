@@ -112,4 +112,5 @@ Ambiguity Report:
 - O polling pós-upload não pode decidir a parada num efeito: ele rodaria com o contexto velho (sem o documento novo) e pararia antes da primeira recarga. A decisão ficou dentro do tick, lendo o contexto por ref.
 - `useSearchParams` na página exige `Suspense` na pré-renderização; a página foi envolvida.
 - O E2E real do chat não é possível: o usuário demo não tem provedor de LLM. O painel e a fonte clicável estão cobertos só com mock; upload, apagar e estado estão cobertos na stack real.
+- Rodada de layout (pedido do autor com fotos em 1.350 px): cabeçalho de uma linha (descrição vira tooltip), canvas na altura toda da tela, painel esquerdo de 340 px, estrutura recolhível a um trilho de 40 px que abre sozinha ao focar um documento, legenda começando recolhida e callout de runtime compacto no painel. Canvas em 1.350 px: de ~450 px para 674 px com tudo aberto e 1.000 px com a estrutura recolhida.
 - Entregue em 6 issues (#48 a #53) mais o fechamento (#54). Suítes: Vitest 225, Playwright mock 36, Playwright real 4, `go test ./...` ok.

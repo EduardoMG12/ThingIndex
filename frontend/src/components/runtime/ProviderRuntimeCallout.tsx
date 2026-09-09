@@ -21,9 +21,12 @@ export default function ProviderRuntimeCallout({
     isLoading,
     error,
     className,
+    compacto = false,
 }: {
     role: ProviderRuntimeRole;
     assignment: ProviderRuntimeAssignment | null;
+    /** Painel estreito (chat da Area de trabalho): sem o paragrafo e com os valores numa linha. */
+    compacto?: boolean;
     isLoading: boolean;
     error: string | null;
     className?: string;
@@ -63,10 +66,12 @@ export default function ProviderRuntimeCallout({
                             {t("providerRuntime.eyebrow")}
                         </p>
                         <div>
-                            <h2 className="text-lg font-semibold">{t(`${roleCopyKey}.title`)}</h2>
-                            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                                {t(`${roleCopyKey}.description`)}
-                            </p>
+                            <h2 className={compacto ? "text-sm font-semibold" : "text-lg font-semibold"}>{t(`${roleCopyKey}.title`)}</h2>
+                            {compacto ? null : (
+                                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                                    {t(`${roleCopyKey}.description`)}
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -98,7 +103,7 @@ export default function ProviderRuntimeCallout({
             ) : null}
 
             {!error && !isLoading && assignment ? (
-                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                <div className={compacto ? "mt-3 grid grid-cols-3 gap-2" : "mt-4 grid gap-3 md:grid-cols-3"}>
                     <div className="rounded-xl border border-border bg-background/60 p-4">
                         <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                             {t("providerRuntime.providerLabel")}

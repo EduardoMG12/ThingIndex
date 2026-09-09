@@ -139,6 +139,8 @@ test("marca vinda da API ja abre colorida e a legenda editada entra no aria-labe
     await expect(grifo).toHaveAttribute("aria-label", /grifo risco$/);
 
     // Editar o rotulo salva a legenda inteira e o aria-label muda sem recarregar.
+    // A legenda comeca recolhida.
+    await page.getByRole("button", { name: /Legenda/ }).click();
     const campo = page.getByTestId("legenda-roxo");
     await expect(campo).toHaveValue("risco");
     await campo.fill("penalidade");

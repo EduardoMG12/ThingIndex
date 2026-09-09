@@ -64,6 +64,8 @@ export const messages: LocaleMessages = {
             },
             sidebar: {
                 label: "Detalhes do documento",
+                open: "Abrir estrutura",
+                close: "Fechar estrutura",
                 empty: "Selecione um documento no painel para ver sua estrutura.",
                 noStructure: "Documento sem estrutura indexada.",
                 noPosition: "{count} de {total} trechos sem posição na página.",
@@ -1406,6 +1408,8 @@ export const messages: LocaleMessages = {
             },
             sidebar: {
                 label: "Document details",
+                open: "Open structure",
+                close: "Close structure",
                 empty: "Select a document on the canvas to see its structure.",
                 noStructure: "Document without indexed structure.",
                 noPosition: "{count} of {total} passages without a position on the page.",
@@ -2748,6 +2752,8 @@ export const messages: LocaleMessages = {
             },
             sidebar: {
                 label: "Detalles del documento",
+                open: "Abrir estructura",
+                close: "Cerrar estructura",
                 empty: "Selecciona un documento en el lienzo para ver su estructura.",
                 noStructure: "Documento sin estructura indexada.",
                 noPosition: "{count} de {total} fragmentos sin posición en la página.",

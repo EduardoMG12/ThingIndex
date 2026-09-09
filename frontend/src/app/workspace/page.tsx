@@ -184,13 +184,12 @@ function WorkspacePageInner() {
     );
 
     return (
-        <AppShell>
-            <div className="flex h-full flex-col gap-4 p-6">
-                <header className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h1 className="text-xl font-semibold">{t("workspace.title")}</h1>
-                        <p className="text-sm text-muted-foreground">{t("workspace.description")}</p>
-                    </div>
+        <AppShell contentClassName="max-w-none p-0">
+            {/* Canvas dominante, como Figma/Miro: cabecalho de uma linha e o
+                resto da altura para o canvas. A descricao vira tooltip. */}
+            <div className="flex h-[calc(100vh-4.5rem)] min-h-[560px] flex-col gap-2 p-3">
+                <header className="flex flex-wrap items-center justify-between gap-3 px-1">
+                    <h1 className="text-base font-semibold" title={t("workspace.description")}>{t("workspace.title")}</h1>
 
                     <div className="flex flex-wrap items-center gap-3">
                     <button
@@ -235,12 +234,12 @@ function WorkspacePageInner() {
                 ) : collections.length === 0 ? (
                     <p className="text-sm text-muted-foreground">{t("workspace.noCollections")}</p>
                 ) : context ? (
-                    <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
+                    <div className="flex min-h-0 flex-1 flex-col gap-2 lg:flex-row">
                         {chatAberto ? (
                             <aside
                                 data-testid="painel-chat"
                                 aria-label={t("workspace.chat.toggle")}
-                                className="flex max-h-[40vh] w-full shrink-0 flex-col overflow-hidden rounded-lg border border-border lg:h-[calc(100vh-9rem)] lg:max-h-none lg:w-[380px]"
+                                className="flex max-h-[40vh] w-full shrink-0 flex-col overflow-hidden rounded-lg border border-border lg:h-full lg:max-h-none lg:w-[340px]"
                             >
                                 <div role="tablist" className="flex shrink-0 border-b border-border text-sm">
                                     {(["chat", "documentos"] as const).map((nome) => (
@@ -281,7 +280,7 @@ function WorkspacePageInner() {
                                 </div>
                             </aside>
                         ) : null}
-                        <div className="min-w-0 flex-1">
+                        <div className="min-h-0 min-w-0 flex-1">
                             <WorkspaceCanvas
                                 ref={canvasRef}
                                 key={String(context.collection.id)}

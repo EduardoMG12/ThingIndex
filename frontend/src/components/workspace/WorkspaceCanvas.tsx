@@ -2,7 +2,7 @@
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, Maximize2, Minus, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2, Minus, PanelRightClose, PanelRightOpen, Plus } from "lucide-react";
 
 import { useI18n } from "@/lib/i18n/provider";
 
@@ -352,6 +352,14 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
     });
     // Um ?doc= de outra colecao nao aponta para nada aqui: vale como "nenhum".
     const documentoFocado = documentoFocadoBruto !== null && documentos.some((d) => d.id === documentoFocadoBruto) ? documentoFocadoBruto : null;
+    // A estrutura so ocupa espaco quando ha o que mostrar: abre sozinha ao
+    // focar um documento e pode ser recolhida a um trilho de 40 px.
+    const [estruturaAberta, setEstruturaAberta] = useState<boolean>(() => documentoFocado !== null);
+    useEffect(() => {
+        if (documentoFocado !== null) {
+            setEstruturaAberta(true);
+        }
+    }, [documentoFocado]);
 
     useEffect(() => {
         const params = new URLSearchParams(searchParams.toString());
@@ -850,10 +858,10 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
         // Empilha em telas estreitas e divide em duas colunas a partir de lg.
         // `min-w-0` e obrigatorio: sem ele o item flex assume a largura do
         // conteudo e o canvas colapsa para dezenas de pixels em 780px (medido).
-        <div className="flex h-full w-full flex-col gap-4 lg:flex-row">
+        <div className="flex h-full w-full flex-col gap-2 lg:flex-row">
             <div
                 ref={containerRef}
-                className={`relative h-[60vh] w-full min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-muted/20 touch-none lg:h-[calc(100vh-9rem)] ${
+                className={`relative h-[60vh] w-full min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-muted/20 touch-none lg:h-full ${
                     arrastandoFundo ? "cursor-grabbing" : "cursor-grab"
                 }`}
                 data-testid="workspace-canvas"
@@ -1017,14 +1025,55 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
             </div>
 
             <aside
-                className="max-h-[40vh] w-full shrink-0 overflow-y-auto rounded-lg border border-border bg-card p-4 lg:max-h-[calc(100vh-9rem)] lg:w-72"
+                className={
+                    estruturaAberta
+                        ? "relative max-h-[40vh] w-full shrink-0 overflow-y-auto rounded-lg border border-border bg-card p-4 lg:max-h-full lg:w-72"
+                        : "hidden shrink-0 rounded-lg border border-border bg-card p-1 lg:flex lg:w-10 lg:flex-col lg:items-center"
+                }
                 aria-label={t("workspace.sidebar.label")}
+                data-testid="estrutura"
+                data-aberta={estruturaAberta}
             >
-                {documentoFocado === null ? (
-                    <p className="text-sm text-muted-foreground">{t("workspace.sidebar.empty")}</p>
+                {!estruturaAberta ? (
+                    <button
+                        type="button"
+                        onClick={() => setEstruturaAberta(true)}
+                        aria-label={t("workspace.sidebar.open")}
+                        title={t("workspace.sidebar.open")}
+                        data-testid="abrir-estrutura"
+                        className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                        <PanelRightOpen className="h-4 w-4" aria-hidden />
+                    </button>
+                ) : documentoFocado === null ? (
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => setEstruturaAberta(false)}
+                            aria-label={t("workspace.sidebar.close")}
+                            title={t("workspace.sidebar.close")}
+                            data-testid="fechar-estrutura"
+                            className="absolute right-2 top-2 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        >
+                            <PanelRightClose className="h-4 w-4" aria-hidden />
+                        </button>
+                        <p className="pr-8 text-sm text-muted-foreground">{t("workspace.sidebar.empty")}</p>
+                    </>
                 ) : (
                     <div className="space-y-4">
-                        <h2 className="text-sm font-semibold">{documentoAtual?.title}</h2>
+                        <div className="flex items-start justify-between gap-2">
+                            <h2 className="text-sm font-semibold">{documentoAtual?.title}</h2>
+                            <button
+                                type="button"
+                                onClick={() => setEstruturaAberta(false)}
+                                aria-label={t("workspace.sidebar.close")}
+                                title={t("workspace.sidebar.close")}
+                                data-testid="fechar-estrutura"
+                                className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                            >
+                                <PanelRightClose className="h-4 w-4" aria-hidden />
+                            </button>
+                        </div>
 
                         {(() => {
                             const c = indiceDoContexto.contagem.get(documentoFocado);
