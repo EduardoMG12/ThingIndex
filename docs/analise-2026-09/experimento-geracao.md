@@ -164,7 +164,9 @@ Duas coisas apareceram nessas oito: linhas do calendário entram como fonte em q
 | reforço de +300 por termo da pergunta no título do documento | 23/30 · 19/21 · 16/16 | 27 · 17 · 15 | **descartada**: "Sistemas de Informação" está em quase toda pergunta e no título do PPC; as tabelas do PPC passaram na frente da linha certa da Matriz (t02, t06, t07) |
 | linha de tabela só é fonte com 2+ termos significativos da pergunta (token inteiro, sem pontuação e acento) | 23/30 · 21/21 · 16/16 | 27 · 20 · 15 | **mantida**: nada perdeu; perguntas de prosa com linha de calendário entre as fontes caíram de 5 para 3. A primeira versão perdia t02 e t07 porque "operacionais?" e "são" não eram normalizados antes de contar; o teste `TestTermosDaPerguntaSaoNormalizadosAntesDeContar` prende isso |
 
-O que as duas rejeições ensinam: com 72 perguntas de gabarito e o CSV bruto, uma "melhoria óbvia" é testada em seis minutos e descartada com número, que é o oposto de ajustar no olho. As duas mudanças que sobreviveram nesta análise (tabelas como fonte, seção 5; token inteiro nas conexões) foram as que resolviam um erro estrutural, não as que mexiam no peso.
+| **título entra no texto da página** (bug: linha classificada como título sumia da página; a identificação do PPC do Técnico ficava só com endereço e telefone) | 25/30 · 21/21 · 16/16 | 29 · 21 · 15 | **mantida**: ganhou p01 e p24 na recuperação; t12, p24 e p25 no acerto; nada perdeu. Medida depois de reindexar os 10 documentos com o enriquecimento por LLM ligado (sinopse `llm` nos 10) |
+
+O que as rejeições e o bug ensinam: com 72 perguntas de gabarito e o CSV bruto, uma "melhoria óbvia" é testada em seis minutos e descartada com número, que é o oposto de ajustar no olho. As mudanças que sobreviveram (tabelas como fonte, seção 5; títulos no texto da página; linha com 2+ termos; token inteiro nas conexões) foram as que corrigiam um erro estrutural ou de dado, não as que mexiam no peso. E o bug dos títulos só apareceu porque uma pergunta do gabarito (p24) falhava sem motivo aparente: sem gabarito, ele continuaria invisível.
 
 ## 10. Próximos passos
 
