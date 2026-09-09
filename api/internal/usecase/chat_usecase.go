@@ -316,6 +316,23 @@ func buildConversationTitle(title string) string {
 	return normalized
 }
 
+// Limites do contexto enviado ao LLM. Constantes exportadas de proposito: o
+// artigo compara custo por consulta, entao o teto tem de ser um numero
+// nomeado e travado por teste, nao um literal escondido.
+const (
+	// ChatSourceLimit e o total de fontes citadas por resposta.
+	ChatSourceLimit = 6
+	// ChatNodeSourceLimit e quantas dessas fontes vem de secoes do sumario
+	// (node hits), que entram ANTES das paginas por serem a unidade
+	// estrutural da tese e terem peso 3 no retrieval.
+	ChatNodeSourceLimit = 3
+	// ChatPageCharLimit corta o conteudo de cada pagina enviada ao modelo.
+	ChatPageCharLimit = 4000
+	// ChatContextCharLimit e o teto somado de conteudo de paginas no prompt;
+	// estourou, as fontes seguintes voltam ao trecho curto.
+	ChatContextCharLimit = 24000
+)
+
 func buildChatSources(
 	collectionContext *domain.CollectionContext,
 	retrieval *domain.CollectionRetrievalResult,
@@ -335,10 +352,44 @@ func buildChatSources(
 		pageLookup[key] = page
 	}
 
-	sources := make([]domain.ChatSource, 0, min(6, len(retrieval.PageHits)))
+	sources := make([]domain.ChatSource, 0, ChatSourceLimit)
 	seen := make(map[string]struct{})
 
+	// Secoes primeiro: a pagina inicial da secao e o menor pedaco com a
+	// proveniencia inteira (documento, secao, pagina).
+	for _, hit := range retrieval.NodeHits {
+		if len(sources) == ChatNodeSourceLimit {
+			break
+		}
+		if hit.StartPage == nil || *hit.StartPage <= 0 {
+			continue
+		}
+		pageNumber := *hit.StartPage
+		key := fmt.Sprintf("%d:%d", hit.DocumentID, pageNumber)
+		if _, exists := seen[key]; exists {
+			continue
+		}
+
+		snippet := strings.TrimSpace(hit.Summary)
+		if snippet == "" {
+			snippet = hit.Title
+		}
+
+		sources = append(sources, domain.ChatSource{
+			ID:         fmt.Sprintf("%s:%s", key, hit.NodeID),
+			DocName:    documentTitles[hit.DocumentID],
+			Page:       pageNumber,
+			Snippet:    clampRetrievalSnippet(snippet, 220),
+			DocumentID: hit.DocumentID,
+			NodeID:     hit.NodeID,
+		})
+		seen[key] = struct{}{}
+	}
+
 	for _, hit := range retrieval.PageHits {
+		if len(sources) == ChatSourceLimit {
+			break
+		}
 		key := fmt.Sprintf("%d:%d", hit.DocumentID, hit.PageNumber)
 		if _, exists := seen[key]; exists {
 			continue
@@ -361,40 +412,6 @@ func buildChatSources(
 			DocumentID: hit.DocumentID,
 		})
 		seen[key] = struct{}{}
-
-		if len(sources) == 6 {
-			return sources
-		}
-	}
-
-	for _, hit := range retrieval.NodeHits {
-		pageNumber := 0
-		if hit.StartPage != nil {
-			pageNumber = *hit.StartPage
-		}
-		key := fmt.Sprintf("%d:%d:%s", hit.DocumentID, pageNumber, hit.NodeID)
-		if _, exists := seen[key]; exists {
-			continue
-		}
-
-		snippet := strings.TrimSpace(hit.Summary)
-		if snippet == "" {
-			snippet = hit.Title
-		}
-
-		sources = append(sources, domain.ChatSource{
-			ID:         key,
-			DocName:    documentTitles[hit.DocumentID],
-			Page:       pageNumber,
-			Snippet:    clampRetrievalSnippet(snippet, 220),
-			DocumentID: hit.DocumentID,
-			NodeID:     hit.NodeID,
-		})
-		seen[key] = struct{}{}
-
-		if len(sources) == 6 {
-			break
-		}
 	}
 
 	return sources
@@ -407,12 +424,15 @@ func buildCollectionChatPrompt(
 	sources []domain.ChatSource,
 ) (string, string) {
 	language := normalizeChatLanguage(request.Language)
+	// A instrucao de idioma vai por ultimo no system prompt e repetida no fim
+	// do user prompt, na propria lingua: com o prompt todo em ingles e
+	// evidencia longa, o modelo respondia em ingles a pergunta em portugues.
 	systemPrompt := strings.Join([]string{
 		"You are ThingIndex Assistant, a grounded document-analysis assistant.",
 		"Answer only from the provided relational document context.",
 		"If the evidence is insufficient, say that clearly and do not invent facts.",
 		"Prefer precise, direct answers and cite the supporting document names and pages in prose when relevant.",
-		"Write the answer in " + language + ".",
+		"Write the answer in " + language + ". " + languageReminder(language),
 	}, "\n")
 
 	var userPrompt strings.Builder
@@ -433,15 +453,25 @@ func buildCollectionChatPrompt(
 	}
 
 	if len(sources) > 0 {
-		userPrompt.WriteString("\nPrimary grounded sources:\n")
+		// O conteudo da pagina citada, nao so um trecho de 220 caracteres:
+		// com o trecho o modelo dizia "nao ha informacoes" com a resposta na
+		// pagina. Teto por pagina e teto total, ambos constantes testadas.
+		pageContent := make(map[string]string, len(collectionContext.DocumentPages))
+		for _, page := range collectionContext.DocumentPages {
+			pageContent[fmt.Sprintf("%d:%d", page.DocumentID, page.PageNumber)] = page.Content
+		}
+		remaining := ChatContextCharLimit
+		userPrompt.WriteString("\nPrimary grounded sources (full page content):\n")
 		for index, source := range sources {
 			userPrompt.WriteString(fmt.Sprintf("%d. %s", index+1, source.DocName))
 			if source.Page > 0 {
 				userPrompt.WriteString(fmt.Sprintf(" (page %d)", source.Page))
 			}
-			userPrompt.WriteString(": ")
-			userPrompt.WriteString(source.Snippet)
-			userPrompt.WriteString("\n")
+			userPrompt.WriteString(":\n")
+			body, used := chatSourceBody(source, pageContent, remaining)
+			remaining -= used
+			userPrompt.WriteString(body)
+			userPrompt.WriteString("\n\n")
 		}
 	}
 
@@ -462,26 +492,43 @@ func buildCollectionChatPrompt(
 		}
 	}
 
-	if retrieval != nil && len(retrieval.NodeHits) > 0 {
-		userPrompt.WriteString("\nRelevant outline hits:\n")
-		for index, hit := range retrieval.NodeHits {
-			if index == 5 {
-				break
-			}
-			userPrompt.WriteString("- ")
-			userPrompt.WriteString(hit.Title)
-			if strings.TrimSpace(hit.Summary) != "" {
-				userPrompt.WriteString(": ")
-				userPrompt.WriteString(clampRetrievalSnippet(hit.Summary, 180))
-			}
-			userPrompt.WriteString("\n")
-		}
-	}
-
 	userPrompt.WriteString("\nUser question:\n")
 	userPrompt.WriteString(strings.TrimSpace(request.Prompt))
+	userPrompt.WriteString("\n\n")
+	userPrompt.WriteString(languageReminder(language))
 
 	return systemPrompt, userPrompt.String()
+}
+
+// chatSourceBody devolve o conteudo da pagina da fonte (cortado por runas em
+// ChatPageCharLimit) e quantas runas consumiu do teto total. Sem espaco no
+// teto, ou sem a pagina no contexto, volta ao trecho curto e consome zero.
+func chatSourceBody(source domain.ChatSource, pageContent map[string]string, remaining int) (string, int) {
+	content := strings.Join(strings.Fields(pageContent[fmt.Sprintf("%d:%d", source.DocumentID, source.Page)]), " ")
+	if content == "" {
+		return source.Snippet, 0
+	}
+	runes := []rune(content)
+	if len(runes) > ChatPageCharLimit {
+		runes = runes[:ChatPageCharLimit]
+		content = strings.TrimSpace(string(runes)) + "…"
+	}
+	if len(runes) > remaining {
+		return source.Snippet, 0
+	}
+	return content, len(runes)
+}
+
+// languageReminder e a instrucao de idioma na propria lingua.
+func languageReminder(language string) string {
+	switch language {
+	case "English":
+		return "Answer in English."
+	case "Spanish":
+		return "Responde en español."
+	default:
+		return "Responda em português do Brasil."
+	}
 }
 
 func buildDocumentSummaryMap(pairs []models.MetadataPair) map[uint]string {
