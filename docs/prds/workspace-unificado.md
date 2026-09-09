@@ -1,6 +1,6 @@
 # Workspace unificado: chat, documentos e upload dentro da Área de trabalho
 
-**Status:** rascunho
+**Status:** entregue em PR sem merge (2026-09-08), para comparar com a `main`
 **Data:** 2026-09-08
 **Base:** `docs/prds/workspace-navegacao-e-estado.md` (entregue em WN1–WN6)
 **Origem:** pedido do autor: "juntar as páginas Área de trabalho, Dashboard, Chat e Documentos, para enviar documentos, perguntar sobre eles e ver onde estão os textos citados e as conexões, tudo na mesma página". Entregue num PR **sem merge**, para o autor comparar a navegação antiga (`main`) com a nova (branch).
@@ -104,4 +104,12 @@ Ambiguity Report:
 
 ## Discoveries
 
-(vazio)
+- O `DocumentPreviewPanel`, `FilePreview` e `IndexStructureView` NAO saíram da página de Documentos: a aba de triagem abre o documento prioritário por eles ("Open priority document" → aba Index). O PRD listava os três para remoção; só a biblioteca (cartões, painel de controle, agrupamento) saiu. 952 linhas a menos mesmo assim.
+- A lista de conversas do menu (renomear, excluir) ficou no `AppShell`, agora pendurada no item Área de trabalho, porque o painel compacto só tem um `select` de conversas e um botão de nova conversa. `ChatConversationRail` continua sem uso, como antes.
+- Com o painel aberto o segundo quadro fica fora da tela e as páginas só são renderizadas quando visíveis. Três consequências: (1) "Ver no documento" precisa trocar a página mesmo de documento ainda não medido (`irAte` ganhou esse caso); (2) os E2E que contam grifos nos dois quadros fecham o painel primeiro; (3) os specs antigos do workspace passaram a mockar runtime e conversas, senão as buscas do chat recebem 401 e a página cai no login.
+- Playwright dá prioridade à última rota registrada: o mock por id (`/conversations/*`) precisa vir depois do mock da lista (`/conversations**`).
+- Depois do stream o hook recarrega a conversa pelo id; o mock tem de devolver as mensagens persistidas (snake_case), senão a resposta some da tela.
+- O polling pós-upload não pode decidir a parada num efeito: ele rodaria com o contexto velho (sem o documento novo) e pararia antes da primeira recarga. A decisão ficou dentro do tick, lendo o contexto por ref.
+- `useSearchParams` na página exige `Suspense` na pré-renderização; a página foi envolvida.
+- O E2E real do chat não é possível: o usuário demo não tem provedor de LLM. O painel e a fonte clicável estão cobertos só com mock; upload, apagar e estado estão cobertos na stack real.
+- Entregue em 6 issues (#48 a #53) mais o fechamento (#54). Suítes: Vitest 225, Playwright mock 36, Playwright real 4, `go test ./...` ok.
