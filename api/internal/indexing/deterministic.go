@@ -50,6 +50,8 @@ type textBox struct {
 type pdfTextExtraction struct {
 	PageCount  int
 	PageBlocks map[int][]textBlock
+	// PageTables sao as tabelas detectadas pelas caixas de palavra, por pagina.
+	PageTables map[int][]models.TableSection
 }
 
 type pdfTextExtractor interface {
@@ -160,7 +162,7 @@ func (i *DeterministicIndexer) indexPDF(ctx context.Context, documentID uint, da
 
 	pageBlocks, ocrStats := i.applyPDFOCRFallback(ctx, data, extraction.PageCount, extraction.PageBlocks)
 	headings, paragraphs := buildPDFStructureFromPageBlocks(pageBlocks, extraction.PageCount)
-	result := buildIndexingResult(documentID, headings, paragraphs, nil)
+	result := buildIndexingResult(documentID, headings, paragraphs, flattenPageTables(documentID, extraction.PageTables, extraction.PageCount))
 	appendOCRFallbackMetadata(&result, documentID, ocrStats)
 	return result, nil
 }

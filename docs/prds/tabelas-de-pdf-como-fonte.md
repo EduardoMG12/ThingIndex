@@ -8,7 +8,7 @@
 
 (1) O indexador determinístico detecta tabelas em PDF a partir das caixas de palavra do `pdftotext -bbox-layout` e grava uma `TableSection` por tabela **por página**, com `page_number`, cabeçalho e linhas com células multilinha remontadas. (2) Cada linha de tabela é uma unidade de recuperação com o cabeçalho colado ("Disciplina: SIS07302 - Estrutura de Dados I; Pré-requisito: SIS07206"), pontuada por BM25 como as demais, e vira fonte de chat de primeira classe com (documento, página, tabela, linha). (3) Métrica determinística, sem LLM: Recall@6 do retrieval sobre os estratos `tabela` e `calendario` do gabarito, antes e depois, medida pelo `cmd/generation-eval -arms T` (as fontes saem antes do modelo).
 
-Pronto quando: teste com a Matriz real (`examples/faculdade/matriz-curricular-si-palmas-2023.pdf`) recupera a linha de Estrutura de Dados I com pré-requisito SIS07206 e página 1; teste com o Calendário recupera a linha "Rematrícula dos estudantes veteranos" em fevereiro na página 1; Recall@6 de T no estrato `tabela` sobe de 4,8% (1 de 21) e no `calendario` de 0% (medido em 2026-09-09) e o número novo fica registrado em Discoveries.
+Pronto quando: teste com a Matriz real (`examples/faculdade/matriz-curricular-si-palmas-2023.pdf`) recupera a linha de Estrutura de Dados I com pré-requisito SIS07206 e página 1; teste com o Calendário recupera a linha "Rematrícula dos estudantes veteranos" em fevereiro na página 1; Recall@6 de T no estrato `tabela` sobe de 42,9% (9 de 21, medido em 2026-09-09; no `calendario` já é 100% porque o documento tem 5 páginas, e a falha ali é o modelo ler a grade) e o número novo fica registrado em Discoveries.
 
 ## Requirements
 
