@@ -205,6 +205,7 @@ func (a *thingIndexArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) 
 // recuperacao. E o adversario que o artigo nunca tinha medido.
 type fullDocumentArm struct {
 	llm      domain.LLMService
+	fallback domain.LLMService
 	model    string
 	pdfDir   string
 	docs     []evalcorpus.GabaritoDocument
@@ -221,15 +222,25 @@ func newFullDocumentArm(pdfDir, scope, model string, g *evalcorpus.Gabarito) (*f
 	if model == "" {
 		model = strings.TrimSpace(os.Getenv("THINGINDEX_TEST_LLM_MODEL"))
 	}
-	llm, err := provider.NewLLMProvider(providerType, map[string]string{
-		"api_key":  os.Getenv("THINGINDEX_TEST_LLM_API_KEY"),
-		"base_url": os.Getenv("THINGINDEX_TEST_LLM_BASE_URL"),
-		"model":    model,
-	})
+	build := func(apiKey string) (domain.LLMService, error) {
+		return provider.NewLLMProvider(providerType, map[string]string{
+			"api_key":  apiKey,
+			"base_url": os.Getenv("THINGINDEX_TEST_LLM_BASE_URL"),
+			"model":    model,
+		})
+	}
+	llm, err := build(os.Getenv("THINGINDEX_TEST_LLM_API_KEY"))
 	if err != nil {
 		return nil, err
 	}
 	arm := &fullDocumentArm{llm: llm, model: model, pdfDir: pdfDir, docs: g.Documents, scope: scope, pages: map[string][]string{}}
+	// Chave reserva (THINGINDEX_TEST_LLM_API_KEY_FALLBACK, outra conta do
+	// mesmo provedor): entra quando a principal devolve "usage limit".
+	if fallback := strings.TrimSpace(os.Getenv("THINGINDEX_TEST_LLM_API_KEY_FALLBACK")); fallback != "" {
+		if alt, err := build(fallback); err == nil {
+			arm.fallback = alt
+		}
+	}
 	for _, d := range g.Documents {
 		pages, err := extractPages(filepath.Join(pdfDir, d.File))
 		if err != nil {
@@ -296,6 +307,12 @@ func (a *fullDocumentArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion
 	estimated := estimateTokens(systemPrompt + userPrompt)
 	start := time.Now()
 	text, err := a.llm.GenerateText(ctx, systemPrompt, userPrompt)
+	if err != nil && a.fallback != nil && strings.Contains(err.Error(), "usage limit") {
+		fmt.Fprintln(os.Stderr, "generation-eval: chave principal esgotada; passando para a chave reserva")
+		a.llm, a.fallback = a.fallback, nil
+		start = time.Now()
+		text, err = a.llm.GenerateText(ctx, systemPrompt, userPrompt)
+	}
 	out := answer{Text: strings.TrimSpace(text), Model: a.model, Latency: time.Since(start), Err: err}
 	if reporter, ok := a.llm.(domain.TokenUsageReporter); ok {
 		out.PromptTokens, out.CompletionTokens, _, out.UsageReported = reporter.LastTokenUsage()
