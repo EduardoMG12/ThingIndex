@@ -220,11 +220,16 @@ func (u *chatUseCase) StreamCollectionChat(
 	// aparecer na tela, a conexao caia, e ao recarregar a conversa a resposta
 	// tinha sumido -- sem nenhum registro de que a chamada de LLM foi feita e
 	// paga. Guardar o parcial e melhor que perder tudo.
+	var usage *domain.ChatUsage
 	persistAnswer := func() error {
 		answer := strings.TrimSpace(answerBuilder.String())
 		if answer == "" {
 			return nil
 		}
+		// Medido depois da resposta (o provedor so informa consumo da ultima
+		// chamada); a parcial tambem e paga, entao tambem e medida.
+		measured := chatUsageFor(llm, systemPrompt, userPrompt, answer)
+		usage = &measured
 
 		persistedSources := make([]models.ChatSourceReference, 0, len(sources))
 		for _, source := range sources {
@@ -239,9 +244,15 @@ func (u *chatUseCase) StreamCollectionChat(
 		}
 
 		if err := u.conversationRepo.AddMessage(ctx, userID, conversation.ID, &models.ChatConversationEntry{
-			Role:    "assistant",
-			Content: answer,
-			Sources: persistedSources,
+			Role:             "assistant",
+			Content:          answer,
+			Sources:          persistedSources,
+			PromptTokens:     measured.PromptTokens,
+			CompletionTokens: measured.CompletionTokens,
+			UsageReported:    measured.UsageReported,
+			ProviderType:     measured.ProviderType,
+			Model:            measured.Model,
+			EstimatedCostUSD: measured.EstimatedCostUSD,
 		}); err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return domain.ErrChatConversationNotFound
@@ -298,7 +309,45 @@ func (u *chatUseCase) StreamCollectionChat(
 		Type:    chatStreamEventDone,
 		Stage:   "completed",
 		Message: "Answer completed.",
+		Usage:   usage,
 	})
+}
+
+// chatUsageFor mede o consumo de uma resposta: numeros do provedor quando ele
+// os informa (TokenUsageReporter), estimativa runas/4 quando nao -- rotulada
+// como estimativa. Custo so com preco cadastrado (LLMPricingProvider).
+func chatUsageFor(llm domain.LLMService, systemPrompt, userPrompt, answer string) domain.ChatUsage {
+	usage := domain.ChatUsage{
+		PromptTokens:     estimateChatTokens(systemPrompt) + estimateChatTokens(userPrompt),
+		CompletionTokens: estimateChatTokens(answer),
+	}
+	if reporter, ok := llm.(domain.TokenUsageReporter); ok {
+		if prompt, completion, _, reported := reporter.LastTokenUsage(); reported {
+			usage.PromptTokens, usage.CompletionTokens, usage.UsageReported = prompt, completion, true
+		}
+	}
+	if metadata, ok := llm.(domain.LLMMetadataProvider); ok {
+		usage.ProviderType, usage.Model = metadata.ProviderType(), metadata.ModelName()
+	}
+	if pricer, ok := llm.(domain.LLMPricingProvider); ok {
+		if pricing, ok := pricer.Pricing(); ok {
+			cost := float64(usage.PromptTokens)/1_000_000*pricing.InputCostPerMillionUSD +
+				float64(usage.CompletionTokens)/1_000_000*pricing.OutputCostPerMillionUSD
+			usage.EstimatedCostUSD = &cost
+		}
+	}
+	return usage
+}
+
+// estimateChatTokens e a mesma regra da indexacao (processing.estimateTextTokens):
+// uma runa a cada quatro. Copiada, nao importada, para o usecase nao depender
+// do pacote de processamento.
+func estimateChatTokens(value string) int {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return 0
+	}
+	return (len([]rune(trimmed)) + 3) / 4
 }
 
 func buildConversationTitle(title string) string {
