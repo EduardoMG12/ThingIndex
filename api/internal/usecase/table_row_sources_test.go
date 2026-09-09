@@ -62,6 +62,21 @@ func TestLinhaSemPaginaPontuaODocumentoMasNaoViraFonte(t *testing.T) {
 
 // A linha entra primeiro nas fontes, com pagina, e o prompt leva a linha (com
 // o titulo da tabela), nao a pagina inteira.
+func TestLinhasNaoConsomemAsVagasDasPaginas(t *testing.T) {
+	t.Parallel()
+	context := &domain.CollectionContext{Documents: []models.Document{{ID: 1, Title: "Doc"}}}
+	retrieval := &domain.CollectionRetrievalResult{
+		TableRowHits: []domain.CollectionTableRowHit{{DocumentID: 1, TableID: 1, RowIndex: 0, PageNumber: 9, Text: "l", Score: 10}},
+	}
+	for n := 1; n <= 8; n++ {
+		retrieval.PageHits = append(retrieval.PageHits, domain.CollectionPageHit{DocumentID: 1, PageNumber: n})
+	}
+	sources := buildChatSources(context, retrieval)
+	if len(sources) != 1+ChatSourceLimit {
+		t.Fatalf("esperava a linha mais %d paginas, veio %d", ChatSourceLimit, len(sources))
+	}
+}
+
 func TestFonteDeLinhaVemPrimeiroEVaiAoPromptComoLinha(t *testing.T) {
 	t.Parallel()
 	page := 7
@@ -73,9 +88,12 @@ func TestFonteDeLinhaVemPrimeiroEVaiAoPromptComoLinha(t *testing.T) {
 		},
 	}
 	retrieval := &domain.CollectionRetrievalResult{
-		TableRowHits: []domain.CollectionTableRowHit{{DocumentID: 265, TableID: 9, RowIndex: 1, PageNumber: 1, Title: "Grade 07", Text: "Disciplina: SIS07302 - Estrutura de Dados I; Pré-requisito: SIS07206"}},
-		NodeHits:     []domain.CollectionNodeHit{{DocumentID: 260, NodeID: "n-1", Title: "Matriz do PPC", StartPage: &page}},
-		PageHits:     []domain.CollectionPageHit{{DocumentID: 265, PageNumber: 1, Snippet: "grade"}},
+		TableRowHits: []domain.CollectionTableRowHit{
+			{DocumentID: 265, TableID: 9, RowIndex: 1, PageNumber: 1, Title: "Grade 07", Text: "Disciplina: SIS07302 - Estrutura de Dados I; Pré-requisito: SIS07206", Score: 1000},
+			{DocumentID: 265, TableID: 9, RowIndex: 0, PageNumber: 1, Text: "linha fraca", Score: 300}, // abaixo da metade da melhor: fora
+		},
+		NodeHits: []domain.CollectionNodeHit{{DocumentID: 260, NodeID: "n-1", Title: "Matriz do PPC", StartPage: &page}},
+		PageHits: []domain.CollectionPageHit{{DocumentID: 265, PageNumber: 1, Snippet: "grade"}},
 	}
 	sources := buildChatSources(context, retrieval)
 	if len(sources) != 3 {
