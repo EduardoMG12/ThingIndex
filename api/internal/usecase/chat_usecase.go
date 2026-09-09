@@ -375,7 +375,8 @@ const (
 	// (node hits), que entram ANTES das paginas por serem a unidade
 	// estrutural da tese e terem peso 3 no retrieval.
 	ChatNodeSourceLimit = 3
-	// ChatTableRowSourceLimit: linhas de tabela que entram antes das secoes.
+	// ChatTableRowSourceLimit: linhas de tabela que entram antes das secoes,
+	// alem das ChatSourceLimit fontes de secao e pagina.
 	ChatTableRowSourceLimit = 3
 	// ChatPageCharLimit corta o conteudo de cada pagina enviada ao modelo.
 	ChatPageCharLimit = 4000
@@ -409,8 +410,13 @@ func buildChatSources(
 	// Linhas de tabela primeiro: e a fonte mais precisa (documento, pagina,
 	// tabela, linha) e a mais barata no prompt. A pagina inteira da tabela
 	// ainda pode entrar depois pelos hits de pagina.
+	// As linhas nao consomem as vagas das paginas: custam ~100 caracteres
+	// contra 4.000 de uma pagina, e uma pergunta de prosa perdia a pagina
+	// certa para uma linha fraca. Linha fraca (abaixo de metade da melhor)
+	// tambem fica de fora.
+	rowSources := 0
 	for _, hit := range retrieval.TableRowHits {
-		if len(sources) == ChatTableRowSourceLimit {
+		if rowSources == ChatTableRowSourceLimit || hit.Score*2 < retrieval.TableRowHits[0].Score {
 			break
 		}
 		id := fmt.Sprintf("%d:%d:table-%d-row-%d", hit.DocumentID, hit.PageNumber, hit.TableID, hit.RowIndex)
@@ -430,12 +436,13 @@ func buildChatSources(
 			Body:       body,
 		})
 		seen[id] = struct{}{}
+		rowSources++
 	}
 
 	// Secoes depois: a pagina inicial da secao e o menor pedaco com a
 	// proveniencia inteira (documento, secao, pagina).
 	for _, hit := range retrieval.NodeHits {
-		if len(sources) == ChatNodeSourceLimit {
+		if len(sources)-rowSources == ChatNodeSourceLimit {
 			break
 		}
 		if hit.StartPage == nil || *hit.StartPage <= 0 {
@@ -464,7 +471,7 @@ func buildChatSources(
 	}
 
 	for _, hit := range retrieval.PageHits {
-		if len(sources) == ChatSourceLimit {
+		if len(sources)-rowSources == ChatSourceLimit {
 			break
 		}
 		key := fmt.Sprintf("%d:%d", hit.DocumentID, hit.PageNumber)

@@ -81,7 +81,24 @@ A primeira execução caiu no limitador da rota `/chat/stream` (20 pedidos por m
 - Correção por regex: dois casos (t04, c08) mostram que o casador é mais estrito que um leitor humano; auditados à mão acima.
 - O braço T não tem número nesta rodada. Sem ele, o experimento não fecha.
 
-## 5. Próximos passos
+## 6. Rodada 2 (2026-09-09): tabelas de PDF como fonte, medidas sem LLM
+
+O braço F provou que o conteúdo das tabelas está no `pdftotext`; o ThingIndex não o via porque o pipeline de PDF nunca emitia tabela. Entrou a detecção geométrica de tabelas pelas caixas de palavra (PRD `docs/prds/tabelas-de-pdf-como-fonte.md`), uma `table_section` por tabela por página, e cada linha virou unidade de recuperação e fonte de chat com (documento, página, tabela, linha).
+
+Sem crédito de LLM, o que dá para medir é a **recuperação isolada da geração**: a API emite as fontes antes de chamar o modelo, então `cmd/generation-eval -arms T` registra se a página-alvo do gabarito está entre as fontes mesmo com o provedor fora. Isso responde à cobrança dos revisores do conselho ("Recall@k da recuperação isolado") e é determinístico (constituição II).
+
+| Estrato | n | Antes | Depois |
+|---|---|---|---|
+| todas | 72 | 73,1% | **89,6%** |
+| tabela | 21 | 42,9% | **100,0%** |
+| calendário | 16 | 100,0% | 100,0% |
+| prosa | 30 | 80,0% | 76,7% |
+
+Doze perguntas de tabela passaram a ter a linha certa entre as fontes; a única perda (p01) traz a linha "TOTAL 3000" da Matriz p. 3, que responde à pergunta numa página que o gabarito não listou. A primeira tentativa, com linhas ocupando 3 das 6 vagas de fonte, derrubou a prosa para 63%; a versão final deixa as linhas fora das vagas de página (custam 100 caracteres contra 4.000) e corta linha abaixo de metade do score da melhor.
+
+O que ainda não foi medido: se o modelo, recebendo a linha "Disciplina: SIS07302 - Estrutura de Dados I; Pré-requisito Trilha de Disciplina Hrs optativas: SIS07206" como primeira fonte, responde certo. Isso é a rodada 3, quando houver crédito. Confundidor: a reindexação rodou sem LLM, então os resumos e a árvore de seções caíram em fallback e os hits de seção mudaram entre antes e depois.
+
+## 7. Próximos passos
 
 1. Repor crédito (ou outra chave) e rodar `-arms T -repeats 3` e o restante de `F -scope collection`.
 2. Versão 2 do gabarito: corrigir t04, c08 e t06, registrar `reviewed_by` com o revisor externo, recongelar o hash.
