@@ -80,3 +80,18 @@ Ambiguity Report:
 
 ## Discoveries
 
+**Rodada 1 (2026-09-09), antes dos números**
+
+- O gabarito saiu com 72 perguntas (30 prosa, 21 tabela, 16 calendário, 5 negativas), 12 delas marcadas `rodada-cc5`. O hash foi recalculado uma vez antes de qualquer execução: o padrão de recusa das negativas ganhou as formas em inglês ("no information", "does not"), porque no smoke o braço T respondeu em inglês.
+- O braço T respondia em inglês porque a API decide o idioma pelo header `Accept-Language`, que o frontend manda e o harness não mandava. Corrigido no harness; a instrução de idioma no prompt não bastava sozinha.
+- O cliente Ollama nativo não lia `prompt_eval_count`/`eval_count`; agora lê (issue #63). Com isso o braço F tem tokens reportados, não estimados.
+- No smoke, `gemma4:31b` no Ollama Cloud aceitou um prompt de 250.503 tokens reportados (a coleção inteira, 5 PDFs) sem erro nem truncamento detectável. O escopo `collection` é viável e entra na rodada.
+- O braço T cria uma conversa por pergunta e a apaga ao fim, para não poluir o usuário demo.
+- Perguntas negativas no escopo `document` recebem a coleção inteira (não há documento-alvo); registrado no relatório.
+
+**Rodada 1, números (2026-09-09)**
+
+- F/documento completo: 94,4% de acerto (IC 88,9–98,6), proveniência por página 86,1%; auditado à mão, 71/72 (dois casadores estritos, uma ambiguidade do gabarito em t06, uma alucinação com citação plausível em n03). F/coleção, 35 perguntas: mesmo acerto, proveniência de 50,5%, 250 mil tokens por consulta. Relatório em `docs/analise-2026-09/experimento-geracao.md`.
+- A rota `/chat/stream` tem limitador de 20 pedidos por minuto; a primeira execução do braço T caiu em 429 na 21ª chamada. O harness espera 30 s e repete (até 10 vezes) e não conta a espera na latência.
+- O crédito mensal do Ollama Cloud acabou no meio de F/coleção (a partir de c14) e antes da segunda execução de T. O harness agora interrompe o lote ao ver "usage limit" e trata resposta vazia da API como erro, não como "errada". **T fica pendente até haver crédito.**
+- Os CSVs válidos estão versionados em `docs/article/results/` (`generation-results-F-document.csv`, `generation-results-collection.csv`, este com as linhas de erro mantidas para registro).

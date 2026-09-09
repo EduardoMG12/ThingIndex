@@ -1,0 +1,328 @@
+question_id,stratum,origin,arm,scope,repeat,model,correct,cited_pages,provenance_ok,retrieval_hit,prompt_tokens,completion_tokens,usage_reported,latency_ms,cost_usd,truncated,error,answer
+t01,tabela,pdf,F,collection,1,gemma4:31b,true,2,false,,250508,51,true,3985,,false,,"Na grade 07, o pré-requisito para a disciplina de Estrutura de Dados I é a disciplina de Programação de Computadores I (p. 2 da Matriz Curricular SI - Palmas (2023))."
+t01,tabela,pdf,F,collection,2,gemma4:31b,true,2,false,,250508,59,true,12385,,false,,"Na grade 07, o pré-requisito para a disciplina de Estrutura de Dados I é a disciplina de Programação de Computadores I (SIS07206) [p. 2 da Matriz Curricular SI - Palmas (2023)]."
+t01,tabela,pdf,F,collection,3,gemma4:31b,true,2,false,,250508,51,true,3546,,false,,"Na grade 07, o pré-requisito para a disciplina de Estrutura de Dados I é a disciplina de Programação de Computadores I (p. 2 da Matriz Curricular SI - Palmas (2023))."
+t02,tabela,rodada-cc5,F,collection,1,gemma4:31b,true,52,false,,250500,33,true,3763,,false,,O pré-requisito para a disciplina de Sistemas Operacionais é a disciplina de Arquitetura e Organização de Computadores (p. 52).
+t02,tabela,rodada-cc5,F,collection,2,gemma4:31b,true,52,false,,250500,33,true,9530,,false,,O pré-requisito para a disciplina de Sistemas Operacionais é a disciplina de Arquitetura e Organização de Computadores (p. 52).
+t02,tabela,rodada-cc5,F,collection,3,gemma4:31b,true,52,false,,250500,34,true,3413,,false,,O pré-requisito para o componente curricular de Sistemas Operacionais é a disciplina de Arquitetura e Organização de Computadores (p. 52).
+t03,tabela,pdf,F,collection,1,gemma4:31b,true,52,false,,250503,36,true,3808,,false,,As disciplinas pré-requisito de Programação de Computadores III são Programação Orientada a Objetos e Programação de Computadores II (p. 52).
+t03,tabela,pdf,F,collection,2,gemma4:31b,true,52,false,,250503,36,true,3624,,false,,As disciplinas pré-requisito de Programação de Computadores III são Programação Orientada a Objetos e Programação de Computadores II (p. 52).
+t03,tabela,pdf,F,collection,3,gemma4:31b,true,52,false,,250503,36,true,3616,,false,,As disciplinas pré-requisito de Programação de Computadores III são Programação Orientada a Objetos e Programação de Computadores II (p. 52).
+t04,tabela,rodada-cc5,F,collection,1,gemma4:31b,true,57;51,false,,250506,34,true,3192,,false,,Banco de Dados I está no 3º Período (p. 57) e não possui pré-requisito (p. 51).
+t04,tabela,rodada-cc5,F,collection,2,gemma4:31b,true,57;51,false,,250506,34,true,3885,,false,,Banco de Dados I está no 3º Período (p. 57) e não possui pré-requisito (p. 51).
+t04,tabela,rodada-cc5,F,collection,3,gemma4:31b,true,57;1;51,true,,250506,98,true,4080,,false,,Banco de Dados I está no 3º Período (p. 57 do PPC Sistemas de Informação - Palmas (2019) e p. 1 da Matriz Curricular SI - Palmas (2023)) e não possui pré-requisito (p. 51 do PPC Sistemas de Informação - Palmas (2019) e p. 1 da Matriz Curricular SI - Palmas (2023)).
+t05,tabela,pdf,F,collection,1,gemma4:31b,true,57;52,false,,250508,44,true,3866,,false,,A disciplina de Banco de Dados II é ofertada no 4º período (p. 57) e tem como pré-requisito a disciplina de Banco de Dados I (p. 52).
+t05,tabela,pdf,F,collection,2,gemma4:31b,true,57;52,false,,250508,44,true,4021,,false,,A disciplina de Banco de Dados II é ofertada no 4º período (p. 57) e tem como pré-requisito a disciplina de Banco de Dados I (p. 52).
+t05,tabela,pdf,F,collection,3,gemma4:31b,true,57;52,false,,250508,44,true,3338,,false,,A disciplina de Banco de Dados II é ofertada no 4º período (p. 57) e tem como pré-requisito a disciplina de Banco de Dados I (p. 52).
+t06,tabela,pdf,F,collection,1,gemma4:31b,true,54;151,false,,250506,62,true,3797,,false,,"A carga horária de Projeto Comunitário I é de 180 horas-aula (ou 150 horas-relógio) [p. 54, p. 151] e pertence à categoria de Componentes de Extensão [p. 54]."
+t06,tabela,pdf,F,collection,2,gemma4:31b,true,54;58;151,false,,250506,69,true,3778,,false,,"A carga horária de Projeto Comunitário I é de 180 horas-aula (ou 150 horas-relógio) [p. 54, 58, 151] e pertence à categoria de Componentes de Extensão [p. 54, 151]."
+t06,tabela,pdf,F,collection,3,gemma4:31b,true,54;58;151,false,,250506,69,true,4188,,false,,"A carga horária de Projeto Comunitário I é de 180 horas-aula (ou 150 horas-relógio) [p. 54, 58, 151] e pertence à categoria de Componentes de Extensão [p. 54, 151]."
+t07,tabela,pdf,F,collection,1,gemma4:31b,true,53;2,true,,250500,140,true,4842,,false,,"Os pré-requisitos para a disciplina de Inteligência Artificial são:
+
+*   **Programação de Computadores I** (p. 53 do documento ""PPC Sistemas de Informacao - Palmas (2019)"") ou **SIS07206** (p. 2 da ""Matriz Curricular SI - Palmas (2023)"").
+*   **Probabilidade e Estatística** (p. 53 do documento ""PPC Sistemas de Informacao - Palmas (2019)"") ou **SIS07602** (p. 2 da ""Matriz Curricular SI - Palmas (2023)"")."
+t07,tabela,pdf,F,collection,2,gemma4:31b,true,53,false,,250500,50,true,3430,,false,,"Os pré-requisitos para a disciplina de Inteligência Artificial são:
+
+*   **Programação de Computadores I** (p. 53)
+*   **Probabilidade e Estatística** (p. 53)"
+t07,tabela,pdf,F,collection,3,gemma4:31b,true,53,false,,250500,50,true,3767,,false,,"Os pré-requisitos para a disciplina de Inteligência Artificial são:
+
+*   **Programação de Computadores I** (p. 53)
+*   **Probabilidade e Estatística** (p. 53)"
+t08,tabela,pdf,F,collection,1,gemma4:31b,true,59;2,true,,250506,107,true,4251,,false,,"O aluno cursa a disciplina de Estágio Supervisionado I no **7º período** (p. 59 do PPC Sistemas de Informação / p. 2 da Matriz Curricular SI - Palmas 2023).
+
+A carga horária é de **100 horas-aula** (p. 59 do PPC Sistemas de Informação) ou **83 horas-relógio** (p. 2 da Matriz Curricular SI - Palmas 2023)."
+t08,tabela,pdf,F,collection,2,gemma4:31b,true,59;2,true,,250506,107,true,4297,,false,,"O aluno cursa a disciplina de Estágio Supervisionado I no **7º período** (p. 59 do PPC Sistemas de Informação / p. 2 da Matriz Curricular SI - Palmas 2023).
+
+A carga horária é de **100 horas-aula** (p. 59 do PPC Sistemas de Informação) ou **83 horas-relógio** (p. 2 da Matriz Curricular SI - Palmas 2023)."
+t08,tabela,pdf,F,collection,3,gemma4:31b,true,59;2,true,,250506,107,true,4307,,false,,"O aluno cursa a disciplina de Estágio Supervisionado I no **7º período** (p. 59 do PPC Sistemas de Informação / p. 2 da Matriz Curricular SI - Palmas 2023).
+
+A carga horária é de **100 horas-aula** (p. 59 do PPC Sistemas de Informação) ou **83 horas-relógio** (p. 2 da Matriz Curricular SI - Palmas 2023)."
+t09,tabela,pdf,F,collection,1,gemma4:31b,true,52,false,,250502,45,true,4181,,false,,"O pré-requisito para a disciplina de Redes de Computadores é a disciplina de Sistemas Operacionais (p. 52 do documento ""PPC Sistemas de Informacao - Palmas (2019)"")."
+t09,tabela,pdf,F,collection,2,gemma4:31b,true,52,false,,250502,45,true,3500,,false,,"O pré-requisito para a disciplina de Redes de Computadores é a disciplina de Sistemas Operacionais (p. 52 do documento ""PPC Sistemas de Informacao - Palmas (2019)"")."
+t09,tabela,pdf,F,collection,3,gemma4:31b,true,52,false,,250502,45,true,3553,,false,,"O pré-requisito para a disciplina de Redes de Computadores é a disciplina de Sistemas Operacionais (p. 52 do documento ""PPC Sistemas de Informacao - Palmas (2019)"")."
+t10,tabela,pdf,F,collection,1,gemma4:31b,true,52,false,,250501,46,true,4095,,false,,"O pré-requisito para a disciplina de Segurança da Informação é a disciplina de Redes de Computadores (p. 52 do documento ""PPC Sistemas de Informacao - Palmas (2019)"")."
+t10,tabela,pdf,F,collection,2,gemma4:31b,true,52,false,,250501,30,true,3429,,false,,O pré-requisito para a disciplina de Segurança da Informação é a disciplina de Redes de Computadores (p. 52).
+t10,tabela,pdf,F,collection,3,gemma4:31b,true,52,false,,250501,30,true,3537,,false,,O pré-requisito para a disciplina de Segurança da Informação é a disciplina de Redes de Computadores (p. 52).
+t11,tabela,rodada-cc5,F,collection,1,gemma4:31b,true,61,false,,250503,385,true,6396,,false,,"As disciplinas optativas da grade 07 são as seguintes:
+
+1. Libras – Língua Brasileira de Sinais (p. 61)
+2. Sistemas Distribuídos (p. 61)
+3. Redes de Computadores Avançada (p. 61)
+4. Paradigmas de Linguagem de Programação (p. 61)
+5. Green Computing (p. 61)
+6. Tecnologia para Educação – Ativa e Híbrida (p. 61)
+7. Qualidade de Software (p. 61)
+8. Tópicos Avançados de Banco de Dados (p. 61)
+9. Aprendizado de Máquina (p. 61)
+10. Programação Paralela (p. 61)
+11. Big Data and Data Analitycs (p. 61)
+12. Filosofia da Ciência e da Tecnologia (p. 61)
+13. Sistemas Multimídia (p. 61)
+14. Computação gráfica e Realidade Virtual (p. 61)
+15. Contabilidade Geral (p. 61)
+16. IOT – Internet of Things (p. 61)
+17. Engenharia de Requisitos (p. 61)
+18. Teoria Geral da Administração (p. 61)
+19. Desenvolvimento de Jogos Digitais (p. 61)
+20. Teste de Software (p. 61)
+21. Tecnologias Emergentes em Sistemas de Informação (p. 61)
+
+No total, são **21 disciplinas** optativas (p. 61)."
+t11,tabela,rodada-cc5,F,collection,2,gemma4:31b,true,61,false,,250503,385,true,6629,,false,,"As disciplinas optativas da grade 07 são as seguintes:
+
+1. Libras – Língua Brasileira de Sinais (p. 61)
+2. Sistemas Distribuídos (p. 61)
+3. Redes de Computadores Avançada (p. 61)
+4. Paradigmas de Linguagem de Programação (p. 61)
+5. Green Computing (p. 61)
+6. Tecnologia para Educação – Ativa e Híbrida (p. 61)
+7. Qualidade de Software (p. 61)
+8. Tópicos Avançados de Banco de Dados (p. 61)
+9. Aprendizado de Máquina (p. 61)
+10. Programação Paralela (p. 61)
+11. Big Data and Data Analitycs (p. 61)
+12. Filosofia da Ciência e da Tecnologia (p. 61)
+13. Sistemas Multimídia (p. 61)
+14. Computação gráfica e Realidade Virtual (p. 61)
+15. Contabilidade Geral (p. 61)
+16. IOT – Internet of Things (p. 61)
+17. Engenharia de Requisitos (p. 61)
+18. Teoria Geral da Administração (p. 61)
+19. Desenvolvimento de Jogos Digitais (p. 61)
+20. Teste de Software (p. 61)
+21. Tecnologias Emergentes em Sistemas de Informação (p. 61)
+
+No total, são **21 disciplinas optativas** (p. 61)."
+t11,tabela,rodada-cc5,F,collection,3,gemma4:31b,true,61,false,,250503,385,true,5959,,false,,"As disciplinas optativas da grade 07 são as seguintes:
+
+1. Libras – Língua Brasileira de Sinais (p. 61)
+2. Sistemas Distribuídos (p. 61)
+3. Redes de Computadores Avançada (p. 61)
+4. Paradigmas de Linguagem de Programação (p. 61)
+5. Green Computing (p. 61)
+6. Tecnologia para Educação – Ativa e Híbrida (p. 61)
+7. Qualidade de Software (p. 61)
+8. Tópicos Avançados de Banco de Dados (p. 61)
+9. Aprendizado de Máquina (p. 61)
+10. Programação Paralela (p. 61)
+11. Big Data and Data Analitycs (p. 61)
+12. Filosofia da Ciência e da Tecnologia (p. 61)
+13. Sistemas Multimídia (p. 61)
+14. Computação gráfica e Realidade Virtual (p. 61)
+15. Contabilidade Geral (p. 61)
+16. IOT – Internet of Things (p. 61)
+17. Engenharia de Requisitos (p. 61)
+18. Teoria Geral da Administração (p. 61)
+19. Desenvolvimento de Jogos Digitais (p. 61)
+20. Teste de Software (p. 61)
+21. Tecnologias Emergentes em Sistemas de Informação (p. 61)
+
+No total, são **21 disciplinas** optativas (p. 61)."
+t12,tabela,pdf,F,collection,1,gemma4:31b,false,61;103;212,false,,250506,74,true,4430,,false,,"A disciplina de Libras – Língua Brasileira de Sinais possui uma carga horária de 80 horas-aula (ou 67 horas-relógio) [p. 61, p. 103]. Ela é classificada como um componente curricular optativo [p. 61, p. 212]."
+t12,tabela,pdf,F,collection,2,gemma4:31b,false,61;103;212,false,,250506,87,true,4286,,false,,"A disciplina de Libras – Língua Brasileira de Sinais possui a seguinte configuração:
+
+*   **Carga Horária:** 80 horas/aula (ou 67 horas/relógio) [p. 61, p. 103].
+*   **Natureza:** É um componente curricular **optativo** [p. 61, p. 212]."
+t12,tabela,pdf,F,collection,3,gemma4:31b,false,61;103;212,false,,250506,74,true,3589,,false,,"A disciplina de Libras – Língua Brasileira de Sinais possui uma carga horária de 80 horas-aula (ou 67 horas-relógio) [p. 61, p. 103] e é classificada como um componente curricular optativo [p. 61, p. 212]."
+t13,tabela,pdf,F,collection,1,gemma4:31b,true,1;10,true,,250500,68,true,3807,,false,,"Para o curso de Bacharelado em Sistemas de Informação, a duração em períodos é a seguinte:
+
+*   **Mínima:** 8 períodos (p. 1, p. 10)
+*   **Máxima:** 12 períodos (p. 1, p. 10)"
+t13,tabela,pdf,F,collection,2,gemma4:31b,true,1;4,true,,250500,108,true,3932,,false,,"Para o curso de Bacharelado em Sistemas de Informação, a duração em períodos é a seguinte:
+
+*   **Mínima:** 8 períodos (p. 1, p. 4, p. 1) [do documento Matriz Curricular SI - Palmas (2023)].
+*   **Máxima:** 12 períodos (p. 1, p. 4, p. 1) [do documento Matriz Curricular SI - Palmas (2023)]."
+t13,tabela,pdf,F,collection,3,gemma4:31b,true,1;10,true,,250500,60,true,10761,,false,,"Para o curso de Bacharelado em Sistemas de Informação, a duração é a seguinte:
+
+*   **Mínima:** 8 períodos (p. 1, p. 10)
+*   **Máxima:** 12 períodos (p. 1)"
+t14,tabela,pdf,F,collection,1,gemma4:31b,true,51;65;62;83,false,,250505,123,true,3943,,false,,"A carga horária de Algoritmos e Lógica de Programação varia conforme o documento consultados:
+
+*   No **PPC Sistemas de Informação - Palmas (2019)**, a carga horária é de 120 h/a (horas-aula) e 100 h/r (horas-relógio) [p. 51, 65].
+*   No **PPC Técnico em Informática - Palmas**, a carga horária é de 160 horas-aula [p. 62, 83]."
+t14,tabela,pdf,F,collection,2,gemma4:31b,true,9;51;65;15,false,,250505,59,true,4141,,false,,"A carga horária de Algoritmos e Lógica de Programação é de 120 horas-aula (ou 100 horas-relógio) [p. 9, p. 51, p. 65, p. 15]."
+t14,tabela,pdf,F,collection,3,gemma4:31b,true,51;65;15,false,,250505,93,true,4307,,false,,"A carga horária de Algoritmos e Lógica de Programação é de 120 horas-aula (equivalente a 100 horas-relógio), conforme indicado nos documentos ""PPC Sistemas de Informacao - Palmas (2019)"" (p. 51, p. 65) e ""Ementas SI - Palmas (PPC 2023)"" (p. 15)."
+t15,tabela,rodada-cc5,F,collection,1,gemma4:31b,true,51;78;79,false,,250506,67,true,4051,,false,,"A carga horária de Programação Orientada a Objetos (POO) é de 80 horas-aula (ou 67 horas-relógio), conforme indicado nas páginas 51, 78 e 79 do documento ""PPC Sistemas de Informacao - Palmas (2019)""."
+t15,tabela,rodada-cc5,F,collection,2,gemma4:31b,true,51;57;142,true,,250506,52,true,3521,,false,,"A carga horária de Programação Orientada a Objetos (POO) é de 80 horas-aula (ou 67 horas-relógio), conforme indicado nas páginas 51, 57 e 142."
+t15,tabela,rodada-cc5,F,collection,3,gemma4:31b,true,51;57;142,true,,250506,52,true,4010,,false,,"A carga horária de Programação Orientada a Objetos (POO) é de 80 horas-aula (ou 67 horas-relógio), conforme indicado nas páginas 51, 57 e 142."
+t16,tabela,rodada-cc5,F,collection,1,gemma4:31b,true,57,true,,250501,62,true,4381,,false,,"A disciplina de Metodologia da Pesquisa Científica está no 2º período (p. 57 do documento ""PPC Sistemas de Informacao - Palmas (2019)"" e p. 57 da ""Matriz Curricular SI - Palmas (2023)"")."
+t16,tabela,rodada-cc5,F,collection,2,gemma4:31b,true,57;5,true,,250501,63,true,3689,,false,,"A disciplina de Metodologia da Pesquisa Científica está no 2º Período (p. 57 do documento ""PPC Sistemas de Informacao - Palmas (2019)"" e p. 5 em ""Matriz Curricular SI - Palmas (2023)"")."
+t16,tabela,rodada-cc5,F,collection,3,gemma4:31b,true,57;5,true,,250501,63,true,3941,,false,,"A disciplina de Metodologia da Pesquisa Científica está no 2º Período (p. 57 do documento ""PPC Sistemas de Informacao - Palmas (2019)"" e p. 5 em ""Matriz Curricular SI - Palmas (2023)"")."
+t17,tabela,pdf,F,collection,1,gemma4:31b,true,60,false,,250517,56,true,3269,,false,,"Segundo o quadro de distribuição de carga horária do PPC de 2019, o aluno precisa cumprir 200 horas-aula (equivalentes a 167 horas-relógio) de Atividades Complementares (p. 60)."
+t17,tabela,pdf,F,collection,2,gemma4:31b,true,60,false,,250517,56,true,3550,,false,,"Segundo o quadro de distribuição de carga horária do PPC de 2019, o aluno precisa cumprir 200 horas-aula (equivalente a 167 horas-relógio) de Atividades Complementares (p. 60)."
+t17,tabela,pdf,F,collection,3,gemma4:31b,true,60,false,,250517,56,true,3359,,false,,"Segundo o quadro de distribuição de carga horária do PPC de 2019, o aluno precisa cumprir 200 horas-aula (equivalentes a 167 horas-relógio) de Atividades Complementares (p. 60)."
+t18,tabela,pdf,F,collection,1,gemma4:31b,true,60,false,,250506,34,true,4305,,false,,"Segundo o quadro de distribuição de carga horária do PPC, o curso exige 133 horas-relógio de optativas (p. 60)."
+t18,tabela,pdf,F,collection,2,gemma4:31b,true,60,false,,250506,34,true,3703,,false,,"Segundo o quadro de distribuição de carga horária do PPC, o curso exige 133 horas-relógio de optativas (p. 60)."
+t18,tabela,pdf,F,collection,3,gemma4:31b,true,60,false,,250506,34,true,3965,,false,,"Segundo o quadro de distribuição de carga horária do PPC, o curso exige 133 horas-relógio de optativas (p. 60)."
+t19,tabela,pdf,F,collection,1,gemma4:31b,true,56,true,,250511,37,true,3440,,false,,O subtotal de horas-relógio do 1º período na Tabela 4 do PPC é de 333 h/r (p. 56).
+t19,tabela,pdf,F,collection,2,gemma4:31b,true,56,true,,250511,37,true,3601,,false,,O subtotal de horas-relógio do 1º período na Tabela 4 do PPC é de 333 h/r (p. 56).
+t19,tabela,pdf,F,collection,3,gemma4:31b,true,56,true,,250511,37,true,3860,,false,,O subtotal de horas-relógio do 1º período na Tabela 4 do PPC é de 333 h/r (p. 56).
+t20,tabela,pdf,F,collection,1,gemma4:31b,true,51,false,,250507,40,true,3699,,false,,O componente curricular Banco de Dados I possui 4 aulas semanais (p. 51) e uma carga horária de 80 horas-aula (p. 51).
+t20,tabela,pdf,F,collection,2,gemma4:31b,true,51,false,,250507,40,true,3939,,false,,O componente curricular Banco de Dados I possui 4 aulas semanais (p. 51) e uma carga horária de 80 horas-aula (p. 51).
+t20,tabela,pdf,F,collection,3,gemma4:31b,true,51,false,,250507,40,true,4354,,false,,O componente curricular Banco de Dados I possui 4 aulas semanais (p. 51) e uma carga horária de 80 horas-aula (p. 51).
+t21,tabela,pdf,F,collection,1,gemma4:31b,true,7;71,false,,250509,36,true,3459,,false,,"A carga horária total do curso Técnico em Informática para Internet é de 3.012 horas-relógio (p. 7, 71)."
+t21,tabela,pdf,F,collection,2,gemma4:31b,true,7;71,false,,250509,36,true,3693,,false,,"A carga horária total do curso Técnico em Informática para Internet é de 3.012 horas-relógio (p. 7, 71)."
+t21,tabela,pdf,F,collection,3,gemma4:31b,true,7;71,false,,250509,36,true,4451,,false,,"A carga horária total do curso Técnico em Informática para Internet é de 3.012 horas-relógio (p. 7, 71)."
+c01,calendario,rodada-cc5,F,collection,1,gemma4:31b,true,1,true,,250505,37,true,3983,,false,,O ano letivo de 2026 e o primeiro semestre letivo começam no dia 9 de fevereiro de 2026 (p. 1).
+c01,calendario,rodada-cc5,F,collection,2,gemma4:31b,true,1,true,,250505,37,true,3568,,false,,O ano letivo de 2026 e o primeiro semestre letivo começam no dia 9 de fevereiro de 2026 (p. 1).
+c01,calendario,rodada-cc5,F,collection,3,gemma4:31b,true,1,true,,250505,37,true,3683,,false,,O ano letivo de 2026 e o primeiro semestre letivo começam no dia 9 de fevereiro de 2026 (p. 1).
+c02,calendario,pdf,F,collection,1,gemma4:31b,true,1,true,,250508,59,true,3908,,false,,"O período de rematrícula dos estudantes veteranos do Ensino Superior para 2026-1 ocorre de 2 a 6 de fevereiro de 2026 [Calendario Academico Palmas 2026 - Graduacao, p. 1]."
+c02,calendario,pdf,F,collection,2,gemma4:31b,true,1,true,,250508,44,true,3696,,false,,O período de rematrícula dos estudantes veteranos do Ensino Superior para 2026-1 ocorre de 2 a 6 de fevereiro de 2026 [página 1].
+c02,calendario,pdf,F,collection,3,gemma4:31b,true,1,true,,250508,59,true,3897,,false,,"O período de rematrícula dos estudantes veteranos do Ensino Superior para 2026-1 ocorre de 2 a 6 de fevereiro de 2026 [Calendario Academico Palmas 2026 - Graduacao, p. 1]."
+c03,calendario,pdf,F,collection,1,gemma4:31b,true,3,true,,250502,31,true,4485,,false,,O primeiro semestre letivo de 2026 termina no dia 3 de julho de 2026 (p. 3).
+c03,calendario,pdf,F,collection,2,gemma4:31b,true,3,true,,250502,31,true,4030,,false,,O primeiro semestre letivo de 2026 termina no dia 3 de julho de 2026 (p. 3).
+c03,calendario,pdf,F,collection,3,gemma4:31b,true,3,true,,250502,31,true,3470,,false,,O primeiro semestre letivo de 2026 termina no dia 3 de julho de 2026 (p. 3).
+c04,calendario,rodada-cc5,F,collection,1,gemma4:31b,true,3,true,,250505,48,true,3664,,false,,"O período de férias dos discentes em julho de 2026 é de 06 a 29 de julho [Calendario Academico Palmas 2026 - Graduacao, p. 3]."
+c04,calendario,rodada-cc5,F,collection,2,gemma4:31b,true,3,true,,250505,33,true,3844,,false,,O período de férias dos discentes em julho de 2026 é de 06 a 29 de julho (p. 3).
+c04,calendario,rodada-cc5,F,collection,3,gemma4:31b,true,3,true,,250505,33,true,3647,,false,,O período de férias dos discentes em julho de 2026 é de 06 a 29 de julho (p. 3).
+c05,calendario,pdf,F,collection,1,gemma4:31b,true,3,true,,250502,26,true,3721,,false,,O segundo semestre letivo de 2026 começa no dia 30 de julho (p. 3).
+c05,calendario,pdf,F,collection,2,gemma4:31b,true,3,true,,250502,32,true,3750,,false,,O segundo semestre letivo de 2026 começa no dia 30 de julho de 2026 (p. 3).
+c05,calendario,pdf,F,collection,3,gemma4:31b,true,3,true,,250502,26,true,3777,,false,,O segundo semestre letivo de 2026 começa no dia 30 de julho (p. 3).
+c06,calendario,pdf,F,collection,1,gemma4:31b,true,3,true,,250509,41,true,3375,,false,,O prazo de ajuste de matrículas do ensino superior para 2026-2 é de 7 a 12 de agosto de 2026 (p. 3).
+c06,calendario,pdf,F,collection,2,gemma4:31b,true,1,false,,250509,41,true,3940,,false,,O prazo de ajuste de matrículas do ensino superior para 2026-2 é de 7 a 12 de agosto de 2026 [página 1].
+c06,calendario,pdf,F,collection,3,gemma4:31b,true,3,true,,250509,41,true,3925,,false,,O prazo de ajuste de matrículas do ensino superior para 2026-2 é de 7 a 12 de agosto de 2026 (p. 3).
+c07,calendario,pdf,F,collection,1,gemma4:31b,true,2,true,,250504,41,true,4286,,false,,"O feriado municipal da Emancipação de Palmas ocorre no dia 14 de abril (Calendario Academico Palmas 2026 - Graduacao, p. 2)."
+c07,calendario,pdf,F,collection,2,gemma4:31b,true,2,true,,250504,43,true,4324,,false,,"O feriado municipal da Emancipação de Palmas ocorre no dia 14 de abril (p. 2 do documento ""Calendario Academico Palmas 2026 - Graduacao"")."
+c07,calendario,pdf,F,collection,3,gemma4:31b,true,2,true,,250504,43,true,3681,,false,,"O feriado municipal da Emancipação de Palmas ocorre no dia 14 de abril (p. 2 do documento ""Calendario Academico Palmas 2026 - Graduacao"")."
+c08,calendario,pdf,F,collection,1,gemma4:31b,false,2,false,,250503,32,true,3732,,false,,A Mostra de Cursos acontece entre os dias 15 e 17 de setembro de 2026 [página 2].
+c08,calendario,pdf,F,collection,2,gemma4:31b,false,3,true,,250503,48,true,4552,,false,,A Mostra de Cursos acontece entre os dias 15 e 17 de setembro de 2026 (p. 3 do documento Calendario Academico Palmas 2026 - Graduacao).
+c08,calendario,pdf,F,collection,3,gemma4:31b,false,3,true,,250503,32,true,3847,,false,,A Mostra de Cursos acontece entre os dias 15 e 17 de setembro de 2026 [página 3].
+c09,calendario,pdf,F,collection,1,gemma4:31b,true,4,true,,250508,41,true,3873,,false,,O prazo final para a solicitação de trancamento de curso em 2026-2 é o dia 2 de outubro de 2026 (p. 4).
+c09,calendario,pdf,F,collection,2,gemma4:31b,true,4,true,,250508,41,true,3505,,false,,O prazo final para a solicitação de trancamento de curso em 2026-2 é o dia 2 de outubro de 2026 (p. 4).
+c09,calendario,pdf,F,collection,3,gemma4:31b,true,4,true,,250508,41,true,3756,,false,,O prazo final para a solicitação de trancamento de curso em 2026-2 é o dia 2 de outubro de 2026 (p. 4).
+c10,calendario,pdf,F,collection,1,gemma4:31b,true,5,false,,250502,32,true,3323,,false,,O segundo semestre letivo de 2026 termina no dia 15 de dezembro de 2026 (p. 5).
+c10,calendario,pdf,F,collection,2,gemma4:31b,true,5,false,,250502,32,true,3507,,false,,O segundo semestre letivo de 2026 termina no dia 15 de dezembro de 2026 (p. 5).
+c10,calendario,pdf,F,collection,3,gemma4:31b,true,5,false,,250502,32,true,3516,,false,,O segundo semestre letivo de 2026 termina no dia 15 de dezembro de 2026 (p. 5).
+c11,calendario,rodada-cc5,F,collection,1,gemma4:31b,true,5,true,,250511,77,true,4077,,false,,"O ano de 2026 possui um total de 205 dias letivos [página 5], sendo distribuídos da seguinte forma:
+
+*   **1º Semestre:** 105 dias letivos [página 5].
+*   **2º Semestre:** 100 dias letivos [página 5]."
+c11,calendario,rodada-cc5,F,collection,2,gemma4:31b,true,5,true,,250511,77,true,3732,,false,,"O ano de 2026 possui um total de 205 dias letivos [página 5], sendo distribuídos da seguinte forma:
+
+*   **1º Semestre:** 105 dias letivos [página 5].
+*   **2º Semestre:** 100 dias letivos [página 5]."
+c11,calendario,rodada-cc5,F,collection,3,gemma4:31b,true,5,true,,250511,77,true,3728,,false,,"O ano de 2026 possui um total de 205 dias letivos [página 5], sendo distribuídos da seguinte forma:
+
+*   **1º Semestre:** 105 dias letivos [página 5].
+*   **2º Semestre:** 100 dias letivos [página 5]."
+c12,calendario,pdf,F,collection,1,gemma4:31b,true,3,true,,250511,59,true,4459,,false,,"O prazo final para que os formandos protocolem as atividades complementares no semestre 2026-1 é o dia 3 de julho de 2026 (Calendario Academico Palmas 2026 - Graduacao, p. 3)."
+c12,calendario,pdf,F,collection,2,gemma4:31b,true,3,true,,250511,66,true,4394,,false,,"O prazo final para que os formandos protocolarem as atividades complementares no primeiro semestre de 2026 (2026-1) é o dia 3 de julho de 2026 [Calendario Academico Palmas 2026 - Graduacao, p. 3]."
+c12,calendario,pdf,F,collection,3,gemma4:31b,true,3,true,,250511,66,true,3710,,false,,"O prazo final para que os formandos protocolem as atividades complementares no primeiro semestre de 2026 (2026-1) é o dia 3 de julho de 2026 [Calendario Academico Palmas 2026 - Graduacao, p. 3]."
+c13,calendario,pdf,F,collection,1,gemma4:31b,false,4,true,,250504,31,true,6592,,false,,A Semana da Pausa de outubro de 2026 ocorre entre os dias 12 e 16 (p. 4).
+c13,calendario,pdf,F,collection,2,gemma4:31b,false,4,true,,250504,48,true,4378,,false,,"A Semana da Pausa de outubro de 2026 ocorre entre os dias 12 e 16 de outubro, período que compreende feriados e recesso acadêmico e administrativo (p. 4)."
+c13,calendario,pdf,F,collection,3,gemma4:31b,false,4,true,,250504,48,true,4756,,false,,"A Semana da Pausa de outubro de 2026 ocorre entre os dias 12 e 16 de outubro, período que compreende feriados e recesso acadêmico e administrativo (p. 4)."
+c14,calendario,pdf,F,collection,1,gemma4:31b,true,4,true,,250507,37,true,3541,,false,,"Os Jogos do Ensino Superior em 2026 acontecem nos dias 17, 18 e 19 de novembro [página 4]."
+c14,calendario,pdf,F,collection,2,gemma4:31b,true,4,true,,250507,37,true,3997,,false,,"Os Jogos do Ensino Superior em 2026 acontecem nos dias 17, 18 e 19 de novembro [página 4]."
+c14,calendario,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,1476,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: f91ef8e8-23bb-4144-9801-a42e5b7ad92c)",
+c15,calendario,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,1428,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: e1b9ca20-c916-4924-94c6-ce190b892934)",
+c15,calendario,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,1714,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 72088421-2062-4d9f-ba67-a170456bf1d5)",
+c15,calendario,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,914,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: f4870abd-32f4-4575-8757-5e31b9804aaa)",
+c16,calendario,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,611,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 934aab50-f557-4c8e-ab85-b0c635fe7afb)",
+c16,calendario,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,563,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: e6b8267b-45ca-4fba-bf6e-f2124e852e7f)",
+c16,calendario,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,436,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 784c1c4b-b361-431d-9f35-156631b1b831)",
+p01,prosa,rodada-cc5,F,collection,1,gemma4:31b,false,,false,,250507,37,true,447,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: cd432674-aece-49d5-ace7-ccffbaa3e824)",
+p01,prosa,rodada-cc5,F,collection,2,gemma4:31b,false,,false,,250507,37,true,419,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: ede2280c-98d8-4711-b3fa-1d7df94f740b)",
+p01,prosa,rodada-cc5,F,collection,3,gemma4:31b,false,,false,,250507,37,true,573,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 70de7463-5b97-4ab6-9167-330e5b074d3f)",
+p02,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,559,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 2be6f5ff-5f4e-4be2-9506-916128768af4)",
+p02,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,466,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 843bfea5-2d8d-4c83-b6f4-163de30fa31c)",
+p02,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,619,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 0cbdf72a-f223-43d1-b440-a17aca9ba3a3)",
+p03,prosa,rodada-cc5,F,collection,1,gemma4:31b,false,,false,,250507,37,true,440,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: e0af50c8-49e5-46b3-aeeb-a228e2a981b0)",
+p03,prosa,rodada-cc5,F,collection,2,gemma4:31b,false,,false,,250507,37,true,416,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: d0d8d7b5-e7e0-4673-9ea6-de654036b454)",
+p03,prosa,rodada-cc5,F,collection,3,gemma4:31b,false,,false,,250507,37,true,408,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 678cefe3-3831-4d37-962a-987ea815e456)",
+p04,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,404,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 3cf5b924-d5c3-41bc-8407-4772857075e4)",
+p04,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,425,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: bd00164f-1ad4-4b84-9ff3-e1c2f53a872d)",
+p04,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,388,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 176c850b-0bd6-4fe9-8ade-cc405ac44e03)",
+p05,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,402,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 38038850-baea-41b5-987a-bb7337bcce17)",
+p05,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,395,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 6f323a74-d9b1-46b3-983c-1c249b63ba76)",
+p05,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,363,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: d48caaf3-efcb-4c0d-96ca-6d214c570881)",
+p06,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,530,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: c90bd318-d264-47ef-8ec0-d2a96068665e)",
+p06,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,709,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: e4a4605c-e707-4507-bf47-48d674496d6c)",
+p06,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,644,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 113fbf74-b083-47c3-b912-08e0c8ca85a7)",
+p07,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,590,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: faf05c12-18f2-4ff8-a778-7a00220f8706)",
+p07,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,607,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 9ce2aa8f-ff49-40c9-ae8a-391ccb4dbaf2)",
+p07,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,531,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 9a127222-8910-480d-9dee-d70ef2bca8a7)",
+p08,prosa,rodada-cc5,F,collection,1,gemma4:31b,false,,false,,250507,37,true,529,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 9caea31a-d926-491f-b60c-651119f75ccd)",
+p08,prosa,rodada-cc5,F,collection,2,gemma4:31b,false,,false,,250507,37,true,632,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 0ae0c2cd-3181-440a-a929-006447006f4e)",
+p08,prosa,rodada-cc5,F,collection,3,gemma4:31b,false,,false,,250507,37,true,430,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 9e895ceb-4774-4446-b25d-85594ce0e073)",
+p09,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,382,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 4f00ad45-e9bd-4b0e-8125-4bcc79aa6ed2)",
+p09,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,356,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 1b836667-b943-4c02-8034-a5552147e2b8)",
+p09,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,345,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 1187419a-41db-43eb-ad69-af7a158b7391)",
+p10,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,420,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: eff51957-93a9-4d7d-949e-878a2086a8b2)",
+p10,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,388,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 3550048b-db30-48eb-9048-b82e45da28ec)",
+p10,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,424,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: a85c1ff3-bc18-49de-a43b-8b3af22aabe6)",
+p11,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,429,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 774815af-f0ec-44a2-b2ec-60d1aac849f2)",
+p11,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,363,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: e764cc20-6e18-4c50-b0fc-6ab25e3d5051)",
+p11,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,449,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 2463b283-5b71-4194-864a-c9318a52cded)",
+p12,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,388,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 79cce401-e2eb-4ebd-855e-3c270f71695d)",
+p12,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,414,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: b56f0c7d-64c6-48dd-923d-b859fa5185fa)",
+p12,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,353,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 0077ddd9-8e32-4f5f-8922-a7d4473acd7b)",
+p13,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,395,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 2ef76105-daf2-4162-a5c2-07f92c360f57)",
+p13,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,461,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: ce8e3ab2-a7b0-4aa4-aa2a-362ededc1d2c)",
+p13,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,367,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 88eafa30-c6db-492b-8bdf-fc059a7a015d)",
+p14,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,468,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: a21a3e8a-4912-48ac-9140-921fa62e4e05)",
+p14,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,518,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: abd24cf4-c5bf-4b84-b712-124c5eea6632)",
+p14,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,447,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 011191b6-9f95-47a2-87a9-e2e7addf2c38)",
+p15,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,433,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 35d88acd-6d74-4f6c-940b-bf09dbd51018)",
+p15,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,363,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: d4fb596c-da64-4270-8805-595ec0cd755f)",
+p15,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,422,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 515a2b1e-b023-44d1-9f63-42fd053b7414)",
+p16,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,408,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: f72a6cf9-5afc-43d0-a880-b02706b164b5)",
+p16,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,392,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: f8cf1985-66ec-4894-b6fd-c79eb4933999)",
+p16,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,495,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 0fefd4cc-6ea1-4b60-a84c-b05377d20bee)",
+p17,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,529,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 665c1469-21cf-4fc9-92d6-0eb61065d340)",
+p17,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,652,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 9cfe2f2e-2322-4d9b-b999-2fcfe5bd7b99)",
+p17,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,506,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 49d6ff04-4db2-40f1-9cf5-40476d48d4e3)",
+p18,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,699,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 965b8518-412c-4488-b769-2b9f07043d67)",
+p18,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,498,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 248f8063-6a21-4600-9d1c-40c94886fd84)",
+p18,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,542,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: a1dddde1-5ea3-432f-8bfd-e4e2c0dc8000)",
+p19,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,660,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 9421af1a-8f80-4872-a44b-1b42a61b7236)",
+p19,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,517,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 9d4abbfa-b0a9-403c-8865-22caf1a6a8df)",
+p19,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,380,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: c60b7e97-7632-44ec-8599-27d545ad1118)",
+p20,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,406,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 3d5cd726-37b8-44c1-bad4-2b90123bf184)",
+p20,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,478,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 0488a1df-1770-4067-8f05-13b0f0556f87)",
+p20,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,1842,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: bf66381e-3995-4bac-b5b5-fad84ac77b5e)",
+p21,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,459,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: ca60d472-2af5-4336-97f5-2bc6de033139)",
+p21,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,444,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 50f6639b-58c4-4ee9-8916-06753e134e66)",
+p21,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,419,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: bd9dc27c-1f58-470f-b13f-dcc12f6b6e6f)",
+p22,prosa,rodada-cc5,F,collection,1,gemma4:31b,false,,false,,250507,37,true,402,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 9a97ea58-67c7-419b-909c-2b8aebfbf711)",
+p22,prosa,rodada-cc5,F,collection,2,gemma4:31b,false,,false,,250507,37,true,527,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 7b790120-c549-4272-b5ed-ebacf31f178f)",
+p22,prosa,rodada-cc5,F,collection,3,gemma4:31b,false,,false,,250507,37,true,470,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 2f89e446-7961-4e81-8e3a-2b7a735f28f1)",
+p23,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,432,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 5b222e4e-d889-45e3-b6e2-db40cdaf53d9)",
+p23,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,397,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: b69fdd06-ef3e-4c5e-8f06-d10adafed7cd)",
+p23,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,352,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 0f54b864-7288-4d3d-943d-fa0cc7ec9032)",
+p24,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,372,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 7c31f98d-5da7-4d91-9306-5221f7a0ffbc)",
+p24,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,349,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: d0a0d0e0-95a8-4269-9401-d30c347e5625)",
+p24,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,356,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 4e68c898-62d7-4d63-8534-3fe4426c10cd)",
+p25,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,387,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 54e3a198-c0f3-4d77-9e25-8d778f17c6bc)",
+p25,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,355,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: ad7f88cd-ac3d-4605-b08f-a56bb8798a5c)",
+p25,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,398,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 5fdcec8b-697a-4111-be14-9cfdfbacc63a)",
+p26,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,720,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: db482da3-2c0b-4c02-bed1-1de9342a6368)",
+p26,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,415,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: deedc845-9ae9-4379-88d8-fb8692f537a0)",
+p26,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,717,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: c699dcb6-75fa-4979-b512-bfd1b61be117)",
+p27,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,689,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 1b8f71bc-be18-4fdc-a9d4-ed8e4954da8c)",
+p27,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,773,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 4a1a9863-61be-464c-8351-f606893890c4)",
+p27,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,708,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: f3e41a53-3f1e-4e0c-9204-1584b63a3bd7)",
+p28,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,663,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: b7c87b0c-56e7-4844-9318-19d8e823ead6)",
+p28,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,559,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: b30970c3-24c0-4622-9f95-50f33379a330)",
+p28,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,613,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: d61dc36b-a91b-4430-a85b-2b6d593b50f0)",
+p29,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,384,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: f52c301d-4ece-49fd-9b55-b829e9b0bf87)",
+p29,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,350,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 92309305-e64a-4477-b2b0-1fc028f51631)",
+p29,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,484,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 1ff1c057-cfe7-47af-a2ae-f0a519bc4392)",
+p30,prosa,pdf,F,collection,1,gemma4:31b,false,,false,,250507,37,true,417,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 8f437fbe-9c5e-45ab-a3ee-0d1920b398f3)",
+p30,prosa,pdf,F,collection,2,gemma4:31b,false,,false,,250507,37,true,800,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 94acaf26-47ad-4f02-8388-3aeeb2bbb297)",
+p30,prosa,pdf,F,collection,3,gemma4:31b,false,,false,,250507,37,true,516,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: ea6aa6c4-fd69-463b-9c71-1d0698e63086)",
+n01,negativa,pdf,F,collection,1,gemma4:31b,false,,,,250507,37,true,374,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: d3d92cbe-6fdb-46f3-9d6a-bbf66e485727)",
+n01,negativa,pdf,F,collection,2,gemma4:31b,false,,,,250507,37,true,357,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: b440721e-819f-4ccb-8d9d-0d2391ee1de3)",
+n01,negativa,pdf,F,collection,3,gemma4:31b,false,,,,250507,37,true,384,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 10002993-b454-45b3-8aa7-97fb5bcb473b)",
+n02,negativa,pdf,F,collection,1,gemma4:31b,false,,,,250507,37,true,390,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: ae7dc856-38a7-47ce-9eaa-5497389aeb24)",
+n02,negativa,pdf,F,collection,2,gemma4:31b,false,,,,250507,37,true,448,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 97012a31-35ae-4dbc-8891-99c2dac94066)",
+n02,negativa,pdf,F,collection,3,gemma4:31b,false,,,,250507,37,true,421,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: e747eff9-54ae-43d6-a3f6-72c1df47f7d6)",
+n03,negativa,pdf,F,collection,1,gemma4:31b,false,,,,250507,37,true,512,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 92d9f9c4-e1ea-4073-8bb7-0a458528bd3f)",
+n03,negativa,pdf,F,collection,2,gemma4:31b,false,,,,250507,37,true,433,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: ed620890-8c5c-4353-bcfe-02f6e184de47)",
+n03,negativa,pdf,F,collection,3,gemma4:31b,false,,,,250507,37,true,949,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: dc7f7e05-3829-42d7-9a61-73ab78b733d1)",
+n04,negativa,pdf,F,collection,1,gemma4:31b,false,,,,250507,37,true,504,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: ecda11e8-0877-41d8-85fb-9027223ff4e3)",
+n04,negativa,pdf,F,collection,2,gemma4:31b,false,,,,250507,37,true,410,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 2fe41b92-a3d3-4df5-aed3-6e0d7b8b049c)",
+n04,negativa,pdf,F,collection,3,gemma4:31b,false,,,,250507,37,true,456,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: f13c20e7-8694-4093-a7c9-8776e50aab68)",
+n05,negativa,pdf,F,collection,1,gemma4:31b,false,,,,250507,37,true,442,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 491514fc-9443-4fe7-9cef-699d3bf05a51)",
+n05,negativa,pdf,F,collection,2,gemma4:31b,false,,,,250507,37,true,845,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 4d492949-1fb5-457d-960c-34421cfd403f)",
+n05,negativa,pdf,F,collection,3,gemma4:31b,false,,,,250507,37,true,689,,false,"you (comercialdodu15) have reached your monthly usage limit, upgrade for higher limits: https://ollama.com/upgrade or add usage credits: https://ollama.com/settings (ref: 1bebce2d-ea63-4dd4-b1d8-4bf464f01f4f)",

@@ -1,7 +1,7 @@
 {
   "version": "si-2026-09",
   "notes": "Gabarito de perguntas de coordenador sobre a colecao de SI (5 PDFs de examples/faculdade). Escrito a partir dos PDFs com pdftotext -layout, sem consultar o sistema. answer_patterns: TODAS as regex devem casar na resposta com acentos e caixa dobrados (retrieval.FoldDiacritics + lower). targets: documento e paginas fisicas do PDF (1..N) que contem a resposta. Estrato negativa: a resposta certa e a recusa; targets vazio. origin rodada-cc5 marca perguntas que ja foram usadas para ajustar o sistema; o artigo reporta com e sem elas.",
-  "frozen_sha256": "e3abff439f2bb26925e740f8b413f808b344a6a1b62837a7c4f82961e911d260",
+  "frozen_sha256": "50ac6b9aa35cd20fb8797aca2518795fac6155c5c7b88cb0872611958beb2d20",
   "reviewed_by": [],
   "documents": [
     {
@@ -1329,7 +1329,7 @@
       "stratum": "negativa",
       "targets": [],
       "answer_patterns": [
-        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu)|nenhuma informac|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)"
+        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu)|nenhuma informac|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)|no information|not (mention|stat|contain|specif|provid|includ|found|available)|does not|do not"
       ],
       "expected": "não consta nos documentos (o IFPR é público e gratuito, mas o acervo não trata disso)",
       "origin": "pdf"
@@ -1340,7 +1340,7 @@
       "stratum": "negativa",
       "targets": [],
       "answer_patterns": [
-        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu)|nenhuma informac|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)"
+        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu)|nenhuma informac|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)|no information|not (mention|stat|contain|specif|provid|includ|found|available)|does not|do not"
       ],
       "expected": "não consta nos documentos",
       "origin": "pdf"
@@ -1351,7 +1351,7 @@
       "stratum": "negativa",
       "targets": [],
       "answer_patterns": [
-        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu)|nenhuma informac|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)"
+        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu)|nenhuma informac|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)|no information|not (mention|stat|contain|specif|provid|includ|found|available)|does not|do not"
       ],
       "expected": "não consta nos documentos",
       "origin": "pdf"
@@ -1362,7 +1362,7 @@
       "stratum": "negativa",
       "targets": [],
       "answer_patterns": [
-        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu)|nenhuma informac|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)"
+        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu)|nenhuma informac|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)|no information|not (mention|stat|contain|specif|provid|includ|found|available)|does not|do not"
       ],
       "expected": "não consta nos documentos",
       "origin": "pdf"
@@ -1373,7 +1373,7 @@
       "stratum": "negativa",
       "targets": [],
       "answer_patterns": [
-        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu)|nenhuma informac|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)"
+        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu)|nenhuma informac|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)|no information|not (mention|stat|contain|specif|provid|includ|found|available)|does not|do not"
       ],
       "expected": "não consta nos documentos",
       "origin": "pdf"
