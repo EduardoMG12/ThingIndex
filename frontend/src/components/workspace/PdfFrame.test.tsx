@@ -108,6 +108,25 @@ describe("PdfFrame", () => {
         expect(vi.mocked(abrirDocumento).mock.calls.length).toBeLessThanOrEqual(chamadas + 1);
     });
 
+    it("no modo 'pagina' as faixas nas bordas da folha viram a pagina e somem nos limites", async () => {
+        const onMudar = vi.fn();
+        montar(new Set([1]), { apresentacao: { modo: "pagina", paginaAtual: 1 }, onMudarApresentacao: onMudar });
+        await screen.findByTestId("pagina-de");
+        // Primeira pagina: so a faixa de baixo.
+        expect(screen.queryByTestId("virar-pagina-anterior")).toBeNull();
+        fireEvent.click(screen.getByTestId("virar-pagina-proxima"));
+        expect(onMudar).toHaveBeenLastCalledWith(7, { modo: "pagina", paginaAtual: 2 });
+    });
+
+    it("na ultima pagina so existe a faixa de cima, e ela volta uma pagina", async () => {
+        const onMudar = vi.fn();
+        montar(new Set([30]), { apresentacao: { modo: "pagina", paginaAtual: 30 }, onMudarApresentacao: onMudar });
+        await screen.findByTestId("pagina-de");
+        expect(screen.queryByTestId("virar-pagina-proxima")).toBeNull();
+        fireEvent.click(screen.getByTestId("virar-pagina-anterior"));
+        expect(onMudar).toHaveBeenLastCalledWith(7, { modo: "pagina", paginaAtual: 29 });
+    });
+
     it("o seletor alterna entre folhas e uma pagina mantendo a pagina atual", async () => {
         const onMudar = vi.fn();
         montar(new Set([1]), { apresentacao: { modo: "folhas", paginaAtual: 4 }, onMudarApresentacao: onMudar });
