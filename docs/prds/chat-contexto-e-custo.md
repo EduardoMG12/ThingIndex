@@ -34,7 +34,7 @@ Testes
 
 ## Non-Goals
 
-- Mudar o scorer do retrieval (`retrievalScore`, stopwords, IDF, BM25). O braço A do experimento em `internal/retrieval/lexical.go` é cópia fiel do scorer de produção; mudar um sem o outro invalida as tabelas do artigo. Fica registrado em Discoveries que a consulta inclui stopwords ("qual", "e", "de") e por isso páginas longas do PPC vencem páginas curtas com a resposta. É PRD do experimento, não deste.
+- ~~Mudar o scorer do retrieval~~ Revisto na rodada 2 a pedido do autor: a produção adota BM25; o braço A do experimento fica intacto (ver Discoveries, #61).
 - Enviar a coleção inteira, embeddings, reranking por LLM.
 - Preço automático para Ollama Cloud (não há tabela); custo aparece só quando o provedor tem preço cadastrado.
 - Contagem exata de tokens por tokenizer do modelo; a estimativa é runas/4, rotulada como estimativa (constituição VI).
@@ -100,11 +100,32 @@ Ambiguity Report:
 
 Tokens por resposta: 2.694 a 3.565 de prompt (estimados: o cliente Ollama nativo não reporta consumo), 44 a 150 de resposta. Custo nulo: não há preço cadastrado para o Ollama Cloud.
 
+**Rodada 2 (CC5, #61): BM25 em produção**
+
+O autor pediu para "fazer funcionar". O scorer entrou no escopo com uma regra: o braço A do experimento (`internal/retrieval/lexical.go`) continua intacto, medindo o sistema como foi publicado; a produção adota o braço B (BM25), que o experimento já media como melhor, com dobra de acentos e a expansão numérica do tokenizador de produção. O ranking de documentos passa a somar a melhor evidência de cada tipo (o benchmark público caía de 100% para 80% com a soma de todas as unidades). Onze perguntas na coleção de SI, `gemma4:31b`:
+
+| Pergunta | Só trecho (início) | Conteúdo da página | + BM25 |
+|---|---|---|---|
+| Carga horária total do curso | errada (inglês) | certa | certa (Matriz p. 1 a 3) |
+| Início do semestre e dias letivos | errada | parcial (205 dias) | parcial |
+| Período e pré-requisito de Banco de Dados I | errada (inglês) | errada | parcial (3º período; pré-requisito não lido) |
+| Ementa de Estrutura de Dados I | errada | errada | certa (PPC p. 63) |
+| Vagas por ano e turno | errada | errada | certa (40 vagas, noturno, Ementas p. 2) |
+| Disciplinas optativas | parcial | parcial | certa |
+| Recesso de julho de 2026 | errada | errada | certa (férias 6 a 29/07, Cal. p. 3) |
+| O que o PPC diz do TCC | certa | certa | certa |
+| Carga horária de POO | certa | certa | certa (80 h/a, PPC p. 78) |
+| Pré-requisitos de Sistemas Operacionais | errada | errada | errada (a Matriz p. 3 não entra: "sistemas" é onipresente) |
+| Semestre de Metodologia da Pesquisa | errada | errada | certa (2º período, PPC p. 74) |
+| **Total** | **2 certas** | **3 certas, 2 parciais** | **8 certas, 2 parciais, 1 errada** |
+
+O que sobra: pré-requisitos vivem numa coluna de tabela da Matriz (p. 3), e "sistemas"/"operacionais"/"banco" competem com a mesma linha em outras páginas. É caso para as `table_sections` entrarem como fonte de chat (hoje só pontuam o documento) ou para o sumário limpo da Matriz; ambos são PRDs seguintes.
+
 **O que a rodada ensinou**
 
-- O conteúdo da página resolve quando o retrieval acerta a página. Quando erra (P3), nenhum conteúdo salva. O gargalo agora é o scorer.
-- A causa do erro de P3 está no `tokenizeRetrievalText`: a consulta vira termos sem remover stopwords ("em", "que", "do", "e", "qual", "o", "seu"), e `retrievalScore` conta quantos termos distintos a página contém como substring. Páginas longas do PPC contêm todas as stopwords e vencem a linha da Matriz que tem "Banco de Dados I" e o pré-requisito. Isso é o braço A do experimento, copiado fielmente em `internal/retrieval/lexical.go`; corrigir exige rerodar o experimento e regenerar as tabelas do artigo. Vai para o PRD do experimento, com stopwords e IDF como variante do braço A.
+- O conteúdo da página resolve quando o retrieval acerta a página. Quando erra (P3), nenhum conteúdo salva. O gargalo era o scorer; a rodada 2 trocou por BM25.
+- A causa do erro de P3 está no `tokenizeRetrievalText`: a consulta vira termos sem remover stopwords ("em", "que", "do", "e", "qual", "o", "seu"), e `retrievalScore` conta quantos termos distintos a página contém como substring. Páginas longas do PPC contêm todas as stopwords e vencem a linha da Matriz que tem "Banco de Dados I" e o pré-requisito. Isso é o braço A do experimento, copiado fielmente em `internal/retrieval/lexical.go`. A produção passou ao braço B (BM25) na rodada 2; o braço A segue no experimento como foi publicado, e a diferença da produção (dobra de acentos, expansão numérica, melhor evidência por tipo) fica declarada aqui.
 - Fontes de seção primeiro ajudou em P1 (a Matriz entrou pela seção) mas o sumário ruidoso do PPC também entra: "node-783-digitacao" e "node-823-municipal" são células de tabela viradas seção. A limpeza do sumário (outro PRD) melhora o chat de graça.
 - O modelo passou a responder em português com a instrução repetida no fim dos dois prompts.
 - O cliente Ollama nativo não implementa `TokenUsageReporter`; a estimativa runas/4 fica rotulada ("≈") até a interface. Para números reportados, usar o provedor OpenAI-compatível.
-- Entregue em 4 issues (#56 a #59). Suítes: `go test ./...` ok, Vitest 228, Playwright mock 36, Playwright real 4.
+- Entregue em 5 issues (#56 a #59 e #61). Suítes: `go test ./...` ok, Vitest 228, Playwright mock 36, Playwright real 4.
