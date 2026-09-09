@@ -1,0 +1,161 @@
+question_id,stratum,origin,arm,scope,repeat,model,correct,cited_pages,provenance_ok,retrieval_hit,prompt_tokens,completion_tokens,usage_reported,latency_ms,cost_usd,truncated,error,answer
+t01,tabela,pdf,F,document,1,gpt-oss:120b,true,,false,,3127,189,true,1553,,false,,O pré‑requisito da disciplina **Estrutura de Dados I (SIS07302)** é a disciplina **Programação de Computadores I (SIS07206)**【p. 1】.
+t02,tabela,rodada-cc5,F,document,1,gpt-oss:120b,true,1,true,,3121,267,true,1302,,false,,O pré‑requisito da disciplina **Sistemas Operacionais (SIS07305)** é a disciplina **SIS07201 – Arquitetura e Organização de Computadores**【p. 1】.
+t03,tabela,pdf,F,document,1,gpt-oss:120b,false,,false,,3125,519,true,2303,,false,,"De acordo com a matriz curricular, a disciplina **Programação de Computadores III (SIS07405)** não possui nenhum pré‑requisito registrado; a única exigência indicada é que ela seja cursada em co‑relação com a disciplina **Programação de Computadores II (SIS07303)**. [p. 2]"
+t04,tabela,rodada-cc5,F,document,1,gpt-oss:120b,true,,false,,3127,239,true,1574,,false,,"Banco de Dados I está previsto para o **3º período** do curso (período 03) – SIS07301 – Banco de Dados I (p. 1).  
+
+Na grade curricular não há nenhum pré‑requisito indicado para essa disciplina; a coluna “Pré‑requisito” está vazia, indicando que ela pode ser cursada sem exigência de disciplina anterior (p. 1)."
+t05,tabela,pdf,F,document,1,gpt-oss:120b,true,,false,,3129,205,true,1448,,false,,A disciplina **Banco de Dados II (SIS07401)** é ofertada no **4.º período** do curso e tem como pré‑requisito a disciplina **Banco de Dados I (SIS07301)**【p. 1】.
+t06,tabela,pdf,F,document,1,gpt-oss:120b,true,,false,,3126,256,true,1437,,false,,A disciplina **Projeto Comunitário I** tem carga horária de **150 horas** e pertence à categoria **Extensão** (atividade de natureza – Extensão). [p. 2]
+t07,tabela,pdf,F,document,1,gpt-oss:120b,true,,false,,3121,294,true,1387,,false,,"Os pré‑requisitos da disciplina **Inteligência Artificial (SIS07703)** são:
+
+- **SIS07206 – Programação de Computadores I**  
+- **SIS07602 – Probabilidade e Estatística**
+
+Conforme a matriz curricular, esses dois componentes constam na coluna “Pré‑requisito” da disciplina SIS07703 (p. 2)."
+t08,tabela,pdf,F,document,1,gpt-oss:120b,true,,false,,3128,156,true,925,,false,,"O Estágio Supervisionado I é oferecido no **7º período** do curso, com **carga horária de 83 horas**【p. 2】."
+t09,tabela,pdf,F,document,1,gpt-oss:120b,true,1,false,,3122,281,true,1399,,false,,O pré‑requisito da disciplina **Redes de Computadores (SIS07505)** é a disciplina **SIS07305 – Sistemas Operacionais**【p. 1】.
+t10,tabela,pdf,F,document,1,gpt-oss:120b,true,2,true,,3121,237,true,1194,,false,,O pré‑requisito da disciplina **Segurança da Informação (SIS07805)** é a disciplina **Redes de Computadores (SIS07505)**【p. 2】.
+t11,tabela,rodada-cc5,F,document,1,gpt-oss:120b,true,,false,,3125,585,true,2581,,false,,"As disciplinas optativas da **Grade 07** estão listadas na página 99 do documento (p. 3). São elas:
+
+1. **SIS07OP01 – Libras – Língua Brasileira de Sinais**  
+2. **SIS07OP02 – Redes de Computadores Avançada**  
+3. **SIS07OP03 – Sistemas Distribuídos**  
+4. **SIS07OP04 – Qualidade de Software**  
+5. **SIS07OP05 – Tópicos Avançados de Banco de Dados**  
+6. **SIS07OP06 – Aprendizado de Máquina**  
+7. **SIS07OP07 – Filosofia da Ciência e Tecnologia**  
+8. **SIS07OP08 – Big Data and Data Analitycs**  
+9. **SIS07OP09 – IoT – Internet das Coisas**  
+10. **SIS07OP10 – Desenvolvimento de Jogos Digitais**  
+11. **SIS07OP11 – Desenvolvimento de Jogos Digitais** (segunda oferta)  
+12. **SIS07OP12 – Tecnologias Emergentes em Sistemas de Informação**  
+13. **SIS07OP13 – Programação Web II**  
+
+**Total de disciplinas optativas:** **13** (conforme a listagem acima – p. 3)."
+t12,tabela,pdf,F,document,1,gpt-oss:120b,true,,false,,3127,206,true,1198,,false,,A disciplina “Libras – Língua Brasileira de Sinais” tem carga horária de **67 horas** e está classificada como **optativa**【p. 3】.
+t13,tabela,pdf,F,document,1,gpt-oss:120b,true,,false,,3121,138,true,1018,,false,,A duração do curso de Bacharelado em Sistemas de Informação é de **mínimo 8 períodos** e **máximo 12 períodos** (p. 1).
+t14,tabela,pdf,F,document,1,gpt-oss:120b,true,,false,,100672,230,true,5093,,false,,"A disciplina **Algoritmos e Lógica de Programação** tem carga horária de **120 h/a (horas‑aula) – 100 h/r (horas‑relógio)**【p. 65】. Na grade curricular a disciplina aparece com **100 h/a** de carga teórica, totalizando 120 h/a quando consideradas as atividades práticas e de laboratório【p. 1】."
+t15,tabela,rodada-cc5,F,document,1,gpt-oss:120b,true,,false,,100673,427,true,2795,,false,,"A disciplina **Programação Orientada a Objetos (POO)** tem carga horária de **80 horas‑aula (equivalentes a 67 horas‑relógio)**.  
+
+- Na matriz curricular a disciplina aparece com 67 horas (carga horária‑relógio) – p. 1.  
+- No detalhamento da ementa constam 80 horas‑aula e 67 horas‑relógio – p. 78."
+t16,tabela,rodada-cc5,F,document,1,gpt-oss:120b,true,,false,,100667,343,true,2922,,false,,"A disciplina **Metodologia da Pesquisa Científica** está prevista para o **2º período** do curso.  
+
+- Na Matriz Curricular (Matriz Curricular SI – Palmas 2023) aparece como disciplina do período 2 – SIS07205 Metodologia da Pesquisa Científica (p. 1).  
+- No Projeto Pedagógico do Curso (PPC) a mesma disciplina está listada no 2º período (p. 56)."
+t17,tabela,pdf,F,document,1,gpt-oss:120b,true,,false,,97753,855,true,6342,,false,,"De acordo com o quadro de carga horária do PPC (2019), o aluno deve cumprir **200 horas/aula** de Atividades Complementares (equivalente a 167 horas‑relógio) – p. 60."
+t18,tabela,pdf,F,document,1,gpt-oss:120b,false,,false,,97753,855,true,45045,,true,"Post ""https://ollama.com/api/chat"": context deadline exceeded (Client.Timeout exceeded while awaiting headers)",
+t19,tabela,pdf,F,document,1,gpt-oss:120b,true,,false,,97748,654,true,3869,,false,,"O subtotal de horas‑relógio (h/r) do 1.º período, conforme a Tabela 4, é **333 h/r**【p. 55】."
+t20,tabela,pdf,F,document,1,gpt-oss:120b,true,,false,,27685,261,true,4475,,false,,O componente **Banco de Dados I** tem **4 aulas por semana** e a sua carga horária corresponde a **80 horas‑aula** (80 h a). p. 5.
+t21,tabela,pdf,F,document,1,gpt-oss:120b,false,,false,,94901,219,true,5174,,false,,"A carga‑horária total do Curso Técnico em Informática para Internet é **3 012 horas‑relógio**. Essa informação consta na identificação do PPC (p. 8) e também na matriz curricular, que apresenta o total de 3 600 horas‑aula / 3 012 horas‑relógio (p. 71)."
+c01,calendario,rodada-cc5,F,document,1,gpt-oss:120b,true,,false,,4979,245,true,1680,,false,,"O calendário indica que o **Ano Letivo 2026‑1 tem início no dia 9 de fevereiro de 2026**, data que também marca o **começo do Primeiro Semestre Letivo** (p. 1)."
+c02,calendario,pdf,F,document,1,gpt-oss:120b,false,1,true,,4982,644,true,3836,,false,,O período de **rematrícula dos estudantes veteranos para o semestre 2026‑1** está previsto de **15 a 21 de fevereiro de 2026**【p. 1】.
+c03,calendario,pdf,F,document,1,gpt-oss:120b,false,,false,,4976,485,true,2637,,false,,"O primeiro semestre letivo de 2026 termina em **18 de julho de 2026**, que é o “Último dia do Segundo Bimestre Letivo de 2026‑1 e Fim do Primeiro Semestre de 2026” (p. 3)."
+c04,calendario,rodada-cc5,F,document,1,gpt-oss:120b,true,,false,,4979,154,true,1442,,false,,O calendário indica que as **Férias Discentes** ocorrem de **06 a 29 de julho de 2026** (p. 3).
+c05,calendario,pdf,F,document,1,gpt-oss:120b,true,,false,,4976,258,true,2117,,false,,O segundo semestre letivo de 2026 tem início no dia **30 de julho de 2026**【p. 3】.
+c06,calendario,pdf,F,document,1,gpt-oss:120b,false,,false,,4983,457,true,3529,,false,,O prazo de ajuste de matrículas do Ensino Superior para o semestre 2026‑2 ocorre entre **7 e 12 de agosto de 2026** (p. 3).
+c07,calendario,pdf,F,document,1,gpt-oss:120b,true,,false,,4980,891,true,4126,,false,,O feriado municipal da Emancipação de Palmas está marcado para o dia **14 de abril de 2026** (p. 2).
+c08,calendario,pdf,F,document,1,gpt-oss:120b,true,3,true,,4976,303,true,2339,,false,,A **Mostra de Cursos** está programada para o período de **15 a 17 de setembro de 2026**【p. 3】.
+c09,calendario,pdf,F,document,1,gpt-oss:120b,false,,false,,4982,883,true,3577,,false,,O prazo final para solicitação de trancamento de curso no semestre 2026‑2 é **2 de outubro de 2026**【p. 4】.
+c10,calendario,pdf,F,document,1,gpt-oss:120b,true,4,true,,4976,385,true,1825,,false,,O segundo semestre letivo de 2026 termina no **dia 15 de dezembro de 2026**【p. 4】.
+c11,calendario,rodada-cc5,F,document,1,gpt-oss:120b,true,,false,,4986,162,true,2150,,false,,"O calendário indica que o ano letivo de 2026 possui **205 dias letivos no total**. Desses, **105 dias** são distribuídos no **1º semestre** e **100 dias** no **2º semestre** (p. 5)."
+c12,calendario,pdf,F,document,1,gpt-oss:120b,false,,false,,4985,684,true,3149,,false,,O prazo final para que os formandos protocolarem as Atividades Complementares no semestre 2026‑1 é **31 de julho de 2026** (p. 3).
+c13,calendario,pdf,F,document,1,gpt-oss:120b,true,4,true,,4978,148,true,2392,,false,,A Semana da Pausa ocorre de **12 a 16 de outubro de 2026**【p. 4】.
+c14,calendario,pdf,F,document,1,gpt-oss:120b,true,,false,,4979,782,true,3069,,false,,"Os Jogos do Ensino Superior estão programados para os dias **17, 18 e 19 de novembro de 2026** (p. 4)."
+c15,calendario,pdf,F,document,1,gpt-oss:120b,true,,false,,4982,190,true,1518,,false,,O prazo para a confirmação de matrícula dos estudantes ingressantes no semestre 2026‑1 é de **9 a 13 de fevereiro de 2026** (p. 1).
+c16,calendario,pdf,F,document,1,gpt-oss:120b,true,2,true,,4982,219,true,1939,,false,,O último dia do Primeiro Bimestre Letivo de 2026‑1 é **25 de abril de 2026**【p. 2】.
+p01,prosa,rodada-cc5,F,document,1,gpt-oss:120b,false,,false,,128155,2907,true,12889,,false,,
+p02,prosa,pdf,F,document,1,gpt-oss:120b,true,,false,,125227,398,true,4681,,false,,"O curso de **Sistemas de Informação** é ofertado no **turno noturno**, com o seguinte horário de aulas:
+
+- **Segunda a sexta‑feira:** das **19 h 30** às **23 h 05**  
+- **Sábado:** das **08 h 00** às **12 h 00**  
+
+(p. 9 do PPC – “Turno principal do curso – Noturno” e “Horário de oferta do curso – Segunda à sexta‑feira – 19:30 às 23:05 – Sábados – 08:00 às 12:00”)  
+(p. 2 do documento de ementas – “Turno Principal do Curso – Noturno” e “Horário de Oferta do Curso – Segunda à sexta‑feira – 19:30 às 23:05 – Sábados – 08:00 às 12:00”)."
+p03,prosa,rodada-cc5,F,document,1,gpt-oss:120b,true,,false,,125225,262,true,3024,,false,,O curso de Sistemas de Informação oferece **40 vagas por ano**. 【p. 10】 (PPC 2019) e 【p. 2】 (Ementas SI – PPC 2023).
+p04,prosa,pdf,F,document,1,gpt-oss:120b,false,,false,,125227,527,true,8764,,false,,"O curso de **Bacharelado em Sistemas de Informação** tem um prazo de integralização de **mínimo 4 anos** e **máximo 7 anos**.  
+
+- **Ementas SI – Palmas (PPC 2023)** – “Prazo de Integralização Curricular: Mínimo – 4 anos / Máximo – 7 anos” (p. 2).  
+- **PPC Sistemas de Informação – Palmas (2019)** – “Prazo de Integralização Curricular: Mínimo – 4 anos” (p. 2).  
+
+Portanto, o estudante tem entre quatro e sete anos para concluir o curso."
+p05,prosa,pdf,F,document,1,gpt-oss:120b,true,,false,,97740,734,true,4760,,false,,"A frequência mínima exigida para aprovação é **75 %** das aulas (setenta e cinco por cento) e o conceito mínimo necessário é **C**.  
+
+- “A frequência para aprovação deverá ser igual ou superior a setenta e cinco por cento (75%) … ou não atingir o conceito mínimo ‘C’” (p. 124).  
+- Na definição dos conceitos, o menor aceito para aprovação é o **conceito C** (p. 125)."
+p06,prosa,pdf,F,document,1,gpt-oss:120b,true,,false,,97741,370,true,3220,,false,,"O conceito **D** indica que a aprendizagem do estudante foi **insuficiente** e que ele **não atingiu os objetivos** estabelecidos para o componente curricular, segundo os critérios definidos no plano de ensino (p. 125)."
+p07,prosa,pdf,F,document,1,gpt-oss:120b,true,,false,,97738,342,true,2678,,false,,O objetivo geral do curso de Sistemas de Informação é **formar recursos humanos para desenvolver sistemas e aplicar tecnologias da computação na solução dos problemas organizacionais** (p. 31).
+p08,prosa,rodada-cc5,F,document,1,gpt-oss:120b,true,,false,,97748,2123,true,10566,,false,,"O PPC define o **Trabalho de Conclusão de Curso (TCC)** como um requisito obrigatório para a obtenção do diploma, constituído por **dois componentes curriculares**:
+
+* **Trabalho de Conclusão de Curso I (TCC I)** – delimita a temática, elabora o projeto de pesquisa e é submetido a uma banca de qualificação.  
+* **Trabalho de Conclusão de Curso II (TCC II)** – desenvolve o trabalho, produz a monografia final e é defendido perante banca examinadora.
+
+Esses componentes estão previstos na **organização curricular** do curso:
+
+* **TCC I** é ofertado no **7.º período** (código SIS05705, 40 h/a – 33 h/r)【p. 59】.  
+* **TCC II** é ofertado no **8.º período** (código SIS05806, 40 h/a – 33 h/r)【p. 59】.
+
+A descrição detalhada do TCC encontra‑se na seção **4.6 – Trabalho de Conclusão de Curso** do PPC, que explica que o TCC I inicia o projeto e que o TCC II culmina na monografia a ser defendida【p. 134‑135】.  
+
+Portanto, o PPC estabelece que o TCC é composto por duas etapas sequenciais, apresentadas respectivamente nos semestres finais do curso (7.º e 8.º períodos)."
+p09,prosa,pdf,F,document,1,gpt-oss:120b,false,,false,,97752,378,true,3350,,false,,O discente deve entregar a proposta (anteprojeto) de TCC **no máximo até 30 dias após o início da disciplina de TCC I** (ou na data que constar no cronograma da disciplina). [p. 188]
+p10,prosa,pdf,F,document,1,gpt-oss:120b,false,,false,,97742,453,true,3923,,false,,"O resultado da avaliação da proposta de TCC deve ser publicado em edital **em até 7 dias corridos** da avaliação (Apêndice B – Art. 20, p. 189)."
+p11,prosa,pdf,F,document,1,gpt-oss:120b,false,,false,,97747,1345,true,7731,,false,,O discente que tem a proposta de TCC **não aprovada integralmente** dispõe de **15 dias corridos** para fazer a adequação da mesma – conforme o Art. 22 do regulamento de Trabalho de Conclusão de Curso (p. 196).
+p12,prosa,pdf,F,document,1,gpt-oss:120b,true,,false,,97743,248,true,2823,,false,,Não. A matrícula simultânea em TCC I e TCC II é proibida – o regulamento do Trabalho de Conclusão de Curso dispõe que “É vedada a matrícula simultânea em TCC I e TCC II” (p. 186).
+p13,prosa,pdf,F,document,1,gpt-oss:120b,true,,false,,97741,391,true,3173,,false,,"O regulamento de Atividades Complementares estabelece que, para os estágios extracurriculares (inciso III), a carga horária máxima admitida é **80 horas/aula** para a carga horária total das atividades complementares (p. 199)."
+p14,prosa,pdf,F,document,1,gpt-oss:120b,true,,false,,97740,331,true,2782,,false,,O limite estabelecido para a atividade “representação estudantil” é de **40 horas/aula** (p. 199).
+p15,prosa,pdf,F,document,1,gpt-oss:120b,true,,false,,97754,1008,true,5806,,false,,"A participação como ouvinte em defesas de TCC, mestrado ou doutorado pode ser contabilizada como atividade complementar até **60 horas/aula** (p. 198)."
+p16,prosa,pdf,F,document,1,gpt-oss:120b,true,,false,,97743,378,true,2568,,false,,"As atividades complementares só são reconhecidas a partir do momento em que o estudante ingressa no curso de Sistemas de Informação – ou seja, somente as atividades realizadas **a partir do ingresso do acadêmico** são validadas (p. 199)."
+p17,prosa,pdf,F,document,1,gpt-oss:120b,false,,false,,97740,4541,true,10924,,false,,"O Núcleo Docente Estruturante (NDE) do curso de Sistemas de Informação é formado por um grupo de professores que compõem, no mínimo, 30 % do colegiado do curso, todos com formação e titulação na área e contratados em regime de dedicação exclusiva (DE) – ou seja, em tempo integral – responsáveis pela criação, implantação e consolidação do Projeto Pedagógico do curso【p. 147‑148】.  
+
+No biênio 2019‑2020, o NDE está constituído pelos seguintes docentes: Vagner Scamati, Felipe Leivas Teixeira, Bruno Guaringue Trindade, Lilian do Nascimento Araújo e Andreia Marini【p. 163】."
+p18,prosa,pdf,F,document,1,gpt-oss:120b,true,,false,,97740,236,true,1669,,false,,"O coordenador do curso de Sistemas de Informação, Vagner Scamati, tem regime de trabalho **DE** (dedicação exclusiva) – conforme a ficha de identificação do curso (p. 10)."
+p19,prosa,pdf,F,document,1,gpt-oss:120b,false,,false,,97740,1355,true,5260,,false,,"As ações afirmativas do processo seletivo do IFPR – Campus Palmas são distribuídas em cotas que atendem a diferentes grupos (p. 135‑136):
+
+* **Candidatos que concluíram o ensino médio ou fundamental em escolas públicas ou na modalidade EJA** (incluindo quem possui certificado do ENEM, ENCEJA ou exames estaduais).  
+* Dentro desse grupo, **50 % das vagas são destinadas a candidatos com renda familiar bruta ≤ 1,5 salário‑mínimo**; há reserva de vagas para quem se autodeclara **preto, pardo ou indígena**.  
+* Os **outros 50 % das vagas desse mesmo bloco são para candidatos com renda > 1,5 salário‑mínimo**, também com reserva para pretos, pardos e indígenas, sendo **10 % do total de vagas reservadas especificamente a pretos ou pardos**.  
+* **5 % das vagas são reservadas a candidatos autodeclarados indígenas**.  
+* **5 % das vagas são reservadas a candidatos com deficiência**.  
+* **20 % das vagas ficam abertas à concorrência geral**.  
+
+Essas cotas garantem a inclusão de estudantes de baixa renda, negros, pardos, indígenas, pessoas com deficiência e de escolas públicas, além de manter uma parte para a concorrência geral."
+p20,prosa,pdf,F,document,1,gpt-oss:120b,true,,false,,27678,291,true,1684,,false,,"**Ementa de Banco de Dados I**  
+Conceitos de Banco de Dados. Modelagem Conceitual, Lógica e Física dos dados. Projeto de Banco de Dados. Linguagens de Consultas. Sistemas Gerenciadores de Bancos de Dados. (p. 26)"
+p21,prosa,pdf,F,document,1,gpt-oss:120b,true,,false,,27684,341,true,1901,,false,,O autor clássico que aparece na bibliografia básica da disciplina **Estrutura de Dados I** é **Thomas Cormen** (co‑autor de *Algoritmos – Teoria e Prática*)【p. 27】.
+p22,prosa,rodada-cc5,F,document,1,gpt-oss:120b,true,,false,,27679,345,true,1646,,false,,"A ementa do componente curricular **Estrutura de Dados I** descreve:
+
+> “Representação e manipulação de estruturas lineares de dados: listas, pilhas, filas. Árvores: binárias, binárias de busca, balanceadas (AVL, rubro‑negras).” (p. 27)"
+p23,prosa,pdf,F,document,1,gpt-oss:120b,false,,false,,27679,254,true,1517,,false,,O curso destina **10 %** da sua carga horária total às atividades de extensão – conforme indicado na matriz curricular do curso (p. 9).
+p24,prosa,pdf,F,document,1,gpt-oss:120b,true,,false,,94899,238,true,1968,,false,,O curso Técnico em Informática para Internet está inserido no **eixo tecnológico “Informação e Comunicação”** e a sua **forma de oferta é “Integrado”** (p. 6).
+p25,prosa,pdf,F,document,1,gpt-oss:120b,false,,false,,94898,283,true,2236,,false,,"- **Duração do curso:** 3 anos (p. 7).  
+- **Escolaridade mínima exigida:** Ensino Fundamental Completo (p. 7)."
+p26,prosa,pdf,F,document,1,gpt-oss:120b,true,,false,,94892,307,true,2610,,false,,Não. O Curso Técnico em Informática para Internet **não possui estágio obrigatório** – o documento deixa claro que “Não há atividades de estágio obrigatório para o curso Técnico em Informática para Internet” (p. 62).
+p27,prosa,pdf,F,document,1,gpt-oss:120b,false,,false,,94897,355,true,2734,,false,,"No período da manhã, as aulas do Curso Técnico em Informática para Internet são ministradas das **7 h 35 às 12 h 00**, nas **segundas‑feiras e quartas‑feiras** (p. 6).  
+
+Cada aula tem a **duração de 50 minutos** (p. 8)."
+p28,prosa,pdf,F,document,1,gpt-oss:120b,true,,false,,97740,722,true,6025,,false,,"O perfil do egresso de Sistemas de Informação vai muito além da formação puramente técnica. Ele inclui :
+
+* a preocupação com **ética, segurança, legislação e impactos ambientais** nas atividades profissionais (p. 39);  
+* a **compreensão do contexto organizacional e das implicações sociais**, buscando soluções por meio de **pensamento sistêmico** (p. 39);  
+* a capacidade de **inovar, planejar, desenvolver e gerenciar a infraestrutura de TI**, integrando aspectos de gestão e estratégia (p. 39);  
+* a **entendimento da inter‑relação entre pessoas, tecnologias e processos**, visando alcançar objetivos sociais e econômicos (p. 39)."
+p29,prosa,pdf,F,document,1,gpt-oss:120b,true,,false,,97739,882,true,5019,,false,,"O orientador do Trabalho de Conclusão de Curso (TCC) é definido em **comum acordo entre o docente e o discente**, ou seja, o estudante e o professor chegam a um entendimento sobre quem será o orientador. Essa definição ocorre **no início da disciplina de TCC I**, quando o aluno já está matriculado e deve escolher o professor orientador, preenchendo a “Ficha de Definição de Tema e Orientador”.  
+
+- “O acompanhamento dos discentes no Trabalho de Curso é efetuado por um docente orientador definido em comum acordo entre docente e discente **no início da disciplina de TCC I**.” (p. 186)  
+- “O acadêmico deve escolher um professor orientador, preencher, imprimir e assinar a Ficha de Definição de Tema e Orientador…” (p. 187)"
+p30,prosa,pdf,F,document,1,gpt-oss:120b,true,,false,,97740,647,true,4480,,false,,"As formas de ingresso no IFPR previstas no Projeto Pedagógico do Curso (PPC) são:
+
+1. **Processo Seletivo** – ingresso por concurso público, com as cotas previstas na Lei 12.711/2012 e demais ações afirmativas. (p. 135)
+
+2. **Transferência interna** – mudança de curso dentro do próprio IFPR (mesmo nível e forma de oferta) a partir do 2.º período, mediante disponibilidade de vaga. (p. 136)
+
+3. **Transferência externa** – ingresso de estudantes provenientes de outras instituições de ensino, também a partir do 2.º período, mediante vaga disponível. (p. 136)
+
+4. **Aproveitamento de cursos** – ingresso de estudantes que já concluíram curso de nível equivalente (ou disciplinas) em outra instituição, mediante avaliação da equivalência curricular. (p. 136)"
+n01,negativa,pdf,F,document,1,gpt-oss:120b,false,,,,97740,647,true,977,,true,"The prompt is too long: 227649, model maximum context length: 131072 (ref: fb5a3733-4897-4482-8033-22bffcd7be30)",
+n02,negativa,pdf,F,document,1,gpt-oss:120b,false,,,,97740,647,true,923,,true,"The prompt is too long: 227653, model maximum context length: 131072 (ref: 91240864-210d-4e92-9deb-0444cae945de)",
+n03,negativa,pdf,F,document,1,gpt-oss:120b,false,,,,97740,647,true,852,,true,"The prompt is too long: 227647, model maximum context length: 131072 (ref: dd65e522-f5bf-4b1c-aa16-f7f325a28ce0)",
+n04,negativa,pdf,F,document,1,gpt-oss:120b,false,,,,97740,647,true,733,,true,"The prompt is too long: 227649, model maximum context length: 131072 (ref: fd98dc2f-e6de-4772-be88-643bf6c6d52e)",
+n05,negativa,pdf,F,document,1,gpt-oss:120b,false,,,,97740,647,true,652,,true,"The prompt is too long: 227650, model maximum context length: 131072 (ref: f895247d-bb74-4bdb-a2df-bdf0401a5bb4)",

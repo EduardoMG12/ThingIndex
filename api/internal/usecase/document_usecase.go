@@ -1866,6 +1866,33 @@ func bm25Scores(query string, texts []string) []int {
 	return scores
 }
 
+// significantQueryTokens sao os tokens da pergunta que contam como evidencia:
+// acento e caixa dobrados, pontuacao das pontas fora ("operacionais?" e
+// "operacionais"), sem conectivos nem numeros soltos.
+func significantQueryTokens(query string) []string {
+	tokens := connectionTokens(query)
+	out := make([]string, 0, len(tokens))
+	for _, token := range tokens {
+		if !ehPalavraVazia(token) {
+			out = append(out, token)
+		}
+	}
+	return out
+}
+
+// queryTermCoverage conta quantos dos termos (ja normalizados por
+// significantQueryTokens) aparecem no texto como token inteiro.
+func queryTermCoverage(text string, terms []string) int {
+	tokens := tokenSet(text)
+	n := 0
+	for _, term := range terms {
+		if _, ok := tokens[term]; ok {
+			n++
+		}
+	}
+	return n
+}
+
 func buildCollectionRetrieval(
 	query string,
 	documents []models.Document,
@@ -1881,6 +1908,14 @@ func buildCollectionRetrieval(
 
 	documentScores := make(map[uint]int, len(documents))
 	documentTitles := make(map[uint]string, len(documents))
+	// Termos significativos da pergunta (sem conectivos), por token inteiro:
+	// e o que uma linha de tabela precisa casar para ser fonte, e o que o
+	// titulo do documento precisa casar para reforcar as paginas dele.
+	significant := significantQueryTokens(query)
+	// Reforco por titulo foi testado e descartado (2026-09-09): "Sistemas de
+	// Informacao" esta em quase toda pergunta e no titulo do PPC, e o reforco
+	// puxava as tabelas do PPC na frente da linha certa da Matriz (perdeu 3
+	// perguntas de tabela, ganhou nenhuma). O titulo so pontua o documento.
 	for _, doc := range documents {
 		documentTitles[doc.ID] = doc.Title
 		if score := retrievalScore(doc.Title, queryTerms); score > 0 {
@@ -2003,6 +2038,13 @@ func buildCollectionRetrieval(
 	tableRowHits := make([]domain.CollectionTableRowHit, 0)
 	for i, score := range bm25Scores(query, rowTexts) {
 		if score == 0 {
+			continue
+		}
+		// Linha curta com UM termo da pergunta pontua alto no BM25 por ser
+		// curta ("Descricao: Equivalencia de Estagio" para qualquer pergunta
+		// com "estagio"); so linha que casa dois termos significativos e
+		// fonte. Pergunta de um termo so exige esse um.
+		if need := min(2, len(significant)); queryTermCoverage(rowTexts[i], significant) < need {
 			continue
 		}
 		score *= 5
