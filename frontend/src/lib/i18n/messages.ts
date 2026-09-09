@@ -423,7 +423,7 @@ export const messages: LocaleMessages = {
             nav: {
                 dashboard: "Dashboard",
                 chat: "Chat",
-                documents: "Documentos",
+                documents: "Operações",
                 workspace: "Área de trabalho",
                 futureFeature: "Feature futura",
                 documentation: "Documentação",
@@ -1761,7 +1761,7 @@ export const messages: LocaleMessages = {
             nav: {
                 dashboard: "Dashboard",
                 chat: "Chat",
-                documents: "Documents",
+                documents: "Operations",
                 workspace: "Workspace",
                 futureFeature: "Future feature",
                 documentation: "Documentation",
@@ -3099,7 +3099,7 @@ export const messages: LocaleMessages = {
             nav: {
                 dashboard: "Dashboard",
                 chat: "Chat",
-                documents: "Documentos",
+                documents: "Operaciones",
                 workspace: "Área de trabajo",
                 futureFeature: "Feature futura",
                 documentation: "Documentación",

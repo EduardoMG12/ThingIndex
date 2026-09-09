@@ -65,7 +65,7 @@ test("redirects protected routes to the localized login page when unauthenticate
     await expect(page.getByRole("link", { name: /Create account/i })).toBeVisible();
 });
 
-test("redirects authenticated users away from auth routes to the localized dashboard @smoke", async ({ baseURL, context, page }) => {
+test("redirects authenticated users away from auth routes to the localized workspace @smoke", async ({ baseURL, context, page }) => {
     // A URL do cookie precisa acompanhar a baseURL. Fixar a porta 3000 fazia o
     // cookie ser descartado sempre que a suite rodava em outra porta.
     await context.addCookies([
@@ -78,6 +78,6 @@ test("redirects authenticated users away from auth routes to the localized dashb
 
     await page.goto("/en/login");
 
-    await expect(page).toHaveURL(/\/en\/dashboard$/);
-    await expect(page.getByRole("heading", { level: 1, name: /thingindex dashboard/i })).toBeVisible();
+    await expect(page).toHaveURL(/\/en\/workspace$/);
+    await expect(page.getByRole("heading", { level: 1, name: /workspace/i })).toBeVisible();
 });
