@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
 	"thing-index/internal/domain"
@@ -172,13 +173,16 @@ func buildPDFStructureFromPageBlocks(pageBlocks map[int][]textBlock, pageCount i
 	pageOccurrences := countPDFBlockPageOccurrences(pageBlocks, pageCount)
 	emittedRepeatedPDFHeadings := make(map[string]struct{})
 	for pageNumber := 1; pageNumber <= pageCount; pageNumber++ {
+		// Pagina de sumario: as linhas "1.1.1 Denominacao do Curso 9" parecem
+		// titulos e duplicavam cada secao do PPC (124 de 861). Nela, nada vira
+		// titulo; o texto fica como paragrafo.
+		tocPage := isPDFTableOfContentsPage(pageBlocks[pageNumber])
 		for _, block := range pageBlocks[pageNumber] {
 			content := strings.TrimSpace(block.Content)
 			if content == "" || isLowSignalPDFText(content) {
 				continue
 			}
-
-			if looksLikePDFHeading(content) {
+			if !tocPage && looksLikePDFHeading(content) {
 				if shouldSuppressRepeatedPDFHeading(content, pageOccurrences) {
 					if _, seen := emittedRepeatedPDFHeadings[content]; seen {
 						continue
@@ -307,4 +311,31 @@ func splitBlocks(text string) []string {
 		}
 	}
 	return blocks
+}
+
+// tocEntryPattern casa "1.2.3 Titulo 45" e "APENDICE A - REGULAMENTO 176":
+// texto que termina com um numero de pagina solto.
+var tocEntryPattern = regexp.MustCompile(`\S\s+\d{1,3}$`)
+
+// PDFTableOfContentsMinEntries e quantas linhas terminadas em numero de
+// pagina uma pagina precisa ter para ser tratada como sumario.
+const PDFTableOfContentsMinEntries = 5
+
+// isPDFTableOfContentsPage diz se a pagina e um sumario: cinco ou mais
+// blocos que parecem titulo e terminam em numero de pagina.
+func isPDFTableOfContentsPage(blocks []textBlock) bool {
+	entries := 0
+	for _, block := range blocks {
+		content := strings.TrimSpace(block.Content)
+		if content == "" || !tocEntryPattern.MatchString(content) {
+			continue
+		}
+		if looksLikeHeading(content) {
+			entries++
+			if entries >= PDFTableOfContentsMinEntries {
+				return true
+			}
+		}
+	}
+	return false
 }

@@ -64,3 +64,21 @@ Ambiguity Report:
 - Na primeira visita a tela de abertura (SplashScreen) cobre a página por segundos e engole o arrasto do mouse no E2E; o teste marca o splash como já visto por `addInitScript`, como `public-smoke` já fazia.
 - O cabeçalho do quadro e a faixa da borda têm o mesmo rótulo acessível ("Próxima página"); o unitário antigo passou a pegar o primeiro.
 - Enriquecimento por LLM continua fora: com IDF, resumos gerados só ajudam se trouxerem termos raros, e isso é o experimento, não uma feature.
+
+## Rodada 2 (2026-09-09): sumário limpo e corpus ampliado
+
+O autor pediu para verificar se a indexação "faz sentido". Não fazia: a página de sumário do PPC virava 124 seções duplicadas, células de tabela viravam seção, valores de capa ("Reitor", "Presencial") e pedaços de título quebrado ("DE ENSINO", "Programação de") também. Cinco regras entraram no indexador, cada uma com teste: página de sumário (5+ linhas terminadas em número de página) não gera título; célula em caixa mista com número solto não é título; linha terminada em ";" ou "," não é título; fragmento que começa por preposição ou termina em preposição não é título (com "DA/DO/DAS/DOS" no início preservados, porque abrem capítulo em texto legal); data por extenso no início não é título. Em PDF, uma palavra só em caixa mista não é título.
+
+| Documento | Seções antes | Seções depois |
+|---|---|---|
+| PPC Sistemas de Informação (206 p.) | 861 | 564 |
+| Matriz curricular | 50 | 16 |
+| Regimento Interno dos campi | 54 | 32 |
+| Calendário | 21 | 18 |
+| Ementas | 144 | 133 |
+| Regimento Geral | 86 | 73 |
+| Editais 56 e 57 | 321 / 316 | 308 / 300 (cláusulas numeradas, como devem ser) |
+
+O que sobra no PPC (101 títulos de até duas palavras) são nomes de pessoas e cargos das tabelas de comissão, que só uma heurística de tabela resolveria. Registrado, não feito.
+
+Corpus: entraram a Resolução CONSUP 82/2022 (política de estágios, 15 p., conversa com o Apêndice A do PPC e com o Regimento) e o PPC do Técnico em Informática de Palmas (160 p., cita o curso de SI e compartilha laboratórios e regulamentos). Os dois têm camada de texto e caixas em todos os parágrafos. A coleção de SI passou a 5 documentos; o seed segue idempotente e verificou conexões em todas as coleções. O stub de 273 bytes da Resolução 36/2019 (404 salvo por engano) saiu.
