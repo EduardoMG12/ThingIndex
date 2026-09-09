@@ -2,8 +2,11 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Loader2, MessageSquare } from "lucide-react";
+import { Loader2, PanelLeft } from "lucide-react";
+import { toast } from "sonner";
 import ChatTab from "@/components/dashboard/ChatTab";
+import { DocumentosDaColecao } from "@/components/workspace/DocumentosDaColecao";
+import { deleteDocument, retryDocumentIndexing } from "@/lib/api/documents";
 
 import AppShell from "@/components/layout/AppShell";
 import { useI18n } from "@/lib/i18n/provider";
@@ -35,6 +38,7 @@ function WorkspacePageInner() {
     // Chat a esquerda do canvas: aberto por padrao em telas largas, fechado
     // nas estreitas (o painel empilha em cima do canvas). Nao persiste.
     const [chatAberto, setChatAberto] = useState(false);
+    const [aba, setAba] = useState<"chat" | "documentos">("chat");
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- so na montagem, para ler a largura da tela
         setChatAberto(window.matchMedia("(min-width: 1024px)").matches);
@@ -91,8 +95,12 @@ function WorkspacePageInner() {
         [pathname, router, searchParams]
     );
 
-    const carregarContexto = useCallback((collectionId: number, signal: AbortSignal) => {
-        setCarregando(true);
+    // `silencioso`: recarrega sem o loader de tela cheia, para o canvas nao
+    // desmontar (posicoes, zoom e selecao ficam) depois de apagar/reindexar.
+    const carregarContexto = useCallback((collectionId: number, signal: AbortSignal, silencioso = false) => {
+        if (!silencioso) {
+            setCarregando(true);
+        }
         setErro(null);
 
         Promise.all([
@@ -128,6 +136,25 @@ function WorkspacePageInner() {
         return () => controller.abort();
     }, [selecionada, carregarContexto]);
 
+    const recarregarContexto = useCallback(() => {
+        if (selecionada !== null) {
+            carregarContexto(selecionada, new AbortController().signal, true);
+        }
+    }, [selecionada, carregarContexto]);
+
+    const acaoNoDocumento = useCallback(
+        async (acao: () => Promise<unknown>) => {
+            try {
+                await acao();
+            } catch (falha) {
+                toast.error(falha instanceof Error ? falha.message : t("workspace.documents.actionError"));
+                return;
+            }
+            recarregarContexto();
+        },
+        [recarregarContexto, t]
+    );
+
     return (
         <AppShell>
             <div className="flex h-full flex-col gap-4 p-6">
@@ -145,7 +172,7 @@ function WorkspacePageInner() {
                         data-testid="alternar-chat"
                         className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm ${chatAberto ? "border-primary/40 bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground hover:text-foreground"}`}
                     >
-                        <MessageSquare className="h-4 w-4" aria-hidden />
+                        <PanelLeft className="h-4 w-4" aria-hidden />
                         {t("workspace.chat.toggle")}
                     </button>
                     {collections.length > 0 ? (
@@ -185,18 +212,44 @@ function WorkspacePageInner() {
                             <aside
                                 data-testid="painel-chat"
                                 aria-label={t("workspace.chat.toggle")}
-                                className="max-h-[40vh] w-full shrink-0 overflow-hidden rounded-lg border border-border lg:h-[calc(100vh-9rem)] lg:max-h-none lg:w-[380px]"
+                                className="flex max-h-[40vh] w-full shrink-0 flex-col overflow-hidden rounded-lg border border-border lg:h-[calc(100vh-9rem)] lg:max-h-none lg:w-[380px]"
                             >
-                                <ChatTab
-                                    className="h-full"
-                                    collectionId={Number(context.collection.id)}
-                                    compacto
-                                    onVerNoDocumento={(source) => {
-                                        if (source.documentId) {
-                                            canvasRef.current?.irAte(source.documentId, source.page, source.nodeId);
-                                        }
-                                    }}
-                                />
+                                <div role="tablist" className="flex shrink-0 border-b border-border text-sm">
+                                    {(["chat", "documentos"] as const).map((nome) => (
+                                        <button
+                                            key={nome}
+                                            type="button"
+                                            role="tab"
+                                            aria-selected={aba === nome}
+                                            data-testid={`aba-${nome}`}
+                                            onClick={() => setAba(nome)}
+                                            className={`flex-1 px-3 py-2 ${aba === nome ? "border-b-2 border-primary font-medium text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                                        >
+                                            {t(nome === "chat" ? "workspace.chat.tab" : "workspace.documents.tab")}
+                                        </button>
+                                    ))}
+                                </div>
+                                {/* O chat fica montado escondido para nao perder a conversa ao trocar de aba. */}
+                                <div className="min-h-0 flex-1" hidden={aba !== "chat"}>
+                                    <ChatTab
+                                        className="h-full"
+                                        collectionId={Number(context.collection.id)}
+                                        compacto
+                                        onVerNoDocumento={(source) => {
+                                            if (source.documentId) {
+                                                canvasRef.current?.irAte(source.documentId, source.page, source.nodeId);
+                                            }
+                                        }}
+                                    />
+                                </div>
+                                <div className="min-h-0 flex-1" hidden={aba !== "documentos"}>
+                                    <DocumentosDaColecao
+                                        documentos={context.documents}
+                                        onFocar={(id) => canvasRef.current?.focarDocumento(id)}
+                                        onReindexar={(id) => acaoNoDocumento(() => retryDocumentIndexing(id))}
+                                        onApagar={(id) => acaoNoDocumento(() => deleteDocument(id))}
+                                    />
+                                </div>
                             </aside>
                         ) : null}
                         <div className="min-w-0 flex-1">

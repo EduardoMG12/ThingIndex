@@ -12,7 +12,18 @@ export const messages: LocaleMessages = {
         workspace: {
             chat: {
                 viewInDocument: "Ver no documento",
-                toggle: "Chat",
+                toggle: "Painel",
+                tab: "Chat",
+            },
+            documents: {
+                tab: "Documentos",
+                focus: "Focar no canvas",
+                reindex: "Reindexar",
+                delete: "Apagar",
+                upload: "Enviar documento",
+                empty: "Nenhum documento nesta coleção.",
+                count: "{count} documento(s)",
+                actionError: "A ação falhou.",
             },
             title: "Área de trabalho",
             description: "Explore os documentos da coleção e as conexões entre seus trechos.",
@@ -1338,7 +1349,18 @@ export const messages: LocaleMessages = {
         workspace: {
             chat: {
                 viewInDocument: "View in document",
-                toggle: "Chat",
+                toggle: "Panel",
+                tab: "Chat",
+            },
+            documents: {
+                tab: "Documents",
+                focus: "Focus on canvas",
+                reindex: "Reindex",
+                delete: "Delete",
+                upload: "Upload document",
+                empty: "No documents in this collection.",
+                count: "{count} document(s)",
+                actionError: "The action failed.",
             },
             title: "Workspace",
             description: "Explore the collection's documents and the connections between their passages.",
@@ -2664,7 +2686,18 @@ export const messages: LocaleMessages = {
         workspace: {
             chat: {
                 viewInDocument: "Ver en el documento",
-                toggle: "Chat",
+                toggle: "Panel",
+                tab: "Chat",
+            },
+            documents: {
+                tab: "Documentos",
+                focus: "Enfocar en el lienzo",
+                reindex: "Reindexar",
+                delete: "Eliminar",
+                upload: "Subir documento",
+                empty: "No hay documentos en esta colección.",
+                count: "{count} documento(s)",
+                actionError: "La acción falló.",
             },
             title: "Área de trabajo",
             description: "Explora los documentos de la colección y las conexiones entre sus fragmentos.",
