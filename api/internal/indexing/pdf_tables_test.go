@@ -1,6 +1,7 @@
 package indexing
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -122,5 +123,35 @@ func TestPaginaDeProsaNaoGeraTabela(t *testing.T) {
 	tabelas := tabelasDaPagina(t, "ppc-sistemas-de-informacao-palmas-2019.pdf", 31)
 	if len(tabelas) != 0 {
 		t.Fatalf("pagina 31 e prosa (objetivos) e gerou %d tabela(s): %+v", len(tabelas), tabelas)
+	}
+}
+
+// Celula de tabela nao e secao: a Matriz inteira e uma tabela, e o sumario
+// dela tinha 16 "secoes" como "67 SIS07304 | SIS07405" e "Atividade Pedagógica".
+func TestCelulaDeTabelaNaoViraSecao(t *testing.T) {
+	exigirFerramentasDePDF(t)
+	dados, err := os.ReadFile(filepath.Join(diretorioDoDemo, "matriz-curricular-si-palmas-2023.pdf"))
+	if err != nil {
+		t.Skip(err)
+	}
+	result, err := NewDeterministicIndexer().indexPDF(context.Background(), 1, dados)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.TableSections) < 3 {
+		t.Fatalf("esperava as tabelas da matriz, veio %d", len(result.TableSections))
+	}
+	for _, node := range result.OutlineNodes {
+		title := strings.ToLower(node.Title)
+		if strings.Contains(title, "sis07") || strings.Contains(title, "atividade pedag") || strings.Contains(title, "hrs coreq") {
+			t.Fatalf("celula de tabela virou secao: %q", node.Title)
+		}
+	}
+	if len(result.OutlineNodes) > 6 {
+		titles := make([]string, 0, len(result.OutlineNodes))
+		for _, n := range result.OutlineNodes {
+			titles = append(titles, n.Title)
+		}
+		t.Fatalf("a matriz deveria ter poucas secoes (cabecalho do SAGRES), veio %d: %v", len(result.OutlineNodes), titles)
 	}
 }

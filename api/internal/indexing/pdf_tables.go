@@ -487,6 +487,10 @@ func pdfTableFromRows(headerRows, dataRows []pdfVisualRow, title string, pageNum
 		}
 	}
 	left, right := pdfRunExtent(dataRows)
+	top := dataRows[0].YMin
+	if len(headerRows) > 0 {
+		top = headerRows[0].YMin
+	}
 	pageRef := pageNumber
 	return models.TableSection{
 		Title:      title,
@@ -496,11 +500,41 @@ func pdfTableFromRows(headerRows, dataRows []pdfVisualRow, title string, pageNum
 		Metadata: map[string]any{
 			"source": "pdf-bbox",
 			"box": textBox{
-				XMin: left, YMin: dataRows[0].YMin, XMax: right, YMax: dataRows[len(dataRows)-1].YMax,
+				XMin: left, YMin: top, XMax: right, YMax: dataRows[len(dataRows)-1].YMax,
 				PageWidth: page.Width, PageHeight: page.Height,
 			},
 		},
 	}, true
+}
+
+// pdfTableBoxes devolve as caixas das tabelas de uma pagina.
+func pdfTableBoxes(tables []models.TableSection) []textBox {
+	boxes := make([]textBox, 0, len(tables))
+	for _, table := range tables {
+		if box, ok := table.Metadata["box"].(textBox); ok {
+			boxes = append(boxes, box)
+		}
+	}
+	return boxes
+}
+
+// blockInsideTable diz se o centro do bloco cai dentro de alguma tabela da
+// pagina: celula de tabela nao e titulo de secao, por mais que pareca
+// ("Atividade Pedagógica", "67 SIS07304 | SIS07405").
+func blockInsideTable(block textBlock, boxes []textBox) bool {
+	if block.Box == nil {
+		return false
+	}
+	cx := (block.Box.XMin + block.Box.XMax) / 2
+	cy := (block.Box.YMin + block.Box.YMax) / 2
+	for _, b := range boxes {
+		// Folga maior em cima: o cabecalho de duas linhas do SAGRES comeca
+		// alguns pontos acima da primeira linha visual que o detector guardou.
+		if cx >= b.XMin-pdfTableColumnTolerance && cx <= b.XMax+pdfTableColumnTolerance && cy >= b.YMin-pdfTableMinCellGap && cy <= b.YMax+pdfTableRowTolerance {
+			return true
+		}
+	}
+	return false
 }
 
 // flattenPageTables devolve as tabelas na ordem das paginas com SequenceOrder

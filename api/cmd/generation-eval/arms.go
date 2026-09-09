@@ -138,14 +138,24 @@ func (a *thingIndexArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) 
 	seen := map[citation]bool{}
 	scanner := bufio.NewScanner(resp.Body)
 	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+	eventName := ""
 	for scanner.Scan() {
 		line := scanner.Text()
+		if strings.HasPrefix(line, "event:") {
+			eventName = strings.TrimSpace(strings.TrimPrefix(line, "event:"))
+			continue
+		}
 		if !strings.HasPrefix(line, "data:") {
 			continue
 		}
 		var event domain.ChatStreamEvent
 		if err := json.Unmarshal([]byte(strings.TrimSpace(strings.TrimPrefix(line, "data:"))), &event); err != nil {
 			continue
+		}
+		// O handler emite o erro do provedor como evento "error" com {message}
+		// sem o campo type; o nome do evento SSE e a fonte de verdade.
+		if event.Type == "" {
+			event.Type = eventName
 		}
 		text.WriteString(event.Delta)
 		for _, s := range event.Sources {

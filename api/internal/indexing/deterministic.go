@@ -161,13 +161,19 @@ func (i *DeterministicIndexer) indexPDF(ctx context.Context, documentID uint, da
 	}
 
 	pageBlocks, ocrStats := i.applyPDFOCRFallback(ctx, data, extraction.PageCount, extraction.PageBlocks)
-	headings, paragraphs := buildPDFStructureFromPageBlocks(pageBlocks, extraction.PageCount)
+	headings, paragraphs := buildPDFStructure(pageBlocks, extraction.PageTables, extraction.PageCount)
 	result := buildIndexingResult(documentID, headings, paragraphs, flattenPageTables(documentID, extraction.PageTables, extraction.PageCount))
 	appendOCRFallbackMetadata(&result, documentID, ocrStats)
 	return result, nil
 }
 
 func buildPDFStructureFromPageBlocks(pageBlocks map[int][]textBlock, pageCount int) ([]outlineDraft, []textBlock) {
+	return buildPDFStructure(pageBlocks, nil, pageCount)
+}
+
+// buildPDFStructure monta titulos e paragrafos; bloco dentro de uma tabela da
+// pagina nunca vira titulo (continua como paragrafo, para o texto da pagina).
+func buildPDFStructure(pageBlocks map[int][]textBlock, pageTables map[int][]models.TableSection, pageCount int) ([]outlineDraft, []textBlock) {
 	headings := make([]outlineDraft, 0)
 	paragraphs := make([]textBlock, 0)
 	currentSectionKey := ""
@@ -179,12 +185,13 @@ func buildPDFStructureFromPageBlocks(pageBlocks map[int][]textBlock, pageCount i
 		// titulos e duplicavam cada secao do PPC (124 de 861). Nela, nada vira
 		// titulo; o texto fica como paragrafo.
 		tocPage := isPDFTableOfContentsPage(pageBlocks[pageNumber])
+		tableBoxes := pdfTableBoxes(pageTables[pageNumber])
 		for _, block := range pageBlocks[pageNumber] {
 			content := strings.TrimSpace(block.Content)
 			if content == "" || isLowSignalPDFText(content) {
 				continue
 			}
-			if !tocPage && looksLikePDFHeading(content) {
+			if !tocPage && !blockInsideTable(block, tableBoxes) && looksLikePDFHeading(content) {
 				if shouldSuppressRepeatedPDFHeading(content, pageOccurrences) {
 					if _, seen := emittedRepeatedPDFHeadings[content]; seen {
 						continue
