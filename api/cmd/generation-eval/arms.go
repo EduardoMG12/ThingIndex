@@ -115,6 +115,18 @@ func (a *thingIndexArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) 
 	if err != nil {
 		return answer{Err: err}
 	}
+	// A rota /chat/stream tem limitador por usuario (429). O experimento nao
+	// e um ataque: espera a janela passar e tenta de novo, sem contar o tempo
+	// de espera na latencia.
+	for tries := 0; resp.StatusCode == http.StatusTooManyRequests && tries < 10; tries++ {
+		resp.Body.Close()
+		time.Sleep(30 * time.Second)
+		req.Body = io.NopCloser(bytes.NewReader(raw))
+		start = time.Now()
+		if resp, err = a.client.Do(req); err != nil {
+			return answer{Err: err}
+		}
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
 		data, _ := io.ReadAll(resp.Body)
@@ -160,6 +172,11 @@ func (a *thingIndexArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) 
 	}
 	out.Latency = time.Since(start)
 	out.Text = strings.TrimSpace(text.String())
+	// A API engole a falha do provedor e fecha o stream sem texto; sem isto a
+	// linha entraria como "errada" e contaminaria o acerto.
+	if out.Err == nil && out.Text == "" {
+		out.Err = errors.New("resposta vazia (provedor falhou no servidor?)")
+	}
 	// Conversa descartavel: sem isso, 200+ conversas do experimento poluem a
 	// tela do usuario demo. Melhor esforco; a linha ja esta medida.
 	req, err = http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/chat/conversations/%d", a.api, created.Data.ID), nil)

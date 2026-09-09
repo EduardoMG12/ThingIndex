@@ -145,6 +145,11 @@ func main() {
 				ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 				a := arm.Ask(ctx, q)
 				cancel()
+				if a.Err != nil && strings.Contains(a.Err.Error(), "usage limit") {
+					fmt.Fprintf(os.Stderr, "generation-eval: credito do provedor esgotado em %s %s r%d; lote interrompido: %v\n", armName, q.ID, r, a.Err)
+					w.Flush()
+					os.Exit(2)
+				}
 				row := buildRow(q, armName, armScope, r, *model, a, *inputPrice, *outputPrice)
 				_ = w.Write(row)
 				w.Flush()
