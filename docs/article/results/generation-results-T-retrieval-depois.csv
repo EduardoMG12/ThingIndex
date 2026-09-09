@@ -36,7 +36,7 @@ c13,calendario,pdf,T,,1,,false,calendario:4;calendario:3;calendario:2;ppc-si:135
 c14,calendario,pdf,T,,1,,false,calendario:4;calendario:1;calendario:3;calendario:5;calendario:2;ppc-si:47,true,true,0,0,false,611,,false,Falha ao gerar resposta do chat,
 c15,calendario,pdf,T,,1,,false,calendario:1;calendario:3;calendario:4;calendario:2;ppc-tec:157;ppc-tec:120,true,true,0,0,false,658,,false,Falha ao gerar resposta do chat,
 c16,calendario,pdf,T,,1,,false,calendario:2;calendario:3;calendario:4;calendario:1;calendario:5;ppc-tec:147,true,true,0,0,false,626,,false,Falha ao gerar resposta do chat,
-p01,prosa,rodada-cc5,T,,1,,false,ementas:9;ppc-tec:70;matriz:3;ementas:4;ementas:65;ementas:6;ppc-si:201,false,false,0,0,false,649,,false,Falha ao gerar resposta do chat,
+p01,prosa,rodada-cc5,T,,1,,false,ementas:9;ppc-tec:70;matriz:3;ementas:4;ementas:65;ementas:6;ppc-si:201,true,true,0,0,false,649,,false,Falha ao gerar resposta do chat,
 p02,prosa,pdf,T,,1,,false,matriz:3;matriz:1;ppc-si:62;ppc-tec:65;ementas:2;ppc-tec:72;ppc-si:4;ppc-tec:61,true,true,0,0,false,672,,false,Falha ao gerar resposta do chat,
 p03,prosa,rodada-cc5,T,,1,,false,matriz:1;ppc-si:62;ppc-tec:132;ementas:14;ementas:2;ppc-si:47;ppc-tec:18;ppc-si:213;ppc-si:31,true,true,0,0,false,594,,false,Falha ao gerar resposta do chat,
 p04,prosa,pdf,T,,1,,false,calendario:1;calendario:3;ppc-tec:133;ppc-si:9;ementas:2;matriz:1;ppc-si:4;ppc-tec:125;ppc-tec:49,true,true,0,0,false,616,,false,Falha ao gerar resposta do chat,

@@ -155,3 +155,29 @@ func TestCelulaDeTabelaNaoViraSecao(t *testing.T) {
 		t.Fatalf("a matriz deveria ter poucas secoes (cabecalho do SAGRES), veio %d: %v", len(result.OutlineNodes), titles)
 	}
 }
+
+// O texto da pagina inclui os titulos: a identificacao do PPC do Tecnico e
+// feita de rotulos curtos que o detector promove a titulo, e sem eles a
+// pagina 7 ficava so com endereco e telefone.
+func TestTextoDaPaginaIncluiOsTitulos(t *testing.T) {
+	exigirFerramentasDePDF(t)
+	dados, err := os.ReadFile(filepath.Join(diretorioDoDemo, "ppc-tecnico-informatica-palmas.pdf"))
+	if err != nil {
+		t.Skip(err)
+	}
+	result, err := NewDeterministicIndexer().indexPDF(context.Background(), 1, dados)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, page := range result.DocumentPages {
+		if page.PageNumber == 7 {
+			for _, trecho := range []string{"Eixo Tecnológico", "Informação e Comunicação", "Forma de Oferta", "Integrado"} {
+				if !strings.Contains(page.Content, trecho) {
+					t.Fatalf("pagina 7 sem %q:\n%s", trecho, page.Content)
+				}
+			}
+			return
+		}
+	}
+	t.Fatal("pagina 7 nao veio")
+}

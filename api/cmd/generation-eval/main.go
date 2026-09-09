@@ -64,6 +64,7 @@ func main() {
 	outputPrice := flag.Float64("output-price", 0, "USD por milhao de tokens de saida")
 	only := flag.String("only", "", "ids de pergunta separados por virgula (depuracao)")
 	summary := flag.Bool("summary", false, "em vez de rodar, resume os CSVs de -in")
+	rescore := flag.Bool("rescore", false, "em vez de rodar, reavalia correct/provenance dos CSVs de -in com o gabarito atual (sem chamar modelo) e reescreve cada arquivo")
 	in := flag.String("in", "", "CSV(s) para -summary, separados por virgula")
 	flag.Parse()
 
@@ -79,6 +80,20 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "generation-eval: %v\n", err)
 		os.Exit(1)
+	}
+	if *rescore {
+		for _, path := range strings.Split(*in, ",") {
+			if path = strings.TrimSpace(path); path == "" {
+				continue
+			}
+			changed, err := rescoreFile(path, g)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "generation-eval: %s: %v\n", path, err)
+				os.Exit(1)
+			}
+			fmt.Fprintf(os.Stderr, "%s: %d linha(s) mudaram de veredito\n", path, changed)
+		}
+		return
 	}
 
 	askers := map[string]asker{}

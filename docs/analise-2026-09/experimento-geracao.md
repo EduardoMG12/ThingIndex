@@ -67,7 +67,7 @@ A primeira execução caiu no limitador da rota `/chat/stream` (20 pedidos por m
 
 ## 3. Leitura honesta (atualizada na rodada 3)
 
-1. **Em acerto, ThingIndex e "documento inteiro no LLM" empatam.** T 92,1%, F/documento 94,4%, F/coleção 95,8%; os intervalos se sobrepõem e a diferença pareada T × F/documento (+0,023) tem IC que cruza o zero. A rodada 1 tinha dito "F vence, e por muito": era verdade antes das tabelas virarem fonte (as perguntas de tabela estavam quase todas erradas em T).
+1. **Em acerto, "documento inteiro no LLM" fica 6 pontos à frente.** T 92,6%, F/documento 98,6%, F/coleção 98,6% (gabarito v2); a diferença pareada T × F/documento é +0,060 com IC de +0,000 a +0,130. A rodada 1 tinha dito "F vence, e por muito" (94% × 10%): o que mudou foi T, com as tabelas como fonte. O que separa os dois hoje são 4 perguntas de prosa em que a página-alvo não entra nas 6 fontes e 2 em que o modelo lê a fonte errada.
 2. **Em proveniência, T é estrutural e F é prosa.** T: toda fonte é (documento, página), 100% certa em tabela. F/coleção: 64% das páginas citadas certas, 25% em tabela, e toda resposta errada vem com uma página. O único erro de conteúdo de F/documento (n03) é uma alucinação com citação plausível.
 3. **Em custo, 18 a 62 vezes menos tokens de entrada por pergunta** (4 mil contra 72 mil com o documento certo, 250 mil com a coleção). Em USD não há número: o Ollama Cloud é assinatura.
 4. **F/documento recebe um oráculo** (o documento certo escolhido pelo gabarito) que o usuário não tem. F/coleção é o cenário real e é o mais caro.
@@ -105,19 +105,21 @@ O que ainda não foi medido: se o modelo, recebendo a linha "Disciplina: SIS0730
 
 Com a chave reserva, o braço T rodou inteiro: 72 perguntas × 3 repetições, `gemma4:31b`, ThingIndex com as linhas de tabela como fonte (seção 5). Três chamadas estouraram o timeout de 45 s da API e foram refeitas; nenhuma linha com erro ficou no CSV (`generation-results-T.csv`).
 
+Números com o gabarito v2 (regex tolerantes a "03", "15 e 17", "12 ao dia 16"; t06 aceita as duas colunas da Matriz; p01 inclui Matriz p. 3), aplicados aos mesmos CSVs por `-rescore`, sem rerodar modelo:
+
 | Estrato | n | T: acerto (IC 95%) | F/documento: acerto (IC 95%) | T: proveniência | F: proveniência | T: tokens | F: tokens |
 |---|---|---|---|---|---|---|---|
-| todas | 72 | **92,1%** (85,2–97,7) | 94,4% (88,9–98,6) | 89,6% | 86,1% | 4.046 | 72.067 |
-| prosa | 30 | 88,9% (76,7–98,9) | 100,0% | 76,7% | 77,8% | 3.462 | 100.491 |
-| tabela | 21 | **95,2%** (85,7–100) | 90,5% (76,2–100) | **100,0%** | 87,3% | 3.551 | 39.691 |
-| calendário | 16 | 91,7% (77,1–100) | 93,8% (81,2–100) | 100,0% | 100,0% | 5.817 | 5.504 |
+| todas | 72 | **92,6%** (85,6–98,1) | 98,6% (95,8–100) | 91,0% | 86,1% | 4.046 | 72.067 |
+| prosa | 30 | 88,9% (76,7–98,9) | 100,0% | 80,0% | 77,8% | 3.462 | 100.491 |
+| tabela | 21 | 95,2% (85,7–100) | 100,0% | **100,0%** | 87,3% | 3.551 | 39.691 |
+| calendário | 16 | 93,8% (81,2–100) | 100,0% | 100,0% | 100,0% | 5.817 | 5.504 |
 | negativa | 5 | **100,0%** | 80,0% (40–100) | — | — | 3.956 | 250.504 |
 
-Pareado por pergunta: F vence em 7, perde em 4, empata em 61; diferença média de acerto +0,023 a favor de F, **IC 95% de −0,056 a +0,106**, ou seja, indistinguível de zero com 72 perguntas.
+Pareado por pergunta: F vence em 6, perde em 1, empata em 65; diferença média de acerto +0,060 a favor de F, IC 95% de +0,000 a +0,130: F, com o documento certo entregue de bandeja, acerta um pouco mais, no limite da significância. (Com o gabarito v1, mais estrito, era +0,023 com IC de −0,056 a +0,106.)
 
 Leitura:
 
-1. **Em acerto, o ThingIndex empata com "mandar o documento certo inteiro para a IA"**, e vence na tabela (95% × 90%) e nas negativas (100% × 80%: F inventou "134 alunos matriculados" com página; T disse que não consta). Isso com 18 vezes menos tokens de entrada por pergunta (4 mil × 72 mil) e sem o oráculo: F recebeu o documento certo escolhido pelo gabarito; T procurou nos cinco.
+1. **Em acerto, o ThingIndex fica 6 pontos atrás de "mandar o documento certo inteiro para a IA"** (92,6% × 98,6%, gabarito v2), e vence nas negativas (100% × 80%: F inventou "134 alunos matriculados" com página; T disse que não consta). Isso com 18 vezes menos tokens de entrada por pergunta (4 mil × 72 mil) e sem o oráculo: F recebeu o documento certo escolhido pelo gabarito; T procurou nos cinco (depois nos dez). As 6 perguntas em que T perde são 4 de recuperação em prosa e 2 de leitura do modelo.
 2. **Em proveniência, T é estrutural**: toda fonte é (documento, página) por construção, verificável com um clique, e em tabela a página certa está entre as fontes em 100% das perguntas. A proveniência de F é a página que o modelo escreve em prosa, aceita se cair em qualquer documento-alvo (regra frouxa a favor de F).
 3. **Onde T ainda erra.** Prosa: 4 perguntas em que a página-alvo não entra nas fontes (p06 "conceito D", p13 "estágio extracurricular", p24, p25), todas por vocabulário (plural × singular, "conceito D" com a letra solta). Tabela: t12 (Libras), o modelo leu o PPC p. 142 em vez da linha da Matriz que estava nas fontes. Calendário: c13 e c14 são o modelo escrevendo "do dia 12 ao dia 16" e "18 e 19" (o calendário diz 17, 18 e 19), casos em que o regex é estrito ou o modelo omitiu um dia.
 4. **Antes desta rodada** (CC5, 11 perguntas escritas pelo autor, sem tabela como fonte): 8 certas, 2 parciais, 1 errada, com todas as de tabela erradas. O ganho veio da extração de tabela, não do modelo.
@@ -128,13 +130,13 @@ Os 5 PDFs inteiros no contexto, ≈250 mil tokens por pergunta. As 35 primeiras 
 
 | Estrato | n | Acerto (IC 95%) | Proveniência | Tokens prompt |
 |---|---|---|---|---|
-| todas | 72 | 95,8% (90,3–100) | **63,7%** | 250.505 |
+| todas | 72 | 98,6% (95,8–100) | **63,7%** | 250.505 |
 | prosa | 30 | 100,0% | 76,7% | 250.504 |
 | tabela | 21 | 95,2% (85,7–100) | **25,4%** | 250.505 |
-| calendário | 16 | 87,5% (68,8–100) | 89,6% | 250.506 |
+| calendário | 16 | 100,0% | 89,6% | 250.506 |
 | negativa | 5 | 100,0% | — | 250.504 |
 
-Este é o adversário realista, porque o usuário não sabe em qual PDF está a resposta: acerta tanto quanto T (95,8% × 92,1%, IC sobrepostos), gasta **62 vezes mais tokens por pergunta** (250 mil × 4 mil), e cita a página certa em 64% dos casos, 25% nas tabelas. Todas as 9 respostas erradas vieram com página citada. Para o coordenador, "acha o fato" é igual; "prova onde está" é o que separa os dois.
+Este é o adversário realista, porque o usuário não sabe em qual PDF está a resposta: acerta 6 pontos a mais que T (98,6% × 92,6%, gabarito v2), gasta **62 vezes mais tokens por pergunta** (250 mil × 4 mil), e cita a página certa em 64% dos casos, 25% nas tabelas. Todas as 9 respostas erradas vieram com página citada. Para o coordenador, "acha o fato" é igual; "prova onde está" é o que separa os dois.
 
 ## 8. Rodada 4 (2026-09-09): corpus ampliado para 10 documentos e modelo maior
 
