@@ -495,6 +495,12 @@ Table chat_conversation_entries {
   role varchar(16) [not null]
   content text [not null]
   sources jsonb
+  prompt_tokens integer [not null, default: `0`]
+  completion_tokens integer [not null, default: `0`]
+  usage_reported boolean [not null, default: `false`]
+  provider_type varchar(32)
+  model varchar(128)
+  estimated_cost_usd numeric
   created_at timestamptz
   updated_at timestamptz
   deleted_at timestamptz

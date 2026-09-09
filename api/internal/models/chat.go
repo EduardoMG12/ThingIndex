@@ -33,7 +33,14 @@ type ChatConversationEntry struct {
 	Role           string                `gorm:"size:16;not null" json:"role"`
 	Content        string                `gorm:"type:text;not null" json:"content"`
 	Sources        []ChatSourceReference `gorm:"type:jsonb;serializer:json" json:"sources,omitempty"`
-	CreatedAt      time.Time             `json:"created_at"`
-	UpdatedAt      time.Time             `json:"updated_at"`
-	DeletedAt      gorm.DeletedAt        `gorm:"index" json:"-"`
+	// Consumo da resposta, em colunas proprias (nada polimorfico no jsonb).
+	PromptTokens     int            `gorm:"not null;default:0" json:"prompt_tokens"`
+	CompletionTokens int            `gorm:"not null;default:0" json:"completion_tokens"`
+	UsageReported    bool           `gorm:"not null;default:false" json:"usage_reported"`
+	ProviderType     string         `gorm:"size:32" json:"provider_type,omitempty"`
+	Model            string         `gorm:"size:128" json:"model,omitempty"`
+	EstimatedCostUSD *float64       `json:"estimated_cost_usd,omitempty"`
+	CreatedAt        time.Time      `json:"created_at"`
+	UpdatedAt        time.Time      `json:"updated_at"`
+	DeletedAt        gorm.DeletedAt `gorm:"index" json:"-"`
 }
