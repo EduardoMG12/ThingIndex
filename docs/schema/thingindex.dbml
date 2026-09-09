@@ -192,6 +192,7 @@ Table table_sections {
   document_id integer [not null]
   sequence_order integer [not null]
   title varchar(255)
+  page_number integer
   headers jsonb
   rows jsonb
   metadata jsonb
@@ -203,6 +204,7 @@ Table table_sections {
     deleted_at [name: "idx_table_sections_deleted_at"]
     document_id [name: "idx_table_sections_document_id"]
     (document_id, sequence_order) [name: "idx_table_sections_document_sequence", unique]
+    page_number [name: "idx_table_sections_page_number"]
   }
 }
 

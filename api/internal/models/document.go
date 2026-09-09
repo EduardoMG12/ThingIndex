@@ -81,16 +81,20 @@ type DocumentPage struct {
 }
 
 type TableSection struct {
-	ID            uint           `gorm:"primarykey" json:"id"`
-	DocumentID    uint           `gorm:"not null;index;uniqueIndex:idx_table_sections_document_sequence" json:"document_id"`
-	SequenceOrder int            `gorm:"not null;uniqueIndex:idx_table_sections_document_sequence" json:"sequence_order"`
-	Title         string         `gorm:"size:255" json:"title,omitempty"`
-	Headers       []string       `gorm:"type:jsonb;serializer:json" json:"headers"`
-	Rows          [][]string     `gorm:"type:jsonb;serializer:json" json:"rows"`
-	Metadata      map[string]any `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
-	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
+	ID            uint   `gorm:"primarykey" json:"id"`
+	DocumentID    uint   `gorm:"not null;index;uniqueIndex:idx_table_sections_document_sequence" json:"document_id"`
+	SequenceOrder int    `gorm:"not null;uniqueIndex:idx_table_sections_document_sequence" json:"sequence_order"`
+	Title         string `gorm:"size:255" json:"title,omitempty"`
+	// PageNumber e a pagina fisica onde a tabela esta. Uma tabela que atravessa
+	// paginas vira uma TableSection por pagina: sem pagina a celula nao e
+	// auditavel (constituicao I). Nulo em HTML e planilha, que nao tem pagina.
+	PageNumber *int           `gorm:"index" json:"page_number,omitempty"`
+	Headers    []string       `gorm:"type:jsonb;serializer:json" json:"headers"`
+	Rows       [][]string     `gorm:"type:jsonb;serializer:json" json:"rows"`
+	Metadata   map[string]any `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
+	CreatedAt  time.Time      `json:"created_at"`
+	UpdatedAt  time.Time      `json:"updated_at"`
+	DeletedAt  gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 type MetadataPair struct {
