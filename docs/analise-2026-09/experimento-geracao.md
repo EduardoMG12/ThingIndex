@@ -166,6 +166,9 @@ Duas coisas apareceram nessas oito: linhas do calendário entram como fonte em q
 
 | **título entra no texto da página** (bug: linha classificada como título sumia da página; a identificação do PPC do Técnico ficava só com endereço e telefone) | 25/30 · 21/21 · 16/16 | 29 · 21 · 15 | **mantida**: ganhou p01 e p24 na recuperação; t12, p24 e p25 no acerto; nada perdeu. Medida depois de reindexar os 10 documentos com o enriquecimento por LLM ligado (sinopse `llm` nos 10) |
 
+| fonte de seção/página só com 2+ termos da pergunta; interrogativos fora (2026-09-10) | 27/30 · 21/21 · 16/16 | 29 · 20 · 16 | **mantida** (piso de 40% dos termos perdia t18, t20 e p21; piso 2 não perde nada) |
+| letra maiúscula solta é termo ("conceito D", "TCC I") + variante singular/plural na consulta para termos de 6+ letras | 28/30 · 21/21 · 16/16 | 30 · 21 · 15 | **mantida**: ganhou p13 ("estágios extracurriculares"); com 4+ letras perdia p24 ("cursos", "formas" puxavam página genérica). Gabarito v3: p20 e p22 aceitam a ementa dentro do PPC 2019 |
+
 O que as rejeições e o bug ensinam: com 72 perguntas de gabarito e o CSV bruto, uma "melhoria óbvia" é testada em seis minutos e descartada com número, que é o oposto de ajustar no olho. As mudanças que sobreviveram (tabelas como fonte, seção 5; títulos no texto da página; linha com 2+ termos; token inteiro nas conexões) foram as que corrigiam um erro estrutural ou de dado, não as que mexiam no peso. E o bug dos títulos só apareceu porque uma pergunta do gabarito (p24) falhava sem motivo aparente: sem gabarito, ele continuaria invisível.
 
 ## 10. Estado final (2026-09-09): T com 10 documentos, títulos na página, enriquecimento ligado, 3 repetições

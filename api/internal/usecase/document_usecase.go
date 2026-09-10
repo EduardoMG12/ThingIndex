@@ -17,6 +17,7 @@ import (
 	"thing-index/internal/indexing"
 	"thing-index/internal/retrieval"
 	"time"
+	"unicode"
 
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
@@ -1855,7 +1856,11 @@ func bm25Scores(query string, texts []string) []int {
 	// A consulta passa pelo tokenizador de producao antes do BM25 para manter
 	// a expansao numerica ("seven" tambem vira "7"), que o benchmark publico
 	// exercita e o tokenizador do experimento nao faz.
-	queryText := retrieval.FoldDiacritics(strings.Join(tokenizeRetrievalText(query), " "))
+	// A consulta ganha a variante singular/plural de cada termo: "estagio
+	// extracurricular" tambem casa "estagios extracurriculares" (p. 199 do
+	// PPC). So a consulta muda; o indice fica como esta, entao um termo a mais
+	// nunca tira uma pagina, so soma quando a variante existe nela.
+	queryText := retrieval.FoldDiacritics(strings.Join(expandNumberVariants(tokenizeRetrievalText(query)), " "))
 	scores := make([]int, len(texts))
 	for _, result := range retrieval.NewBM25Index(docs, retrieval.DefaultBM25Params()).Search(queryText) {
 		i, err := strconv.Atoi(result.DocID)
@@ -1891,6 +1896,62 @@ func queryTermCoverage(text string, terms []string) int {
 		}
 	}
 	return n
+}
+
+// expandNumberVariants acrescenta a cada termo alfabetico de 4+ letras a sua
+// forma no outro numero gramatical (regras de plural do portugues, so as
+// regulares). Termos ja presentes nao se repetem.
+func expandNumberVariants(tokens []string) []string {
+	seen := make(map[string]bool, len(tokens)*2)
+	out := make([]string, 0, len(tokens)*2)
+	add := func(t string) {
+		if t != "" && !seen[t] {
+			seen[t] = true
+			out = append(out, t)
+		}
+	}
+	for _, token := range tokens {
+		add(token)
+		// So termos de 6+ letras: "curso"/"forma"/"eixo" ganhavam a variante
+		// e puxavam paginas genericas (p24 do gabarito saiu das fontes);
+		// "estagio", "extracurricular", "resolucao" sao os que precisam.
+		if len(token) < 6 || isNumericToken(token) {
+			continue
+		}
+		for _, r := range token {
+			if !unicode.IsLetter(r) {
+				token = ""
+				break
+			}
+		}
+		if token == "" {
+			continue
+		}
+		n := len(token)
+		switch {
+		case strings.HasSuffix(token, "oes") || strings.HasSuffix(token, "ões"):
+			add(strings.TrimSuffix(strings.TrimSuffix(token, "oes"), "ões") + "ao")
+		case strings.HasSuffix(token, "ais") || strings.HasSuffix(token, "eis") || strings.HasSuffix(token, "ois"):
+			add(token[:n-2] + "l")
+		case strings.HasSuffix(token, "ns"):
+			add(token[:n-2] + "m")
+		case strings.HasSuffix(token, "res") && n > 5:
+			add(token[:n-2])
+		case strings.HasSuffix(token, "s"):
+			add(token[:n-1])
+		case strings.HasSuffix(token, "ao") || strings.HasSuffix(token, "ão"):
+			add(strings.TrimSuffix(strings.TrimSuffix(token, "ao"), "ão") + "oes")
+		case strings.HasSuffix(token, "l"):
+			add(token[:n-1] + "is")
+		case strings.HasSuffix(token, "m"):
+			add(token[:n-1] + "ns")
+		case strings.HasSuffix(token, "r"):
+			add(token + "es")
+		default:
+			add(token + "s")
+		}
+	}
+	return out
 }
 
 func buildCollectionRetrieval(
@@ -2240,13 +2301,25 @@ func outlineNodeSearchText(node models.DocumentOutlineNode) string {
 }
 
 func tokenizeRetrievalText(value string) []string {
-	normalized := strings.ToLower(strings.TrimSpace(value))
-	if normalized == "" {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
 		return nil
 	}
 
-	normalized = strings.NewReplacer(",", " ", ".", " ", ";", " ", ":", " ", "\n", " ", "\t", " ").Replace(normalized)
-	parts := strings.Fields(normalized)
+	// Letra maiuscula sozinha ("conceito D", "TCC I") e termo: sem ela a
+	// pergunta sobre o conceito D achava qualquer pagina com "conceito". Letra
+	// minuscula sozinha continua fora (artigo, preposicao).
+	replacer := strings.NewReplacer(",", " ", ".", " ", ";", " ", ":", " ", "\n", " ", "\t", " ", "?", " ", "!", " ")
+	rawParts := strings.Fields(replacer.Replace(trimmed))
+	parts := make([]string, 0, len(rawParts))
+	standaloneUpper := make(map[string]bool, 2)
+	for _, raw := range rawParts {
+		if runes := []rune(raw); len(runes) == 1 && unicode.IsUpper(runes[0]) && !strings.ContainsRune("AOEÀÉ", runes[0]) {
+			// "A matrícula" e artigo em inicio de frase, nao um "A" de conceito.
+			standaloneUpper[strings.ToLower(raw)] = true
+		}
+		parts = append(parts, strings.ToLower(raw))
+	}
 	seen := make(map[string]struct{}, len(parts))
 	tokens := make([]string, 0, len(parts))
 	for _, part := range parts {
@@ -2254,7 +2327,7 @@ func tokenizeRetrievalText(value string) []string {
 			if len(expanded) < 1 {
 				continue
 			}
-			if len(expanded) < 2 && !isNumericToken(expanded) {
+			if len(expanded) < 2 && !isNumericToken(expanded) && !standaloneUpper[expanded] {
 				continue
 			}
 			if _, ok := seen[expanded]; ok {
