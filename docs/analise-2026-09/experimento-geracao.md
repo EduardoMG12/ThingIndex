@@ -242,7 +242,27 @@ Pareado com a seção 11 (mesmo gabarito, mesmo índice enriquecido): a única p
 
 O harness passou a tolerar queda da API (recompilação do `air` durante a rodada): repete a chamada por até 60 segundos em vez de marcar erro.
 
-## 14. Próximos passos
+## 14. Continuação de página (2026-09-10): as duas últimas páginas-alvo fora das fontes
+
+Depois da seção 13, as únicas perguntas (fora as negativas) sem a página-alvo nas fontes eram p06 e p12, e a causa é a mesma: o parágrafo com a resposta quebra na virada de página. Em p06, a lista de conceitos começa na p. 125 do PPC ("II – conceito B – ...;") e "IV – conceito D – ... INSUFICIENTE" está na p. 126; em p12, "É vedada a" fecha a p. 186 e "matrícula simultânea em TCC I e TCC II" abre a p. 187. O BM25 escolhe a página com mais termos (125, 186), e a resposta está na seguinte.
+
+Regra, determinística: fonte de página ou seção cujo texto termina sem ponto final (".", "!" ou "?"; ";" e ":" contam como lista que continua) leva a página seguinte como continuação: o prompt recebe o começo dela até o fim da última frase que cabe em 600 caracteres, marcado "[continua na p. N]", e a citação passa a cobrir as duas páginas ("p. 186–187" no card; `continues_on_page` na fonte gravada). Página com tabela não continua: termina sem ponto por ser tabela, e o começo da seguinte é outra tabela. Essa exceção veio de uma medição: sem ela, o calendário de outubro colado ao de setembro fez o modelo responder "26 de julho" em c12 (1 errada em 72).
+
+Medido, 1 repetição, arquivo `generation-results-T-continuacao.csv`:
+
+| Estrato | n | Acerto | Proveniência | Recuperação | Tokens |
+|---|---|---|---|---|---|
+| todas | 72 | **100,0%** | **100,0%** (67/67 com alvo) | **100,0%** | 4.613 |
+| prosa | 30 | 100,0% | 100,0% (antes 93,3%) | 100,0% | 4.206 |
+| tabela / calendário / negativa | 21 / 16 / 5 | 100,0% | 100,0% / 100,0% / — | | 4.012 / 6.452 / 3.694 |
+
+Pareado com a seção 13: recuperação 65 → 67 (p06 e p12), nenhuma perda, nenhuma mudança de acerto; tokens de prompt 4.214 → 4.613 (+9%). A primeira versão da regra (sem a exceção de tabela) deu 67 na recuperação e 71/72 no acerto (c12): o dado que motivou a exceção está no scratchpad, não versionado.
+
+## 15. O que o gabarito já não mede
+
+Com 100% de acerto e 100% de proveniência em 3 repetições (seção 13) e 1 (seção 14), o gabarito v4 saturou: qualquer mudança daqui em diante só pode empatar ou piorar nele. O próximo passo do experimento não é mais código, é gabarito v5: perguntas escritas por outra pessoa (o `reviewed_by` pendente desde a seção 12), com respostas que cruzam documentos, negativas "quase" (o termo existe, a resposta não) e tabelas cuja célula não repete o nome da linha.
+
+## 16. Próximos passos
 
 1. Rodar F/documento em um segundo modelo pago (só há Ollama Cloud).
 2. Versão 2 do gabarito: corrigir t04, c08 e t06, registrar `reviewed_by` com o revisor externo, recongelar o hash.
