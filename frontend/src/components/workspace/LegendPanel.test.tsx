@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { LegendPanel } from "@/components/workspace/LegendPanel";
 import { createTestWrapper } from "@/test/test-utils";
@@ -11,6 +11,20 @@ vi.mock("next/navigation", () => ({
 const opcoes = { wrapper: createTestWrapper("pt-BR") };
 
 describe("LegendPanel", () => {
+    // O painel guarda "aberta/recolhida" no localStorage; sem limpar, o
+    // primeiro teste deixa a legenda aberta e o clique do segundo a fecha
+    // (falhava na CI, passava local por ordem de execucao).
+    beforeEach(() => {
+        // Comeca recolhida em todo teste. O localStorage do jsdom varia entre
+        // ambientes (aqui so tem getItem/setItem; na CI persiste entre
+        // testes), por isso grava a chave em vez de limpar tudo.
+        try {
+            window.localStorage.setItem("thingindex.workspace.legenda.recolhida", "1");
+        } catch {
+            // sem storage, o painel ja comeca recolhida
+        }
+    });
+
     // A legenda comeca recolhida; os testes de edicao a abrem antes.
     function abrirLegenda() {
         fireEvent.click(screen.getByRole("button", { name: /Legenda/ }));
