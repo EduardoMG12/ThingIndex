@@ -17,4 +17,12 @@ describe("provider-catalog", () => {
 
         expect(baseUrlField?.placeholder).toContain("https://ollama.com/api");
     });
+
+    it("esconde os provedores nao exercitados e mostra um escondido quando ja tem credencial salva", () => {
+        const visiveis = getLocalizedProviders("pt-BR").map((provider) => provider.providerType);
+        expect(visiveis).toEqual(["MINIO", "OPENAI", "OLLAMA"]);
+        const comGcp = getLocalizedProviders("pt-BR", ["GCP_STORAGE"]).map((provider) => provider.providerType);
+        expect(comGcp).toContain("GCP_STORAGE");
+        expect(comGcp).not.toContain("CLAUDE");
+    });
 });
