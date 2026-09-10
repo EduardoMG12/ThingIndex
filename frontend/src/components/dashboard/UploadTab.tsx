@@ -20,10 +20,17 @@ import {
     UPLOAD_ACCEPTED_FILE_TYPES,
 } from "@/lib/upload-policy";
 
-const UploadTab = () => {
+type UploadTabProps = {
+    /** Colecao ja escolhida por quem embute o upload (a Area de trabalho): sem combobox nem guia. */
+    colecaoFixa?: string;
+    /** Chamado depois da fila terminar com pelo menos um envio aceito. */
+    aoConcluir?: () => void;
+};
+
+const UploadTab = ({ colecaoFixa, aoConcluir }: UploadTabProps = {}) => {
     const { locale, t } = useI18n();
     const [defaultCategory, setDefaultCategory] = useState("");
-    const [defaultCollection, setDefaultCollection] = useState("");
+    const [defaultCollection, setDefaultCollection] = useState(colecaoFixa ?? "");
     const { files, isProcessing, queuedCount, addFiles, removeFile, processQueue } = useDocumentUpload();
     const hasFilesWithoutCollection = files.some((file) => !file.collection.trim());
 
@@ -69,15 +76,23 @@ const UploadTab = () => {
             return;
         }
 
+        let aceitos = 0;
         await processQueue({
+            onFileSuccess: () => {
+                aceitos += 1;
+            },
             onFileError: (file, error) => {
                 toast.error(`${file.name}: ${error.message}`);
             },
         });
+        if (aceitos > 0) {
+            aoConcluir?.();
+        }
     };
 
     return (
         <div className="surface-elevated rounded-lg overflow-hidden border border-border">
+            {colecaoFixa ? null : (
             <div className="border-b border-border p-4 bg-muted/20">
                 <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
@@ -96,16 +111,17 @@ const UploadTab = () => {
                     </div>
                 </div>
             </div>
+            )}
 
             <div className="p-4 space-y-4">
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.85fr)] lg:items-stretch">
+                <div className={colecaoFixa ? "grid gap-4" : "grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.85fr)] lg:items-stretch"}>
                     <UploadDropzone
                         getRootProps={getRootProps}
                         getInputProps={getInputProps}
                         isDragActive={isDragActive}
                         disabled={isProcessing}
                     />
-                    <DashboardQuickGuide className="h-full" />
+                    {colecaoFixa ? null : <DashboardQuickGuide className="h-full" />}
                 </div>
 
                 <UploadFileList files={files} isProcessing={isProcessing} onRemove={removeFile} />

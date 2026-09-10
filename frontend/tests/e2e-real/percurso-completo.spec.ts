@@ -145,35 +145,25 @@ test.describe("percurso completo na stack real", () => {
         const documentoID = await enviarPDF(token, colecao);
         await esperarIndexacao(token, documentoID);
 
-        // Etapa 5: a tela precisa refletir o documento indexado.
-        //
-        // A asserção NAO procura o titulo solto: a biblioteca agrupa por
-        // categoria e collection, e o titulo so aparece ao expandir o grupo.
-        // Investiguei por CDP antes de acusar a tela -- o comportamento esta
-        // certo, minha primeira expectativa e que estava errada.
-        await page.goto("/pt-BR/documents", { waitUntil: "domcontentloaded" });
-
+        // Etapa 5: a aba Documentos da Area de trabalho lista o documento
+        // indexado da collection recem-criada (a biblioteca de Documentos
+        // migrou para ca).
+        await page.goto("/pt-BR/workspace", { waitUntil: "domcontentloaded" });
+        await page.locator("header select").first().selectOption({ label: colecao });
+        await page.getByTestId("aba-documentos").click();
         await expect(
-            page.getByText(/1 documento\(s\) indexado\(s\)/i).first(),
-            "etapa 5: a tela nao contabilizou o documento indexado",
-        ).toBeVisible({ timeout: 30_000 });
-
-        // E a collection recem-criada precisa aparecer na arvore.
-        await expect(
-            page.getByText(colecao, { exact: false }).first(),
-            `etapa 5: a collection ${colecao} nao apareceu na biblioteca`,
-        ).toBeVisible({ timeout: 30_000 });
+            page.getByTestId(`documento-item-${documentoID}`),
+            "etapa 5: a aba Documentos nao listou o documento indexado",
+        ).toContainText("Indexado", { timeout: 30_000 });
 
         // Etapa 6: workspace abre com o acervo real e o PDF vira paginas com
         // grifos. A contagem de grifos e comparada com o que a API diz ter de
         // paragrafos com bounding box -- e a prova de que a proveniencia
         // posicional chegou inteira do indexador ate a tela.
-        await page.goto("/pt-BR/workspace", { waitUntil: "domcontentloaded" });
         await expect(
             page.getByRole("heading", { level: 1 }),
             "etapa 6: o workspace nao montou",
         ).toBeVisible({ timeout: 30_000 });
-        await page.selectOption("select", { label: colecao });
         await expect(
             page.getByTestId(`pdf-frame-${documentoID}`),
             "etapa 6: o quadro do PDF nao apareceu",
@@ -186,6 +176,19 @@ test.describe("percurso completo na stack real", () => {
             "etapa 6: grifos na tela diferem dos paragrafos com box na API",
         ).toHaveCount(comBox, { timeout: 30_000 });
 
+        // Etapa 6b: enviar um segundo PDF pelo painel da Area de trabalho faz
+        // o quadro novo aparecer sem recarregar a pagina (o upload do
+        // Dashboard migrou para ca). O polling da pagina e quem traz o quadro.
+        await page.getByTestId("aba-documentos").click();
+        await page.getByTestId("enviar-documento").click();
+        const modal = page.getByTestId("modal-de-upload");
+        await modal.locator('input[type="file"]').setInputFiles(PDF_DE_TESTE);
+        await modal.getByRole("button", { name: /Enviar 1 documento/ }).click();
+        await expect(
+            page.locator('[data-testid^="pdf-frame-"]'),
+            "etapa 6b: o segundo quadro nao apareceu depois do upload pelo painel",
+        ).toHaveCount(2, { timeout: 120_000 });
+        await modal.getByRole("button", { name: /Fechar/ }).click();
         // Etapa 7: nenhum erro de console no percurso inteiro. Erro aqui e
         // defeito real -- a suite com mock nao alcanca esse caminho.
         const relevantes = errosDeConsole.filter(

@@ -18,7 +18,7 @@ export function ChatEmptyState({
 
     const cta = !hasCollections
         ? {
-            href: href("/documents"),
+            href: href("/workspace"),
             label: t("dashboard.chat.documentsCta"),
             icon: FolderPlus,
             description: t("dashboard.chat.emptyNoCollection"),

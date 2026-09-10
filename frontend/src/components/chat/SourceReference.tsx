@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, FileText } from "lucide-react";
+import { ChevronDown, FileText, Crosshair } from "lucide-react";
 
 import { useI18n } from "@/lib/i18n/provider";
 
@@ -9,14 +9,19 @@ export type Source = {
     docName: string;
     page: number;
     snippet: string;
+    documentId?: number;
+    nodeId?: string;
 };
 
 interface SourceReferenceProps {
     source: Source;
+    /** Quando existe (e a fonte tem documentId), mostra "Ver no documento". */
+    onVerNoDocumento?: (source: Source) => void;
 }
 
-const SourceReference = ({ source }: SourceReferenceProps) => {
+const SourceReference = ({ source, onVerNoDocumento }: SourceReferenceProps) => {
     const { t } = useI18n();
+    const podeIr = Boolean(onVerNoDocumento && source.documentId);
 
     return (
         <details className="group rounded-2xl border border-border/60 bg-background/70 transition-colors open:bg-muted/40">
@@ -29,6 +34,23 @@ const SourceReference = ({ source }: SourceReferenceProps) => {
                     </p>
                 </div>
 
+                {podeIr ? (
+                    <button
+                        type="button"
+                        data-testid="ver-no-documento"
+                        title={t("workspace.chat.viewInDocument")}
+                        aria-label={t("workspace.chat.viewInDocument")}
+                        className="shrink-0 rounded-md border border-border/60 p-1 text-primary hover:bg-primary/10"
+                        onClick={(event) => {
+                            // Dentro do <summary>: sem isto o clique abre/fecha o card.
+                            event.preventDefault();
+                            event.stopPropagation();
+                            onVerNoDocumento?.(source);
+                        }}
+                    >
+                        <Crosshair className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                ) : null}
                 <ChevronDown
                     aria-hidden="true"
                     className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"

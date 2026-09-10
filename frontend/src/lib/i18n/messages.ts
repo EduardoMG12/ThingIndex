@@ -10,6 +10,22 @@ type LocaleMessages = Record<AppLocale, TranslationTree>;
 export const messages: LocaleMessages = {
     "pt-BR": {
         workspace: {
+            chat: {
+                viewInDocument: "Ver no documento",
+                toggle: "Painel",
+                tab: "Chat",
+            },
+            documents: {
+                tab: "Documentos",
+                focus: "Focar no canvas",
+                reindex: "Reindexar",
+                delete: "Apagar",
+                upload: "Enviar documento",
+                empty: "Nenhum documento nesta coleção.",
+                count: "{count} documento(s)",
+                actionError: "A ação falhou.",
+                uploadTitle: "Enviar documento para {collection}",
+            },
             title: "Área de trabalho",
             description: "Explore os documentos da coleção e as conexões entre seus trechos.",
             collectionLabel: "Coleção",
@@ -407,7 +423,7 @@ export const messages: LocaleMessages = {
             nav: {
                 dashboard: "Dashboard",
                 chat: "Chat",
-                documents: "Documentos",
+                documents: "Operações",
                 workspace: "Área de trabalho",
                 futureFeature: "Feature futura",
                 documentation: "Documentação",
@@ -824,9 +840,9 @@ export const messages: LocaleMessages = {
         },
         documentsPage: {
             hero: {
-                eyebrow: "Indice documental",
-                title: "Documentos",
-                description: "Visualize os arquivos separados por categoria e collection. Cada documento diferencia preview inline, download do original e estados operacionais como falha de indexacao ou arquivo orfao.",
+                eyebrow: "Triagem e auditoria",
+                title: "Operações",
+                description: "Runtime, monitoramento, anomalias e trilha de auditoria dos documentos indexados. A biblioteca e o upload vivem na Área de trabalho.",
             },
             workspace: {
                 title: "Workspace documental",
@@ -1332,6 +1348,22 @@ export const messages: LocaleMessages = {
     },
     en: {
         workspace: {
+            chat: {
+                viewInDocument: "View in document",
+                toggle: "Panel",
+                tab: "Chat",
+            },
+            documents: {
+                tab: "Documents",
+                focus: "Focus on canvas",
+                reindex: "Reindex",
+                delete: "Delete",
+                upload: "Upload document",
+                empty: "No documents in this collection.",
+                count: "{count} document(s)",
+                actionError: "The action failed.",
+                uploadTitle: "Upload document to {collection}",
+            },
             title: "Workspace",
             description: "Explore the collection's documents and the connections between their passages.",
             collectionLabel: "Collection",
@@ -1729,7 +1761,7 @@ export const messages: LocaleMessages = {
             nav: {
                 dashboard: "Dashboard",
                 chat: "Chat",
-                documents: "Documents",
+                documents: "Operations",
                 workspace: "Workspace",
                 futureFeature: "Future feature",
                 documentation: "Documentation",
@@ -2146,9 +2178,9 @@ export const messages: LocaleMessages = {
         },
         documentsPage: {
             hero: {
-                eyebrow: "Document index",
-                title: "Documents",
-                description: "Inspect files grouped by category and collection. Each document now separates inline preview, original download, and operational states such as indexing failures or orphaned files.",
+                eyebrow: "Triage and audit",
+                title: "Operations",
+                description: "Runtime, monitoring, anomalies and the audit trail of indexed documents. The library and upload live in the Workspace.",
             },
             workspace: {
                 title: "Document workspace",
@@ -2654,6 +2686,22 @@ export const messages: LocaleMessages = {
     },
     es: {
         workspace: {
+            chat: {
+                viewInDocument: "Ver en el documento",
+                toggle: "Panel",
+                tab: "Chat",
+            },
+            documents: {
+                tab: "Documentos",
+                focus: "Enfocar en el lienzo",
+                reindex: "Reindexar",
+                delete: "Eliminar",
+                upload: "Subir documento",
+                empty: "No hay documentos en esta colección.",
+                count: "{count} documento(s)",
+                actionError: "La acción falló.",
+                uploadTitle: "Subir documento a {collection}",
+            },
             title: "Área de trabajo",
             description: "Explora los documentos de la colección y las conexiones entre sus fragmentos.",
             collectionLabel: "Colección",
@@ -3051,7 +3099,7 @@ export const messages: LocaleMessages = {
             nav: {
                 dashboard: "Dashboard",
                 chat: "Chat",
-                documents: "Documentos",
+                documents: "Operaciones",
                 workspace: "Área de trabajo",
                 futureFeature: "Feature futura",
                 documentation: "Documentación",
@@ -3468,9 +3516,9 @@ export const messages: LocaleMessages = {
         },
         documentsPage: {
             hero: {
-                eyebrow: "Índice documental",
-                title: "Documentos",
-                description: "Visualiza los archivos separados por categoría y collection. Cada documento ahora diferencia preview inline, descarga del original y estados operativos como fallas de indexación o archivos huérfanos.",
+                eyebrow: "Triaje y auditoría",
+                title: "Operaciones",
+                description: "Runtime, monitoreo, anomalías y traza de auditoría de los documentos indexados. La biblioteca y la subida viven en el Área de trabajo.",
             },
             workspace: {
                 title: "Workspace documental",

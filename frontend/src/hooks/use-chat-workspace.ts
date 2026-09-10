@@ -75,6 +75,8 @@ function normalizeSources(sources: ChatSource[]): Source[] {
         docName: source.docName,
         page: source.page,
         snippet: source.snippet,
+        documentId: source.documentId,
+        nodeId: source.nodeId,
     }));
 }
 
@@ -107,7 +109,12 @@ function createDraftMessage(role: "user" | "assistant", content = ""): ChatWorks
     };
 }
 
-export function useChatWorkspace() {
+/**
+ * `collectionId` controlado: quem embute o chat (a Area de trabalho) escolhe a
+ * colecao; o seletor proprio e a hidratacao por `?collection` ficam para a
+ * pagina /chat, que nao passa nada.
+ */
+export function useChatWorkspace(opcoes: { collectionId?: number | null } = {}) {
     const { t } = useI18n();
     const router = useRouter();
     const pathname = usePathname();
@@ -123,7 +130,13 @@ export function useChatWorkspace() {
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [activeSubQueries, setActiveSubQueries] = useState<SubQuery[]>([]);
-    const [selectedCollectionId, setSelectedCollectionId] = useState<number | null>(null);
+    const [selectedCollectionId, setSelectedCollectionId] = useState<number | null>(opcoes.collectionId ?? null);
+    const collectionIdControlado = opcoes.collectionId ?? null;
+    useEffect(() => {
+        if (collectionIdControlado !== null) {
+            setSelectedCollectionId(collectionIdControlado);
+        }
+    }, [collectionIdControlado]);
     const [conversations, setConversations] = useState<ChatConversationSummary[]>([]);
     const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
     const [isConversationsLoading, setIsConversationsLoading] = useState(false);
@@ -748,11 +761,14 @@ export function useChatWorkspace() {
             return;
         }
 
-        const params = new URLSearchParams();
+        // Preserva o que nao e nosso (a Area de trabalho usa ?doc=).
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete("collection");
+        params.delete("conversation");
+        params.delete("new");
         if (selectedCollectionId) {
             params.set("collection", String(selectedCollectionId));
         }
-
         if (activeConversationId) {
             params.set("conversation", String(activeConversationId));
         }
