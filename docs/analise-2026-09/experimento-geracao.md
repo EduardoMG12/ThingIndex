@@ -221,7 +221,16 @@ Primeira tentativa de seção: com o texto da página inteira como contexto e o 
 
 Efeito na resposta, mesmo gabarito v4, 1 repetição, arquivo `generation-results-T-enriquecido.csv`: **98,6%** (IC 95,8–100), proveniência 97,0%, prosa 30/30, tabela 21/21, calendário 15/16 (c14, o mesmo "18 e 19" de sempre), negativas 5/5; 4.191 tokens de prompt por pergunta (antes 4.271). Idêntico à seção 11: o resumo de página entra no BM25 da página e não moveu nenhuma página-alvo para dentro ou para fora das fontes. O ganho é de leitura (sidebar e página com resumo real), não de recuperação, e fica registrado assim.
 
-## 13. Próximos passos
+## 13. Ordem das fontes (2026-09-10): cobertura no BM25 medida e descartada; ordem por termos casados
+
+Na pergunta "jornada máxima do estágio para o ensino superior (Lei 11.788)", a página da Lei com 5 termos da pergunta aparecia em 4º, atrás de três seções com 2 termos genéricos ("ensino, superior"). Duas tentativas:
+
+1. **Multiplicar o BM25 de página e seção pela cobertura** (termos distintos da pergunta no texto). Medido no gabarito, 1 repetição, arquivo `T-cobertura-mult.csv` (só no scratchpad): página-alvo nas fontes 65 → 64 (perdeu t18: as páginas 54 e 60 do PPC saíram, entraram páginas do PPC do Técnico), nenhum ganho; a ordem da pergunta da Lei não mudou, porque a causa era outra. **Descartada.**
+2. **Causa real:** `buildChatSources` montava a ordem fixa "linhas de tabela, seções, páginas", e as três primeiras fontes eram linhas da Matriz e dos calendários com 2 termos genéricos. Agora uma linha só fica na frente quando casa pelo menos metade dos termos da pergunta (pergunta de tabela: "pré-requisito de Estrutura de Dados I" casa quase tudo na linha); as demais entram na ordenação comum com seções e páginas, por termos casados, estável. O conjunto de fontes é o mesmo (recuperação não muda); muda a ordem no card e no prompt. Na pergunta da Lei, a página 4 da Lei (8 termos) passou para 1º.
+
+O efeito da ordem no acerto **não foi medido**: as duas contas do Ollama Cloud atingiram o limite mensal no meio da rodada (13 perguntas sem resposta, 59 respondidas: 57 certas, c12 e c14 erradas). Fica para a próxima cota. O harness passou a tolerar queda da API (recompilação do `air` durante a rodada): repete a chamada por até 60 segundos em vez de marcar erro.
+
+## 14. Próximos passos
 
 1. Rodar F/documento em um segundo modelo pago (só há Ollama Cloud).
 2. Versão 2 do gabarito: corrigir t04, c08 e t06, registrar `reviewed_by` com o revisor externo, recongelar o hash.
