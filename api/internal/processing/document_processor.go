@@ -21,6 +21,14 @@ type DocumentProcessor struct {
 	indexer         domain.DocumentIndexer
 	llmResolver     domain.UserLLMResolver
 	enricher        *indexing.LLMEnricher
+	// preferences (opcional): o que a LLM gera para os documentos do usuario.
+	preferences domain.IndexingPreferencesRepository
+}
+
+// WithIndexingPreferences liga o leitor de preferencias; sem ele, tudo ligado.
+func (p *DocumentProcessor) WithIndexingPreferences(repo domain.IndexingPreferencesRepository) *DocumentProcessor {
+	p.preferences = repo
+	return p
 }
 
 func NewDocumentProcessor(
@@ -152,7 +160,15 @@ func (p *DocumentProcessor) Process(ctx context.Context, event domain.DocumentIn
 			enrichmentStatus = "configured"
 			observedLLM = newObservedLLMService(llmClient)
 			updateState(domain.DocumentStatusProcessing, "ENRICHING_INDEX", "Executando construcao de arvore, resumos e sinais de retrieval com LLM.", "", nil)
-			if enrichedResult, enrichErr := p.enricher.Enrich(ctx, observedLLM, doc, result); enrichErr == nil {
+			prefs := domain.DefaultIndexingPreferences()
+			if p.preferences != nil {
+				if got, prefErr := p.preferences.GetIndexingPreferences(ctx, doc.UserID); prefErr == nil {
+					prefs = got
+				} else {
+					log.Printf("indexing preferences for user %d unavailable, using defaults: %v", doc.UserID, prefErr)
+				}
+			}
+			if enrichedResult, enrichErr := p.enricher.EnrichWith(ctx, observedLLM, doc, result, prefs); enrichErr == nil {
 				result = enrichedResult
 				enrichmentStatus = "applied"
 			} else {

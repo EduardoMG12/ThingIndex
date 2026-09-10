@@ -237,3 +237,105 @@ func TestEnriquecimentoResumeTodasAsPaginasESecoesEmLotes(t *testing.T) {
 		t.Fatalf("chamadas = %d, esperava poucas (sinopse, sinais, arvore e 6 lotes)", calls)
 	}
 }
+
+// stubCache guarda resumos em memoria: prova que a segunda indexacao do
+// mesmo texto nao chama a LLM para paginas nem secoes.
+type stubCache struct {
+	entries map[string]domain.EnrichmentCacheEntry
+}
+
+func (c *stubCache) LookupEnrichment(_ context.Context, kind, model string, hashes []string) (map[string]domain.EnrichmentCacheEntry, error) {
+	out := map[string]domain.EnrichmentCacheEntry{}
+	for _, h := range hashes {
+		if e, ok := c.entries[kind+"|"+model+"|"+h]; ok {
+			out[h] = e
+		}
+	}
+	return out, nil
+}
+
+func (c *stubCache) StoreEnrichment(_ context.Context, entries []domain.EnrichmentCacheEntry) error {
+	for _, e := range entries {
+		c.entries[e.Kind+"|"+e.Model+"|"+e.ContentHash] = e
+	}
+	return nil
+}
+
+func lotesDeTeste() ([]models.DocumentPage, []models.DocumentOutlineNode) {
+	var pages []models.DocumentPage
+	var nodes []models.DocumentOutlineNode
+	for i := 1; i <= 12; i++ {
+		pages = append(pages, models.DocumentPage{DocumentID: 1, PageNumber: i, Content: strings.Repeat("Texto da pagina "+strconv.Itoa(i)+" com prazos, nomes e regras suficientes para resumir. ", 4)})
+	}
+	for i := 0; i < 6; i++ {
+		start := i + 1
+		nodes = append(nodes, models.DocumentOutlineNode{DocumentID: 1, SequenceOrder: i, NodeID: "n" + strconv.Itoa(i), Level: 1, Title: "Secao " + strconv.Itoa(i), StartPage: &start, EndPage: &start})
+	}
+	return pages, nodes
+}
+
+func TestCacheEvitaChamadasNaSegundaIndexacao(t *testing.T) {
+	t.Parallel()
+	cache := &stubCache{entries: map[string]domain.EnrichmentCacheEntry{}}
+	enricher := NewLLMEnricher().WithCache(cache)
+	pages, nodes := lotesDeTeste()
+	primeira := 0
+	r1, err := enricher.Enrich(context.Background(), stubBatchLLM{calls: &primeira}, &models.Document{ID: 1, Title: "ppc.pdf"}, domain.IndexingResult{DocumentPages: pages, OutlineNodes: nodes})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := lastMetadataValue(r1.MetadataPairs, "enrichment_cache_hits_pages"); got != "0" {
+		t.Fatalf("primeira indexacao nao devia ter acerto de cache: %s", got)
+	}
+	segunda := 0
+	pages2, nodes2 := lotesDeTeste()
+	r2, err := enricher.Enrich(context.Background(), stubBatchLLM{calls: &segunda}, &models.Document{ID: 1, Title: "ppc.pdf"}, domain.IndexingResult{DocumentPages: pages2, OutlineNodes: nodes2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := lastMetadataValue(r2.MetadataPairs, "enrichment_cache_hits_pages"); got != "12" {
+		t.Fatalf("paginas do cache = %s, esperava 12", got)
+	}
+	// A arvore cai no fallback por pagina (stub sem arvore): as secoes sao
+	// as que sobraram, todas do cache na segunda vez.
+	if got := lastMetadataValue(r2.MetadataPairs, "enrichment_cache_hits_sections"); got != strconv.Itoa(len(r2.OutlineNodes)) {
+		t.Fatalf("secoes do cache = %s, esperava %d", got, len(r2.OutlineNodes))
+	}
+	// 12 paginas = 2 lotes, ate 12 secoes = 1 lote: a segunda vez poupa 3 chamadas.
+	if segunda != primeira-3 {
+		t.Fatalf("segunda indexacao fez %d chamadas, primeira %d; esperava 3 a menos", segunda, primeira)
+	}
+	for _, page := range r2.DocumentPages {
+		if !strings.HasPrefix(page.Summary, "Resumo da pagina") || page.Metadata["topics"] != "prazo, matricula" {
+			t.Fatalf("pagina %d sem resumo/topicos vindos do cache: %q %v", page.PageNumber, page.Summary, page.Metadata)
+		}
+	}
+}
+
+func TestEscopoDesligadoNaoChamaALLM(t *testing.T) {
+	t.Parallel()
+	pages, nodes := lotesDeTeste()
+	calls := 0
+	prefs := domain.IndexingPreferences{DocumentSynopsis: false, PageSummaries: false, SectionSummaries: true}
+	r, err := NewLLMEnricher().EnrichWith(context.Background(), stubBatchLLM{calls: &calls}, &models.Document{ID: 1, Title: "ppc.pdf"}, domain.IndexingResult{DocumentPages: pages, OutlineNodes: nodes}, prefs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := lastMetadataValue(r.MetadataPairs, "enrichment_scope"); got != "sections" {
+		t.Fatalf("escopo = %q", got)
+	}
+	if got := lastMetadataValue(r.MetadataPairs, "synopsis_source"); got != "disabled" {
+		t.Fatalf("sinopse devia estar desligada: %q", got)
+	}
+	if calls != 1 {
+		t.Fatalf("so o lote de secoes devia chamar a LLM: %d chamadas", calls)
+	}
+	if got := lastMetadataValue(r.MetadataPairs, "enrichment_pages_summarized"); got != "0" {
+		t.Fatalf("paginas resumidas = %s, esperava 0", got)
+	}
+	for _, page := range r.DocumentPages {
+		if strings.HasPrefix(page.Summary, "Resumo da pagina") {
+			t.Fatalf("pagina %d resumida com escopo desligado", page.PageNumber)
+		}
+	}
+}

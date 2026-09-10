@@ -46,5 +46,7 @@ func ManagedModels() []any {
 		&models.ModelPriceHistory{},
 		&models.ChatConversation{},
 		&models.ChatConversationEntry{},
+		&models.UserIndexingPreferences{},
+		&models.EnrichmentCacheEntry{},
 	}
 }

@@ -6,7 +6,7 @@
 //
 // Importavel em https://dbdiagram.io para visualizacao interativa.
 //
-// Total: 23 tabelas.
+// Total: 25 tabelas.
 
 Table users {
   id serial [pk, increment]
@@ -510,6 +510,34 @@ Table chat_conversation_entries {
   indexes {
     conversation_id [name: "idx_chat_conversation_entries_conversation_id"]
     deleted_at [name: "idx_chat_conversation_entries_deleted_at"]
+  }
+}
+
+Table user_indexing_preferences {
+  id serial [pk, increment]
+  user_id integer [not null]
+  document_synopsis boolean [not null]
+  page_summaries boolean [not null]
+  section_summaries boolean [not null]
+  created_at timestamptz
+  updated_at timestamptz
+
+  indexes {
+    user_id [name: "idx_user_indexing_preferences_user_id", unique]
+  }
+}
+
+Table enrichment_cache_entries {
+  id serial [pk, increment]
+  kind varchar(16) [not null]
+  model varchar(128) [not null]
+  content_hash varchar(64) [not null]
+  summary text [not null]
+  topics text
+  created_at timestamptz
+
+  indexes {
+    (kind, model, content_hash) [name: "idx_enrichment_cache", unique]
   }
 }
 

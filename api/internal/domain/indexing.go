@@ -103,3 +103,36 @@ type DocumentReader interface {
 type DocumentIndexer interface {
 	Index(ctx context.Context, doc *models.Document, file io.Reader) (IndexingResult, error)
 }
+
+// IndexingPreferences diz o que o enriquecimento por LLM gera para os
+// documentos de um usuario. Tudo ligado por padrao; o que esta desligado cai
+// no fallback deterministico e fica registrado em enrichment_scope.
+type IndexingPreferences struct {
+	DocumentSynopsis bool `json:"document_synopsis"`
+	PageSummaries    bool `json:"page_summaries"`
+	SectionSummaries bool `json:"section_summaries"`
+}
+
+func DefaultIndexingPreferences() IndexingPreferences {
+	return IndexingPreferences{DocumentSynopsis: true, PageSummaries: true, SectionSummaries: true}
+}
+
+type IndexingPreferencesRepository interface {
+	GetIndexingPreferences(ctx context.Context, userID uint) (IndexingPreferences, error)
+	SaveIndexingPreferences(ctx context.Context, userID uint, prefs IndexingPreferences) error
+}
+
+// EnrichmentCacheEntry e um resumo (e topicos) de pagina ou secao guardado
+// por hash do texto: reindexar o mesmo texto nao paga a LLM de novo.
+type EnrichmentCacheEntry struct {
+	Kind        string // "page" | "section"
+	Model       string
+	ContentHash string
+	Summary     string
+	Topics      string // separados por virgula
+}
+
+type EnrichmentCache interface {
+	LookupEnrichment(ctx context.Context, kind, model string, hashes []string) (map[string]EnrichmentCacheEntry, error)
+	StoreEnrichment(ctx context.Context, entries []EnrichmentCacheEntry) error
+}
