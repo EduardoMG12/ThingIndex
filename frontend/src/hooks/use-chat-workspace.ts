@@ -83,6 +83,7 @@ function normalizeSources(sources: ChatSource[]): Source[] {
         box: source.box,
         lineBoxes: source.lineBoxes,
         indexedAt: source.indexedAt,
+        continuesOnPage: source.continuesOnPage,
     }));
 }
 

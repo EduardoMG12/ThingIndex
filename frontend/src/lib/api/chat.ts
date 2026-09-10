@@ -64,6 +64,8 @@ export type ChatSource = {
     lineBoxes?: number[][];
     /** Data do indice do documento quando a resposta foi dada. */
     indexedAt?: string;
+    /** Pagina seguinte, quando a frase da fonte quebra na virada. */
+    continuesOnPage?: number;
 };
 
 export type SourceBox = { xMin: number; yMin: number; xMax: number; yMax: number; pageWidth: number; pageHeight: number };
@@ -457,6 +459,8 @@ function normalizeSource(value: unknown): ChatSource | null {
         ? rawLineBoxes.filter((b): b is number[] => Array.isArray(b) && b.length === 4 && b.every((n) => typeof n === "number" && Number.isFinite(n)))
         : [];
     const indexedAt = record.indexed_at ?? record.indexedAt;
+    const rawContinues = Number(record.continues_on_page ?? record.continuesOnPage);
+    const continuesOnPage = Number.isFinite(rawContinues) && rawContinues > 0 ? rawContinues : undefined;
 
     if (!id || !docName || !Number.isFinite(page)) {
         return null;
@@ -475,6 +479,7 @@ function normalizeSource(value: unknown): ChatSource | null {
         ...(box ? { box } : {}),
         ...(lineBoxes.length > 0 ? { lineBoxes } : {}),
         ...(typeof indexedAt === "string" ? { indexedAt } : {}),
+        ...(continuesOnPage ? { continuesOnPage } : {}),
     };
 }
 
