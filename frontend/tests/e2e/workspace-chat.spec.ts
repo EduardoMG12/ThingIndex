@@ -171,6 +171,8 @@ test("perguntar no painel e clicar em 'Ver no documento' leva o Edital a pagina 
     await expect(edital.locator('[data-paragrafo="402"]')).toHaveAttribute("aria-pressed", "true");
     await expect(edital.getByTestId("grifo-linha")).toHaveCount(1);
     await expect(edital.getByTestId("grifo-linha")).toHaveAttribute("title", "linha dois");
+    // Foco: o canvas aproxima e acende o holofote sobre o trecho citado.
+    await expect(page.getByTestId("holofote")).toBeVisible();
 });
 
 test("?collection= escolhe a colecao e o botao esconde o painel", async ({ baseURL, context, page }) => {

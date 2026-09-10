@@ -1,7 +1,7 @@
 "use client";
 
 import { useI18n } from "@/lib/i18n/provider";
-import { caminhoDaLinha, espessuraPorScore, type Linha } from "@/lib/workspace/connections";
+import { caminhoDaLinha, corPorTipo, espessuraPorScore, type Linha } from "@/lib/workspace/connections";
 
 /**
  * Linhas de conexao em SVG, em coordenadas do mundo (o <svg> vive dentro do
@@ -39,7 +39,10 @@ export function ConnectionLayer({ linhas, realcada, onRealcar, onEscolher }: Con
                 // Aresta "mesma norma" diz isso no rotulo: os dois trechos citam a mesma lei ou resolucao.
                 const contagem = linha.tipo === "mesma-norma"
                     ? t("workspace.sidebar.sameNorm")
-                    : linha.score === 1 ? t("workspace.sidebar.term") : t("workspace.sidebar.terms", { count: linha.score });
+                    : linha.tipo === "mesma-disciplina"
+                      ? t("workspace.sidebar.sameDiscipline")
+                      : linha.score === 1 ? t("workspace.sidebar.term") : t("workspace.sidebar.terms", { count: linha.score });
+                const cor = corPorTipo(linha.tipo);
                 const rotulo = realcada === linha.id && linha.termos.length > 0 ? linha.termos.join(", ") : contagem;
                 const larguraDoRotulo = Math.min(rotulo.length * 6.4 + 12, 320);
                 const ancora = { x: linha.para.x + 8, y: linha.para.y - 22 };
@@ -49,6 +52,7 @@ export function ConnectionLayer({ linhas, realcada, onRealcar, onEscolher }: Con
                         className="pointer-events-auto cursor-pointer"
                         data-testid="linha-de-conexao"
                         data-score={linha.score}
+                        data-tipo={linha.tipo}
                         opacity={ativa ? 1 : 0.25}
                         onMouseEnter={() => onRealcar(linha.id)}
                         onMouseLeave={() => onRealcar(null)}
@@ -60,12 +64,12 @@ export function ConnectionLayer({ linhas, realcada, onRealcar, onEscolher }: Con
                         <path
                             d={caminhoDaLinha(linha.de, linha.para)}
                             fill="none"
-                            stroke="hsl(var(--primary))"
+                            stroke={cor}
                             strokeWidth={espessuraPorScore(linha.score)}
                             strokeDasharray={linha.aproximada ? "6 4" : undefined}
                             strokeLinecap="round"
                         />
-                        <circle cx={linha.para.x} cy={linha.para.y} r={3} fill="hsl(var(--primary))" />
+                        <circle cx={linha.para.x} cy={linha.para.y} r={3} fill={cor} />
                         <rect
                             x={ancora.x}
                             y={ancora.y}
@@ -73,14 +77,14 @@ export function ConnectionLayer({ linhas, realcada, onRealcar, onEscolher }: Con
                             height={18}
                             rx={4}
                             fill="hsl(var(--card))"
-                            stroke="hsl(var(--primary))"
+                            stroke={cor}
                             strokeWidth={realcada === linha.id ? 1.5 : 1}
                         />
                         <text
                             x={ancora.x + 6}
                             y={ancora.y + 13}
                             fontSize={11}
-                            fill="hsl(var(--primary))"
+                            fill={cor}
                             data-testid="rotulo-da-linha"
                         >
                             {rotulo}
