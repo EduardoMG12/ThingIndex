@@ -127,6 +127,9 @@ func BuildNodeConnections(
 		kind := NodeConnectionKindRareTerm
 		if len(sameNorm) > 0 {
 			kind = NodeConnectionKindSameNorm
+			if strings.HasPrefix(sameNorm[0], "disciplina ") {
+				kind = NodeConnectionKindSameDiscipline
+			}
 		}
 		sort.Strings(matched)
 		connections = append(connections, domain.NodeConnection{
@@ -161,8 +164,9 @@ func BuildNodeConnections(
 }
 
 const (
-	NodeConnectionKindRareTerm = "termo-raro"
-	NodeConnectionKindSameNorm = "mesma-norma"
+	NodeConnectionKindRareTerm       = "termo-raro"
+	NodeConnectionKindSameNorm       = "mesma-norma"
+	NodeConnectionKindSameDiscipline = "mesma-disciplina"
 	// NodeConnectionMaxDegree e o teto de arestas por no.
 	NodeConnectionMaxDegree = 20
 )
@@ -264,11 +268,26 @@ func titleCaseOnlyWords(text string) map[string]struct{} {
 // "Decreto 7.824/2012", "Portaria 18/2012", "Parecer CNE/CES 136/2012".
 var normCitationRE = regexp.MustCompile(`(?i)\b(lei|resolu[cç][aã]o|decreto|portaria|parecer|instru[cç][aã]o normativa)\b[^\d\n]{0,24}?(n[º°o.]?\s*)?(\d[\d.]*)(?:/(\d{2,4}))?`)
 
+// disciplineCodeRE reconhece codigos de componente curricular como
+// "SIS07302" ou "INF0123": sigla em maiusculas seguida do numero. Dois
+// trechos com o mesmo codigo falam da mesma disciplina (ementa, matriz,
+// pre-requisito), e isso e relacao por si so, como citar a mesma norma.
+var disciplineCodeRE = regexp.MustCompile(`\b[A-Z]{2,4}\d{4,6}\b`)
+
 // normCitations devolve as citacoes de norma do texto normalizadas para
-// "tipo numero/ano" (numero sem pontos), em ordem estavel e sem repeticao.
+// "tipo numero/ano" (numero sem pontos), em ordem estavel e sem repeticao,
+// mais os codigos de disciplina como "disciplina SIS07302".
 func normCitations(text string) []string {
 	seen := map[string]struct{}{}
 	var out []string
+	for _, code := range disciplineCodeRE.FindAllString(text, -1) {
+		citation := "disciplina " + code
+		if _, ok := seen[citation]; ok {
+			continue
+		}
+		seen[citation] = struct{}{}
+		out = append(out, citation)
+	}
 	for _, m := range normCitationRE.FindAllStringSubmatch(text, -1) {
 		kind := strings.ToLower(retrieval.FoldDiacritics(m[1]))
 		kind = strings.Join(strings.Fields(kind), " ")
