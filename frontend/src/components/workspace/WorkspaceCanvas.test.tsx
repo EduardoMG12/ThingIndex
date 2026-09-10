@@ -539,4 +539,37 @@ describe("WorkspaceCanvas: enriquecimento por LLM", () => {
             globalThis.ResizeObserver = original;
         }
     });
+
+    it("selecionar um paragrafo mostra 'Nesta pagina' com o resumo e os topicos da pagina", async () => {
+        const original = globalThis.ResizeObserver;
+        globalThis.ResizeObserver = class {
+            private cb: ResizeObserverCallback;
+            constructor(cb: ResizeObserverCallback) {
+                this.cb = cb;
+            }
+            observe() {
+                this.cb([{ contentRect: { width: 1400, height: 900 } } as ResizeObserverEntry], this as unknown as ResizeObserver);
+            }
+            unobserve() {}
+            disconnect() {}
+        } as unknown as typeof ResizeObserver;
+        const contextoComPaginas = {
+            ...contextoComPdf,
+            paragraphNodes: [{ id: 301, documentId: 3, sequenceOrder: 0, content: "Multa de 5 por cento.", pageNumber: 1, metadata: { box: BOX } }],
+            documentPages: [
+                { documentId: 3, pageNumber: 1, summary: "Define a multa de 5 por cento e o prazo de 30 dias.", topics: ["multa", "prazo"] },
+                { documentId: 3, pageNumber: 2, summary: "Outra pagina.", topics: [] },
+            ],
+        } as unknown as CollectionContext;
+        try {
+            render(<WorkspaceCanvas context={contextoComPaginas} />, opcoes);
+            fireEvent.click(await screen.findByTestId("grifo"));
+            const bloco = screen.getByTestId("sobre-a-pagina");
+            expect(bloco).toHaveTextContent("Nesta página (1)");
+            expect(bloco).toHaveTextContent("prazo de 30 dias");
+            expect(screen.getAllByTestId("topico-da-pagina").map((el) => el.textContent)).toEqual(["multa", "prazo"]);
+        } finally {
+            globalThis.ResizeObserver = original;
+        }
+    });
 });

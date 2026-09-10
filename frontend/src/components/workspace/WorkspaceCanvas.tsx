@@ -854,6 +854,21 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
         return resumo || topicos.length > 0 ? { resumo, topicos } : null;
     }, [context.metadataPairs, documentoFocado]);
 
+    // Resumo e topicos da pagina em foco: a do trecho selecionado ou, no modo
+    // "uma pagina", a pagina atual do quadro.
+    const paginaEmFoco = useMemo(() => {
+        if (documentoFocado === null) {
+            return null;
+        }
+        const apresentacao = apresentacoes[String(documentoFocado)];
+        const numero = paragrafoSelecionado && paragrafoSelecionado.no.documentId === documentoFocado ? paragrafoSelecionado.no.pageNumber : apresentacao?.modo === "pagina" ? apresentacao.paginaAtual : null;
+        if (!numero) {
+            return null;
+        }
+        const pagina = (context.documentPages ?? []).find((p) => p.documentId === documentoFocado && p.pageNumber === numero);
+        return pagina ?? null;
+    }, [context.documentPages, documentoFocado, paragrafoSelecionado, apresentacoes]);
+
     const estadoAtual = useMemo<WorkspaceViewState>(
         () => ({
             viewport,
@@ -1333,6 +1348,24 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                                                     </button>
                                                 </li>
                                             ))}
+                                    </ul>
+                                ) : null}
+                            </div>
+                        ) : null}
+
+                        {paginaEmFoco ? (
+                            <div className="rounded-md border border-border p-3 text-xs" data-testid="sobre-a-pagina">
+                                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                                    {t("workspace.sidebar.thisPage", { page: paginaEmFoco.pageNumber })}
+                                </p>
+                                {paginaEmFoco.summary ? <p className="leading-snug text-foreground/90">{paginaEmFoco.summary}</p> : null}
+                                {paginaEmFoco.topics.length > 0 ? (
+                                    <ul className="mt-2 flex flex-wrap gap-1" aria-label={t("workspace.sidebar.topics")}>
+                                        {paginaEmFoco.topics.map((topico) => (
+                                            <li key={topico} className="rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] text-foreground/80" data-testid="topico-da-pagina">
+                                                {topico}
+                                            </li>
+                                        ))}
                                     </ul>
                                 ) : null}
                             </div>

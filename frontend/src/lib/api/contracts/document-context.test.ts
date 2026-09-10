@@ -42,3 +42,15 @@ describe("tabela com pagina", () => {
         expect(tabelas.map((t) => t.pageNumber)).toEqual([1, null]);
     });
 });
+
+describe("normalizeDocumentPages", () => {
+    it("guarda so numero, resumo e topicos; pagina sem nada fica de fora", async () => {
+        const { normalizeDocumentPages } = await import("@/lib/api/contracts/document-context");
+        const pages = normalizeDocumentPages([
+            { document_id: 3, page_number: 1, content: "texto longo", summary: " Resumo. ", metadata: { topics: "multa, prazo, , x" } },
+            { document_id: 3, page_number: 2, content: "sem resumo", metadata: {} },
+            { document_id: "x", page_number: 3, summary: "invalida" },
+        ]);
+        expect(pages).toEqual([{ documentId: 3, pageNumber: 1, summary: "Resumo.", topics: ["multa", "prazo", "x"] }]);
+    });
+});
