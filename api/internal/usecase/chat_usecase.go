@@ -234,14 +234,15 @@ func (u *chatUseCase) StreamCollectionChat(
 		persistedSources := make([]models.ChatSourceReference, 0, len(sources))
 		for _, source := range sources {
 			persistedSources = append(persistedSources, models.ChatSourceReference{
-				ID:          source.ID,
-				DocName:     source.DocName,
-				Page:        source.Page,
-				Snippet:     source.Snippet,
-				DocumentID:  source.DocumentID,
-				NodeID:      source.NodeID,
-				ParagraphID: source.ParagraphID,
-				Lines:       source.Lines,
+				ID:           source.ID,
+				DocName:      source.DocName,
+				Page:         source.Page,
+				Snippet:      source.Snippet,
+				DocumentID:   source.DocumentID,
+				NodeID:       source.NodeID,
+				ParagraphID:  source.ParagraphID,
+				Lines:        source.Lines,
+				MatchedTerms: source.MatchedTerms,
 			})
 		}
 
@@ -413,6 +414,21 @@ func buildChatSources(
 	// grifa ao clicar na fonte. Zero termos em comum: nenhum, e o clique cai
 	// na pagina.
 	significant := significantQueryTokens(retrieval.Query)
+	// Fonte de secao ou de pagina precisa de uma fracao dos termos da
+	// pergunta para entrar: sem isso a lista trazia "5.1.5 Acessibilidade"
+	// para uma pergunta sobre estagio, por um termo solto. Linha de tabela ja
+	// exige 2 termos no retrieval.
+	minCoverage := chatSourceMinCoverage(len(significant))
+	matched := func(text string) []string {
+		tokens := tokenSet(text)
+		out := make([]string, 0, len(significant))
+		for _, term := range significant {
+			if _, ok := tokens[term]; ok {
+				out = append(out, term)
+			}
+		}
+		return out
+	}
 	paragraphsByPage := make(map[string][]models.ParagraphNode)
 	for _, paragraph := range collectionContext.ParagraphNodes {
 		if paragraph.PageNumber == nil {
@@ -420,6 +436,18 @@ func buildChatSources(
 		}
 		key := fmt.Sprintf("%d:%d", paragraph.DocumentID, *paragraph.PageNumber)
 		paragraphsByPage[key] = append(paragraphsByPage[key], paragraph)
+	}
+	// Texto da pagina para contar termos: o conteudo da pagina, ou os
+	// paragrafos dela quando o contexto veio sem paginas.
+	pageText := func(key string) string {
+		if content := pageLookup[key].Content; content != "" {
+			return content
+		}
+		parts := make([]string, 0)
+		for _, paragraph := range paragraphsByPage[key] {
+			parts = append(parts, paragraph.Content)
+		}
+		return strings.Join(parts, " ")
 	}
 	// bestParagraph devolve o paragrafo com mais termos da pergunta, as linhas
 	// dele que os contem (grifo fino) e o texto dessas linhas (trecho).
@@ -459,12 +487,13 @@ func buildChatSources(
 			body = title + " | " + body
 		}
 		sources = append(sources, domain.ChatSource{
-			ID:         id,
-			DocName:    documentTitles[hit.DocumentID],
-			Page:       hit.PageNumber,
-			Snippet:    clampRetrievalSnippet(body, 220),
-			DocumentID: hit.DocumentID,
-			Body:       body,
+			ID:           id,
+			DocName:      documentTitles[hit.DocumentID],
+			Page:         hit.PageNumber,
+			Snippet:      clampRetrievalSnippet(body, 220),
+			DocumentID:   hit.DocumentID,
+			Body:         body,
+			MatchedTerms: matched(body),
 		})
 		seen[id] = struct{}{}
 		rowSources++
@@ -493,16 +522,21 @@ func buildChatSources(
 		if lineText != "" {
 			snippet = lineText
 		}
+		terms := matched(hit.Title + " " + hit.Summary + " " + pageText(key))
+		if len(terms) < minCoverage {
+			continue
+		}
 
 		sources = append(sources, domain.ChatSource{
-			ID:          fmt.Sprintf("%s:%s", key, hit.NodeID),
-			DocName:     documentTitles[hit.DocumentID],
-			Page:        pageNumber,
-			Snippet:     clampRetrievalSnippet(snippet, 220),
-			DocumentID:  hit.DocumentID,
-			NodeID:      hit.NodeID,
-			ParagraphID: paragraphID,
-			Lines:       lines,
+			ID:           fmt.Sprintf("%s:%s", key, hit.NodeID),
+			DocName:      documentTitles[hit.DocumentID],
+			Page:         pageNumber,
+			Snippet:      clampRetrievalSnippet(snippet, 220),
+			DocumentID:   hit.DocumentID,
+			NodeID:       hit.NodeID,
+			ParagraphID:  paragraphID,
+			Lines:        lines,
+			MatchedTerms: terms,
 		})
 		seen[key] = struct{}{}
 	}
@@ -529,19 +563,36 @@ func buildChatSources(
 		if lineText != "" {
 			snippet = lineText
 		}
+		terms := matched(pageText(key))
+		if len(terms) < minCoverage {
+			continue
+		}
 		sources = append(sources, domain.ChatSource{
-			ID:          key,
-			DocName:     documentTitles[hit.DocumentID],
-			Page:        hit.PageNumber,
-			Snippet:     clampRetrievalSnippet(snippet, 220),
-			DocumentID:  hit.DocumentID,
-			ParagraphID: paragraphID,
-			Lines:       lines,
+			ID:           key,
+			DocName:      documentTitles[hit.DocumentID],
+			Page:         hit.PageNumber,
+			Snippet:      clampRetrievalSnippet(snippet, 220),
+			DocumentID:   hit.DocumentID,
+			ParagraphID:  paragraphID,
+			Lines:        lines,
+			MatchedTerms: terms,
 		})
 		seen[key] = struct{}{}
 	}
 
 	return sources
+}
+
+// chatSourceMinCoverage e quantos termos significativos da pergunta uma
+// fonte de secao ou pagina precisa conter: 2 (pergunta de um termo exige
+// esse um). Foi 40% dos termos e perdeu 3 paginas-alvo no gabarito (t18, t20,
+// p21): pergunta longa tem muito termo acessorio, e a pagina certa casa so
+// os dois que importam.
+func chatSourceMinCoverage(significant int) int {
+	if significant <= 1 {
+		return significant
+	}
+	return 2
 }
 
 // matchingLines le metadata.lines do paragrafo ([{t, b}]) e devolve os indices

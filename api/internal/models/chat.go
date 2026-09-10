@@ -7,14 +7,15 @@ import (
 )
 
 type ChatSourceReference struct {
-	ID          string `json:"id"`
-	DocName     string `json:"doc_name"`
-	Page        int    `json:"page"`
-	Snippet     string `json:"snippet"`
-	DocumentID  uint   `json:"document_id,omitempty"`
-	NodeID      string `json:"node_id,omitempty"`
-	ParagraphID uint   `json:"paragraph_id,omitempty"`
-	Lines       []int  `json:"lines,omitempty"`
+	ID           string   `json:"id"`
+	DocName      string   `json:"doc_name"`
+	Page         int      `json:"page"`
+	Snippet      string   `json:"snippet"`
+	DocumentID   uint     `json:"document_id,omitempty"`
+	NodeID       string   `json:"node_id,omitempty"`
+	ParagraphID  uint     `json:"paragraph_id,omitempty"`
+	Lines        []int    `json:"lines,omitempty"`
+	MatchedTerms []string `json:"matched_terms,omitempty"`
 }
 
 type ChatConversation struct {

@@ -79,6 +79,7 @@ function normalizeSources(sources: ChatSource[]): Source[] {
         nodeId: source.nodeId,
         paragraphId: source.paragraphId,
         lines: source.lines,
+        matchedTerms: source.matchedTerms,
     }));
 }
 

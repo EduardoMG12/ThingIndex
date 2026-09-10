@@ -57,6 +57,8 @@ export type ChatSource = {
     paragraphId?: number;
     /** Indices das linhas do paragrafo que casam a pergunta (grifo fino). */
     lines?: number[];
+    /** Termos da pergunta presentes na fonte: por que ela esta aqui. */
+    matchedTerms?: string[];
 };
 
 export type ChatStreamEvent =
@@ -440,6 +442,8 @@ function normalizeSource(value: unknown): ChatSource | null {
     const nodeId = typeof record.node_id === "string" ? record.node_id : typeof record.nodeId === "string" ? record.nodeId : "";
     const paragraphId = Number(record.paragraph_id ?? record.paragraphId);
     const lines = Array.isArray(record.lines) ? record.lines.filter((n): n is number => typeof n === "number" && Number.isInteger(n) && n >= 0) : [];
+    const rawTerms = record.matched_terms ?? record.matchedTerms;
+    const matchedTerms = Array.isArray(rawTerms) ? rawTerms.filter((t): t is string => typeof t === "string" && t.length > 0) : [];
 
     if (!id || !docName || !Number.isFinite(page)) {
         return null;
@@ -454,6 +458,7 @@ function normalizeSource(value: unknown): ChatSource | null {
         ...(nodeId ? { nodeId } : {}),
         ...(Number.isFinite(paragraphId) && paragraphId > 0 ? { paragraphId } : {}),
         ...(lines.length > 0 ? { lines } : {}),
+        ...(matchedTerms.length > 0 ? { matchedTerms } : {}),
     };
 }
 
