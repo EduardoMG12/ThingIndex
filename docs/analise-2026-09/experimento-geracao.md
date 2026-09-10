@@ -1,6 +1,6 @@
 # Experimento de geração: ThingIndex (T) contra "documento inteiro no LLM" (F)
 
-> **Estado: fechado em 2026-09-09.** Braços T (ThingIndex) e F (documento inteiro no LLM) medidos com 72 perguntas × 3 repetições; o estado final do sistema está na seção 10. Nenhum número abaixo foi transcrito à mão: todos saem de `go run ./cmd/generation-eval -summary` sobre os CSVs em `docs/article/results/`.
+> **Estado: fechado em 2026-09-10.** Braços T (ThingIndex) e F (documento inteiro no LLM) medidos com 72 perguntas × 3 repetições; o estado final do sistema está na seção 11. Nenhum número abaixo foi transcrito à mão: todos saem de `go run ./cmd/generation-eval -summary` sobre os CSVs em `docs/article/results/`.
 >
 > ```bash
 > cd api && set -a && . ../.env && set +a && export THINGINDEX_EVAL_PASSWORD='<senha do usuário demo>'
@@ -67,7 +67,7 @@ A primeira execução caiu no limitador da rota `/chat/stream` (20 pedidos por m
 
 ## 3. Leitura honesta (atualizada na rodada 3)
 
-1. **Em acerto, o ThingIndex empata com "documento inteiro no LLM".** Estado final (seção 10): T 96,3% (IC 91,7–100), F/documento 98,6%, F/coleção 98,6%; a diferença pareada T × F/documento é +0,023 com IC de −0,028 a +0,074, indistinguível de zero. A rodada 1 tinha dito "F vence, e por muito": o que mudou foi T, com as tabelas como fonte e os títulos de volta ao texto da página. O que separa os dois hoje são 3 perguntas: duas de vocabulário na recuperação ("conceito D", "estágios extracurriculares") e uma em que o modelo omite um dia ("17, 18 e 19").
+1. **Em acerto, o ThingIndex empata com "documento inteiro no LLM".** Estado final (seção 11): T 98,6% (IC 95,8–100), F/documento 98,6%, F/coleção 98,6%; pareado por pergunta, F vence em 1, perde em 1 e empata em 70, diferença 0,000 com IC de −0,042 a +0,042. A rodada 1 tinha dito "F vence, e por muito": o que mudou foi T, com as tabelas como fonte e os títulos de volta ao texto da página. O que separa os dois hoje são 3 perguntas: duas de vocabulário na recuperação ("conceito D", "estágios extracurriculares") e uma em que o modelo omite um dia ("17, 18 e 19").
 2. **Em proveniência, T é estrutural e F é prosa.** T: toda fonte é (documento, página), 100% certa em tabela. F/coleção: 64% das páginas citadas certas, 25% em tabela, e toda resposta errada vem com uma página. O único erro de conteúdo de F/documento (n03) é uma alucinação com citação plausível.
 3. **Em custo, 18 a 62 vezes menos tokens de entrada por pergunta** (4 mil contra 72 mil com o documento certo, 250 mil com a coleção). Em USD não há número: o Ollama Cloud é assinatura.
 4. **F/documento recebe um oráculo** (o documento certo escolhido pelo gabarito) que o usuário não tem. F/coleção é o cenário real e é o mais caro.
@@ -187,7 +187,23 @@ Pareado: F vence em 3, perde em 1, empata em 68; diferença +0,023, IC 95% de �
 
 Da primeira medição desta sessão (11 perguntas do autor, sem tabela como fonte: 8 certas, 2 parciais, 1 errada, todas as de tabela erradas) até aqui, o que mudou no sistema, em ordem de efeito: tabelas de PDF como fonte com página (tabela 43% → 100% na recuperação); títulos de volta ao texto da página (prosa 77% → 83% na recuperação); linha só com 2+ termos (menos ruído, nada perdido); conexões por token inteiro (3.444 → 355 arestas na amostra). Tudo determinístico, sem vetor, medido no mesmo gabarito, com o CSV bruto versionado.
 
-## 11. Próximos passos
+## 11. Estado final (2026-09-10): sumário numerado, letra solta, variantes de número, fontes com termos, 3 repetições
+
+Arquivo `generation-results-T-final.csv` (216 chamadas; uma estourou timeout e foi refeita), gabarito v4 (t21 aceita também a p. 48 do PPC do Técnico). F/documento é o da seção 6, rescorado.
+
+| Estrato | n | T: acerto (IC 95%) | F/documento: acerto (IC 95%) | T: proveniência | F: proveniência | T: tokens | F: tokens |
+|---|---|---|---|---|---|---|---|
+| todas | 72 | **98,6%** (95,8–100) | 98,6% (95,8–100) | **97,0%** | 86,1% | 4.271 | 72.067 |
+| prosa | 30 | 100,0% | 100,0% | 93,3% | 77,8% | 3.669 | 100.491 |
+| tabela | 21 | 100,0% | 100,0% | 100,0% | 87,3% | 3.884 | 39.691 |
+| calendário | 16 | 93,8% (81,2–100) | 100,0% | 100,0% | 100,0% | 6.211 | 5.504 |
+| negativa | 5 | 100,0% | 80,0% (40–100) | — | — | 3.302 | 250.504 |
+
+Pareado por pergunta: F vence em 1, perde em 1, empata em 70. A única pergunta que T erra nas 3 repetições é c14, em que o modelo escreve "18 e 19 de novembro" onde o calendário diz "17, 18 e 19": a fonte certa está nas três respostas.
+
+O que mudou entre a seção 10 e esta: sumário numerado manda no PDF (PPC de SI 492 → 144 seções, 131 → 13 capítulos; PPC do Técnico com a hierarquia 1 / 1.1 / 1.1.1 inteira), títulos no texto da página, letra maiúscula solta como termo, variante singular/plural na consulta (6+ letras, hífen incluído), fonte de seção/página só com 2+ termos e com os termos expostos, gabarito v4. Cada passo foi medido com 1 repetição antes de entrar; os que perderam página-alvo (piso de 40%, reforço por título, plural no índice) ficaram de fora.
+
+## 12. Próximos passos
 
 1. Rodar F/documento em um segundo modelo pago (só há Ollama Cloud).
 2. Versão 2 do gabarito: corrigir t04, c08 e t06, registrar `reviewed_by` com o revisor externo, recongelar o hash.
