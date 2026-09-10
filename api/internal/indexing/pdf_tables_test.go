@@ -289,3 +289,15 @@ func TestPaginaDeSumarioComBlocoColado(t *testing.T) {
 		t.Fatal("seis entradas de sumario coladas num bloco deveriam marcar a pagina como sumario")
 	}
 }
+
+func TestPaginaDeSumarioEmDuasColunas(t *testing.T) {
+	titulos := textBlock{Content: "x", Lines: []textLine{{Text: "1 APRESENTAÇÃO DO PROJETO"}, {Text: "1.1 IDENTIFICAÇÃO"}, {Text: "1.1.1 Processo"}, {Text: "2 JUSTIFICATIVA"}, {Text: "3 OBJETIVOS DO CURSO"}}}
+	numeros := textBlock{Content: "7 7 7 20 23", Lines: []textLine{{Text: "7"}, {Text: "7"}, {Text: "7"}, {Text: "20"}, {Text: "23"}}}
+	if !isPDFTableOfContentsPage([]textBlock{titulos, numeros}) {
+		t.Fatal("bloco com cinco linhas numeradas e pagina de sumario, mesmo sem o numero da pagina na linha")
+	}
+	prosa := textBlock{Content: "y", Lines: []textLine{{Text: "1.1 IDENTIFICAÇÃO"}, {Text: "O curso funciona no turno noturno."}, {Text: "2 JUSTIFICATIVA"}}}
+	if isPDFTableOfContentsPage([]textBlock{prosa}) {
+		t.Fatal("dois titulos num bloco nao sao sumario")
+	}
+}
