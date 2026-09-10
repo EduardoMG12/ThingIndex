@@ -309,6 +309,7 @@ function WorkspacePageInner() {
                                         className="h-full"
                                         collectionId={Number(context.collection.id)}
                                         compacto
+                                        indexadoEm={new Map(context.documents.filter((d) => d.indexedAt).map((d) => [d.id, d.indexedAt as string]))}
                                         onVerNoDocumento={(source) => {
                                             if (!source.documentId) {
                                                 return;
@@ -320,7 +321,7 @@ function WorkspacePageInner() {
                                                 canvasRef.current?.realcarTabela(Number(tabela[1]));
                                                 return;
                                             }
-                                            canvasRef.current?.irAte(source.documentId, source.page, source.nodeId, source.paragraphId, source.lines);
+                                            canvasRef.current?.irAte(source.documentId, source.page, source.nodeId, source.paragraphId, source.lines, source.box ? { box: source.box, lineBoxes: source.lineBoxes ?? [] } : undefined);
                                         }}
                                     />
                                 </div>

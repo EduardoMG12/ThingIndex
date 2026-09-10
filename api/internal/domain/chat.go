@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"time"
 
 	"thing-index/internal/models"
 )
@@ -40,6 +41,12 @@ type ChatSource struct {
 	// MatchedTerms sao os termos da pergunta presentes na fonte: e o "por que
 	// esta fonte esta aqui", auditavel, como nas conexoes.
 	MatchedTerms []string `json:"matchedTerms,omitempty"`
+	// Box, LineBoxes e IndexedAt tornam a citacao autocontida: o grifo e
+	// reproduzivel na pagina mesmo depois de o documento ser reindexado, e a
+	// tela sabe dizer que o indice mudou desde a resposta.
+	Box       *models.SourceBox `json:"box,omitempty"`
+	LineBoxes [][4]float64      `json:"lineBoxes,omitempty"`
+	IndexedAt *time.Time        `json:"indexedAt,omitempty"`
 	// Body e o texto que vai ao prompt quando a fonte e menor que uma pagina
 	// (linha de tabela). Interno: nao sai na API nem e persistido.
 	Body string `json:"-"`

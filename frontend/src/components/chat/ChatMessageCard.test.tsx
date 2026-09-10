@@ -73,3 +73,18 @@ describe("ChatMessageCard: fontes navegaveis", () => {
         expect(screen.getAllByTestId("fonte")).toHaveLength(2);
     });
 });
+
+describe("ChatMessageCard: fonte de indice antigo", () => {
+    it("avisa quando o documento foi reindexado depois da resposta", () => {
+        const fonte = { id: "260:126", docName: "PPC", page: 126, snippet: "x", documentId: 260, paragraphId: 72, indexedAt: "2026-09-01T10:00:00Z" };
+        const indexadoEm = new Map([[260, "2026-09-09T10:00:00Z"]]);
+        render(<ChatMessageCard isStreaming={false} message={{ ...base, sources: [fonte] }} indexadoEm={indexadoEm} />, { wrapper: createTestWrapper("pt-BR") });
+        expect(screen.getByTestId("fonte-reindexada")).toHaveTextContent("reindexado");
+    });
+
+    it("sem reindexacao nao avisa", () => {
+        const fonte = { id: "260:126", docName: "PPC", page: 126, snippet: "x", documentId: 260, indexedAt: "2026-09-09T10:00:00Z" };
+        render(<ChatMessageCard isStreaming={false} message={{ ...base, sources: [fonte] }} indexadoEm={new Map([[260, "2026-09-09T10:00:00Z"]])} />, { wrapper: createTestWrapper("pt-BR") });
+        expect(screen.queryByTestId("fonte-reindexada")).toBeNull();
+    });
+});

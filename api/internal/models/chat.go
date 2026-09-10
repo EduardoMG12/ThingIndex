@@ -6,6 +6,19 @@ import (
 	"gorm.io/gorm"
 )
 
+// SourceBox e a caixa citada no espaco da pagina do PDF (origem no canto
+// superior esquerdo, pontos), a mesma de metadata.box dos paragrafos. Vai
+// gravada na fonte para o grifo sobreviver a uma reindexacao: paragrafo e
+// secao ganham ids novos, a caixa na pagina nao muda.
+type SourceBox struct {
+	XMin       float64 `json:"x_min"`
+	YMin       float64 `json:"y_min"`
+	XMax       float64 `json:"x_max"`
+	YMax       float64 `json:"y_max"`
+	PageWidth  float64 `json:"page_width"`
+	PageHeight float64 `json:"page_height"`
+}
+
 type ChatSourceReference struct {
 	ID           string   `json:"id"`
 	DocName      string   `json:"doc_name"`
@@ -16,6 +29,10 @@ type ChatSourceReference struct {
 	ParagraphID  uint     `json:"paragraph_id,omitempty"`
 	Lines        []int    `json:"lines,omitempty"`
 	MatchedTerms []string `json:"matched_terms,omitempty"`
+	// Geometria e versao do indice no momento da resposta.
+	Box       *SourceBox   `json:"box,omitempty"`
+	LineBoxes [][4]float64 `json:"line_boxes,omitempty"`
+	IndexedAt *time.Time   `json:"indexed_at,omitempty"`
 }
 
 type ChatConversation struct {

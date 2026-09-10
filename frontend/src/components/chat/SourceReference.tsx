@@ -14,10 +14,15 @@ export type Source = {
     paragraphId?: number;
     lines?: number[];
     matchedTerms?: string[];
+    box?: { xMin: number; yMin: number; xMax: number; yMax: number; pageWidth: number; pageHeight: number };
+    lineBoxes?: number[][];
+    indexedAt?: string;
 };
 
 interface SourceReferenceProps {
     source: Source;
+    /** true quando o documento foi reindexado depois desta resposta. */
+    reindexado?: boolean;
     /** Posicao na lista (1..n), a mesma ordem em que o modelo recebeu as fontes. */
     numero?: number;
     /** Fonte que esta focada no canvas. */
@@ -26,7 +31,7 @@ interface SourceReferenceProps {
     onVerNoDocumento?: (source: Source) => void;
 }
 
-const SourceReference = ({ source, numero, ativa = false, onVerNoDocumento }: SourceReferenceProps) => {
+const SourceReference = ({ source, numero, ativa = false, reindexado = false, onVerNoDocumento }: SourceReferenceProps) => {
     const { t } = useI18n();
     const podeIr = Boolean(onVerNoDocumento && source.documentId);
 
@@ -48,6 +53,11 @@ const SourceReference = ({ source, numero, ativa = false, onVerNoDocumento }: So
                     <p className="truncate text-[11px] font-semibold text-foreground">{source.docName}</p>
                     <p className="text-[10px] text-muted-foreground">
                         {t("dashboard.chat.page")} {source.page}
+                        {reindexado ? (
+                            <span className="ml-1 rounded bg-amber-500/15 px-1 py-0.5 text-[9px] font-medium text-amber-600 dark:text-amber-400" title={t("dashboard.chat.reindexedTitle")} data-testid="fonte-reindexada">
+                                {t("dashboard.chat.reindexed")}
+                            </span>
+                        ) : null}
                     </p>
                 </div>
 

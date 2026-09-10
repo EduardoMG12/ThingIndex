@@ -13,7 +13,7 @@ import { Tag } from "lucide-react";
 import { LegendPanel } from "@/components/workspace/LegendPanel";
 import { classesDaCor, CORES, rotuloDaCor, type HighlightColor as CorDeMarca } from "@/lib/workspace/highlights";
 import type { Highlight, HighlightColor, Legend } from "@/lib/api/contracts/highlights";
-import { readBox, type CollectionContext, type OutlineNode, type ParagraphNode } from "@/lib/api/contracts/document-context";
+import { readBox, type ParagraphBox, type CollectionContext, type OutlineNode, type ParagraphNode } from "@/lib/api/contracts/document-context";
 import type { NodeConnection } from "@/lib/api/contracts/node-connections";
 import { rectVisivel, type Rect } from "@/lib/workspace/geometry";
 import { escalaDeRenderizacao, escolherPaginasVivas, ZOOM_MINIMO_PARA_PAGINAS } from "@/lib/workspace/render-budget";
@@ -57,9 +57,12 @@ import { APRESENTACAO_PADRAO, limitarPagina, precisaDoBotaoIrPara, regraIrAte, t
  */
 
 /** Ponte minima para quem embute o canvas (o chat da Area de trabalho). */
+/** Geometria gravada numa fonte do chat (caixa do paragrafo e das linhas). */
+export type CitacaoGravada = { box: ParagraphBox; lineBoxes: number[][] };
+
 export type WorkspaceCanvasHandle = {
     /** Vai ao documento e a pagina; com nodeId, ao paragrafo em que a secao comeca. */
-    irAte: (documentId: number, pagina: number | null, nodeId?: string, paragraphId?: number, lines?: number[]) => void;
+    irAte: (documentId: number, pagina: number | null, nodeId?: string, paragraphId?: number, lines?: number[], geometria?: CitacaoGravada) => void;
     focarDocumento: (documentId: number) => void;
     /** Realca a caixa de uma tabela na folha (fonte de linha do chat, lista da sidebar). */
     realcarTabela: (tableId: number | string) => void;
@@ -393,6 +396,9 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
     const [folhaAberta, setFolhaAberta] = useState(true);
     // Grifo fino: linhas do paragrafo citadas pela fonte do chat.
     const [destaque, setDestaque] = useState<{ paragraphId: number; lines: number[] } | null>(null);
+    // Citacao gravada com a resposta (caixa e linhas na pagina): usada quando o
+    // paragrafo ja nao existe no contexto, depois de uma reindexacao.
+    const [citacao, setCitacao] = useState<{ documentId: number; pagina: number; box: ParagraphBox; lineBoxes: number[][] } | null>(null);
     useEffect(() => {
         if (documentoFocado !== null) {
             setEstruturaAberta(true);
@@ -766,8 +772,9 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                     irAteTabela(tabela);
                 }
             },
-            irAte: (documentId, pagina, nodeId, paragraphId, lines) => {
+            irAte: (documentId, pagina, nodeId, paragraphId, lines, geometria) => {
                 focarDocumento(documentId);
+                setCitacao(null);
                 // Fonte com paragrafo: seleciona o grifo dele (ambar, como o
                 // clique na folha), destaca as linhas citadas e centraliza.
                 const paragrafo = paragraphId ? context.paragraphNodes.find((no) => no.id === paragraphId && no.documentId === documentId) : undefined;
@@ -778,13 +785,27 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                     return;
                 }
                 setDestaque(null);
+                // Paragrafo sumiu (reindexacao): a caixa gravada na resposta
+                // ainda aponta o lugar certo na pagina.
+                if (geometria && pagina) {
+                    setCitacao({ documentId, pagina, box: geometria.box, lineBoxes: geometria.lineBoxes });
+                    const folha = rectDaPagina(documentId, pagina);
+                    const rect = folha
+                        ? (() => {
+                              const px = boxParaPixels(geometria.box, folha.largura, folha.altura);
+                              return { x: folha.x + px.left, y: folha.y + px.top, largura: px.width, altura: px.height };
+                          })()
+                        : null;
+                    irAte(documentId, pagina, rect);
+                    return;
+                }
                 const secao = nodeId ? indiceDoContexto.porNodeId.get(nodeId) : undefined;
                 const ancora = secao ? ancoraDaSecao(secao) : null;
                 const rect = ancora ? rectDoParagrafo(ancora) : null;
                 irAte(documentId, ancora?.pageNumber ?? pagina, rect);
             },
         }),
-        [focarDocumento, irAte, indiceDoContexto, ancoraDaSecao, rectDoParagrafo, tabelasComCaixa, irAteTabela, context.paragraphNodes, selecionarParagrafo]
+        [focarDocumento, irAte, indiceDoContexto, ancoraDaSecao, rectDoParagrafo, tabelasComCaixa, irAteTabela, context.paragraphNodes, selecionarParagrafo, rectDaPagina]
     );
 
     useEffect(() => {
@@ -1028,6 +1049,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                                                     tabelas={tabelasComCaixa.filter((tabela) => tabela.documentId === documento.id && tabela.pageNumber === numero)}
                                                     tabelaRealcada={tabelaRealcada}
                                                     destaque={destaque}
+                                                    citacao={citacao && citacao.documentId === documento.id && citacao.pagina === numero ? { box: citacao.box, lineBoxes: citacao.lineBoxes } : null}
                                                 />
                                             );
                                         }}

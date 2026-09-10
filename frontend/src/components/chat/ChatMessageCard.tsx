@@ -25,6 +25,7 @@ export function ChatMessageCard({
     onVerNoDocumento,
     fonteAtivaId,
     onFonteAtiva,
+    indexadoEm,
 }: {
     message: ChatWorkspaceMessage;
     isStreaming: boolean;
@@ -36,6 +37,8 @@ export function ChatMessageCard({
      */
     fonteAtivaId?: string | null;
     onFonteAtiva?: (id: string) => void;
+    /** Data do indice atual de cada documento, para avisar fonte de indice antigo. */
+    indexadoEm?: ReadonlyMap<number, string>;
 }) {
     const { t, locale } = useI18n();
     const isUser = message.role === "user";
@@ -161,6 +164,7 @@ export function ChatMessageCard({
                                     source={source}
                                     numero={indice + 1}
                                     ativa={indice === fonteAtiva}
+                                    reindexado={fonteDeIndiceAntigo(source, indexadoEm)}
                                     onVerNoDocumento={onVerNoDocumento ? () => irParaFonte(indice) : undefined}
                                 />
                             ))}
@@ -170,4 +174,17 @@ export function ChatMessageCard({
             </div>
         </div>
     );
+}
+
+/** Fonte de indice antigo: o documento foi reindexado depois da data gravada na fonte. */
+export function fonteDeIndiceAntigo(source: Source, indexadoEm?: ReadonlyMap<number, string>): boolean {
+    if (!source.documentId || !source.indexedAt || !indexadoEm) {
+        return false;
+    }
+    const atual = indexadoEm.get(source.documentId);
+    if (!atual) {
+        return false;
+    }
+    const a = Date.parse(atual), b = Date.parse(source.indexedAt);
+    return Number.isFinite(a) && Number.isFinite(b) && a - b > 1000;
 }

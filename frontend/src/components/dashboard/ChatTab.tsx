@@ -41,9 +41,11 @@ type ChatTabProps = {
     /** Cabecalho de uma linha, sem acoes rapidas: para caber num painel. */
     compacto?: boolean;
     onVerNoDocumento?: (source: Source) => void;
+    /** Data do indice atual por documento (para marcar fonte de indice antigo). */
+    indexadoEm?: ReadonlyMap<number, string>;
 };
 
-const ChatTab = ({ className, collectionId = null, compacto = false, onVerNoDocumento }: ChatTabProps) => {
+const ChatTab = ({ className, collectionId = null, compacto = false, onVerNoDocumento, indexadoEm }: ChatTabProps) => {
     // Fonte focada no canvas, pelo id: sobrevive ao recarregamento da conversa apos o stream.
     const [fonteAtivaId, setFonteAtivaId] = useState<string | null>(null);
     const { t } = useI18n();
@@ -250,6 +252,7 @@ const ChatTab = ({ className, collectionId = null, compacto = false, onVerNoDocu
                                     onVerNoDocumento={onVerNoDocumento}
                                     fonteAtivaId={fonteAtivaId}
                                     onFonteAtiva={setFonteAtivaId}
+                                    indexadoEm={indexadoEm}
                                 />
                             </motion.div>
                         ))}
