@@ -214,7 +214,7 @@ func printSummary(paths []string, w io.Writer) error {
 			fmt.Fprintf(w, " (escopo %s)", k.Scope)
 		}
 		fmt.Fprintf(w, " — modelo %s — %d perguntas, %d chamadas\n\n", k.Model, len(qs), len(groups[k]))
-		fmt.Fprintln(w, "| Recorte | n | Acerto (IC 95%) | Proveniência | Recuperação@6 | Tokens prompt | Tokens resp. | Latência ms | Custo USD/consulta | Truncadas | Erros |")
+		fmt.Fprintln(w, "| Recorte | n | Acerto (IC 95%) | Proveniência | Recuperação (fontes) | Tokens prompt | Tokens resp. | Latência ms | Custo USD/consulta | Truncadas | Erros |")
 		fmt.Fprintln(w, "|---|---|---|---|---|---|---|---|---|---|---|")
 		slices := []struct {
 			name   string
