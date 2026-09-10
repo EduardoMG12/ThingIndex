@@ -228,7 +228,19 @@ Na pergunta "jornada máxima do estágio para o ensino superior (Lei 11.788)", a
 1. **Multiplicar o BM25 de página e seção pela cobertura** (termos distintos da pergunta no texto). Medido no gabarito, 1 repetição, arquivo `T-cobertura-mult.csv` (só no scratchpad): página-alvo nas fontes 65 → 64 (perdeu t18: as páginas 54 e 60 do PPC saíram, entraram páginas do PPC do Técnico), nenhum ganho; a ordem da pergunta da Lei não mudou, porque a causa era outra. **Descartada.**
 2. **Causa real:** `buildChatSources` montava a ordem fixa "linhas de tabela, seções, páginas", e as três primeiras fontes eram linhas da Matriz e dos calendários com 2 termos genéricos. Agora uma linha só fica na frente quando casa pelo menos metade dos termos da pergunta (pergunta de tabela: "pré-requisito de Estrutura de Dados I" casa quase tudo na linha); as demais entram na ordenação comum com seções e páginas, por termos casados, estável. O conjunto de fontes é o mesmo (recuperação não muda); muda a ordem no card e no prompt. Na pergunta da Lei, a página 4 da Lei (8 termos) passou para 1º.
 
-O efeito da ordem no acerto **não foi medido**: as duas contas do Ollama Cloud atingiram o limite mensal no meio da rodada (13 perguntas sem resposta, 59 respondidas: 57 certas, c12 e c14 erradas). Fica para a próxima cota. O harness passou a tolerar queda da API (recompilação do `air` durante a rodada): repete a chamada por até 60 segundos em vez de marcar erro.
+A primeira medição parou no meio: as duas contas do Ollama Cloud atingiram o limite mensal (59 respondidas, 57 certas). Com uma conta nova, 3 repetições completas, arquivo `generation-results-T-ordem.csv` (216 chamadas; 3 estouraram o timeout de 45 s do provedor e foram refeitas):
+
+| Estrato | n | T: acerto (IC 95%) | T: proveniência | T: recuperação | T: tokens |
+|---|---|---|---|---|---|
+| todas | 72 | **100,0%** (100–100) | 97,0% | 97,0% | 4.215 |
+| prosa | 30 | 100,0% | 93,3% | 93,3% | 3.629 |
+| tabela | 21 | 100,0% | 100,0% | 100,0% | 3.619 |
+| calendário | 16 | 100,0% | 100,0% | 100,0% | 6.400 |
+| negativa | 5 | 100,0% | — | — | 3.241 |
+
+Pareado com a seção 11 (mesmo gabarito, mesmo índice enriquecido): a única pergunta que mudou foi c14, de 0/3 para 3/3. As fontes são as mesmas (recuperação e proveniência iguais, 65/72), mas a ordem no prompt mudou (a p. 47 do PPC subiu, a p. 1 do calendário desceu) e o modelo passou a transcrever "17, 18 e 19 de novembro" em vez de "18 e 19". É um efeito de ordem do prompt, não de recuperação, e vale registrar como tal: com outro modelo pode não se repetir. Pareado com F/documento: F vence em 0, perde em 1, empata em 71; diferença −0,014 (IC −0,042 a 0,000).
+
+O harness passou a tolerar queda da API (recompilação do `air` durante a rodada): repete a chamada por até 60 segundos em vez de marcar erro.
 
 ## 14. Próximos passos
 
