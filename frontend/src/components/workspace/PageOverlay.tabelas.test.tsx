@@ -81,3 +81,25 @@ describe("PageOverlay: grifo fino por linha", () => {
         expect(linhas[0]).toHaveStyle({ top: "119px" });
     });
 });
+
+describe("PageOverlay: citacao gravada", () => {
+    it("desenha a caixa e as linhas pela geometria gravada, sem paragrafo no contexto", () => {
+        render(
+            <PageOverlay
+                numero={1}
+                tamanho={{ largura: 595, altura: 842 }}
+                paragrafos={[]}
+                secoes={[]}
+                ancoraDaSecao={() => null}
+                origem={null}
+                selecionadoId={null}
+                secundarios={new Set()}
+                onSelecionar={() => undefined}
+                citacao={{ box, lineBoxes: [[20, 300, 560, 320], [20, 320, 560, 340]] }}
+            />,
+            { wrapper: createTestWrapper("pt-BR") }
+        );
+        expect(screen.getByTestId("citacao-gravada")).toHaveStyle({ top: "298px" });
+        expect(screen.getAllByTestId("grifo-linha")).toHaveLength(2);
+    });
+});

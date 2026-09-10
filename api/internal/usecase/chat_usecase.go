@@ -243,6 +243,9 @@ func (u *chatUseCase) StreamCollectionChat(
 				ParagraphID:  source.ParagraphID,
 				Lines:        source.Lines,
 				MatchedTerms: source.MatchedTerms,
+				Box:          source.Box,
+				LineBoxes:    source.LineBoxes,
+				IndexedAt:    source.IndexedAt,
 			})
 		}
 
@@ -397,8 +400,10 @@ func buildChatSources(
 	}
 
 	documentTitles := make(map[uint]string, len(collectionContext.Documents))
+	documentIndexedAt := make(map[uint]*time.Time, len(collectionContext.Documents))
 	for _, doc := range collectionContext.Documents {
 		documentTitles[doc.ID] = doc.Title
+		documentIndexedAt[doc.ID] = doc.IndexedAt
 	}
 
 	pageLookup := make(map[string]models.DocumentPage, len(collectionContext.DocumentPages))
@@ -451,7 +456,14 @@ func buildChatSources(
 	}
 	// bestParagraph devolve o paragrafo com mais termos da pergunta, as linhas
 	// dele que os contem (grifo fino) e o texto dessas linhas (trecho).
-	bestParagraph := func(documentID uint, page int) (uint, []int, string) {
+	type paragraphPick struct {
+		id        uint
+		lines     []int
+		snippet   string
+		box       *models.SourceBox
+		lineBoxes [][4]float64
+	}
+	bestParagraph := func(documentID uint, page int) paragraphPick {
 		var best *models.ParagraphNode
 		bestCoverage := 0
 		for i, paragraph := range paragraphsByPage[fmt.Sprintf("%d:%d", documentID, page)] {
@@ -460,10 +472,15 @@ func buildChatSources(
 			}
 		}
 		if best == nil {
-			return 0, nil, ""
+			return paragraphPick{}
 		}
 		lines, snippet := matchingLines(best.Metadata, significant)
-		return best.ID, lines, snippet
+		return paragraphPick{id: best.ID, lines: lines, snippet: snippet, box: sourceBoxFromMetadata(best.Metadata), lineBoxes: lineBoxesFromMetadata(best.Metadata, lines)}
+	}
+
+	tableBoxes := make(map[uint]*models.SourceBox, len(collectionContext.TableSections))
+	for _, table := range collectionContext.TableSections {
+		tableBoxes[table.ID] = sourceBoxFromMetadata(table.Metadata)
 	}
 
 	// Linhas de tabela primeiro: e a fonte mais precisa (documento, pagina,
@@ -494,6 +511,8 @@ func buildChatSources(
 			DocumentID:   hit.DocumentID,
 			Body:         body,
 			MatchedTerms: matched(body),
+			Box:          tableBoxes[hit.TableID],
+			IndexedAt:    documentIndexedAt[hit.DocumentID],
 		})
 		seen[id] = struct{}{}
 		rowSources++
@@ -518,9 +537,9 @@ func buildChatSources(
 		if snippet == "" {
 			snippet = hit.Title
 		}
-		paragraphID, lines, lineText := bestParagraph(hit.DocumentID, pageNumber)
-		if lineText != "" {
-			snippet = lineText
+		pick := bestParagraph(hit.DocumentID, pageNumber)
+		if pick.snippet != "" {
+			snippet = pick.snippet
 		}
 		terms := matched(hit.Title + " " + hit.Summary + " " + pageText(key))
 		if len(terms) < minCoverage {
@@ -534,9 +553,12 @@ func buildChatSources(
 			Snippet:      clampRetrievalSnippet(snippet, 220),
 			DocumentID:   hit.DocumentID,
 			NodeID:       hit.NodeID,
-			ParagraphID:  paragraphID,
-			Lines:        lines,
+			ParagraphID:  pick.id,
+			Lines:        pick.lines,
 			MatchedTerms: terms,
+			Box:          pick.box,
+			LineBoxes:    pick.lineBoxes,
+			IndexedAt:    documentIndexedAt[hit.DocumentID],
 		})
 		seen[key] = struct{}{}
 	}
@@ -559,9 +581,9 @@ func buildChatSources(
 			snippet = page.Content
 		}
 
-		paragraphID, lines, lineText := bestParagraph(hit.DocumentID, hit.PageNumber)
-		if lineText != "" {
-			snippet = lineText
+		pick := bestParagraph(hit.DocumentID, hit.PageNumber)
+		if pick.snippet != "" {
+			snippet = pick.snippet
 		}
 		terms := matched(pageText(key))
 		if len(terms) < minCoverage {
@@ -573,14 +595,74 @@ func buildChatSources(
 			Page:         hit.PageNumber,
 			Snippet:      clampRetrievalSnippet(snippet, 220),
 			DocumentID:   hit.DocumentID,
-			ParagraphID:  paragraphID,
-			Lines:        lines,
+			ParagraphID:  pick.id,
+			Lines:        pick.lines,
 			MatchedTerms: terms,
+			Box:          pick.box,
+			LineBoxes:    pick.lineBoxes,
+			IndexedAt:    documentIndexedAt[hit.DocumentID],
 		})
 		seen[key] = struct{}{}
 	}
 
 	return sources
+}
+
+// sourceBoxFromMetadata le metadata.box (JSONB: x_min...) de um paragrafo ou
+// tabela. Nulo quando nao ha caixa (OCR sem posicao, HTML).
+func sourceBoxFromMetadata(metadata map[string]any) *models.SourceBox {
+	raw, ok := metadata["box"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	num := func(key string) (float64, bool) {
+		v, ok := raw[key].(float64)
+		return v, ok
+	}
+	xMin, ok1 := num("x_min")
+	yMin, ok2 := num("y_min")
+	xMax, ok3 := num("x_max")
+	yMax, ok4 := num("y_max")
+	pw, ok5 := num("page_width")
+	ph, ok6 := num("page_height")
+	if !(ok1 && ok2 && ok3 && ok4 && ok5 && ok6) || pw <= 0 || ph <= 0 {
+		return nil
+	}
+	return &models.SourceBox{XMin: xMin, YMin: yMin, XMax: xMax, YMax: yMax, PageWidth: pw, PageHeight: ph}
+}
+
+// lineBoxesFromMetadata devolve as caixas [xMin, yMin, xMax, yMax] das linhas
+// escolhidas, na ordem de `lines`.
+func lineBoxesFromMetadata(metadata map[string]any, lines []int) [][4]float64 {
+	raw, ok := metadata["lines"].([]any)
+	if !ok || len(lines) == 0 {
+		return nil
+	}
+	out := make([][4]float64, 0, len(lines))
+	for _, i := range lines {
+		if i < 0 || i >= len(raw) {
+			continue
+		}
+		line, _ := raw[i].(map[string]any)
+		b, _ := line["b"].([]any)
+		if len(b) != 4 {
+			continue
+		}
+		var box [4]float64
+		okAll := true
+		for k := range b {
+			v, ok := b[k].(float64)
+			if !ok {
+				okAll = false
+				break
+			}
+			box[k] = v
+		}
+		if okAll {
+			out = append(out, box)
+		}
+	}
+	return out
 }
 
 // chatSourceMinCoverage e quantos termos significativos da pergunta uma

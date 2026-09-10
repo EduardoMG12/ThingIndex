@@ -28,6 +28,8 @@ export type DocumentSummary = {
     status: string;
     createdAt?: string;
     updatedAt?: string;
+    /** Quando o indice atual deste documento foi gerado; compara com a fonte de uma resposta antiga. */
+    indexedAt?: string;
 };
 
 export type ParagraphNode = {
@@ -255,6 +257,8 @@ type DocumentApiRecord = {
     createdAt?: string;
     updated_at?: string;
     updatedAt?: string;
+    indexed_at?: string;
+    indexedAt?: string;
 };
 
 type ParagraphNodeApiRecord = {
@@ -326,6 +330,7 @@ function normalizeDocumentSummary(value: unknown): DocumentSummary | null {
         status: record.status ?? "",
         createdAt: record.createdAt ?? record.created_at,
         updatedAt: record.updatedAt ?? record.updated_at,
+        ...(typeof (record.indexedAt ?? record.indexed_at) === "string" ? { indexedAt: (record.indexedAt ?? record.indexed_at) as string } : {}),
     };
 }
 

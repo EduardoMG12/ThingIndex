@@ -3,6 +3,7 @@ package usecase
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
@@ -164,5 +165,31 @@ func TestFonteApontaAsLinhasQueCasamAPergunta(t *testing.T) {
 	}
 	if !strings.HasPrefix(sources[0].Snippet, "§ 3º. Para os estágios") {
 		t.Fatalf("o trecho deveria ser o texto das linhas: %q", sources[0].Snippet)
+	}
+}
+
+// A fonte leva a caixa do paragrafo, as caixas das linhas citadas e a data de
+// indexacao: depois de reindexar, o grifo continua no lugar e a tela sabe que
+// o indice mudou.
+func TestFonteLevaCaixaLinhasEDataDoIndice(t *testing.T) {
+	t.Parallel()
+	page := 199
+	indexado := time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC)
+	context := &domain.CollectionContext{
+		Documents: []models.Document{{ID: 260, Title: "PPC", IndexedAt: &indexado}},
+		ParagraphNodes: []models.ParagraphNode{{ID: 5, DocumentID: 260, PageNumber: &page,
+			Content: "para os estagios extracurriculares a carga horaria limite e de 80 horas de estagio",
+			Metadata: map[string]any{
+				"box":   map[string]any{"x_min": 70.0, "y_min": 100.0, "x_max": 500.0, "y_max": 140.0, "page_width": 595.0, "page_height": 842.0},
+				"lines": []any{map[string]any{"t": "para os estagios extracurriculares a carga horaria limite e de 80", "b": []any{70.0, 100.0, 500.0, 120.0}}, map[string]any{"t": "horas de estagio", "b": []any{70.0, 120.0, 200.0, 140.0}}},
+			}}},
+	}
+	retrieval := &domain.CollectionRetrievalResult{Query: "Qual o limite de horas de estágio extracurricular?", PageHits: []domain.CollectionPageHit{{DocumentID: 260, PageNumber: 199}}}
+	sources := buildChatSources(context, retrieval)
+	if len(sources) != 1 || sources[0].Box == nil || sources[0].Box.YMax != 140 || sources[0].IndexedAt == nil || !sources[0].IndexedAt.Equal(indexado) {
+		t.Fatalf("fonte sem caixa ou sem data do indice: %+v", sources)
+	}
+	if len(sources[0].LineBoxes) != len(sources[0].Lines) || sources[0].LineBoxes[0][1] != 100 {
+		t.Fatalf("caixas das linhas nao acompanham as linhas: %v / %v", sources[0].Lines, sources[0].LineBoxes)
 	}
 }

@@ -41,6 +41,8 @@ export type PageOverlayProps = {
     tabelaRealcada?: number | string | null;
     /** Linhas de um paragrafo citadas pela fonte do chat: grifo forte so nelas. */
     destaque?: { paragraphId: number; lines: number[] } | null;
+    /** Citacao gravada numa resposta antiga: caixa e linhas na pagina, sem depender do paragrafo existir. */
+    citacao?: { box: ParagraphBox; lineBoxes: number[][] } | null;
     tamanho: TamanhoDePagina;
     paragrafos: ParagrafoNaPagina[];
     /** Secoes cujo start_page e esta pagina. */
@@ -113,7 +115,8 @@ export function origemMajoritaria(nos: Pick<ParagraphNode, "metadata">[]): strin
 }
 
 export function PageOverlay({
-    numero,    destaque = null,
+    numero,    citacao = null,
+    destaque = null,
     tabelas,
     tabelaRealcada = null,
 
@@ -196,6 +199,21 @@ export function PageOverlay({
                         </div>
                     );
                 })}
+
+            {citacao
+                ? (() => {
+                      const px = boxParaPixels(citacao.box, tamanho.largura, tamanho.altura);
+                      const linhas = citacao.lineBoxes.map((b) => boxParaPixels({ xMin: b[0], yMin: b[1], xMax: b[2], yMax: b[3], pageWidth: citacao.box.pageWidth, pageHeight: citacao.box.pageHeight }, tamanho.largura, tamanho.altura));
+                      return (
+                          <>
+                              <div className="pointer-events-none absolute rounded-sm border-2 border-dashed border-amber-500/80" style={{ left: px.left - 2, top: px.top - 2, width: px.width + 4, height: px.height + 4 }} data-testid="citacao-gravada" title={t("workspace.page.storedCitation")} />
+                              {linhas.map((l, i) => (
+                                  <div key={i} className="pointer-events-none absolute rounded-[2px] bg-rose-500/55 ring-2 ring-rose-600 mix-blend-multiply dark:mix-blend-screen" style={{ left: l.left - 2, top: l.top - 1, width: l.width + 4, height: l.height + 2 }} data-testid="grifo-linha" />
+                              ))}
+                          </>
+                      );
+                  })()
+                : null}
 
             {destaque
                 ? paragrafos

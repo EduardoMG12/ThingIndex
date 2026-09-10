@@ -59,7 +59,14 @@ export type ChatSource = {
     lines?: number[];
     /** Termos da pergunta presentes na fonte: por que ela esta aqui. */
     matchedTerms?: string[];
+    /** Geometria gravada com a resposta: sobrevive a reindexacao. */
+    box?: SourceBox;
+    lineBoxes?: number[][];
+    /** Data do indice do documento quando a resposta foi dada. */
+    indexedAt?: string;
 };
+
+export type SourceBox = { xMin: number; yMin: number; xMax: number; yMax: number; pageWidth: number; pageHeight: number };
 
 export type ChatStreamEvent =
     | { type: "stage"; stage?: string; message?: string }
@@ -444,6 +451,12 @@ function normalizeSource(value: unknown): ChatSource | null {
     const lines = Array.isArray(record.lines) ? record.lines.filter((n): n is number => typeof n === "number" && Number.isInteger(n) && n >= 0) : [];
     const rawTerms = record.matched_terms ?? record.matchedTerms;
     const matchedTerms = Array.isArray(rawTerms) ? rawTerms.filter((t): t is string => typeof t === "string" && t.length > 0) : [];
+    const box = normalizeSourceBox(record.box);
+    const rawLineBoxes = record.line_boxes ?? record.lineBoxes;
+    const lineBoxes = Array.isArray(rawLineBoxes)
+        ? rawLineBoxes.filter((b): b is number[] => Array.isArray(b) && b.length === 4 && b.every((n) => typeof n === "number" && Number.isFinite(n)))
+        : [];
+    const indexedAt = record.indexed_at ?? record.indexedAt;
 
     if (!id || !docName || !Number.isFinite(page)) {
         return null;
@@ -459,7 +472,23 @@ function normalizeSource(value: unknown): ChatSource | null {
         ...(Number.isFinite(paragraphId) && paragraphId > 0 ? { paragraphId } : {}),
         ...(lines.length > 0 ? { lines } : {}),
         ...(matchedTerms.length > 0 ? { matchedTerms } : {}),
+        ...(box ? { box } : {}),
+        ...(lineBoxes.length > 0 ? { lineBoxes } : {}),
+        ...(typeof indexedAt === "string" ? { indexedAt } : {}),
     };
+}
+
+function normalizeSourceBox(value: unknown): SourceBox | null {
+    if (!value || typeof value !== "object") {
+        return null;
+    }
+    const r = value as Record<string, unknown>;
+    const n = (k: string) => (typeof r[k] === "number" && Number.isFinite(r[k]) ? (r[k] as number) : null);
+    const xMin = n("x_min"), yMin = n("y_min"), xMax = n("x_max"), yMax = n("y_max"), pageWidth = n("page_width"), pageHeight = n("page_height");
+    if (xMin === null || yMin === null || xMax === null || yMax === null || !pageWidth || !pageHeight) {
+        return null;
+    }
+    return { xMin, yMin, xMax, yMax, pageWidth, pageHeight };
 }
 
 /** Aceita snake_case (historico) e camelCase (stream). Sem tokens, sem bloco. */
