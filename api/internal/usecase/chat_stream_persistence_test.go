@@ -147,9 +147,10 @@ func TestStreamCollectionChatPersisteRespostaParcialQuandoOStreamFalha(t *testin
 	}
 }
 
-// Nada de resposta => nada a persistir. Gravar uma mensagem de assistente vazia
-// sujaria a conversa com uma bolha em branco.
-func TestStreamCollectionChatNaoPersisteRespostaVazia(t *testing.T) {
+// Resposta que falha antes de qualquer texto vira uma mensagem do assistente
+// com status "error" e o detalhe do provedor: a pergunta nao fica "sem
+// resposta" na conversa, e o usuario sabe por que.
+func TestStreamCollectionChatPersisteFalhaComDetalhe(t *testing.T) {
 	t.Parallel()
 
 	repo := &chatConversationRepoStub{
@@ -165,8 +166,12 @@ func TestStreamCollectionChatNaoPersisteRespostaVazia(t *testing.T) {
 		Prompt:         "qual o prazo?",
 	}, func(domain.ChatStreamEvent) error { return nil })
 
-	if got := len(repo.assistantMessages()); got != 0 {
-		t.Fatalf("nao deveria persistir resposta vazia, persistiu %d", got)
+	mensagens := repo.assistantMessages()
+	if len(mensagens) != 1 || mensagens[0].Status != "error" || mensagens[0].Content != "" {
+		t.Fatalf("esperava uma mensagem de erro sem texto, veio %+v", mensagens)
+	}
+	if !strings.Contains(mensagens[0].ErrorDetail, "provider fora do ar") {
+		t.Fatalf("detalhe do provedor nao foi gravado: %q", mensagens[0].ErrorDetail)
 	}
 }
 

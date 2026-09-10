@@ -34,6 +34,9 @@ export type PersistedChatMessage = {
     id: number;
     role: "user" | "assistant";
     content: string;
+    /** "error": a resposta falhou; errorDetail traz o motivo do provedor. */
+    status?: "error";
+    errorDetail?: string;
     sources: ChatSource[];
     usage?: ChatUsage;
     createdAt: string;
@@ -425,6 +428,8 @@ function normalizePersistedMessage(value: unknown): PersistedChatMessage | null 
         id,
         role,
         content,
+        ...(record.status === "error" ? { status: "error" as const } : {}),
+        ...(typeof record.error_detail === "string" && record.error_detail ? { errorDetail: record.error_detail } : {}),
         sources: Array.isArray(record.sources)
             ? record.sources
                 .map(normalizeSource)

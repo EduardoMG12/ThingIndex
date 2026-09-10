@@ -222,16 +222,7 @@ func (u *chatUseCase) StreamCollectionChat(
 	// tinha sumido -- sem nenhum registro de que a chamada de LLM foi feita e
 	// paga. Guardar o parcial e melhor que perder tudo.
 	var usage *domain.ChatUsage
-	persistAnswer := func() error {
-		answer := strings.TrimSpace(answerBuilder.String())
-		if answer == "" {
-			return nil
-		}
-		// Medido depois da resposta (o provedor so informa consumo da ultima
-		// chamada); a parcial tambem e paga, entao tambem e medida.
-		measured := chatUsageFor(llm, systemPrompt, userPrompt, answer)
-		usage = &measured
-
+	sourceRefs := func() []models.ChatSourceReference {
 		persistedSources := make([]models.ChatSourceReference, 0, len(sources))
 		for _, source := range sources {
 			persistedSources = append(persistedSources, models.ChatSourceReference{
@@ -250,11 +241,34 @@ func (u *chatUseCase) StreamCollectionChat(
 				IndexedAt:       source.IndexedAt,
 			})
 		}
+		return persistedSources
+	}
+	// persistFailure grava a falha como mensagem do assistente (status
+	// "error", detalhe do provedor, fontes). Antes a pergunta ficava sem
+	// resposta na conversa e o usuario nao sabia se a IA tinha sido chamada.
+	persistFailure := func(cause error) {
+		if strings.TrimSpace(answerBuilder.String()) != "" || cause == nil {
+			return
+		}
+		entry := &models.ChatConversationEntry{Role: "assistant", Status: "error", ErrorDetail: ChatErrorDetail(cause), Sources: sourceRefs()}
+		if err := u.conversationRepo.AddMessage(ctx, userID, conversation.ID, entry); err != nil {
+			log.Printf("chat: falha da conversa %d nao pode ser persistida: %v", conversation.ID, err)
+		}
+	}
+	persistAnswer := func() error {
+		answer := strings.TrimSpace(answerBuilder.String())
+		if answer == "" {
+			return nil
+		}
+		// Medido depois da resposta (o provedor so informa consumo da ultima
+		// chamada); a parcial tambem e paga, entao tambem e medida.
+		measured := chatUsageFor(llm, systemPrompt, userPrompt, answer)
+		usage = &measured
 
 		if err := u.conversationRepo.AddMessage(ctx, userID, conversation.ID, &models.ChatConversationEntry{
 			Role:             "assistant",
 			Content:          answer,
-			Sources:          persistedSources,
+			Sources:          sourceRefs(),
 			PromptTokens:     measured.PromptTokens,
 			CompletionTokens: measured.CompletionTokens,
 			UsageReported:    measured.UsageReported,
@@ -290,11 +304,17 @@ func (u *chatUseCase) StreamCollectionChat(
 			if persistErr := persistAnswer(); persistErr != nil {
 				log.Printf("chat: resposta parcial da conversa %d nao pode ser persistida: %v", conversation.ID, persistErr)
 			}
+			if ctx.Err() == nil {
+				persistFailure(err)
+			}
 			return err
 		}
 	} else {
 		response, err := llm.GenerateText(ctx, systemPrompt, userPrompt)
 		if err != nil {
+			if ctx.Err() == nil {
+				persistFailure(err)
+			}
 			return err
 		}
 		answerBuilder.WriteString(strings.TrimSpace(response))
@@ -960,4 +980,17 @@ func normalizeChatLanguage(language string) string {
 	default:
 		return "Brazilian Portuguese"
 	}
+}
+
+// ChatErrorDetail resume o erro do provedor para o usuario: uma linha, ate
+// 200 caracteres ("monthly usage limit", "connection refused").
+func ChatErrorDetail(err error) string {
+	if err == nil {
+		return ""
+	}
+	detail := strings.Join(strings.Fields(err.Error()), " ")
+	if runes := []rune(detail); len(runes) > 200 {
+		detail = string(runes[:200]) + "…"
+	}
+	return detail
 }

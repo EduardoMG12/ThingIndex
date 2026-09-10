@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"thing-index/internal/domain"
@@ -15,6 +14,7 @@ import (
 	"thing-index/internal/pkg/i18n"
 	"thing-index/internal/pkg/response"
 	"thing-index/internal/pkg/validation"
+	"thing-index/internal/usecase"
 
 	"github.com/gin-gonic/gin"
 )
@@ -289,14 +289,7 @@ func (h *ChatHandler) StreamCollectionChat(c *gin.Context) {
 // chatErrorDetail devolve a causa do erro do provedor em uma linha de ate 200
 // caracteres, para o usuario entender por que a resposta nao veio.
 func chatErrorDetail(err error) string {
-	if err == nil {
-		return ""
-	}
-	detail := strings.Join(strings.Fields(err.Error()), " ")
-	if runes := []rune(detail); len(runes) > 200 {
-		detail = string(runes[:200]) + "…"
-	}
-	return detail
+	return usecase.ChatErrorDetail(err)
 }
 
 func parseChatUint(value string) (uint, error) {
