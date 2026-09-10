@@ -6,6 +6,8 @@ import (
 	"io"
 	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
@@ -207,7 +209,37 @@ func hasNumberedOutline(pageBlocks map[int][]textBlock, pageCount int) bool {
 var outlineNumberPattern = regexp.MustCompile(`^\d{1,2}(\.\d{1,2})*\.?\s*\p{Lu}`)
 
 func numberedOrArchetypeHeading(content string) bool {
-	return outlineNumberPattern.MatchString(content) || classifyDocumentHeadingArchetype(content) != documentHeadingArchetypeUnknown
+	// Titulo de sumario numerado tem ate ~10 palavras; "30 Horas SERGIO
+	// MERLIN Graduacao em Engenharia da (Jornada ...)" e linha de tabela de
+	// docentes que escapou da deteccao de tabela e virava capitulo.
+	if len(strings.Fields(content)) > 14 {
+		return false
+	}
+	if outlineNumberPattern.MatchString(content) {
+		return true
+	}
+	// Titulo sem numero num documento numerado so passa pelo arquetipo
+	// (SUMARIO, ANEXO...), e arquetipo nao e frase: "decisao junto as/aos
+	// discentes, baseadas nas normas deste PPC." comecava com minuscula,
+	// casava "decisao" e virava capitulo do PPC do Tecnico.
+	if sentenceLikeFragment(content) {
+		return false
+	}
+	return classifyDocumentHeadingArchetype(content) != documentHeadingArchetypeUnknown
+}
+
+// sentenceLikeFragment: comeca com minuscula ou termina com ponto final
+// tendo mais de 6 palavras -- e um pedaco de paragrafo, nao um titulo.
+func sentenceLikeFragment(content string) bool {
+	trimmed := strings.TrimSpace(content)
+	if trimmed == "" {
+		return false
+	}
+	first, _ := utf8.DecodeRuneInString(trimmed)
+	if unicode.IsLower(first) {
+		return true
+	}
+	return strings.HasSuffix(trimmed, ".") && len(strings.Fields(trimmed)) > 6
 }
 
 func buildPDFStructureFromPageBlocks(pageBlocks map[int][]textBlock, pageCount int) ([]outlineDraft, []textBlock) {
@@ -385,7 +417,13 @@ func isPDFTableOfContentsPage(blocks []textBlock) bool {
 		// pagina de sumario -- numa pagina normal cada titulo e um bloco.
 		numberedLines := 0
 		for _, line := range block.Lines {
-			if outlineNumberPattern.MatchString(strings.TrimSpace(line.Text)) {
+			text := strings.TrimSpace(line.Text)
+			// Entrada de sumario e curta e nao termina em ponto. Uma
+			// bibliografia numerada ("1. DEITEL, Paul J. ... 2016.") tambem
+			// tem 5+ linhas comecando por numero, e fazia a p. 107 do PPC do
+			// Tecnico passar por sumario: o capitulo "8 INFRAESTRUTURA"
+			// daquela pagina sumia.
+			if outlineNumberPattern.MatchString(text) && utf8.RuneCountInString(text) <= 90 && !strings.HasSuffix(text, ".") {
 				numberedLines++
 			}
 		}
