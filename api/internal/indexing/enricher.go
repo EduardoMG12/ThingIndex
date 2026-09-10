@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 
 	"thing-index/internal/domain"
@@ -28,11 +29,14 @@ type sectionSummaryResponse struct {
 	} `json:"nodes"`
 }
 
+type pageSummaryItem struct {
+	PageNumber int      `json:"page_number"`
+	Summary    string   `json:"summary"`
+	Topics     []string `json:"topics"`
+}
+
 type pageSummaryResponse struct {
-	Pages []struct {
-		PageNumber int    `json:"page_number"`
-		Summary    string `json:"summary"`
-	} `json:"pages"`
+	Pages []pageSummaryItem `json:"pages"`
 }
 
 type retrievalSignalsResponse struct {
@@ -81,19 +85,18 @@ func (e *LLMEnricher) Enrich(ctx context.Context, llm domain.LLMService, doc *mo
 		appendMetadata(&updated, documentID, "synopsis_source", "llm")
 	}
 	applyDocumentSynopsis(&updated, documentID, synopsis)
-	sectionSummaries, err := e.generateOutlineNodeSummaries(ctx, llm, contextBlock)
-	if err == nil {
-		applyOutlineNodeSummaries(&updated, sectionSummaries)
-	} else {
-		log.Printf("enricher: resumos de secao do documento %d descartados: %v", documentID, err)
-	}
-	pageSummaries, err := e.generatePageSummaries(ctx, llm, contextBlock)
-	if err == nil {
-		applyPageSummaries(&updated, pageSummaries)
-	} else {
-		log.Printf("enricher: resumos de pagina do documento %d descartados: %v", documentID, err)
-	}
+	// Resumos para TODAS as secoes e TODAS as paginas com texto, em lotes:
+	// antes eram 12 secoes e 8 paginas por documento, e o PPC de 209 paginas
+	// ficava com 200 paginas em fallback (os 320 primeiros caracteres).
+	calls := 0
+	sections := e.generateAllSectionSummaries(ctx, llm, doc, updated, &calls)
+	applyOutlineNodeSummaries(&updated, sections)
+	pages := e.generateAllPageSummaries(ctx, llm, doc, updated, &calls)
+	applyPageSummaries(&updated, pages)
 	fillMissingPageSummaries(&updated)
+	appendMetadata(&updated, documentID, "enrichment_llm_calls", strconv.Itoa(calls+1))
+	appendMetadata(&updated, documentID, "enrichment_sections_summarized", strconv.Itoa(len(sections.Nodes)))
+	appendMetadata(&updated, documentID, "enrichment_pages_summarized", strconv.Itoa(len(pages.Pages)))
 	populateOutlineRetrievalText(&updated)
 
 	retrievalSignals, err := e.generateRetrievalSignals(ctx, llm, contextBlock)
@@ -118,43 +121,10 @@ func (e *LLMEnricher) generateDocumentSynopsis(ctx context.Context, llm domain.L
 		return documentSynopsisResponse{}, fmt.Errorf("parse synopsis enrichment json: %w", err)
 	}
 
-	payload.DocumentSummary = clampText(payload.DocumentSummary, 800)
+	payload.DocumentSummary = clampText(payload.DocumentSummary, 1400)
 	payload.DocumentPurpose = clampText(payload.DocumentPurpose, 400)
 	payload.Keywords = sanitizeStringList(payload.Keywords, 8, 80)
 
-	return payload, nil
-}
-
-func (e *LLMEnricher) generateOutlineNodeSummaries(ctx context.Context, llm domain.LLMService, contextBlock string) (sectionSummaryResponse, error) {
-	systemPrompt, userPrompt := buildOutlineNodeSummaryPrompt(contextBlock)
-	raw, err := llm.GenerateText(ctx, systemPrompt, userPrompt)
-	if err != nil {
-		return sectionSummaryResponse{}, err
-	}
-
-	var payload sectionSummaryResponse
-	if err := parseLLMJSON(raw, &payload); err != nil {
-		return sectionSummaryResponse{}, fmt.Errorf("parse section enrichment json: %w", err)
-	}
-
-	payload.Nodes = sanitizeSectionSummaries(payload.Nodes, llmOutlineLimit)
-
-	return payload, nil
-}
-
-func (e *LLMEnricher) generatePageSummaries(ctx context.Context, llm domain.LLMService, contextBlock string) (pageSummaryResponse, error) {
-	systemPrompt, userPrompt := buildPageSummaryPrompt(contextBlock)
-	raw, err := llm.GenerateText(ctx, systemPrompt, userPrompt)
-	if err != nil {
-		return pageSummaryResponse{}, err
-	}
-
-	var payload pageSummaryResponse
-	if err := parseLLMJSON(raw, &payload); err != nil {
-		return pageSummaryResponse{}, fmt.Errorf("parse page enrichment json: %w", err)
-	}
-
-	payload.Pages = sanitizePageSummaries(payload.Pages, 8)
 	return payload, nil
 }
 
@@ -175,6 +145,133 @@ func (e *LLMEnricher) generateRetrievalSignals(ctx context.Context, llm domain.L
 	payload.Dates = sanitizeStringList(payload.Dates, 10, 40)
 
 	return payload, nil
+}
+
+const (
+	enrichmentPageBatch     = 6
+	enrichmentSectionBatch  = 12
+	enrichmentMinPageChars  = 200
+	enrichmentPageChars     = 3000
+	enrichmentSectionChars  = 900
+	enrichmentMaxBatchCalls = 80
+)
+
+// generateAllPageSummaries resume todas as paginas com texto, em lotes de
+// enrichmentPageBatch por chamada. Lote que falha e logado e pulado; as
+// paginas dele caem no fallback de fillMissingPageSummaries.
+func (e *LLMEnricher) generateAllPageSummaries(ctx context.Context, llm domain.LLMService, doc *models.Document, result domain.IndexingResult, calls *int) pageSummaryResponse {
+	var all pageSummaryResponse
+	var batch []models.DocumentPage
+	flush := func() {
+		if len(batch) == 0 || *calls >= enrichmentMaxBatchCalls {
+			batch = nil
+			return
+		}
+		*calls++
+		systemPrompt, userPrompt := buildPageSummaryPrompt(buildPageBatchContext(doc, batch))
+		raw, err := llm.GenerateText(ctx, systemPrompt, userPrompt)
+		var payload pageSummaryResponse
+		if err == nil {
+			err = parseLLMJSON(raw, &payload)
+		}
+		if err != nil {
+			log.Printf("enricher: lote de paginas %d-%d do documento %d descartado: %v", batch[0].PageNumber, batch[len(batch)-1].PageNumber, doc.ID, err)
+		} else {
+			all.Pages = append(all.Pages, sanitizePageSummaries(payload.Pages, len(batch))...)
+		}
+		batch = nil
+	}
+	for _, page := range result.DocumentPages {
+		if len(strings.TrimSpace(page.Content)) < enrichmentMinPageChars {
+			continue
+		}
+		batch = append(batch, page)
+		if len(batch) == enrichmentPageBatch {
+			flush()
+		}
+	}
+	flush()
+	return all
+}
+
+func buildPageBatchContext(doc *models.Document, pages []models.DocumentPage) string {
+	var b strings.Builder
+	b.WriteString(buildDocumentIdentityBlock(doc))
+	b.WriteString("Pages:\n")
+	for _, page := range pages {
+		b.WriteString("- page_number=")
+		b.WriteString(strconv.Itoa(page.PageNumber))
+		b.WriteString(", content=")
+		b.WriteString(clampText(page.Content, enrichmentPageChars))
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+// generateAllSectionSummaries resume todas as secoes, em lotes de
+// enrichmentSectionBatch, com o texto das paginas da secao como contexto.
+func (e *LLMEnricher) generateAllSectionSummaries(ctx context.Context, llm domain.LLMService, doc *models.Document, result domain.IndexingResult, calls *int) sectionSummaryResponse {
+	var all sectionSummaryResponse
+	pageContent := make(map[int]string, len(result.DocumentPages))
+	for _, page := range result.DocumentPages {
+		pageContent[page.PageNumber] = page.Content
+	}
+	var batch []models.DocumentOutlineNode
+	flush := func() {
+		if len(batch) == 0 || *calls >= enrichmentMaxBatchCalls {
+			batch = nil
+			return
+		}
+		*calls++
+		systemPrompt, userPrompt := buildOutlineNodeSummaryPrompt(buildSectionBatchContext(doc, batch, pageContent))
+		raw, err := llm.GenerateText(ctx, systemPrompt, userPrompt)
+		var payload sectionSummaryResponse
+		if err == nil {
+			err = parseLLMJSON(raw, &payload)
+		}
+		if err != nil {
+			log.Printf("enricher: lote de secoes do documento %d descartado: %v", doc.ID, err)
+		} else {
+			all.Nodes = append(all.Nodes, sanitizeSectionSummaries(payload.Nodes, len(batch))...)
+		}
+		batch = nil
+	}
+	for _, node := range result.OutlineNodes {
+		batch = append(batch, node)
+		if len(batch) == enrichmentSectionBatch {
+			flush()
+		}
+	}
+	flush()
+	return all
+}
+
+func buildSectionBatchContext(doc *models.Document, nodes []models.DocumentOutlineNode, pageContent map[int]string) string {
+	var b strings.Builder
+	b.WriteString(buildDocumentIdentityBlock(doc))
+	b.WriteString("Sections:\n")
+	for _, node := range nodes {
+		b.WriteString("- sequence_order=")
+		b.WriteString(strconv.Itoa(node.SequenceOrder))
+		b.WriteString(", level=")
+		b.WriteString(strconv.Itoa(node.Level))
+		b.WriteString(", title=")
+		b.WriteString(node.Title)
+		if node.StartPage != nil {
+			text := ""
+			end := *node.StartPage
+			if node.EndPage != nil && *node.EndPage > end {
+				end = *node.EndPage
+			}
+			for page := *node.StartPage; page <= end && len(text) < enrichmentSectionChars; page++ {
+				text += " " + pageContent[page]
+			}
+			b.WriteString(", text=")
+			b.WriteString(clampText(text, enrichmentSectionChars))
+		}
+		b.WriteString("\n")
+	}
+	return b.String()
 }
 
 func parseLLMJSON(raw string, target any) error {
@@ -322,6 +419,12 @@ func applyPageSummaries(result *domain.IndexingResult, payload pageSummaryRespon
 				continue
 			}
 			result.DocumentPages[idx].Summary = strings.TrimSpace(page.Summary)
+			if topics := sanitizeStringList(page.Topics, 5, 60); len(topics) > 0 {
+				if result.DocumentPages[idx].Metadata == nil {
+					result.DocumentPages[idx].Metadata = map[string]any{}
+				}
+				result.DocumentPages[idx].Metadata["topics"] = strings.Join(topics, ", ")
+			}
 			break
 		}
 	}
@@ -527,7 +630,7 @@ func sanitizeSectionSummaries(
 			continue
 		}
 
-		summary := clampText(section.Summary, 280)
+		summary := clampText(section.Summary, 500)
 		if summary == "" {
 			continue
 		}
@@ -548,20 +651,8 @@ func sanitizeSectionSummaries(
 	return items
 }
 
-func sanitizePageSummaries(
-	pages []struct {
-		PageNumber int    `json:"page_number"`
-		Summary    string `json:"summary"`
-	},
-	limit int,
-) []struct {
-	PageNumber int    `json:"page_number"`
-	Summary    string `json:"summary"`
-} {
-	items := make([]struct {
-		PageNumber int    `json:"page_number"`
-		Summary    string `json:"summary"`
-	}, 0, min(limit, len(pages)))
+func sanitizePageSummaries(pages []pageSummaryItem, limit int) []pageSummaryItem {
+	items := make([]pageSummaryItem, 0, min(limit, len(pages)))
 	seen := make(map[int]struct{}, len(pages))
 	for _, page := range pages {
 		if page.PageNumber <= 0 {
@@ -570,25 +661,16 @@ func sanitizePageSummaries(
 		if _, ok := seen[page.PageNumber]; ok {
 			continue
 		}
-
-		summary := clampText(page.Summary, 320)
+		summary := clampText(page.Summary, 600)
 		if summary == "" {
 			continue
 		}
-
 		seen[page.PageNumber] = struct{}{}
-		items = append(items, struct {
-			PageNumber int    `json:"page_number"`
-			Summary    string `json:"summary"`
-		}{
-			PageNumber: page.PageNumber,
-			Summary:    summary,
-		})
+		items = append(items, pageSummaryItem{PageNumber: page.PageNumber, Summary: summary, Topics: sanitizeStringList(page.Topics, 5, 60)})
 		if len(items) == limit {
 			break
 		}
 	}
-
 	return items
 }
 
