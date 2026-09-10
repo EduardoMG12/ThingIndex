@@ -52,3 +52,8 @@ describe("SourceReference: termos casados", () => {
         expect(screen.getByTestId("termos-da-fonte")).toHaveTextContent("horas");
     });
 });
+
+it("fonte cuja frase quebra na virada mostra as duas paginas", () => {
+    render(<SourceReference source={{ id: "1:186", docName: "PPC", page: 186, snippet: "x", continuesOnPage: 187 }} />, { wrapper: createTestWrapper("pt-BR") });
+    expect(screen.getByTestId("fonte")).toHaveTextContent("186–187");
+});

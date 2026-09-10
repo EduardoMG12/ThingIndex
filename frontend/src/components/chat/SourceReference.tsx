@@ -17,6 +17,7 @@ export type Source = {
     box?: { xMin: number; yMin: number; xMax: number; yMax: number; pageWidth: number; pageHeight: number };
     lineBoxes?: number[][];
     indexedAt?: string;
+    continuesOnPage?: number;
 };
 
 interface SourceReferenceProps {
@@ -53,6 +54,7 @@ const SourceReference = ({ source, numero, ativa = false, reindexado = false, on
                     <p className="truncate text-[11px] font-semibold text-foreground">{source.docName}</p>
                     <p className="text-[10px] text-muted-foreground">
                         {t("dashboard.chat.page")} {source.page}
+                        {source.continuesOnPage ? `–${source.continuesOnPage}` : ""}
                         {reindexado ? (
                             <span className="ml-1 rounded bg-amber-500/15 px-1 py-0.5 text-[9px] font-medium text-amber-600 dark:text-amber-400" title={t("dashboard.chat.reindexedTitle")} data-testid="fonte-reindexada">
                                 {t("dashboard.chat.reindexed")}
