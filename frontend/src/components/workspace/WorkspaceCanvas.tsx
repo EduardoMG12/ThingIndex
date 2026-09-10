@@ -15,7 +15,7 @@ import { classesDaCor, CORES, rotuloDaCor, type HighlightColor as CorDeMarca } f
 import type { Highlight, HighlightColor, Legend } from "@/lib/api/contracts/highlights";
 import { readBox, type ParagraphBox, type CollectionContext, type OutlineNode, type ParagraphNode } from "@/lib/api/contracts/document-context";
 import type { NodeConnection } from "@/lib/api/contracts/node-connections";
-import { rectVisivel, type Rect } from "@/lib/workspace/geometry";
+import { rectVisivel, type Rect, escalaDeFoco } from "@/lib/workspace/geometry";
 import { escalaDeRenderizacao, escolherPaginasVivas, ZOOM_MINIMO_PARA_PAGINAS } from "@/lib/workspace/render-budget";
 import { useViewport } from "@/components/workspace/useViewport";
 import {
@@ -33,7 +33,7 @@ import {
     type ParagrafoNaPagina,
 } from "@/components/workspace/PageOverlay";
 import { ConnectionLayer } from "@/components/workspace/ConnectionLayer";
-import { idDaLinha, montarLinhas, paragrafosSecundarios, type Linha } from "@/lib/workspace/connections";
+import { idDaLinha, montarLinhas, paragrafosSecundarios, type Linha, corPorTipo, linhasComTermos } from "@/lib/workspace/connections";
 import { boxParaPixels } from "@/lib/workspace/geometry";
 import { APRESENTACAO_PADRAO, limitarPagina, precisaDoBotaoIrPara, regraIrAte, type Apresentacao } from "@/lib/workspace/highlights";
 
@@ -421,6 +421,14 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
     }, [documentoFocado, pathname, router, searchParams]);
     const [noSelecionado, setNoSelecionado] = useState<string | null>(null);
     const [conexoes, setConexoes] = useState<NodeConnection[] | null>(null);
+    // Holofote: escurece o resto quando o canvas leva o usuario a um trecho
+    // (fonte do chat, destino de conexao). Fica ate o primeiro gesto no
+    // canvas (clique ou roda): sem timer, o foco nao some enquanto se le.
+    const [holofote, setHolofote] = useState<Rect | null>(null);
+    // Foco pedido para um documento ainda nao medido (estava fora da tela):
+    // guarda o pedido e refaz o "ir ate" quando as medidas chegarem. Antes o
+    // clique parava no quadro inteiro e o usuario nao via o paragrafo.
+    const focoPendente = useRef<{ documentId: number; pagina: number | null; paragraphId?: number; geometria?: CitacaoGravada } | null>(null);
     const [carregandoConexoes, setCarregandoConexoes] = useState(false);
     const [erroConexoes, setErroConexoes] = useState<string | null>(null);
 
@@ -561,7 +569,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
      * quadro antes de centralizar; em "folhas" so centraliza.
      */
     const irAte = useCallback(
-        (documentId: number, pagina: number | null, rectPreferido: Rect | null) => {
+        (documentId: number, pagina: number | null, rectPreferido: Rect | null, opcoes?: { foco?: boolean }) => {
             const paginas = medidas[documentId];
             const apresentacao = apresentacaoDe(documentId);
             if (pagina !== null && paginas) {
@@ -570,9 +578,13 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                 if (trocarPagina !== null) {
                     mudarApresentacao(documentId, { modo: "pagina", paginaAtual: trocarPagina });
                 }
-                const rect = (trocarPagina === null ? rectPreferido : null) ?? rectDaPagina(documentId, alvoPagina, true);
+                // Com foco, o rect preferido vale mesmo trocando de pagina: quem
+                // pede foco ja o calculou "como mostrada".
+                const rect = (trocarPagina === null || opcoes?.foco ? rectPreferido : null) ?? rectDaPagina(documentId, alvoPagina, true);
                 if (rect) {
-                    centralizarEm({ ...rect, altura: Math.min(rect.altura, 600) }, 1);
+                    const focar = Boolean(opcoes?.foco && rectPreferido);
+                    centralizarEm({ ...rect, altura: Math.min(rect.altura, 600) }, focar ? escalaDeFoco(rect.largura, tamanho.largura) : 1);
+                    setHolofote(focar ? rect : null);
                     return;
                 }
             }
@@ -587,17 +599,19 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                 centralizarEm({ ...quadro, altura: Math.min(quadro.altura, 600) }, 1);
             }
         },
-        [medidas, apresentacaoDe, mudarApresentacao, rectDaPagina, indiceDoDocumento, quadros, centralizarEm]
+        [medidas, apresentacaoDe, mudarApresentacao, rectDaPagina, indiceDoDocumento, quadros, centralizarEm, tamanho.largura]
     );
 
     /** Rect do grifo de um paragrafo no mundo, ou null sem box ou sem pagina medida. */
     const rectDoParagrafo = useCallback(
-        (no: ParagraphNode): Rect | null => {
+        (no: ParagraphNode, comoMostrada = false): Rect | null => {
             const box = readBox(no);
             if (!box || !no.pageNumber) {
                 return null;
             }
-            const pagina = rectDaPagina(no.documentId, no.pageNumber);
+            // comoMostrada: em "uma pagina", o rect da pagina destino como ela
+            // ficara depois da troca (o topo e o mesmo para qualquer pagina).
+            const pagina = rectDaPagina(no.documentId, no.pageNumber, comoMostrada);
             if (!pagina) {
                 return null;
             }
@@ -606,6 +620,24 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
         },
         [rectDaPagina]
     );
+
+    useEffect(() => {
+        const pedido = focoPendente.current;
+        if (!pedido || !medidas[pedido.documentId]) {
+            return;
+        }
+        focoPendente.current = null;
+        const paragrafo = pedido.paragraphId ? context.paragraphNodes.find((no) => no.id === pedido.paragraphId && no.documentId === pedido.documentId) : undefined;
+        let rect: Rect | null = paragrafo ? rectDoParagrafo(paragrafo, true) : null;
+        if (!rect && pedido.geometria && pedido.pagina) {
+            const folha = rectDaPagina(pedido.documentId, pedido.pagina, true);
+            if (folha) {
+                const px = boxParaPixels(pedido.geometria.box, folha.largura, folha.altura);
+                rect = { x: folha.x + px.left, y: folha.y + px.top, largura: px.width, altura: px.height };
+            }
+        }
+        irAte(pedido.documentId, pedido.pagina, rect, { foco: true });
+    }, [medidas, context.paragraphNodes, rectDoParagrafo, rectDaPagina, irAte]);
 
     const quadroVisivel = useCallback(
         (rect: Rect) =>
@@ -704,14 +736,15 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
         (tabela: (typeof tabelasComCaixa)[number]) => {
             setTabelaRealcada(tabela.id);
             focarDocumento(tabela.documentId);
-            const pagina = rectDaPagina(tabela.documentId, tabela.pageNumber);
+            const pagina = rectDaPagina(tabela.documentId, tabela.pageNumber, true);
             const rect = pagina
                 ? (() => {
                       const px = boxParaPixels(tabela.box, pagina.largura, pagina.altura);
                       return { x: pagina.x + px.left, y: pagina.y + px.top, largura: px.width, altura: px.height };
                   })()
                 : null;
-            irAte(tabela.documentId, tabela.pageNumber, rect);
+            // Fonte de linha de tabela tambem ganha foco: zoom ate a tabela e holofote.
+            irAte(tabela.documentId, tabela.pageNumber, rect, { foco: true });
         },
         [focarDocumento, irAte, rectDaPagina]
     );
@@ -775,13 +808,16 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
             irAte: (documentId, pagina, nodeId, paragraphId, lines, geometria) => {
                 focarDocumento(documentId);
                 setCitacao(null);
+                if (!medidas[documentId]) {
+                    focoPendente.current = { documentId, pagina, paragraphId, geometria };
+                }
                 // Fonte com paragrafo: seleciona o grifo dele (ambar, como o
                 // clique na folha), destaca as linhas citadas e centraliza.
                 const paragrafo = paragraphId ? context.paragraphNodes.find((no) => no.id === paragraphId && no.documentId === documentId) : undefined;
                 if (paragrafo) {
                     selecionarParagrafo(paragrafo, indiceDoContexto.secaoDoParagrafo(paragrafo));
                     setDestaque(lines && lines.length > 0 ? { paragraphId: paragrafo.id as number, lines } : null);
-                    irAte(documentId, paragrafo.pageNumber ?? pagina, rectDoParagrafo(paragrafo));
+                    irAte(documentId, paragrafo.pageNumber ?? pagina, rectDoParagrafo(paragrafo, true), { foco: true });
                     return;
                 }
                 setDestaque(null);
@@ -789,14 +825,14 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                 // ainda aponta o lugar certo na pagina.
                 if (geometria && pagina) {
                     setCitacao({ documentId, pagina, box: geometria.box, lineBoxes: geometria.lineBoxes });
-                    const folha = rectDaPagina(documentId, pagina);
+                    const folha = rectDaPagina(documentId, pagina, true);
                     const rect = folha
                         ? (() => {
                               const px = boxParaPixels(geometria.box, folha.largura, folha.altura);
                               return { x: folha.x + px.left, y: folha.y + px.top, largura: px.width, altura: px.height };
                           })()
                         : null;
-                    irAte(documentId, pagina, rect);
+                    irAte(documentId, pagina, rect, { foco: true });
                     return;
                 }
                 const secao = nodeId ? indiceDoContexto.porNodeId.get(nodeId) : undefined;
@@ -805,7 +841,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                 irAte(documentId, ancora?.pageNumber ?? pagina, rect);
             },
         }),
-        [focarDocumento, irAte, indiceDoContexto, ancoraDaSecao, rectDoParagrafo, tabelasComCaixa, irAteTabela, context.paragraphNodes, selecionarParagrafo, rectDaPagina]
+        [focarDocumento, irAte, indiceDoContexto, ancoraDaSecao, rectDoParagrafo, tabelasComCaixa, irAteTabela, context.paragraphNodes, selecionarParagrafo, rectDaPagina, medidas]
     );
 
     useEffect(() => {
@@ -961,10 +997,39 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
             setLinhaRealcada(idDaLinha(conexao));
             const no = indiceDoContexto.porNodeId.get(conexao.nodeId);
             const a = no ? ancoraDaSecao(no) : null;
-            irAte(conexao.documentId, a?.pageNumber ?? no?.startPage ?? conexao.startPage ?? null, a ? rectDoParagrafo(a) : null);
+            // As linhas do destino que contem os termos em comum ganham o
+            // grifo rosa: e o "por que a flecha chega aqui", visivel na folha.
+            const linhas = a ? linhasComTermos(a, conexao.matchedTerms) : [];
+            setDestaque(a && linhas.length > 0 ? { paragraphId: a.id as number, lines: linhas } : null);
+            irAte(conexao.documentId, a?.pageNumber ?? no?.startPage ?? conexao.startPage ?? null, a ? rectDoParagrafo(a, true) : null, { foco: true });
         },
         [conexoes, indiceDoContexto, ancoraDaSecao, rectDoParagrafo, irAte]
     );
+
+    // Teclado: com conexoes carregadas, ← → percorrem e Esc limpa. Ignora
+    // quando o foco esta num campo de texto.
+    useEffect(() => {
+        if (!conexoes || conexoes.length === 0) {
+            return;
+        }
+        const aoTeclar = (event: KeyboardEvent) => {
+            const alvo = event.target as HTMLElement | null;
+            if (alvo && (alvo.tagName === "INPUT" || alvo.tagName === "TEXTAREA" || alvo.isContentEditable)) {
+                return;
+            }
+            if (event.key === "ArrowRight") {
+                event.preventDefault();
+                irParaIndice(Math.min(indiceConexao + 1, conexoes.length - 1));
+            } else if (event.key === "ArrowLeft") {
+                event.preventDefault();
+                irParaIndice(Math.max(indiceConexao - 1, 0));
+            } else if (event.key === "Escape") {
+                limparSelecao();
+            }
+        };
+        window.addEventListener("keydown", aoTeclar);
+        return () => window.removeEventListener("keydown", aoTeclar);
+    }, [conexoes, indiceConexao, irParaIndice, limparSelecao]);
 
     const navegador = useMemo(
         () =>
@@ -1006,6 +1071,8 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                 data-testid="workspace-canvas"
                 hidden={!folhaAberta}
                 {...handlers}
+                onPointerDownCapture={() => setHolofote(null)}
+                onWheelCapture={() => setHolofote(null)}
             >
                 <div
                     className="absolute left-0 top-0 origin-top-left"
@@ -1117,6 +1184,19 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                         onRealcar={setLinhaRealcada}
                         onEscolher={irParaConexao}
                     />
+                    {holofote ? (
+                        <div
+                            data-testid="holofote"
+                            className="pointer-events-none absolute rounded-md ring-2 ring-rose-500/80"
+                            style={{
+                                left: holofote.x - 6,
+                                top: holofote.y - 6,
+                                width: holofote.largura + 12,
+                                height: holofote.altura + 12,
+                                boxShadow: "0 0 0 100000px rgba(15, 23, 42, 0.35)",
+                            }}
+                        />
+                    ) : null}
                 </div>
 
                 <LegendPanel legenda={legenda} onSalvar={salvarLegenda} contagem={documentoFocado !== null ? contagemDoFocado : null} />
@@ -1465,7 +1545,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                             ) : (
                                 <ul className="space-y-2 border-t border-border pt-3">
                                     <li className="text-[11px] leading-snug text-muted-foreground" data-testid="explicacao-de-conexao">
-                                        {t("workspace.sidebar.connectionsHint")}
+                                        {t("workspace.sidebar.connectionsHint")} {t("workspace.sidebar.keyboardHint")}
                                     </li>
                                     {conexoes.length > LINHAS_MAXIMAS ? (
                                         <li className="text-[11px] text-muted-foreground" data-testid="aviso-linhas-limitadas">
@@ -1497,8 +1577,16 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                                                 >
                                                     <p className="text-xs font-medium">
                                                         {conexao.title}
-                                                        <span className="ml-2 rounded bg-primary/10 px-1 text-[10px] text-primary">
-                                                            {conexao.score === 1 ? t("workspace.sidebar.term") : t("workspace.sidebar.terms", { count: conexao.score })}
+                                                        <span
+                                                            className="ml-2 rounded px-1 text-[10px]"
+                                                            style={{ color: corPorTipo(conexao.kind), backgroundColor: `color-mix(in srgb, ${corPorTipo(conexao.kind)} 12%, transparent)` }}
+                                                            data-testid="tipo-da-conexao"
+                                                        >
+                                                            {conexao.kind === "mesma-norma"
+                                                                ? t("workspace.sidebar.sameNorm")
+                                                                : conexao.kind === "mesma-disciplina"
+                                                                  ? t("workspace.sidebar.sameDiscipline")
+                                                                  : conexao.score === 1 ? t("workspace.sidebar.term") : t("workspace.sidebar.terms", { count: conexao.score })}
                                                         </span>
                                                     </p>
                                                     <p className="mt-1 text-[11px] text-muted-foreground">

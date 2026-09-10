@@ -176,6 +176,8 @@ test("workspace mostra a estrutura do documento e justifica cada conexao @smoke"
     // E a conexao existe como linha desenhada, com o score em termos.
     await expect(page.getByTestId("linha-de-conexao")).toHaveCount(1);
     await expect(page.getByTestId("rotulo-da-linha")).toHaveText("8 termos");
+    await expect(page.getByTestId("linha-de-conexao")).toHaveAttribute("data-tipo", "termo-raro");
+    await expect(page.getByTestId("tipo-da-conexao").first()).toHaveText("8 termos");
 });
 
 test("workspace declara ausencia de conexao em vez de area vazia @smoke", async ({
