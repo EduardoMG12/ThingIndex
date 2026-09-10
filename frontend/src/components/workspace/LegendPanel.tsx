@@ -22,11 +22,12 @@ export type LegendPanelProps = {
 
 const CHAVE_RECOLHIDO = "thingindex.workspace.legenda.recolhida";
 
+// Comeca recolhida: aberta, cobria o canto do PDF em telas de 1.350 px.
 function lerRecolhido(): boolean {
     try {
-        return window.localStorage.getItem(CHAVE_RECOLHIDO) === "1";
+        return window.localStorage.getItem(CHAVE_RECOLHIDO) !== "0";
     } catch {
-        return false;
+        return true;
     }
 }
 

@@ -236,3 +236,32 @@ func TestOrigemSemTextoNaoProduzConexao(t *testing.T) {
 		t.Fatalf("no sem texto nao pode gerar conexao; veio %+v", conexoes)
 	}
 }
+
+// Termo presente em quase todas as secoes do acervo ("curso", "edital") nao
+// e evidencia de relacao: e o vocabulario do acervo. Com ele contando, duas
+// declaracoes de formulario sem nada em comum apareciam ligadas por "2 termos".
+func TestTermoOnipresenteNaoSustentaConexao(t *testing.T) {
+	origem := noDeTeste(1, "doc1#anexo-c", "ANEXO C DECLARACAO DE RENDA", "declaracao do curso do edital para o campus")
+	nos := []models.DocumentOutlineNode{origem}
+	// Trinta secoes de outros documentos, todas com "curso", "edital" e "campus".
+	for i := 0; i < 30; i++ {
+		nos = append(nos, noDeTeste(2, "doc2#s"+string(rune('a'+i%26))+string(rune('a'+i/26)), "SECAO", "o curso do edital no campus trata de outro assunto"))
+	}
+	// So esta compartilha um termo raro ("renda") -- e apenas um, abaixo do limiar 2.
+	nos = append(nos, noDeTeste(3, "doc3#renda", "COMPROVANTE DE RENDA", "renda familiar"))
+	conexoes := BuildNodeConnections(origem, nos, 2)
+	if len(conexoes) != 0 {
+		t.Fatalf("termos onipresentes sustentaram conexao: %+v", conexoes)
+	}
+	// Dois termos raros em comum sustentam.
+	nos = append(nos, noDeTeste(4, "doc4#renda-declaracao", "DECLARACAO DE RENDA", "declaracao de renda familiar"))
+	conexoes = BuildNodeConnections(origem, nos, 2)
+	if len(conexoes) != 1 || conexoes[0].NodeID != "doc4#renda-declaracao" {
+		t.Fatalf("termos raros deveriam sustentar exatamente uma conexao: %+v", conexoes)
+	}
+	for _, termo := range conexoes[0].MatchedTerms {
+		if termo == "curso" || termo == "edital" || termo == "campus" {
+			t.Fatalf("termo onipresente na justificativa: %v", conexoes[0].MatchedTerms)
+		}
+	}
+}

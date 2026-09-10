@@ -218,3 +218,23 @@ func sortResults(results []Result) {
 		return results[i].DocID < results[j].DocID
 	})
 }
+
+// FoldDiacritics tira acentos e cedilha das vogais e consoantes do portugues
+// e do espanhol, depois de baixar a caixa. E o que a producao usa antes de
+// tokenizar: o usuario escreve "horaria" e o documento traz "horária".
+//
+// O experimento (bracos A a D) NAO dobra acentos de proposito: ele mede o
+// sistema como foi publicado. A producao e um braco B com esta dobra a mais,
+// e a diferenca fica declarada aqui.
+func FoldDiacritics(text string) string {
+	return diacriticsFolder.Replace(strings.ToLower(text))
+}
+
+var diacriticsFolder = strings.NewReplacer(
+	"á", "a", "à", "a", "â", "a", "ã", "a", "ä", "a",
+	"é", "e", "è", "e", "ê", "e", "ë", "e",
+	"í", "i", "ì", "i", "î", "i", "ï", "i",
+	"ó", "o", "ò", "o", "ô", "o", "õ", "o", "ö", "o",
+	"ú", "u", "ù", "u", "û", "u", "ü", "u",
+	"ç", "c", "ñ", "n",
+)

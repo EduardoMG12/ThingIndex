@@ -13,6 +13,8 @@ export const messages: LocaleMessages = {
             chat: {
                 viewInDocument: "Ver no documento",
                 toggle: "Painel",
+                close: "Fechar painel",
+                resize: "Redimensionar painel",
                 tab: "Chat",
             },
             documents: {
@@ -47,6 +49,8 @@ export const messages: LocaleMessages = {
                 modeSingle: "Ver uma página por vez",
                 prevPage: "Página anterior",
                 nextPage: "Próxima página",
+                prevPageEdge: "Voltar pela borda de cima da folha",
+                nextPageEdge: "Avançar pela borda de baixo da folha",
                 pageOf: "p. {page} de {total}",
             },
             page: {
@@ -64,6 +68,10 @@ export const messages: LocaleMessages = {
             },
             sidebar: {
                 label: "Detalhes do documento",
+                about: "Sobre este documento",
+                topics: "Tópicos",
+                open: "Abrir estrutura",
+                close: "Fechar estrutura",
                 empty: "Selecione um documento no painel para ver sua estrutura.",
                 noStructure: "Documento sem estrutura indexada.",
                 noPosition: "{count} de {total} trechos sem posição na página.",
@@ -75,6 +83,7 @@ export const messages: LocaleMessages = {
                 loadingConnections: "Buscando conexões…",
                 connectionsError: "Falha ao buscar conexões.",
                 noConnections: "Nenhuma conexão acima do limiar para este trecho.",
+                connectionsHint: "Conexão é uma seção de outro documento que compartilha termos raros do acervo com este trecho. Passe o mouse numa linha para ver os termos; clique para ir até lá.",
                 tooManyLines: "{total} conexões acima do limiar; as {max} mais fortes estão desenhadas no canvas.",
                 commonTerms: "Termos em comum:",
                 term: "1 termo",
@@ -701,6 +710,10 @@ export const messages: LocaleMessages = {
                 loadingConversation: "Carregando conversa...",
                 userLabel: "Você",
                 assistantLabel: "Resposta grounded",
+                usage: {
+                    tokens: "{count} tokens",
+                    estimated: "Estimativa: o provedor não informou o consumo.",
+                },
                 deleteConversationLabel: "Excluir conversa",
                 renameConversationLabel: "Renomear conversa",
                 stepContext: "Reconstruindo contexto da collection",
@@ -1351,6 +1364,8 @@ export const messages: LocaleMessages = {
             chat: {
                 viewInDocument: "View in document",
                 toggle: "Panel",
+                close: "Close panel",
+                resize: "Resize panel",
                 tab: "Chat",
             },
             documents: {
@@ -1385,6 +1400,8 @@ export const messages: LocaleMessages = {
                 modeSingle: "Show one page at a time",
                 prevPage: "Previous page",
                 nextPage: "Next page",
+                prevPageEdge: "Back, top edge of the sheet",
+                nextPageEdge: "Forward, bottom edge of the sheet",
                 pageOf: "p. {page} of {total}",
             },
             page: {
@@ -1402,6 +1419,10 @@ export const messages: LocaleMessages = {
             },
             sidebar: {
                 label: "Document details",
+                about: "About this document",
+                topics: "Topics",
+                open: "Open structure",
+                close: "Close structure",
                 empty: "Select a document on the canvas to see its structure.",
                 noStructure: "Document without indexed structure.",
                 noPosition: "{count} of {total} passages without a position on the page.",
@@ -1413,6 +1434,7 @@ export const messages: LocaleMessages = {
                 loadingConnections: "Looking for connections…",
                 connectionsError: "Failed to fetch connections.",
                 noConnections: "No connection above the threshold for this passage.",
+                connectionsHint: "A connection is a section of another document that shares rare terms with this passage. Hover a line to see the terms; click to go there.",
                 tooManyLines: "{total} connections above the threshold; the {max} strongest are drawn on the canvas.",
                 commonTerms: "Terms in common:",
                 term: "1 term",
@@ -2039,6 +2061,10 @@ export const messages: LocaleMessages = {
                 loadingConversation: "Loading conversation...",
                 userLabel: "You",
                 assistantLabel: "Grounded answer",
+                usage: {
+                    tokens: "{count} tokens",
+                    estimated: "Estimate: the provider did not report usage.",
+                },
                 deleteConversationLabel: "Delete conversation",
                 renameConversationLabel: "Rename conversation",
                 stepContext: "Rebuilding collection context",
@@ -2689,6 +2715,8 @@ export const messages: LocaleMessages = {
             chat: {
                 viewInDocument: "Ver en el documento",
                 toggle: "Panel",
+                close: "Cerrar panel",
+                resize: "Redimensionar panel",
                 tab: "Chat",
             },
             documents: {
@@ -2723,6 +2751,8 @@ export const messages: LocaleMessages = {
                 modeSingle: "Ver una página a la vez",
                 prevPage: "Página anterior",
                 nextPage: "Página siguiente",
+                prevPageEdge: "Retroceder por el borde superior de la hoja",
+                nextPageEdge: "Avanzar por el borde inferior de la hoja",
                 pageOf: "p. {page} de {total}",
             },
             page: {
@@ -2740,6 +2770,10 @@ export const messages: LocaleMessages = {
             },
             sidebar: {
                 label: "Detalles del documento",
+                about: "Sobre este documento",
+                topics: "Temas",
+                open: "Abrir estructura",
+                close: "Cerrar estructura",
                 empty: "Selecciona un documento en el lienzo para ver su estructura.",
                 noStructure: "Documento sin estructura indexada.",
                 noPosition: "{count} de {total} fragmentos sin posición en la página.",
@@ -2751,6 +2785,7 @@ export const messages: LocaleMessages = {
                 loadingConnections: "Buscando conexiones…",
                 connectionsError: "Error al buscar conexiones.",
                 noConnections: "Ninguna conexión por encima del umbral para este fragmento.",
+                connectionsHint: "Una conexión es una sección de otro documento que comparte términos raros del acervo con este fragmento. Pasa el mouse por una línea para ver los términos; haz clic para ir allí.",
                 tooManyLines: "{total} conexiones por encima del umbral; las {max} más fuertes están dibujadas en el lienzo.",
                 commonTerms: "Términos en común:",
                 term: "1 término",
@@ -3377,6 +3412,10 @@ export const messages: LocaleMessages = {
                 loadingConversation: "Cargando conversación...",
                 userLabel: "Tú",
                 assistantLabel: "Respuesta grounded",
+                usage: {
+                    tokens: "{count} tokens",
+                    estimated: "Estimación: el proveedor no informó el consumo.",
+                },
                 deleteConversationLabel: "Eliminar conversación",
                 renameConversationLabel: "Renombrar conversación",
                 stepContext: "Reconstruyendo el contexto de la collection",

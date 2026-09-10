@@ -2,7 +2,7 @@
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, Maximize2, Minus, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2, Minus, PanelRightClose, PanelRightOpen, Plus } from "lucide-react";
 
 import { useI18n } from "@/lib/i18n/provider";
 
@@ -207,6 +207,36 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
         for (const no of nosDoSumario) {
             porNodeId.set(no.nodeId, no);
         }
+        // Secoes construidas pela LLM nao tem slug igual ao section_key dos
+        // paragrafos (que vem da passada deterministica); elas trazem o
+        // intervalo paragraph_start..paragraph_end. O paragrafo cai na secao
+        // mais funda cujo intervalo o contem.
+        const porIntervalo = new Map<number, OutlineNode[]>();
+        for (const no of nosDoSumario) {
+            const inicio = no.metadata?.paragraph_start;
+            const fim = no.metadata?.paragraph_end;
+            if (typeof inicio !== "number" || typeof fim !== "number") {
+                continue;
+            }
+            const lista = porIntervalo.get(no.documentId) ?? [];
+            lista.push(no);
+            porIntervalo.set(no.documentId, lista);
+        }
+        const secaoPorIntervalo = (documentId: number, sequencia: number): OutlineNode | null => {
+            let melhor: OutlineNode | null = null;
+            for (const no of porIntervalo.get(documentId) ?? []) {
+                const inicio = no.metadata?.paragraph_start as number;
+                const fim = no.metadata?.paragraph_end as number;
+                if (sequencia >= inicio && sequencia <= fim && (melhor === null || no.level > melhor.level)) {
+                    melhor = no;
+                }
+            }
+            return melhor;
+        };
+        const secaoDoParagrafo = (no: ParagraphNode): OutlineNode | null => {
+            const chave = sectionKeyDe(no);
+            return (chave ? (secaoPorSlug.get(no.documentId)?.get(chave) ?? null) : null) ?? secaoPorIntervalo(no.documentId, no.sequenceOrder);
+        };
         const porPagina = new Map<number, Map<number, ParagrafoNaPagina[]>>();
         const ancora = new Map<number, Map<string, ParagraphNode>>();
         const porSequencia = new Map<number, Map<number, ParagraphNode>>();
@@ -223,7 +253,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
             }
             contagem.set(no.documentId, c);
             const chave = sectionKeyDe(no);
-            const secao = chave ? (secaoPorSlug.get(no.documentId)?.get(chave) ?? null) : null;
+            const secao = secaoDoParagrafo(no);
             if (box && chave) {
                 const mapa = ancora.get(no.documentId) ?? new Map<string, ParagraphNode>();
                 if (!mapa.has(chave)) {
@@ -251,7 +281,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
             paginas.set(no.startPage, lista);
             secoesPorPagina.set(no.documentId, paginas);
         }
-        return { secaoPorSlug, porNodeId, porPagina, ancora, porSequencia, contagem, secoesPorPagina };
+        return { secaoPorSlug, porNodeId, porPagina, ancora, porSequencia, contagem, secoesPorPagina, secaoDoParagrafo };
     }, [nosDoSumario, paragrafos]);
 
     // Ancora de uma secao: o paragrafo em que ela comeca (paragraph_start, que
@@ -352,6 +382,14 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
     });
     // Um ?doc= de outra colecao nao aponta para nada aqui: vale como "nenhum".
     const documentoFocado = documentoFocadoBruto !== null && documentos.some((d) => d.id === documentoFocadoBruto) ? documentoFocadoBruto : null;
+    // A estrutura so ocupa espaco quando ha o que mostrar: abre sozinha ao
+    // focar um documento e pode ser recolhida a um trilho de 40 px.
+    const [estruturaAberta, setEstruturaAberta] = useState<boolean>(() => documentoFocado !== null);
+    useEffect(() => {
+        if (documentoFocado !== null) {
+            setEstruturaAberta(true);
+        }
+    }, [documentoFocado]);
 
     useEffect(() => {
         const params = new URLSearchParams(searchParams.toString());
@@ -721,6 +759,19 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
     );
 
     const documentoAtual = documentos.find((documento) => documento.id === documentoFocado);
+    // Sinopse e topicos gravados pelo enriquecimento por LLM. So a sinopse da
+    // LLM entra (synopsis_source=llm): a de fallback e o texto cru da primeira
+    // pagina, que nao explica nada.
+    const sobreOFocado = useMemo(() => {
+        if (documentoFocado === null) {
+            return null;
+        }
+        const pares = (context.metadataPairs ?? []).filter((p) => p.documentId === documentoFocado);
+        const ultimo = (chave: string) => [...pares].reverse().find((p) => p.key === chave)?.value ?? "";
+        const resumo = ultimo("synopsis_source") === "llm" ? ultimo("document_summary") : "";
+        const topicos = (ultimo("topics") || ultimo("keywords")).split(",").map((s) => s.trim()).filter(Boolean).slice(0, 8);
+        return resumo || topicos.length > 0 ? { resumo, topicos } : null;
+    }, [context.metadataPairs, documentoFocado]);
 
     const estadoAtual = useMemo<WorkspaceViewState>(
         () => ({
@@ -850,10 +901,10 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
         // Empilha em telas estreitas e divide em duas colunas a partir de lg.
         // `min-w-0` e obrigatorio: sem ele o item flex assume a largura do
         // conteudo e o canvas colapsa para dezenas de pixels em 780px (medido).
-        <div className="flex h-full w-full flex-col gap-4 lg:flex-row">
+        <div className="flex h-full w-full flex-col gap-2 lg:flex-row">
             <div
                 ref={containerRef}
-                className={`relative h-[60vh] w-full min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-muted/20 touch-none lg:h-[calc(100vh-9rem)] ${
+                className={`relative h-[60vh] w-full min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-muted/20 touch-none lg:h-full ${
                     arrastandoFundo ? "cursor-grabbing" : "cursor-grab"
                 }`}
                 data-testid="workspace-canvas"
@@ -1017,14 +1068,73 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
             </div>
 
             <aside
-                className="max-h-[40vh] w-full shrink-0 overflow-y-auto rounded-lg border border-border bg-card p-4 lg:max-h-[calc(100vh-9rem)] lg:w-72"
+                className={
+                    estruturaAberta
+                        ? "relative max-h-[40vh] w-full shrink-0 overflow-y-auto rounded-lg border border-border bg-card p-4 lg:max-h-full lg:w-72"
+                        : "hidden shrink-0 rounded-lg border border-border bg-card p-1 lg:flex lg:w-10 lg:flex-col lg:items-center"
+                }
                 aria-label={t("workspace.sidebar.label")}
+                data-testid="estrutura"
+                data-aberta={estruturaAberta}
             >
-                {documentoFocado === null ? (
-                    <p className="text-sm text-muted-foreground">{t("workspace.sidebar.empty")}</p>
+                {!estruturaAberta ? (
+                    <button
+                        type="button"
+                        onClick={() => setEstruturaAberta(true)}
+                        aria-label={t("workspace.sidebar.open")}
+                        title={t("workspace.sidebar.open")}
+                        data-testid="abrir-estrutura"
+                        className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                        <PanelRightOpen className="h-4 w-4" aria-hidden />
+                    </button>
+                ) : documentoFocado === null ? (
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => setEstruturaAberta(false)}
+                            aria-label={t("workspace.sidebar.close")}
+                            title={t("workspace.sidebar.close")}
+                            data-testid="fechar-estrutura"
+                            className="absolute right-2 top-2 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        >
+                            <PanelRightClose className="h-4 w-4" aria-hidden />
+                        </button>
+                        <p className="pr-8 text-sm text-muted-foreground">{t("workspace.sidebar.empty")}</p>
+                    </>
                 ) : (
                     <div className="space-y-4">
-                        <h2 className="text-sm font-semibold">{documentoAtual?.title}</h2>
+                        <div className="flex items-start justify-between gap-2">
+                            <h2 className="text-sm font-semibold">{documentoAtual?.title}</h2>
+                            <button
+                                type="button"
+                                onClick={() => setEstruturaAberta(false)}
+                                aria-label={t("workspace.sidebar.close")}
+                                title={t("workspace.sidebar.close")}
+                                data-testid="fechar-estrutura"
+                                className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                            >
+                                <PanelRightClose className="h-4 w-4" aria-hidden />
+                            </button>
+                        </div>
+                        {/* Sinopse e topicos que o enriquecimento por LLM gravou nos
+                            metadados: os "topicos importantes" fora da folha. Sem
+                            enriquecimento, nada aparece. */}
+                        {sobreOFocado ? (
+                            <div className="rounded-md border border-border bg-muted/30 p-3 text-xs" data-testid="sobre-o-documento">
+                                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{t("workspace.sidebar.about")}</p>
+                                {sobreOFocado.resumo ? <p className="leading-snug text-foreground/90">{sobreOFocado.resumo}</p> : null}
+                                {sobreOFocado.topicos.length > 0 ? (
+                                    <ul className="mt-2 flex flex-wrap gap-1" aria-label={t("workspace.sidebar.topics")}>
+                                        {sobreOFocado.topicos.map((topico) => (
+                                            <li key={topico} className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] text-primary" data-testid="topico">
+                                                {topico}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : null}
+                            </div>
+                        ) : null}
 
                         {(() => {
                             const c = indiceDoContexto.contagem.get(documentoFocado);
@@ -1073,10 +1183,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                                                         type="button"
                                                         title={t("workspace.marks.goTo")}
                                                         onClick={() => {
-                                                            const secao = sectionKeyDe(no)
-                                                                ? (indiceDoContexto.secaoPorSlug.get(no.documentId)?.get(sectionKeyDe(no)!) ?? null)
-                                                                : null;
-                                                            selecionarParagrafo(no, secao);
+                                                            selecionarParagrafo(no, indiceDoContexto.secaoDoParagrafo(no));
                                                             irAte(no.documentId, no.pageNumber ?? null, rectDoParagrafo(no));
                                                         }}
                                                         className="w-full rounded px-1 py-0.5 text-left text-xs hover:bg-muted"
@@ -1209,6 +1316,9 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                                 <p className="text-xs text-muted-foreground">{t("workspace.sidebar.noConnections")}</p>
                             ) : (
                                 <ul className="space-y-2 border-t border-border pt-3">
+                                    <li className="text-[11px] leading-snug text-muted-foreground" data-testid="explicacao-de-conexao">
+                                        {t("workspace.sidebar.connectionsHint")}
+                                    </li>
                                     {conexoes.length > LINHAS_MAXIMAS ? (
                                         <li className="text-[11px] text-muted-foreground" data-testid="aviso-linhas-limitadas">
                                             {t("workspace.sidebar.tooManyLines", { total: conexoes.length, max: LINHAS_MAXIMAS })}
