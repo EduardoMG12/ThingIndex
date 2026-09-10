@@ -89,6 +89,9 @@ func (e *LLMEnricher) Enrich(ctx context.Context, llm domain.LLMService, doc *mo
 	// antes eram 12 secoes e 8 paginas por documento, e o PPC de 209 paginas
 	// ficava com 200 paginas em fallback (os 320 primeiros caracteres).
 	calls := 0
+	// O texto proprio de cada secao (paragrafos dela, sem os filhos) e o que
+	// vai ao prompt; com o texto da pagina inteira a LLM pulava metade dos nos.
+	populateOutlineRetrievalText(&updated)
 	sections := e.generateAllSectionSummaries(ctx, llm, doc, updated, &calls)
 	applyOutlineNodeSummaries(&updated, sections)
 	pages := e.generateAllPageSummaries(ctx, llm, doc, updated, &calls)
@@ -257,7 +260,10 @@ func buildSectionBatchContext(doc *models.Document, nodes []models.DocumentOutli
 		b.WriteString(strconv.Itoa(node.Level))
 		b.WriteString(", title=")
 		b.WriteString(node.Title)
-		if node.StartPage != nil {
+		if own, _ := metadataString(node.Metadata, "retrieval_text"); strings.TrimSpace(own) != "" {
+			b.WriteString(", text=")
+			b.WriteString(clampText(own, enrichmentSectionChars))
+		} else if node.StartPage != nil {
 			text := ""
 			end := *node.StartPage
 			if node.EndPage != nil && *node.EndPage > end {

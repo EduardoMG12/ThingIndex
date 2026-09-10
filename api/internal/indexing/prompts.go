@@ -121,8 +121,8 @@ func buildOutlineNodeSummaryPrompt(contextBlock string) (string, string) {
 You generate one stage of a structured document indexing pipeline.
 Return only valid JSON.
 Do not wrap the response in markdown fences.
-Summarize only tree nodes that are actually evidenced by the supplied pages and outline.
-If evidence is weak, leave the node out instead of guessing.
+Summarize every node listed, using only the text supplied for it.
+When the text is short, say what the title and the available text state; never invent facts.
 Prefer navigation-grade summaries, page-grounded and auditable.
 `)
 
