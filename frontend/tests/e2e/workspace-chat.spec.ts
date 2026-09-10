@@ -32,7 +32,23 @@ const CONTEXTO = {
         { id: 42, node_id: "edital#prazos", document_id: 4, sequence_order: 1, level: 1, title: "12 PRAZOS", slug: "prazos", start_page: 12, metadata: { paragraph_start: 1 } },
     ],
     paragraph_nodes: [
-        { id: 402, document_id: 4, sequence_order: 1, page_number: 12, content: "Pagina 12 de 30", metadata: { box: box(72, 205, 81.948, 94.898), source: "pdftotext", section_key: "prazos" } },
+        {
+            id: 402,
+            document_id: 4,
+            sequence_order: 1,
+            page_number: 12,
+            content: "Pagina 12 de 30",
+            metadata: {
+                box: box(72, 205, 81.948, 94.898),
+                source: "pdftotext",
+                section_key: "prazos",
+                // Duas linhas visuais dentro da caixa: a fonte do chat aponta a segunda.
+                lines: [
+                    { t: "linha um", b: [72, 81.948, 205, 88.4] },
+                    { t: "linha dois", b: [72, 88.4, 205, 94.898] },
+                ],
+            },
+        },
     ],
     table_sections: [],
     metadata_pairs: [],
@@ -86,7 +102,7 @@ async function mockar(context: BrowserContext) {
                             role: "assistant",
                             content: "O prazo e de 30 dias.",
                             sources: [
-                                { id: "4:12:edital#prazos", doc_name: "Edital longo", page: 12, snippet: "Prazo de 30 dias.", document_id: 4, node_id: "edital#prazos" },
+                                { id: "4:12:edital#prazos", doc_name: "Edital longo", page: 12, snippet: "Prazo de 30 dias.", document_id: 4, node_id: "edital#prazos", paragraph_id: 402, lines: [1] },
                                 { id: "3:1", doc_name: "Termo assinado", page: 1, snippet: "Assinado." },
                             ],
                             created_at: "2026-01-01T00:00:01Z",
@@ -151,6 +167,10 @@ test("perguntar no painel e clicar em 'Ver no documento' leva o Edital a pagina 
     // A fonte clicada fica marcada como ativa e o contador diz onde o usuario esta na lista.
     await expect(painel.getByTestId("fonte-posicao").first()).toHaveText("1/2");
     await expect(painel.getByTestId("fonte").first()).toHaveAttribute("data-ativa", "true");
+    // O paragrafo citado fica selecionado e so a linha apontada pela fonte recebe o grifo forte.
+    await expect(edital.locator('[data-paragrafo="402"]')).toHaveAttribute("aria-pressed", "true");
+    await expect(edital.getByTestId("grifo-linha")).toHaveCount(1);
+    await expect(edital.getByTestId("grifo-linha")).toHaveAttribute("title", "linha dois");
 });
 
 test("?collection= escolhe a colecao e o botao esconde o painel", async ({ baseURL, context, page }) => {
