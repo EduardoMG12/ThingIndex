@@ -37,6 +37,9 @@ type ChatSource struct {
 	// Lines sao os indices (em metadata.lines do paragrafo) das linhas que
 	// casam a pergunta: o grifo fino, em vez do paragrafo inteiro.
 	Lines []int `json:"lines,omitempty"`
+	// MatchedTerms sao os termos da pergunta presentes na fonte: e o "por que
+	// esta fonte esta aqui", auditavel, como nas conexoes.
+	MatchedTerms []string `json:"matchedTerms,omitempty"`
 	// Body e o texto que vai ao prompt quando a fonte e menor que uma pagina
 	// (linha de tabela). Interno: nao sai na API nem e persistido.
 	Body string `json:"-"`

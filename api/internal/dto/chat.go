@@ -28,14 +28,15 @@ type ChatStreamRequest struct {
 }
 
 type ChatSourceResponse struct {
-	ID          string `json:"id"`
-	DocName     string `json:"doc_name"`
-	Page        int    `json:"page"`
-	Snippet     string `json:"snippet"`
-	DocumentID  uint   `json:"document_id,omitempty"`
-	NodeID      string `json:"node_id,omitempty"`
-	ParagraphID uint   `json:"paragraph_id,omitempty"`
-	Lines       []int  `json:"lines,omitempty"`
+	ID           string   `json:"id"`
+	DocName      string   `json:"doc_name"`
+	Page         int      `json:"page"`
+	Snippet      string   `json:"snippet"`
+	DocumentID   uint     `json:"document_id,omitempty"`
+	NodeID       string   `json:"node_id,omitempty"`
+	ParagraphID  uint     `json:"paragraph_id,omitempty"`
+	Lines        []int    `json:"lines,omitempty"`
+	MatchedTerms []string `json:"matched_terms,omitempty"`
 }
 
 type ChatConversationResponse struct {
@@ -112,14 +113,15 @@ func ToChatConversationMessageResponses(messages []models.ChatConversationEntry)
 		sources := make([]ChatSourceResponse, 0, len(message.Sources))
 		for _, source := range message.Sources {
 			sources = append(sources, ChatSourceResponse{
-				ID:          source.ID,
-				DocName:     source.DocName,
-				Page:        source.Page,
-				Snippet:     source.Snippet,
-				DocumentID:  source.DocumentID,
-				NodeID:      source.NodeID,
-				ParagraphID: source.ParagraphID,
-				Lines:       source.Lines,
+				ID:           source.ID,
+				DocName:      source.DocName,
+				Page:         source.Page,
+				Snippet:      source.Snippet,
+				DocumentID:   source.DocumentID,
+				NodeID:       source.NodeID,
+				ParagraphID:  source.ParagraphID,
+				Lines:        source.Lines,
+				MatchedTerms: source.MatchedTerms,
 			})
 		}
 

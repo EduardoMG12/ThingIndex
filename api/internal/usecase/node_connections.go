@@ -315,6 +315,10 @@ var palavrasVaziasPT = map[string]struct{}{
 	// Conectivos e genericos que a amostra do demo mostrou justificando aresta.
 	"acoes": {}, "atender": {}, "conjunto": {}, "realizacao": {}, "gerais": {}, "geral": {},
 	"desta": {}, "deste": {}, "destas": {}, "destes": {}, "dessa": {}, "desse": {}, "dessas": {}, "desses": {}, "nesta": {}, "neste": {},
+	// Interrogativos e verbos de pergunta: estao em toda pergunta e em
+	// nenhuma resposta; contavam como "termo casado" da fonte.
+	"qual": {}, "quais": {}, "quando": {}, "quanto": {}, "quanta": {}, "quantos": {}, "quantas": {}, "onde": {}, "quem": {},
+	"porque": {}, "existe": {}, "existem": {}, "tem": {}, "ha": {}, "diz": {}, "significa": {}, "esta": {}, "estao": {},
 }
 
 // ehPalavraVazia diz se o termo e conectivo ou numeracao de secao.

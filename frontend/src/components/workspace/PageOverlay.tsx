@@ -209,7 +209,8 @@ export function PageOverlay({
                                   return (
                                       <div
                                           key={`linha-${String(no.id)}-${indice}`}
-                                          className="pointer-events-none absolute rounded-[2px] bg-primary/40 ring-1 ring-primary"
+                                          // Cor propria (rosa), diferente do ambar da selecao e do azul das marcas: e "isto foi citado".
+                                          className="pointer-events-none absolute rounded-[2px] bg-rose-500/55 ring-2 ring-rose-600 mix-blend-multiply dark:mix-blend-screen"
                                           style={{ left: px.left - 2, top: px.top - 1, width: px.width + 4, height: px.height + 2 }}
                                           title={linhas[indice].text}
                                           data-testid="grifo-linha"

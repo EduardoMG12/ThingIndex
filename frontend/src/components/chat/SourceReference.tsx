@@ -13,6 +13,7 @@ export type Source = {
     nodeId?: string;
     paragraphId?: number;
     lines?: number[];
+    matchedTerms?: string[];
 };
 
 interface SourceReferenceProps {
@@ -75,6 +76,15 @@ const SourceReference = ({ source, numero, ativa = false, onVerNoDocumento }: So
 
             <div className="space-y-2 border-t border-border/60 px-4 py-3">
                 <p className="text-sm leading-relaxed text-muted-foreground">&quot;...{source.snippet}...&quot;</p>
+                {source.matchedTerms && source.matchedTerms.length > 0 ? (
+                    <ul className="flex flex-wrap gap-1" aria-label={t("dashboard.chat.matchedTerms")} data-testid="termos-da-fonte">
+                        {source.matchedTerms.map((termo) => (
+                            <li key={termo} className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] text-primary">
+                                {termo}
+                            </li>
+                        ))}
+                    </ul>
+                ) : null}
                 <p className="text-[10px] text-muted-foreground">
                     {t("dashboard.chat.verifiedSource")}
                 </p>
