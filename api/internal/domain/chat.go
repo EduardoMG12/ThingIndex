@@ -44,9 +44,14 @@ type ChatSource struct {
 	// Box, LineBoxes e IndexedAt tornam a citacao autocontida: o grifo e
 	// reproduzivel na pagina mesmo depois de o documento ser reindexado, e a
 	// tela sabe dizer que o indice mudou desde a resposta.
-	Box       *models.SourceBox `json:"box,omitempty"`
-	LineBoxes [][4]float64      `json:"lineBoxes,omitempty"`
-	IndexedAt *time.Time        `json:"indexedAt,omitempty"`
+	// ContinuesOnPage e a pagina seguinte quando o texto desta termina no
+	// meio da frase: o paragrafo com a resposta pode ter quebrado na virada
+	// (p. 186 -> 187 "e vedada a matricula simultanea"). O prompt leva o
+	// comeco da pagina seguinte e a citacao cobre as duas.
+	ContinuesOnPage int               `json:"continuesOnPage,omitempty"`
+	Box             *models.SourceBox `json:"box,omitempty"`
+	LineBoxes       [][4]float64      `json:"lineBoxes,omitempty"`
+	IndexedAt       *time.Time        `json:"indexedAt,omitempty"`
 	// Body e o texto que vai ao prompt quando a fonte e menor que uma pagina
 	// (linha de tabela). Interno: nao sai na API nem e persistido.
 	Body string `json:"-"`

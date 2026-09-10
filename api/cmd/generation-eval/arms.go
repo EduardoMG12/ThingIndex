@@ -183,10 +183,16 @@ func (a *thingIndexArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) 
 			if docID == "" {
 				docID = s.DocName
 			}
-			c := citation{DocumentID: docID, Page: s.Page}
-			if !seen[c] {
-				seen[c] = true
-				out.Citations = append(out.Citations, c)
+			pages := []int{s.Page}
+			if s.ContinuesOnPage > 0 {
+				pages = append(pages, s.ContinuesOnPage)
+			}
+			for _, page := range pages {
+				c := citation{DocumentID: docID, Page: page}
+				if !seen[c] {
+					seen[c] = true
+					out.Citations = append(out.Citations, c)
+				}
 			}
 		}
 		if event.Usage != nil {
