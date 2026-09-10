@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"thing-index/internal/indexing"
 	"thing-index/internal/retrieval"
 	"time"
 
@@ -1984,14 +1985,45 @@ func buildCollectionRetrieval(
 			keep(chunks[i].DocumentID, "chunk", score*2)
 		}
 	}
-	tableTexts := make([]string, len(tables))
-	for i, table := range tables {
-		tableTexts[i] = strings.Join([]string{table.Title, strings.Join(table.Headers, " "), renderTableRowsForRetrieval(table.Rows, 3)}, " ")
+	// Cada LINHA de tabela e uma unidade, com o cabecalho colado em cada
+	// celula. Antes so as 3 primeiras linhas entravam, e a tabela so pontuava
+	// o documento: "pre-requisito de X" caia numa pagina de prosa.
+	type rowRef struct {
+		table int
+		row   int
 	}
-	for i, score := range bm25Scores(query, tableTexts) {
-		if score > 0 {
-			keep(tables[i].DocumentID, "table", score*5)
+	rowRefs := make([]rowRef, 0)
+	rowTexts := make([]string, 0)
+	for t, table := range tables {
+		for r, row := range table.Rows {
+			rowRefs = append(rowRefs, rowRef{t, r})
+			rowTexts = append(rowTexts, strings.TrimSpace(table.Title+" "+indexing.RenderTableRow(table.Headers, row)))
 		}
+	}
+	tableRowHits := make([]domain.CollectionTableRowHit, 0)
+	for i, score := range bm25Scores(query, rowTexts) {
+		if score == 0 {
+			continue
+		}
+		score *= 5
+		table := tables[rowRefs[i].table]
+		keep(table.DocumentID, "table", score)
+		if table.PageNumber == nil || *table.PageNumber <= 0 {
+			continue // sem pagina nao e fonte auditavel (HTML, planilha)
+		}
+		tableRowHits = append(tableRowHits, domain.CollectionTableRowHit{
+			DocumentID: table.DocumentID,
+			TableID:    table.ID,
+			RowIndex:   rowRefs[i].row,
+			PageNumber: *table.PageNumber,
+			Title:      table.Title,
+			Text:       indexing.RenderTableRow(table.Headers, table.Rows[rowRefs[i].row]),
+			Score:      score,
+		})
+	}
+	sort.SliceStable(tableRowHits, func(i, j int) bool { return tableRowHits[i].Score > tableRowHits[j].Score })
+	if len(tableRowHits) > 8 {
+		tableRowHits = tableRowHits[:8]
 	}
 	for documentID, kinds := range best {
 		for _, score := range kinds {
@@ -2022,6 +2054,7 @@ func buildCollectionRetrieval(
 		DocumentHits: documentHits,
 		NodeHits:     nodeHits,
 		PageHits:     pageHits,
+		TableRowHits: tableRowHits,
 		Strategy:     "collection-bm25",
 	}
 }
@@ -2345,15 +2378,6 @@ func chunkPageRange(chunk models.DocumentChunk) (int, int, bool) {
 		return 0, 0, false
 	}
 	return startPage, endPage, true
-}
-
-func scoreCollectionTable(table models.TableSection, queryTerms []string) int {
-	content := strings.TrimSpace(strings.Join([]string{
-		table.Title,
-		strings.Join(table.Headers, " "),
-		renderTableRowsForRetrieval(table.Rows, 3),
-	}, " "))
-	return retrievalScore(content, queryTerms) * 5
 }
 
 func renderTableRowsForRetrieval(rows [][]string, limit int) string {

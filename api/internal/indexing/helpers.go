@@ -104,7 +104,25 @@ type pdfBBoxBlock struct {
 }
 
 type pdfBBoxLine struct {
-	Words []string `xml:"word"`
+	Words []pdfBBoxWord `xml:"word"`
+}
+
+// pdfBBoxWord guarda a caixa de cada palavra. Antes so o texto era lido; a
+// deteccao de tabela precisa da coordenada horizontal para separar celulas.
+type pdfBBoxWord struct {
+	XMin float64 `xml:"xMin,attr"`
+	YMin float64 `xml:"yMin,attr"`
+	XMax float64 `xml:"xMax,attr"`
+	YMax float64 `xml:"yMax,attr"`
+	Text string  `xml:",chardata"`
+}
+
+func (l pdfBBoxLine) text() string {
+	parts := make([]string, 0, len(l.Words))
+	for _, w := range l.Words {
+		parts = append(parts, w.Text)
+	}
+	return strings.Join(parts, " ")
 }
 
 // sanitizeXMLControlChars troca por espaco os caracteres de controle que o
@@ -137,6 +155,7 @@ func parsePDFBBoxLayout(raw []byte) (pdfTextExtraction, error) {
 	extraction := pdfTextExtraction{
 		PageCount:  len(document.Pages),
 		PageBlocks: make(map[int][]textBlock, len(document.Pages)),
+		PageTables: make(map[int][]models.TableSection, len(document.Pages)),
 	}
 
 	for pageIndex, page := range document.Pages {
@@ -146,7 +165,7 @@ func parsePDFBBoxLayout(raw []byte) (pdfTextExtraction, error) {
 		for _, block := range page.Blocks {
 			lines := make([]string, 0, len(block.Lines))
 			for _, line := range block.Lines {
-				if text := strings.TrimSpace(strings.Join(line.Words, " ")); text != "" {
+				if text := strings.TrimSpace(line.text()); text != "" {
 					lines = append(lines, text)
 				}
 			}
@@ -175,6 +194,9 @@ func parsePDFBBoxLayout(raw []byte) (pdfTextExtraction, error) {
 
 		if blocks = mergeBlocksOnSameRow(blocks); len(blocks) > 0 {
 			extraction.PageBlocks[pageNumber] = blocks
+		}
+		if tables := detectPDFTables(page, pageNumber); len(tables) > 0 {
+			extraction.PageTables[pageNumber] = tables
 		}
 	}
 

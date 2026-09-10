@@ -154,7 +154,21 @@ type CollectionRetrievalResult struct {
 	DocumentHits []CollectionDocumentHit
 	NodeHits     []CollectionNodeHit
 	PageHits     []CollectionPageHit
+	// TableRowHits sao linhas de tabela com pagina: a unidade mais precisa que
+	// o acervo tem ("Disciplina: X; Pre-requisito: Y", Matriz p. 1).
+	TableRowHits []CollectionTableRowHit
 	Strategy     string
+}
+
+type CollectionTableRowHit struct {
+	DocumentID uint
+	TableID    uint
+	RowIndex   int
+	PageNumber int
+	Title      string
+	// Text e a linha renderizada com o cabecalho colado em cada celula.
+	Text  string
+	Score int
 }
 
 type CollectionDocumentHit struct {

@@ -31,6 +31,9 @@ type ChatSource struct {
 	// mensagens gravadas antes de existirem.
 	DocumentID uint   `json:"documentId,omitempty"`
 	NodeID     string `json:"nodeId,omitempty"`
+	// Body e o texto que vai ao prompt quando a fonte e menor que uma pagina
+	// (linha de tabela). Interno: nao sai na API nem e persistido.
+	Body string `json:"-"`
 }
 
 // ChatUsage e o consumo de UMA resposta. UsageReported=false significa que o
