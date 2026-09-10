@@ -23,23 +23,33 @@ export function ChatMessageCard({
     message,
     isStreaming,
     onVerNoDocumento,
+    fonteAtivaId,
+    onFonteAtiva,
 }: {
     message: ChatWorkspaceMessage;
     isStreaming: boolean;
     onVerNoDocumento?: (source: Source) => void;
+    /**
+     * Fonte focada no canvas, pelo id (estavel entre o rascunho e a mensagem
+     * recarregada apos o stream). Quando o pai controla, o card nao guarda
+     * estado proprio: o card remonta no recarregamento e perderia o clique.
+     */
+    fonteAtivaId?: string | null;
+    onFonteAtiva?: (id: string) => void;
 }) {
     const { t, locale } = useI18n();
     const isUser = message.role === "user";
-    // Fonte focada no canvas: o clique numa fonte (ou nas setas) leva ate ela
-    // e marca qual esta na tela, para o usuario percorrer a lista em ordem.
-    const [fonteAtiva, setFonteAtiva] = useState<number>(-1);
+    const [fonteAtivaLocal, setFonteAtivaLocal] = useState<string | null>(null);
+    const ativaId = fonteAtivaId !== undefined ? fonteAtivaId : fonteAtivaLocal;
     const fontes = message.sources ?? [];
+    const fonteAtiva = fontes.findIndex((fonte) => fonte.id === ativaId);
     const irParaFonte = (indice: number) => {
         const fonte = fontes[indice];
         if (!fonte) {
             return;
         }
-        setFonteAtiva(indice);
+        setFonteAtivaLocal(fonte.id);
+        onFonteAtiva?.(fonte.id);
         onVerNoDocumento?.(fonte);
     };
     const timestamp = new Intl.DateTimeFormat(locale, {
