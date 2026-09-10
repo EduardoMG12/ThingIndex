@@ -175,6 +175,41 @@ func (i *DeterministicIndexer) indexPDF(ctx context.Context, documentID uint, da
 	return result, nil
 }
 
+// numberedOutlineMinHeadings e quantos titulos numerados ("1.", "2.3") um
+// documento precisa ter para a numeracao mandar no sumario.
+const numberedOutlineMinHeadings = 8
+
+// hasNumberedOutline diz se o documento tem sumario numerado (PPC, edital):
+// nesse caso capa ("MINISTERIO DA EDUCACAO"), valor de campo ("40 vagas") e
+// fragmento de titulo quebrado ("EDUCACAO" / "DEMOCRATICA") nao viram secao,
+// ficam como paragrafo. O PPC de SI tinha 131 secoes de nivel 1 e so uma
+// dezena eram capitulos. Rebaixar de nivel nao bastava: a normalizacao da
+// arvore devolve o primeiro titulo ao nivel 1.
+func hasNumberedOutline(pageBlocks map[int][]textBlock, pageCount int) bool {
+	numbered := 0
+	for pageNumber := 1; pageNumber <= pageCount; pageNumber++ {
+		for _, block := range pageBlocks[pageNumber] {
+			content := strings.TrimSpace(block.Content)
+			if content != "" && looksLikePDFHeading(content) && outlineNumberPattern.MatchString(content) {
+				numbered++
+				if numbered >= numberedOutlineMinHeadings {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// outlineNumberPattern e a numeracao de sumario de verdade: ate dois digitos
+// por nivel e uma palavra em maiuscula logo depois ("1.APRESENTAÇÃO",
+// "1.1 IDENTIFICAÇÃO", "4.3.2 Plano"). "40 vagas" e "3600 h/a" nao sao.
+var outlineNumberPattern = regexp.MustCompile(`^\d{1,2}(\.\d{1,2})*\.?\s*\p{Lu}`)
+
+func numberedOrArchetypeHeading(content string) bool {
+	return outlineNumberPattern.MatchString(content) || classifyDocumentHeadingArchetype(content) != documentHeadingArchetypeUnknown
+}
+
 func buildPDFStructureFromPageBlocks(pageBlocks map[int][]textBlock, pageCount int) ([]outlineDraft, []textBlock) {
 	return buildPDFStructure(pageBlocks, nil, pageCount)
 }
@@ -188,6 +223,7 @@ func buildPDFStructure(pageBlocks map[int][]textBlock, pageTables map[int][]mode
 
 	pageOccurrences := countPDFBlockPageOccurrences(pageBlocks, pageCount)
 	emittedRepeatedPDFHeadings := make(map[string]struct{})
+	numberedOutline := hasNumberedOutline(pageBlocks, pageCount)
 	for pageNumber := 1; pageNumber <= pageCount; pageNumber++ {
 		// Pagina de sumario: as linhas "1.1.1 Denominacao do Curso 9" parecem
 		// titulos e duplicavam cada secao do PPC (124 de 861). Nela, nada vira
@@ -199,7 +235,7 @@ func buildPDFStructure(pageBlocks map[int][]textBlock, pageTables map[int][]mode
 			if content == "" || isLowSignalPDFText(content) {
 				continue
 			}
-			if !tocPage && !blockInsideTable(block, tableBoxes) && looksLikePDFHeading(content) {
+			if !tocPage && !blockInsideTable(block, tableBoxes) && looksLikePDFHeading(content) && (!numberedOutline || numberedOrArchetypeHeading(content)) {
 				if shouldSuppressRepeatedPDFHeading(content, pageOccurrences) {
 					if _, seen := emittedRepeatedPDFHeadings[content]; seen {
 						continue

@@ -1918,8 +1918,10 @@ func expandNumberVariants(tokens []string) []string {
 		if len(token) < 6 || isNumericToken(token) {
 			continue
 		}
+		// Hifen conta como letra: "pre-requisitos" precisa da variante
+		// "pre-requisito", que e o cabecalho da coluna da Matriz.
 		for _, r := range token {
-			if !unicode.IsLetter(r) {
+			if !unicode.IsLetter(r) && r != '-' {
 				token = ""
 				break
 			}

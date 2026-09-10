@@ -9,8 +9,8 @@ import (
 
 func TestConsultaGanhaVarianteDeNumero(t *testing.T) {
 	t.Parallel()
-	got := expandNumberVariants([]string{"estagio", "extracurriculares", "resolucoes", "anuais", "curso", "sis07305", "de"})
-	want := []string{"estagio", "estagios", "extracurriculares", "extracurricular", "resolucoes", "resolucao", "anuais", "anual", "curso", "sis07305", "de"}
+	got := expandNumberVariants([]string{"estagio", "extracurriculares", "resolucoes", "anuais", "curso", "sis07305", "de", "pre-requisitos"})
+	want := []string{"estagio", "estagios", "extracurriculares", "extracurricular", "resolucoes", "resolucao", "anuais", "anual", "curso", "sis07305", "de", "pre-requisitos", "pre-requisito"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("variantes: %v", got)
 	}

@@ -553,10 +553,33 @@ func flattenPageTables(documentID uint, pageTables map[int][]models.TableSection
 		for _, table := range pageTables[page] {
 			table.DocumentID = documentID
 			table.SequenceOrder = len(out)
+			// Tabela que continua da pagina anterior vem sem cabecalho (o
+			// cabecalho so esta na primeira pagina): herda o da anterior
+			// quando o numero de colunas bate. 57 das 80 tabelas do demo
+			// estavam com "coluna N" por isso.
+			if n := len(out); n > 0 && allSyntheticHeaders(table.Headers) && !allSyntheticHeaders(out[n-1].Headers) && len(out[n-1].Headers) == len(table.Headers) && out[n-1].PageNumber != nil && *out[n-1].PageNumber+1 == page {
+				table.Headers = append([]string(nil), out[n-1].Headers...)
+				if table.Metadata == nil {
+					table.Metadata = map[string]any{}
+				}
+				table.Metadata["headers_inherited_from_page"] = *out[n-1].PageNumber
+				if table.Title == "" {
+					table.Title = out[n-1].Title
+				}
+			}
 			out = append(out, table)
 		}
 	}
 	return out
+}
+
+func allSyntheticHeaders(headers []string) bool {
+	for _, h := range headers {
+		if !strings.HasPrefix(strings.TrimSpace(h), "coluna ") {
+			return false
+		}
+	}
+	return len(headers) > 0
 }
 
 // RenderTableRow devolve "cabecalho: celula; ..." so com as celulas cheias: o
