@@ -568,6 +568,9 @@ describe("WorkspaceCanvas: enriquecimento por LLM", () => {
             expect(bloco).toHaveTextContent("Nesta página (1)");
             expect(bloco).toHaveTextContent("prazo de 30 dias");
             expect(screen.getAllByTestId("topico-da-pagina").map((el) => el.textContent)).toEqual(["multa", "prazo"]);
+            // A lista "Topicos por pagina" so tem as paginas com topicos (a 2 nao tem).
+            expect(screen.getByTestId("bloco-de-topicos")).toHaveTextContent("Tópicos por página (1 páginas)");
+            expect(screen.getAllByTestId("topico-da-lista").map((el) => el.textContent)).toEqual(["multa", "prazo"]);
         } finally {
             globalThis.ResizeObserver = original;
         }
