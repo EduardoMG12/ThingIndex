@@ -379,6 +379,19 @@ const PDFTableOfContentsMinEntries = 5
 func isPDFTableOfContentsPage(blocks []textBlock) bool {
 	entries := 0
 	for _, block := range blocks {
+		// Sumario em duas colunas (titulos a esquerda, numeros de pagina num
+		// bloco a direita): nenhuma linha termina com numero, mas um bloco
+		// com 5+ linhas comecando por numeracao de sumario so existe em
+		// pagina de sumario -- numa pagina normal cada titulo e um bloco.
+		numberedLines := 0
+		for _, line := range block.Lines {
+			if outlineNumberPattern.MatchString(strings.TrimSpace(line.Text)) {
+				numberedLines++
+			}
+		}
+		if numberedLines >= PDFTableOfContentsMinEntries {
+			return true
+		}
 		// O poppler as vezes cola varias entradas do sumario num bloco so
 		// ("1 APRESENTAÇÃO 7" / "1.1 IDENTIFICAÇÃO 7" ...); contar por linha,
 		// senao a pagina de sumario do PPC do Tecnico virava 6 secoes coladas.
