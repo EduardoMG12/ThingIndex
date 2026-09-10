@@ -12,6 +12,7 @@ export type Source = {
     documentId?: number;
     nodeId?: string;
     paragraphId?: number;
+    lines?: number[];
 };
 
 interface SourceReferenceProps {

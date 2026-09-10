@@ -42,3 +42,42 @@ describe("PageOverlay: caixa da tabela", () => {
         expect(screen.queryByTestId("caixa-de-tabela")).toBeNull();
     });
 });
+
+describe("PageOverlay: grifo fino por linha", () => {
+    it("desenha so as linhas citadas do paragrafo apontado", () => {
+        const no = {
+            id: 5,
+            documentId: 7,
+            sequenceOrder: 0,
+            pageNumber: 1,
+            content: "a b c",
+            metadata: {
+                box: { x_min: 50, y_min: 100, x_max: 500, y_max: 160, page_width: 595, page_height: 842 },
+                lines: [
+                    { t: "primeira", b: [50, 100, 500, 120] },
+                    { t: "segunda", b: [50, 120, 500, 140] },
+                    { t: "terceira", b: [50, 140, 500, 160] },
+                ],
+            },
+        } as unknown as import("@/lib/api/contracts/document-context").ParagraphNode;
+        render(
+            <PageOverlay
+                numero={1}
+                tamanho={{ largura: 595, altura: 842 }}
+                paragrafos={[{ no, secao: null }]}
+                secoes={[]}
+                ancoraDaSecao={() => null}
+                origem={null}
+                selecionadoId={null}
+                secundarios={new Set()}
+                onSelecionar={() => undefined}
+                destaque={{ paragraphId: 5, lines: [1] }}
+            />,
+            { wrapper: createTestWrapper("pt-BR") }
+        );
+        const linhas = screen.getAllByTestId("grifo-linha");
+        expect(linhas).toHaveLength(1);
+        expect(linhas[0]).toHaveAttribute("title", "segunda");
+        expect(linhas[0]).toHaveStyle({ top: "119px" });
+    });
+});

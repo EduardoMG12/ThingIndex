@@ -241,6 +241,7 @@ func (u *chatUseCase) StreamCollectionChat(
 				DocumentID:  source.DocumentID,
 				NodeID:      source.NodeID,
 				ParagraphID: source.ParagraphID,
+				Lines:       source.Lines,
 			})
 		}
 
@@ -420,14 +421,21 @@ func buildChatSources(
 		key := fmt.Sprintf("%d:%d", paragraph.DocumentID, *paragraph.PageNumber)
 		paragraphsByPage[key] = append(paragraphsByPage[key], paragraph)
 	}
-	bestParagraph := func(documentID uint, page int) uint {
-		best, bestCoverage := uint(0), 0
-		for _, paragraph := range paragraphsByPage[fmt.Sprintf("%d:%d", documentID, page)] {
+	// bestParagraph devolve o paragrafo com mais termos da pergunta, as linhas
+	// dele que os contem (grifo fino) e o texto dessas linhas (trecho).
+	bestParagraph := func(documentID uint, page int) (uint, []int, string) {
+		var best *models.ParagraphNode
+		bestCoverage := 0
+		for i, paragraph := range paragraphsByPage[fmt.Sprintf("%d:%d", documentID, page)] {
 			if coverage := queryTermCoverage(paragraph.Content, significant); coverage > bestCoverage {
-				best, bestCoverage = paragraph.ID, coverage
+				best, bestCoverage = &paragraphsByPage[fmt.Sprintf("%d:%d", documentID, page)][i], coverage
 			}
 		}
-		return best
+		if best == nil {
+			return 0, nil, ""
+		}
+		lines, snippet := matchingLines(best.Metadata, significant)
+		return best.ID, lines, snippet
 	}
 
 	// Linhas de tabela primeiro: e a fonte mais precisa (documento, pagina,
@@ -481,6 +489,10 @@ func buildChatSources(
 		if snippet == "" {
 			snippet = hit.Title
 		}
+		paragraphID, lines, lineText := bestParagraph(hit.DocumentID, pageNumber)
+		if lineText != "" {
+			snippet = lineText
+		}
 
 		sources = append(sources, domain.ChatSource{
 			ID:          fmt.Sprintf("%s:%s", key, hit.NodeID),
@@ -489,7 +501,8 @@ func buildChatSources(
 			Snippet:     clampRetrievalSnippet(snippet, 220),
 			DocumentID:  hit.DocumentID,
 			NodeID:      hit.NodeID,
-			ParagraphID: bestParagraph(hit.DocumentID, pageNumber),
+			ParagraphID: paragraphID,
+			Lines:       lines,
 		})
 		seen[key] = struct{}{}
 	}
@@ -512,18 +525,61 @@ func buildChatSources(
 			snippet = page.Content
 		}
 
+		paragraphID, lines, lineText := bestParagraph(hit.DocumentID, hit.PageNumber)
+		if lineText != "" {
+			snippet = lineText
+		}
 		sources = append(sources, domain.ChatSource{
 			ID:          key,
 			DocName:     documentTitles[hit.DocumentID],
 			Page:        hit.PageNumber,
 			Snippet:     clampRetrievalSnippet(snippet, 220),
 			DocumentID:  hit.DocumentID,
-			ParagraphID: bestParagraph(hit.DocumentID, hit.PageNumber),
+			ParagraphID: paragraphID,
+			Lines:       lines,
 		})
 		seen[key] = struct{}{}
 	}
 
 	return sources
+}
+
+// matchingLines le metadata.lines do paragrafo ([{t, b}]) e devolve os indices
+// das linhas que contem termos da pergunta -- a janela contigua em torno da
+// linha com mais termos -- e o texto dessas linhas. Sem linhas (paragrafo de
+// uma linha, ou texto sem caixa), devolve nada e o grifo e o paragrafo.
+func matchingLines(metadata map[string]any, terms []string) ([]int, string) {
+	raw, ok := metadata["lines"].([]any)
+	if !ok || len(raw) < 2 {
+		return nil, ""
+	}
+	coverage := make([]int, len(raw))
+	texts := make([]string, len(raw))
+	best, bestCoverage := -1, 0
+	for i, item := range raw {
+		line, _ := item.(map[string]any)
+		text, _ := line["t"].(string)
+		texts[i] = text
+		coverage[i] = queryTermCoverage(text, terms)
+		if coverage[i] > bestCoverage {
+			best, bestCoverage = i, coverage[i]
+		}
+	}
+	if best < 0 {
+		return nil, ""
+	}
+	start, end := best, best
+	for start > 0 && coverage[start-1] > 0 {
+		start--
+	}
+	for end < len(raw)-1 && coverage[end+1] > 0 {
+		end++
+	}
+	lines := make([]int, 0, end-start+1)
+	for i := start; i <= end; i++ {
+		lines = append(lines, i)
+	}
+	return lines, strings.Join(texts[start:end+1], " ")
 }
 
 func buildCollectionChatPrompt(

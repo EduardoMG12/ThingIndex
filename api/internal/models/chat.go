@@ -14,6 +14,7 @@ type ChatSourceReference struct {
 	DocumentID  uint   `json:"document_id,omitempty"`
 	NodeID      string `json:"node_id,omitempty"`
 	ParagraphID uint   `json:"paragraph_id,omitempty"`
+	Lines       []int  `json:"lines,omitempty"`
 }
 
 type ChatConversation struct {

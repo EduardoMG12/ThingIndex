@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { readBox, type OutlineNode, type ParagraphBox, type ParagraphNode } from "@/lib/api/contracts/document-context";
+import { readBox, readLines, type OutlineNode, type ParagraphBox, type ParagraphNode } from "@/lib/api/contracts/document-context";
 import { useI18n } from "@/lib/i18n/provider";
 import { retryDocumentIndexing } from "@/lib/api/documents";
 import { boxParaPixels } from "@/lib/workspace/geometry";
@@ -39,6 +39,8 @@ export type PageOverlayProps = {
     /** Tabelas da pagina; so a realcada e desenhada, como caixa tracejada. */
     tabelas?: TabelaNaPagina[];
     tabelaRealcada?: number | string | null;
+    /** Linhas de um paragrafo citadas pela fonte do chat: grifo forte so nelas. */
+    destaque?: { paragraphId: number; lines: number[] } | null;
     tamanho: TamanhoDePagina;
     paragrafos: ParagrafoNaPagina[];
     /** Secoes cujo start_page e esta pagina. */
@@ -111,7 +113,8 @@ export function origemMajoritaria(nos: Pick<ParagraphNode, "metadata">[]): strin
 }
 
 export function PageOverlay({
-    numero,    tabelas,
+    numero,    destaque = null,
+    tabelas,
     tabelaRealcada = null,
 
     tamanho,
@@ -193,6 +196,28 @@ export function PageOverlay({
                         </div>
                     );
                 })}
+
+            {destaque
+                ? paragrafos
+                      .filter(({ no }) => no.id === destaque.paragraphId)
+                      .flatMap(({ no }) => {
+                          const linhas = readLines(no);
+                          return destaque.lines
+                              .filter((indice) => linhas[indice])
+                              .map((indice) => {
+                                  const px = boxParaPixels(linhas[indice].box, tamanho.largura, tamanho.altura);
+                                  return (
+                                      <div
+                                          key={`linha-${String(no.id)}-${indice}`}
+                                          className="pointer-events-none absolute rounded-[2px] bg-primary/40 ring-1 ring-primary"
+                                          style={{ left: px.left - 2, top: px.top - 1, width: px.width + 4, height: px.height + 2 }}
+                                          title={linhas[indice].text}
+                                          data-testid="grifo-linha"
+                                      />
+                                  );
+                              });
+                      })
+                : null}
 
             {paragrafos.map(({ no, secao }) => {
                 const box = readBox(no);

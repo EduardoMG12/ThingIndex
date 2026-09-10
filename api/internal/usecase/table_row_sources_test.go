@@ -137,3 +137,32 @@ func TestFonteDePaginaApontaOParagrafoMaisProximoDaPergunta(t *testing.T) {
 		t.Fatalf("esperava o paragrafo 72 (conceito, D, aprendizagem): %+v", sources)
 	}
 }
+
+// Com as linhas do paragrafo no metadata, a fonte aponta so as linhas que
+// casam a pergunta, e o trecho e o texto delas.
+func TestFonteApontaAsLinhasQueCasamAPergunta(t *testing.T) {
+	t.Parallel()
+	page := 199
+	context := &domain.CollectionContext{
+		Documents: []models.Document{{ID: 260, Title: "PPC"}},
+		ParagraphNodes: []models.ParagraphNode{{ID: 5, DocumentID: 260, PageNumber: &page, Content: "§ 3º. Para os estágios extracurriculares, elencados no inciso III, a carga horária limite é de 80 horas de estágio por atividade complementar aceita no cômputo total; § 4º. As atividades elencadas no inciso IV dependem de previa autorizacao deste Instituto,", Metadata: map[string]any{"lines": []any{
+			map[string]any{"t": "§ 3º. Para os estágios extracurriculares, elencados no inciso III, a carga horária limite é de 80", "b": []any{1.0, 1.0, 2.0, 2.0}},
+			map[string]any{"t": "horas de estágio por atividade complementar aceita no cômputo total;", "b": []any{1.0, 2.0, 2.0, 3.0}},
+			map[string]any{"t": "§ 4º. As atividades elencadas no inciso IV dependem de previa autorizacao deste Instituto,", "b": []any{1.0, 3.0, 2.0, 4.0}},
+		}}}},
+	}
+	retrieval := &domain.CollectionRetrievalResult{
+		Query:    "Qual é o limite de horas de estágio extracurricular aceito como atividade complementar?",
+		PageHits: []domain.CollectionPageHit{{DocumentID: 260, PageNumber: 199}},
+	}
+	sources := buildChatSources(context, retrieval)
+	if len(sources) != 1 || sources[0].ParagraphID != 5 {
+		t.Fatalf("fonte: %+v", sources)
+	}
+	if got := sources[0].Lines; len(got) != 2 || got[0] != 0 || got[1] != 1 {
+		t.Fatalf("esperava as linhas 0 e 1 (a do § 3º e a continuacao com 'atividades complementares'): %v", got)
+	}
+	if !strings.HasPrefix(sources[0].Snippet, "§ 3º. Para os estágios") {
+		t.Fatalf("o trecho deveria ser o texto das linhas: %q", sources[0].Snippet)
+	}
+}
