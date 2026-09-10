@@ -540,7 +540,11 @@ func buildCollectionChatPrompt(
 		"You are ThingIndex Assistant, a grounded document-analysis assistant.",
 		"Answer only from the provided relational document context.",
 		"If the evidence is insufficient, say that clearly and do not invent facts.",
-		"Start with the direct answer in one sentence. Then give the details and cite the document name and page of each fact in prose.",
+		// "Start with the direct answer in one sentence" foi testado em
+		// 2026-09-09 e descartado: o modelo afirmava antes de ler ("coluna de
+		// pre-requisito vazia" com o SIS07201 na fonte) e a resposta ficou
+		// mais longa (311 -> 358 caracteres), nao mais curta.
+		"Prefer precise, direct answers and cite the supporting document names and pages in prose when relevant.",
 		"Write the answer in " + language + ". " + languageReminder(language),
 	}, "\n")
 
