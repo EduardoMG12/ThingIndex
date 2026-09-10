@@ -48,8 +48,9 @@ func main() {
 	outboxRepo := repository.NewGormOutboxRepository(database)
 	processingRepo := repository.NewGormDocumentProcessingRepository(database)
 	indexer := indexing.NewDeterministicIndexer()
-	enricher := indexing.NewLLMEnricher()
-	processor := processing.NewDocumentProcessor(processingRepo, defaultStorage, providerService, indexer, providerService, enricher)
+	indexingRepo := repository.NewGormIndexingRepository(database)
+	enricher := indexing.NewLLMEnricher().WithCache(indexingRepo)
+	processor := processing.NewDocumentProcessor(processingRepo, defaultStorage, providerService, indexer, providerService, enricher).WithIndexingPreferences(indexingRepo)
 
 	publisher, consumer, err := queue.BootstrapRabbitMQRuntime(
 		ctx,

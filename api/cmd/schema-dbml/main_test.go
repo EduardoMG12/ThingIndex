@@ -22,9 +22,9 @@ func TestRenderCobreTodosOsModelosGerenciados(t *testing.T) {
 
 	// 21 e o numero verificado contra um Postgres 16 real: subindo o
 	// AutoMigrate num container limpo, information_schema.tables devolve
-	// exatamente estas 21 tabelas e 253 colunas (22 com paragraph_highlights, 2026-09-08). O artigo afirmava 20 --
+	// exatamente estas 21 tabelas e 253 colunas (22 com paragraph_highlights, 2026-09-08; 25 com user_indexing_preferences e enrichment_cache_entries, 2026-09-10). O artigo afirmava 20 --
 	// era esse o erro que o Apendice A carregava.
-	const esperado = 23
+	const esperado = 25
 	if len(tables) != esperado {
 		t.Fatalf("esperava %d tabelas no DBML, obtive %d", esperado, len(tables))
 	}

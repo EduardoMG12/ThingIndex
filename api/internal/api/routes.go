@@ -102,6 +102,7 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 	highlightRepo := repository.NewGormParagraphHighlightRepository(db)
 	viewStateRepo := repository.NewGormWorkspaceViewStateRepository(db)
 	workspaceHandler := handlers.NewWorkspaceHandler(usecase.NewWorkspaceUseCase(highlightRepo, collectionRepo, viewStateRepo))
+	indexingPreferencesHandler := handlers.NewIndexingPreferencesHandler(repository.NewGormIndexingRepository(db))
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.GET("/docs", func(c *gin.Context) {
@@ -146,6 +147,8 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 			user.GET("/providers/runtime", providerHandler.ListRuntimeOverview)
 			user.GET("/providers/audit", providerHandler.ListProviderAuditEvents)
 			user.PATCH("/providers/:providerType", providerHandler.UpdateProviderState)
+			user.GET("/indexing-preferences", indexingPreferencesHandler.Get)
+			user.PUT("/indexing-preferences", indexingPreferencesHandler.Put)
 			user.POST("/pricing-sources", pricingHandler.SaveSource)
 			user.GET("/pricing-sources", pricingHandler.ListSources)
 			user.GET("/prices", pricingHandler.ListPrices)

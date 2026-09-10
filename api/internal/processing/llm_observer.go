@@ -89,3 +89,9 @@ func estimateCostUSD(tokens int, costPerMillion float64) float64 {
 	}
 	return (float64(tokens) / 1_000_000.0) * costPerMillion
 }
+
+// ModelName e ProviderType repassam os metadados do cliente: o enricher usa o
+// modelo como parte da chave do cache de resumos.
+func (o *observedLLMService) ModelName() string { return o.usage.Model }
+
+func (o *observedLLMService) ProviderType() string { return o.usage.ProviderType }
