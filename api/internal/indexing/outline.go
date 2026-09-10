@@ -22,6 +22,16 @@ func buildIndexingResult(documentID uint, headings []outlineDraft, paragraphs []
 		if paragraph.Box != nil {
 			metadata["box"] = paragraph.Box
 		}
+		// Linhas com caixa so quando ha mais de uma: com uma linha, a caixa
+		// do paragrafo ja e a da linha. Formato compacto: t = texto, b =
+		// [xMin, yMin, xMax, yMax] no mesmo espaco de "box".
+		if len(paragraph.Lines) > 1 {
+			lines := make([]map[string]any, 0, len(paragraph.Lines))
+			for _, line := range paragraph.Lines {
+				lines = append(lines, map[string]any{"t": line.Text, "b": []float64{round1(line.Box.XMin), round1(line.Box.YMin), round1(line.Box.XMax), round1(line.Box.YMax)}})
+			}
+			metadata["lines"] = lines
+		}
 
 		paragraphNodes = append(paragraphNodes, models.ParagraphNode{
 			DocumentID:    documentID,
@@ -124,6 +134,8 @@ func buildIndexingResult(documentID uint, headings []outlineDraft, paragraphs []
 // de um PPC ("1.1.4 Eixo Tecnologico" / "Informacao e Comunicacao" /
 // "1.1.6 Forma de Oferta" / "Integrado") a pagina ficava com o endereco e o
 // telefone, e a pergunta sobre eixo e oferta nunca achava a pagina.
+func round1(v float64) float64 { return float64(int(v*10+0.5)) / 10 }
+
 func buildDocumentPages(documentID uint, headings []outlineDraft, paragraphs []textBlock) []models.DocumentPage {
 	pageBuckets := make(map[int][]string)
 	pageSectionKeys := make(map[int]map[string]struct{})

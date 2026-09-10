@@ -188,3 +188,35 @@ func TestCabecalhoSinteticoNaoApareceNaLinha(t *testing.T) {
 		t.Fatalf("cabecalho sintetico vazou: %q", got)
 	}
 }
+
+// Paragrafo com mais de uma linha guarda a caixa de cada linha, dentro da
+// caixa do paragrafo, para o grifo fino do chat.
+func TestParagrafoGuardaAsLinhasComCaixa(t *testing.T) {
+	exigirFerramentasDePDF(t)
+	dados, err := os.ReadFile(filepath.Join(diretorioDoDemo, "ppc-sistemas-de-informacao-palmas-2019.pdf"))
+	if err != nil {
+		t.Skip(err)
+	}
+	result, err := NewDeterministicIndexer().indexPDF(context.Background(), 1, dados)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range result.ParagraphNodes {
+		lines, ok := p.Metadata["lines"].([]map[string]any)
+		if !ok || len(lines) < 3 {
+			continue
+		}
+		box := p.Metadata["box"].(*textBox)
+		for _, line := range lines {
+			b := line["b"].([]float64)
+			if b[0] < box.XMin-1 || b[2] > box.XMax+1 || b[1] < box.YMin-1 || b[3] > box.YMax+1 {
+				t.Fatalf("linha fora da caixa do paragrafo: %v vs %+v", b, box)
+			}
+			if line["t"].(string) == "" {
+				t.Fatal("linha sem texto")
+			}
+		}
+		return
+	}
+	t.Fatal("nenhum paragrafo com 3+ linhas trouxe metadata.lines")
+}

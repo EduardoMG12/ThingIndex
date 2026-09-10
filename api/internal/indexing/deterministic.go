@@ -33,6 +33,14 @@ type textBlock struct {
 	// LineCount guarda quantas linhas o extrator agrupou neste bloco; blocos de
 	// uma linha podem ser remontados com vizinhos da mesma linha visual.
 	LineCount int
+	// Lines sao as linhas visuais do bloco com a caixa de cada uma, para o
+	// grifo apontar a linha citada em vez do paragrafo inteiro.
+	Lines []textLine
+}
+
+type textLine struct {
+	Text string
+	Box  textBox
 }
 
 // textBox ancora um bloco na coordenada original da pagina, em pontos PDF com

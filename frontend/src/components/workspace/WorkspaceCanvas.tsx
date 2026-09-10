@@ -59,7 +59,7 @@ import { APRESENTACAO_PADRAO, limitarPagina, precisaDoBotaoIrPara, regraIrAte, t
 /** Ponte minima para quem embute o canvas (o chat da Area de trabalho). */
 export type WorkspaceCanvasHandle = {
     /** Vai ao documento e a pagina; com nodeId, ao paragrafo em que a secao comeca. */
-    irAte: (documentId: number, pagina: number | null, nodeId?: string, paragraphId?: number) => void;
+    irAte: (documentId: number, pagina: number | null, nodeId?: string, paragraphId?: number, lines?: number[]) => void;
     focarDocumento: (documentId: number) => void;
     /** Realca a caixa de uma tabela na folha (fonte de linha do chat, lista da sidebar). */
     realcarTabela: (tableId: number | string) => void;
@@ -388,6 +388,8 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
     // focar um documento e pode ser recolhida a um trilho de 40 px.
     const [estruturaAberta, setEstruturaAberta] = useState<boolean>(() => documentoFocado !== null);
     const [tabelaRealcada, setTabelaRealcada] = useState<number | string | null>(null);
+    // Grifo fino: linhas do paragrafo citadas pela fonte do chat.
+    const [destaque, setDestaque] = useState<{ paragraphId: number; lines: number[] } | null>(null);
     useEffect(() => {
         if (documentoFocado !== null) {
             setEstruturaAberta(true);
@@ -738,6 +740,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
     const selecionarParagrafo = useCallback(
         (no: ParagraphNode, secao: OutlineNode | null) => {
             setParagrafoSelecionado({ no, secao });
+            setDestaque((atual) => (atual && atual.paragraphId === no.id ? atual : null));
             setDocumentoFocado(no.documentId);
             setNoSelecionado(secao?.nodeId ?? null);
             setConexoes(null);
@@ -760,16 +763,18 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                     irAteTabela(tabela);
                 }
             },
-            irAte: (documentId, pagina, nodeId, paragraphId) => {
+            irAte: (documentId, pagina, nodeId, paragraphId, lines) => {
                 focarDocumento(documentId);
                 // Fonte com paragrafo: seleciona o grifo dele (ambar, como o
-                // clique na folha) e centraliza nele.
+                // clique na folha), destaca as linhas citadas e centraliza.
                 const paragrafo = paragraphId ? context.paragraphNodes.find((no) => no.id === paragraphId && no.documentId === documentId) : undefined;
                 if (paragrafo) {
                     selecionarParagrafo(paragrafo, indiceDoContexto.secaoDoParagrafo(paragrafo));
+                    setDestaque(lines && lines.length > 0 ? { paragraphId: paragrafo.id as number, lines } : null);
                     irAte(documentId, paragrafo.pageNumber ?? pagina, rectDoParagrafo(paragrafo));
                     return;
                 }
+                setDestaque(null);
                 const secao = nodeId ? indiceDoContexto.porNodeId.get(nodeId) : undefined;
                 const ancora = secao ? ancoraDaSecao(secao) : null;
                 const rect = ancora ? rectDoParagrafo(ancora) : null;
@@ -1014,6 +1019,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                                                     navegador={navegador}
                                                     tabelas={tabelasComCaixa.filter((tabela) => tabela.documentId === documento.id && tabela.pageNumber === numero)}
                                                     tabelaRealcada={tabelaRealcada}
+                                                    destaque={destaque}
                                                 />
                                             );
                                         }}

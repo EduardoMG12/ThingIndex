@@ -55,6 +55,8 @@ export type ChatSource = {
     nodeId?: string;
     /** Paragrafo da pagina com mais termos da pergunta: o que o canvas grifa. */
     paragraphId?: number;
+    /** Indices das linhas do paragrafo que casam a pergunta (grifo fino). */
+    lines?: number[];
 };
 
 export type ChatStreamEvent =
@@ -437,6 +439,7 @@ function normalizeSource(value: unknown): ChatSource | null {
     const documentId = Number(record.document_id ?? record.documentId);
     const nodeId = typeof record.node_id === "string" ? record.node_id : typeof record.nodeId === "string" ? record.nodeId : "";
     const paragraphId = Number(record.paragraph_id ?? record.paragraphId);
+    const lines = Array.isArray(record.lines) ? record.lines.filter((n): n is number => typeof n === "number" && Number.isInteger(n) && n >= 0) : [];
 
     if (!id || !docName || !Number.isFinite(page)) {
         return null;
@@ -450,6 +453,7 @@ function normalizeSource(value: unknown): ChatSource | null {
         ...(Number.isFinite(documentId) && documentId > 0 ? { documentId } : {}),
         ...(nodeId ? { nodeId } : {}),
         ...(Number.isFinite(paragraphId) && paragraphId > 0 ? { paragraphId } : {}),
+        ...(lines.length > 0 ? { lines } : {}),
     };
 }
 

@@ -99,6 +99,38 @@ function finito(value: unknown): value is number {
 }
 
 /** Le `metadata.box` de um paragrafo; `null` quando ausente ou malformado. */
+/** Linha visual de um paragrafo, com a caixa no mesmo espaco de readBox. */
+export type ParagraphLine = { text: string; box: ParagraphBox };
+
+/**
+ * Le metadata.lines ([{t, b: [xMin, yMin, xMax, yMax]}]) usando as dimensoes
+ * da pagina de metadata.box. Sem caixa ou sem linhas, lista vazia: o grifo
+ * cai no paragrafo inteiro.
+ */
+export function readLines(node: Pick<ParagraphNode, "metadata">): ParagraphLine[] {
+    const box = readBox(node);
+    const raw = node.metadata?.lines;
+    if (!box || !Array.isArray(raw)) {
+        return [];
+    }
+    const out: ParagraphLine[] = [];
+    for (const item of raw) {
+        if (typeof item !== "object" || item === null) {
+            continue;
+        }
+        const r = item as Record<string, unknown>;
+        const b = r.b;
+        if (!Array.isArray(b) || b.length !== 4 || !b.every(finito)) {
+            continue;
+        }
+        out.push({
+            text: typeof r.t === "string" ? r.t : "",
+            box: { xMin: b[0] as number, yMin: b[1] as number, xMax: b[2] as number, yMax: b[3] as number, pageWidth: box.pageWidth, pageHeight: box.pageHeight },
+        });
+    }
+    return out;
+}
+
 export function readBox(node: Pick<ParagraphNode, "metadata">): ParagraphBox | null {
     const raw = node.metadata?.box;
     if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {

@@ -34,6 +34,9 @@ type ChatSource struct {
 	// ParagraphID e o paragrafo da pagina com mais termos da pergunta: e o
 	// que o canvas grifa quando o usuario clica na fonte.
 	ParagraphID uint `json:"paragraphId,omitempty"`
+	// Lines sao os indices (em metadata.lines do paragrafo) das linhas que
+	// casam a pergunta: o grifo fino, em vez do paragrafo inteiro.
+	Lines []int `json:"lines,omitempty"`
 	// Body e o texto que vai ao prompt quando a fonte e menor que uma pagina
 	// (linha de tabela). Interno: nao sai na API nem e persistido.
 	Body string `json:"-"`
