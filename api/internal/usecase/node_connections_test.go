@@ -341,3 +341,21 @@ func TestNumeralRomanoEAparatoBibliograficoNaoSustentamConexao(t *testing.T) {
 		t.Fatalf("'vi', 'isbn' e 'ed' sustentaram conexao: %+v", conexoes)
 	}
 }
+
+// Dois trechos com o mesmo codigo de disciplina (SIS07302) se conectam por
+// isso, com o tipo "mesma-disciplina", mesmo sem termo raro em comum.
+func TestConexaoPorCodigoDeDisciplina(t *testing.T) {
+	t.Parallel()
+	origem := models.DocumentOutlineNode{DocumentID: 1, NodeID: "matriz#3", Title: "Terceiro periodo", Metadata: map[string]any{"retrieval_text": "SIS07302 Estrutura de Dados I 60 horas"}}
+	candidatos := []models.DocumentOutlineNode{
+		{DocumentID: 2, NodeID: "ementas#12", Title: "Ementa", Metadata: map[string]any{"retrieval_text": "Componente SIS07302: listas, pilhas, filas e arvores."}},
+		{DocumentID: 2, NodeID: "ementas#13", Title: "Outra ementa", Metadata: map[string]any{"retrieval_text": "Componente SIS07405: redes de computadores."}},
+	}
+	conexoes := BuildNodeConnections(origem, candidatos, 2)
+	if len(conexoes) != 1 || conexoes[0].NodeID != "ementas#12" || conexoes[0].Kind != NodeConnectionKindSameDiscipline {
+		t.Fatalf("esperava uma conexao mesma-disciplina com ementas#12: %+v", conexoes)
+	}
+	if conexoes[0].MatchedTerms[0] != "disciplina SIS07302" {
+		t.Fatalf("a justificativa devia ser o codigo: %v", conexoes[0].MatchedTerms)
+	}
+}
