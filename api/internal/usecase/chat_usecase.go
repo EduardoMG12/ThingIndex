@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 	"time"
 
@@ -605,7 +606,34 @@ func buildChatSources(
 		seen[key] = struct{}{}
 	}
 
-	return sources
+	return orderChatSources(sources, rowSources, len(significant))
+}
+
+// orderChatSources decide a ordem final. Linha de tabela so fica na frente
+// quando responde a pelo menos metade dos termos da pergunta (pergunta de
+// tabela: "pre-requisito de Estrutura de Dados I" casa quase tudo na linha);
+// as demais linhas entram na ordenacao comum, junto com secoes e paginas,
+// por numero de termos casados (estavel: empate mantem linha, secao, pagina).
+// Antes a ordem era fixa "linhas, secoes, paginas", e a pagina da Lei com 8
+// termos ficava em 4o atras de tres linhas de calendario com 2 termos
+// genericos. O conjunto de fontes nao muda, so a ordem no card e no prompt.
+// (Multiplicar o BM25 pela cobertura foi medido e perdeu uma pagina-alvo,
+// t18; nao entrou.)
+func orderChatSources(sources []domain.ChatSource, rowSources int, significantTerms int) []domain.ChatSource {
+	threshold := (significantTerms + 1) / 2
+	strong := make([]domain.ChatSource, 0, rowSources)
+	rest := make([]domain.ChatSource, 0, len(sources))
+	for i, source := range sources {
+		if i < rowSources && len(source.MatchedTerms) >= threshold {
+			strong = append(strong, source)
+			continue
+		}
+		rest = append(rest, source)
+	}
+	sort.SliceStable(rest, func(i, j int) bool {
+		return len(rest[i].MatchedTerms) > len(rest[j].MatchedTerms)
+	})
+	return append(strong, rest...)
 }
 
 // sourceBoxFromMetadata le metadata.box (JSONB: x_min...) de um paragrafo ou
