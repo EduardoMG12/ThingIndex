@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"thing-index/internal/models"
 )
 
 const diretorioDoDemo = "../../../examples/faculdade"
@@ -219,4 +220,55 @@ func TestParagrafoGuardaAsLinhasComCaixa(t *testing.T) {
 		return
 	}
 	t.Fatal("nenhum paragrafo com 3+ linhas trouxe metadata.lines")
+}
+
+// Num PPC com sumario numerado, capa e fragmento em caixa alta nao sao
+// capitulos: ficam no nivel 3, e os capitulos numerados no nivel 1.
+func TestSumarioNumeradoRebaixaCapaEFragmentos(t *testing.T) {
+	exigirFerramentasDePDF(t)
+	dados, err := os.ReadFile(filepath.Join(diretorioDoDemo, "ppc-sistemas-de-informacao-palmas-2019.pdf"))
+	if err != nil {
+		t.Skip(err)
+	}
+	result, err := NewDeterministicIndexer().indexPDF(context.Background(), 1, dados)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nivel1 := 0
+	temApresentacao := false
+	for _, node := range result.OutlineNodes {
+		if node.Level != 1 {
+			continue
+		}
+		nivel1++
+		title := strings.ToUpper(node.Title)
+		if strings.Contains(title, "MINISTÉRIO DA EDUCAÇÃO") || title == "EDUCAÇÃO" || strings.Contains(title, "40 VAGAS") {
+			t.Fatalf("capa ou fragmento virou capitulo: %q", node.Title)
+		}
+		if strings.Contains(title, "APRESENTAÇÃO DO PROJETO") {
+			temApresentacao = true
+		}
+	}
+	if !temApresentacao {
+		t.Fatal("'1. APRESENTAÇÃO DO PROJETO' deveria ser capitulo de nivel 1")
+	}
+	if nivel1 > 30 {
+		t.Fatalf("PPC com %d secoes de nivel 1; capitulos de verdade sao uma dezena", nivel1)
+	}
+}
+
+func TestTabelaContinuadaHerdaOCabecalhoDaPaginaAnterior(t *testing.T) {
+	p1, p2, p3 := 1, 2, 3
+	tables := map[int][]models.TableSection{
+		1: {{PageNumber: &p1, Title: "Matriz", Headers: []string{"Disciplina", "Hrs"}, Rows: [][]string{{"A", "1"}}}},
+		2: {{PageNumber: &p2, Headers: []string{"coluna 1", "coluna 2"}, Rows: [][]string{{"B", "2"}}}},
+		3: {{PageNumber: &p3, Headers: []string{"coluna 1", "coluna 2", "coluna 3"}, Rows: [][]string{{"C", "3", "x"}}}},
+	}
+	out := flattenPageTables(7, tables, 3)
+	if out[1].Headers[0] != "Disciplina" || out[1].Title != "Matriz" || out[1].Metadata["headers_inherited_from_page"] != 1 {
+		t.Fatalf("a tabela da p. 2 deveria herdar o cabecalho da p. 1: %+v", out[1])
+	}
+	if out[2].Headers[0] != "coluna 1" {
+		t.Fatalf("colunas diferentes nao herdam: %+v", out[2])
+	}
 }
