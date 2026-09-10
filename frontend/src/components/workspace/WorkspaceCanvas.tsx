@@ -59,7 +59,7 @@ import { APRESENTACAO_PADRAO, limitarPagina, precisaDoBotaoIrPara, regraIrAte, t
 /** Ponte minima para quem embute o canvas (o chat da Area de trabalho). */
 export type WorkspaceCanvasHandle = {
     /** Vai ao documento e a pagina; com nodeId, ao paragrafo em que a secao comeca. */
-    irAte: (documentId: number, pagina: number | null, nodeId?: string) => void;
+    irAte: (documentId: number, pagina: number | null, nodeId?: string, paragraphId?: number) => void;
     focarDocumento: (documentId: number) => void;
     /** Realca a caixa de uma tabela na folha (fonte de linha do chat, lista da sidebar). */
     realcarTabela: (tableId: number | string) => void;
@@ -705,26 +705,6 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
         [focarDocumento, irAte, rectDaPagina]
     );
 
-    useImperativeHandle(
-        ref,
-        () => ({
-            focarDocumento,
-            realcarTabela: (tableId) => {
-                const tabela = tabelasComCaixa.find((item) => item.id === tableId);
-                if (tabela) {
-                    irAteTabela(tabela);
-                }
-            },
-            irAte: (documentId, pagina, nodeId) => {
-                focarDocumento(documentId);
-                const secao = nodeId ? indiceDoContexto.porNodeId.get(nodeId) : undefined;
-                const ancora = secao ? ancoraDaSecao(secao) : null;
-                const rect = ancora ? rectDoParagrafo(ancora) : null;
-                irAte(documentId, ancora?.pageNumber ?? pagina, rect);
-            },
-        }),
-        [focarDocumento, irAte, indiceDoContexto, ancoraDaSecao, rectDoParagrafo, tabelasComCaixa, irAteTabela]
-    );
 
     const limparSelecao = useCallback(() => {
         setDocumentoFocado(null);
@@ -768,6 +748,35 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
             }
         },
         [marcas, pedirConexoes]
+    );
+
+    useImperativeHandle(
+        ref,
+        () => ({
+            focarDocumento,
+            realcarTabela: (tableId) => {
+                const tabela = tabelasComCaixa.find((item) => item.id === tableId);
+                if (tabela) {
+                    irAteTabela(tabela);
+                }
+            },
+            irAte: (documentId, pagina, nodeId, paragraphId) => {
+                focarDocumento(documentId);
+                // Fonte com paragrafo: seleciona o grifo dele (ambar, como o
+                // clique na folha) e centraliza nele.
+                const paragrafo = paragraphId ? context.paragraphNodes.find((no) => no.id === paragraphId && no.documentId === documentId) : undefined;
+                if (paragrafo) {
+                    selecionarParagrafo(paragrafo, indiceDoContexto.secaoDoParagrafo(paragrafo));
+                    irAte(documentId, paragrafo.pageNumber ?? pagina, rectDoParagrafo(paragrafo));
+                    return;
+                }
+                const secao = nodeId ? indiceDoContexto.porNodeId.get(nodeId) : undefined;
+                const ancora = secao ? ancoraDaSecao(secao) : null;
+                const rect = ancora ? rectDoParagrafo(ancora) : null;
+                irAte(documentId, ancora?.pageNumber ?? pagina, rect);
+            },
+        }),
+        [focarDocumento, irAte, indiceDoContexto, ancoraDaSecao, rectDoParagrafo, tabelasComCaixa, irAteTabela, context.paragraphNodes, selecionarParagrafo]
     );
 
     useEffect(() => {

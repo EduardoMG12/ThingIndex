@@ -77,6 +77,7 @@ function normalizeSources(sources: ChatSource[]): Source[] {
         snippet: source.snippet,
         documentId: source.documentId,
         nodeId: source.nodeId,
+        paragraphId: source.paragraphId,
     }));
 }
 

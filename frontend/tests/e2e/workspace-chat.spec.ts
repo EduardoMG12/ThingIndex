@@ -148,6 +148,9 @@ test("perguntar no painel e clicar em 'Ver no documento' leva o Edital a pagina 
     await botao.click();
     await expect(edital.getByTestId("pagina-de")).toHaveText("p. 12 de 30", { timeout: 30_000 });
     await expect(page.getByRole("complementary", { name: "Detalhes do documento" })).toContainText("Edital longo");
+    // A fonte clicada fica marcada como ativa e o contador diz onde o usuario esta na lista.
+    await expect(painel.getByTestId("fonte-posicao").first()).toHaveText("1/2");
+    await expect(painel.getByTestId("fonte").first()).toHaveAttribute("data-ativa", "true");
 });
 
 test("?collection= escolhe a colecao e o botao esconde o painel", async ({ baseURL, context, page }) => {

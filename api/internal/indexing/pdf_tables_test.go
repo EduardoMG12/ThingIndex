@@ -181,3 +181,10 @@ func TestTextoDaPaginaIncluiOsTitulos(t *testing.T) {
 	}
 	t.Fatal("pagina 7 nao veio")
 }
+
+func TestCabecalhoSinteticoNaoApareceNaLinha(t *testing.T) {
+	got := RenderTableRow([]string{"coluna 1", "Disciplina", "coluna 3"}, []string{"Web", "SIS05105", "33"})
+	if got != "Web; Disciplina: SIS05105; 33" {
+		t.Fatalf("cabecalho sintetico vazou: %q", got)
+	}
+}
