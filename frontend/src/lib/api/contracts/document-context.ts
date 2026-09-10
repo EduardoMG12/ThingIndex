@@ -157,6 +157,14 @@ export function readBox(node: Pick<ParagraphNode, "metadata">): ParagraphBox | n
     };
 }
 
+/** Resumo e topicos de uma pagina, gravados pelo enriquecimento por LLM. */
+export type DocumentPageSummary = {
+    documentId: number;
+    pageNumber: number;
+    summary: string;
+    topics: string[];
+};
+
 export type CollectionContext = {
     collection: CollectionSummary;
     documents: DocumentSummary[];
@@ -164,6 +172,8 @@ export type CollectionContext = {
     tableSections: TableSection[];
     metadataPairs: MetadataPair[];
     outlineNodes: OutlineNode[];
+    /** Opcional: fixtures antigas nao trazem; a tela trata como vazio. */
+    documentPages?: DocumentPageSummary[];
 };
 
 type CollectionApiRecord = {
@@ -515,5 +525,31 @@ export function normalizeCollectionContext(value: unknown): CollectionContext | 
         tableSections: normalizeTableSections(value.table_sections),
         metadataPairs: normalizeMetadataPairs(value.metadata_pairs),
         outlineNodes: normalizeOutlineNodes(value.outline_nodes),
+        documentPages: normalizeDocumentPages(value.document_pages),
     };
+}
+
+/** So o que a tela usa: numero, resumo e topicos. O conteudo da pagina fica de fora. */
+export function normalizeDocumentPages(value: unknown): DocumentPageSummary[] {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+    const out: DocumentPageSummary[] = [];
+    for (const entry of value) {
+        if (!isRecord(entry)) {
+            continue;
+        }
+        const documentId = Number(entry.document_id ?? entry.documentId);
+        const pageNumber = Number(entry.page_number ?? entry.pageNumber);
+        if (!Number.isFinite(documentId) || !Number.isFinite(pageNumber)) {
+            continue;
+        }
+        const summary = typeof entry.summary === "string" ? entry.summary.trim() : "";
+        const meta = isRecord(entry.metadata) ? entry.metadata : {};
+        const topics = typeof meta.topics === "string" ? meta.topics.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 5) : [];
+        if (summary || topics.length > 0) {
+            out.push({ documentId, pageNumber, summary, topics });
+        }
+    }
+    return out;
 }
