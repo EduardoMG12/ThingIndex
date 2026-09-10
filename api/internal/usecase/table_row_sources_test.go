@@ -193,3 +193,45 @@ func TestFonteLevaCaixaLinhasEDataDoIndice(t *testing.T) {
 		t.Fatalf("caixas das linhas nao acompanham as linhas: %v / %v", sources[0].Lines, sources[0].LineBoxes)
 	}
 }
+
+// Entre secoes e paginas, a fonte com mais termos da pergunta vem antes,
+// independente de ser secao ou pagina. Antes: tres secoes com 2 termos na
+// frente da pagina da Lei com 5.
+func TestFontesOrdenadasPorTermosCasados(t *testing.T) {
+	t.Parallel()
+	p1, p3 := 1, 3
+	context := &domain.CollectionContext{
+		Documents: []models.Document{{ID: 265, Title: "Matriz"}, {ID: 327, Title: "Lei"}},
+		ParagraphNodes: []models.ParagraphNode{
+			{ID: 1, DocumentID: 265, PageNumber: &p3, Content: "carga horaria maxima do estagio"},
+			{ID: 2, DocumentID: 327, PageNumber: &p1, Content: "jornada maxima diaria e semanal do estagio para estudantes do ensino superior"},
+		},
+	}
+	retrieval := &domain.CollectionRetrievalResult{
+		Query:    "Qual a jornada máxima diária e semanal do estágio para estudantes do ensino superior?",
+		NodeHits: []domain.CollectionNodeHit{{DocumentID: 265, NodeID: "matriz#3", Title: "Estagio", StartPage: &p3}},
+		PageHits: []domain.CollectionPageHit{{DocumentID: 327, PageNumber: 1}},
+	}
+	sources := buildChatSources(context, retrieval)
+	if len(sources) != 2 || sources[0].DocumentID != 327 || sources[1].DocumentID != 265 {
+		t.Fatalf("esperava a Lei (mais termos) antes da Matriz: %+v", sources)
+	}
+}
+
+// Linha de tabela com pelo menos metade dos termos da pergunta continua na
+// frente (pergunta de tabela); linha com poucos termos entra na ordem comum.
+func TestLinhaDeTabelaSoPassaNaFrenteComMetadeDosTermos(t *testing.T) {
+	t.Parallel()
+	linha := func(termos ...string) domain.ChatSource { return domain.ChatSource{ID: "linha", MatchedTerms: termos} }
+	pagina := domain.ChatSource{ID: "pagina", MatchedTerms: []string{"jornada", "maxima", "diaria", "estagio", "ensino", "superior"}}
+	// Pergunta de tabela (4 termos): linha com 3 fica na frente da pagina com 6.
+	got := orderChatSources([]domain.ChatSource{linha("estrutura", "dados", "requisito"), pagina}, 1, 4)
+	if got[0].ID != "linha" {
+		t.Fatalf("linha com metade dos termos devia vir primeiro: %+v", got)
+	}
+	// Pergunta longa (8 termos): linha com 2 vai para depois da pagina com 6.
+	got = orderChatSources([]domain.ChatSource{linha("maxima", "estagio"), pagina}, 1, 8)
+	if got[0].ID != "pagina" || got[1].ID != "linha" {
+		t.Fatalf("linha fraca devia ceder a vez para a pagina com mais termos: %+v", got)
+	}
+}
