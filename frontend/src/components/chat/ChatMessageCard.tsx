@@ -1,6 +1,8 @@
 "use client";
 
-import { Bot, Loader2, User } from "lucide-react";
+import { useState } from "react";
+
+import { Bot, ChevronLeft, ChevronRight, Loader2, User } from "lucide-react";
 
 import { ChatRichText } from "@/components/chat/ChatRichText";
 import SourceReference, { type Source } from "@/components/chat/SourceReference";
@@ -28,6 +30,18 @@ export function ChatMessageCard({
 }) {
     const { t, locale } = useI18n();
     const isUser = message.role === "user";
+    // Fonte focada no canvas: o clique numa fonte (ou nas setas) leva ate ela
+    // e marca qual esta na tela, para o usuario percorrer a lista em ordem.
+    const [fonteAtiva, setFonteAtiva] = useState<number>(-1);
+    const fontes = message.sources ?? [];
+    const irParaFonte = (indice: number) => {
+        const fonte = fontes[indice];
+        if (!fonte) {
+            return;
+        }
+        setFonteAtiva(indice);
+        onVerNoDocumento?.(fonte);
+    };
     const timestamp = new Intl.DateTimeFormat(locale, {
         hour: "2-digit",
         minute: "2-digit",
@@ -97,11 +111,50 @@ export function ChatMessageCard({
                             : ""}
                     </p>
                 ) : null}
-                {message.sources && message.sources.length > 0 ? (
-                    <div className="grid gap-2 pt-1 sm:grid-cols-2">
-                        {message.sources.map((source) => (
-                            <SourceReference key={source.id} source={source} onVerNoDocumento={onVerNoDocumento} />
-                        ))}
+                {fontes.length > 0 ? (
+                    <div className="space-y-2 pt-1">
+                        {onVerNoDocumento ? (
+                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                                <span>{t("dashboard.chat.sourcesTitle", { count: fontes.length })}</span>
+                                <span className="flex-1" />
+                                <button
+                                    type="button"
+                                    data-testid="fonte-anterior"
+                                    aria-label={t("dashboard.chat.previousSource")}
+                                    title={t("dashboard.chat.previousSource")}
+                                    disabled={fonteAtiva <= 0}
+                                    onClick={() => irParaFonte(fonteAtiva - 1)}
+                                    className="rounded-md border border-border/60 p-1 hover:bg-muted disabled:opacity-40"
+                                >
+                                    <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+                                </button>
+                                <span className="tabular-nums" data-testid="fonte-posicao">
+                                    {fonteAtiva >= 0 ? `${fonteAtiva + 1}/${fontes.length}` : `–/${fontes.length}`}
+                                </span>
+                                <button
+                                    type="button"
+                                    data-testid="fonte-proxima"
+                                    aria-label={t("dashboard.chat.nextSource")}
+                                    title={t("dashboard.chat.nextSource")}
+                                    disabled={fonteAtiva >= fontes.length - 1}
+                                    onClick={() => irParaFonte(fonteAtiva + 1)}
+                                    className="rounded-md border border-border/60 p-1 hover:bg-muted disabled:opacity-40"
+                                >
+                                    <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                                </button>
+                            </div>
+                        ) : null}
+                        <div className="grid gap-2 sm:grid-cols-2">
+                            {fontes.map((source, indice) => (
+                                <SourceReference
+                                    key={source.id}
+                                    source={source}
+                                    numero={indice + 1}
+                                    ativa={indice === fonteAtiva}
+                                    onVerNoDocumento={onVerNoDocumento ? () => irParaFonte(indice) : undefined}
+                                />
+                            ))}
+                        </div>
                     </div>
                 ) : null}
             </div>

@@ -234,12 +234,13 @@ func (u *chatUseCase) StreamCollectionChat(
 		persistedSources := make([]models.ChatSourceReference, 0, len(sources))
 		for _, source := range sources {
 			persistedSources = append(persistedSources, models.ChatSourceReference{
-				ID:         source.ID,
-				DocName:    source.DocName,
-				Page:       source.Page,
-				Snippet:    source.Snippet,
-				DocumentID: source.DocumentID,
-				NodeID:     source.NodeID,
+				ID:          source.ID,
+				DocName:     source.DocName,
+				Page:        source.Page,
+				Snippet:     source.Snippet,
+				DocumentID:  source.DocumentID,
+				NodeID:      source.NodeID,
+				ParagraphID: source.ParagraphID,
 			})
 		}
 
@@ -407,6 +408,28 @@ func buildChatSources(
 	sources := make([]domain.ChatSource, 0, ChatSourceLimit)
 	seen := make(map[string]struct{})
 
+	// O paragrafo da pagina com mais termos da pergunta e o que o canvas
+	// grifa ao clicar na fonte. Zero termos em comum: nenhum, e o clique cai
+	// na pagina.
+	significant := significantQueryTokens(retrieval.Query)
+	paragraphsByPage := make(map[string][]models.ParagraphNode)
+	for _, paragraph := range collectionContext.ParagraphNodes {
+		if paragraph.PageNumber == nil {
+			continue
+		}
+		key := fmt.Sprintf("%d:%d", paragraph.DocumentID, *paragraph.PageNumber)
+		paragraphsByPage[key] = append(paragraphsByPage[key], paragraph)
+	}
+	bestParagraph := func(documentID uint, page int) uint {
+		best, bestCoverage := uint(0), 0
+		for _, paragraph := range paragraphsByPage[fmt.Sprintf("%d:%d", documentID, page)] {
+			if coverage := queryTermCoverage(paragraph.Content, significant); coverage > bestCoverage {
+				best, bestCoverage = paragraph.ID, coverage
+			}
+		}
+		return best
+	}
+
 	// Linhas de tabela primeiro: e a fonte mais precisa (documento, pagina,
 	// tabela, linha) e a mais barata no prompt. A pagina inteira da tabela
 	// ainda pode entrar depois pelos hits de pagina.
@@ -460,12 +483,13 @@ func buildChatSources(
 		}
 
 		sources = append(sources, domain.ChatSource{
-			ID:         fmt.Sprintf("%s:%s", key, hit.NodeID),
-			DocName:    documentTitles[hit.DocumentID],
-			Page:       pageNumber,
-			Snippet:    clampRetrievalSnippet(snippet, 220),
-			DocumentID: hit.DocumentID,
-			NodeID:     hit.NodeID,
+			ID:          fmt.Sprintf("%s:%s", key, hit.NodeID),
+			DocName:     documentTitles[hit.DocumentID],
+			Page:        pageNumber,
+			Snippet:     clampRetrievalSnippet(snippet, 220),
+			DocumentID:  hit.DocumentID,
+			NodeID:      hit.NodeID,
+			ParagraphID: bestParagraph(hit.DocumentID, pageNumber),
 		})
 		seen[key] = struct{}{}
 	}
@@ -489,11 +513,12 @@ func buildChatSources(
 		}
 
 		sources = append(sources, domain.ChatSource{
-			ID:         key,
-			DocName:    documentTitles[hit.DocumentID],
-			Page:       hit.PageNumber,
-			Snippet:    clampRetrievalSnippet(snippet, 220),
-			DocumentID: hit.DocumentID,
+			ID:          key,
+			DocName:     documentTitles[hit.DocumentID],
+			Page:        hit.PageNumber,
+			Snippet:     clampRetrievalSnippet(snippet, 220),
+			DocumentID:  hit.DocumentID,
+			ParagraphID: bestParagraph(hit.DocumentID, hit.PageNumber),
 		})
 		seen[key] = struct{}{}
 	}
@@ -515,7 +540,7 @@ func buildCollectionChatPrompt(
 		"You are ThingIndex Assistant, a grounded document-analysis assistant.",
 		"Answer only from the provided relational document context.",
 		"If the evidence is insufficient, say that clearly and do not invent facts.",
-		"Prefer precise, direct answers and cite the supporting document names and pages in prose when relevant.",
+		"Start with the direct answer in one sentence. Then give the details and cite the document name and page of each fact in prose.",
 		"Write the answer in " + language + ". " + languageReminder(language),
 	}, "\n")
 

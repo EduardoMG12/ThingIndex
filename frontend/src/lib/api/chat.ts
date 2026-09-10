@@ -53,6 +53,8 @@ export type ChatSource = {
     /** Ausentes em mensagens gravadas antes de o backend envia-los. */
     documentId?: number;
     nodeId?: string;
+    /** Paragrafo da pagina com mais termos da pergunta: o que o canvas grifa. */
+    paragraphId?: number;
 };
 
 export type ChatStreamEvent =
@@ -434,6 +436,7 @@ function normalizeSource(value: unknown): ChatSource | null {
     const snippet = typeof record.snippet === "string" ? record.snippet : "";
     const documentId = Number(record.document_id ?? record.documentId);
     const nodeId = typeof record.node_id === "string" ? record.node_id : typeof record.nodeId === "string" ? record.nodeId : "";
+    const paragraphId = Number(record.paragraph_id ?? record.paragraphId);
 
     if (!id || !docName || !Number.isFinite(page)) {
         return null;
@@ -446,6 +449,7 @@ function normalizeSource(value: unknown): ChatSource | null {
         snippet,
         ...(Number.isFinite(documentId) && documentId > 0 ? { documentId } : {}),
         ...(nodeId ? { nodeId } : {}),
+        ...(Number.isFinite(paragraphId) && paragraphId > 0 ? { paragraphId } : {}),
     };
 }
 

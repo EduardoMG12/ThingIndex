@@ -572,6 +572,11 @@ func RenderTableRow(headers []string, row []string) string {
 		if i < len(headers) {
 			header = strings.TrimSpace(headers[i])
 		}
+		// "coluna 7" e cabecalho sintetico (tabela sem linha de rotulo):
+		// nao diz nada ao leitor nem ao modelo.
+		if strings.HasPrefix(header, "coluna ") {
+			header = ""
+		}
 		if header != "" {
 			parts = append(parts, header+": "+cell)
 		} else {

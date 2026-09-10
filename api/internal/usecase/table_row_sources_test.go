@@ -114,3 +114,26 @@ func TestFonteDeLinhaVemPrimeiroEVaiAoPromptComoLinha(t *testing.T) {
 		t.Fatalf("a pagina inteira ainda entra como terceira fonte:\n%s", userPrompt)
 	}
 }
+
+// A fonte de pagina aponta o paragrafo com mais termos da pergunta: e o que o
+// canvas grifa ao clicar.
+func TestFonteDePaginaApontaOParagrafoMaisProximoDaPergunta(t *testing.T) {
+	t.Parallel()
+	page := 126
+	context := &domain.CollectionContext{
+		Documents: []models.Document{{ID: 260, Title: "PPC"}},
+		ParagraphNodes: []models.ParagraphNode{
+			{ID: 71, DocumentID: 260, PageNumber: &page, Content: "os conceitos deverao ter emissao parcial apos cada bimestre"},
+			{ID: 72, DocumentID: 260, PageNumber: &page, Content: "conceito D quando a aprendizagem do estudante for insuficiente e nao atingir os objetivos"},
+			{ID: 73, DocumentID: 260, PageNumber: &page, Content: "o plano de avaliacao institucional atende ao SINAES"},
+		},
+	}
+	retrieval := &domain.CollectionRetrievalResult{
+		Query:    "O que significa o conceito D na avaliação dos cursos superiores?",
+		PageHits: []domain.CollectionPageHit{{DocumentID: 260, PageNumber: 126}},
+	}
+	sources := buildChatSources(context, retrieval)
+	if len(sources) != 1 || sources[0].ParagraphID != 72 {
+		t.Fatalf("esperava o paragrafo 72 (conceito, D, aprendizagem): %+v", sources)
+	}
+}

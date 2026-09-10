@@ -320,7 +320,7 @@ function WorkspacePageInner() {
                                                 canvasRef.current?.realcarTabela(Number(tabela[1]));
                                                 return;
                                             }
-                                            canvasRef.current?.irAte(source.documentId, source.page, source.nodeId);
+                                            canvasRef.current?.irAte(source.documentId, source.page, source.nodeId, source.paragraphId);
                                         }}
                                     />
                                 </div>
