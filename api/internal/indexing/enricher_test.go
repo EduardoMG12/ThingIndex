@@ -2,6 +2,9 @@ package indexing
 
 import (
 	"context"
+	"errors"
+	"strconv"
+	"strings"
 	"testing"
 
 	"thing-index/internal/domain"
@@ -148,4 +151,89 @@ func lastMetadataValue(pairs []models.MetadataPair, key string) string {
 		}
 	}
 	return value
+}
+
+// stubBatchLLM responde resumos para todas as paginas e secoes pedidas no
+// prompt, e conta as chamadas: prova que o enriquecimento cobre o documento
+// inteiro em lotes, nao so as 8 primeiras paginas e 12 primeiras secoes.
+type stubBatchLLM struct {
+	calls *int
+}
+
+func (s stubBatchLLM) GenerateText(ctx context.Context, systemPrompt, userPrompt string) (string, error) {
+	*s.calls++
+	if strings.Contains(userPrompt, "Pages:\n") {
+		var pages []string
+		for _, line := range strings.Split(userPrompt, "\n") {
+			if n, ok := strings.CutPrefix(line, "- page_number="); ok {
+				num, _, _ := strings.Cut(n, ",")
+				pages = append(pages, `{"page_number":`+num+`,"summary":"Resumo da pagina `+num+` com os prazos e nomes citados nela.","topics":["prazo","matricula"]}`)
+			}
+		}
+		return `{"pages":[` + strings.Join(pages, ",") + `]}`, nil
+	}
+	if strings.Contains(userPrompt, "Sections:\n") {
+		var nodes []string
+		for _, line := range strings.Split(userPrompt, "\n") {
+			if n, ok := strings.CutPrefix(line, "- sequence_order="); ok {
+				num, _, _ := strings.Cut(n, ",")
+				nodes = append(nodes, `{"sequence_order":`+num+`,"summary":"Resumo da secao `+num+`."}`)
+			}
+		}
+		return `{"nodes":[` + strings.Join(nodes, ",") + `]}`, nil
+	}
+	return "", errors.New("prompt nao suportado pelo stub")
+}
+
+func TestEnriquecimentoResumeTodasAsPaginasESecoesEmLotes(t *testing.T) {
+	t.Parallel()
+
+	var pages []models.DocumentPage
+	var nodes []models.DocumentOutlineNode
+	for i := 1; i <= 20; i++ {
+		content := strings.Repeat("Texto da pagina com prazos, nomes e regras suficientes para resumir. ", 4)
+		if i == 20 {
+			content = "curta" // abaixo do minimo: fica no fallback
+		}
+		pages = append(pages, models.DocumentPage{DocumentID: 1, PageNumber: i, Content: content})
+	}
+	for i := 0; i < 15; i++ {
+		start := i + 1
+		nodes = append(nodes, models.DocumentOutlineNode{DocumentID: 1, SequenceOrder: i, NodeID: "n" + strconv.Itoa(i), Level: 1, Title: "Secao " + strconv.Itoa(i), StartPage: &start, EndPage: &start})
+	}
+	calls := 0
+	result, err := NewLLMEnricher().Enrich(context.Background(), stubBatchLLM{calls: &calls}, &models.Document{ID: 1, Title: "ppc.pdf"}, domain.IndexingResult{DocumentPages: pages, OutlineNodes: nodes})
+	if err != nil {
+		t.Fatalf("Enrich() erro: %v", err)
+	}
+
+	// 19 paginas com texto em lotes de 6 = 4 chamadas; 15 secoes em lotes de 12 = 2.
+	if got := lastMetadataValue(result.MetadataPairs, "enrichment_pages_summarized"); got != "19" {
+		t.Fatalf("paginas resumidas = %q, esperava 19", got)
+	}
+	if got := lastMetadataValue(result.MetadataPairs, "enrichment_sections_summarized"); got != "15" {
+		t.Fatalf("secoes resumidas = %q, esperava 15", got)
+	}
+	for _, page := range result.DocumentPages {
+		if page.PageNumber == 20 {
+			if strings.HasPrefix(page.Summary, "Resumo da pagina") {
+				t.Fatalf("pagina curta nao devia ir a LLM: %q", page.Summary)
+			}
+			continue
+		}
+		if !strings.HasPrefix(page.Summary, "Resumo da pagina "+strconv.Itoa(page.PageNumber)) {
+			t.Fatalf("pagina %d sem resumo da LLM: %q", page.PageNumber, page.Summary)
+		}
+		if got, _ := page.Metadata["topics"].(string); got != "prazo, matricula" {
+			t.Fatalf("pagina %d sem topicos: %#v", page.PageNumber, page.Metadata)
+		}
+	}
+	for _, node := range result.OutlineNodes {
+		if node.Summary != "Resumo da secao "+strconv.Itoa(node.SequenceOrder)+"." {
+			t.Fatalf("secao %d sem resumo da LLM: %q", node.SequenceOrder, node.Summary)
+		}
+	}
+	if calls > 12 {
+		t.Fatalf("chamadas = %d, esperava poucas (sinopse, sinais, arvore e 6 lotes)", calls)
+	}
 }
