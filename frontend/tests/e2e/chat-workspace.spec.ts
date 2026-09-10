@@ -57,6 +57,8 @@ test.use({ locale: "en-US" });
 // sidebar do AppShell, sincronizada por evento (thingindex:chat-sidebar-sync).
 // O teste agora exercita o fluxo real: sidebar vazia -> primeira mensagem cria
 // a conversa -> resposta com fonte citada -> exclusao volta ao estado vazio.
+// O chat vive no painel da Area de trabalho; a lista de conversas continua no
+// menu lateral, pendurada no item "Workspace".
 test("chat workspace keeps conversation history, creates a fresh draft, and expands verified sources", async ({ baseURL, context, page }) => {
     await authenticate(context, baseURL);
 
@@ -198,10 +200,17 @@ test("chat workspace keeps conversation history, creates a fresh draft, and expa
         });
     });
 
-    await page.goto("/en/chat");
-
-    const workspace = page.locator("#main-content");
-    const sidebar = page.getByRole("complementary");
+    await page.route("**/api/collections/*/context**", async (route) => {
+        await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify(success({ collection: { id: 7, name: "Operations", document_count: 0, metadata: {} }, documents: [], outline_nodes: [], paragraph_nodes: [], table_sections: [], metadata_pairs: [], document_pages: [] })),
+        });
+    });
+    await page.goto("/en/workspace");
+    const workspace = page.getByTestId("painel-chat");
+    // O painel de chat tambem e um <aside>; o menu lateral e o primeiro.
+    const sidebar = page.getByRole("complementary").first();
 
     await expect(workspace.getByRole("heading", { level: 2, name: "Start a contextual query" })).toBeVisible();
     await expect(sidebar.getByRole("button", { name: "New chat" })).toBeVisible();

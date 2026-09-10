@@ -229,10 +229,12 @@ func (u *chatUseCase) StreamCollectionChat(
 		persistedSources := make([]models.ChatSourceReference, 0, len(sources))
 		for _, source := range sources {
 			persistedSources = append(persistedSources, models.ChatSourceReference{
-				ID:      source.ID,
-				DocName: source.DocName,
-				Page:    source.Page,
-				Snippet: source.Snippet,
+				ID:         source.ID,
+				DocName:    source.DocName,
+				Page:       source.Page,
+				Snippet:    source.Snippet,
+				DocumentID: source.DocumentID,
+				NodeID:     source.NodeID,
 			})
 		}
 
@@ -352,10 +354,11 @@ func buildChatSources(
 		}
 
 		sources = append(sources, domain.ChatSource{
-			ID:      key,
-			DocName: documentTitles[hit.DocumentID],
-			Page:    hit.PageNumber,
-			Snippet: clampRetrievalSnippet(snippet, 220),
+			ID:         key,
+			DocName:    documentTitles[hit.DocumentID],
+			Page:       hit.PageNumber,
+			Snippet:    clampRetrievalSnippet(snippet, 220),
+			DocumentID: hit.DocumentID,
 		})
 		seen[key] = struct{}{}
 
@@ -380,10 +383,12 @@ func buildChatSources(
 		}
 
 		sources = append(sources, domain.ChatSource{
-			ID:      key,
-			DocName: documentTitles[hit.DocumentID],
-			Page:    pageNumber,
-			Snippet: clampRetrievalSnippet(snippet, 220),
+			ID:         key,
+			DocName:    documentTitles[hit.DocumentID],
+			Page:       pageNumber,
+			Snippet:    clampRetrievalSnippet(snippet, 220),
+			DocumentID: hit.DocumentID,
+			NodeID:     hit.NodeID,
 		})
 		seen[key] = struct{}{}
 

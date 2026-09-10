@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, Maximize2, Minus, Plus } from "lucide-react";
 
@@ -55,6 +55,13 @@ import { APRESENTACAO_PADRAO, limitarPagina, precisaDoBotaoIrPara, regraIrAte, t
  * gravados na indexacao deterministica. A tela e leitura de dado existente, e
  * essa e a razao de ela ser instantanea.
  */
+
+/** Ponte minima para quem embute o canvas (o chat da Area de trabalho). */
+export type WorkspaceCanvasHandle = {
+    /** Vai ao documento e a pagina; com nodeId, ao paragrafo em que a secao comeca. */
+    irAte: (documentId: number, pagina: number | null, nodeId?: string) => void;
+    focarDocumento: (documentId: number) => void;
+};
 
 type WorkspaceCanvasProps = {
     context: CollectionContext;
@@ -165,7 +172,10 @@ function lerPosicoesSalvas(collectionId: number | string): Record<string, Posica
     }
 }
 
-export function WorkspaceCanvas({ context, marcasIniciais = [], legendaInicial = {}, estadoInicial = {} }: WorkspaceCanvasProps) {
+export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvasProps>(function WorkspaceCanvas(
+    { context, marcasIniciais = [], legendaInicial = {}, estadoInicial = {} },
+    ref
+) {
     const { t } = useI18n();
     const router = useRouter();
     const pathname = usePathname();
@@ -514,6 +524,11 @@ export function WorkspaceCanvas({ context, marcasIniciais = [], legendaInicial =
                     return;
                 }
             }
+            // Documento ainda nao medido (estava fora da tela): ao menos deixa a
+            // pagina pedida pronta para quando o quadro for renderizado.
+            if (pagina !== null && !paginas && apresentacao.modo === "pagina") {
+                mudarApresentacao(documentId, { modo: "pagina", paginaAtual: pagina });
+            }
             const i = indiceDoDocumento.get(documentId);
             const quadro = rectPreferido ?? (i === undefined ? null : quadros[i]);
             if (quadro) {
@@ -617,6 +632,21 @@ export function WorkspaceCanvas({ context, marcasIniciais = [], legendaInicial =
             centralizarEm({ ...quadro, altura: Math.min(quadro.altura, alturaVisivel) }, viewport.escala);
         },
         [indiceDoDocumento, quadros, tamanho, viewport.escala, centralizarEm]
+    );
+
+    useImperativeHandle(
+        ref,
+        () => ({
+            focarDocumento,
+            irAte: (documentId, pagina, nodeId) => {
+                focarDocumento(documentId);
+                const secao = nodeId ? indiceDoContexto.porNodeId.get(nodeId) : undefined;
+                const ancora = secao ? ancoraDaSecao(secao) : null;
+                const rect = ancora ? rectDoParagrafo(ancora) : null;
+                irAte(documentId, ancora?.pageNumber ?? pagina, rect);
+            },
+        }),
+        [focarDocumento, irAte, indiceDoContexto, ancoraDaSecao, rectDoParagrafo]
     );
 
     const limparSelecao = useCallback(() => {
@@ -1244,4 +1274,4 @@ export function WorkspaceCanvas({ context, marcasIniciais = [], legendaInicial =
             </aside>
         </div>
     );
-}
+});
