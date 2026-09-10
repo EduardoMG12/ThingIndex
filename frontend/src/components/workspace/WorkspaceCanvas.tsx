@@ -1372,6 +1372,47 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                         })()}
 
                         {(() => {
+                            // Topicos por pagina (enriquecimento): lista fechada por
+                            // padrao; clicar num topico leva a pagina.
+                            const paginasDoFocado = (context.documentPages ?? []).filter((p) => p.documentId === documentoFocado && p.topics.length > 0);
+                            return paginasDoFocado.length > 0 ? (
+                                <details className="rounded-md border border-border p-3" data-testid="bloco-de-topicos">
+                                    <summary className="cursor-pointer text-[10px] uppercase tracking-wide text-muted-foreground">
+                                        {t("workspace.sidebar.pageTopics", { count: paginasDoFocado.length })}
+                                    </summary>
+                                    <ul className="mt-2 max-h-72 space-y-1.5 overflow-y-auto pr-1">
+                                        {paginasDoFocado.map((pagina) => (
+                                            <li key={pagina.pageNumber} className="text-xs">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => irAte(pagina.documentId, pagina.pageNumber, rectDaPagina(pagina.documentId, pagina.pageNumber, true))}
+                                                    className="mr-1 rounded px-1 text-muted-foreground hover:bg-muted"
+                                                    title={pagina.summary || undefined}
+                                                    data-testid="pagina-com-topicos"
+                                                >
+                                                    {t("workspace.sidebar.page", { page: pagina.pageNumber })}
+                                                </button>
+                                                <span className="inline-flex flex-wrap gap-1 align-middle">
+                                                    {pagina.topics.map((topico) => (
+                                                        <button
+                                                            key={topico}
+                                                            type="button"
+                                                            onClick={() => irAte(pagina.documentId, pagina.pageNumber, rectDaPagina(pagina.documentId, pagina.pageNumber, true))}
+                                                            className="rounded-full border border-border bg-muted px-1.5 py-0.5 text-[10px] text-foreground/80 hover:bg-primary/10"
+                                                            data-testid="topico-da-lista"
+                                                        >
+                                                            {topico}
+                                                        </button>
+                                                    ))}
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </details>
+                            ) : null;
+                        })()}
+
+                        {(() => {
                             const c = indiceDoContexto.contagem.get(documentoFocado);
                             const semPosicao = c ? c.total - c.comBox : 0;
                             return semPosicao > 0 ? (
