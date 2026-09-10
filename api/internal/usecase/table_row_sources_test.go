@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -233,5 +234,52 @@ func TestLinhaDeTabelaSoPassaNaFrenteComMetadeDosTermos(t *testing.T) {
 	got = orderChatSources([]domain.ChatSource{linha("maxima", "estagio"), pagina}, 1, 8)
 	if got[0].ID != "pagina" || got[1].ID != "linha" {
 		t.Fatalf("linha fraca devia ceder a vez para a pagina com mais termos: %+v", got)
+	}
+}
+
+// Pagina que termina no meio da frase leva a pagina seguinte como
+// continuacao: a fonte cita as duas e o prompt recebe o comeco da seguinte.
+func TestFonteContinuaNaPaginaSeguinteQuandoAFraseQuebra(t *testing.T) {
+	t.Parallel()
+	context := &domain.CollectionContext{
+		Documents: []models.Document{{ID: 260, Title: "PPC"}},
+		DocumentPages: []models.DocumentPage{
+			{DocumentID: 260, PageNumber: 186, Content: "Para a matricula na disciplina de TCC II e requisito a aprovacao em TCC I. E vedada a"},
+			{DocumentID: 260, PageNumber: 187, Content: "matricula simultanea em TCC I e TCC II. Outra frase. " + strings.Repeat("Mais texto da pagina. ", 40)},
+			{DocumentID: 260, PageNumber: 196, Content: "O aluno aprovado em TCC I e reprovado em TCC II: a nova matricula nao e vedada."},
+		},
+	}
+	retrieval := &domain.CollectionRetrievalResult{Query: "É vedada a matrícula simultânea em TCC I e TCC II?", PageHits: []domain.CollectionPageHit{{DocumentID: 260, PageNumber: 186}, {DocumentID: 260, PageNumber: 196}}}
+	sources := buildChatSources(context, retrieval)
+	if len(sources) != 2 || sources[0].Page != 186 || sources[0].ContinuesOnPage != 187 {
+		t.Fatalf("p. 186 devia continuar na 187: %+v", sources)
+	}
+	if sources[1].ContinuesOnPage != 0 {
+		t.Fatalf("p. 196 termina com ponto, nao continua: %+v", sources[1])
+	}
+	// Pagina com tabela (calendario) nao continua, mesmo sem ponto no fim.
+	p3 := 3
+	comTabela := &domain.CollectionContext{
+		Documents: []models.Document{{ID: 261, Title: "Calendario"}},
+		DocumentPages: []models.DocumentPage{
+			{DocumentID: 261, PageNumber: 3, Content: "Setembro: prazo final para o protocolo das atividades complementares dos formandos, 23 dias letivos"},
+			{DocumentID: 261, PageNumber: 4, Content: "Outubro: outro prazo final de protocolo."},
+		},
+		TableSections: []models.TableSection{{ID: 9, DocumentID: 261, PageNumber: &p3, Title: "Setembro"}},
+	}
+	tabela := buildChatSources(comTabela, &domain.CollectionRetrievalResult{Query: "Qual o prazo final para o protocolo das atividades complementares dos formandos?", PageHits: []domain.CollectionPageHit{{DocumentID: 261, PageNumber: 3}}})
+	if len(tabela) != 1 || tabela[0].ContinuesOnPage != 0 {
+		t.Fatalf("pagina com tabela nao devia continuar: %+v", tabela)
+	}
+	if !pageEndsMidSentence("II - conceito B - quando a aprendizagem for PARCIALMENTE PLENA;") || pageEndsMidSentence("Fim da pagina.") {
+		t.Fatal("ponto e virgula no fim da pagina e item de lista que continua; ponto final nao")
+	}
+	pageContent := map[string]string{}
+	for _, p := range context.DocumentPages {
+		pageContent[fmt.Sprintf("%d:%d", p.DocumentID, p.PageNumber)] = p.Content
+	}
+	body, _ := chatSourceBody(sources[0], pageContent, 10000)
+	if !strings.Contains(body, "[continua na p. 187] matricula simultanea em TCC I e TCC II.") || len([]rune(body)) > 200+ChatContinuationCharLimit {
+		t.Fatalf("corpo sem a continuacao curta: %q", body)
 	}
 }

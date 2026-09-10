@@ -235,18 +235,19 @@ func (u *chatUseCase) StreamCollectionChat(
 		persistedSources := make([]models.ChatSourceReference, 0, len(sources))
 		for _, source := range sources {
 			persistedSources = append(persistedSources, models.ChatSourceReference{
-				ID:           source.ID,
-				DocName:      source.DocName,
-				Page:         source.Page,
-				Snippet:      source.Snippet,
-				DocumentID:   source.DocumentID,
-				NodeID:       source.NodeID,
-				ParagraphID:  source.ParagraphID,
-				Lines:        source.Lines,
-				MatchedTerms: source.MatchedTerms,
-				Box:          source.Box,
-				LineBoxes:    source.LineBoxes,
-				IndexedAt:    source.IndexedAt,
+				ID:              source.ID,
+				DocName:         source.DocName,
+				Page:            source.Page,
+				Snippet:         source.Snippet,
+				DocumentID:      source.DocumentID,
+				NodeID:          source.NodeID,
+				ParagraphID:     source.ParagraphID,
+				Lines:           source.Lines,
+				MatchedTerms:    source.MatchedTerms,
+				Box:             source.Box,
+				LineBoxes:       source.LineBoxes,
+				ContinuesOnPage: source.ContinuesOnPage,
+				IndexedAt:       source.IndexedAt,
 			})
 		}
 
@@ -413,6 +414,13 @@ func buildChatSources(
 		pageLookup[key] = page
 	}
 
+	pagesWithTables := make(map[string]struct{}, len(collectionContext.TableSections))
+	for _, table := range collectionContext.TableSections {
+		if table.PageNumber != nil {
+			pagesWithTables[fmt.Sprintf("%d:%d", table.DocumentID, *table.PageNumber)] = struct{}{}
+		}
+	}
+
 	sources := make([]domain.ChatSource, 0, ChatSourceLimit)
 	seen := make(map[string]struct{})
 
@@ -445,6 +453,21 @@ func buildChatSources(
 	}
 	// Texto da pagina para contar termos: o conteudo da pagina, ou os
 	// paragrafos dela quando o contexto veio sem paginas.
+	// continuesOn: a pagina seguinte, quando o texto desta termina sem
+	// pontuacao final (frase quebrada na virada) e a seguinte existe.
+	// Pagina com tabela nao continua: termina sem ponto por ser tabela, e o
+	// comeco da seguinte e outra tabela (o calendario de outubro colado ao de
+	// setembro fez o modelo errar c12). As linhas ja entram como fonte.
+	continuesOn := func(documentID uint, page int) int {
+		key := fmt.Sprintf("%d:%d", documentID, page)
+		if _, hasTable := pagesWithTables[key]; hasTable || !pageEndsMidSentence(pageLookup[key].Content) {
+			return 0
+		}
+		if _, ok := pageLookup[fmt.Sprintf("%d:%d", documentID, page+1)]; !ok {
+			return 0
+		}
+		return page + 1
+	}
 	pageText := func(key string) string {
 		if content := pageLookup[key].Content; content != "" {
 			return content
@@ -548,18 +571,19 @@ func buildChatSources(
 		}
 
 		sources = append(sources, domain.ChatSource{
-			ID:           fmt.Sprintf("%s:%s", key, hit.NodeID),
-			DocName:      documentTitles[hit.DocumentID],
-			Page:         pageNumber,
-			Snippet:      clampRetrievalSnippet(snippet, 220),
-			DocumentID:   hit.DocumentID,
-			NodeID:       hit.NodeID,
-			ParagraphID:  pick.id,
-			Lines:        pick.lines,
-			MatchedTerms: terms,
-			Box:          pick.box,
-			LineBoxes:    pick.lineBoxes,
-			IndexedAt:    documentIndexedAt[hit.DocumentID],
+			ID:              fmt.Sprintf("%s:%s", key, hit.NodeID),
+			DocName:         documentTitles[hit.DocumentID],
+			Page:            pageNumber,
+			Snippet:         clampRetrievalSnippet(snippet, 220),
+			DocumentID:      hit.DocumentID,
+			NodeID:          hit.NodeID,
+			ParagraphID:     pick.id,
+			Lines:           pick.lines,
+			MatchedTerms:    terms,
+			ContinuesOnPage: continuesOn(hit.DocumentID, pageNumber),
+			Box:             pick.box,
+			LineBoxes:       pick.lineBoxes,
+			IndexedAt:       documentIndexedAt[hit.DocumentID],
 		})
 		seen[key] = struct{}{}
 	}
@@ -591,17 +615,18 @@ func buildChatSources(
 			continue
 		}
 		sources = append(sources, domain.ChatSource{
-			ID:           key,
-			DocName:      documentTitles[hit.DocumentID],
-			Page:         hit.PageNumber,
-			Snippet:      clampRetrievalSnippet(snippet, 220),
-			DocumentID:   hit.DocumentID,
-			ParagraphID:  pick.id,
-			Lines:        pick.lines,
-			MatchedTerms: terms,
-			Box:          pick.box,
-			LineBoxes:    pick.lineBoxes,
-			IndexedAt:    documentIndexedAt[hit.DocumentID],
+			ID:              key,
+			DocName:         documentTitles[hit.DocumentID],
+			Page:            hit.PageNumber,
+			Snippet:         clampRetrievalSnippet(snippet, 220),
+			DocumentID:      hit.DocumentID,
+			ParagraphID:     pick.id,
+			Lines:           pick.lines,
+			MatchedTerms:    terms,
+			ContinuesOnPage: continuesOn(hit.DocumentID, hit.PageNumber),
+			Box:             pick.box,
+			LineBoxes:       pick.lineBoxes,
+			IndexedAt:       documentIndexedAt[hit.DocumentID],
 		})
 		seen[key] = struct{}{}
 	}
@@ -838,6 +863,12 @@ func chatSourceBody(source domain.ChatSource, pageContent map[string]string, rem
 	if source.Body != "" {
 		// Fonte menor que a pagina (linha de tabela): vai ela, nao a pagina.
 		content = strings.Join(strings.Fields(source.Body), " ")
+	} else if source.ContinuesOnPage > 0 && content != "" {
+		// A frase quebrou na virada: o comeco da pagina seguinte vai junto,
+		// marcado, para o modelo ler o paragrafo inteiro.
+		if next := pageContinuation(pageContent[fmt.Sprintf("%d:%d", source.DocumentID, source.ContinuesOnPage)]); next != "" {
+			content += fmt.Sprintf(" [continua na p. %d] %s", source.ContinuesOnPage, next)
+		}
 	}
 	if content == "" {
 		return source.Snippet, 0
@@ -851,6 +882,43 @@ func chatSourceBody(source domain.ChatSource, pageContent map[string]string, rem
 		return source.Snippet, 0
 	}
 	return content, len(runes)
+}
+
+// ChatContinuationCharLimit e quanto da pagina seguinte acompanha uma fonte
+// cuja frase quebrou na virada.
+const ChatContinuationCharLimit = 600
+
+// pageEndsMidSentence: o texto termina sem ponto final. ";" e ":" contam
+// como continuacao, nao como fim: em texto legal e academico sao item de
+// lista ("II - conceito B ...;") ou abertura de lista, e o resto esta na
+// pagina seguinte ("IV - conceito D" na p. 126 do PPC).
+func pageEndsMidSentence(content string) bool {
+	trimmed := strings.TrimRight(strings.TrimSpace(content), "\"'»)]”’")
+	if trimmed == "" {
+		return false
+	}
+	last := trimmed[len(trimmed)-1]
+	return !strings.ContainsRune(".!?", rune(last))
+}
+
+// pageContinuation devolve o comeco da pagina seguinte ate o fim da ultima
+// frase que couber em ChatContinuationCharLimit.
+func pageContinuation(content string) string {
+	runes := []rune(strings.Join(strings.Fields(content), " "))
+	if len(runes) == 0 {
+		return ""
+	}
+	if len(runes) <= ChatContinuationCharLimit {
+		return string(runes)
+	}
+	cut := ChatContinuationCharLimit
+	for i := cut - 1; i > cut/2; i-- {
+		if strings.ContainsRune(".;:!?", runes[i]) {
+			cut = i + 1
+			break
+		}
+	}
+	return strings.TrimSpace(string(runes[:cut]))
 }
 
 // languageReminder e a instrucao de idioma na propria lingua.

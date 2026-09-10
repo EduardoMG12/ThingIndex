@@ -29,6 +29,8 @@ type ChatSourceReference struct {
 	ParagraphID  uint     `json:"paragraph_id,omitempty"`
 	Lines        []int    `json:"lines,omitempty"`
 	MatchedTerms []string `json:"matched_terms,omitempty"`
+	// Pagina seguinte quando o texto da fonte continua nela (quebra de paragrafo na virada).
+	ContinuesOnPage int `json:"continues_on_page,omitempty"`
 	// Geometria e versao do indice no momento da resposta.
 	Box       *SourceBox   `json:"box,omitempty"`
 	LineBoxes [][4]float64 `json:"line_boxes,omitempty"`
