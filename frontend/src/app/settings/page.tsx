@@ -193,7 +193,7 @@ function FamilySection({
                         <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-primary">{t("settings.steps.select")}</p>
                         <h3 className="text-base font-semibold">{family === "LLM" ? t("settings.selectTitleLLM") : t("settings.selectTitleStorage")}</h3>
                         <p className="text-sm text-muted-foreground">
-                            {t("settings.selectDescription")}
+                            {t("settings.selectDescription")} {t("settings.hiddenProvidersHint")}
                         </p>
                     </CardHeader>
                     <CardContent className="space-y-2">
@@ -573,7 +573,8 @@ export default function SettingsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [loadWarning, setLoadWarning] = useState<string | null>(null);
     const [isPending, startTransition] = useTransition();
-    const localizedProviders = useMemo(() => getLocalizedProviders(locale), [locale]);
+    // Provedores escondidos nesta versao so aparecem se ja tiverem credencial salva.
+    const localizedProviders = useMemo(() => getLocalizedProviders(locale, providers.map((config) => config.provider_type)), [locale, providers]);
     const storageProviders = useMemo(
         () => localizedProviders.filter((provider) => provider.family === "STORAGE"),
         [localizedProviders]

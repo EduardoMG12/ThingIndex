@@ -45,6 +45,8 @@ Critério: fica o que a tese precisa e o que foi medido; sai (ou vira "experimen
 | **Página `/documentation`** | Conteúdo institucional com números do experimento antigo | Conferir os números contra §13–14 ou reduzir a um link para o artigo | 1 hora |
 | **Ferramental em `cmd/`** (`index-import`, `dense-determinism`, `threshold-eval`, `provenance-eval`, `retrieval-eval`, `generation-eval`, `indexing-benchmark`, `schema-dbml`) | 8 binários de experimento | Manter; documentar em um `docs/experimentos.md` com o comando de cada um (dois deles já estão no README) | 1 hora |
 
+**Feito em 2026-09-10 (PR #74):** os provedores não exercitados ficam **escondidos na tela** (o runtime não muda): a lista mostra só MinIO/S3 compatível, Ollama e OpenAI; um provedor escondido volta a aparecer se o usuário já tiver credencial salva nele. Conferido no artigo: nada restringe a marca de storage; o texto diz "object storage compatível com a API S3" (`article-overleaf.md:206`), RF05 e RF10 falam em "object storage" e "provedores externos" genéricos, e a tela de configurações é descrita como "provedores de IA e storage" (`:505`). MinIO como padrão é compatível com tudo isso. Nenhum provedor concreto de LLM é citado no artigo além de Ollama (`:542`), então esconder Gemini, Claude, DeepSeek, Grok e OpenRouter não contradiz nada; a frase "aceitará alguns dos principais provedores" está num bloco comentado (`:882`).
+
 O que **não** cortar, mesmo parecendo periférico: auditoria de documentos e provedores (é o princípio I), retry/órfãos (RF14), o braço denso como comparação (é o argumento contra o vetor), a legenda e as marcas do workspace (é o uso real do coordenador).
 
 ## 4. O artigo: o que reescrever
