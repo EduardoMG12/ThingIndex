@@ -160,3 +160,11 @@ export function ancorasDeLinha(origem: Rect, destino: Rect): { de: Ponto; para: 
     }
     return { de, para };
 }
+
+/**
+ * Zoom para ler um trecho: o rect passa a ocupar ~55% da largura da tela,
+ * entre 0,9 (nao afasta para ler) e 1,8 (mais que isso vira borrao).
+ */
+export function escalaDeFoco(larguraDoRect: number, larguraDaTela: number): number {
+    return limitarZoom((larguraDaTela * 0.55) / Math.max(larguraDoRect, 1), 0.9, 1.8);
+}

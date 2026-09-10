@@ -162,7 +162,7 @@ describe("WorkspaceCanvas", () => {
                     summary: "Multa por descumprimento.",
                     startPage: 1,
                     score: 11,
-                    matchedTerms: ["multa", "fatura", "descumprimento"],
+                    matchedTerms: ["multa", "fatura", "descumprimento"], kind: "termo-raro" as const,
                 },
             ],
         });
@@ -340,7 +340,7 @@ describe("WorkspaceCanvas", () => {
         vi.mocked(fetchNodeConnections).mockResolvedValue({
             nodeId: "termo#a",
             minScore: 2,
-            connections: [{ documentId: 4, nodeId: "outro#c", title: "3 PRAZOS", summary: "", startPage: 3, score: 4, matchedTerms: ["prazo"] }],
+            connections: [{ documentId: 4, nodeId: "outro#c", title: "3 PRAZOS", summary: "", startPage: 3, score: 4, matchedTerms: ["prazo"], kind: "termo-raro" as const, }],
         });
         const contexto = {
             ...contextoComPdf,
@@ -434,8 +434,8 @@ describe("WorkspaceCanvas", () => {
             nodeId: "termo#a",
             minScore: 2,
             connections: [
-                { documentId: 4, nodeId: "outro#b", title: "2 X", summary: "", startPage: 2, score: 3, matchedTerms: ["x"] },
-                { documentId: 4, nodeId: "outro#c", title: "3 PRAZOS", summary: "", startPage: 3, score: 2, matchedTerms: ["prazo"] },
+                { documentId: 4, nodeId: "outro#b", title: "2 X", summary: "", startPage: 2, score: 3, matchedTerms: ["x"], kind: "termo-raro" as const, },
+                { documentId: 4, nodeId: "outro#c", title: "3 PRAZOS", summary: "", startPage: 3, score: 2, matchedTerms: ["prazo"], kind: "termo-raro" as const, },
             ],
         });
         const contexto = {
@@ -535,6 +535,42 @@ describe("WorkspaceCanvas: enriquecimento por LLM", () => {
             fireEvent.click(grifo);
             expect(screen.getByTestId("trecho-selecionado")).toHaveTextContent("Primeiro Semestre");
             expect(within(screen.getByTestId("barra-de-grifo")).getByRole("button", { name: /Ver conexões/ })).toBeEnabled();
+        } finally {
+            globalThis.ResizeObserver = original;
+        }
+    });
+
+    it("selecionar um paragrafo mostra 'Nesta pagina' com o resumo e os topicos da pagina", async () => {
+        const original = globalThis.ResizeObserver;
+        globalThis.ResizeObserver = class {
+            private cb: ResizeObserverCallback;
+            constructor(cb: ResizeObserverCallback) {
+                this.cb = cb;
+            }
+            observe() {
+                this.cb([{ contentRect: { width: 1400, height: 900 } } as ResizeObserverEntry], this as unknown as ResizeObserver);
+            }
+            unobserve() {}
+            disconnect() {}
+        } as unknown as typeof ResizeObserver;
+        const contextoComPaginas = {
+            ...contextoComPdf,
+            paragraphNodes: [{ id: 301, documentId: 3, sequenceOrder: 0, content: "Multa de 5 por cento.", pageNumber: 1, metadata: { box: BOX } }],
+            documentPages: [
+                { documentId: 3, pageNumber: 1, summary: "Define a multa de 5 por cento e o prazo de 30 dias.", topics: ["multa", "prazo"] },
+                { documentId: 3, pageNumber: 2, summary: "Outra pagina.", topics: [] },
+            ],
+        } as unknown as CollectionContext;
+        try {
+            render(<WorkspaceCanvas context={contextoComPaginas} />, opcoes);
+            fireEvent.click(await screen.findByTestId("grifo"));
+            const bloco = screen.getByTestId("sobre-a-pagina");
+            expect(bloco).toHaveTextContent("Nesta página (1)");
+            expect(bloco).toHaveTextContent("prazo de 30 dias");
+            expect(screen.getAllByTestId("topico-da-pagina").map((el) => el.textContent)).toEqual(["multa", "prazo"]);
+            // A lista "Topicos por pagina" so tem as paginas com topicos (a 2 nao tem).
+            expect(screen.getByTestId("bloco-de-topicos")).toHaveTextContent("Tópicos por página (1 páginas)");
+            expect(screen.getAllByTestId("topico-da-lista").map((el) => el.textContent)).toEqual(["multa", "prazo"]);
         } finally {
             globalThis.ResizeObserver = original;
         }

@@ -6,6 +6,8 @@ import (
 	"io"
 	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
@@ -33,6 +35,14 @@ type textBlock struct {
 	// LineCount guarda quantas linhas o extrator agrupou neste bloco; blocos de
 	// uma linha podem ser remontados com vizinhos da mesma linha visual.
 	LineCount int
+	// Lines sao as linhas visuais do bloco com a caixa de cada uma, para o
+	// grifo apontar a linha citada em vez do paragrafo inteiro.
+	Lines []textLine
+}
+
+type textLine struct {
+	Text string
+	Box  textBox
 }
 
 // textBox ancora um bloco na coordenada original da pagina, em pontos PDF com
@@ -161,30 +171,103 @@ func (i *DeterministicIndexer) indexPDF(ctx context.Context, documentID uint, da
 	}
 
 	pageBlocks, ocrStats := i.applyPDFOCRFallback(ctx, data, extraction.PageCount, extraction.PageBlocks)
-	headings, paragraphs := buildPDFStructureFromPageBlocks(pageBlocks, extraction.PageCount)
+	headings, paragraphs := buildPDFStructure(pageBlocks, extraction.PageTables, extraction.PageCount)
 	result := buildIndexingResult(documentID, headings, paragraphs, flattenPageTables(documentID, extraction.PageTables, extraction.PageCount))
 	appendOCRFallbackMetadata(&result, documentID, ocrStats)
 	return result, nil
 }
 
+// numberedOutlineMinHeadings e quantos titulos numerados ("1.", "2.3") um
+// documento precisa ter para a numeracao mandar no sumario.
+const numberedOutlineMinHeadings = 8
+
+// hasNumberedOutline diz se o documento tem sumario numerado (PPC, edital):
+// nesse caso capa ("MINISTERIO DA EDUCACAO"), valor de campo ("40 vagas") e
+// fragmento de titulo quebrado ("EDUCACAO" / "DEMOCRATICA") nao viram secao,
+// ficam como paragrafo. O PPC de SI tinha 131 secoes de nivel 1 e so uma
+// dezena eram capitulos. Rebaixar de nivel nao bastava: a normalizacao da
+// arvore devolve o primeiro titulo ao nivel 1.
+func hasNumberedOutline(pageBlocks map[int][]textBlock, pageCount int) bool {
+	numbered := 0
+	for pageNumber := 1; pageNumber <= pageCount; pageNumber++ {
+		for _, block := range pageBlocks[pageNumber] {
+			content := strings.TrimSpace(block.Content)
+			if content != "" && looksLikePDFHeading(content) && outlineNumberPattern.MatchString(content) {
+				numbered++
+				if numbered >= numberedOutlineMinHeadings {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// outlineNumberPattern e a numeracao de sumario de verdade: ate dois digitos
+// por nivel e uma palavra em maiuscula logo depois ("1.APRESENTAÇÃO",
+// "1.1 IDENTIFICAÇÃO", "4.3.2 Plano"). "40 vagas" e "3600 h/a" nao sao.
+var outlineNumberPattern = regexp.MustCompile(`^\d{1,2}(\.\d{1,2})*\.?\s*\p{Lu}`)
+
+func numberedOrArchetypeHeading(content string) bool {
+	// Titulo de sumario numerado tem ate ~10 palavras; "30 Horas SERGIO
+	// MERLIN Graduacao em Engenharia da (Jornada ...)" e linha de tabela de
+	// docentes que escapou da deteccao de tabela e virava capitulo.
+	if len(strings.Fields(content)) > 14 {
+		return false
+	}
+	if outlineNumberPattern.MatchString(content) {
+		return true
+	}
+	// Titulo sem numero num documento numerado so passa pelo arquetipo
+	// (SUMARIO, ANEXO...), e arquetipo nao e frase: "decisao junto as/aos
+	// discentes, baseadas nas normas deste PPC." comecava com minuscula,
+	// casava "decisao" e virava capitulo do PPC do Tecnico.
+	if sentenceLikeFragment(content) {
+		return false
+	}
+	return classifyDocumentHeadingArchetype(content) != documentHeadingArchetypeUnknown
+}
+
+// sentenceLikeFragment: comeca com minuscula ou termina com ponto final
+// tendo mais de 6 palavras -- e um pedaco de paragrafo, nao um titulo.
+func sentenceLikeFragment(content string) bool {
+	trimmed := strings.TrimSpace(content)
+	if trimmed == "" {
+		return false
+	}
+	first, _ := utf8.DecodeRuneInString(trimmed)
+	if unicode.IsLower(first) {
+		return true
+	}
+	return strings.HasSuffix(trimmed, ".") && len(strings.Fields(trimmed)) > 6
+}
+
 func buildPDFStructureFromPageBlocks(pageBlocks map[int][]textBlock, pageCount int) ([]outlineDraft, []textBlock) {
+	return buildPDFStructure(pageBlocks, nil, pageCount)
+}
+
+// buildPDFStructure monta titulos e paragrafos; bloco dentro de uma tabela da
+// pagina nunca vira titulo (continua como paragrafo, para o texto da pagina).
+func buildPDFStructure(pageBlocks map[int][]textBlock, pageTables map[int][]models.TableSection, pageCount int) ([]outlineDraft, []textBlock) {
 	headings := make([]outlineDraft, 0)
 	paragraphs := make([]textBlock, 0)
 	currentSectionKey := ""
 
 	pageOccurrences := countPDFBlockPageOccurrences(pageBlocks, pageCount)
 	emittedRepeatedPDFHeadings := make(map[string]struct{})
+	numberedOutline := hasNumberedOutline(pageBlocks, pageCount)
 	for pageNumber := 1; pageNumber <= pageCount; pageNumber++ {
 		// Pagina de sumario: as linhas "1.1.1 Denominacao do Curso 9" parecem
 		// titulos e duplicavam cada secao do PPC (124 de 861). Nela, nada vira
 		// titulo; o texto fica como paragrafo.
 		tocPage := isPDFTableOfContentsPage(pageBlocks[pageNumber])
+		tableBoxes := pdfTableBoxes(pageTables[pageNumber])
 		for _, block := range pageBlocks[pageNumber] {
 			content := strings.TrimSpace(block.Content)
 			if content == "" || isLowSignalPDFText(content) {
 				continue
 			}
-			if !tocPage && looksLikePDFHeading(content) {
+			if !tocPage && !blockInsideTable(block, tableBoxes) && looksLikePDFHeading(content) && (!numberedOutline || numberedOrArchetypeHeading(content)) {
 				if shouldSuppressRepeatedPDFHeading(content, pageOccurrences) {
 					if _, seen := emittedRepeatedPDFHeadings[content]; seen {
 						continue
@@ -328,14 +411,46 @@ const PDFTableOfContentsMinEntries = 5
 func isPDFTableOfContentsPage(blocks []textBlock) bool {
 	entries := 0
 	for _, block := range blocks {
-		content := strings.TrimSpace(block.Content)
-		if content == "" || !tocEntryPattern.MatchString(content) {
-			continue
+		// Sumario em duas colunas (titulos a esquerda, numeros de pagina num
+		// bloco a direita): nenhuma linha termina com numero, mas um bloco
+		// com 5+ linhas comecando por numeracao de sumario so existe em
+		// pagina de sumario -- numa pagina normal cada titulo e um bloco.
+		numberedLines := 0
+		for _, line := range block.Lines {
+			text := strings.TrimSpace(line.Text)
+			// Entrada de sumario e curta e nao termina em ponto. Uma
+			// bibliografia numerada ("1. DEITEL, Paul J. ... 2016.") tambem
+			// tem 5+ linhas comecando por numero, e fazia a p. 107 do PPC do
+			// Tecnico passar por sumario: o capitulo "8 INFRAESTRUTURA"
+			// daquela pagina sumia.
+			if outlineNumberPattern.MatchString(text) && utf8.RuneCountInString(text) <= 90 && !strings.HasSuffix(text, ".") {
+				numberedLines++
+			}
 		}
-		if looksLikeHeading(content) {
-			entries++
-			if entries >= PDFTableOfContentsMinEntries {
-				return true
+		if numberedLines >= PDFTableOfContentsMinEntries {
+			return true
+		}
+		// O poppler as vezes cola varias entradas do sumario num bloco so
+		// ("1 APRESENTAÇÃO 7" / "1.1 IDENTIFICAÇÃO 7" ...); contar por linha,
+		// senao a pagina de sumario do PPC do Tecnico virava 6 secoes coladas.
+		lines := []string{strings.TrimSpace(block.Content)}
+		if len(block.Lines) > 1 {
+			lines = lines[:0]
+			for _, line := range block.Lines {
+				lines = append(lines, strings.TrimSpace(line.Text))
+			}
+		}
+		for _, content := range lines {
+			if content == "" || !tocEntryPattern.MatchString(content) {
+				continue
+			}
+			// Entrada numerada ("2 OBJETIVOS 12") conta mesmo quando o
+			// classificador de titulo a acha curta demais.
+			if looksLikeHeading(content) || outlineNumberPattern.MatchString(content) {
+				entries++
+				if entries >= PDFTableOfContentsMinEntries {
+					return true
+				}
 			}
 		}
 	}

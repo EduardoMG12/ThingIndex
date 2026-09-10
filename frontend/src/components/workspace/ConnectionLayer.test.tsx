@@ -13,8 +13,8 @@ vi.mock("next/navigation", () => ({
 const opcoes = { wrapper: createTestWrapper("pt-BR") };
 
 const LINHAS: Linha[] = [
-    { id: "2:a", documentId: 2, nodeId: "a", titulo: "2 DAS PENALIDADES", score: 3, termos: ["multa", "fatura"], de: { x: 0, y: 0 }, para: { x: 100, y: 50 }, aproximada: false },
-    { id: "2:b", documentId: 2, nodeId: "b", titulo: "3 PRAZOS", score: 2, termos: ["prazo"], de: { x: 0, y: 0 }, para: { x: 100, y: 200 }, aproximada: true },
+    { id: "2:a", documentId: 2, nodeId: "a", titulo: "2 DAS PENALIDADES", score: 3, termos: ["multa", "fatura"], tipo: "termo-raro" as const, de: { x: 0, y: 0 }, para: { x: 100, y: 50 }, aproximada: false },
+    { id: "2:b", documentId: 2, nodeId: "b", titulo: "3 PRAZOS", score: 2, termos: ["prazo"], tipo: "termo-raro" as const, de: { x: 0, y: 0 }, para: { x: 100, y: 200 }, aproximada: true },
 ];
 
 describe("ConnectionLayer", () => {

@@ -309,10 +309,19 @@ function WorkspacePageInner() {
                                         className="h-full"
                                         collectionId={Number(context.collection.id)}
                                         compacto
+                                        indexadoEm={new Map(context.documents.filter((d) => d.indexedAt).map((d) => [d.id, d.indexedAt as string]))}
                                         onVerNoDocumento={(source) => {
-                                            if (source.documentId) {
-                                                canvasRef.current?.irAte(source.documentId, source.page, source.nodeId);
+                                            if (!source.documentId) {
+                                                return;
                                             }
+                                            // Fonte de linha de tabela: o id carrega "table-<id>-row-<n>";
+                                            // realcar a tabela e mais util do que so abrir a pagina.
+                                            const tabela = /table-(\d+)-row-/.exec(source.id ?? "");
+                                            if (tabela) {
+                                                canvasRef.current?.realcarTabela(Number(tabela[1]));
+                                                return;
+                                            }
+                                            canvasRef.current?.irAte(source.documentId, source.page, source.nodeId, source.paragraphId, source.lines, source.box ? { box: source.box, lineBoxes: source.lineBoxes ?? [] } : undefined);
                                         }}
                                     />
                                 </div>

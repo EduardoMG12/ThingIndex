@@ -28,7 +28,7 @@ const CONEXAO: NodeConnection = {
     summary: "",
     startPage: 1,
     score: 3,
-    matchedTerms: ["multa", "fatura", "descumprimento"],
+    matchedTerms: ["multa", "fatura", "descumprimento"], kind: "termo-raro" as const,
 };
 
 describe("paragrafosSecundarios", () => {
@@ -76,5 +76,30 @@ describe("rotulos e espessura", () => {
         const d = caminhoDaLinha({ x: 0, y: 0 }, { x: 200, y: 100 });
         expect(d.startsWith("M 0 0 C ")).toBe(true);
         expect(d.endsWith(", 200 100")).toBe(true);
+    });
+});
+
+describe("corPorTipo e linhasComTermos", () => {
+    it("cada tipo tem a sua cor", async () => {
+        const { corPorTipo } = await import("@/lib/workspace/connections");
+        expect(corPorTipo("mesma-norma")).toBe("#7c3aed");
+        expect(corPorTipo("mesma-disciplina")).toBe("#0d9488");
+        expect(corPorTipo("termo-raro")).toContain("--primary");
+    });
+
+    it("acha as linhas do paragrafo que contem os termos, sem acento e por token inteiro", async () => {
+        const { linhasComTermos } = await import("@/lib/workspace/connections");
+        const no = {
+            metadata: {
+                box: { x_min: 0, y_min: 0, x_max: 500, y_max: 60, page_width: 595, page_height: 842 },
+                lines: [
+                    { t: "O estágio supervisionado é obrigatório", b: [0, 0, 500, 20] },
+                    { t: "e o estagiário assina o termo", b: [0, 20, 500, 40] },
+                    { t: "conforme a Lei 11.788.", b: [0, 40, 500, 60] },
+                ],
+            },
+        };
+        expect(linhasComTermos(no, ["estagio", "lei"])).toEqual([0, 2]);
+        expect(linhasComTermos(no, [])).toEqual([]);
     });
 });

@@ -2,7 +2,7 @@
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, Maximize2, Minus, PanelRightClose, PanelRightOpen, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2, Minus, PanelRightClose, PanelRightOpen, Plus, PanelLeftClose, PanelLeftOpen, Link2 } from "lucide-react";
 
 import { useI18n } from "@/lib/i18n/provider";
 
@@ -13,9 +13,9 @@ import { Tag } from "lucide-react";
 import { LegendPanel } from "@/components/workspace/LegendPanel";
 import { classesDaCor, CORES, rotuloDaCor, type HighlightColor as CorDeMarca } from "@/lib/workspace/highlights";
 import type { Highlight, HighlightColor, Legend } from "@/lib/api/contracts/highlights";
-import { readBox, type CollectionContext, type OutlineNode, type ParagraphNode } from "@/lib/api/contracts/document-context";
+import { readBox, type ParagraphBox, type CollectionContext, type OutlineNode, type ParagraphNode } from "@/lib/api/contracts/document-context";
 import type { NodeConnection } from "@/lib/api/contracts/node-connections";
-import { rectVisivel, type Rect } from "@/lib/workspace/geometry";
+import { rectVisivel, type Rect, escalaDeFoco } from "@/lib/workspace/geometry";
 import { escalaDeRenderizacao, escolherPaginasVivas, ZOOM_MINIMO_PARA_PAGINAS } from "@/lib/workspace/render-budget";
 import { useViewport } from "@/components/workspace/useViewport";
 import {
@@ -33,7 +33,7 @@ import {
     type ParagrafoNaPagina,
 } from "@/components/workspace/PageOverlay";
 import { ConnectionLayer } from "@/components/workspace/ConnectionLayer";
-import { idDaLinha, montarLinhas, paragrafosSecundarios, type Linha } from "@/lib/workspace/connections";
+import { idDaLinha, montarLinhas, paragrafosSecundarios, type Linha, corPorTipo, linhasComTermos } from "@/lib/workspace/connections";
 import { boxParaPixels } from "@/lib/workspace/geometry";
 import { APRESENTACAO_PADRAO, limitarPagina, precisaDoBotaoIrPara, regraIrAte, type Apresentacao } from "@/lib/workspace/highlights";
 
@@ -57,10 +57,15 @@ import { APRESENTACAO_PADRAO, limitarPagina, precisaDoBotaoIrPara, regraIrAte, t
  */
 
 /** Ponte minima para quem embute o canvas (o chat da Area de trabalho). */
+/** Geometria gravada numa fonte do chat (caixa do paragrafo e das linhas). */
+export type CitacaoGravada = { box: ParagraphBox; lineBoxes: number[][] };
+
 export type WorkspaceCanvasHandle = {
     /** Vai ao documento e a pagina; com nodeId, ao paragrafo em que a secao comeca. */
-    irAte: (documentId: number, pagina: number | null, nodeId?: string) => void;
+    irAte: (documentId: number, pagina: number | null, nodeId?: string, paragraphId?: number, lines?: number[], geometria?: CitacaoGravada) => void;
     focarDocumento: (documentId: number) => void;
+    /** Realca a caixa de uma tabela na folha (fonte de linha do chat, lista da sidebar). */
+    realcarTabela: (tableId: number | string) => void;
 };
 
 type WorkspaceCanvasProps = {
@@ -385,6 +390,15 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
     // A estrutura so ocupa espaco quando ha o que mostrar: abre sozinha ao
     // focar um documento e pode ser recolhida a um trilho de 40 px.
     const [estruturaAberta, setEstruturaAberta] = useState<boolean>(() => documentoFocado !== null);
+    const [tabelaRealcada, setTabelaRealcada] = useState<number | string | null>(null);
+    // Folha (o quadro dos PDFs) recolhivel: com ela fechada, a estrutura ocupa
+    // o espaco, para o usuario ler o sumario e a sinopse sem o PDF ao lado.
+    const [folhaAberta, setFolhaAberta] = useState(true);
+    // Grifo fino: linhas do paragrafo citadas pela fonte do chat.
+    const [destaque, setDestaque] = useState<{ paragraphId: number; lines: number[] } | null>(null);
+    // Citacao gravada com a resposta (caixa e linhas na pagina): usada quando o
+    // paragrafo ja nao existe no contexto, depois de uma reindexacao.
+    const [citacao, setCitacao] = useState<{ documentId: number; pagina: number; box: ParagraphBox; lineBoxes: number[][] } | null>(null);
     useEffect(() => {
         if (documentoFocado !== null) {
             setEstruturaAberta(true);
@@ -407,6 +421,14 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
     }, [documentoFocado, pathname, router, searchParams]);
     const [noSelecionado, setNoSelecionado] = useState<string | null>(null);
     const [conexoes, setConexoes] = useState<NodeConnection[] | null>(null);
+    // Holofote: escurece o resto quando o canvas leva o usuario a um trecho
+    // (fonte do chat, destino de conexao). Fica ate o primeiro gesto no
+    // canvas (clique ou roda): sem timer, o foco nao some enquanto se le.
+    const [holofote, setHolofote] = useState<Rect | null>(null);
+    // Foco pedido para um documento ainda nao medido (estava fora da tela):
+    // guarda o pedido e refaz o "ir ate" quando as medidas chegarem. Antes o
+    // clique parava no quadro inteiro e o usuario nao via o paragrafo.
+    const focoPendente = useRef<{ documentId: number; pagina: number | null; paragraphId?: number; geometria?: CitacaoGravada } | null>(null);
     const [carregandoConexoes, setCarregandoConexoes] = useState(false);
     const [erroConexoes, setErroConexoes] = useState<string | null>(null);
 
@@ -547,7 +569,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
      * quadro antes de centralizar; em "folhas" so centraliza.
      */
     const irAte = useCallback(
-        (documentId: number, pagina: number | null, rectPreferido: Rect | null) => {
+        (documentId: number, pagina: number | null, rectPreferido: Rect | null, opcoes?: { foco?: boolean }) => {
             const paginas = medidas[documentId];
             const apresentacao = apresentacaoDe(documentId);
             if (pagina !== null && paginas) {
@@ -556,9 +578,13 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                 if (trocarPagina !== null) {
                     mudarApresentacao(documentId, { modo: "pagina", paginaAtual: trocarPagina });
                 }
-                const rect = (trocarPagina === null ? rectPreferido : null) ?? rectDaPagina(documentId, alvoPagina, true);
+                // Com foco, o rect preferido vale mesmo trocando de pagina: quem
+                // pede foco ja o calculou "como mostrada".
+                const rect = (trocarPagina === null || opcoes?.foco ? rectPreferido : null) ?? rectDaPagina(documentId, alvoPagina, true);
                 if (rect) {
-                    centralizarEm({ ...rect, altura: Math.min(rect.altura, 600) }, 1);
+                    const focar = Boolean(opcoes?.foco && rectPreferido);
+                    centralizarEm({ ...rect, altura: Math.min(rect.altura, 600) }, focar ? escalaDeFoco(rect.largura, tamanho.largura) : 1);
+                    setHolofote(focar ? rect : null);
                     return;
                 }
             }
@@ -573,17 +599,19 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                 centralizarEm({ ...quadro, altura: Math.min(quadro.altura, 600) }, 1);
             }
         },
-        [medidas, apresentacaoDe, mudarApresentacao, rectDaPagina, indiceDoDocumento, quadros, centralizarEm]
+        [medidas, apresentacaoDe, mudarApresentacao, rectDaPagina, indiceDoDocumento, quadros, centralizarEm, tamanho.largura]
     );
 
     /** Rect do grifo de um paragrafo no mundo, ou null sem box ou sem pagina medida. */
     const rectDoParagrafo = useCallback(
-        (no: ParagraphNode): Rect | null => {
+        (no: ParagraphNode, comoMostrada = false): Rect | null => {
             const box = readBox(no);
             if (!box || !no.pageNumber) {
                 return null;
             }
-            const pagina = rectDaPagina(no.documentId, no.pageNumber);
+            // comoMostrada: em "uma pagina", o rect da pagina destino como ela
+            // ficara depois da troca (o topo e o mesmo para qualquer pagina).
+            const pagina = rectDaPagina(no.documentId, no.pageNumber, comoMostrada);
             if (!pagina) {
                 return null;
             }
@@ -592,6 +620,24 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
         },
         [rectDaPagina]
     );
+
+    useEffect(() => {
+        const pedido = focoPendente.current;
+        if (!pedido || !medidas[pedido.documentId]) {
+            return;
+        }
+        focoPendente.current = null;
+        const paragrafo = pedido.paragraphId ? context.paragraphNodes.find((no) => no.id === pedido.paragraphId && no.documentId === pedido.documentId) : undefined;
+        let rect: Rect | null = paragrafo ? rectDoParagrafo(paragrafo, true) : null;
+        if (!rect && pedido.geometria && pedido.pagina) {
+            const folha = rectDaPagina(pedido.documentId, pedido.pagina, true);
+            if (folha) {
+                const px = boxParaPixels(pedido.geometria.box, folha.largura, folha.altura);
+                rect = { x: folha.x + px.left, y: folha.y + px.top, largura: px.width, altura: px.height };
+            }
+        }
+        irAte(pedido.documentId, pedido.pagina, rect, { foco: true });
+    }, [medidas, context.paragraphNodes, rectDoParagrafo, rectDaPagina, irAte]);
 
     const quadroVisivel = useCallback(
         (rect: Rect) =>
@@ -672,20 +718,37 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
         [indiceDoDocumento, quadros, tamanho, viewport.escala, centralizarEm]
     );
 
-    useImperativeHandle(
-        ref,
-        () => ({
-            focarDocumento,
-            irAte: (documentId, pagina, nodeId) => {
-                focarDocumento(documentId);
-                const secao = nodeId ? indiceDoContexto.porNodeId.get(nodeId) : undefined;
-                const ancora = secao ? ancoraDaSecao(secao) : null;
-                const rect = ancora ? rectDoParagrafo(ancora) : null;
-                irAte(documentId, ancora?.pageNumber ?? pagina, rect);
-            },
-        }),
-        [focarDocumento, irAte, indiceDoContexto, ancoraDaSecao, rectDoParagrafo]
+    // Tabelas com pagina e caixa, por documento e pagina, para a sidebar e a folha.
+    const tabelasComCaixa = useMemo(() => {
+        return (context.tableSections ?? [])
+            .map((tabela) => {
+                const box = readBox({ metadata: tabela.metadata });
+                if (!box || !tabela.pageNumber) {
+                    return null;
+                }
+                const titulo = tabela.title?.trim() || t("workspace.sidebar.tableLabel", { page: tabela.pageNumber });
+                return { id: tabela.id, documentId: tabela.documentId, pageNumber: tabela.pageNumber, titulo, linhas: tabela.rows.length, box };
+            })
+            .filter((tabela): tabela is NonNullable<typeof tabela> => tabela !== null);
+    }, [context.tableSections, t]);
+
+    const irAteTabela = useCallback(
+        (tabela: (typeof tabelasComCaixa)[number]) => {
+            setTabelaRealcada(tabela.id);
+            focarDocumento(tabela.documentId);
+            const pagina = rectDaPagina(tabela.documentId, tabela.pageNumber, true);
+            const rect = pagina
+                ? (() => {
+                      const px = boxParaPixels(tabela.box, pagina.largura, pagina.altura);
+                      return { x: pagina.x + px.left, y: pagina.y + px.top, largura: px.width, altura: px.height };
+                  })()
+                : null;
+            // Fonte de linha de tabela tambem ganha foco: zoom ate a tabela e holofote.
+            irAte(tabela.documentId, tabela.pageNumber, rect, { foco: true });
+        },
+        [focarDocumento, irAte, rectDaPagina]
     );
+
 
     const limparSelecao = useCallback(() => {
         setDocumentoFocado(null);
@@ -719,6 +782,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
     const selecionarParagrafo = useCallback(
         (no: ParagraphNode, secao: OutlineNode | null) => {
             setParagrafoSelecionado({ no, secao });
+            setDestaque((atual) => (atual && atual.paragraphId === no.id ? atual : null));
             setDocumentoFocado(no.documentId);
             setNoSelecionado(secao?.nodeId ?? null);
             setConexoes(null);
@@ -729,6 +793,55 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
             }
         },
         [marcas, pedirConexoes]
+    );
+
+    useImperativeHandle(
+        ref,
+        () => ({
+            focarDocumento,
+            realcarTabela: (tableId) => {
+                const tabela = tabelasComCaixa.find((item) => item.id === tableId);
+                if (tabela) {
+                    irAteTabela(tabela);
+                }
+            },
+            irAte: (documentId, pagina, nodeId, paragraphId, lines, geometria) => {
+                focarDocumento(documentId);
+                setCitacao(null);
+                if (!medidas[documentId]) {
+                    focoPendente.current = { documentId, pagina, paragraphId, geometria };
+                }
+                // Fonte com paragrafo: seleciona o grifo dele (ambar, como o
+                // clique na folha), destaca as linhas citadas e centraliza.
+                const paragrafo = paragraphId ? context.paragraphNodes.find((no) => no.id === paragraphId && no.documentId === documentId) : undefined;
+                if (paragrafo) {
+                    selecionarParagrafo(paragrafo, indiceDoContexto.secaoDoParagrafo(paragrafo));
+                    setDestaque(lines && lines.length > 0 ? { paragraphId: paragrafo.id as number, lines } : null);
+                    irAte(documentId, paragrafo.pageNumber ?? pagina, rectDoParagrafo(paragrafo, true), { foco: true });
+                    return;
+                }
+                setDestaque(null);
+                // Paragrafo sumiu (reindexacao): a caixa gravada na resposta
+                // ainda aponta o lugar certo na pagina.
+                if (geometria && pagina) {
+                    setCitacao({ documentId, pagina, box: geometria.box, lineBoxes: geometria.lineBoxes });
+                    const folha = rectDaPagina(documentId, pagina, true);
+                    const rect = folha
+                        ? (() => {
+                              const px = boxParaPixels(geometria.box, folha.largura, folha.altura);
+                              return { x: folha.x + px.left, y: folha.y + px.top, largura: px.width, altura: px.height };
+                          })()
+                        : null;
+                    irAte(documentId, pagina, rect, { foco: true });
+                    return;
+                }
+                const secao = nodeId ? indiceDoContexto.porNodeId.get(nodeId) : undefined;
+                const ancora = secao ? ancoraDaSecao(secao) : null;
+                const rect = ancora ? rectDoParagrafo(ancora) : null;
+                irAte(documentId, ancora?.pageNumber ?? pagina, rect);
+            },
+        }),
+        [focarDocumento, irAte, indiceDoContexto, ancoraDaSecao, rectDoParagrafo, tabelasComCaixa, irAteTabela, context.paragraphNodes, selecionarParagrafo, rectDaPagina, medidas]
     );
 
     useEffect(() => {
@@ -758,6 +871,10 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
         [ancoraDaSecao, rectDoParagrafo, irAte]
     );
 
+    // Sumario aninhado por nivel: capitulo (1) com as secoes (2, 3...) dentro,
+    // na ordem do documento. Lista plana com 144 cards nao e sumario.
+    const arvoreDoFocado = useMemo(() => montarArvore(nosDoDocumentoFocado), [nosDoDocumentoFocado]);
+
     const documentoAtual = documentos.find((documento) => documento.id === documentoFocado);
     // Sinopse e topicos gravados pelo enriquecimento por LLM. So a sinopse da
     // LLM entra (synopsis_source=llm): a de fallback e o texto cru da primeira
@@ -772,6 +889,21 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
         const topicos = (ultimo("topics") || ultimo("keywords")).split(",").map((s) => s.trim()).filter(Boolean).slice(0, 8);
         return resumo || topicos.length > 0 ? { resumo, topicos } : null;
     }, [context.metadataPairs, documentoFocado]);
+
+    // Resumo e topicos da pagina em foco: a do trecho selecionado ou, no modo
+    // "uma pagina", a pagina atual do quadro.
+    const paginaEmFoco = useMemo(() => {
+        if (documentoFocado === null) {
+            return null;
+        }
+        const apresentacao = apresentacoes[String(documentoFocado)];
+        const numero = paragrafoSelecionado && paragrafoSelecionado.no.documentId === documentoFocado ? paragrafoSelecionado.no.pageNumber : apresentacao?.modo === "pagina" ? apresentacao.paginaAtual : null;
+        if (!numero) {
+            return null;
+        }
+        const pagina = (context.documentPages ?? []).find((p) => p.documentId === documentoFocado && p.pageNumber === numero);
+        return pagina ?? null;
+    }, [context.documentPages, documentoFocado, paragrafoSelecionado, apresentacoes]);
 
     const estadoAtual = useMemo<WorkspaceViewState>(
         () => ({
@@ -865,10 +997,39 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
             setLinhaRealcada(idDaLinha(conexao));
             const no = indiceDoContexto.porNodeId.get(conexao.nodeId);
             const a = no ? ancoraDaSecao(no) : null;
-            irAte(conexao.documentId, a?.pageNumber ?? no?.startPage ?? conexao.startPage ?? null, a ? rectDoParagrafo(a) : null);
+            // As linhas do destino que contem os termos em comum ganham o
+            // grifo rosa: e o "por que a flecha chega aqui", visivel na folha.
+            const linhas = a ? linhasComTermos(a, conexao.matchedTerms) : [];
+            setDestaque(a && linhas.length > 0 ? { paragraphId: a.id as number, lines: linhas } : null);
+            irAte(conexao.documentId, a?.pageNumber ?? no?.startPage ?? conexao.startPage ?? null, a ? rectDoParagrafo(a, true) : null, { foco: true });
         },
         [conexoes, indiceDoContexto, ancoraDaSecao, rectDoParagrafo, irAte]
     );
+
+    // Teclado: com conexoes carregadas, ← → percorrem e Esc limpa. Ignora
+    // quando o foco esta num campo de texto.
+    useEffect(() => {
+        if (!conexoes || conexoes.length === 0) {
+            return;
+        }
+        const aoTeclar = (event: KeyboardEvent) => {
+            const alvo = event.target as HTMLElement | null;
+            if (alvo && (alvo.tagName === "INPUT" || alvo.tagName === "TEXTAREA" || alvo.isContentEditable)) {
+                return;
+            }
+            if (event.key === "ArrowRight") {
+                event.preventDefault();
+                irParaIndice(Math.min(indiceConexao + 1, conexoes.length - 1));
+            } else if (event.key === "ArrowLeft") {
+                event.preventDefault();
+                irParaIndice(Math.max(indiceConexao - 1, 0));
+            } else if (event.key === "Escape") {
+                limparSelecao();
+            }
+        };
+        window.addEventListener("keydown", aoTeclar);
+        return () => window.removeEventListener("keydown", aoTeclar);
+    }, [conexoes, indiceConexao, irParaIndice, limparSelecao]);
 
     const navegador = useMemo(
         () =>
@@ -908,7 +1069,10 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                     arrastandoFundo ? "cursor-grabbing" : "cursor-grab"
                 }`}
                 data-testid="workspace-canvas"
+                hidden={!folhaAberta}
                 {...handlers}
+                onPointerDownCapture={() => setHolofote(null)}
+                onWheelCapture={() => setHolofote(null)}
             >
                 <div
                     className="absolute left-0 top-0 origin-top-left"
@@ -964,6 +1128,10 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                                                     onVerConexoes={(_, secao) => pedirConexoes(secao.nodeId)}
                                                     mostrarMarcadores={marcadoresVisiveis}
                                                     navegador={navegador}
+                                                    tabelas={tabelasComCaixa.filter((tabela) => tabela.documentId === documento.id && tabela.pageNumber === numero)}
+                                                    tabelaRealcada={tabelaRealcada}
+                                                    destaque={destaque}
+                                                    citacao={citacao && citacao.documentId === documento.id && citacao.pagina === numero ? { box: citacao.box, lineBoxes: citacao.lineBoxes } : null}
                                                 />
                                             );
                                         }}
@@ -1016,6 +1184,19 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                         onRealcar={setLinhaRealcada}
                         onEscolher={irParaConexao}
                     />
+                    {holofote ? (
+                        <div
+                            data-testid="holofote"
+                            className="pointer-events-none absolute rounded-md ring-2 ring-rose-500/80"
+                            style={{
+                                left: holofote.x - 6,
+                                top: holofote.y - 6,
+                                width: holofote.largura + 12,
+                                height: holofote.altura + 12,
+                                boxShadow: "0 0 0 100000px rgba(15, 23, 42, 0.35)",
+                            }}
+                        />
+                    ) : null}
                 </div>
 
                 <LegendPanel legenda={legenda} onSalvar={salvarLegenda} contagem={documentoFocado !== null ? contagemDoFocado : null} />
@@ -1026,6 +1207,19 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                     aria-label={t("workspace.canvas.toolbar")}
                     onPointerDown={(event) => event.stopPropagation()}
                 >
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setFolhaAberta(false);
+                            setEstruturaAberta(true);
+                        }}
+                        aria-label={t("workspace.canvas.hideSheet")}
+                        title={t("workspace.canvas.hideSheet")}
+                        data-testid="recolher-folha"
+                        className="rounded p-1.5 hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                    >
+                        <PanelLeftClose className="h-4 w-4" aria-hidden />
+                    </button>
                     <button
                         type="button"
                         onClick={afastar}
@@ -1067,10 +1261,23 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                 </div>
             </div>
 
+            {!folhaAberta ? (
+                <button
+                    type="button"
+                    onClick={() => setFolhaAberta(true)}
+                    aria-label={t("workspace.canvas.showSheet")}
+                    title={t("workspace.canvas.showSheet")}
+                    data-testid="reabrir-folha"
+                    className="flex shrink-0 items-center gap-1 rounded-lg border border-border bg-card px-2 text-xs text-muted-foreground hover:text-foreground lg:flex-col lg:py-3"
+                >
+                    <PanelLeftOpen className="h-4 w-4" aria-hidden />
+                    <span className="lg:[writing-mode:vertical-rl]">{t("workspace.canvas.showSheet")}</span>
+                </button>
+            ) : null}
             <aside
                 className={
                     estruturaAberta
-                        ? "relative max-h-[40vh] w-full shrink-0 overflow-y-auto rounded-lg border border-border bg-card p-4 lg:max-h-full lg:w-72"
+                        ? `relative max-h-[40vh] w-full shrink-0 overflow-y-auto rounded-lg border border-border bg-card p-4 lg:max-h-full ${folhaAberta ? "lg:w-72" : "lg:w-auto lg:flex-1"}`
                         : "hidden shrink-0 rounded-lg border border-border bg-card p-1 lg:flex lg:w-10 lg:flex-col lg:items-center"
                 }
                 aria-label={t("workspace.sidebar.label")}
@@ -1137,6 +1344,75 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                         ) : null}
 
                         {(() => {
+                            const tabelasDoFocado = tabelasComCaixa.filter((tabela) => tabela.documentId === documentoFocado);
+                            return tabelasDoFocado.length > 0 ? (
+                                <div className="rounded-md border border-border p-3" data-testid="bloco-de-tabelas">
+                                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                        {t("workspace.sidebar.tables", { count: tabelasDoFocado.length })}
+                                    </p>
+                                    <ul className="mt-2 space-y-1">
+                                        {tabelasDoFocado.map((tabela) => (
+                                            <li key={String(tabela.id)}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => irAteTabela(tabela)}
+                                                    aria-pressed={tabelaRealcada === tabela.id}
+                                                    className={`w-full rounded px-1 py-0.5 text-left text-xs hover:bg-muted ${tabelaRealcada === tabela.id ? "bg-muted" : ""}`}
+                                                    data-testid="tabela-da-sidebar"
+                                                >
+                                                    <span className="mr-1 text-muted-foreground">{t("workspace.sidebar.page", { page: tabela.pageNumber })}</span>
+                                                    {tabela.titulo}
+                                                    <span className="ml-1 text-muted-foreground">{t("workspace.sidebar.tableRows", { count: tabela.linhas })}</span>
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ) : null;
+                        })()}
+
+                        {(() => {
+                            // Topicos por pagina (enriquecimento): lista fechada por
+                            // padrao; clicar num topico leva a pagina.
+                            const paginasDoFocado = (context.documentPages ?? []).filter((p) => p.documentId === documentoFocado && p.topics.length > 0);
+                            return paginasDoFocado.length > 0 ? (
+                                <details className="rounded-md border border-border p-3" data-testid="bloco-de-topicos">
+                                    <summary className="cursor-pointer text-[10px] uppercase tracking-wide text-muted-foreground">
+                                        {t("workspace.sidebar.pageTopics", { count: paginasDoFocado.length })}
+                                    </summary>
+                                    <ul className="mt-2 max-h-72 space-y-1.5 overflow-y-auto pr-1">
+                                        {paginasDoFocado.map((pagina) => (
+                                            <li key={pagina.pageNumber} className="text-xs">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => irAte(pagina.documentId, pagina.pageNumber, rectDaPagina(pagina.documentId, pagina.pageNumber, true))}
+                                                    className="mr-1 rounded px-1 text-muted-foreground hover:bg-muted"
+                                                    title={pagina.summary || undefined}
+                                                    data-testid="pagina-com-topicos"
+                                                >
+                                                    {t("workspace.sidebar.page", { page: pagina.pageNumber })}
+                                                </button>
+                                                <span className="inline-flex flex-wrap gap-1 align-middle">
+                                                    {pagina.topics.map((topico) => (
+                                                        <button
+                                                            key={topico}
+                                                            type="button"
+                                                            onClick={() => irAte(pagina.documentId, pagina.pageNumber, rectDaPagina(pagina.documentId, pagina.pageNumber, true))}
+                                                            className="rounded-full border border-border bg-muted px-1.5 py-0.5 text-[10px] text-foreground/80 hover:bg-primary/10"
+                                                            data-testid="topico-da-lista"
+                                                        >
+                                                            {topico}
+                                                        </button>
+                                                    ))}
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </details>
+                            ) : null;
+                        })()}
+
+                        {(() => {
                             const c = indiceDoContexto.contagem.get(documentoFocado);
                             const semPosicao = c ? c.total - c.comBox : 0;
                             return semPosicao > 0 ? (
@@ -1198,6 +1474,24 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                             </div>
                         ) : null}
 
+                        {paginaEmFoco ? (
+                            <div className="rounded-md border border-border p-3 text-xs" data-testid="sobre-a-pagina">
+                                <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                                    {t("workspace.sidebar.thisPage", { page: paginaEmFoco.pageNumber })}
+                                </p>
+                                {paginaEmFoco.summary ? <p className="leading-snug text-foreground/90">{paginaEmFoco.summary}</p> : null}
+                                {paginaEmFoco.topics.length > 0 ? (
+                                    <ul className="mt-2 flex flex-wrap gap-1" aria-label={t("workspace.sidebar.topics")}>
+                                        {paginaEmFoco.topics.map((topico) => (
+                                            <li key={topico} className="rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] text-foreground/80" data-testid="topico-da-pagina">
+                                                {topico}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : null}
+                            </div>
+                        ) : null}
+
                         {paragrafoSelecionado && paragrafoSelecionado.no.documentId === documentoFocado ? (
                             <div className="rounded-md border border-primary/60 bg-primary/5 p-3" data-testid="trecho-selecionado">
                                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -1220,39 +1514,14 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                         {nosDoDocumentoFocado.length === 0 ? (
                             <p className="text-sm text-muted-foreground">{t("workspace.sidebar.noStructure")}</p>
                         ) : (
-                            <ul className="space-y-3">
-                                {nosDoDocumentoFocado.map((no) => (
-                                    <li
-                                        key={no.nodeId}
-                                        className={`rounded-md border p-3 ${
-                                            no.nodeId === noSelecionado
-                                                ? "border-primary"
-                                                : "border-border"
-                                        }`}
-                                    >
-                                        <button
-                                            type="button"
-                                            onClick={() => irParaSecao(no)}
-                                            className="w-full text-left text-sm font-medium hover:text-primary"
-                                            title={t("workspace.sidebar.goToSection")}
-                                        >
-                                            {no.title}
-                                        </button>
-                                        {no.summary ? (
-                                            <p className="mt-1 text-xs text-muted-foreground">
-                                                {no.summary}
-                                            </p>
-                                        ) : null}
-                                        <button
-                                            type="button"
-                                            onClick={() => pedirConexoes(no.nodeId)}
-                                            className="mt-2 text-xs font-medium text-primary underline-offset-2 hover:underline"
-                                        >
-                                            {t("workspace.sidebar.viewConnections")}
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
+                            <ArvoreDeSecoes
+                                nos={arvoreDoFocado}
+                                selecionado={noSelecionado}
+                                onIr={irParaSecao}
+                                onConexoes={(no) => pedirConexoes(no.nodeId)}
+                                rotuloIr={t("workspace.sidebar.goToSection")}
+                                rotuloConexoes={t("workspace.sidebar.viewConnections")}
+                            />
                         )}
 
                         {carregandoConexoes ? (
@@ -1317,7 +1586,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                             ) : (
                                 <ul className="space-y-2 border-t border-border pt-3">
                                     <li className="text-[11px] leading-snug text-muted-foreground" data-testid="explicacao-de-conexao">
-                                        {t("workspace.sidebar.connectionsHint")}
+                                        {t("workspace.sidebar.connectionsHint")} {t("workspace.sidebar.keyboardHint")}
                                     </li>
                                     {conexoes.length > LINHAS_MAXIMAS ? (
                                         <li className="text-[11px] text-muted-foreground" data-testid="aviso-linhas-limitadas">
@@ -1349,8 +1618,16 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                                                 >
                                                     <p className="text-xs font-medium">
                                                         {conexao.title}
-                                                        <span className="ml-2 rounded bg-primary/10 px-1 text-[10px] text-primary">
-                                                            {conexao.score === 1 ? t("workspace.sidebar.term") : t("workspace.sidebar.terms", { count: conexao.score })}
+                                                        <span
+                                                            className="ml-2 rounded px-1 text-[10px]"
+                                                            style={{ color: corPorTipo(conexao.kind), backgroundColor: `color-mix(in srgb, ${corPorTipo(conexao.kind)} 12%, transparent)` }}
+                                                            data-testid="tipo-da-conexao"
+                                                        >
+                                                            {conexao.kind === "mesma-norma"
+                                                                ? t("workspace.sidebar.sameNorm")
+                                                                : conexao.kind === "mesma-disciplina"
+                                                                  ? t("workspace.sidebar.sameDiscipline")
+                                                                  : conexao.score === 1 ? t("workspace.sidebar.term") : t("workspace.sidebar.terms", { count: conexao.score })}
                                                         </span>
                                                     </p>
                                                     <p className="mt-1 text-[11px] text-muted-foreground">
@@ -1385,3 +1662,92 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
         </div>
     );
 });
+
+
+/** No do sumario com os filhos aninhados pelo nivel. */
+export type NoDaArvore = { no: OutlineNode; filhos: NoDaArvore[] };
+
+/**
+ * Monta a arvore a partir da lista em ordem de documento: cada no e filho do
+ * ultimo no de nivel menor que veio antes dele. Nivel que "pula" (1 -> 3)
+ * cai no ultimo no de nivel menor mesmo assim.
+ */
+export function montarArvore(nos: OutlineNode[]): NoDaArvore[] {
+    const raiz: NoDaArvore[] = [];
+    const pilha: NoDaArvore[] = [];
+    for (const no of nos) {
+        const item: NoDaArvore = { no, filhos: [] };
+        while (pilha.length > 0 && pilha[pilha.length - 1].no.level >= no.level) {
+            pilha.pop();
+        }
+        if (pilha.length === 0) {
+            raiz.push(item);
+        } else {
+            pilha[pilha.length - 1].filhos.push(item);
+        }
+        pilha.push(item);
+    }
+    return raiz;
+}
+
+function ArvoreDeSecoes({
+    nos,
+    selecionado,
+    onIr,
+    onConexoes,
+    rotuloIr,
+    rotuloConexoes,
+    profundidade = 0,
+}: {
+    nos: NoDaArvore[];
+    selecionado: string | null;
+    onIr: (no: OutlineNode) => void;
+    onConexoes: (no: OutlineNode) => void;
+    rotuloIr: string;
+    rotuloConexoes: string;
+    profundidade?: number;
+}) {
+    return (
+        <ul className={profundidade === 0 ? "space-y-1" : "ml-3 mt-1 space-y-1 border-l border-border/60 pl-2"} data-testid={profundidade === 0 ? "arvore-de-secoes" : undefined}>
+            {nos.map(({ no, filhos }) => {
+                const ativo = no.nodeId === selecionado;
+                const linha = (
+                    <div className={`group flex items-start gap-1 rounded px-1 py-0.5 ${ativo ? "bg-primary/10" : "hover:bg-muted/60"}`}>
+                        <button
+                            type="button"
+                            onClick={() => onIr(no)}
+                            className={`min-w-0 flex-1 text-left ${profundidade === 0 ? "text-sm font-medium" : "text-xs"} ${ativo ? "text-primary" : ""} hover:text-primary`}
+                            title={rotuloIr}
+                            data-testid="secao-da-arvore"
+                            data-nivel={no.level}
+                        >
+                            <span className="line-clamp-2">{no.title}</span>
+                            {no.summary && profundidade <= 1 ? <span className="mt-0.5 line-clamp-2 block text-[11px] font-normal text-muted-foreground">{no.summary}</span> : null}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => onConexoes(no)}
+                            className="shrink-0 rounded p-1 text-muted-foreground opacity-0 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100"
+                            aria-label={rotuloConexoes}
+                            title={rotuloConexoes}
+                        >
+                            <Link2 className="h-3.5 w-3.5" aria-hidden />
+                        </button>
+                    </div>
+                );
+                return (
+                    <li key={no.nodeId}>
+                        {filhos.length > 0 ? (
+                            <details open={profundidade === 0}>
+                                <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">{linha}</summary>
+                                <ArvoreDeSecoes nos={filhos} selecionado={selecionado} onIr={onIr} onConexoes={onConexoes} rotuloIr={rotuloIr} rotuloConexoes={rotuloConexoes} profundidade={profundidade + 1} />
+                            </details>
+                        ) : (
+                            linha
+                        )}
+                    </li>
+                );
+            })}
+        </ul>
+    );
+}

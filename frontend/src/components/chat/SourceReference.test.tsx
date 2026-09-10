@@ -41,3 +41,19 @@ describe("SourceReference", () => {
         expect(screen.queryByTestId("ver-no-documento")).toBeNull();
     });
 });
+
+describe("SourceReference: termos casados", () => {
+    it("mostra os termos da pergunta que a fonte contem", async () => {
+        const { render, screen } = await import("@testing-library/react");
+        const { createTestWrapper } = await import("@/test/test-utils");
+        const SourceReference = (await import("@/components/chat/SourceReference")).default;
+        render(<SourceReference source={{ id: "1:2", docName: "PPC", page: 2, snippet: "x", matchedTerms: ["estagio", "horas"] }} />, { wrapper: createTestWrapper("pt-BR") });
+        expect(screen.getByTestId("termos-da-fonte")).toHaveTextContent("estagio");
+        expect(screen.getByTestId("termos-da-fonte")).toHaveTextContent("horas");
+    });
+});
+
+it("fonte cuja frase quebra na virada mostra as duas paginas", () => {
+    render(<SourceReference source={{ id: "1:186", docName: "PPC", page: 186, snippet: "x", continuesOnPage: 187 }} />, { wrapper: createTestWrapper("pt-BR") });
+    expect(screen.getByTestId("fonte")).toHaveTextContent("186–187");
+});

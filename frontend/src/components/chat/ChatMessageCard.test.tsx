@@ -38,3 +38,63 @@ describe("ChatMessageCard: consumo da resposta", () => {
         expect(screen.queryByTestId("consumo-da-resposta")).toBeNull();
     });
 });
+
+describe("ChatMessageCard: fontes navegaveis", () => {
+    const fontes = [
+        { id: "265:1:table-9-row-1", docName: "Matriz", page: 1, snippet: "Disciplina: SIS07302", documentId: 265 },
+        { id: "260:126", docName: "PPC", page: 126, snippet: "conceito D", documentId: 260, paragraphId: 72 },
+    ];
+
+    it("numera as fontes, e o clique e as setas percorrem a lista marcando a ativa", async () => {
+        const { fireEvent } = await import("@testing-library/react");
+        const ver = vi.fn();
+        render(<ChatMessageCard isStreaming={false} message={{ ...base, sources: fontes }} onVerNoDocumento={ver} />, { wrapper: createTestWrapper("pt-BR") });
+        expect(screen.getByTestId("fonte-posicao")).toHaveTextContent("–/2");
+        expect(screen.getByTestId("fonte-anterior")).toBeDisabled();
+
+        fireEvent.click(screen.getByTestId("fonte-proxima"));
+        expect(ver).toHaveBeenLastCalledWith(expect.objectContaining({ id: "265:1:table-9-row-1" }));
+        expect(screen.getByTestId("fonte-posicao")).toHaveTextContent("1/2");
+        expect(screen.getAllByTestId("fonte")[0]).toHaveAttribute("data-ativa", "true");
+
+        fireEvent.click(screen.getByTestId("fonte-proxima"));
+        expect(ver).toHaveBeenLastCalledWith(expect.objectContaining({ paragraphId: 72 }));
+        expect(screen.getByTestId("fonte-posicao")).toHaveTextContent("2/2");
+        expect(screen.getByTestId("fonte-proxima")).toBeDisabled();
+
+        // Clicar direto na fonte 1 volta a ativa para ela.
+        fireEvent.click(screen.getAllByTestId("ver-no-documento")[0]);
+        expect(screen.getByTestId("fonte-posicao")).toHaveTextContent("1/2");
+    });
+
+    it("sem onVerNoDocumento nao mostra as setas", () => {
+        render(<ChatMessageCard isStreaming={false} message={{ ...base, sources: fontes }} />, { wrapper: createTestWrapper("pt-BR") });
+        expect(screen.queryByTestId("fonte-proxima")).toBeNull();
+        expect(screen.getAllByTestId("fonte")).toHaveLength(2);
+    });
+});
+
+describe("ChatMessageCard: fonte de indice antigo", () => {
+    it("avisa quando o documento foi reindexado depois da resposta", () => {
+        const fonte = { id: "260:126", docName: "PPC", page: 126, snippet: "x", documentId: 260, paragraphId: 72, indexedAt: "2026-09-01T10:00:00Z" };
+        const indexadoEm = new Map([[260, "2026-09-09T10:00:00Z"]]);
+        render(<ChatMessageCard isStreaming={false} message={{ ...base, sources: [fonte] }} indexadoEm={indexadoEm} />, { wrapper: createTestWrapper("pt-BR") });
+        expect(screen.getByTestId("fonte-reindexada")).toHaveTextContent("reindexado");
+    });
+
+    it("sem reindexacao nao avisa", () => {
+        const fonte = { id: "260:126", docName: "PPC", page: 126, snippet: "x", documentId: 260, indexedAt: "2026-09-09T10:00:00Z" };
+        render(<ChatMessageCard isStreaming={false} message={{ ...base, sources: [fonte] }} indexadoEm={new Map([[260, "2026-09-09T10:00:00Z"]])} />, { wrapper: createTestWrapper("pt-BR") });
+        expect(screen.queryByTestId("fonte-reindexada")).toBeNull();
+    });
+});
+
+describe("ChatMessageCard: resposta com erro", () => {
+    it("mostra o aviso com o detalhe do provedor e mantem as fontes", () => {
+        const fonte = { id: "260:126", docName: "PPC", page: 126, snippet: "x", documentId: 260 };
+        render(<ChatMessageCard isStreaming={false} message={{ ...base, content: "", status: "error", errorDetail: "monthly usage limit", sources: [fonte] }} />, { wrapper: createTestWrapper("pt-BR") });
+        expect(screen.getByTestId("resposta-com-erro")).toHaveTextContent("A resposta falhou");
+        expect(screen.getByTestId("resposta-com-erro")).toHaveTextContent("monthly usage limit");
+        expect(screen.getAllByTestId("fonte")).toHaveLength(1);
+    });
+});

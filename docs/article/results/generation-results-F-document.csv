@@ -8,15 +8,15 @@ t02,tabela,rodada-cc5,F,document,3,gemma4:31b,true,1,true,,3610,45,true,725,,fal
 t03,tabela,pdf,F,document,1,gemma4:31b,true,1,true,,3613,63,true,581,,false,,As disciplinas pré-requisito de Programação de Computadores III (SIS07405) são Programação de Computadores II (SIS07303) e Programação Orientada a Objeto (POO) (SIS07304) [página 1].
 t03,tabela,pdf,F,document,2,gemma4:31b,true,1,true,,3613,63,true,772,,false,,As disciplinas pré-requisito de Programação de Computadores III (SIS07405) são Programação de Computadores II (SIS07303) e Programação Orientada a Objeto (POO) (SIS07304) [página 1].
 t03,tabela,pdf,F,document,3,gemma4:31b,true,1,true,,3613,63,true,665,,false,,As disciplinas pré-requisito de Programação de Computadores III (SIS07405) são Programação de Computadores II (SIS07303) e Programação Orientada a Objeto (POO) (SIS07304) [página 1].
-t04,tabela,rodada-cc5,F,document,1,gemma4:31b,false,1,true,,3616,34,true,527,,false,,A disciplina Banco de Dados I está no 03 período [página 1] e não possui pré-requisito listado [página 1].
-t04,tabela,rodada-cc5,F,document,2,gemma4:31b,false,1,true,,3616,34,true,574,,false,,A disciplina Banco de Dados I está no 03 período [página 1] e não possui pré-requisito listado [página 1].
-t04,tabela,rodada-cc5,F,document,3,gemma4:31b,false,1,true,,3616,34,true,531,,false,,A disciplina Banco de Dados I está no 03 período [página 1] e não possui pré-requisito listado [página 1].
+t04,tabela,rodada-cc5,F,document,1,gemma4:31b,true,1,true,,3616,34,true,527,,false,,A disciplina Banco de Dados I está no 03 período [página 1] e não possui pré-requisito listado [página 1].
+t04,tabela,rodada-cc5,F,document,2,gemma4:31b,true,1,true,,3616,34,true,574,,false,,A disciplina Banco de Dados I está no 03 período [página 1] e não possui pré-requisito listado [página 1].
+t04,tabela,rodada-cc5,F,document,3,gemma4:31b,true,1,true,,3616,34,true,531,,false,,A disciplina Banco de Dados I está no 03 período [página 1] e não possui pré-requisito listado [página 1].
 t05,tabela,pdf,F,document,1,gemma4:31b,true,1,true,,3618,49,true,637,,false,,A disciplina Banco de Dados II é ofertada no 04º período [página 1] e tem como pré-requisito a disciplina Banco de Dados I (SIS07301) [página 1].
 t05,tabela,pdf,F,document,2,gemma4:31b,true,1,true,,3618,49,true,621,,false,,A disciplina Banco de Dados II é ofertada no 04º período (p. 1) e tem como pré-requisito a disciplina Banco de Dados I (SIS07301) (p. 1).
 t05,tabela,pdf,F,document,3,gemma4:31b,true,1,true,,3618,48,true,606,,false,,A disciplina Banco de Dados II é ofertada no 04º período (p. 1) e tem como pré-requisito a disciplina SIS07301 - Banco de Dados I (p. 1).
-t06,tabela,pdf,F,document,1,gemma4:31b,false,2,true,,3616,39,true,682,,false,,A disciplina Projeto Comunitário I possui carga horária de 150 horas (p. 2) e pertence à categoria Natureza - Obrigatória (p. 2).
-t06,tabela,pdf,F,document,2,gemma4:31b,false,2,true,,3616,39,true,703,,false,,A disciplina Projeto Comunitário I possui carga horária de 150 horas [página 2] e pertence à categoria Natureza - Obrigatória [página 2].
-t06,tabela,pdf,F,document,3,gemma4:31b,false,2,true,,3616,39,true,600,,false,,A disciplina Projeto Comunitário I possui carga horária de 150 horas [página 2] e pertence à categoria Natureza - Obrigatória [página 2].
+t06,tabela,pdf,F,document,1,gemma4:31b,true,2,true,,3616,39,true,682,,false,,A disciplina Projeto Comunitário I possui carga horária de 150 horas (p. 2) e pertence à categoria Natureza - Obrigatória (p. 2).
+t06,tabela,pdf,F,document,2,gemma4:31b,true,2,true,,3616,39,true,703,,false,,A disciplina Projeto Comunitário I possui carga horária de 150 horas [página 2] e pertence à categoria Natureza - Obrigatória [página 2].
+t06,tabela,pdf,F,document,3,gemma4:31b,true,2,true,,3616,39,true,600,,false,,A disciplina Projeto Comunitário I possui carga horária de 150 horas [página 2] e pertence à categoria Natureza - Obrigatória [página 2].
 t07,tabela,pdf,F,document,1,gemma4:31b,true,2,true,,3610,57,true,654,,false,,Os pré-requisitos da disciplina de Inteligência Artificial (SIS07703) são as disciplinas SIS07206 (Programação de Computadores I) e SIS07602 (Probabilidade e Estatística) [página 2].
 t07,tabela,pdf,F,document,2,gemma4:31b,true,2,true,,3610,57,true,756,,false,,Os pré-requisitos da disciplina de Inteligência Artificial (SIS07703) são as disciplinas SIS07206 (Programação de Computadores I) e SIS07602 (Probabilidade e Estatística) [página 2].
 t07,tabela,pdf,F,document,3,gemma4:31b,true,2,true,,3610,57,true,650,,false,,Os pré-requisitos da disciplina de Inteligência Artificial (SIS07703) são as disciplinas SIS07206 (Programação de Computadores I) e SIS07602 (Probabilidade e Estatística) [página 2].
@@ -129,9 +129,9 @@ c06,calendario,pdf,F,document,3,gemma4:31b,true,3,true,,5507,42,true,677,,false,
 c07,calendario,pdf,F,document,1,gemma4:31b,true,2,true,,5502,42,true,594,,false,,O feriado municipal da Emancipação de Palmas e Dia de Luta pela Educação Inclusiva é no dia 14 de abril de 2026 (p. 2).
 c07,calendario,pdf,F,document,2,gemma4:31b,true,2,true,,5502,42,true,587,,false,,O feriado municipal da Emancipação de Palmas e Dia de Luta pela Educação Inclusiva é no dia 14 de abril de 2026 (p. 2).
 c07,calendario,pdf,F,document,3,gemma4:31b,true,2,true,,5502,42,true,643,,false,,O feriado municipal da Emancipação de Palmas e Dia de Luta pela Educação Inclusiva é no dia 14 de abril de 2026 (p. 2).
-c08,calendario,pdf,F,document,1,gemma4:31b,false,3,true,,5501,32,true,627,,false,,A Mostra de Cursos acontece entre os dias 15 e 17 de setembro de 2026 (p. 3).
-c08,calendario,pdf,F,document,2,gemma4:31b,false,3,true,,5501,32,true,586,,false,,A Mostra de Cursos acontece entre os dias 15 e 17 de setembro de 2026 (p. 3).
-c08,calendario,pdf,F,document,3,gemma4:31b,false,3,true,,5501,32,true,548,,false,,A Mostra de Cursos acontece entre os dias 15 e 17 de setembro de 2026 (p. 3).
+c08,calendario,pdf,F,document,1,gemma4:31b,true,3,true,,5501,32,true,627,,false,,A Mostra de Cursos acontece entre os dias 15 e 17 de setembro de 2026 (p. 3).
+c08,calendario,pdf,F,document,2,gemma4:31b,true,3,true,,5501,32,true,586,,false,,A Mostra de Cursos acontece entre os dias 15 e 17 de setembro de 2026 (p. 3).
+c08,calendario,pdf,F,document,3,gemma4:31b,true,3,true,,5501,32,true,548,,false,,A Mostra de Cursos acontece entre os dias 15 e 17 de setembro de 2026 (p. 3).
 c09,calendario,pdf,F,document,1,gemma4:31b,true,4,true,,5506,40,true,986,,false,,O prazo final para solicitação de trancamento de curso em 2026-2 é o dia 2 de outubro de 2026 (p. 4).
 c09,calendario,pdf,F,document,2,gemma4:31b,true,4,true,,5506,40,true,687,,false,,O prazo final para solicitação de trancamento de curso em 2026-2 é o dia 2 de outubro de 2026 (p. 4).
 c09,calendario,pdf,F,document,3,gemma4:31b,true,4,true,,5506,40,true,721,,false,,O prazo final para solicitação de trancamento de curso em 2026-2 é o dia 2 de outubro de 2026 (p. 4).

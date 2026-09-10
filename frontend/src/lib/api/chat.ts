@@ -34,6 +34,9 @@ export type PersistedChatMessage = {
     id: number;
     role: "user" | "assistant";
     content: string;
+    /** "error": a resposta falhou; errorDetail traz o motivo do provedor. */
+    status?: "error";
+    errorDetail?: string;
     sources: ChatSource[];
     usage?: ChatUsage;
     createdAt: string;
@@ -53,7 +56,22 @@ export type ChatSource = {
     /** Ausentes em mensagens gravadas antes de o backend envia-los. */
     documentId?: number;
     nodeId?: string;
+    /** Paragrafo da pagina com mais termos da pergunta: o que o canvas grifa. */
+    paragraphId?: number;
+    /** Indices das linhas do paragrafo que casam a pergunta (grifo fino). */
+    lines?: number[];
+    /** Termos da pergunta presentes na fonte: por que ela esta aqui. */
+    matchedTerms?: string[];
+    /** Geometria gravada com a resposta: sobrevive a reindexacao. */
+    box?: SourceBox;
+    lineBoxes?: number[][];
+    /** Data do indice do documento quando a resposta foi dada. */
+    indexedAt?: string;
+    /** Pagina seguinte, quando a frase da fonte quebra na virada. */
+    continuesOnPage?: number;
 };
+
+export type SourceBox = { xMin: number; yMin: number; xMax: number; yMax: number; pageWidth: number; pageHeight: number };
 
 export type ChatStreamEvent =
     | { type: "stage"; stage?: string; message?: string }
@@ -329,8 +347,15 @@ function parseSSEEvent(rawEvent: string): ChatStreamEvent | null {
                 };
             case "done":
                 return { type: "done", stage, message, ...(usage ? { usage } : {}) };
-            case "error":
-                return { type: "error", message: typeof message === "string" ? message : "Erro no chat." };
+            case "error": {
+                // A API manda a causa do provedor em `detail` ("monthly usage
+                // limit"); sem ela o usuario ve so "falha ao gerar" e nao sabe
+                // se o problema e credito, modelo ou rede.
+                const rawDetail = readEventField<string>(parsed, "detail", "Detail");
+                const detail = typeof rawDetail === "string" ? rawDetail.trim() : "";
+                const base = typeof message === "string" ? message : "Erro no chat.";
+                return { type: "error", message: detail ? `${base} (${detail})` : base };
+            }
             default:
                 return null;
         }
@@ -403,6 +428,8 @@ function normalizePersistedMessage(value: unknown): PersistedChatMessage | null 
         id,
         role,
         content,
+        ...(record.status === "error" ? { status: "error" as const } : {}),
+        ...(typeof record.error_detail === "string" && record.error_detail ? { errorDetail: record.error_detail } : {}),
         sources: Array.isArray(record.sources)
             ? record.sources
                 .map(normalizeSource)
@@ -427,6 +454,18 @@ function normalizeSource(value: unknown): ChatSource | null {
     const snippet = typeof record.snippet === "string" ? record.snippet : "";
     const documentId = Number(record.document_id ?? record.documentId);
     const nodeId = typeof record.node_id === "string" ? record.node_id : typeof record.nodeId === "string" ? record.nodeId : "";
+    const paragraphId = Number(record.paragraph_id ?? record.paragraphId);
+    const lines = Array.isArray(record.lines) ? record.lines.filter((n): n is number => typeof n === "number" && Number.isInteger(n) && n >= 0) : [];
+    const rawTerms = record.matched_terms ?? record.matchedTerms;
+    const matchedTerms = Array.isArray(rawTerms) ? rawTerms.filter((t): t is string => typeof t === "string" && t.length > 0) : [];
+    const box = normalizeSourceBox(record.box);
+    const rawLineBoxes = record.line_boxes ?? record.lineBoxes;
+    const lineBoxes = Array.isArray(rawLineBoxes)
+        ? rawLineBoxes.filter((b): b is number[] => Array.isArray(b) && b.length === 4 && b.every((n) => typeof n === "number" && Number.isFinite(n)))
+        : [];
+    const indexedAt = record.indexed_at ?? record.indexedAt;
+    const rawContinues = Number(record.continues_on_page ?? record.continuesOnPage);
+    const continuesOnPage = Number.isFinite(rawContinues) && rawContinues > 0 ? rawContinues : undefined;
 
     if (!id || !docName || !Number.isFinite(page)) {
         return null;
@@ -439,7 +478,27 @@ function normalizeSource(value: unknown): ChatSource | null {
         snippet,
         ...(Number.isFinite(documentId) && documentId > 0 ? { documentId } : {}),
         ...(nodeId ? { nodeId } : {}),
+        ...(Number.isFinite(paragraphId) && paragraphId > 0 ? { paragraphId } : {}),
+        ...(lines.length > 0 ? { lines } : {}),
+        ...(matchedTerms.length > 0 ? { matchedTerms } : {}),
+        ...(box ? { box } : {}),
+        ...(lineBoxes.length > 0 ? { lineBoxes } : {}),
+        ...(typeof indexedAt === "string" ? { indexedAt } : {}),
+        ...(continuesOnPage ? { continuesOnPage } : {}),
     };
+}
+
+function normalizeSourceBox(value: unknown): SourceBox | null {
+    if (!value || typeof value !== "object") {
+        return null;
+    }
+    const r = value as Record<string, unknown>;
+    const n = (k: string) => (typeof r[k] === "number" && Number.isFinite(r[k]) ? (r[k] as number) : null);
+    const xMin = n("x_min"), yMin = n("y_min"), xMax = n("x_max"), yMax = n("y_max"), pageWidth = n("page_width"), pageHeight = n("page_height");
+    if (xMin === null || yMin === null || xMax === null || yMax === null || !pageWidth || !pageHeight) {
+        return null;
+    }
+    return { xMin, yMin, xMax, yMax, pageWidth, pageHeight };
 }
 
 /** Aceita snake_case (historico) e camelCase (stream). Sem tokens, sem bloco. */

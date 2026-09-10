@@ -46,7 +46,7 @@ Keep outputs compact, auditable, and useful for later retrieval.
 	userPrompt.WriteString("Task: create a compact document synopsis for later retrieval and inspection.\n")
 	userPrompt.WriteString("Return JSON with fields document_summary, keywords, document_purpose.\n")
 	userPrompt.WriteString("document_summary and document_purpose must be in Portuguese.\n")
-	userPrompt.WriteString("document_summary must be at most 120 words.\n")
+	userPrompt.WriteString("document_summary must be at most 200 words.\n")
 	userPrompt.WriteString("document_purpose must be at most 60 words.\n")
 	userPrompt.WriteString("keywords must be a short array of concrete retrieval terms with at most 8 items.\n\n")
 	userPrompt.WriteString(contextBlock)
@@ -121,8 +121,8 @@ func buildOutlineNodeSummaryPrompt(contextBlock string) (string, string) {
 You generate one stage of a structured document indexing pipeline.
 Return only valid JSON.
 Do not wrap the response in markdown fences.
-Summarize only tree nodes that are actually evidenced by the supplied pages and outline.
-If evidence is weak, leave the node out instead of guessing.
+Summarize every node listed, using only the text supplied for it.
+When the text is short, say what the title and the available text state; never invent facts.
 Prefer navigation-grade summaries, page-grounded and auditable.
 `)
 
@@ -130,7 +130,7 @@ Prefer navigation-grade summaries, page-grounded and auditable.
 	userPrompt.WriteString("Task: summarize indexed tree nodes for navigation and grounded retrieval.\n")
 	userPrompt.WriteString("Return JSON with field nodes.\n")
 	userPrompt.WriteString("nodes must be an array of objects with sequence_order and summary.\n")
-	userPrompt.WriteString("Each summary must be concise, factual, in Portuguese, and no longer than 40 words.\n")
+	userPrompt.WriteString("Each summary must be factual, in Portuguese, and between 25 and 60 words: say what the section decides or describes, with the numbers, names and deadlines it contains.\n")
 	userPrompt.WriteString("Do not repeat the node title inside the summary.\n\n")
 	userPrompt.WriteString(contextBlock)
 
@@ -149,8 +149,9 @@ Keep the summaries useful for tree navigation and later evidence lookup.
 	var userPrompt strings.Builder
 	userPrompt.WriteString("Task: summarize indexed pages for grounded retrieval.\n")
 	userPrompt.WriteString("Return JSON with field pages.\n")
-	userPrompt.WriteString("pages must be an array of objects with page_number and summary.\n")
-	userPrompt.WriteString("Each summary must be concise, factual, in Portuguese, and no longer than 45 words.\n\n")
+	userPrompt.WriteString("pages must be an array of objects with page_number, summary and topics.\n")
+	userPrompt.WriteString("Each summary must be factual, in Portuguese, and between 25 and 60 words: say what the page contains, with the numbers, names, dates and rules present in it.\n")
+	userPrompt.WriteString("topics must be an array of at most 5 short noun phrases in Portuguese naming the subjects of the page.\n\n")
 	userPrompt.WriteString(contextBlock)
 
 	return systemPrompt, userPrompt.String()

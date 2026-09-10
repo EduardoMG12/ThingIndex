@@ -9,6 +9,7 @@ import (
 	"unicode"
 
 	"thing-index/internal/models"
+	"thing-index/internal/retrieval"
 )
 
 // Deteccao de tabelas em PDF a partir das caixas de palavra do pdftotext.
@@ -369,7 +370,27 @@ func pdfTableTitle(rows []pdfVisualRow, headerStart int) string {
 	if !pdfIsTitleRow(prev) || rows[headerStart].YMin-prev.YMax > pdfTableTitleMaxGap {
 		return ""
 	}
-	return strings.TrimSpace(prev.Cells[0].text())
+	return cleanTableTitle(prev.Cells[0].text())
+}
+
+// cleanTableTitle recusa o que nao e titulo de tabela: uma palavra so
+// ("ARTICULA"), fragmento terminado em preposicao ("NÍVEL DE", "DE ENSINO"
+// e, na verdade, "DE"), ou frase longa de prosa. "Janeiro 2026" e "Tabela 4
+// - Periodizacao" passam.
+func cleanTableTitle(raw string) string {
+	title := strings.Join(strings.Fields(raw), " ")
+	words := strings.Fields(title)
+	if len(words) == 0 || len(words) > 14 {
+		return ""
+	}
+	last := strings.ToLower(retrieval.FoldDiacritics(words[len(words)-1]))
+	if pdfConnectives[last] || pdfConnectives[strings.ToLower(retrieval.FoldDiacritics(words[0]))] {
+		return ""
+	}
+	if len(words) == 1 && !regexp.MustCompile(`\d`).MatchString(title) {
+		return ""
+	}
+	return title
 }
 
 func pdfEndsWithConnective(row pdfVisualRow) bool {
@@ -487,6 +508,18 @@ func pdfTableFromRows(headerRows, dataRows []pdfVisualRow, title string, pageNum
 		}
 	}
 	left, right := pdfRunExtent(dataRows)
+	top := dataRows[0].YMin
+	if len(headerRows) > 0 {
+		top = headerRows[0].YMin
+		// O cabecalho rotula colunas que podem estar vazias nesta pagina
+		// ("Trilha de optativas"); a caixa cobre ate ele, senao o rotulo
+		// sobra fora da tabela e vira titulo de secao.
+		for _, row := range headerRows {
+			for _, c := range row.Cells {
+				right = math.Max(right, c.XMax)
+			}
+		}
+	}
 	pageRef := pageNumber
 	return models.TableSection{
 		Title:      title,
@@ -496,11 +529,41 @@ func pdfTableFromRows(headerRows, dataRows []pdfVisualRow, title string, pageNum
 		Metadata: map[string]any{
 			"source": "pdf-bbox",
 			"box": textBox{
-				XMin: left, YMin: dataRows[0].YMin, XMax: right, YMax: dataRows[len(dataRows)-1].YMax,
+				XMin: left, YMin: top, XMax: right, YMax: dataRows[len(dataRows)-1].YMax,
 				PageWidth: page.Width, PageHeight: page.Height,
 			},
 		},
 	}, true
+}
+
+// pdfTableBoxes devolve as caixas das tabelas de uma pagina.
+func pdfTableBoxes(tables []models.TableSection) []textBox {
+	boxes := make([]textBox, 0, len(tables))
+	for _, table := range tables {
+		if box, ok := table.Metadata["box"].(textBox); ok {
+			boxes = append(boxes, box)
+		}
+	}
+	return boxes
+}
+
+// blockInsideTable diz se o centro do bloco cai dentro de alguma tabela da
+// pagina: celula de tabela nao e titulo de secao, por mais que pareca
+// ("Atividade Pedagógica", "67 SIS07304 | SIS07405").
+func blockInsideTable(block textBlock, boxes []textBox) bool {
+	if block.Box == nil {
+		return false
+	}
+	cx := (block.Box.XMin + block.Box.XMax) / 2
+	cy := (block.Box.YMin + block.Box.YMax) / 2
+	for _, b := range boxes {
+		// Folga maior em cima: o cabecalho de duas linhas do SAGRES comeca
+		// alguns pontos acima da primeira linha visual que o detector guardou.
+		if cx >= b.XMin-pdfTableColumnTolerance && cx <= b.XMax+pdfTableColumnTolerance && cy >= b.YMin-pdfTableMinCellGap && cy <= b.YMax+pdfTableRowTolerance {
+			return true
+		}
+	}
+	return false
 }
 
 // flattenPageTables devolve as tabelas na ordem das paginas com SequenceOrder
@@ -511,10 +574,33 @@ func flattenPageTables(documentID uint, pageTables map[int][]models.TableSection
 		for _, table := range pageTables[page] {
 			table.DocumentID = documentID
 			table.SequenceOrder = len(out)
+			// Tabela que continua da pagina anterior vem sem cabecalho (o
+			// cabecalho so esta na primeira pagina): herda o da anterior
+			// quando o numero de colunas bate. 57 das 80 tabelas do demo
+			// estavam com "coluna N" por isso.
+			if n := len(out); n > 0 && allSyntheticHeaders(table.Headers) && !allSyntheticHeaders(out[n-1].Headers) && len(out[n-1].Headers) == len(table.Headers) && out[n-1].PageNumber != nil && *out[n-1].PageNumber+1 == page {
+				table.Headers = append([]string(nil), out[n-1].Headers...)
+				if table.Metadata == nil {
+					table.Metadata = map[string]any{}
+				}
+				table.Metadata["headers_inherited_from_page"] = *out[n-1].PageNumber
+				if table.Title == "" {
+					table.Title = out[n-1].Title
+				}
+			}
 			out = append(out, table)
 		}
 	}
 	return out
+}
+
+func allSyntheticHeaders(headers []string) bool {
+	for _, h := range headers {
+		if !strings.HasPrefix(strings.TrimSpace(h), "coluna ") {
+			return false
+		}
+	}
+	return len(headers) > 0
 }
 
 // RenderTableRow devolve "cabecalho: celula; ..." so com as celulas cheias: o
@@ -529,6 +615,11 @@ func RenderTableRow(headers []string, row []string) string {
 		header := ""
 		if i < len(headers) {
 			header = strings.TrimSpace(headers[i])
+		}
+		// "coluna 7" e cabecalho sintetico (tabela sem linha de rotulo):
+		// nao diz nada ao leitor nem ao modelo.
+		if strings.HasPrefix(header, "coluna ") {
+			header = ""
 		}
 		if header != "" {
 			parts = append(parts, header+": "+cell)

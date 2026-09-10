@@ -84,3 +84,12 @@ describe("ancorasDeLinha", () => {
         expect(baixo.para).toEqual({ x: 50, y: 400 });
     });
 });
+
+describe("escalaDeFoco", () => {
+    it("aproxima ate o trecho ocupar metade da tela, entre 0,9 e 1,8", async () => {
+        const { escalaDeFoco } = await import("@/lib/workspace/geometry");
+        expect(escalaDeFoco(400, 1600)).toBeCloseTo(1.8);
+        expect(escalaDeFoco(600, 1200)).toBeCloseTo(1.1);
+        expect(escalaDeFoco(2000, 1200)).toBeCloseTo(0.9);
+    });
+});

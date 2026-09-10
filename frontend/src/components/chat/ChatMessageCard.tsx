@@ -1,6 +1,8 @@
 "use client";
 
-import { Bot, Loader2, User } from "lucide-react";
+import { useState } from "react";
+
+import { Bot, ChevronLeft, ChevronRight, Loader2, User } from "lucide-react";
 
 import { ChatRichText } from "@/components/chat/ChatRichText";
 import SourceReference, { type Source } from "@/components/chat/SourceReference";
@@ -21,13 +23,38 @@ export function ChatMessageCard({
     message,
     isStreaming,
     onVerNoDocumento,
+    fonteAtivaId,
+    onFonteAtiva,
+    indexadoEm,
 }: {
     message: ChatWorkspaceMessage;
     isStreaming: boolean;
     onVerNoDocumento?: (source: Source) => void;
+    /**
+     * Fonte focada no canvas, pelo id (estavel entre o rascunho e a mensagem
+     * recarregada apos o stream). Quando o pai controla, o card nao guarda
+     * estado proprio: o card remonta no recarregamento e perderia o clique.
+     */
+    fonteAtivaId?: string | null;
+    onFonteAtiva?: (id: string) => void;
+    /** Data do indice atual de cada documento, para avisar fonte de indice antigo. */
+    indexadoEm?: ReadonlyMap<number, string>;
 }) {
     const { t, locale } = useI18n();
     const isUser = message.role === "user";
+    const [fonteAtivaLocal, setFonteAtivaLocal] = useState<string | null>(null);
+    const ativaId = fonteAtivaId !== undefined ? fonteAtivaId : fonteAtivaLocal;
+    const fontes = message.sources ?? [];
+    const fonteAtiva = fontes.findIndex((fonte) => fonte.id === ativaId);
+    const irParaFonte = (indice: number) => {
+        const fonte = fontes[indice];
+        if (!fonte) {
+            return;
+        }
+        setFonteAtivaLocal(fonte.id);
+        onFonteAtiva?.(fonte.id);
+        onVerNoDocumento?.(fonte);
+    };
     const timestamp = new Intl.DateTimeFormat(locale, {
         hour: "2-digit",
         minute: "2-digit",
@@ -69,6 +96,12 @@ export function ChatMessageCard({
                         message.content
                     ) : (
                         <div className="space-y-3 text-[15px] leading-7 text-foreground/95">
+                            {message.status === "error" ? (
+                                <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive" data-testid="resposta-com-erro">
+                                    <p className="font-medium">{t("dashboard.chat.answerFailed")}</p>
+                                    {message.errorDetail ? <p className="mt-1 break-words text-xs opacity-90">{message.errorDetail}</p> : null}
+                                </div>
+                            ) : null}
                             {message.content.trim() ? (
                                 <>
                                     <ChatRichText content={message.content} />
@@ -97,14 +130,67 @@ export function ChatMessageCard({
                             : ""}
                     </p>
                 ) : null}
-                {message.sources && message.sources.length > 0 ? (
-                    <div className="grid gap-2 pt-1 sm:grid-cols-2">
-                        {message.sources.map((source) => (
-                            <SourceReference key={source.id} source={source} onVerNoDocumento={onVerNoDocumento} />
-                        ))}
+                {fontes.length > 0 ? (
+                    <div className="space-y-2 pt-1">
+                        {onVerNoDocumento ? (
+                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                                <span>{t("dashboard.chat.sourcesTitle", { count: fontes.length })}</span>
+                                <span className="flex-1" />
+                                <button
+                                    type="button"
+                                    data-testid="fonte-anterior"
+                                    aria-label={t("dashboard.chat.previousSource")}
+                                    title={t("dashboard.chat.previousSource")}
+                                    disabled={fonteAtiva <= 0}
+                                    onClick={() => irParaFonte(fonteAtiva - 1)}
+                                    className="rounded-md border border-border/60 p-1 hover:bg-muted disabled:opacity-40"
+                                >
+                                    <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+                                </button>
+                                <span className="tabular-nums" data-testid="fonte-posicao">
+                                    {fonteAtiva >= 0 ? `${fonteAtiva + 1}/${fontes.length}` : `–/${fontes.length}`}
+                                </span>
+                                <button
+                                    type="button"
+                                    data-testid="fonte-proxima"
+                                    aria-label={t("dashboard.chat.nextSource")}
+                                    title={t("dashboard.chat.nextSource")}
+                                    disabled={fonteAtiva >= fontes.length - 1}
+                                    onClick={() => irParaFonte(fonteAtiva + 1)}
+                                    className="rounded-md border border-border/60 p-1 hover:bg-muted disabled:opacity-40"
+                                >
+                                    <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                                </button>
+                            </div>
+                        ) : null}
+                        <div className="grid gap-2 sm:grid-cols-2">
+                            {fontes.map((source, indice) => (
+                                <SourceReference
+                                    key={source.id}
+                                    source={source}
+                                    numero={indice + 1}
+                                    ativa={indice === fonteAtiva}
+                                    reindexado={fonteDeIndiceAntigo(source, indexadoEm)}
+                                    onVerNoDocumento={onVerNoDocumento ? () => irParaFonte(indice) : undefined}
+                                />
+                            ))}
+                        </div>
                     </div>
                 ) : null}
             </div>
         </div>
     );
+}
+
+/** Fonte de indice antigo: o documento foi reindexado depois da data gravada na fonte. */
+export function fonteDeIndiceAntigo(source: Source, indexadoEm?: ReadonlyMap<number, string>): boolean {
+    if (!source.documentId || !source.indexedAt || !indexadoEm) {
+        return false;
+    }
+    const atual = indexadoEm.get(source.documentId);
+    if (!atual) {
+        return false;
+    }
+    const a = Date.parse(atual), b = Date.parse(source.indexedAt);
+    return Number.isFinite(a) && Number.isFinite(b) && a - b > 1000;
 }

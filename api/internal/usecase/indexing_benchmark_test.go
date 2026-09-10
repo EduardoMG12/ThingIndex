@@ -150,7 +150,12 @@ func TestIndexingBenchmarkProviderBuildsPublicReport(t *testing.T) {
 	if item, ok := variantByID["relational-tree-baseline"]; !ok || item.Status != "pass" || math.Abs(item.Metrics.ExactMatchAccuracy-100) > 0.0001 {
 		t.Fatalf("unexpected relational baseline variant: %#v", report.RetrievalComparison.Variants)
 	}
-	if item, ok := variantByID["flat-hybrid-control"]; !ok || item.Status != "watch" || math.Abs(item.Metrics.ExactMatchAccuracy-90.9090909090909) > 0.0001 {
+	// Era 90,9% ate 2026-09-09: o texto da pagina nao continha os titulos, e o
+	// controle hibrido (nos e paginas sem a arvore) perdia a consulta cuja
+	// resposta era um titulo. Com os titulos na pagina, o controle empata com
+	// a baseline neste corpus de 11 consultas -- numero honesto, nao o que
+	// favorece a tese.
+	if item, ok := variantByID["flat-hybrid-control"]; !ok || item.Status != "watch" || math.Abs(item.Metrics.ExactMatchAccuracy-100) > 0.0001 {
 		t.Fatalf("unexpected flat hybrid variant: %#v", report.RetrievalComparison.Variants)
 	}
 	if item, ok := variantByID["flat-page-control"]; !ok || item.Status != "fail" || math.Abs(item.Metrics.TreeNodeTop1Accuracy-33.33333333333333) > 0.0001 {

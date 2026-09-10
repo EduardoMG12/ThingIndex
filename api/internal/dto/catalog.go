@@ -127,6 +127,7 @@ type TableSectionResponse struct {
 	ID            uint           `json:"id"`
 	DocumentID    uint           `json:"document_id"`
 	SequenceOrder int            `json:"sequence_order"`
+	PageNumber    *int           `json:"page_number,omitempty"`
 	Title         string         `json:"title,omitempty"`
 	Headers       []string       `json:"headers"`
 	Rows          [][]string     `json:"rows"`
@@ -525,6 +526,7 @@ func ToTableSectionResponses(sections []models.TableSection) []TableSectionRespo
 
 		items = append(items, TableSectionResponse{
 			ID:            section.ID,
+			PageNumber:    section.PageNumber,
 			DocumentID:    section.DocumentID,
 			SequenceOrder: section.SequenceOrder,
 			Title:         section.Title,
@@ -851,6 +853,7 @@ type NodeConnectionResponse struct {
 	StartPage    *int     `json:"start_page,omitempty"`
 	Score        int      `json:"score"`
 	MatchedTerms []string `json:"matched_terms"`
+	Kind         string   `json:"kind,omitempty"`
 }
 
 // NodeConnectionsResponse envelopa a lista e declara o limiar aplicado.
@@ -876,6 +879,7 @@ func ToNodeConnectionsResponse(nodeID string, minScore int, connections []domain
 			StartPage:    connection.StartPage,
 			Score:        connection.Score,
 			MatchedTerms: connection.MatchedTerms,
+			Kind:         connection.Kind,
 		})
 	}
 

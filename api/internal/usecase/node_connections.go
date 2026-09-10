@@ -2,11 +2,14 @@ package usecase
 
 import (
 	"math"
+	"regexp"
 	"sort"
 	"strings"
+	"unicode"
 
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
+	"thing-index/internal/retrieval"
 )
 
 // BuildNodeConnections deriva as conexoes de um no do sumario com nos de OUTROS
@@ -46,35 +49,52 @@ func BuildNodeConnections(
 	candidates []models.DocumentOutlineNode,
 	minScore int,
 ) []domain.NodeConnection {
-	queryTerms := tokenizeRetrievalText(outlineNodeSearchText(origin))
-	if len(queryTerms) == 0 {
+	originText := outlineNodeSearchText(origin)
+	terms := connectionTerms(originText)
+	originCitations := normCitations(originText)
+	if len(terms) == 0 && len(originCitations) == 0 {
 		return nil
 	}
 
-	// Palavras vazias saem ANTES da pontuacao, nao so da justificativa.
-	//
-	// Filtrar apenas na exibicao produziria o pior dos mundos: a conexao
-	// continuaria existindo com score inflado por conectivos, mas apareceria
-	// na tela sem nenhum termo que a explicasse -- uma aresta muda, que e
-	// exatamente o tipo de resposta nao auditavel que este trabalho critica.
-	significantTerms := make([]string, 0, len(queryTerms))
-	for _, term := range queryTerms {
-		if !ehPalavraVazia(term) {
-			significantTerms = append(significantTerms, term)
+	type candidateIndex struct {
+		node      models.DocumentOutlineNode
+		tokens    map[string]struct{}
+		citations map[string]struct{}
+	}
+	// Conexao util liga documentos DIFERENTES. Trechos do mesmo arquivo
+	// compartilham vocabulario por construcao e afogariam o sinal real.
+	indexed := make([]candidateIndex, 0, len(candidates))
+	for _, candidate := range candidates {
+		if candidate.DocumentID == origin.DocumentID {
+			continue
 		}
+		text := outlineNodeSearchText(candidate)
+		indexed = append(indexed, candidateIndex{node: candidate, tokens: tokenSet(text), citations: toSet(normCitations(text))})
 	}
-	if len(significantTerms) == 0 {
-		return nil
-	}
+
 	// So termo RARO no acervo sustenta uma aresta. "curso", "edital", "campus"
 	// nao sao conectivos, mas aparecem em centenas de secoes da mesma colecao
-	// e ligavam anexos sem relacao nenhuma ("2 termos" entre duas declaracoes
-	// de formulario). O que a observacao do autor confirmou: a maior parte das
-	// secoes nao tem conexao, e o sistema tem de saber dizer isso. A raridade
-	// e medida aqui mesmo, sobre os candidatos, sem nada persistido.
-	significantTerms = rareTerms(significantTerms, origin, candidates)
-	if len(significantTerms) == 0 {
-		return nil
+	// e ligavam anexos sem relacao nenhuma. A raridade e medida aqui mesmo,
+	// sobre os candidatos, por TOKEN INTEIRO: por substring "lei" casava
+	// "leitura" e "estagio" casava "estagiario".
+	limit := int(math.Ceil(float64(len(indexed)) * NodeConnectionMaxTermShare))
+	if limit < 2 {
+		limit = 2
+	}
+	rare := make([]string, 0, len(terms))
+	for _, term := range terms {
+		df := 0
+		for _, c := range indexed {
+			if _, ok := c.tokens[term]; ok {
+				df++
+				if df > limit {
+					break
+				}
+			}
+		}
+		if df <= limit {
+			rare = append(rare, term)
+		}
 	}
 
 	// Score zero nunca vira conexao, mesmo com minScore <= 0: aceitar zero
@@ -84,29 +104,43 @@ func BuildNodeConnections(
 		threshold = 1
 	}
 
-	connections := make([]domain.NodeConnection, 0, len(candidates))
-
-	for _, candidate := range candidates {
-		// Conexao util liga documentos DIFERENTES. Trechos do mesmo arquivo
-		// compartilham vocabulario por construcao e afogariam o sinal real.
-		if candidate.DocumentID == origin.DocumentID {
+	connections := make([]domain.NodeConnection, 0, len(indexed))
+	for _, c := range indexed {
+		matched := make([]string, 0, len(rare))
+		for _, term := range rare {
+			if _, ok := c.tokens[term]; ok {
+				matched = append(matched, term)
+			}
+		}
+		sameNorm := make([]string, 0, len(originCitations))
+		for _, citation := range originCitations {
+			if _, ok := c.citations[citation]; ok {
+				sameNorm = append(sameNorm, citation)
+			}
+		}
+		// Citar a mesma norma e relacao por si so ("Lei 9.394/1996" nos dois),
+		// mesmo sem termo raro em comum; vale por dois termos.
+		score := len(matched) + 2*len(sameNorm)
+		if score < threshold || (len(matched) == 0 && len(sameNorm) == 0) {
 			continue
 		}
-
-		text := outlineNodeSearchText(candidate)
-		score := retrievalScore(text, significantTerms)
-		if score < threshold {
-			continue
+		kind := NodeConnectionKindRareTerm
+		if len(sameNorm) > 0 {
+			kind = NodeConnectionKindSameNorm
+			if strings.HasPrefix(sameNorm[0], "disciplina ") {
+				kind = NodeConnectionKindSameDiscipline
+			}
 		}
-
+		sort.Strings(matched)
 		connections = append(connections, domain.NodeConnection{
-			DocumentID:   candidate.DocumentID,
-			NodeID:       candidate.NodeID,
-			Title:        candidate.Title,
-			Summary:      candidate.Summary,
-			StartPage:    candidate.StartPage,
+			DocumentID:   c.node.DocumentID,
+			NodeID:       c.node.NodeID,
+			Title:        c.node.Title,
+			Summary:      c.node.Summary,
+			StartPage:    c.node.StartPage,
 			Score:        score,
-			MatchedTerms: matchedTerms(text, significantTerms),
+			Kind:         kind,
+			MatchedTerms: append(sameNorm, matched...),
 		})
 	}
 
@@ -120,8 +154,159 @@ func BuildNodeConnections(
 		}
 		return connections[i].NodeID < connections[j].NodeID
 	})
+	// Um no com 200 arestas nao esta "muito conectado": e um hub de vocabulario,
+	// e no canvas vira um novelo. Ficam as mais fortes.
+	if len(connections) > NodeConnectionMaxDegree {
+		connections = connections[:NodeConnectionMaxDegree]
+	}
 
 	return connections
+}
+
+const (
+	NodeConnectionKindRareTerm       = "termo-raro"
+	NodeConnectionKindSameNorm       = "mesma-norma"
+	NodeConnectionKindSameDiscipline = "mesma-disciplina"
+	// NodeConnectionMaxDegree e o teto de arestas por no.
+	NodeConnectionMaxDegree = 20
+)
+
+// NodeConnectionMaxTermShare e a fracao maxima de secoes do acervo em que um
+// termo pode aparecer e ainda contar como evidencia de conexao. Com 1.076
+// secoes na colecao de SI, 2% sao 22 secoes: acima disso e vocabulario do
+// acervo ("objetivos", "conceitos"), nao relacao. Piso de 2 para conjuntos
+// pequenos. Era 5% quando o casamento era por substring; por token o df
+// cai e o teto precisou apertar junto.
+const NodeConnectionMaxTermShare = 0.02
+
+// tokenSet dobra acento e caixa e devolve os tokens do texto como conjunto.
+func tokenSet(text string) map[string]struct{} {
+	tokens := connectionTokens(text)
+	set := make(map[string]struct{}, len(tokens))
+	for _, token := range tokens {
+		set[token] = struct{}{}
+	}
+	return set
+}
+
+// connectionTokens dobra acento e caixa e tira pontuacao das pontas: "a)" e
+// "(b" sao marcadores de lista, nao termos, e por token inteiro eles casavam
+// entre quaisquer duas listas.
+func connectionTokens(text string) []string {
+	raw := tokenizeRetrievalText(retrieval.FoldDiacritics(text))
+	tokens := make([]string, 0, len(raw))
+	for _, token := range raw {
+		token = strings.TrimFunc(token, func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) })
+		if token != "" {
+			tokens = append(tokens, token)
+		}
+	}
+	return tokens
+}
+
+func toSet(values []string) map[string]struct{} {
+	set := make(map[string]struct{}, len(values))
+	for _, v := range values {
+		set[v] = struct{}{}
+	}
+	return set
+}
+
+// connectionTerms devolve os termos da origem que podem sustentar uma aresta:
+// tokens inteiros, sem conectivos, sem numeros e sem nome proprio.
+func connectionTerms(text string) []string {
+	properNouns := titleCaseOnlyWords(text)
+	tokens := connectionTokens(text)
+	terms := make([]string, 0, len(tokens))
+	for _, token := range tokens {
+		if ehPalavraVazia(token) {
+			continue
+		}
+		if _, isName := properNouns[token]; isName {
+			continue
+		}
+		terms = append(terms, token)
+	}
+	return terms
+}
+
+var wordEdgePunct = strings.NewReplacer(",", "", ".", "", ";", "", ":", "", "(", "", ")", "", "\"", "", "'", "")
+
+// titleCaseOnlyWords devolve as palavras que no texto so aparecem com inicial
+// maiuscula e resto minusculo ("Andreia", "Marini", "Paulo"): nome proprio,
+// que liga secoes por quem assinou, nao pelo assunto. Palavra em CAIXA ALTA
+// (titulo) ou em minusculas em algum lugar continua valendo. A primeira
+// palavra do texto nao conta: comeca maiuscula por ser inicio de frase.
+func titleCaseOnlyWords(text string) map[string]struct{} {
+	titleCase := map[string]bool{}
+	otherCase := map[string]bool{}
+	for i, raw := range strings.Fields(text) {
+		word := wordEdgePunct.Replace(raw)
+		runes := []rune(word)
+		if len(runes) < 2 {
+			continue
+		}
+		key := strings.ToLower(retrieval.FoldDiacritics(word))
+		rest := string(runes[1:])
+		switch {
+		case unicode.IsUpper(runes[0]) && strings.ToLower(rest) == rest && i > 0:
+			titleCase[key] = true
+		default:
+			otherCase[key] = true
+		}
+	}
+	names := make(map[string]struct{})
+	for key := range titleCase {
+		if !otherCase[key] {
+			names[key] = struct{}{}
+		}
+	}
+	return names
+}
+
+// normCitationRE reconhece "Lei nº 9.394/1996", "Resolução CONSUP 82/2022",
+// "Decreto 7.824/2012", "Portaria 18/2012", "Parecer CNE/CES 136/2012".
+var normCitationRE = regexp.MustCompile(`(?i)\b(lei|resolu[cç][aã]o|decreto|portaria|parecer|instru[cç][aã]o normativa)\b[^\d\n]{0,24}?(n[º°o.]?\s*)?(\d[\d.]*)(?:/(\d{2,4}))?`)
+
+// disciplineCodeRE reconhece codigos de componente curricular como
+// "SIS07302" ou "INF0123": sigla em maiusculas seguida do numero. Dois
+// trechos com o mesmo codigo falam da mesma disciplina (ementa, matriz,
+// pre-requisito), e isso e relacao por si so, como citar a mesma norma.
+var disciplineCodeRE = regexp.MustCompile(`\b[A-Z]{2,4}\d{4,6}\b`)
+
+// normCitations devolve as citacoes de norma do texto normalizadas para
+// "tipo numero/ano" (numero sem pontos), em ordem estavel e sem repeticao,
+// mais os codigos de disciplina como "disciplina SIS07302".
+func normCitations(text string) []string {
+	seen := map[string]struct{}{}
+	var out []string
+	for _, code := range disciplineCodeRE.FindAllString(text, -1) {
+		citation := "disciplina " + code
+		if _, ok := seen[citation]; ok {
+			continue
+		}
+		seen[citation] = struct{}{}
+		out = append(out, citation)
+	}
+	for _, m := range normCitationRE.FindAllStringSubmatch(text, -1) {
+		kind := strings.ToLower(retrieval.FoldDiacritics(m[1]))
+		kind = strings.Join(strings.Fields(kind), " ")
+		number := strings.ReplaceAll(m[3], ".", "")
+		if number == "" || len(number) > 8 {
+			continue
+		}
+		citation := kind + " " + number
+		if m[4] != "" {
+			citation += "/" + m[4]
+		}
+		if _, ok := seen[citation]; ok {
+			continue
+		}
+		seen[citation] = struct{}{}
+		out = append(out, citation)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // palavrasVaziasPT sao termos que ligam qualquer par de documentos em portugues
@@ -144,6 +329,15 @@ var palavrasVaziasPT = map[string]struct{}{
 	"para": {}, "pela": {}, "pelas": {}, "pelo": {}, "pelos": {}, "por": {},
 	"que": {}, "se": {}, "sem": {}, "ser": {}, "sera": {}, "sobre": {},
 	"um": {}, "uma": {}, "sao": {}, "foi": {}, "seu": {}, "sua": {},
+	// Aparato de referencia bibliografica: liga qualquer duas ementas.
+	"isbn": {}, "ed": {}, "edicao": {}, "editora": {}, "org": {}, "vol": {}, "capitulo": {}, "cap": {},
+	// Conectivos e genericos que a amostra do demo mostrou justificando aresta.
+	"acoes": {}, "atender": {}, "conjunto": {}, "realizacao": {}, "gerais": {}, "geral": {},
+	"desta": {}, "deste": {}, "destas": {}, "destes": {}, "dessa": {}, "desse": {}, "dessas": {}, "desses": {}, "nesta": {}, "neste": {},
+	// Interrogativos e verbos de pergunta: estao em toda pergunta e em
+	// nenhuma resposta; contavam como "termo casado" da fonte.
+	"qual": {}, "quais": {}, "quando": {}, "quanto": {}, "quanta": {}, "quantos": {}, "quantas": {}, "onde": {}, "quem": {},
+	"porque": {}, "existe": {}, "existem": {}, "tem": {}, "ha": {}, "diz": {}, "significa": {}, "esta": {}, "estao": {},
 }
 
 // ehPalavraVazia diz se o termo e conectivo ou numeracao de secao.
@@ -153,70 +347,16 @@ var palavrasVaziasPT = map[string]struct{}{
 // relacao de conteudo. Numeros com mais de um digito ficam de fora: "99,5",
 // "30" e "2025" costumam ser valores contratuais com significado real.
 func ehPalavraVazia(termo string) bool {
-	if len(termo) == 1 {
+	if len(termo) == 1 || numericTokenRE.MatchString(termo) || romanNumeralRE.MatchString(termo) {
 		return true
 	}
 	_, vazia := palavrasVaziasPT[termo]
 	return vazia
 }
 
-// matchedTerms devolve, em ordem estavel, os termos da origem presentes no
-// candidato -- descartando palavras vazias, que nao justificam nada.
-func matchedTerms(text string, queryTerms []string) []string {
-	normalized := strings.ToLower(strings.TrimSpace(text))
-	if normalized == "" {
-		return nil
-	}
+// romanNumeralRE: "vi", "xii" sao numeracao de capitulo e titulo, nao assunto.
+var romanNumeralRE = regexp.MustCompile(`^(i|ii|iii|iv|v|vi|vii|viii|ix|x|xi|xii|xiii|xiv|xv|xvi|xvii|xviii|xix|xx)$`)
 
-	terms := make([]string, 0, len(queryTerms))
-	for _, term := range queryTerms {
-		if ehPalavraVazia(term) {
-			continue
-		}
-		if strings.Contains(normalized, term) {
-			terms = append(terms, term)
-		}
-	}
-	sort.Strings(terms)
-	return terms
-}
-
-// NodeConnectionMaxTermShare e a fracao maxima de secoes do acervo em que um
-// termo pode aparecer e ainda contar como evidencia de conexao. Com 1.853
-// secoes no corpus da faculdade, 5% sao 93 secoes: acima disso e vocabulario
-// do acervo, nao relacao. Piso de 2 para conjuntos pequenos.
-const NodeConnectionMaxTermShare = 0.05
-
-// rareTerms devolve os termos da origem presentes em no maximo
-// max(2, ceil(share * N)) dos N candidatos de outros documentos.
-func rareTerms(terms []string, origin models.DocumentOutlineNode, candidates []models.DocumentOutlineNode) []string {
-	texts := make([]string, 0, len(candidates))
-	for _, candidate := range candidates {
-		if candidate.DocumentID == origin.DocumentID {
-			continue
-		}
-		texts = append(texts, strings.ToLower(outlineNodeSearchText(candidate)))
-	}
-	// Teto em secoes: ceil(share * N), com piso de 2 para acervos pequenos
-	// (um termo em 2 de 30 secoes ainda e raro).
-	limit := int(math.Ceil(float64(len(texts)) * NodeConnectionMaxTermShare))
-	if limit < 2 {
-		limit = 2
-	}
-	rare := make([]string, 0, len(terms))
-	for _, term := range terms {
-		df := 0
-		for _, text := range texts {
-			if strings.Contains(text, term) {
-				df++
-				if df > limit {
-					break
-				}
-			}
-		}
-		if df <= limit {
-			rare = append(rare, term)
-		}
-	}
-	return rare
-}
+// numericTokenRE: anos, numeros de resolucao, valores. Sozinhos nao dizem de
+// que assunto uma secao trata; como citacao de norma entram por normCitations.
+var numericTokenRE = regexp.MustCompile(`^[\d.,/º°-]+$`)
