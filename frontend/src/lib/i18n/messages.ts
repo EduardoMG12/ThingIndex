@@ -40,6 +40,8 @@ export const messages: LocaleMessages = {
                 zoomOut: "Afastar",
                 fit: "Ajustar à tela",
                 markers: "Marcadores de seção",
+                hideSheet: "Recolher a folha",
+                showSheet: "Mostrar a folha",
             },
             frame: {
                 chunks: "{count} trechos",
@@ -1400,6 +1402,8 @@ export const messages: LocaleMessages = {
                 zoomOut: "Zoom out",
                 fit: "Fit to screen",
                 markers: "Section markers",
+                hideSheet: "Hide the sheet",
+                showSheet: "Show the sheet",
             },
             frame: {
                 chunks: "{count} passages",
@@ -2760,6 +2764,8 @@ export const messages: LocaleMessages = {
                 zoomOut: "Alejar",
                 fit: "Ajustar a la pantalla",
                 markers: "Marcadores de sección",
+                hideSheet: "Ocultar la hoja",
+                showSheet: "Mostrar la hoja",
             },
             frame: {
                 chunks: "{count} fragmentos",

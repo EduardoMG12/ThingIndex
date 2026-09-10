@@ -2,7 +2,7 @@
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, Maximize2, Minus, PanelRightClose, PanelRightOpen, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2, Minus, PanelRightClose, PanelRightOpen, Plus, PanelLeftClose, PanelLeftOpen, Link2 } from "lucide-react";
 
 import { useI18n } from "@/lib/i18n/provider";
 
@@ -388,6 +388,9 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
     // focar um documento e pode ser recolhida a um trilho de 40 px.
     const [estruturaAberta, setEstruturaAberta] = useState<boolean>(() => documentoFocado !== null);
     const [tabelaRealcada, setTabelaRealcada] = useState<number | string | null>(null);
+    // Folha (o quadro dos PDFs) recolhivel: com ela fechada, a estrutura ocupa
+    // o espaco, para o usuario ler o sumario e a sinopse sem o PDF ao lado.
+    const [folhaAberta, setFolhaAberta] = useState(true);
     // Grifo fino: linhas do paragrafo citadas pela fonte do chat.
     const [destaque, setDestaque] = useState<{ paragraphId: number; lines: number[] } | null>(null);
     useEffect(() => {
@@ -811,6 +814,10 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
         [ancoraDaSecao, rectDoParagrafo, irAte]
     );
 
+    // Sumario aninhado por nivel: capitulo (1) com as secoes (2, 3...) dentro,
+    // na ordem do documento. Lista plana com 144 cards nao e sumario.
+    const arvoreDoFocado = useMemo(() => montarArvore(nosDoDocumentoFocado), [nosDoDocumentoFocado]);
+
     const documentoAtual = documentos.find((documento) => documento.id === documentoFocado);
     // Sinopse e topicos gravados pelo enriquecimento por LLM. So a sinopse da
     // LLM entra (synopsis_source=llm): a de fallback e o texto cru da primeira
@@ -961,6 +968,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                     arrastandoFundo ? "cursor-grabbing" : "cursor-grab"
                 }`}
                 data-testid="workspace-canvas"
+                hidden={!folhaAberta}
                 {...handlers}
             >
                 <div
@@ -1084,6 +1092,19 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                 >
                     <button
                         type="button"
+                        onClick={() => {
+                            setFolhaAberta(false);
+                            setEstruturaAberta(true);
+                        }}
+                        aria-label={t("workspace.canvas.hideSheet")}
+                        title={t("workspace.canvas.hideSheet")}
+                        data-testid="recolher-folha"
+                        className="rounded p-1.5 hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                    >
+                        <PanelLeftClose className="h-4 w-4" aria-hidden />
+                    </button>
+                    <button
+                        type="button"
                         onClick={afastar}
                         aria-label={t("workspace.canvas.zoomOut")}
                         className="rounded p-1.5 hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
@@ -1123,10 +1144,23 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                 </div>
             </div>
 
+            {!folhaAberta ? (
+                <button
+                    type="button"
+                    onClick={() => setFolhaAberta(true)}
+                    aria-label={t("workspace.canvas.showSheet")}
+                    title={t("workspace.canvas.showSheet")}
+                    data-testid="reabrir-folha"
+                    className="flex shrink-0 items-center gap-1 rounded-lg border border-border bg-card px-2 text-xs text-muted-foreground hover:text-foreground lg:flex-col lg:py-3"
+                >
+                    <PanelLeftOpen className="h-4 w-4" aria-hidden />
+                    <span className="lg:[writing-mode:vertical-rl]">{t("workspace.canvas.showSheet")}</span>
+                </button>
+            ) : null}
             <aside
                 className={
                     estruturaAberta
-                        ? "relative max-h-[40vh] w-full shrink-0 overflow-y-auto rounded-lg border border-border bg-card p-4 lg:max-h-full lg:w-72"
+                        ? `relative max-h-[40vh] w-full shrink-0 overflow-y-auto rounded-lg border border-border bg-card p-4 lg:max-h-full ${folhaAberta ? "lg:w-72" : "lg:w-auto lg:flex-1"}`
                         : "hidden shrink-0 rounded-lg border border-border bg-card p-1 lg:flex lg:w-10 lg:flex-col lg:items-center"
                 }
                 aria-label={t("workspace.sidebar.label")}
@@ -1304,39 +1338,14 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
                         {nosDoDocumentoFocado.length === 0 ? (
                             <p className="text-sm text-muted-foreground">{t("workspace.sidebar.noStructure")}</p>
                         ) : (
-                            <ul className="space-y-3">
-                                {nosDoDocumentoFocado.map((no) => (
-                                    <li
-                                        key={no.nodeId}
-                                        className={`rounded-md border p-3 ${
-                                            no.nodeId === noSelecionado
-                                                ? "border-primary"
-                                                : "border-border"
-                                        }`}
-                                    >
-                                        <button
-                                            type="button"
-                                            onClick={() => irParaSecao(no)}
-                                            className="w-full text-left text-sm font-medium hover:text-primary"
-                                            title={t("workspace.sidebar.goToSection")}
-                                        >
-                                            {no.title}
-                                        </button>
-                                        {no.summary ? (
-                                            <p className="mt-1 text-xs text-muted-foreground">
-                                                {no.summary}
-                                            </p>
-                                        ) : null}
-                                        <button
-                                            type="button"
-                                            onClick={() => pedirConexoes(no.nodeId)}
-                                            className="mt-2 text-xs font-medium text-primary underline-offset-2 hover:underline"
-                                        >
-                                            {t("workspace.sidebar.viewConnections")}
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
+                            <ArvoreDeSecoes
+                                nos={arvoreDoFocado}
+                                selecionado={noSelecionado}
+                                onIr={irParaSecao}
+                                onConexoes={(no) => pedirConexoes(no.nodeId)}
+                                rotuloIr={t("workspace.sidebar.goToSection")}
+                                rotuloConexoes={t("workspace.sidebar.viewConnections")}
+                            />
                         )}
 
                         {carregandoConexoes ? (
@@ -1469,3 +1478,92 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
         </div>
     );
 });
+
+
+/** No do sumario com os filhos aninhados pelo nivel. */
+export type NoDaArvore = { no: OutlineNode; filhos: NoDaArvore[] };
+
+/**
+ * Monta a arvore a partir da lista em ordem de documento: cada no e filho do
+ * ultimo no de nivel menor que veio antes dele. Nivel que "pula" (1 -> 3)
+ * cai no ultimo no de nivel menor mesmo assim.
+ */
+export function montarArvore(nos: OutlineNode[]): NoDaArvore[] {
+    const raiz: NoDaArvore[] = [];
+    const pilha: NoDaArvore[] = [];
+    for (const no of nos) {
+        const item: NoDaArvore = { no, filhos: [] };
+        while (pilha.length > 0 && pilha[pilha.length - 1].no.level >= no.level) {
+            pilha.pop();
+        }
+        if (pilha.length === 0) {
+            raiz.push(item);
+        } else {
+            pilha[pilha.length - 1].filhos.push(item);
+        }
+        pilha.push(item);
+    }
+    return raiz;
+}
+
+function ArvoreDeSecoes({
+    nos,
+    selecionado,
+    onIr,
+    onConexoes,
+    rotuloIr,
+    rotuloConexoes,
+    profundidade = 0,
+}: {
+    nos: NoDaArvore[];
+    selecionado: string | null;
+    onIr: (no: OutlineNode) => void;
+    onConexoes: (no: OutlineNode) => void;
+    rotuloIr: string;
+    rotuloConexoes: string;
+    profundidade?: number;
+}) {
+    return (
+        <ul className={profundidade === 0 ? "space-y-1" : "ml-3 mt-1 space-y-1 border-l border-border/60 pl-2"} data-testid={profundidade === 0 ? "arvore-de-secoes" : undefined}>
+            {nos.map(({ no, filhos }) => {
+                const ativo = no.nodeId === selecionado;
+                const linha = (
+                    <div className={`group flex items-start gap-1 rounded px-1 py-0.5 ${ativo ? "bg-primary/10" : "hover:bg-muted/60"}`}>
+                        <button
+                            type="button"
+                            onClick={() => onIr(no)}
+                            className={`min-w-0 flex-1 text-left ${profundidade === 0 ? "text-sm font-medium" : "text-xs"} ${ativo ? "text-primary" : ""} hover:text-primary`}
+                            title={rotuloIr}
+                            data-testid="secao-da-arvore"
+                            data-nivel={no.level}
+                        >
+                            <span className="line-clamp-2">{no.title}</span>
+                            {no.summary && profundidade <= 1 ? <span className="mt-0.5 line-clamp-2 block text-[11px] font-normal text-muted-foreground">{no.summary}</span> : null}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => onConexoes(no)}
+                            className="shrink-0 rounded p-1 text-muted-foreground opacity-0 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100"
+                            aria-label={rotuloConexoes}
+                            title={rotuloConexoes}
+                        >
+                            <Link2 className="h-3.5 w-3.5" aria-hidden />
+                        </button>
+                    </div>
+                );
+                return (
+                    <li key={no.nodeId}>
+                        {filhos.length > 0 ? (
+                            <details open={profundidade === 0}>
+                                <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">{linha}</summary>
+                                <ArvoreDeSecoes nos={filhos} selecionado={selecionado} onIr={onIr} onConexoes={onConexoes} rotuloIr={rotuloIr} rotuloConexoes={rotuloConexoes} profundidade={profundidade + 1} />
+                            </details>
+                        ) : (
+                            linha
+                        )}
+                    </li>
+                );
+            })}
+        </ul>
+    );
+}

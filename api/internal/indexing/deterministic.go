@@ -379,14 +379,27 @@ const PDFTableOfContentsMinEntries = 5
 func isPDFTableOfContentsPage(blocks []textBlock) bool {
 	entries := 0
 	for _, block := range blocks {
-		content := strings.TrimSpace(block.Content)
-		if content == "" || !tocEntryPattern.MatchString(content) {
-			continue
+		// O poppler as vezes cola varias entradas do sumario num bloco so
+		// ("1 APRESENTAÇÃO 7" / "1.1 IDENTIFICAÇÃO 7" ...); contar por linha,
+		// senao a pagina de sumario do PPC do Tecnico virava 6 secoes coladas.
+		lines := []string{strings.TrimSpace(block.Content)}
+		if len(block.Lines) > 1 {
+			lines = lines[:0]
+			for _, line := range block.Lines {
+				lines = append(lines, strings.TrimSpace(line.Text))
+			}
 		}
-		if looksLikeHeading(content) {
-			entries++
-			if entries >= PDFTableOfContentsMinEntries {
-				return true
+		for _, content := range lines {
+			if content == "" || !tocEntryPattern.MatchString(content) {
+				continue
+			}
+			// Entrada numerada ("2 OBJETIVOS 12") conta mesmo quando o
+			// classificador de titulo a acha curta demais.
+			if looksLikeHeading(content) || outlineNumberPattern.MatchString(content) {
+				entries++
+				if entries >= PDFTableOfContentsMinEntries {
+					return true
+				}
 			}
 		}
 	}

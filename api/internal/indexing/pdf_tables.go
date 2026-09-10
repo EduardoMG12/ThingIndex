@@ -9,6 +9,7 @@ import (
 	"unicode"
 
 	"thing-index/internal/models"
+	"thing-index/internal/retrieval"
 )
 
 // Deteccao de tabelas em PDF a partir das caixas de palavra do pdftotext.
@@ -369,7 +370,27 @@ func pdfTableTitle(rows []pdfVisualRow, headerStart int) string {
 	if !pdfIsTitleRow(prev) || rows[headerStart].YMin-prev.YMax > pdfTableTitleMaxGap {
 		return ""
 	}
-	return strings.TrimSpace(prev.Cells[0].text())
+	return cleanTableTitle(prev.Cells[0].text())
+}
+
+// cleanTableTitle recusa o que nao e titulo de tabela: uma palavra so
+// ("ARTICULA"), fragmento terminado em preposicao ("NÍVEL DE", "DE ENSINO"
+// e, na verdade, "DE"), ou frase longa de prosa. "Janeiro 2026" e "Tabela 4
+// - Periodizacao" passam.
+func cleanTableTitle(raw string) string {
+	title := strings.Join(strings.Fields(raw), " ")
+	words := strings.Fields(title)
+	if len(words) == 0 || len(words) > 14 {
+		return ""
+	}
+	last := strings.ToLower(retrieval.FoldDiacritics(words[len(words)-1]))
+	if pdfConnectives[last] || pdfConnectives[strings.ToLower(retrieval.FoldDiacritics(words[0]))] {
+		return ""
+	}
+	if len(words) == 1 && !regexp.MustCompile(`\d`).MatchString(title) {
+		return ""
+	}
+	return title
 }
 
 func pdfEndsWithConnective(row pdfVisualRow) bool {

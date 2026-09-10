@@ -272,3 +272,20 @@ func TestTabelaContinuadaHerdaOCabecalhoDaPaginaAnterior(t *testing.T) {
 		t.Fatalf("colunas diferentes nao herdam: %+v", out[2])
 	}
 }
+
+func TestTituloDeTabelaRecusaFragmento(t *testing.T) {
+	casos := map[string]string{"ARTICULA": "", "NÍVEL DE": "", "DE ENSINO": "", "Janeiro 2026": "Janeiro 2026", "Tabela 4 - Periodização": "Tabela 4 - Periodização", "Optativas": ""}
+	for in, want := range casos {
+		if got := cleanTableTitle(in); got != want {
+			t.Errorf("%q -> %q, esperava %q", in, got, want)
+		}
+	}
+}
+
+func TestPaginaDeSumarioComBlocoColado(t *testing.T) {
+	bloco := textBlock{Content: "1 APRESENTAÇÃO DO PROJETO 7 1.1 IDENTIFICAÇÃO 7 1.2 JUSTIFICATIVA 9 2 OBJETIVOS 12 3 PERFIL 15 4 ORGANIZAÇÃO 20",
+		Lines: []textLine{{Text: "1 APRESENTAÇÃO DO PROJETO 7"}, {Text: "1.1 IDENTIFICAÇÃO 7"}, {Text: "1.2 JUSTIFICATIVA 9"}, {Text: "2 OBJETIVOS 12"}, {Text: "3 PERFIL 15"}, {Text: "4 ORGANIZAÇÃO 20"}}}
+	if !isPDFTableOfContentsPage([]textBlock{bloco}) {
+		t.Fatal("seis entradas de sumario coladas num bloco deveriam marcar a pagina como sumario")
+	}
+}
