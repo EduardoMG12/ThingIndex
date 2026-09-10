@@ -45,3 +45,5 @@ Ambiguity Report:
 
 ## Discoveries
 
+- **Prompt "resposta direta primeiro" (2026-09-09): descartado.** Medido no gabarito, 1 repetição, mesmo estado: 70/72 → 68/72; t02 passou a dizer "coluna de pré-requisito vazia" com "SIS07201" na fonte (o modelo afirma antes de ler), e a resposta média cresceu de 311 para 358 caracteres. O prompt voltou ao anterior. A organização das fontes (numeração, ativa, setas, parágrafo grifado) ficou.
+- Fonte de página passou a carregar `paragraph_id` (parágrafo com mais termos da pergunta); o clique seleciona o grifo âmbar e centraliza; a fonte de linha realça a caixa da tabela. Linha sem cabeçalho real deixou de mostrar "coluna N".
