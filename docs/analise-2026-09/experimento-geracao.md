@@ -203,7 +203,25 @@ Pareado por pergunta: F vence em 1, perde em 1, empata em 70. A única pergunta 
 
 O que mudou entre a seção 10 e esta: sumário numerado manda no PDF (PPC de SI 492 → 144 seções, 131 → 13 capítulos; PPC do Técnico com a hierarquia 1 / 1.1 / 1.1.1 inteira), títulos no texto da página, letra maiúscula solta como termo, variante singular/plural na consulta (6+ letras, hífen incluído), fonte de seção/página só com 2+ termos e com os termos expostos, gabarito v4. Cada passo foi medido com 1 repetição antes de entrar; os que perderam página-alvo (piso de 40%, reforço por título, plural no índice) ficaram de fora.
 
-## 12. Próximos passos
+## 12. Enriquecimento completo (2026-09-10): resumo e tópicos em todas as páginas, resumo em todas as seções
+
+Até aqui o enriquecimento resumia 8 páginas e 12 seções por documento, em uma chamada cada; no PPC de 210 páginas, 200 páginas ficavam com o fallback (os 320 primeiros caracteres da página) e a sidebar mostrava resumos truncados. Agora as páginas com texto (≥ 200 caracteres) vão em lotes de 6 e as seções em lotes de 12, cada seção com o seu próprio texto (o `retrieval_text` que o indexador já calcula, sem os filhos); resumos de 25 a 60 palavras com os números e prazos do trecho, até 5 tópicos por página em `document_pages.metadata.topics`.
+
+Custo na coleção de SI (10 documentos, gemma4:31b):
+
+| Documento | páginas resumidas | seções resumidas | chamadas em lote | tokens de entrada (est.) |
+|---|---|---|---|---|
+| PPC SI (210 p.) | 208 | 144/144 | 48 | 198 mil |
+| PPC Técnico (160 p.) | 158 | 116/116 | 38 | 171 mil |
+| Ementas (66 p.) | 66 | 132/132 | 23 | 73 mil |
+| os 7 restantes (3 a 13 p.) | 50 | 52/52 | 26 | 173 mil |
+| **total** | **482/486** | **444/444** | **135** | **≈ 616 mil** (≈ 101 mil de saída) |
+
+Primeira tentativa de seção: com o texto da página inteira como contexto e o prompt antigo ("se a evidência for fraca, deixe o nó de fora"), a LLM resumiu só 76 das 144 seções do PPC; com o texto próprio da seção e o pedido de resumir todos os nós, 144/144, sem falha de lote.
+
+Efeito na resposta, mesmo gabarito v4, 1 repetição, arquivo `generation-results-T-enriquecido.csv`: **98,6%** (IC 95,8–100), proveniência 97,0%, prosa 30/30, tabela 21/21, calendário 15/16 (c14, o mesmo "18 e 19" de sempre), negativas 5/5; 4.191 tokens de prompt por pergunta (antes 4.271). Idêntico à seção 11: o resumo de página entra no BM25 da página e não moveu nenhuma página-alvo para dentro ou para fora das fontes. O ganho é de leitura (sidebar e página com resumo real), não de recuperação, e fica registrado assim.
+
+## 13. Próximos passos
 
 1. Rodar F/documento em um segundo modelo pago (só há Ollama Cloud).
 2. Versão 2 do gabarito: corrigir t04, c08 e t06, registrar `reviewed_by` com o revisor externo, recongelar o hash.
