@@ -76,7 +76,7 @@ func (a *thingIndexArm) post(path string, body any, out any) error {
 	if a.token != "" {
 		req.Header.Set("Authorization", "Bearer "+a.token)
 	}
-	resp, err := a.client.Do(req)
+	resp, err := a.doResilient(req, raw)
 	if err != nil {
 		return err
 	}
@@ -89,6 +89,26 @@ func (a *thingIndexArm) post(path string, body any, out any) error {
 		return json.Unmarshal(data, out)
 	}
 	return nil
+}
+
+// doResilient repete a chamada quando a API cai no meio da rodada (o air
+// recompila a API a cada edicao em Go do mesmo modulo: "connection reset by
+// peer" ou EOF por uns 20 segundos). Sem isto, uma rodada de 72 perguntas
+// perdeu 52 por uma edicao no indexador.
+func (a *thingIndexArm) doResilient(req *http.Request, body []byte) (*http.Response, error) {
+	var resp *http.Response
+	var err error
+	for tries := 0; tries < 12; tries++ {
+		if tries > 0 {
+			time.Sleep(5 * time.Second)
+			req.Body = io.NopCloser(bytes.NewReader(body))
+		}
+		resp, err = a.client.Do(req)
+		if err == nil || req.Context().Err() != nil {
+			return resp, err
+		}
+	}
+	return resp, err
 }
 
 func (a *thingIndexArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) answer {
@@ -111,7 +131,7 @@ func (a *thingIndexArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) 
 	// idioma e o modelo responde em ingles, o que derruba o casamento.
 	req.Header.Set("Accept-Language", "pt-BR")
 	start := time.Now()
-	resp, err := a.client.Do(req)
+	resp, err := a.doResilient(req, raw)
 	if err != nil {
 		return answer{Err: err}
 	}
