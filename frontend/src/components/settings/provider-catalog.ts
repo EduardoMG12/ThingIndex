@@ -67,6 +67,26 @@ const openRouterModelSuggestions = [
     "meta-llama/llama-3.1-70b-instruct",
 ];
 
+/**
+ * Provedores escondidos da tela nesta versao: o runtime continua a
+ * suporta-los (S3 compativel e API compativel com OpenAI cobrem todos), mas
+ * so MinIO, Ollama e OpenAI foram exercitados nos experimentos. Um provedor
+ * escondido volta a aparecer se o usuario ja tiver credencial salva nele.
+ */
+export const HIDDEN_PROVIDER_TYPES: ReadonlySet<string> = new Set([
+    "AWS_S3",
+    "CLOUDFLARE_R2",
+    "DIGITALOCEAN_SPACES",
+    "WASABI",
+    "BACKBLAZE_B2",
+    "GCP_STORAGE",
+    "DEEP_SEEK",
+    "GROK",
+    "OPENROUTER",
+    "GOOGLE_GEMINI",
+    "CLAUDE",
+]);
+
 export type ProviderDefinition = {
     family: ProviderFamily;
     providerType: ProviderType;
@@ -566,13 +586,14 @@ export const PROVIDERS: ProviderDefinition[] = [
     }),
 ];
 
-export function getLocalizedProviders(locale: AppLocale): ProviderDefinition[] {
+export function getLocalizedProviders(locale: AppLocale, configuredTypes: readonly string[] = []): ProviderDefinition[] {
     const copy = LOCALIZED_PROVIDER_COPY[locale];
     const fieldLabels = LOCALIZED_FIELD_LABELS[locale];
     const fieldPlaceholders = LOCALIZED_FIELD_PLACEHOLDERS[locale];
     const fieldOverrides = LOCALIZED_FIELD_OVERRIDES[locale];
+    const configured = new Set(configuredTypes);
 
-    return PROVIDERS.map((provider) => {
+    return PROVIDERS.filter((provider) => !HIDDEN_PROVIDER_TYPES.has(provider.providerType) || configured.has(provider.providerType)).map((provider) => {
         const localizedProvider = copy[provider.providerType];
 
         return {

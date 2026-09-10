@@ -161,6 +161,22 @@ test("shows provider readiness details after a successful connection test", asyn
                     created_at: "2026-03-20T12:00:00Z",
                     updated_at: "2026-03-20T12:00:00Z",
                 },
+                // GCS so aparece na lista porque tem credencial salva (provedores
+                // nao exercitados ficam escondidos nesta versao).
+                {
+                    id: 3,
+                    user_id: 1,
+                    family: "STORAGE",
+                    provider_type: "GCP_STORAGE",
+                    is_enabled: false,
+                    enabled_for_indexing: false,
+                    enabled_for_chat: false,
+                    public_metadata: {
+                        bucket_name: "thingindex-gcs",
+                    },
+                    created_at: "2026-03-20T12:00:00Z",
+                    updated_at: "2026-03-20T12:00:00Z",
+                },
                 {
                     id: 2,
                     user_id: 1,
