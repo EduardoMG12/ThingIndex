@@ -189,12 +189,23 @@ func (a *thingIndexArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) 
 	}
 	// Conversa descartavel: sem isso, 200+ conversas do experimento poluem a
 	// tela do usuario demo. Melhor esforco; a linha ja esta medida.
-	req, err = http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/chat/conversations/%d", a.api, created.Data.ID), nil)
-	if err == nil {
-		req.Header.Set("Authorization", "Bearer "+a.token)
-		if resp, err := a.client.Do(req); err == nil {
-			resp.Body.Close()
+	for tries := 0; tries < 5; tries++ {
+		req, err = http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/chat/conversations/%d", a.api, created.Data.ID), nil)
+		if err != nil {
+			break
 		}
+		req.Header.Set("Authorization", "Bearer "+a.token)
+		resp, err := a.client.Do(req)
+		if err != nil {
+			break
+		}
+		resp.Body.Close()
+		// O DELETE passa pelo mesmo limitador do chat (429): sem esperar, 182
+		// conversas "gabarito" ficaram na tela do usuario demo.
+		if resp.StatusCode != http.StatusTooManyRequests {
+			break
+		}
+		time.Sleep(15 * time.Second)
 	}
 	return out
 }
