@@ -45,11 +45,21 @@ type ChatConversationResponse struct {
 	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
+type ChatUsageResponse struct {
+	PromptTokens     int      `json:"prompt_tokens"`
+	CompletionTokens int      `json:"completion_tokens"`
+	UsageReported    bool     `json:"usage_reported"`
+	ProviderType     string   `json:"provider_type,omitempty"`
+	Model            string   `json:"model,omitempty"`
+	EstimatedCostUSD *float64 `json:"estimated_cost_usd,omitempty"`
+}
+
 type ChatConversationMessageResponse struct {
 	ID        uint                 `json:"id"`
 	Role      string               `json:"role"`
 	Content   string               `json:"content"`
 	Sources   []ChatSourceResponse `json:"sources,omitempty"`
+	Usage     *ChatUsageResponse   `json:"usage,omitempty"`
 	CreatedAt time.Time            `json:"created_at"`
 	UpdatedAt time.Time            `json:"updated_at"`
 }
@@ -109,9 +119,22 @@ func ToChatConversationMessageResponses(messages []models.ChatConversationEntry)
 			})
 		}
 
+		var usage *ChatUsageResponse
+		// Mensagens gravadas antes do consumo existir ficam sem o bloco.
+		if message.Role == "assistant" && (message.PromptTokens > 0 || message.CompletionTokens > 0 || message.Model != "") {
+			usage = &ChatUsageResponse{
+				PromptTokens:     message.PromptTokens,
+				CompletionTokens: message.CompletionTokens,
+				UsageReported:    message.UsageReported,
+				ProviderType:     message.ProviderType,
+				Model:            message.Model,
+				EstimatedCostUSD: message.EstimatedCostUSD,
+			}
+		}
 		result = append(result, ChatConversationMessageResponse{
 			ID:        message.ID,
 			Role:      message.Role,
+			Usage:     usage,
 			Content:   message.Content,
 			Sources:   sources,
 			CreatedAt: message.CreatedAt,

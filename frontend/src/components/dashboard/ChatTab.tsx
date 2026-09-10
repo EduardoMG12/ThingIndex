@@ -215,6 +215,7 @@ const ChatTab = ({ className, collectionId = null, compacto = false, onVerNoDocu
                                 assignment={providerRuntimeOverview.chat}
                                 isLoading={isProviderRuntimeLoading}
                                 error={providerRuntimeError}
+                                compacto={compacto}
                             />
                             <ChatEmptyState
                                 hasCollections={hasCollections}

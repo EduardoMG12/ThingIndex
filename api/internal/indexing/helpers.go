@@ -481,6 +481,12 @@ func looksLikeHeading(text string) bool {
 	if mostlyNumeric(text) {
 		return false
 	}
+	// Data por extenso no comeco ("29 de dezembro de 2008, que institui...")
+	// e citacao de lei dentro de um paragrafo, nao titulo -- e vem antes do
+	// padrao de titulo numerado, que o "29 " enganaria.
+	if dateStartPattern.MatchString(strings.ToLower(text)) {
+		return false
+	}
 	// Reject markdown table rows and separators
 	if strings.Count(text, "|") >= 2 {
 		return false
@@ -506,13 +512,57 @@ func looksLikeHeading(text string) bool {
 	if numberedHeadingPattern.MatchString(text) {
 		return true
 	}
-	if strings.HasSuffix(text, ".") || strings.HasSuffix(text, "!") || strings.HasSuffix(text, "?") {
+	if strings.HasSuffix(text, ".") || strings.HasSuffix(text, "!") || strings.HasSuffix(text, "?") || strings.HasSuffix(text, ";") || strings.HasSuffix(text, ",") {
 		return false
 	}
-	if len(strings.Fields(text)) <= 12 && text == strings.ToUpper(text) {
+	fields := strings.Fields(text)
+	// Pedaco de titulo quebrado em duas linhas: comeca por preposicao ou
+	// conjuncao ("DE ENSINO", "E CONSUMO") ou termina numa ("Programação de",
+	// "Tecnologia da"). "DA", "DO", "DAS", "DOS" no INICIO ficam de fora da
+	// regra porque abrem capitulo em texto legal ("DAS DISPOSIÇÕES GERAIS").
+	if len(fields) > 0 {
+		if isPortugueseConnective(strings.ToLower(fields[0])) || isPortugueseContractionOrConnective(strings.ToLower(fields[len(fields)-1])) {
+			return false
+		}
+	}
+	if len(fields) <= 12 && text == strings.ToUpper(text) {
 		return true
 	}
+
+	// Celula de tabela ("Teorica 67", "Total 205", "Subtotal 4 80 40"): curta,
+	// sem numeracao de secao e com um numero solto. Na matriz curricular, 33
+	// de 50 "secoes" eram isso.
+	if hasStandaloneNumber(text) {
+		return false
+	}
 	return len(strings.Fields(text)) <= 10 && isMostlyTitleCase(text)
+}
+
+func isPortugueseConnective(word string) bool {
+	switch word {
+	case "de", "e", "em", "na", "no", "nas", "nos", "a", "o", "ao", "aos", "para", "por", "com", "ou":
+		return true
+	}
+	return false
+}
+
+func isPortugueseContractionOrConnective(word string) bool {
+	switch word {
+	case "da", "do", "das", "dos":
+		return true
+	}
+	return isPortugueseConnective(word)
+}
+
+var dateStartPattern = regexp.MustCompile(`^\d{1,2} de [a-zç]+ de \d{4}`)
+
+func hasStandaloneNumber(text string) bool {
+	for _, field := range strings.Fields(text) {
+		if isNumericToken(strings.Trim(field, "()[],;")) {
+			return true
+		}
+	}
+	return false
 }
 
 func looksLikePDFHeading(text string) bool {
@@ -521,6 +571,13 @@ func looksLikePDFHeading(text string) bool {
 		return false
 	}
 	if isLowSignalPDFText(trimmed) || looksLikePDFFieldLine(trimmed) || looksLikePDFBoilerplate(trimmed) {
+		return false
+	}
+	// Em PDF, uma palavra so em caixa mista ("Reitor", "Presencial",
+	// "Bacharelado") e valor de campo da capa ou da identificacao, nao secao.
+	// Titulos de uma palavra que importam ("REFERENCIAS", "Anexo") ja
+	// passaram pela caixa alta ou pelo arquetipo.
+	if len(strings.Fields(trimmed)) == 1 && trimmed != strings.ToUpper(trimmed) && classifyDocumentHeadingArchetype(trimmed) == documentHeadingArchetypeUnknown {
 		return false
 	}
 	return true

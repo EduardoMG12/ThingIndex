@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 
 	"thing-index/internal/domain"
@@ -69,20 +70,28 @@ func (e *LLMEnricher) Enrich(ctx context.Context, llm domain.LLMService, doc *mo
 
 	contextBlock := buildPromptContext(doc, updated)
 
+	// Fallback nunca e silencioso: sem o log, cinco chamadas devolvendo um
+	// token cada passaram meses como "enrichment_status=applied".
 	synopsis, err := e.generateDocumentSynopsis(ctx, llm, contextBlock)
 	if err != nil {
+		log.Printf("enricher: sinopse do documento %d caiu no fallback: %v", documentID, err)
 		synopsis = buildFallbackDocumentSynopsis(doc, updated)
+		appendMetadata(&updated, documentID, "synopsis_source", "fallback")
+	} else {
+		appendMetadata(&updated, documentID, "synopsis_source", "llm")
 	}
 	applyDocumentSynopsis(&updated, documentID, synopsis)
-
 	sectionSummaries, err := e.generateOutlineNodeSummaries(ctx, llm, contextBlock)
 	if err == nil {
 		applyOutlineNodeSummaries(&updated, sectionSummaries)
+	} else {
+		log.Printf("enricher: resumos de secao do documento %d descartados: %v", documentID, err)
 	}
-
 	pageSummaries, err := e.generatePageSummaries(ctx, llm, contextBlock)
 	if err == nil {
 		applyPageSummaries(&updated, pageSummaries)
+	} else {
+		log.Printf("enricher: resumos de pagina do documento %d descartados: %v", documentID, err)
 	}
 	fillMissingPageSummaries(&updated)
 	populateOutlineRetrievalText(&updated)
@@ -90,6 +99,8 @@ func (e *LLMEnricher) Enrich(ctx context.Context, llm domain.LLMService, doc *mo
 	retrievalSignals, err := e.generateRetrievalSignals(ctx, llm, contextBlock)
 	if err == nil {
 		applyRetrievalSignals(&updated, documentID, retrievalSignals)
+	} else {
+		log.Printf("enricher: sinais de recuperacao do documento %d descartados: %v", documentID, err)
 	}
 
 	return updated, nil

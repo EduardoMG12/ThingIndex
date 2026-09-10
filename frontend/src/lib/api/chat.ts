@@ -20,11 +20,22 @@ export type ChatConversationSummary = {
     updatedAt: string;
 };
 
+/** Consumo de uma resposta. `usageReported=false` = estimativa (runas/4), rotulada na tela. */
+export type ChatUsage = {
+    promptTokens: number;
+    completionTokens: number;
+    usageReported: boolean;
+    providerType?: string;
+    model?: string;
+    estimatedCostUsd?: number;
+};
+
 export type PersistedChatMessage = {
     id: number;
     role: "user" | "assistant";
     content: string;
     sources: ChatSource[];
+    usage?: ChatUsage;
     createdAt: string;
     updatedAt: string;
 };
@@ -48,7 +59,7 @@ export type ChatStreamEvent =
     | { type: "stage"; stage?: string; message?: string }
     | { type: "delta"; delta: string }
     | { type: "sources"; sources: ChatSource[] }
-    | { type: "done"; stage?: string; message?: string }
+    | { type: "done"; stage?: string; message?: string; usage?: ChatUsage }
     | { type: "error"; message: string };
 
 type StreamInput = {
@@ -302,6 +313,7 @@ function parseSSEEvent(rawEvent: string): ChatStreamEvent | null {
         const message = readEventField<string>(parsed, "message", "Message");
         const delta = readEventField<string>(parsed, "delta", "Delta");
         const sources = readEventField<ChatSource[]>(parsed, "sources", "Sources");
+        const usage = normalizeUsage(readEventField<unknown>(parsed, "usage", "Usage"));
 
         switch (eventName) {
             case "stage":
@@ -316,7 +328,7 @@ function parseSSEEvent(rawEvent: string): ChatStreamEvent | null {
                         : [],
                 };
             case "done":
-                return { type: "done", stage, message };
+                return { type: "done", stage, message, ...(usage ? { usage } : {}) };
             case "error":
                 return { type: "error", message: typeof message === "string" ? message : "Erro no chat." };
             default:
@@ -396,6 +408,7 @@ function normalizePersistedMessage(value: unknown): PersistedChatMessage | null 
                 .map(normalizeSource)
                 .filter((source): source is ChatSource => source !== null)
             : [],
+        ...((usage) => (usage ? { usage } : {}))(normalizeUsage(record.usage)),
         createdAt: typeof record.created_at === "string" ? record.created_at : new Date(0).toISOString(),
         updatedAt: typeof record.updated_at === "string" ? record.updated_at : new Date(0).toISOString(),
     };
@@ -426,5 +439,29 @@ function normalizeSource(value: unknown): ChatSource | null {
         snippet,
         ...(Number.isFinite(documentId) && documentId > 0 ? { documentId } : {}),
         ...(nodeId ? { nodeId } : {}),
+    };
+}
+
+/** Aceita snake_case (historico) e camelCase (stream). Sem tokens, sem bloco. */
+export function normalizeUsage(value: unknown): ChatUsage | undefined {
+    if (!value || typeof value !== "object") {
+        return undefined;
+    }
+    const record = value as Record<string, unknown>;
+    const promptTokens = Number(record.prompt_tokens ?? record.promptTokens);
+    const completionTokens = Number(record.completion_tokens ?? record.completionTokens);
+    if (!Number.isFinite(promptTokens) || !Number.isFinite(completionTokens)) {
+        return undefined;
+    }
+    const cost = Number(record.estimated_cost_usd ?? record.estimatedCostUsd);
+    const providerType = record.provider_type ?? record.providerType;
+    const model = record.model;
+    return {
+        promptTokens,
+        completionTokens,
+        usageReported: Boolean(record.usage_reported ?? record.usageReported),
+        ...(typeof providerType === "string" && providerType ? { providerType } : {}),
+        ...(typeof model === "string" && model ? { model } : {}),
+        ...(Number.isFinite(cost) && (record.estimated_cost_usd ?? record.estimatedCostUsd) != null ? { estimatedCostUsd: cost } : {}),
     };
 }

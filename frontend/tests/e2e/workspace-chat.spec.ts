@@ -106,7 +106,7 @@ async function mockar(context: BrowserContext) {
                 // Uma fonte com documento e no (vai ao canvas) e uma antiga, sem documento (nao tem botao).
                 'event: sources\ndata: {"sources":[{"id":"4:12:edital#prazos","docName":"Edital longo","page":12,"snippet":"Prazo de 30 dias.","documentId":4,"nodeId":"edital#prazos"},{"id":"3:1","docName":"Termo assinado","page":1,"snippet":"Assinado."}]}',
                 'event: delta\ndata: {"delta":"O prazo e de 30 dias."}',
-                'event: done\ndata: {"stage":"completed"}',
+                'event: done\ndata: {"stage":"completed","usage":{"promptTokens":1234,"completionTokens":56,"usageReported":true,"model":"gemma4:31b","estimatedCostUsd":0.00027}}',
                 "",
             ].join("\n\n"),
         })
@@ -114,6 +114,14 @@ async function mockar(context: BrowserContext) {
 }
 
 test.use({ locale: "pt-BR" });
+
+// A tela de abertura (SplashScreen) cobre a pagina por alguns segundos na
+// primeira visita e engole o arrasto do mouse; marcar como ja vista a pula.
+test.beforeEach(async ({ context }) => {
+    await context.addInitScript(() => {
+        window.localStorage.setItem("thingindex_last_splash", Date.now().toString());
+    });
+});
 
 test("perguntar no painel e clicar em 'Ver no documento' leva o Edital a pagina citada", async ({ baseURL, context, page }) => {
     await mockar(context);
@@ -130,6 +138,8 @@ test("perguntar no painel e clicar em 'Ver no documento' leva o Edital a pagina 
     await painel.getByRole("textbox", { name: "Mensagem do chat" }).fill("Qual e o prazo?");
     await painel.getByRole("textbox", { name: "Mensagem do chat" }).press("Enter");
     await expect(painel.getByText("O prazo e de 30 dias.")).toBeVisible();
+    // Tokens, modelo e custo embaixo da resposta (o artigo compara custo por consulta).
+    await expect(painel.getByTestId("consumo-da-resposta").first()).toContainText("1.290 tokens · gemma4:31b · US$ 0,00027");
     // So a fonte com documentId tem o botao (a do Termo, sem document_id, nao).
     const botao = painel.getByTestId("ver-no-documento").first();
     await expect(botao).toBeVisible();
@@ -152,6 +162,23 @@ test("?collection= escolhe a colecao e o botao esconde o painel", async ({ baseU
     await seletor.selectOption("7");
     await expect(page).toHaveURL(/collection=7/);
     await expect(page.getByTestId("pdf-frame-3")).toBeAttached();
+    await expect(page.getByTestId("painel-chat")).toBeVisible();
+    // Arrastar a divisa muda a largura do painel (280 a 640 px). O aria-pressed
+    // do botao so fica true depois da hidratacao: e o sinal de que os handlers
+    // do ponteiro ja existem.
+    await expect(page.getByTestId("alternar-chat")).toHaveAttribute("aria-pressed", "true");
+    const antes = (await page.getByTestId("painel-chat").boundingBox())!.width;
+    const divisa = (await page.getByTestId("redimensionar-painel").boundingBox())!;
+    await page.mouse.move(divisa.x + divisa.width / 2, divisa.y + 200);
+    await page.mouse.down();
+    await page.mouse.move(divisa.x + divisa.width / 2 + 120, divisa.y + 200, { steps: 6 });
+    await page.mouse.up();
+    const depois = (await page.getByTestId("painel-chat").boundingBox())!.width;
+    expect(Math.round(depois - antes)).toBe(120);
+    // O botao no proprio painel fecha; o do cabecalho reabre.
+    await page.getByTestId("fechar-painel").click();
+    await expect(page.getByTestId("painel-chat")).toHaveCount(0);
+    await page.getByTestId("alternar-chat").click();
     await expect(page.getByTestId("painel-chat")).toBeVisible();
     await page.getByTestId("alternar-chat").click();
     await expect(page.getByTestId("painel-chat")).toHaveCount(0);

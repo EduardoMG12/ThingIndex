@@ -29,6 +29,11 @@ import type {
  * por isso que ela abre instantaneamente. As conexoes entre trechos sao
  * derivadas sob demanda pelo mesmo scorer relacional das consultas normais.
  */
+const PAINEL_LARGURA_PADRAO = 340;
+const PAINEL_LARGURA_MIN = 280;
+const PAINEL_LARGURA_MAX = 640;
+const PAINEL_LARGURA_CHAVE = "thingindex.workspace.painel.largura";
+
 function WorkspacePageInner() {
     const { t } = useI18n();
     const router = useRouter();
@@ -40,6 +45,37 @@ function WorkspacePageInner() {
     // Chat a esquerda do canvas: aberto por padrao em telas largas, fechado
     // nas estreitas (o painel empilha em cima do canvas). Nao persiste.
     const [chatAberto, setChatAberto] = useState(false);
+    // Largura do painel: arrastavel pela divisa, lembrada no navegador.
+    const [larguraPainel, setLarguraPainel] = useState(PAINEL_LARGURA_PADRAO);
+    useEffect(() => {
+        try {
+            const salva = Number(window.localStorage.getItem(PAINEL_LARGURA_CHAVE));
+            if (Number.isFinite(salva) && salva >= PAINEL_LARGURA_MIN && salva <= PAINEL_LARGURA_MAX) {
+                // eslint-disable-next-line react-hooks/set-state-in-effect -- so na montagem, le a preferencia
+                setLarguraPainel(salva);
+            }
+        } catch {
+            // sem localStorage, fica o padrao
+        }
+    }, []);
+    const arrastoDaDivisa = useRef<{ x0: number; largura0: number } | null>(null);
+    const aoArrastarDivisa = (event: React.PointerEvent<HTMLDivElement>) => {
+        const inicio = arrastoDaDivisa.current;
+        if (!inicio) {
+            return;
+        }
+        const proxima = Math.min(PAINEL_LARGURA_MAX, Math.max(PAINEL_LARGURA_MIN, inicio.largura0 + event.clientX - inicio.x0));
+        setLarguraPainel(proxima);
+    };
+    const aoSoltarDivisa = (event: React.PointerEvent<HTMLDivElement>) => {
+        arrastoDaDivisa.current = null;
+        event.currentTarget.releasePointerCapture(event.pointerId);
+        try {
+            window.localStorage.setItem(PAINEL_LARGURA_CHAVE, String(larguraPainel));
+        } catch {
+            // preferencia nao salva; nada a fazer
+        }
+    };
     const [aba, setAba] = useState<"chat" | "documentos">("chat");
     const [uploadAberto, setUploadAberto] = useState(false);
     // Depois de um envio, recarrega o contexto a cada 5 s ate nenhum documento
@@ -184,13 +220,12 @@ function WorkspacePageInner() {
     );
 
     return (
-        <AppShell>
-            <div className="flex h-full flex-col gap-4 p-6">
-                <header className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h1 className="text-xl font-semibold">{t("workspace.title")}</h1>
-                        <p className="text-sm text-muted-foreground">{t("workspace.description")}</p>
-                    </div>
+        <AppShell contentClassName="max-w-none p-0">
+            {/* Canvas dominante, como Figma/Miro: cabecalho de uma linha e o
+                resto da altura para o canvas. A descricao vira tooltip. */}
+            <div className="flex h-[calc(100vh-4.5rem)] min-h-[560px] flex-col gap-2 p-3">
+                <header className="flex flex-wrap items-center justify-between gap-3 px-1">
+                    <h1 className="text-base font-semibold" title={t("workspace.description")}>{t("workspace.title")}</h1>
 
                     <div className="flex flex-wrap items-center gap-3">
                     <button
@@ -235,14 +270,15 @@ function WorkspacePageInner() {
                 ) : collections.length === 0 ? (
                     <p className="text-sm text-muted-foreground">{t("workspace.noCollections")}</p>
                 ) : context ? (
-                    <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
+                    <div className="flex min-h-0 flex-1 flex-col gap-2 lg:flex-row">
                         {chatAberto ? (
                             <aside
                                 data-testid="painel-chat"
                                 aria-label={t("workspace.chat.toggle")}
-                                className="flex max-h-[40vh] w-full shrink-0 flex-col overflow-hidden rounded-lg border border-border lg:h-[calc(100vh-9rem)] lg:max-h-none lg:w-[380px]"
+                                className="flex max-h-[40vh] w-full shrink-0 flex-col overflow-hidden rounded-lg border border-border lg:h-full lg:max-h-none lg:w-[var(--painel)]"
+                                style={{ "--painel": `${larguraPainel}px` } as React.CSSProperties}
                             >
-                                <div role="tablist" className="flex shrink-0 border-b border-border text-sm">
+                                <div role="tablist" className="flex shrink-0 items-stretch border-b border-border text-sm">
                                     {(["chat", "documentos"] as const).map((nome) => (
                                         <button
                                             key={nome}
@@ -256,6 +292,16 @@ function WorkspacePageInner() {
                                             {t(nome === "chat" ? "workspace.chat.tab" : "workspace.documents.tab")}
                                         </button>
                                     ))}
+                                    <button
+                                        type="button"
+                                        onClick={() => setChatAberto(false)}
+                                        aria-label={t("workspace.chat.close")}
+                                        title={t("workspace.chat.close")}
+                                        data-testid="fechar-painel"
+                                        className="px-2 text-muted-foreground hover:text-foreground"
+                                    >
+                                        <X className="h-4 w-4" aria-hidden />
+                                    </button>
                                 </div>
                                 {/* O chat fica montado escondido para nao perder a conversa ao trocar de aba. */}
                                 <div className="min-h-0 flex-1" hidden={aba !== "chat"}>
@@ -281,7 +327,24 @@ function WorkspacePageInner() {
                                 </div>
                             </aside>
                         ) : null}
-                        <div className="min-w-0 flex-1">
+                        {chatAberto ? (
+                            <div
+                                role="separator"
+                                aria-orientation="vertical"
+                                aria-label={t("workspace.chat.resize")}
+                                title={t("workspace.chat.resize")}
+                                data-testid="redimensionar-painel"
+                                className="hidden w-2 shrink-0 cursor-col-resize rounded hover:bg-primary/20 lg:block"
+                                onPointerDown={(event) => {
+                                    arrastoDaDivisa.current = { x0: event.clientX, largura0: larguraPainel };
+                                    event.currentTarget.setPointerCapture(event.pointerId);
+                                }}
+                                onPointerMove={aoArrastarDivisa}
+                                onPointerUp={aoSoltarDivisa}
+                                onPointerCancel={aoSoltarDivisa}
+                            />
+                        ) : null}
+                        <div className="min-h-0 min-w-0 flex-1">
                             <WorkspaceCanvas
                                 ref={canvasRef}
                                 key={String(context.collection.id)}

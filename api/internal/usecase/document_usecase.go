@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"mime"
 	"net/http"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+	"thing-index/internal/retrieval"
 	"time"
 
 	"thing-index/internal/domain"
@@ -1829,6 +1831,40 @@ func estimateIndexQualityScore(evaluation *domain.IndexEvaluationResult) float64
 	return score
 }
 
+// bm25Scores pontua cada texto pela consulta com BM25 (Robertson & Zaragoza,
+// k1=1,2, b=0,75), com acentos dobrados nos dois lados. Devolve o score de
+// cada posicao, ja multiplicado por 100 e arredondado, para caber nos ints
+// dos hits e manter os pesos relativos (no x3, pagina x2, tabela x5) que o
+// scorer de substring usava.
+//
+// Por que BM25 e nao a contagem de substring: o experimento do artigo
+// (internal/retrieval, bracos A e B) mediu P@1 de 0,56 contra 0,75 sobre o
+// mesmo corpus. Na colecao da faculdade a contagem de substring fazia paginas
+// longas do PPC vencerem a linha curta da matriz que tinha a resposta, porque
+// a consulta carrega "em", "que", "de" e toda pagina longa contem todas. O
+// IDF do BM25 e a normalizacao por comprimento resolvem exatamente isso.
+// O braco A do experimento continua sendo a contagem de substring: ele mede o
+// sistema como foi publicado; a producao passa a ser o braco B com dobra de
+// acentos.
+func bm25Scores(query string, texts []string) []int {
+	docs := make([]retrieval.Document, len(texts))
+	for i, text := range texts {
+		docs[i] = retrieval.Document{ID: strconv.Itoa(i), Text: retrieval.FoldDiacritics(text)}
+	}
+	// A consulta passa pelo tokenizador de producao antes do BM25 para manter
+	// a expansao numerica ("seven" tambem vira "7"), que o benchmark publico
+	// exercita e o tokenizador do experimento nao faz.
+	queryText := retrieval.FoldDiacritics(strings.Join(tokenizeRetrievalText(query), " "))
+	scores := make([]int, len(texts))
+	for _, result := range retrieval.NewBM25Index(docs, retrieval.DefaultBM25Params()).Search(queryText) {
+		i, err := strconv.Atoi(result.DocID)
+		if err == nil && i >= 0 && i < len(scores) {
+			scores[i] = int(math.Round(result.Score * 100))
+		}
+	}
+	return scores
+}
+
 func buildCollectionRetrieval(
 	query string,
 	documents []models.Document,
@@ -1847,18 +1883,40 @@ func buildCollectionRetrieval(
 	for _, doc := range documents {
 		documentTitles[doc.ID] = doc.Title
 		if score := retrievalScore(doc.Title, queryTerms); score > 0 {
-			documentScores[doc.ID] += score
+			documentScores[doc.ID] += score * 100
 		}
 	}
 
+	nodeTexts := make([]string, len(nodes))
+	for i, node := range nodes {
+		nodeTexts[i] = outlineNodeSearchText(node)
+	}
+	nodeScores := bm25Scores(query, nodeTexts)
+	// Ranking de documentos por MELHOR evidencia de cada tipo (no, pagina,
+	// chunk, tabela), nao pela soma de todas: com a soma, um documento longo
+	// com muitas paginas fracas vencia o documento com a tabela certa.
+	best := make(map[uint]map[string]int, len(documents))
+	keep := func(documentID uint, kind string, score int) {
+		if best[documentID] == nil {
+			best[documentID] = map[string]int{}
+		}
+		if score > best[documentID][kind] {
+			best[documentID][kind] = score
+		}
+	}
 	nodeHits := make([]domain.CollectionNodeHit, 0)
-	for _, node := range nodes {
-		score := scoreCollectionNode(node, queryTerms)
+	for i, node := range nodes {
+		score := nodeScores[i] * 3
 		if score == 0 {
 			continue
 		}
+		// Mesmos bonus do scorer anterior, na mesma escala (x100).
+		score += metadataIntValue(node.Metadata, "confidence_score") / 25 * 100
+		if node.Level > 1 {
+			score += 100
+		}
 
-		documentScores[node.DocumentID] += score
+		keep(node.DocumentID, "node", score)
 		nodeHits = append(nodeHits, domain.CollectionNodeHit{
 			DocumentID: node.DocumentID,
 			NodeID:     node.NodeID,
@@ -1883,13 +1941,18 @@ func buildCollectionRetrieval(
 		nodeHits = nodeHits[:8]
 	}
 
+	pageTexts := make([]string, len(pages))
+	for i, page := range pages {
+		pageTexts[i] = strings.Join([]string{page.Summary, page.Content}, " ")
+	}
+	pageScores := bm25Scores(query, pageTexts)
 	pageHits := make([]domain.CollectionPageHit, 0)
-	for _, page := range pages {
-		score := scoreCollectionPage(page, queryTerms)
+	for i, page := range pages {
+		score := pageScores[i] * 2
 		if score == 0 {
 			continue
 		}
-		documentScores[page.DocumentID] += score
+		keep(page.DocumentID, "page", score)
 		pageHits = append(pageHits, domain.CollectionPageHit{
 			DocumentID: page.DocumentID,
 			PageNumber: page.PageNumber,
@@ -1910,20 +1973,30 @@ func buildCollectionRetrieval(
 		pageHits = pageHits[:8]
 	}
 
-	for _, chunk := range chunks {
-		score := scoreCollectionChunk(chunk, queryTerms)
-		if score == 0 {
-			continue
+	chunkTexts := make([]string, len(chunks))
+	for i, chunk := range chunks {
+		if chunk.ChunkType != "table_section" {
+			chunkTexts[i] = strings.Join([]string{chunk.Title, chunk.Content}, " ")
 		}
-		documentScores[chunk.DocumentID] += score
 	}
-
-	for _, table := range tables {
-		score := scoreCollectionTable(table, queryTerms)
-		if score == 0 {
-			continue
+	for i, score := range bm25Scores(query, chunkTexts) {
+		if score > 0 {
+			keep(chunks[i].DocumentID, "chunk", score*2)
 		}
-		documentScores[table.DocumentID] += score
+	}
+	tableTexts := make([]string, len(tables))
+	for i, table := range tables {
+		tableTexts[i] = strings.Join([]string{table.Title, strings.Join(table.Headers, " "), renderTableRowsForRetrieval(table.Rows, 3)}, " ")
+	}
+	for i, score := range bm25Scores(query, tableTexts) {
+		if score > 0 {
+			keep(tables[i].DocumentID, "table", score*5)
+		}
+	}
+	for documentID, kinds := range best {
+		for _, score := range kinds {
+			documentScores[documentID] += score
+		}
 	}
 
 	documentHits := make([]domain.CollectionDocumentHit, 0, len(documentScores))
@@ -1949,7 +2022,7 @@ func buildCollectionRetrieval(
 		DocumentHits: documentHits,
 		NodeHits:     nodeHits,
 		PageHits:     pageHits,
-		Strategy:     "collection-tree",
+		Strategy:     "collection-bm25",
 	}
 }
 

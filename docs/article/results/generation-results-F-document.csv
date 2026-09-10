@@ -1,0 +1,397 @@
+question_id,stratum,origin,arm,scope,repeat,model,correct,cited_pages,provenance_ok,retrieval_hit,prompt_tokens,completion_tokens,usage_reported,latency_ms,cost_usd,truncated,error,answer
+t01,tabela,pdf,F,document,1,gemma4:31b,true,1,true,,3618,50,true,914,,false,,O pré-requisito da disciplina Estrutura de Dados I (SIS07302) na grade 07 é a disciplina Programação de Computadores I (SIS07206) [página 1].
+t01,tabela,pdf,F,document,2,gemma4:31b,true,1,true,,3618,50,true,557,,false,,O pré-requisito da disciplina Estrutura de Dados I (SIS07302) na grade 07 é a disciplina Programação de Computadores I (SIS07206) [página 1].
+t01,tabela,pdf,F,document,3,gemma4:31b,true,1,true,,3618,50,true,579,,false,,O pré-requisito da disciplina Estrutura de Dados I (SIS07302) na grade 07 é a disciplina Programação de Computadores I (SIS07206) [página 1].
+t02,tabela,rodada-cc5,F,document,1,gemma4:31b,true,1,true,,3610,45,true,527,,false,,O pré-requisito da disciplina Sistemas Operacionais (SIS07305) é a disciplina Arquitetura e Organização de Computadores (SIS07201) [página 1].
+t02,tabela,rodada-cc5,F,document,2,gemma4:31b,true,1,true,,3610,45,true,568,,false,,O pré-requisito da disciplina Sistemas Operacionais (SIS07305) é a disciplina Arquitetura e Organização de Computadores (SIS07201) [página 1].
+t02,tabela,rodada-cc5,F,document,3,gemma4:31b,true,1,true,,3610,45,true,725,,false,,O pré-requisito da disciplina Sistemas Operacionais (SIS07305) é a disciplina Arquitetura e Organização de Computadores (SIS07201) [página 1].
+t03,tabela,pdf,F,document,1,gemma4:31b,true,1,true,,3613,63,true,581,,false,,As disciplinas pré-requisito de Programação de Computadores III (SIS07405) são Programação de Computadores II (SIS07303) e Programação Orientada a Objeto (POO) (SIS07304) [página 1].
+t03,tabela,pdf,F,document,2,gemma4:31b,true,1,true,,3613,63,true,772,,false,,As disciplinas pré-requisito de Programação de Computadores III (SIS07405) são Programação de Computadores II (SIS07303) e Programação Orientada a Objeto (POO) (SIS07304) [página 1].
+t03,tabela,pdf,F,document,3,gemma4:31b,true,1,true,,3613,63,true,665,,false,,As disciplinas pré-requisito de Programação de Computadores III (SIS07405) são Programação de Computadores II (SIS07303) e Programação Orientada a Objeto (POO) (SIS07304) [página 1].
+t04,tabela,rodada-cc5,F,document,1,gemma4:31b,false,1,true,,3616,34,true,527,,false,,A disciplina Banco de Dados I está no 03 período [página 1] e não possui pré-requisito listado [página 1].
+t04,tabela,rodada-cc5,F,document,2,gemma4:31b,false,1,true,,3616,34,true,574,,false,,A disciplina Banco de Dados I está no 03 período [página 1] e não possui pré-requisito listado [página 1].
+t04,tabela,rodada-cc5,F,document,3,gemma4:31b,false,1,true,,3616,34,true,531,,false,,A disciplina Banco de Dados I está no 03 período [página 1] e não possui pré-requisito listado [página 1].
+t05,tabela,pdf,F,document,1,gemma4:31b,true,1,true,,3618,49,true,637,,false,,A disciplina Banco de Dados II é ofertada no 04º período [página 1] e tem como pré-requisito a disciplina Banco de Dados I (SIS07301) [página 1].
+t05,tabela,pdf,F,document,2,gemma4:31b,true,1,true,,3618,49,true,621,,false,,A disciplina Banco de Dados II é ofertada no 04º período (p. 1) e tem como pré-requisito a disciplina Banco de Dados I (SIS07301) (p. 1).
+t05,tabela,pdf,F,document,3,gemma4:31b,true,1,true,,3618,48,true,606,,false,,A disciplina Banco de Dados II é ofertada no 04º período (p. 1) e tem como pré-requisito a disciplina SIS07301 - Banco de Dados I (p. 1).
+t06,tabela,pdf,F,document,1,gemma4:31b,false,2,true,,3616,39,true,682,,false,,A disciplina Projeto Comunitário I possui carga horária de 150 horas (p. 2) e pertence à categoria Natureza - Obrigatória (p. 2).
+t06,tabela,pdf,F,document,2,gemma4:31b,false,2,true,,3616,39,true,703,,false,,A disciplina Projeto Comunitário I possui carga horária de 150 horas [página 2] e pertence à categoria Natureza - Obrigatória [página 2].
+t06,tabela,pdf,F,document,3,gemma4:31b,false,2,true,,3616,39,true,600,,false,,A disciplina Projeto Comunitário I possui carga horária de 150 horas [página 2] e pertence à categoria Natureza - Obrigatória [página 2].
+t07,tabela,pdf,F,document,1,gemma4:31b,true,2,true,,3610,57,true,654,,false,,Os pré-requisitos da disciplina de Inteligência Artificial (SIS07703) são as disciplinas SIS07206 (Programação de Computadores I) e SIS07602 (Probabilidade e Estatística) [página 2].
+t07,tabela,pdf,F,document,2,gemma4:31b,true,2,true,,3610,57,true,756,,false,,Os pré-requisitos da disciplina de Inteligência Artificial (SIS07703) são as disciplinas SIS07206 (Programação de Computadores I) e SIS07602 (Probabilidade e Estatística) [página 2].
+t07,tabela,pdf,F,document,3,gemma4:31b,true,2,true,,3610,57,true,650,,false,,Os pré-requisitos da disciplina de Inteligência Artificial (SIS07703) são as disciplinas SIS07206 (Programação de Computadores I) e SIS07602 (Probabilidade e Estatística) [página 2].
+t08,tabela,pdf,F,document,1,gemma4:31b,true,2,true,,3616,34,true,516,,false,,"O aluno cursa Estágio Supervisionado I no 07º período, com uma carga horária de 83 horas (p. 2)."
+t08,tabela,pdf,F,document,2,gemma4:31b,true,2,true,,3616,34,true,650,,false,,"O aluno cursa Estágio Supervisionado I no 07º período, com uma carga horária de 83 horas (p. 2)."
+t08,tabela,pdf,F,document,3,gemma4:31b,true,2,true,,3616,34,true,618,,false,,"O aluno cursa Estágio Supervisionado I no 07º período, com uma carga horária de 83 horas (p. 2)."
+t09,tabela,pdf,F,document,1,gemma4:31b,true,2,true,,3612,41,true,662,,false,,O pré-requisito da disciplina Redes de Computadores (SIS07505) é a disciplina Sistemas Operacionais (SIS07305) [página 2].
+t09,tabela,pdf,F,document,2,gemma4:31b,true,2,true,,3612,41,true,636,,false,,O pré-requisito da disciplina Redes de Computadores (SIS07505) é a disciplina Sistemas Operacionais (SIS07305) [página 2].
+t09,tabela,pdf,F,document,3,gemma4:31b,true,2,true,,3612,41,true,550,,false,,O pré-requisito da disciplina Redes de Computadores (SIS07505) é a disciplina Sistemas Operacionais (SIS07305) [página 2].
+t10,tabela,pdf,F,document,1,gemma4:31b,true,2,true,,3611,42,true,543,,false,,O pré-requisito da disciplina Segurança da Informação (SIS07805) é a disciplina Redes de Computadores (SIS07505) [página 2].
+t10,tabela,pdf,F,document,2,gemma4:31b,true,2,true,,3611,42,true,582,,false,,O pré-requisito da disciplina Segurança da Informação (SIS07805) é a disciplina Redes de Computadores (SIS07505) [página 2].
+t10,tabela,pdf,F,document,3,gemma4:31b,true,2,true,,3611,42,true,559,,false,,O pré-requisito da disciplina Segurança da Informação (SIS07805) é a disciplina Redes de Computadores (SIS07505) [página 2].
+t11,tabela,rodada-cc5,F,document,1,gemma4:31b,true,3,true,,3613,253,true,1058,,false,,"As disciplinas optativas da grade 07 são (p. 3):
+
+1. SIS07OP01 - Libras - Língua Brasileira de Sinais
+2. SIS07OP02 - Redes de Computadores Avançada
+3. SIS07OP03 - Sistemas Distribuídos
+4. SIS07OP04 - Qualidade de Software
+5. SIS07OP05 - Tópicos Avançados de Banco de Dados
+6. SIS07OP06 - Aprendizado de Máquina
+7. SIS07OP07 - Filosofia da Ciência e Tecnologia
+8. SIS07OP08 - Big Data and Data Analitycs
+9. SIS07OP09 - IoT - Internet das Coisas
+10. SIS07OP10 - Desenvolvimento de Jogos Digitais
+11. SIS07OP11 - Desenvolvimento de Jogos Digitais
+12. SIS07OP12 - Tecnologias Emergentes em Sistemas de Informação
+13. SIS07OP13 - Programação Web II
+
+No total, são 13 disciplinas optativas (p. 3)."
+t11,tabela,rodada-cc5,F,document,2,gemma4:31b,true,3,true,,3613,253,true,1057,,false,,"As disciplinas optativas da grade 07 são (p. 3):
+
+1. SIS07OP01 - Libras - Língua Brasileira de Sinais
+2. SIS07OP02 - Redes de Computadores Avançada
+3. SIS07OP03 - Sistemas Distribuídos
+4. SIS07OP04 - Qualidade de Software
+5. SIS07OP05 - Tópicos Avançados de Banco de Dados
+6. SIS07OP06 - Aprendizado de Máquina
+7. SIS07OP07 - Filosofia da Ciência e Tecnologia
+8. SIS07OP08 - Big Data and Data Analitycs
+9. SIS07OP09 - IoT - Internet das Coisas
+10. SIS07OP10 - Desenvolvimento de Jogos Digitais
+11. SIS07OP11 - Desenvolvimento de Jogos Digitais
+12. SIS07OP12 - Tecnologias Emergentes em Sistemas de Informação
+13. SIS07OP13 - Programação Web II
+
+No total, são 13 disciplinas optativas (p. 3)."
+t11,tabela,rodada-cc5,F,document,3,gemma4:31b,true,3,true,,3613,319,true,1188,,false,,"As disciplinas optativas da grade 07 são 13 no total [p. 3]:
+
+1. SIS07OP01 - Libras - Língua Brasileira de Sinais [p. 3]
+2. SIS07OP02 - Redes de Computadores Avançada [p. 3]
+3. SIS07OP03 - Sistemas Distribuídos [p. 3]
+4. SIS07OP04 - Qualidade de Software [p. 3]
+5. SIS07OP05 - Tópicos Avançados de Banco de Dados [p. 3]
+6. SIS07OP06 - Aprendizado de Máquina [p. 3]
+7. SIS07OP07 - Filosofia da Ciência e Tecnologia [p. 3]
+8. SIS07OP08 - Big Data and Data Analitycs [p. 3]
+9. SIS07OP09 - IoT - Internet das Coisas [p. 3]
+10. SIS07OP10 - Desenvolvimento de Jogos Digitais [p. 3]
+11. SIS07OP11 - Desenvolvimento de Jogos Digitais [p. 3]
+12. SIS07OP12 - Tecnologias Emergentes em Sistemas de Informação [p. 3]
+13. SIS07OP13 - Programação Web II [p. 3]"
+t12,tabela,pdf,F,document,1,gemma4:31b,true,3,true,,3616,49,true,2268,,false,,A disciplina de Libras - Língua Brasileira de Sinais (SIS07OP01) possui carga horária de 67 horas [página 3] e sua natureza é optativa [página 3].
+t12,tabela,pdf,F,document,2,gemma4:31b,true,3,true,,3616,49,true,738,,false,,A disciplina de Libras - Língua Brasileira de Sinais (SIS07OP01) possui carga horária de 67 horas [página 3] e sua natureza é optativa [página 3].
+t12,tabela,pdf,F,document,3,gemma4:31b,true,3,true,,3616,49,true,729,,false,,A disciplina de Libras - Língua Brasileira de Sinais (SIS07OP01) possui carga horária de 67 horas [página 3] e sua natureza é optativa [página 3].
+t13,tabela,pdf,F,document,1,gemma4:31b,true,1;2;3,true,,3610,35,true,713,,false,,"A duração do curso é de, no mínimo, 8 períodos e, no máximo, 12 períodos (p. 1, 2 e 3)."
+t13,tabela,pdf,F,document,2,gemma4:31b,true,1;2;3,true,,3610,35,true,726,,false,,"A duração do curso é de, no mínimo, 8 períodos e, no máximo, 12 períodos (p. 1, 2, 3)."
+t13,tabela,pdf,F,document,3,gemma4:31b,true,1;2;3,true,,3610,35,true,783,,false,,"A duração do curso é de, no mínimo, 8 períodos e, no máximo, 12 períodos (p. 1, 2, 3)."
+t14,tabela,pdf,F,document,1,gemma4:31b,true,1;65,true,,110296,59,true,8088,,false,,"A carga horária da disciplina de Algoritmos e Lógica de Programação é de 120 h/a (horas-aula), o que corresponde a 100 h/r (horas-relógio) [página 1, página 65]."
+t14,tabela,pdf,F,document,2,gemma4:31b,true,1;65,true,,110296,54,true,2118,,false,,"A carga horária de Algoritmos e Lógica de Programação é de 120 h/a (horas-aula) ou 100 h/r (horas-relógio) [página 1, página 65]."
+t14,tabela,pdf,F,document,3,gemma4:31b,true,1;65,true,,110296,54,true,2066,,false,,"A carga horária de Algoritmos e Lógica de Programação é de 120 h/a (horas-aula) ou 100 h/r (horas-relógio) [página 1, página 65]."
+t15,tabela,rodada-cc5,F,document,1,gemma4:31b,true,1;51;57,true,,110297,75,true,1966,,false,,"A carga horária de Programação Orientada a Objeto (POO) é de 67 horas (conforme a Matriz Curricular de 2023, p. 1) ou 80 horas/aula (conforme a Tabela 3 e a periodização do PPC, p. 51, 57)."
+t15,tabela,rodada-cc5,F,document,2,gemma4:31b,true,1;51;57,true,,110297,75,true,4001,,false,,"A carga horária de Programação Orientada a Objeto (POO) é de 67 horas (conforme a Matriz Curricular de 2023, p. 1) ou 80 horas/aula (conforme a Tabela 3 e a periodização do PPC, p. 51, 57)."
+t15,tabela,rodada-cc5,F,document,3,gemma4:31b,true,1;51;57,true,,110297,73,true,4010,,false,,"A carga horária de Programação Orientada a Objeto (POO) é de 67 horas (conforme a Matriz Curricular, p. 1) ou 80 horas/aula (conforme a Tabela de Componentes Curriculares, p. 51 e a Periodização, p. 57)."
+t16,tabela,rodada-cc5,F,document,1,gemma4:31b,true,57,true,,110292,25,true,7422,,false,,A disciplina de Metodologia da Pesquisa Científica está no 2º período (p. 57).
+t16,tabela,rodada-cc5,F,document,2,gemma4:31b,true,57,true,,110292,25,true,1830,,false,,A disciplina de Metodologia da Pesquisa Científica está no 2º período (p. 57).
+t16,tabela,rodada-cc5,F,document,3,gemma4:31b,true,57,true,,110292,25,true,1818,,false,,A disciplina de Metodologia da Pesquisa Científica está no 2º período (p. 57).
+t17,tabela,pdf,F,document,1,gemma4:31b,true,60,false,,106839,54,true,6077,,false,,"Segundo o quadro de carga horária do PPC de 2019, o aluno precisa cumprir 200 horas/aula (equivalente a 167 horas/relógio) de Atividades Complementares (p. 60)."
+t17,tabela,pdf,F,document,2,gemma4:31b,true,60,false,,106839,54,true,1856,,false,,"Segundo o quadro de carga horária do PPC de 2019, o aluno precisa cumprir 200 horas/aula (equivalente a 167 horas/relógio) de Atividades Complementares (p. 60)."
+t17,tabela,pdf,F,document,3,gemma4:31b,true,54;60,true,,106839,58,true,2196,,false,,"Segundo o quadro de carga horária do PPC de 2019, o aluno precisa cumprir 200 horas/aula (equivalente a 167 horas/relógio) de Atividades Complementares (p. 54, 60)."
+t18,tabela,pdf,F,document,1,gemma4:31b,true,54;60,true,,106828,46,true,2236,,false,,"O curso exige 133 horas-relógio de componentes optativos, conforme indicado na Tabela 3 (p. 54) e na seção de Componentes Optativos (p. 60)."
+t18,tabela,pdf,F,document,2,gemma4:31b,true,54;60,true,,106828,46,true,2433,,false,,"O curso exige 133 horas-relógio de componentes optativos, conforme indicado na Tabela 3 (p. 54) e na seção de Componentes Optativos (p. 60)."
+t18,tabela,pdf,F,document,3,gemma4:31b,true,54;60,true,,106828,46,true,1809,,false,,"O curso exige 133 horas-relógio de componentes optativos, conforme indicado na Tabela 3 (p. 54) e na seção de Componentes Optativos (p. 60)."
+t19,tabela,pdf,F,document,1,gemma4:31b,true,56,true,,106833,38,true,1928,,false,,"O subtotal de horas-relógio do 1º período, conforme a Tabela 4, é de 333 h/r (p. 56)."
+t19,tabela,pdf,F,document,2,gemma4:31b,true,56,true,,106833,38,true,1574,,false,,"O subtotal de horas-relógio do 1º período, conforme a Tabela 4, é de 333 h/r (p. 56)."
+t19,tabela,pdf,F,document,3,gemma4:31b,true,56,true,,106833,38,true,1518,,false,,"O subtotal de horas-relógio do 1º período, conforme a Tabela 4, é de 333 h/r (p. 56)."
+t20,tabela,pdf,F,document,1,gemma4:31b,true,140,false,,30273,44,true,2259,,false,,O componente curricular Banco de Dados I possui 4 aulas por semana [página 140] e a carga horária total é de 80 horas-aula [página 140].
+t20,tabela,pdf,F,document,2,gemma4:31b,true,140,false,,30273,42,true,1067,,false,,O componente curricular Banco de Dados I possui 4 aulas por semana [página 140] e uma carga horária de 80 horas-aula [página 140].
+t20,tabela,pdf,F,document,3,gemma4:31b,true,140,false,,30273,42,true,1176,,false,,O componente curricular Banco de Dados I possui 4 aulas por semana [página 140] e uma carga horária de 80 horas-aula [página 140].
+t21,tabela,pdf,F,document,1,gemma4:31b,true,7,false,,104877,31,true,5382,,false,,A carga horária total do curso Técnico em Informática para Internet é de 3.012 horas relógio (p. 7).
+t21,tabela,pdf,F,document,2,gemma4:31b,true,7,false,,104877,31,true,2077,,false,,A carga horária total do curso Técnico em Informática para Internet é de 3.012 horas relógio (p. 7).
+t21,tabela,pdf,F,document,3,gemma4:31b,true,7,false,,104877,31,true,1913,,false,,A carga horária total do curso Técnico em Informática para Internet é de 3.012 horas relógio (p. 7).
+c01,calendario,rodada-cc5,F,document,1,gemma4:31b,true,1,true,,5503,39,true,814,,false,,O ano letivo de 2026-1 e o primeiro semestre letivo começam no dia 9 de fevereiro de 2026 (p. 1).
+c01,calendario,rodada-cc5,F,document,2,gemma4:31b,true,1,true,,5503,39,true,622,,false,,O ano letivo de 2026-1 e o primeiro semestre letivo começam no dia 9 de fevereiro de 2026 (p. 1).
+c01,calendario,rodada-cc5,F,document,3,gemma4:31b,true,1,true,,5503,39,true,598,,false,,O ano letivo de 2026-1 e o primeiro semestre letivo começam no dia 9 de fevereiro de 2026 (p. 1).
+c02,calendario,pdf,F,document,1,gemma4:31b,true,1,true,,5506,42,true,657,,false,,O período de rematrícula dos estudantes veteranos para o semestre 2026-1 ocorre de 2 a 6 de fevereiro de 2026 (p. 1).
+c02,calendario,pdf,F,document,2,gemma4:31b,true,1,true,,5506,42,true,781,,false,,O período de rematrícula dos estudantes veteranos para o semestre 2026-1 ocorre de 2 a 6 de fevereiro de 2026 (p. 1).
+c02,calendario,pdf,F,document,3,gemma4:31b,true,1,true,,5506,42,true,1092,,false,,O período de rematrícula dos estudantes veteranos para o semestre 2026-1 ocorre de 2 a 6 de fevereiro de 2026 (p. 1).
+c03,calendario,pdf,F,document,1,gemma4:31b,true,3,true,,5500,25,true,559,,false,,O primeiro semestre letivo de 2026 termina no dia 3 de julho (p. 3).
+c03,calendario,pdf,F,document,2,gemma4:31b,true,3,true,,5500,23,true,917,,false,,O primeiro semestre de 2026 termina no dia 3 de julho (p. 3).
+c03,calendario,pdf,F,document,3,gemma4:31b,true,3,true,,5500,25,true,764,,false,,O primeiro semestre letivo de 2026 termina no dia 3 de julho (p. 3).
+c04,calendario,rodada-cc5,F,document,1,gemma4:31b,true,3,true,,5503,32,true,708,,false,,O período de férias discentes em julho de 2026 é de 06 a 29 de julho (p. 3).
+c04,calendario,rodada-cc5,F,document,2,gemma4:31b,true,3,true,,5503,32,true,677,,false,,O período de férias discentes em julho de 2026 é de 06 a 29 de julho (p. 3).
+c04,calendario,rodada-cc5,F,document,3,gemma4:31b,true,3,true,,5503,32,true,769,,false,,O período de férias discentes em julho de 2026 é de 06 a 29 de julho (p. 3).
+c05,calendario,pdf,F,document,1,gemma4:31b,true,3,true,,5500,26,true,596,,false,,O segundo semestre letivo de 2026 começa no dia 30 de julho (p. 3).
+c05,calendario,pdf,F,document,2,gemma4:31b,true,3,true,,5500,25,true,617,,false,,O segundo semestre letivo de 2026 começa no dia 30 de julho p. 3.
+c05,calendario,pdf,F,document,3,gemma4:31b,true,3,true,,5500,26,true,576,,false,,O segundo semestre letivo de 2026 começa no dia 30 de julho (p. 3).
+c06,calendario,pdf,F,document,1,gemma4:31b,true,3,true,,5507,42,true,700,,false,,O prazo de ajuste de matrículas do Ensino Superior para 2026-2 é de 7 a 12 de agosto de 2026 (p. 3).
+c06,calendario,pdf,F,document,2,gemma4:31b,true,3,true,,5507,42,true,982,,false,,O prazo de ajuste de matrículas do Ensino Superior para 2026-2 é de 7 a 12 de agosto de 2026 (p. 3).
+c06,calendario,pdf,F,document,3,gemma4:31b,true,3,true,,5507,42,true,677,,false,,O prazo de ajuste de matrículas do Ensino Superior para 2026-2 é de 7 a 12 de agosto de 2026 (p. 3).
+c07,calendario,pdf,F,document,1,gemma4:31b,true,2,true,,5502,42,true,594,,false,,O feriado municipal da Emancipação de Palmas e Dia de Luta pela Educação Inclusiva é no dia 14 de abril de 2026 (p. 2).
+c07,calendario,pdf,F,document,2,gemma4:31b,true,2,true,,5502,42,true,587,,false,,O feriado municipal da Emancipação de Palmas e Dia de Luta pela Educação Inclusiva é no dia 14 de abril de 2026 (p. 2).
+c07,calendario,pdf,F,document,3,gemma4:31b,true,2,true,,5502,42,true,643,,false,,O feriado municipal da Emancipação de Palmas e Dia de Luta pela Educação Inclusiva é no dia 14 de abril de 2026 (p. 2).
+c08,calendario,pdf,F,document,1,gemma4:31b,false,3,true,,5501,32,true,627,,false,,A Mostra de Cursos acontece entre os dias 15 e 17 de setembro de 2026 (p. 3).
+c08,calendario,pdf,F,document,2,gemma4:31b,false,3,true,,5501,32,true,586,,false,,A Mostra de Cursos acontece entre os dias 15 e 17 de setembro de 2026 (p. 3).
+c08,calendario,pdf,F,document,3,gemma4:31b,false,3,true,,5501,32,true,548,,false,,A Mostra de Cursos acontece entre os dias 15 e 17 de setembro de 2026 (p. 3).
+c09,calendario,pdf,F,document,1,gemma4:31b,true,4,true,,5506,40,true,986,,false,,O prazo final para solicitação de trancamento de curso em 2026-2 é o dia 2 de outubro de 2026 (p. 4).
+c09,calendario,pdf,F,document,2,gemma4:31b,true,4,true,,5506,40,true,687,,false,,O prazo final para solicitação de trancamento de curso em 2026-2 é o dia 2 de outubro de 2026 (p. 4).
+c09,calendario,pdf,F,document,3,gemma4:31b,true,4,true,,5506,40,true,721,,false,,O prazo final para solicitação de trancamento de curso em 2026-2 é o dia 2 de outubro de 2026 (p. 4).
+c10,calendario,pdf,F,document,1,gemma4:31b,true,4,true,,5500,26,true,733,,false,,O segundo semestre letivo de 2026 termina no dia 15 de dezembro (p. 4).
+c10,calendario,pdf,F,document,2,gemma4:31b,true,4,true,,5500,26,true,739,,false,,O segundo semestre letivo de 2026 termina no dia 15 de dezembro (p. 4).
+c10,calendario,pdf,F,document,3,gemma4:31b,true,4,true,,5500,26,true,705,,false,,O segundo semestre letivo de 2026 termina no dia 15 de dezembro (p. 4).
+c11,calendario,rodada-cc5,F,document,1,gemma4:31b,true,4;5,true,,5509,78,true,827,,false,,"O ano de 2026 tem um total de 205 dias letivos [página 4]. A distribuição por semestre é a seguinte:
+
+*   **1º Semestre:** 105 dias letivos [página 5].
+*   **2º Semestre:** 100 dias letivos [página 5]."
+c11,calendario,rodada-cc5,F,document,2,gemma4:31b,true,4;5,true,,5509,78,true,655,,false,,"O ano de 2026 tem um total de 205 dias letivos [página 4]. A distribuição por semestre é a seguinte:
+
+*   **1º Semestre:** 105 dias letivos [página 5].
+*   **2º Semestre:** 100 dias letivos [página 5]."
+c11,calendario,rodada-cc5,F,document,3,gemma4:31b,true,4;5,true,,5509,78,true,666,,false,,"O ano de 2026 tem um total de 205 dias letivos [página 4]. A distribuição por semestre é a seguinte:
+
+*   **1º Semestre:** 105 dias letivos [página 5].
+*   **2º Semestre:** 100 dias letivos [página 5]."
+c12,calendario,pdf,F,document,1,gemma4:31b,true,3,true,,5509,40,true,701,,false,,O prazo final para formandos protocolarem as atividades complementares em 2026-1 é o dia 3 de julho de 2026 (p. 3).
+c12,calendario,pdf,F,document,2,gemma4:31b,true,3,true,,5509,41,true,584,,false,,O prazo final para formandos protocolarem as Atividades Complementares em 2026-1 é o dia 3 de julho de 2026 (p. 3).
+c12,calendario,pdf,F,document,3,gemma4:31b,true,3,true,,5509,41,true,583,,false,,O prazo final para formandos protocolarem as Atividades Complementares em 2026-1 é o dia 3 de julho de 2026 (p. 3).
+c13,calendario,pdf,F,document,1,gemma4:31b,true,4,true,,5502,45,true,631,,false,,"A Semana da Pausa de outubro de 2026 ocorre de 12 a 16 de outubro, compreendendo feriados e recesso acadêmico e administrativo (p. 4)."
+c13,calendario,pdf,F,document,2,gemma4:31b,true,4,true,,5502,45,true,596,,false,,"A Semana da Pausa de outubro de 2026 ocorre de 12 a 16 de outubro, compreendendo feriados e recesso acadêmico e administrativo (p. 4)."
+c13,calendario,pdf,F,document,3,gemma4:31b,true,4,true,,5502,45,true,600,,false,,"A Semana da Pausa de outubro de 2026 ocorre de 12 a 16 de outubro, compreendendo feriados e recesso acadêmico e administrativo (p. 4)."
+c14,calendario,pdf,F,document,1,gemma4:31b,true,4,true,,5505,37,true,757,,false,,"Os Jogos do Ensino Superior em 2026 acontecem nos dias 17, 18 e 19 de novembro (p. 4)."
+c14,calendario,pdf,F,document,2,gemma4:31b,true,4,true,,5505,37,true,703,,false,,"Os Jogos do Ensino Superior em 2026 acontecem nos dias 17, 18 e 19 de novembro (p. 4)."
+c14,calendario,pdf,F,document,3,gemma4:31b,true,4,true,,5505,37,true,668,,false,,"Os Jogos do Ensino Superior em 2026 acontecem nos dias 17, 18 e 19 de novembro (p. 4)."
+c15,calendario,pdf,F,document,1,gemma4:31b,true,1,true,,5507,41,true,577,,false,,O prazo para a confirmação de matrícula dos estudantes ingressantes no Ensino Superior para 2026-1 é de 9 a 13 de fevereiro (p. 1).
+c15,calendario,pdf,F,document,2,gemma4:31b,true,1,true,,5507,47,true,573,,false,,O prazo para a confirmação de matrícula dos estudantes ingressantes no Ensino Superior para 2026-1 é de 9 a 13 de fevereiro de 2026 (p. 1).
+c15,calendario,pdf,F,document,3,gemma4:31b,true,1,true,,5507,47,true,615,,false,,O prazo para a confirmação de matrícula dos estudantes ingressantes no Ensino Superior para 2026-1 é de 9 a 13 de fevereiro de 2026 (p. 1).
+c16,calendario,pdf,F,document,1,gemma4:31b,true,2,true,,5505,37,true,745,,false,,O último dia do primeiro bimestre letivo de 2026-1 é o dia 25 de abril de 2026 (p. 2).
+c16,calendario,pdf,F,document,2,gemma4:31b,true,2,true,,5505,37,true,1119,,false,,O último dia do primeiro bimestre letivo de 2026-1 é o dia 25 de abril de 2026 (p. 2).
+c16,calendario,pdf,F,document,3,gemma4:31b,true,2,true,,5505,37,true,712,,false,,O último dia do primeiro bimestre letivo de 2026-1 é o dia 25 de abril de 2026 (p. 2).
+p01,prosa,rodada-cc5,F,document,1,gemma4:31b,true,9;1;2,true,,140419,102,true,8152,,false,,"A carga horária total do curso de Sistemas de Informação é de 3600 h/a (horas-aula), o que corresponde a 3000 h/r (horas-relógio) [página 9 do documento PPC Sistemas de Informacao - Palmas (2019), página 1 da Matriz Curricular SI - Palmas (2023) e página 2 do documento Matriz Curricular SI - Palmas (2023)]."
+p01,prosa,rodada-cc5,F,document,2,gemma4:31b,true,9;1;2,true,,140419,100,true,6823,,false,,"A carga horária total do curso de Sistemas de Informação é de 3600 h/a (horas-aula) ou 3000 h/r (horas-relógio) [página 9 do PPC Sistemas de Informacao - Palmas (2019), página 1 da Matriz Curricular SI - Palmas (2023) e página 2 do documento Ementas SI - Palmas (PPC 2023)]."
+p01,prosa,rodada-cc5,F,document,3,gemma4:31b,true,9,true,,140419,63,true,2525,,false,,"A carga horária total do curso de Sistemas de Informação é de 3600 h/a (horas-aula) ou 3000 h/r (horas-relógio) [PPC Sistemas de Informacao - Palmas (2019), p. 9]."
+p02,prosa,pdf,F,document,1,gemma4:31b,true,9,true,,136951,87,true,4156,,false,,"O curso de Sistemas de Informação é ofertado no turno **noturno** [página 9], nos seguintes horários:
+
+*   **Segunda a sexta-feira:** das 19:30 às 23:05 [página 9].
+*   **Sábados:** das 08:00 às 12:00 [página 9]."
+p02,prosa,pdf,F,document,2,gemma4:31b,true,9,true,,136951,87,true,2419,,false,,"O curso de Sistemas de Informação é ofertado no turno **noturno** [página 9], nos seguintes horários:
+*   **Segunda a sexta-feira:** das 19:30 às 23:05 [página 9].
+*   **Sábados:** das 08:00 às 12:00 [página 9]."
+p02,prosa,pdf,F,document,3,gemma4:31b,true,9;2,true,,136951,99,true,4646,,false,,"O curso de Sistemas de Informação é ofertado no turno **noturno** [página 9, página 2], nos seguintes horários:
+*   **Segunda a sexta-feira:** das 19:30 às 23:05 [página 9, página 2];
+*   **Sábados:** das 08:00 às 12:00 [página 9, página 2]."
+p03,prosa,rodada-cc5,F,document,1,gemma4:31b,true,10;2,true,,136949,76,true,2307,,false,,"O curso de Sistemas de Informação oferece 40 vagas anuais, com um mínimo de 20 vagas [página 10 do documento PPC Sistemas de Informacao - Palmas (2019)] e 40 vagas totais anuais [página 2 do documento Ementas SI - Palmas (PPC 2023)]."
+p03,prosa,rodada-cc5,F,document,2,gemma4:31b,true,10,true,,136949,31,true,3587,,false,,O curso de Sistemas de Informação oferece 40 vagas anuais (com um mínimo de 20) [página 10].
+p03,prosa,rodada-cc5,F,document,3,gemma4:31b,true,10,true,,136949,31,true,2469,,false,,O curso de Sistemas de Informação oferece 40 vagas anuais (com um mínimo de 20) [página 10].
+p04,prosa,pdf,F,document,1,gemma4:31b,true,2,true,,136950,37,true,8088,,false,,"O prazo de integralização curricular do curso de Sistemas de Informação é de, no mínimo, 4 anos e, no máximo, 7 anos (p. 2)."
+p04,prosa,pdf,F,document,2,gemma4:31b,true,2,true,,136950,37,true,2255,,false,,"O prazo de integralização curricular do curso de Sistemas de Informação é de, no mínimo, 4 anos e, no máximo, 7 anos (p. 2)."
+p04,prosa,pdf,F,document,3,gemma4:31b,true,2,true,,136950,37,true,2791,,false,,"O prazo de integralização curricular do curso de Sistemas de Informação é de, no mínimo, 4 anos e, no máximo, 7 anos (p. 2)."
+p05,prosa,pdf,F,document,1,gemma4:31b,true,125,true,,106825,70,true,4716,,false,,"Para a aprovação no curso, os critérios são:
+
+*   **Frequência mínima:** igual ou superior a setenta e cinco por cento (75%) ao final do período letivo (p. 125).
+*   **Conceito mínimo:** conceito ""C"" (p. 125)."
+p05,prosa,pdf,F,document,2,gemma4:31b,true,125,true,,106825,70,true,1937,,false,,"Para a aprovação no curso, os critérios são:
+
+*   **Frequência mínima:** igual ou superior a setenta e cinco por cento (75%) ao final do período letivo (p. 125).
+*   **Conceito mínimo:** conceito ""C"" (p. 125)."
+p05,prosa,pdf,F,document,3,gemma4:31b,true,125,true,,106825,70,true,1865,,false,,"Para a aprovação no curso, os critérios são:
+
+*   **Frequência mínima:** igual ou superior a setenta e cinco por cento (75%) ao final do período letivo (p. 125).
+*   **Conceito mínimo:** conceito ""C"" (p. 125)."
+p06,prosa,pdf,F,document,1,gemma4:31b,true,126,true,,106825,53,true,1773,,false,,"No contexto dos cursos superiores do IFPR, o conceito D significa que a aprendizagem do estudante foi **insuficiente** e que ele **não atingiu os objetivos** conforme os critérios propostos no plano de ensino (p. 126)."
+p06,prosa,pdf,F,document,2,gemma4:31b,true,126,true,,106825,53,true,1878,,false,,"No contexto dos cursos superiores do IFPR, o conceito D significa que a aprendizagem do estudante foi **insuficiente** e que ele **não atingiu os objetivos**, conforme os critérios propostos no plano de ensino (p. 126)."
+p06,prosa,pdf,F,document,3,gemma4:31b,true,126,true,,106825,53,true,2134,,false,,"No contexto dos cursos superiores do IFPR, o conceito D significa que a aprendizagem do estudante foi **insuficiente** e que ele **não atingiu os objetivos**, conforme os critérios propostos no plano de ensino (p. 126)."
+p07,prosa,pdf,F,document,1,gemma4:31b,true,31,true,,106823,37,true,1708,,false,,O objetivo geral do curso de Sistemas de Informação é formar recursos humanos para desenvolver sistemas e aplicar tecnologias da computação na solução de problemas organizacionais (p. 31).
+p07,prosa,pdf,F,document,2,gemma4:31b,true,31,true,,106823,37,true,3109,,false,,O objetivo geral do curso de Sistemas de Informação é formar recursos humanos para desenvolver sistemas e aplicar tecnologias da computação na solução de problemas organizacionais (p. 31).
+p07,prosa,pdf,F,document,3,gemma4:31b,true,31,true,,106823,37,true,1524,,false,,O objetivo geral do curso de Sistemas de Informação é formar recursos humanos para desenvolver sistemas e aplicar tecnologias da computação na solução de problemas organizacionais (p. 31).
+p08,prosa,rodada-cc5,F,document,1,gemma4:31b,true,134;185;187,true,,106832,338,true,3374,,false,,"O Trabalho de Conclusão de Curso (TCC) é descrito no PPC da seguinte forma:
+
+*   **Natureza e Requisito:** É um requisito fundamental para a obtenção do título de Bacharel em Sistemas de Informação, consistindo na sistematização dos conhecimentos teórico-práticos obtidos durante a formação e em um processo de investigação científica p. 134, 185.
+*   **Estrutura e Modalidade:** É desenvolvido individualmente ou em grupos de no máximo duas pessoas, na modalidade de monografia p. 185.
+*   **Divisão Curricular:** O TCC é dividido em duas disciplinas: TCC I e TCC II p. 134, 185.
+    *   **TCC I:** Foca na delimitação da temática, definição de objetivos, contribuição, estruturação do projeto, consulta bibliográfica, definição de metodologia e redação do projeto p. 134, 187.
+    *   **TCC II:** Consiste no desenvolvimento do processo investigativo e na apresentação dos resultados em forma de monografia para uma banca examinadora p. 134, 187.
+*   **Período de Apresentação:** O TCC insere-se na estrutura curricular no **7º e 8º blocos (períodos) curriculares** p. 185. A apresentação final (defesa) ocorre ao final da disciplina de TCC II, no 8º período p. 134, 187."
+p08,prosa,rodada-cc5,F,document,2,gemma4:31b,true,134;185;187;186;193;194,true,,106832,339,true,3593,,false,,"De acordo com o documento, o Trabalho de Conclusão de Curso (TCC) é um requisito fundamental para a obtenção do título de Bacharel em Sistemas de Informação, devendo refletir os conhecimentos teórico-práticos adquiridos durante a formação (p. 134).
+
+As principais diretrizes são:
+
+*   **Estrutura e Período:** O TCC é organizado em duas disciplinas: TCC I, no 7º período, onde se delimita a temática e elabora-se o projeto de investigação científica (p. 134, 185); e TCC II, no 8º período, onde os acadêmicos apresentam os resultados do processo investigativo em forma de monografia para uma banca examinadora (p. 134, 187).
+*   **Formato e Composição:** Deve ser desenvolvido individualmente ou em grupos de no máximo duas pessoas, na modalidade de monografia (p. 185).
+*   **Avaliação:** O projeto de TCC I deve ser submetido a uma banca de qualificação para avaliação dos aspectos teórico-metodológicos (p. 134). A aprovação em TCC I é requisito para a matrícula em TCC II (p. 186).
+*   **Apresentação Final:** A defesa do TCC ocorre no 8º período, em sessão pública, com tempo de apresentação entre 25 e 30 minutos, seguidos de 15 minutos para questionamentos (p. 193, 194)."
+p08,prosa,rodada-cc5,F,document,3,gemma4:31b,true,134;185;187,true,,106832,325,true,3579,,false,,"De acordo com o documento, o Trabalho de Conclusão de Curso (TCC) é um requisito fundamental para a obtenção do título de Bacharel em Sistemas de Informação, devendo refletir os conhecimentos teórico-práticos adquiridos durante a formação (p. 134).
+
+As principais diretrizes são:
+
+*   **Estrutura e Modalidade:** O TCC é desenvolvido na modalidade de monografia, podendo ser realizado individualmente ou em grupos de no máximo duas pessoas (p. 185).
+*   **Divisão Curricular:** O trabalho é dividido em duas disciplinas: TCC I e TCC II, cada uma com carga horária de 40 horas/aula (p. 185).
+*   **Processo de Desenvolvimento:**
+    *   **TCC I:** Foca na delimitação da temática, definição de objetivos, fundamentação teórica e redação do projeto, que deve ser submetido a uma banca de qualificação (p. 134, 187).
+    *   **TCC II:** Consiste no desenvolvimento do processo investigativo e na apresentação dos resultados (p. 134).
+*   **Período de Apresentação:** O TCC insere-se na estrutura curricular no **7º e 8º blocos (períodos)** (p. 185). A apresentação pública final ocorre ao final da disciplina de TCC II, no 8º período (p. 187)."
+p09,prosa,pdf,F,document,1,gemma4:31b,true,188,true,,106836,61,true,2173,,false,,"O prazo para a entrega da proposta de trabalho (anteprojeto) é de, no máximo, até 30 (trinta) dias após o início da disciplina de TCC I, ou em data determinada em cronograma da disciplina de TCC I (p. 188)."
+p09,prosa,pdf,F,document,2,gemma4:31b,true,188,true,,106836,61,true,2041,,false,,"O prazo para a entrega da proposta de trabalho (anteprojeto) é de, no máximo, até 30 (trinta) dias após o início da disciplina de TCC I, ou em data determinada em cronograma da disciplina de TCC I (p. 188)."
+p09,prosa,pdf,F,document,3,gemma4:31b,true,188,true,,106836,61,true,3103,,false,,"O prazo para a entrega da proposta de trabalho (anteprojeto) é de, no máximo, até 30 (trinta) dias após o início da disciplina de TCC I, ou em data determinada em cronograma da disciplina de TCC I (p. 188)."
+p10,prosa,pdf,F,document,1,gemma4:31b,true,189,true,,106825,43,true,2166,,false,,O resultado da avaliação da proposta de trabalho de conclusão de curso (TCC) é publicado em edital em até 7 (sete) dias corridos após a avaliação (p. 189).
+p10,prosa,pdf,F,document,2,gemma4:31b,true,189,true,,106825,42,true,2624,,false,,O resultado da avaliação da proposta de trabalho de conclusão de curso (TCC) é publicado em edital em até 7 (sete) dias corridos após a avaliação p. 189.
+p10,prosa,pdf,F,document,3,gemma4:31b,true,189,true,,106825,43,true,1828,,false,,O resultado da avaliação da proposta de trabalho de conclusão de curso (TCC) é publicado em edital em até 7 (sete) dias corridos após a avaliação (p. 189).
+p11,prosa,pdf,F,document,1,gemma4:31b,true,189,true,,106831,44,true,2237,,false,,O aluno tem um prazo adicional de 15 (quinze) dias corridos para realizar a adequação de uma proposta de TCC que não foi aprovada integralmente (p. 189).
+p11,prosa,pdf,F,document,2,gemma4:31b,true,189,true,,106831,44,true,1938,,false,,O aluno tem um prazo adicional de 15 (quinze) dias corridos para realizar a adequação de uma proposta de TCC que não foi aprovada integralmente (p. 189).
+p11,prosa,pdf,F,document,3,gemma4:31b,true,189,true,,106831,44,true,3019,,false,,O aluno tem um prazo adicional de 15 (quinze) dias corridos para realizar a adequação de uma proposta de TCC que não foi aprovada integralmente (p. 189).
+p12,prosa,pdf,F,document,1,gemma4:31b,true,186,false,,106828,26,true,1825,,false,,"Não, é vedada a matrícula simultânea em TCC I e TCC II (p. 186)."
+p12,prosa,pdf,F,document,2,gemma4:31b,true,186,false,,106828,26,true,1679,,false,,"Não, é vedada a matrícula simultânea em TCC I e TCC II (p. 186)."
+p12,prosa,pdf,F,document,3,gemma4:31b,true,186,false,,106828,26,true,1620,,false,,"Não, é vedada a matrícula simultânea em TCC I e TCC II (p. 186)."
+p13,prosa,pdf,F,document,1,gemma4:31b,true,199,true,,106825,38,true,1659,,false,,"O limite de carga horária para estágios extracurriculares, como parte das atividades complementares, é de 80 horas/aula (p. 199)."
+p13,prosa,pdf,F,document,2,gemma4:31b,true,199,true,,106825,38,true,1932,,false,,"O limite de carga horária para estágios extracurriculares, como parte das atividades complementares, é de 80 horas/aula (p. 199)."
+p13,prosa,pdf,F,document,3,gemma4:31b,true,199,true,,106825,37,true,2151,,false,,"O limite de carga horária para estágios extracurriculares, como parte das atividades complementares, é de 80 horas/aula p. 199."
+p14,prosa,pdf,F,document,1,gemma4:31b,true,199,false,,106825,46,true,1937,,false,,"O limite de carga horária para a representação estudantil em órgãos colegiados do IFPR ou do movimento estudantil, como atividade complementar, é de 40 horas/aula (p. 199)."
+p14,prosa,pdf,F,document,2,gemma4:31b,true,199,false,,106825,46,true,1896,,false,,"O limite de carga horária para a representação estudantil em órgãos colegiados do IFPR ou do movimento estudantil, como atividade complementar, é de 40 horas/aula (p. 199)."
+p14,prosa,pdf,F,document,3,gemma4:31b,true,199,false,,106825,46,true,6076,,false,,"O limite de carga horária para a representação estudantil em órgãos colegiados do IFPR ou do movimento estudantil, como atividade complementar, é de 40 horas/aula (p. 199)."
+p15,prosa,pdf,F,document,1,gemma4:31b,true,199,false,,106838,68,true,2317,,false,,"O limite de carga horária para a participação como ouvinte em defesas de trabalhos de curso finais de cursos da área de Computação e Informática, dissertações de mestrado e/ou teses de doutorado, como atividade complementar, é de 60 horas/aula (p. 199)."
+p15,prosa,pdf,F,document,2,gemma4:31b,true,199,false,,106838,68,true,2170,,false,,"O limite de carga horária para a participação como ouvinte em defesas de trabalhos de curso finais de cursos da área de Computação e Informática, dissertações de mestrado e/ou teses de doutorado, como atividade complementar, é de 60 horas/aula (p. 199)."
+p15,prosa,pdf,F,document,3,gemma4:31b,true,199,false,,106838,68,true,2236,,false,,"O limite de carga horária para a participação como ouvinte em defesas de trabalhos de curso finais de cursos da área de Computação e Informática, dissertações de mestrado e/ou teses de doutorado, como atividade complementar, é de 60 horas/aula (p. 199)."
+p16,prosa,pdf,F,document,1,gemma4:31b,true,201,true,,106827,34,true,1817,,false,,As atividades complementares passam a ser válidas somente a partir do ingresso do acadêmico no curso de Sistemas de Informação (p. 201).
+p16,prosa,pdf,F,document,2,gemma4:31b,true,201,true,,106827,34,true,2246,,false,,As atividades complementares passam a ser válidas somente a partir do ingresso do acadêmico no curso de Sistemas de Informação (p. 201).
+p16,prosa,pdf,F,document,3,gemma4:31b,true,201,true,,106827,34,true,2165,,false,,As atividades complementares passam a ser válidas somente a partir do ingresso do acadêmico no curso de Sistemas de Informação (p. 201).
+p17,prosa,pdf,F,document,1,gemma4:31b,true,147;163,true,,106826,161,true,2255,,false,,"O Núcleo Docente Estruturante (NDE) do curso de Sistemas de Informação é composto por um conjunto de professores com as seguintes características:
+
+*   **Composição quantitativa:** Deve ser formado por, no mínimo, 30% do colegiado do curso (p. 147).
+*   **Requisitos dos membros:** Devem possuir formação e titulação na área e ser contratados em regime de tempo integral (p. 147).
+*   **Membros (biênio 2019-2020):** Vagner Scamati, Felipe Leivas Teixeira, Bruno Guaringue Trindade, Lilian do Nascimento Araújo e Andreia Marini (p. 163)."
+p17,prosa,pdf,F,document,2,gemma4:31b,true,147;163,true,,106826,161,true,2431,,false,,"O Núcleo Docente Estruturante (NDE) do curso de Sistemas de Informação é composto por um conjunto de professores com as seguintes características:
+
+*   **Composição quantitativa:** Deve ser formado por, no mínimo, 30% do colegiado do curso (p. 147).
+*   **Requisitos dos membros:** Devem possuir formação e titulação na área e ser contratados em regime de tempo integral (p. 147).
+*   **Membros (biênio 2019-2020):** Vagner Scamati, Felipe Leivas Teixeira, Bruno Guaringue Trindade, Lilian do Nascimento Araújo e Andreia Marini (p. 163)."
+p17,prosa,pdf,F,document,3,gemma4:31b,true,147;163,true,,106826,159,true,3139,,false,,"O Núcleo Docente Estruturante (NDE) do curso de Sistemas de Informação é composto por um conjunto de professores com as seguintes características:
+
+*   **Composição quantitativa:** Deve ser formado por, no mínimo, 30% do colegiado do curso (p. 147).
+*   **Requisitos dos membros:** Devem possuir formação e titulação na área e ser contratados em tempo integral (p. 147).
+*   **Membros (biênio 2019-2020):** Vagner Scamati, Felipe Leivas Teixeira, Bruno Guaringue Trindade, Lilian do Nascimento Araújo e Andreia Marini (p. 163)."
+p18,prosa,pdf,F,document,1,gemma4:31b,true,10;147,true,,106824,48,true,2062,,false,,"O coordenador do curso de Sistemas de Informação atua em regime de dedicação exclusiva (DE) [p. 10], trabalhando em regime integral com 40 horas semanais [p. 147]."
+p18,prosa,pdf,F,document,2,gemma4:31b,true,10;147,true,,106824,50,true,1665,,false,,"O coordenador do curso de Sistemas de Informação atua em regime de Dedicação Exclusiva (DE) [p. 10], trabalhando em regime integral com 40 horas semanais [p. 147]."
+p18,prosa,pdf,F,document,3,gemma4:31b,true,10;147,true,,106824,50,true,1748,,false,,"O coordenador do curso de Sistemas de Informação atua em regime de Dedicação Exclusiva (DE) [p. 10], trabalhando em regime integral com 40 horas semanais [p. 147]."
+p19,prosa,pdf,F,document,1,gemma4:31b,true,135,true,,106825,108,true,1925,,false,,"As ações afirmativas do processo seletivo contemplam os seguintes grupos:
+
+*   Estudantes egressos de escola pública (p. 135);
+*   Estudantes com renda familiar bruta per capita inferior a 1,5 salário-mínimo (p. 135);
+*   Estudantes autodeclarados pretos, pardos e indígenas (p. 135);
+*   Pessoas com deficiência (p. 135)."
+p19,prosa,pdf,F,document,2,gemma4:31b,true,135,true,,106825,108,true,2925,,false,,"As ações afirmativas do processo seletivo contemplam os seguintes grupos:
+
+*   Estudantes egressos de escola pública (p. 135);
+*   Estudantes com renda familiar bruta per capita inferior a 1,5 salário-mínimo (p. 135);
+*   Estudantes autodeclarados pretos, pardos e indígenas (p. 135);
+*   Pessoas com deficiência (p. 135)."
+p19,prosa,pdf,F,document,3,gemma4:31b,true,135,true,,106825,108,true,6191,,false,,"As ações afirmativas do processo seletivo contemplam os seguintes grupos:
+
+*   Estudantes egressos de escola pública (p. 135);
+*   Estudantes com renda familiar bruta per capita inferior a 1,5 salário-mínimo (p. 135);
+*   Estudantes autodeclarados pretos, pardos e indígenas (p. 135);
+*   Pessoas com deficiência (p. 135)."
+p20,prosa,pdf,F,document,1,gemma4:31b,true,140,false,,30266,62,true,1808,,false,,"A ementa de Banco de Dados I compreende: Conceitos de Banco de Dados, Modelagem Conceitual, Lógica e Física dos dados, Projeto de Banco de Dados, Linguagens de Consultas e Sistemas Gerenciadores de Bancos de Dados (p. 140)."
+p20,prosa,pdf,F,document,2,gemma4:31b,true,140,false,,30266,62,true,948,,false,,"A ementa de Banco de Dados I compreende: Conceitos de Banco de Dados, Modelagem Conceitual, Lógica e Física dos dados, Projeto de Banco de Dados, Linguagens de Consultas e Sistemas Gerenciadores de Bancos de Dados (p. 140)."
+p20,prosa,pdf,F,document,3,gemma4:31b,true,140,false,,30266,62,true,1109,,false,,"A ementa de Banco de Dados I compreende: Conceitos de Banco de Dados, Modelagem Conceitual, Lógica e Física dos dados, Projeto de Banco de Dados, Linguagens de Consultas e Sistemas Gerenciadores de Bancos de Dados (p. 140)."
+p21,prosa,pdf,F,document,1,gemma4:31b,true,141,false,,30274,69,true,2174,,false,,"O autor clássico de algoritmos que aparece na bibliografia básica de Estrutura de Dados I é Cormen, Thomas (junto a Rivest, Ronald L; Stein, Clifford; Leiserson, Charles E.B), na obra ""Algoritmos – Teoria e Prática"" p. 141."
+p21,prosa,pdf,F,document,2,gemma4:31b,true,141,false,,30274,70,true,1165,,false,,"O autor clássico de algoritmos que aparece na bibliografia básica de Estrutura de Dados I é Cormen, Thomas (junto a Rivest, Ronald L; Stein, Clifford; Leiserson, Charles E.B), na obra ""Algoritmos – Teoria e Prática"" (p. 141)."
+p21,prosa,pdf,F,document,3,gemma4:31b,true,140,false,,30274,67,true,1052,,false,,"O autor clássico de algoritmos que aparece na bibliografia básica de Estrutura de Dados I é Thomas Cormen (junto a Ronald L. Rivest, Clifford Stein e Charles E. B. Leiserson), na obra ""Algoritmos – Teoria e Prática"" p. 140."
+p22,prosa,rodada-cc5,F,document,1,gemma4:31b,true,141,false,,30268,66,true,984,,false,,"A ementa de Estrutura de Dados I consiste na representação e manipulação de estruturas lineares de dados (listas, pilhas, filas) e árvores (binárias, binárias de busca e balanceadas, como AVL e rubro-negras) [página 141]."
+p22,prosa,rodada-cc5,F,document,2,gemma4:31b,true,141,false,,30268,66,true,929,,false,,"A ementa de Estrutura de Dados I consiste na representação e manipulação de estruturas lineares de dados (listas, pilhas, filas) e árvores (binárias, binárias de busca e balanceadas, como AVL e rubro-negras) [página 141]."
+p22,prosa,rodada-cc5,F,document,3,gemma4:31b,true,27,true,,30268,64,true,968,,false,,"A ementa de Estrutura de Dados I consiste na representação e manipulação de estruturas lineares de dados (listas, pilhas, filas) e árvores (binárias, binárias de busca, balanceadas como AVL e rubro-negras) [página 27]."
+p23,prosa,pdf,F,document,1,gemma4:31b,true,13,true,,30268,28,true,985,,false,,O percentual de carga horária do curso destinado a atividades de extensão é de 10% (p. 13).
+p23,prosa,pdf,F,document,2,gemma4:31b,true,13,true,,30268,28,true,751,,false,,O percentual de carga horária do curso destinado a atividades de extensão é de 10% (p. 13).
+p23,prosa,pdf,F,document,3,gemma4:31b,true,13,true,,30268,28,true,829,,false,,O percentual de carga horária do curso destinado a atividades de extensão é de 10% (p. 13).
+p24,prosa,pdf,F,document,1,gemma4:31b,true,7,true,,104875,52,true,5544,,false,,"O curso Técnico em Informática para Internet possui as seguintes características:
+
+*   **Eixo Tecnológico:** Informação e Comunicação (p. 7).
+*   **Forma de Oferta:** Integrado (p. 7)."
+p24,prosa,pdf,F,document,2,gemma4:31b,true,7;1,true,,104875,57,true,1940,,false,,"O curso Técnico em Informática para Internet possui as seguintes características:
+
+*   **Eixo Tecnológico:** Informação e Comunicação (p. 7).
+*   **Forma de Oferta:** Integrado (p. 1 e p. 7)."
+p24,prosa,pdf,F,document,3,gemma4:31b,true,7;1,true,,104875,57,true,2143,,false,,"O curso Técnico em Informática para Internet possui as seguintes características:
+
+*   **Eixo Tecnológico:** Informação e Comunicação (p. 7).
+*   **Forma de Oferta:** Integrado (p. 1 e p. 7)."
+p25,prosa,pdf,F,document,1,gemma4:31b,true,7,false,,104874,52,true,2130,,false,,"O curso Técnico em Informática para Internet possui a seguinte configuração:
+
+*   **Duração:** 3 anos (p. 7).
+*   **Escolaridade mínima exigida:** Ensino Fundamental Completo (p. 7)."
+p25,prosa,pdf,F,document,2,gemma4:31b,true,7,false,,104874,56,true,1743,,false,,"O curso Técnico em Informática para Internet possui a seguinte duração e requisito de acesso:
+
+*   **Duração:** 3 anos (p. 7).
+*   **Escolaridade mínima exigida:** Ensino Fundamental Completo (p. 7)."
+p25,prosa,pdf,F,document,3,gemma4:31b,true,7,false,,104874,52,true,1958,,false,,"O curso Técnico em Informática para Internet possui as seguintes características:
+
+*   **Duração:** 3 anos (p. 7).
+*   **Escolaridade mínima exigida:** Ensino Fundamental Completo (p. 7)."
+p26,prosa,pdf,F,document,1,gemma4:31b,true,62,true,,104869,59,true,1684,,false,,"Não, o curso Técnico em Informática para Internet não possui atividades de estágio obrigatório (p. 62). Os alunos podem, de forma opcional, realizar o estágio não obrigatório (remunerado), desde que respeitem a legislação vigente (p. 62)."
+p26,prosa,pdf,F,document,2,gemma4:31b,true,62,true,,104869,59,true,1863,,false,,"Não, o curso Técnico em Informática para Internet não possui atividades de estágio obrigatório (p. 62). Os alunos podem, de forma opcional, realizar o estágio não obrigatório (remunerado), desde que respeitem a legislação vigente (p. 62)."
+p26,prosa,pdf,F,document,3,gemma4:31b,true,62,true,,104869,59,true,1843,,false,,"Não, o curso Técnico em Informática para Internet não possui atividades de estágio obrigatório (p. 62). Os alunos podem, de forma opcional, realizar o estágio não obrigatório (remunerado), desde que respeitem a legislação vigente (p. 62)."
+p27,prosa,pdf,F,document,1,gemma4:31b,true,7;8,true,,104873,45,true,1754,,false,,As aulas do período da manhã ocorrem das 7:35 às 12:00 (p. 7) e cada aula tem a duração de 50 minutos (p. 8).
+p27,prosa,pdf,F,document,2,gemma4:31b,true,7;8,true,,104873,45,true,2955,,false,,As aulas do período da manhã ocorrem das 7:35 às 12:00 (p. 7) e cada aula tem a duração de 50 minutos (p. 8).
+p27,prosa,pdf,F,document,3,gemma4:31b,true,7;8,true,,104873,45,true,2035,,false,,As aulas do período da manhã ocorrem das 7:35 às 12:00 (p. 7) e cada aula tem a duração de 50 minutos (p. 8).
+p28,prosa,pdf,F,document,1,gemma4:31b,true,39,true,,106824,201,true,6207,,false,,"Além da formação técnica, o perfil do egresso do curso de Bacharelado em Sistemas de Informação considera os seguintes aspectos:
+
+*   **Ética e Legislação:** Em suas atividades, o profissional deve considerar a ética, a legislação e a segurança (p. 39).
+*   **Impacto Ambiental:** O perfil prevê que o egresso considere os impactos ambientais em sua atuação (p. 39).
+*   **Pensamento Sistêmico:** O egresso deve ser capaz de utilizar o pensamento sistêmico para analisar e entender problemas de organizações públicas ou privadas, visando atingir seus objetivos (p. 39).
+*   **Contexto Social e Organizacional:** O perfil compreende a compreensão da inter-relação entre pessoas, tecnologias e processos para alcançar objetivos econômicos e sociais, bem como a compreensão das implicações organizacionais e sociais no desenvolvimento e implantação de soluções (p. 39)."
+p28,prosa,pdf,F,document,2,gemma4:31b,true,39,true,,106824,197,true,2356,,false,,"Além da formação técnica, o perfil do egresso do curso de Bacharelado em Sistemas de Informação considera os seguintes aspectos:
+
+*   **Ética e Legislação:** Em suas atividades, o profissional deve considerar a ética, a legislação e a segurança (p. 39).
+*   **Impacto Ambiental:** O egresso deve levar em conta os impactos ambientais em sua atuação (p. 39).
+*   **Pensamento Sistêmico:** Deve possuir a capacidade de analisar e entender problemas de organizações públicas ou privadas por meio de um pensamento sistêmico para atingir seus objetivos (p. 39).
+*   **Contexto Social e Organizacional:** O perfil compreende a compreensão da inter-relação entre pessoas, tecnologias e processos para alcançar objetivos econômicos e sociais, bem como a compreensão das implicações sociais e organizacionais no desenvolvimento e implantação de soluções (p. 39)."
+p28,prosa,pdf,F,document,3,gemma4:31b,true,39;37,true,,106824,247,true,3055,,false,,"Além da formação técnica, o perfil do egresso do curso de Bacharelado em Sistemas de Informação considera os seguintes aspectos:
+
+*   **Ética, Legislação e Meio Ambiente:** Em suas atividades, o egresso deve considerar a ética, a segurança, a legislação e os impactos ambientais (p. 39).
+*   **Pensamento Sistêmico:** Deve possuir a capacidade de analisar e entender problemas de organizações públicas ou privadas por meio de um pensamento sistêmico para atingir seus objetivos (p. 39).
+*   **Contexto Social e Organizacional:** O perfil compreende a compreensão da inter-relação entre pessoas, tecnologias e processos para alcançar objetivos econômicos e sociais, bem como a compreensão das implicações organizacionais e sociais no desenvolvimento e implantação de soluções (p. 39).
+*   **Visão Humanística e Cidadania:** A formação visa não apenas a qualificação técnica para o mercado, mas a formação de um cidadão para o mundo do trabalho, capaz de compreender suas relações sociais e produtivas, instigando princípios básicos de cidadania, como consciência e organização (p. 37)."
+p29,prosa,pdf,F,document,1,gemma4:31b,true,187,true,,106823,55,true,1831,,false,,O orientador do Trabalho de Conclusão de Curso (TCC) é definido em comum acordo entre o docente e o discente (p. 187). Esse processo ocorre no início da disciplina de TCC I (p. 187).
+p29,prosa,pdf,F,document,2,gemma4:31b,true,187,true,,106823,55,true,1977,,false,,O orientador do Trabalho de Conclusão de Curso (TCC) é definido em comum acordo entre o docente e o discente (p. 187). Esse processo ocorre no início da disciplina de TCC I (p. 187).
+p29,prosa,pdf,F,document,3,gemma4:31b,true,187,true,,106823,55,true,1814,,false,,O orientador do Trabalho de Conclusão de Curso (TCC) é definido em comum acordo entre o docente e o discente (p. 187). Essa definição ocorre no início da disciplina de TCC I (p. 187).
+p30,prosa,pdf,F,document,1,gemma4:31b,true,135;136,true,,106823,247,true,2741,,false,,"As formas de ingresso nos cursos do IFPR previstas no documento são:
+
+*   **Processo Seletivo:** realizado mediante critérios e normas definidos em editais, sob responsabilidade da Pró-Reitoria de Ensino (Proens) e das direções dos Campi, contemplando cotas de ações afirmativas (p. 135).
+*   **Transferências e Aproveitamento de Cursos:** ocorrem mediante processo seletivo público com critérios definidos em edital específico, dividindo-se em:
+    *   **Transferência interna:** para estudantes regularmente matriculados em curso do IFPR que desejam mudar para outro curso de mesmo nível e forma de oferta, a partir do 2º período letivo (p. 136).
+    *   **Transferência externa:** para estudantes matriculados em cursos de outras instituições de ensino, a partir do 2º período letivo (p. 136).
+    *   **Aproveitamento de Curso:** para estudantes já diplomados em curso de mesmo nível e forma de oferta, a partir do 2º período letivo (p. 136)."
+p30,prosa,pdf,F,document,2,gemma4:31b,true,135;136,true,,106823,247,true,2478,,false,,"As formas de ingresso nos cursos do IFPR previstas no documento são:
+
+*   **Processo Seletivo:** realizado mediante critérios e normas definidos em editais, sob responsabilidade da Pró-Reitoria de Ensino (Proens) e das direções dos Campi, contemplando cotas de ações afirmativas (p. 135).
+*   **Transferências e Aproveitamento de Cursos:** ocorrem mediante processo seletivo público com critérios definidos em edital específico, dividindo-se em:
+    *   **Transferência interna:** para estudantes regularmente matriculados em curso do IFPR que desejam mudar para outro curso de mesmo nível e forma de oferta, a partir do 2º período letivo (p. 136).
+    *   **Transferência externa:** para estudantes matriculados em cursos de outras instituições de ensino, a partir do 2º período letivo (p. 136).
+    *   **Aproveitamento de Curso:** para estudantes já diplomados em curso de mesmo nível e forma de oferta, a partir do 2º período letivo (p. 136)."
+p30,prosa,pdf,F,document,3,gemma4:31b,true,135;136,true,,106823,247,true,2634,,false,,"As formas de ingresso nos cursos do IFPR previstas no documento são:
+
+*   **Processo Seletivo:** realizado mediante critérios e normas definidos em editais, sob responsabilidade da Pró-Reitoria de Ensino (Proens) e das direções dos Campi, contemplando cotas de ações afirmativas (p. 135).
+*   **Transferências e Aproveitamento de Cursos:** ocorrem mediante processo seletivo público com critérios definidos em edital específico, dividindo-se em:
+    *   **Transferência interna:** para estudantes regularmente matriculados em curso do IFPR que desejam mudar para outro curso de mesmo nível e forma de oferta, a partir do 2º período letivo (p. 136).
+    *   **Transferência externa:** para estudantes matriculados em cursos de outras instituições de ensino, a partir do 2º período letivo (p. 136).
+    *   **Aproveitamento de Curso:** para estudantes já diplomados em curso de mesmo nível e forma de oferta, a partir do 2º período letivo (p. 136)."
+n01,negativa,pdf,F,document,1,gemma4:31b,true,,,,250503,160,true,13834,,false,,"Com base nos documentos fornecidos, o curso de Bacharelado em Sistemas de Informação é ofertado pelo Instituto Federal do Paraná (IFPR), que é uma autarquia federal (PPC Sistemas de Informacao - Palmas (2019), p. 11). O texto menciona que a instituição oferece ""educação superior, de qualidade e gratuita"" (PPC Sistemas de Informacao - Palmas (2019), p. 20) e que a missão do IFPR é promover a educação profissional, científica e tecnológica ""pública, gratuita e de excelência"" (PPC Sistemas de Informacao - Palmas (2019), p. 18).
+
+Portanto, não há valor de mensalidade, pois o curso é gratuito."
+n01,negativa,pdf,F,document,2,gemma4:31b,true,,,,250503,63,true,4067,,false,,"Com base nos documentos fornecidos, não há informação sobre o valor de mensalidade, pois o curso é ofertado por uma instituição pública (Instituto Federal do Paraná), sendo descrito como ""gratuita"" (PPC Sistemas de Informacao - Palmas (2019), p. 18)."
+n01,negativa,pdf,F,document,3,gemma4:31b,true,,,,250503,63,true,3864,,false,,"Com base nos documentos fornecidos, não há informação sobre o valor de mensalidade, pois o curso é ofertado por uma instituição pública (Instituto Federal do Paraná), sendo descrito como ""gratuita"" (PPC Sistemas de Informacao - Palmas (2019), p. 18)."
+n02,negativa,pdf,F,document,1,gemma4:31b,true,,,,250509,34,true,3771,,false,,"Com base nos documentos fornecidos, não há informações sobre a nota de corte do SISU para o curso de Sistemas de Informação em 2026."
+n02,negativa,pdf,F,document,2,gemma4:31b,true,,,,250509,34,true,3916,,false,,"Com base nos documentos fornecidos, não há informações sobre a nota de corte do SISU para o curso de Sistemas de Informação em 2026."
+n02,negativa,pdf,F,document,3,gemma4:31b,true,,,,250509,34,true,3586,,false,,"Com base nos documentos fornecidos, não há informações sobre a nota de corte do SISU para o curso de Sistemas de Informação em 2026."
+n03,negativa,pdf,F,document,1,gemma4:31b,false,,,,250501,47,true,4995,,false,,"Atualmente, o curso de bacharelado em Sistemas de Informação possui um total de 134 alunos matriculados (p. 132 do documento ""PPC Tecnico em Informatica - Palmas"")."
+n03,negativa,pdf,F,document,2,gemma4:31b,false,,,,250501,47,true,3200,,false,,"Atualmente, o curso de bacharelado em Sistemas de Informação possui um total de 134 alunos matriculados (p. 132 do documento ""PPC Tecnico em Informatica - Palmas"")."
+n03,negativa,pdf,F,document,3,gemma4:31b,false,,,,250501,47,true,4013,,false,,"Atualmente, o curso de bacharelado em Sistemas de Informação possui um total de 134 alunos matriculados (p. 132 do documento ""PPC Tecnico em Informatica - Palmas"")."
+n04,negativa,pdf,F,document,1,gemma4:31b,true,,,,250504,80,true,4297,,false,,"Com base nos documentos fornecidos, não há informação sobre o valor da bolsa de monitoria para o ano de 2026. O texto menciona a existência do Programa de Monitoria e que o estudante recebe uma bolsa-auxílio mensal com valor previsto em edital (PPC Sistemas de Informação, p. 139), mas não especifica a quantia financeira."
+n04,negativa,pdf,F,document,2,gemma4:31b,true,,,,250504,87,true,4040,,false,,"Com base nos documentos fornecidos, não há informação sobre o valor da bolsa de monitoria para o ano de 2026. O texto menciona a existência do Programa de Monitoria e que o estudante recebe uma bolsa-auxílio mensal com valor previsto em edital [PPC Sistemas de Informacao - Palmas (2019), p. 139], mas não especifica a quantia financeira."
+n04,negativa,pdf,F,document,3,gemma4:31b,true,,,,250504,87,true,3741,,false,,"Com base nos documentos fornecidos, não há informação sobre o valor da bolsa de monitoria para o ano de 2026. O texto menciona a existência do Programa de Monitoria e que o estudante recebe uma bolsa-auxílio mensal com valor previsto em edital [PPC Sistemas de Informacao - Palmas (2019), p. 139], mas não especifica a quantia financeira."
+n05,negativa,pdf,F,document,1,gemma4:31b,true,,,,250505,147,true,4615,,false,,"Com base nos documentos fornecidos, não é possível identificar quem será o professor responsável pelo componente curricular de Banco de Dados I no ano de 2026.
+
+O documento ""Calendario Academico Palmas 2026 - Graduacao"" apresenta as datas e prazos para o ano de 2026 (p. 1-5), mas não lista a atribuição de professores por disciplina. Já o ""PPC Sistemas de Informacao - Palmas (2019)"" apresenta a relação do corpo docente em 2019 (p. 149), porém não especifica a responsabilidade de cada professor por componente curricular para o ano de 2026."
+n05,negativa,pdf,F,document,2,gemma4:31b,true,,,,250505,147,true,4610,,false,,"Com base nos documentos fornecidos, não é possível identificar quem será o professor responsável pela disciplina de Banco de Dados I no ano de 2026.
+
+O documento ""Calendario Academico Palmas 2026 - Graduacao"" apresenta as datas e prazos para o ano de 2026 (páginas 1 a 5), mas não lista a atribuição de professores por disciplina. Já o ""PPC Sistemas de Informacao - Palmas (2019)"" apresenta a relação do corpo docente em 2019 (p. 149), porém não especifica a responsabilidade de cada professor por componente curricular para o ano de 2026."
+n05,negativa,pdf,F,document,3,gemma4:31b,true,,,,250505,147,true,4730,,false,,"Com base nos documentos fornecidos, não é possível identificar quem será o professor responsável pela disciplina de Banco de Dados I no ano de 2026.
+
+O documento ""Calendario Academico Palmas 2026 - Graduacao"" apresenta as datas e prazos para o ano de 2026 (páginas 1 a 5), mas não lista a atribuição de professores por disciplina. Já o ""PPC Sistemas de Informacao - Palmas (2019)"" apresenta a relação do corpo docente em 2019 (p. 149), porém não especifica a responsabilidade de cada professor por componente curricular para o ano de 2026."

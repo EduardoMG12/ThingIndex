@@ -33,12 +33,26 @@ type ChatSource struct {
 	NodeID     string `json:"nodeId,omitempty"`
 }
 
+// ChatUsage e o consumo de UMA resposta. UsageReported=false significa que o
+// provedor nao informou e os numeros sao estimativa (runas/4), a mesma regra
+// da indexacao -- e a estimativa e rotulada como tal ate a interface
+// (constituicao VI). EstimatedCostUSD e nulo sem preco cadastrado.
+type ChatUsage struct {
+	PromptTokens     int      `json:"promptTokens"`
+	CompletionTokens int      `json:"completionTokens"`
+	UsageReported    bool     `json:"usageReported"`
+	ProviderType     string   `json:"providerType,omitempty"`
+	Model            string   `json:"model,omitempty"`
+	EstimatedCostUSD *float64 `json:"estimatedCostUsd,omitempty"`
+}
+
 type ChatStreamEvent struct {
 	Type    string       `json:"type"`
 	Stage   string       `json:"stage,omitempty"`
 	Message string       `json:"message,omitempty"`
 	Delta   string       `json:"delta,omitempty"`
 	Sources []ChatSource `json:"sources,omitempty"`
+	Usage   *ChatUsage   `json:"usage,omitempty"`
 }
 
 type ChatConversationRepository interface {

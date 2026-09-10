@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
-import { ChevronLeft, ChevronRight, File, Rows3 } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, File, Rows3 } from "lucide-react";
 
 import { abrirDocumento, fecharDocumento, medirPaginas, type TamanhoDePagina } from "@/components/workspace/pdf";
 import { useI18n } from "@/lib/i18n/provider";
@@ -303,6 +303,39 @@ export function PdfFrame({
                                 />
                             ) : null}
                             {renderizarSobreposicao?.(numero, tamanho)}
+                            {/* Folheado: faixas nas bordas da folha viram a pagina, alem dos botoes do cabecalho. */}
+                            {modoPagina && numero > 1 ? (
+                                <button
+                                    type="button"
+                                    onPointerDown={pararPonteiro}
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        irParaPagina(paginaAtual - 1);
+                                    }}
+                                    aria-label={t("workspace.frame.prevPageEdge")}
+                                    title={t("workspace.frame.prevPageEdge")}
+                                    data-testid="virar-pagina-anterior"
+                                    className="group absolute inset-x-0 top-0 flex h-7 items-center justify-center bg-gradient-to-b from-black/10 to-transparent opacity-0 transition-opacity hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+                                >
+                                    <ChevronUp className="h-5 w-5 text-neutral-700 drop-shadow" aria-hidden />
+                                </button>
+                            ) : null}
+                            {modoPagina && numero < total ? (
+                                <button
+                                    type="button"
+                                    onPointerDown={pararPonteiro}
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        irParaPagina(paginaAtual + 1);
+                                    }}
+                                    aria-label={t("workspace.frame.nextPageEdge")}
+                                    title={t("workspace.frame.nextPageEdge")}
+                                    data-testid="virar-pagina-proxima"
+                                    className="group absolute inset-x-0 bottom-0 flex h-7 items-center justify-center bg-gradient-to-t from-black/10 to-transparent opacity-0 transition-opacity hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+                                >
+                                    <ChevronDown className="h-5 w-5 text-neutral-700 drop-shadow" aria-hidden />
+                                </button>
+                            ) : null}
                         </div>
                     );
                 })
