@@ -328,3 +328,16 @@ func TestTetoDeGrauCortaOHub(t *testing.T) {
 		t.Fatalf("esperava o teto de %d arestas, veio %d", NodeConnectionMaxDegree, len(conexoes))
 	}
 }
+
+func TestNumeralRomanoEAparatoBibliograficoNaoSustentamConexao(t *testing.T) {
+	origem := noDeTeste(1, "doc1#cap", "CAPITULO VI", "isbn 9788577803828 ed. Bookman vi")
+	nos := []models.DocumentOutlineNode{
+		origem,
+		noDeTeste(2, "doc2#cap", "CAPITULO VI", "isbn 9788535201580 ed. Campus vi"),
+		noDeTeste(3, "doc3#s", "OUTRO", "outro assunto"),
+		noDeTeste(4, "doc4#s", "MAIS", "mais um assunto"),
+	}
+	if conexoes := BuildNodeConnections(origem, nos, 2); len(conexoes) != 0 {
+		t.Fatalf("'vi', 'isbn' e 'ed' sustentaram conexao: %+v", conexoes)
+	}
+}

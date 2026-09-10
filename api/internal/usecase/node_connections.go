@@ -310,6 +310,11 @@ var palavrasVaziasPT = map[string]struct{}{
 	"para": {}, "pela": {}, "pelas": {}, "pelo": {}, "pelos": {}, "por": {},
 	"que": {}, "se": {}, "sem": {}, "ser": {}, "sera": {}, "sobre": {},
 	"um": {}, "uma": {}, "sao": {}, "foi": {}, "seu": {}, "sua": {},
+	// Aparato de referencia bibliografica: liga qualquer duas ementas.
+	"isbn": {}, "ed": {}, "edicao": {}, "editora": {}, "org": {}, "vol": {}, "capitulo": {}, "cap": {},
+	// Conectivos e genericos que a amostra do demo mostrou justificando aresta.
+	"acoes": {}, "atender": {}, "conjunto": {}, "realizacao": {}, "gerais": {}, "geral": {},
+	"desta": {}, "deste": {}, "destas": {}, "destes": {}, "dessa": {}, "desse": {}, "dessas": {}, "desses": {}, "nesta": {}, "neste": {},
 }
 
 // ehPalavraVazia diz se o termo e conectivo ou numeracao de secao.
@@ -319,12 +324,15 @@ var palavrasVaziasPT = map[string]struct{}{
 // relacao de conteudo. Numeros com mais de um digito ficam de fora: "99,5",
 // "30" e "2025" costumam ser valores contratuais com significado real.
 func ehPalavraVazia(termo string) bool {
-	if len(termo) == 1 || numericTokenRE.MatchString(termo) {
+	if len(termo) == 1 || numericTokenRE.MatchString(termo) || romanNumeralRE.MatchString(termo) {
 		return true
 	}
 	_, vazia := palavrasVaziasPT[termo]
 	return vazia
 }
+
+// romanNumeralRE: "vi", "xii" sao numeracao de capitulo e titulo, nao assunto.
+var romanNumeralRE = regexp.MustCompile(`^(i|ii|iii|iv|v|vi|vii|viii|ix|x|xi|xii|xiii|xiv|xv|xvi|xvii|xviii|xix|xx)$`)
 
 // numericTokenRE: anos, numeros de resolucao, valores. Sozinhos nao dizem de
 // que assunto uma secao trata; como citacao de norma entram por normCitations.

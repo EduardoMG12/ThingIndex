@@ -1,6 +1,6 @@
 # Experimento de geração: ThingIndex (T) contra "documento inteiro no LLM" (F)
 
-> **Estado: braços T e F/documento completos (2026-09-09, 72 perguntas × 3 repetições cada).** F/coleção foi completado com a chave reserva (seção 7); o modelo maior está na seção 8. Nenhum número abaixo foi transcrito à mão: todos saem de `go run ./cmd/generation-eval -summary` sobre os CSVs em `docs/article/results/`.
+> **Estado: fechado em 2026-09-09.** Braços T (ThingIndex) e F (documento inteiro no LLM) medidos com 72 perguntas × 3 repetições; o estado final do sistema está na seção 10. Nenhum número abaixo foi transcrito à mão: todos saem de `go run ./cmd/generation-eval -summary` sobre os CSVs em `docs/article/results/`.
 >
 > ```bash
 > cd api && set -a && . ../.env && set +a && export THINGINDEX_EVAL_PASSWORD='<senha do usuário demo>'
@@ -67,7 +67,7 @@ A primeira execução caiu no limitador da rota `/chat/stream` (20 pedidos por m
 
 ## 3. Leitura honesta (atualizada na rodada 3)
 
-1. **Em acerto, "documento inteiro no LLM" fica 6 pontos à frente.** T 92,6%, F/documento 98,6%, F/coleção 98,6% (gabarito v2); a diferença pareada T × F/documento é +0,060 com IC de +0,000 a +0,130. A rodada 1 tinha dito "F vence, e por muito" (94% × 10%): o que mudou foi T, com as tabelas como fonte. O que separa os dois hoje são 4 perguntas de prosa em que a página-alvo não entra nas 6 fontes e 2 em que o modelo lê a fonte errada.
+1. **Em acerto, o ThingIndex empata com "documento inteiro no LLM".** Estado final (seção 10): T 96,3% (IC 91,7–100), F/documento 98,6%, F/coleção 98,6%; a diferença pareada T × F/documento é +0,023 com IC de −0,028 a +0,074, indistinguível de zero. A rodada 1 tinha dito "F vence, e por muito": o que mudou foi T, com as tabelas como fonte e os títulos de volta ao texto da página. O que separa os dois hoje são 3 perguntas: duas de vocabulário na recuperação ("conceito D", "estágios extracurriculares") e uma em que o modelo omite um dia ("17, 18 e 19").
 2. **Em proveniência, T é estrutural e F é prosa.** T: toda fonte é (documento, página), 100% certa em tabela. F/coleção: 64% das páginas citadas certas, 25% em tabela, e toda resposta errada vem com uma página. O único erro de conteúdo de F/documento (n03) é uma alucinação com citação plausível.
 3. **Em custo, 18 a 62 vezes menos tokens de entrada por pergunta** (4 mil contra 72 mil com o documento certo, 250 mil com a coleção). Em USD não há número: o Ollama Cloud é assinatura.
 4. **F/documento recebe um oráculo** (o documento certo escolhido pelo gabarito) que o usuário não tem. F/coleção é o cenário real e é o mais caro.
@@ -168,7 +168,23 @@ Duas coisas apareceram nessas oito: linhas do calendário entram como fonte em q
 
 O que as rejeições e o bug ensinam: com 72 perguntas de gabarito e o CSV bruto, uma "melhoria óbvia" é testada em seis minutos e descartada com número, que é o oposto de ajustar no olho. As mudanças que sobreviveram (tabelas como fonte, seção 5; títulos no texto da página; linha com 2+ termos; token inteiro nas conexões) foram as que corrigiam um erro estrutural ou de dado, não as que mexiam no peso. E o bug dos títulos só apareceu porque uma pergunta do gabarito (p24) falhava sem motivo aparente: sem gabarito, ele continuaria invisível.
 
-## 10. Próximos passos
+## 10. Estado final (2026-09-09): T com 10 documentos, títulos na página, enriquecimento ligado, 3 repetições
+
+Arquivo `generation-results-T-10docs.csv` (216 chamadas, 0 erros), gabarito v2. F/documento é o mesmo da seção 6 (rescorado).
+
+| Estrato | n | T: acerto (IC 95%) | F/documento: acerto (IC 95%) | T: proveniência | F: proveniência | T: tokens | F: tokens |
+|---|---|---|---|---|---|---|---|
+| todas | 72 | **96,3%** (91,7–100) | 98,6% (95,8–100) | 92,5% | 86,1% | 4.395 | 72.067 |
+| prosa | 30 | 94,4% (85,6–100) | 100,0% | 83,3% | 77,8% | 3.608 | 100.491 |
+| tabela | 21 | **100,0%** | 100,0% | **100,0%** | 87,3% | 3.773 | 39.691 |
+| calendário | 16 | 93,8% (81,2–100) | 100,0% | 100,0% | 100,0% | 6.835 | 5.504 |
+| negativa | 5 | **100,0%** | 80,0% (40–100) | — | — | 3.922 | 250.504 |
+
+Pareado: F vence em 3, perde em 1, empata em 68; diferença +0,023, IC 95% de −0,028 a +0,074. O que ainda falha em T: c14 (o modelo escreve "18 e 19" onde o calendário diz "17, 18 e 19", 0/3), p06 ("conceito D": a letra solta não é token e a p. 126 não entra, 1/3), p13 ("estágios extracurriculares" no plural na p. 199, 0/3).
+
+Da primeira medição desta sessão (11 perguntas do autor, sem tabela como fonte: 8 certas, 2 parciais, 1 errada, todas as de tabela erradas) até aqui, o que mudou no sistema, em ordem de efeito: tabelas de PDF como fonte com página (tabela 43% → 100% na recuperação); títulos de volta ao texto da página (prosa 77% → 83% na recuperação); linha só com 2+ termos (menos ruído, nada perdido); conexões por token inteiro (3.444 → 355 arestas na amostra). Tudo determinístico, sem vetor, medido no mesmo gabarito, com o CSV bruto versionado.
+
+## 11. Próximos passos
 
 1. Rodar F/documento em um segundo modelo pago (só há Ollama Cloud).
 2. Versão 2 do gabarito: corrigir t04, c08 e t06, registrar `reviewed_by` com o revisor externo, recongelar o hash.
