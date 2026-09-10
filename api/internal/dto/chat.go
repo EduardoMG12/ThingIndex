@@ -62,13 +62,15 @@ type ChatUsageResponse struct {
 }
 
 type ChatConversationMessageResponse struct {
-	ID        uint                 `json:"id"`
-	Role      string               `json:"role"`
-	Content   string               `json:"content"`
-	Sources   []ChatSourceResponse `json:"sources,omitempty"`
-	Usage     *ChatUsageResponse   `json:"usage,omitempty"`
-	CreatedAt time.Time            `json:"created_at"`
-	UpdatedAt time.Time            `json:"updated_at"`
+	ID          uint                 `json:"id"`
+	Role        string               `json:"role"`
+	Content     string               `json:"content"`
+	Status      string               `json:"status,omitempty"`
+	ErrorDetail string               `json:"error_detail,omitempty"`
+	Sources     []ChatSourceResponse `json:"sources,omitempty"`
+	Usage       *ChatUsageResponse   `json:"usage,omitempty"`
+	CreatedAt   time.Time            `json:"created_at"`
+	UpdatedAt   time.Time            `json:"updated_at"`
 }
 
 type ChatConversationDetailResponse struct {
@@ -146,13 +148,15 @@ func ToChatConversationMessageResponses(messages []models.ChatConversationEntry)
 			}
 		}
 		result = append(result, ChatConversationMessageResponse{
-			ID:        message.ID,
-			Role:      message.Role,
-			Usage:     usage,
-			Content:   message.Content,
-			Sources:   sources,
-			CreatedAt: message.CreatedAt,
-			UpdatedAt: message.UpdatedAt,
+			ID:          message.ID,
+			Role:        message.Role,
+			Usage:       usage,
+			Content:     message.Content,
+			Status:      message.Status,
+			ErrorDetail: message.ErrorDetail,
+			Sources:     sources,
+			CreatedAt:   message.CreatedAt,
+			UpdatedAt:   message.UpdatedAt,
 		})
 	}
 

@@ -88,3 +88,13 @@ describe("ChatMessageCard: fonte de indice antigo", () => {
         expect(screen.queryByTestId("fonte-reindexada")).toBeNull();
     });
 });
+
+describe("ChatMessageCard: resposta com erro", () => {
+    it("mostra o aviso com o detalhe do provedor e mantem as fontes", () => {
+        const fonte = { id: "260:126", docName: "PPC", page: 126, snippet: "x", documentId: 260 };
+        render(<ChatMessageCard isStreaming={false} message={{ ...base, content: "", status: "error", errorDetail: "monthly usage limit", sources: [fonte] }} />, { wrapper: createTestWrapper("pt-BR") });
+        expect(screen.getByTestId("resposta-com-erro")).toHaveTextContent("A resposta falhou");
+        expect(screen.getByTestId("resposta-com-erro")).toHaveTextContent("monthly usage limit");
+        expect(screen.getAllByTestId("fonte")).toHaveLength(1);
+    });
+});

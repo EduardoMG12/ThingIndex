@@ -96,6 +96,12 @@ export function ChatMessageCard({
                         message.content
                     ) : (
                         <div className="space-y-3 text-[15px] leading-7 text-foreground/95">
+                            {message.status === "error" ? (
+                                <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive" data-testid="resposta-com-erro">
+                                    <p className="font-medium">{t("dashboard.chat.answerFailed")}</p>
+                                    {message.errorDetail ? <p className="mt-1 break-words text-xs opacity-90">{message.errorDetail}</p> : null}
+                                </div>
+                            ) : null}
                             {message.content.trim() ? (
                                 <>
                                     <ChatRichText content={message.content} />

@@ -95,6 +95,8 @@ function normalizePersistedMessages(messages: PersistedChatMessage[]): ChatWorks
         sources: normalizeSources(message.sources),
         usage: message.usage,
         createdAt: message.createdAt,
+        status: message.status,
+        errorDetail: message.errorDetail,
     }));
 }
 
@@ -644,7 +646,7 @@ export function useChatWorkspace(opcoes: { collectionId?: number | null } = {}) 
             setMessages((current) =>
                 current.map((item) =>
                     item.id === assistantMessage.id && !item.content.trim()
-                        ? { ...item, content: t("dashboard.chat.fallbackError") }
+                        ? { ...item, status: "error" as const, errorDetail: message }
                         : item
                 )
             );

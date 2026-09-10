@@ -503,6 +503,8 @@ Table chat_conversation_entries {
   provider_type varchar(32)
   model varchar(128)
   estimated_cost_usd numeric
+  status varchar(16)
+  error_detail text
   created_at timestamptz
   updated_at timestamptz
   deleted_at timestamptz
