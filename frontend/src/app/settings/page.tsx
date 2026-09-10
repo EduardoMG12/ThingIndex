@@ -6,6 +6,7 @@ import { Activity, Bot, Database, History, KeyRound, Loader2, ServerCog, ShieldC
 import { toast } from "sonner";
 
 import ProviderModelField from "@/components/settings/ProviderModelField";
+import IndexingScopeCard from "@/components/settings/IndexingScopeCard";
 import ProviderReadinessPanel from "@/components/settings/ProviderReadinessPanel";
 import { ProviderBrandMark } from "@/components/providers/ProviderBrandMark";
 import { ProviderSupportBadge } from "@/components/providers/ProviderSupportBadge";
@@ -183,6 +184,8 @@ function FamilySection({
                     {family === "LLM" ? t("settings.llmTargetsTitle") : t("common.oneActive")}
                 </div>
             </div>
+
+            {family === "LLM" ? <IndexingScopeCard /> : null}
 
             <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
                 <Card className="border-border/80 bg-card/70 xl:sticky xl:top-6 xl:self-start">

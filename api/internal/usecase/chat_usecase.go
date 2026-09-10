@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 	"time"
 
@@ -221,6 +222,39 @@ func (u *chatUseCase) StreamCollectionChat(
 	// tinha sumido -- sem nenhum registro de que a chamada de LLM foi feita e
 	// paga. Guardar o parcial e melhor que perder tudo.
 	var usage *domain.ChatUsage
+	sourceRefs := func() []models.ChatSourceReference {
+		persistedSources := make([]models.ChatSourceReference, 0, len(sources))
+		for _, source := range sources {
+			persistedSources = append(persistedSources, models.ChatSourceReference{
+				ID:              source.ID,
+				DocName:         source.DocName,
+				Page:            source.Page,
+				Snippet:         source.Snippet,
+				DocumentID:      source.DocumentID,
+				NodeID:          source.NodeID,
+				ParagraphID:     source.ParagraphID,
+				Lines:           source.Lines,
+				MatchedTerms:    source.MatchedTerms,
+				Box:             source.Box,
+				LineBoxes:       source.LineBoxes,
+				ContinuesOnPage: source.ContinuesOnPage,
+				IndexedAt:       source.IndexedAt,
+			})
+		}
+		return persistedSources
+	}
+	// persistFailure grava a falha como mensagem do assistente (status
+	// "error", detalhe do provedor, fontes). Antes a pergunta ficava sem
+	// resposta na conversa e o usuario nao sabia se a IA tinha sido chamada.
+	persistFailure := func(cause error) {
+		if strings.TrimSpace(answerBuilder.String()) != "" || cause == nil {
+			return
+		}
+		entry := &models.ChatConversationEntry{Role: "assistant", Status: "error", ErrorDetail: ChatErrorDetail(cause), Sources: sourceRefs()}
+		if err := u.conversationRepo.AddMessage(ctx, userID, conversation.ID, entry); err != nil {
+			log.Printf("chat: falha da conversa %d nao pode ser persistida: %v", conversation.ID, err)
+		}
+	}
 	persistAnswer := func() error {
 		answer := strings.TrimSpace(answerBuilder.String())
 		if answer == "" {
@@ -231,22 +265,10 @@ func (u *chatUseCase) StreamCollectionChat(
 		measured := chatUsageFor(llm, systemPrompt, userPrompt, answer)
 		usage = &measured
 
-		persistedSources := make([]models.ChatSourceReference, 0, len(sources))
-		for _, source := range sources {
-			persistedSources = append(persistedSources, models.ChatSourceReference{
-				ID:         source.ID,
-				DocName:    source.DocName,
-				Page:       source.Page,
-				Snippet:    source.Snippet,
-				DocumentID: source.DocumentID,
-				NodeID:     source.NodeID,
-			})
-		}
-
 		if err := u.conversationRepo.AddMessage(ctx, userID, conversation.ID, &models.ChatConversationEntry{
 			Role:             "assistant",
 			Content:          answer,
-			Sources:          persistedSources,
+			Sources:          sourceRefs(),
 			PromptTokens:     measured.PromptTokens,
 			CompletionTokens: measured.CompletionTokens,
 			UsageReported:    measured.UsageReported,
@@ -282,11 +304,17 @@ func (u *chatUseCase) StreamCollectionChat(
 			if persistErr := persistAnswer(); persistErr != nil {
 				log.Printf("chat: resposta parcial da conversa %d nao pode ser persistida: %v", conversation.ID, persistErr)
 			}
+			if ctx.Err() == nil {
+				persistFailure(err)
+			}
 			return err
 		}
 	} else {
 		response, err := llm.GenerateText(ctx, systemPrompt, userPrompt)
 		if err != nil {
+			if ctx.Err() == nil {
+				persistFailure(err)
+			}
 			return err
 		}
 		answerBuilder.WriteString(strings.TrimSpace(response))
@@ -394,8 +422,10 @@ func buildChatSources(
 	}
 
 	documentTitles := make(map[uint]string, len(collectionContext.Documents))
+	documentIndexedAt := make(map[uint]*time.Time, len(collectionContext.Documents))
 	for _, doc := range collectionContext.Documents {
 		documentTitles[doc.ID] = doc.Title
+		documentIndexedAt[doc.ID] = doc.IndexedAt
 	}
 
 	pageLookup := make(map[string]models.DocumentPage, len(collectionContext.DocumentPages))
@@ -404,8 +434,98 @@ func buildChatSources(
 		pageLookup[key] = page
 	}
 
+	pagesWithTables := make(map[string]struct{}, len(collectionContext.TableSections))
+	for _, table := range collectionContext.TableSections {
+		if table.PageNumber != nil {
+			pagesWithTables[fmt.Sprintf("%d:%d", table.DocumentID, *table.PageNumber)] = struct{}{}
+		}
+	}
+
 	sources := make([]domain.ChatSource, 0, ChatSourceLimit)
 	seen := make(map[string]struct{})
+
+	// O paragrafo da pagina com mais termos da pergunta e o que o canvas
+	// grifa ao clicar na fonte. Zero termos em comum: nenhum, e o clique cai
+	// na pagina.
+	significant := significantQueryTokens(retrieval.Query)
+	// Fonte de secao ou de pagina precisa de uma fracao dos termos da
+	// pergunta para entrar: sem isso a lista trazia "5.1.5 Acessibilidade"
+	// para uma pergunta sobre estagio, por um termo solto. Linha de tabela ja
+	// exige 2 termos no retrieval.
+	minCoverage := chatSourceMinCoverage(len(significant))
+	matched := func(text string) []string {
+		tokens := tokenSet(text)
+		out := make([]string, 0, len(significant))
+		for _, term := range significant {
+			if _, ok := tokens[term]; ok {
+				out = append(out, term)
+			}
+		}
+		return out
+	}
+	paragraphsByPage := make(map[string][]models.ParagraphNode)
+	for _, paragraph := range collectionContext.ParagraphNodes {
+		if paragraph.PageNumber == nil {
+			continue
+		}
+		key := fmt.Sprintf("%d:%d", paragraph.DocumentID, *paragraph.PageNumber)
+		paragraphsByPage[key] = append(paragraphsByPage[key], paragraph)
+	}
+	// Texto da pagina para contar termos: o conteudo da pagina, ou os
+	// paragrafos dela quando o contexto veio sem paginas.
+	// continuesOn: a pagina seguinte, quando o texto desta termina sem
+	// pontuacao final (frase quebrada na virada) e a seguinte existe.
+	// Pagina com tabela nao continua: termina sem ponto por ser tabela, e o
+	// comeco da seguinte e outra tabela (o calendario de outubro colado ao de
+	// setembro fez o modelo errar c12). As linhas ja entram como fonte.
+	continuesOn := func(documentID uint, page int) int {
+		key := fmt.Sprintf("%d:%d", documentID, page)
+		if _, hasTable := pagesWithTables[key]; hasTable || !pageEndsMidSentence(pageLookup[key].Content) {
+			return 0
+		}
+		if _, ok := pageLookup[fmt.Sprintf("%d:%d", documentID, page+1)]; !ok {
+			return 0
+		}
+		return page + 1
+	}
+	pageText := func(key string) string {
+		if content := pageLookup[key].Content; content != "" {
+			return content
+		}
+		parts := make([]string, 0)
+		for _, paragraph := range paragraphsByPage[key] {
+			parts = append(parts, paragraph.Content)
+		}
+		return strings.Join(parts, " ")
+	}
+	// bestParagraph devolve o paragrafo com mais termos da pergunta, as linhas
+	// dele que os contem (grifo fino) e o texto dessas linhas (trecho).
+	type paragraphPick struct {
+		id        uint
+		lines     []int
+		snippet   string
+		box       *models.SourceBox
+		lineBoxes [][4]float64
+	}
+	bestParagraph := func(documentID uint, page int) paragraphPick {
+		var best *models.ParagraphNode
+		bestCoverage := 0
+		for i, paragraph := range paragraphsByPage[fmt.Sprintf("%d:%d", documentID, page)] {
+			if coverage := queryTermCoverage(paragraph.Content, significant); coverage > bestCoverage {
+				best, bestCoverage = &paragraphsByPage[fmt.Sprintf("%d:%d", documentID, page)][i], coverage
+			}
+		}
+		if best == nil {
+			return paragraphPick{}
+		}
+		lines, snippet := matchingLines(best.Metadata, significant)
+		return paragraphPick{id: best.ID, lines: lines, snippet: snippet, box: sourceBoxFromMetadata(best.Metadata), lineBoxes: lineBoxesFromMetadata(best.Metadata, lines)}
+	}
+
+	tableBoxes := make(map[uint]*models.SourceBox, len(collectionContext.TableSections))
+	for _, table := range collectionContext.TableSections {
+		tableBoxes[table.ID] = sourceBoxFromMetadata(table.Metadata)
+	}
 
 	// Linhas de tabela primeiro: e a fonte mais precisa (documento, pagina,
 	// tabela, linha) e a mais barata no prompt. A pagina inteira da tabela
@@ -428,12 +548,15 @@ func buildChatSources(
 			body = title + " | " + body
 		}
 		sources = append(sources, domain.ChatSource{
-			ID:         id,
-			DocName:    documentTitles[hit.DocumentID],
-			Page:       hit.PageNumber,
-			Snippet:    clampRetrievalSnippet(body, 220),
-			DocumentID: hit.DocumentID,
-			Body:       body,
+			ID:           id,
+			DocName:      documentTitles[hit.DocumentID],
+			Page:         hit.PageNumber,
+			Snippet:      clampRetrievalSnippet(body, 220),
+			DocumentID:   hit.DocumentID,
+			Body:         body,
+			MatchedTerms: matched(body),
+			Box:          tableBoxes[hit.TableID],
+			IndexedAt:    documentIndexedAt[hit.DocumentID],
 		})
 		seen[id] = struct{}{}
 		rowSources++
@@ -458,14 +581,29 @@ func buildChatSources(
 		if snippet == "" {
 			snippet = hit.Title
 		}
+		pick := bestParagraph(hit.DocumentID, pageNumber)
+		if pick.snippet != "" {
+			snippet = pick.snippet
+		}
+		terms := matched(hit.Title + " " + hit.Summary + " " + pageText(key))
+		if len(terms) < minCoverage {
+			continue
+		}
 
 		sources = append(sources, domain.ChatSource{
-			ID:         fmt.Sprintf("%s:%s", key, hit.NodeID),
-			DocName:    documentTitles[hit.DocumentID],
-			Page:       pageNumber,
-			Snippet:    clampRetrievalSnippet(snippet, 220),
-			DocumentID: hit.DocumentID,
-			NodeID:     hit.NodeID,
+			ID:              fmt.Sprintf("%s:%s", key, hit.NodeID),
+			DocName:         documentTitles[hit.DocumentID],
+			Page:            pageNumber,
+			Snippet:         clampRetrievalSnippet(snippet, 220),
+			DocumentID:      hit.DocumentID,
+			NodeID:          hit.NodeID,
+			ParagraphID:     pick.id,
+			Lines:           pick.lines,
+			MatchedTerms:    terms,
+			ContinuesOnPage: continuesOn(hit.DocumentID, pageNumber),
+			Box:             pick.box,
+			LineBoxes:       pick.lineBoxes,
+			IndexedAt:       documentIndexedAt[hit.DocumentID],
 		})
 		seen[key] = struct{}{}
 	}
@@ -488,17 +626,166 @@ func buildChatSources(
 			snippet = page.Content
 		}
 
+		pick := bestParagraph(hit.DocumentID, hit.PageNumber)
+		if pick.snippet != "" {
+			snippet = pick.snippet
+		}
+		terms := matched(pageText(key))
+		if len(terms) < minCoverage {
+			continue
+		}
 		sources = append(sources, domain.ChatSource{
-			ID:         key,
-			DocName:    documentTitles[hit.DocumentID],
-			Page:       hit.PageNumber,
-			Snippet:    clampRetrievalSnippet(snippet, 220),
-			DocumentID: hit.DocumentID,
+			ID:              key,
+			DocName:         documentTitles[hit.DocumentID],
+			Page:            hit.PageNumber,
+			Snippet:         clampRetrievalSnippet(snippet, 220),
+			DocumentID:      hit.DocumentID,
+			ParagraphID:     pick.id,
+			Lines:           pick.lines,
+			MatchedTerms:    terms,
+			ContinuesOnPage: continuesOn(hit.DocumentID, hit.PageNumber),
+			Box:             pick.box,
+			LineBoxes:       pick.lineBoxes,
+			IndexedAt:       documentIndexedAt[hit.DocumentID],
 		})
 		seen[key] = struct{}{}
 	}
 
-	return sources
+	return orderChatSources(sources, rowSources, len(significant))
+}
+
+// orderChatSources decide a ordem final. Linha de tabela so fica na frente
+// quando responde a pelo menos metade dos termos da pergunta (pergunta de
+// tabela: "pre-requisito de Estrutura de Dados I" casa quase tudo na linha);
+// as demais linhas entram na ordenacao comum, junto com secoes e paginas,
+// por numero de termos casados (estavel: empate mantem linha, secao, pagina).
+// Antes a ordem era fixa "linhas, secoes, paginas", e a pagina da Lei com 8
+// termos ficava em 4o atras de tres linhas de calendario com 2 termos
+// genericos. O conjunto de fontes nao muda, so a ordem no card e no prompt.
+// (Multiplicar o BM25 pela cobertura foi medido e perdeu uma pagina-alvo,
+// t18; nao entrou.)
+func orderChatSources(sources []domain.ChatSource, rowSources int, significantTerms int) []domain.ChatSource {
+	threshold := (significantTerms + 1) / 2
+	strong := make([]domain.ChatSource, 0, rowSources)
+	rest := make([]domain.ChatSource, 0, len(sources))
+	for i, source := range sources {
+		if i < rowSources && len(source.MatchedTerms) >= threshold {
+			strong = append(strong, source)
+			continue
+		}
+		rest = append(rest, source)
+	}
+	sort.SliceStable(rest, func(i, j int) bool {
+		return len(rest[i].MatchedTerms) > len(rest[j].MatchedTerms)
+	})
+	return append(strong, rest...)
+}
+
+// sourceBoxFromMetadata le metadata.box (JSONB: x_min...) de um paragrafo ou
+// tabela. Nulo quando nao ha caixa (OCR sem posicao, HTML).
+func sourceBoxFromMetadata(metadata map[string]any) *models.SourceBox {
+	raw, ok := metadata["box"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	num := func(key string) (float64, bool) {
+		v, ok := raw[key].(float64)
+		return v, ok
+	}
+	xMin, ok1 := num("x_min")
+	yMin, ok2 := num("y_min")
+	xMax, ok3 := num("x_max")
+	yMax, ok4 := num("y_max")
+	pw, ok5 := num("page_width")
+	ph, ok6 := num("page_height")
+	if !(ok1 && ok2 && ok3 && ok4 && ok5 && ok6) || pw <= 0 || ph <= 0 {
+		return nil
+	}
+	return &models.SourceBox{XMin: xMin, YMin: yMin, XMax: xMax, YMax: yMax, PageWidth: pw, PageHeight: ph}
+}
+
+// lineBoxesFromMetadata devolve as caixas [xMin, yMin, xMax, yMax] das linhas
+// escolhidas, na ordem de `lines`.
+func lineBoxesFromMetadata(metadata map[string]any, lines []int) [][4]float64 {
+	raw, ok := metadata["lines"].([]any)
+	if !ok || len(lines) == 0 {
+		return nil
+	}
+	out := make([][4]float64, 0, len(lines))
+	for _, i := range lines {
+		if i < 0 || i >= len(raw) {
+			continue
+		}
+		line, _ := raw[i].(map[string]any)
+		b, _ := line["b"].([]any)
+		if len(b) != 4 {
+			continue
+		}
+		var box [4]float64
+		okAll := true
+		for k := range b {
+			v, ok := b[k].(float64)
+			if !ok {
+				okAll = false
+				break
+			}
+			box[k] = v
+		}
+		if okAll {
+			out = append(out, box)
+		}
+	}
+	return out
+}
+
+// chatSourceMinCoverage e quantos termos significativos da pergunta uma
+// fonte de secao ou pagina precisa conter: 2 (pergunta de um termo exige
+// esse um). Foi 40% dos termos e perdeu 3 paginas-alvo no gabarito (t18, t20,
+// p21): pergunta longa tem muito termo acessorio, e a pagina certa casa so
+// os dois que importam.
+func chatSourceMinCoverage(significant int) int {
+	if significant <= 1 {
+		return significant
+	}
+	return 2
+}
+
+// matchingLines le metadata.lines do paragrafo ([{t, b}]) e devolve os indices
+// das linhas que contem termos da pergunta -- a janela contigua em torno da
+// linha com mais termos -- e o texto dessas linhas. Sem linhas (paragrafo de
+// uma linha, ou texto sem caixa), devolve nada e o grifo e o paragrafo.
+func matchingLines(metadata map[string]any, terms []string) ([]int, string) {
+	raw, ok := metadata["lines"].([]any)
+	if !ok || len(raw) < 2 {
+		return nil, ""
+	}
+	coverage := make([]int, len(raw))
+	texts := make([]string, len(raw))
+	best, bestCoverage := -1, 0
+	for i, item := range raw {
+		line, _ := item.(map[string]any)
+		text, _ := line["t"].(string)
+		texts[i] = text
+		coverage[i] = queryTermCoverage(text, terms)
+		if coverage[i] > bestCoverage {
+			best, bestCoverage = i, coverage[i]
+		}
+	}
+	if best < 0 {
+		return nil, ""
+	}
+	start, end := best, best
+	for start > 0 && coverage[start-1] > 0 {
+		start--
+	}
+	for end < len(raw)-1 && coverage[end+1] > 0 {
+		end++
+	}
+	lines := make([]int, 0, end-start+1)
+	for i := start; i <= end; i++ {
+		lines = append(lines, i)
+	}
+	return lines, strings.Join(texts[start:end+1], " ")
 }
 
 func buildCollectionChatPrompt(
@@ -515,6 +802,10 @@ func buildCollectionChatPrompt(
 		"You are ThingIndex Assistant, a grounded document-analysis assistant.",
 		"Answer only from the provided relational document context.",
 		"If the evidence is insufficient, say that clearly and do not invent facts.",
+		// "Start with the direct answer in one sentence" foi testado em
+		// 2026-09-09 e descartado: o modelo afirmava antes de ler ("coluna de
+		// pre-requisito vazia" com o SIS07201 na fonte) e a resposta ficou
+		// mais longa (311 -> 358 caracteres), nao mais curta.
 		"Prefer precise, direct answers and cite the supporting document names and pages in prose when relevant.",
 		"Write the answer in " + language + ". " + languageReminder(language),
 	}, "\n")
@@ -592,6 +883,12 @@ func chatSourceBody(source domain.ChatSource, pageContent map[string]string, rem
 	if source.Body != "" {
 		// Fonte menor que a pagina (linha de tabela): vai ela, nao a pagina.
 		content = strings.Join(strings.Fields(source.Body), " ")
+	} else if source.ContinuesOnPage > 0 && content != "" {
+		// A frase quebrou na virada: o comeco da pagina seguinte vai junto,
+		// marcado, para o modelo ler o paragrafo inteiro.
+		if next := pageContinuation(pageContent[fmt.Sprintf("%d:%d", source.DocumentID, source.ContinuesOnPage)]); next != "" {
+			content += fmt.Sprintf(" [continua na p. %d] %s", source.ContinuesOnPage, next)
+		}
 	}
 	if content == "" {
 		return source.Snippet, 0
@@ -605,6 +902,43 @@ func chatSourceBody(source domain.ChatSource, pageContent map[string]string, rem
 		return source.Snippet, 0
 	}
 	return content, len(runes)
+}
+
+// ChatContinuationCharLimit e quanto da pagina seguinte acompanha uma fonte
+// cuja frase quebrou na virada.
+const ChatContinuationCharLimit = 600
+
+// pageEndsMidSentence: o texto termina sem ponto final. ";" e ":" contam
+// como continuacao, nao como fim: em texto legal e academico sao item de
+// lista ("II - conceito B ...;") ou abertura de lista, e o resto esta na
+// pagina seguinte ("IV - conceito D" na p. 126 do PPC).
+func pageEndsMidSentence(content string) bool {
+	trimmed := strings.TrimRight(strings.TrimSpace(content), "\"'»)]”’")
+	if trimmed == "" {
+		return false
+	}
+	last := trimmed[len(trimmed)-1]
+	return !strings.ContainsRune(".!?", rune(last))
+}
+
+// pageContinuation devolve o comeco da pagina seguinte ate o fim da ultima
+// frase que couber em ChatContinuationCharLimit.
+func pageContinuation(content string) string {
+	runes := []rune(strings.Join(strings.Fields(content), " "))
+	if len(runes) == 0 {
+		return ""
+	}
+	if len(runes) <= ChatContinuationCharLimit {
+		return string(runes)
+	}
+	cut := ChatContinuationCharLimit
+	for i := cut - 1; i > cut/2; i-- {
+		if strings.ContainsRune(".;:!?", runes[i]) {
+			cut = i + 1
+			break
+		}
+	}
+	return strings.TrimSpace(string(runes[:cut]))
 }
 
 // languageReminder e a instrucao de idioma na propria lingua.
@@ -646,4 +980,17 @@ func normalizeChatLanguage(language string) string {
 	default:
 		return "Brazilian Portuguese"
 	}
+}
+
+// ChatErrorDetail resume o erro do provedor para o usuario: uma linha, ate
+// 200 caracteres ("monthly usage limit", "connection refused").
+func ChatErrorDetail(err error) string {
+	if err == nil {
+		return ""
+	}
+	detail := strings.Join(strings.Fields(err.Error()), " ")
+	if runes := []rune(detail); len(runes) > 200 {
+		detail = string(runes[:200]) + "…"
+	}
+	return detail
 }

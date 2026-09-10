@@ -28,6 +28,8 @@ export type DocumentSummary = {
     status: string;
     createdAt?: string;
     updatedAt?: string;
+    /** Quando o indice atual deste documento foi gerado; compara com a fonte de uma resposta antiga. */
+    indexedAt?: string;
 };
 
 export type ParagraphNode = {
@@ -43,6 +45,8 @@ export type TableSection = {
     id: number | string;
     documentId: number;
     sequenceOrder: number;
+    /** Pagina fisica da tabela (PDF); null em HTML e planilha. */
+    pageNumber: number | null;
     title?: string;
     headers: string[];
     rows: string[][];
@@ -97,6 +101,38 @@ function finito(value: unknown): value is number {
 }
 
 /** Le `metadata.box` de um paragrafo; `null` quando ausente ou malformado. */
+/** Linha visual de um paragrafo, com a caixa no mesmo espaco de readBox. */
+export type ParagraphLine = { text: string; box: ParagraphBox };
+
+/**
+ * Le metadata.lines ([{t, b: [xMin, yMin, xMax, yMax]}]) usando as dimensoes
+ * da pagina de metadata.box. Sem caixa ou sem linhas, lista vazia: o grifo
+ * cai no paragrafo inteiro.
+ */
+export function readLines(node: Pick<ParagraphNode, "metadata">): ParagraphLine[] {
+    const box = readBox(node);
+    const raw = node.metadata?.lines;
+    if (!box || !Array.isArray(raw)) {
+        return [];
+    }
+    const out: ParagraphLine[] = [];
+    for (const item of raw) {
+        if (typeof item !== "object" || item === null) {
+            continue;
+        }
+        const r = item as Record<string, unknown>;
+        const b = r.b;
+        if (!Array.isArray(b) || b.length !== 4 || !b.every(finito)) {
+            continue;
+        }
+        out.push({
+            text: typeof r.t === "string" ? r.t : "",
+            box: { xMin: b[0] as number, yMin: b[1] as number, xMax: b[2] as number, yMax: b[3] as number, pageWidth: box.pageWidth, pageHeight: box.pageHeight },
+        });
+    }
+    return out;
+}
+
 export function readBox(node: Pick<ParagraphNode, "metadata">): ParagraphBox | null {
     const raw = node.metadata?.box;
     if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
@@ -121,6 +157,14 @@ export function readBox(node: Pick<ParagraphNode, "metadata">): ParagraphBox | n
     };
 }
 
+/** Resumo e topicos de uma pagina, gravados pelo enriquecimento por LLM. */
+export type DocumentPageSummary = {
+    documentId: number;
+    pageNumber: number;
+    summary: string;
+    topics: string[];
+};
+
 export type CollectionContext = {
     collection: CollectionSummary;
     documents: DocumentSummary[];
@@ -128,6 +172,8 @@ export type CollectionContext = {
     tableSections: TableSection[];
     metadataPairs: MetadataPair[];
     outlineNodes: OutlineNode[];
+    /** Opcional: fixtures antigas nao trazem; a tela trata como vazio. */
+    documentPages?: DocumentPageSummary[];
 };
 
 type CollectionApiRecord = {
@@ -221,6 +267,8 @@ type DocumentApiRecord = {
     createdAt?: string;
     updated_at?: string;
     updatedAt?: string;
+    indexed_at?: string;
+    indexedAt?: string;
 };
 
 type ParagraphNodeApiRecord = {
@@ -241,6 +289,8 @@ type TableSectionApiRecord = {
     documentId?: number;
     sequence_order?: number;
     sequenceOrder?: number;
+    page_number?: number | null;
+    pageNumber?: number | null;
     title?: string;
     headers?: string[];
     rows?: string[][];
@@ -290,6 +340,7 @@ function normalizeDocumentSummary(value: unknown): DocumentSummary | null {
         status: record.status ?? "",
         createdAt: record.createdAt ?? record.created_at,
         updatedAt: record.updatedAt ?? record.updated_at,
+        ...(typeof (record.indexedAt ?? record.indexed_at) === "string" ? { indexedAt: (record.indexedAt ?? record.indexed_at) as string } : {}),
     };
 }
 
@@ -333,6 +384,7 @@ function normalizeTableSection(value: unknown): TableSection | null {
         id: record.id ?? `table:${documentId}:${sequenceOrder}`,
         documentId,
         sequenceOrder,
+        pageNumber: typeof (record.pageNumber ?? record.page_number) === "number" ? (record.pageNumber ?? record.page_number)! : null,
         title: record.title,
         headers: Array.isArray(record.headers) ? record.headers.filter((item): item is string => typeof item === "string") : [],
         rows: Array.isArray(record.rows)
@@ -473,5 +525,31 @@ export function normalizeCollectionContext(value: unknown): CollectionContext | 
         tableSections: normalizeTableSections(value.table_sections),
         metadataPairs: normalizeMetadataPairs(value.metadata_pairs),
         outlineNodes: normalizeOutlineNodes(value.outline_nodes),
+        documentPages: normalizeDocumentPages(value.document_pages),
     };
+}
+
+/** So o que a tela usa: numero, resumo e topicos. O conteudo da pagina fica de fora. */
+export function normalizeDocumentPages(value: unknown): DocumentPageSummary[] {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+    const out: DocumentPageSummary[] = [];
+    for (const entry of value) {
+        if (!isRecord(entry)) {
+            continue;
+        }
+        const documentId = Number(entry.document_id ?? entry.documentId);
+        const pageNumber = Number(entry.page_number ?? entry.pageNumber);
+        if (!Number.isFinite(documentId) || !Number.isFinite(pageNumber)) {
+            continue;
+        }
+        const summary = typeof entry.summary === "string" ? entry.summary.trim() : "";
+        const meta = isRecord(entry.metadata) ? entry.metadata : {};
+        const topics = typeof meta.topics === "string" ? meta.topics.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 5) : [];
+        if (summary || topics.length > 0) {
+            out.push({ documentId, pageNumber, summary, topics });
+        }
+    }
+    return out;
 }

@@ -104,6 +104,10 @@ type pdfBBoxBlock struct {
 }
 
 type pdfBBoxLine struct {
+	XMin  float64       `xml:"xMin,attr"`
+	YMin  float64       `xml:"yMin,attr"`
+	XMax  float64       `xml:"xMax,attr"`
+	YMax  float64       `xml:"yMax,attr"`
 	Words []pdfBBoxWord `xml:"word"`
 }
 
@@ -164,9 +168,11 @@ func parsePDFBBoxLayout(raw []byte) (pdfTextExtraction, error) {
 
 		for _, block := range page.Blocks {
 			lines := make([]string, 0, len(block.Lines))
+			lineBoxes := make([]textLine, 0, len(block.Lines))
 			for _, line := range block.Lines {
 				if text := strings.TrimSpace(line.text()); text != "" {
 					lines = append(lines, text)
+					lineBoxes = append(lineBoxes, textLine{Text: text, Box: textBox{XMin: line.XMin, YMin: line.YMin, XMax: line.XMax, YMax: line.YMax, PageWidth: page.Width, PageHeight: page.Height}})
 				}
 			}
 
@@ -181,6 +187,7 @@ func parsePDFBBoxLayout(raw []byte) (pdfTextExtraction, error) {
 				PageNumber: &pageRef,
 				Source:     "pdftotext",
 				LineCount:  len(lines),
+				Lines:      lineBoxes,
 				Box: &textBox{
 					XMin:       block.XMin,
 					YMin:       block.YMin,
@@ -258,6 +265,11 @@ func mergeBlocksOnSameRow(blocks []textBlock) []textBlock {
 			head.Box.YMin = math.Min(head.Box.YMin, block.Box.YMin)
 			head.Box.XMax = math.Max(head.Box.XMax, block.Box.XMax)
 			head.Box.YMax = math.Max(head.Box.YMax, block.Box.YMax)
+		}
+		// Blocos de uma linha fundidos numa linha visual: uma linha so, com a
+		// caixa da uniao.
+		if len(row) > 1 {
+			head.Lines = []textLine{{Text: head.Content, Box: *head.Box}}
 		}
 		merged = append(merged, head)
 	}

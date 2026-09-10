@@ -258,4 +258,30 @@ describe("useChatWorkspace", () => {
             liberarStream?.();
         });
     });
+
+    it("quando o provedor falha, o card fica com as fontes e a causa", async () => {
+        vi.mocked(fetchChatConversations).mockResolvedValue([createConversation(10, "Conversa")]);
+        vi.mocked(fetchChatConversation).mockResolvedValue({ conversation: createConversation(10, "Conversa"), messages: [] });
+        vi.mocked(streamCollectionChat).mockImplementation(async ({ onEvent }) => {
+            onEvent({ type: "sources", sources: [{ id: "265:1:table-9-row-1", docName: "Matriz", page: 1, snippet: "Disciplina: SIS07302", documentId: 265 }] });
+            onEvent({ type: "error", message: "Falha ao gerar resposta do chat (monthly usage limit)" });
+        });
+
+        const { result } = renderHook(() => useChatWorkspace(), { wrapper: createTestWrapper("pt-BR") });
+        await waitFor(() => {
+            expect(result.current.activeConversationId).toBe(10);
+        });
+        act(() => {
+            result.current.setInput("Qual o pré-requisito de Estrutura de Dados I?");
+        });
+        await act(async () => {
+            await result.current.sendMessage();
+        });
+
+        const resposta = result.current.messages.at(-1);
+        expect(resposta?.role).toBe("assistant");
+        expect(resposta?.sources).toHaveLength(1);
+        expect(resposta?.content).toContain("monthly usage limit");
+        expect(result.current.streamError).toContain("monthly usage limit");
+    });
 });

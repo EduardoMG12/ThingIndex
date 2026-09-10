@@ -8,7 +8,7 @@
  * da linha e o rotulo dizem isso: "3 termos", nunca "0,75".
  */
 
-import type { OutlineNode, ParagraphNode } from "@/lib/api/contracts/document-context";
+import { readLines, type OutlineNode, type ParagraphNode } from "@/lib/api/contracts/document-context";
 import type { NodeConnection } from "@/lib/api/contracts/node-connections";
 import { ancorasDeLinha, type Ponto, type Rect } from "@/lib/workspace/geometry";
 
@@ -19,6 +19,7 @@ export type Linha = {
     titulo: string;
     score: number;
     termos: string[];
+    tipo: NodeConnection["kind"];
     de: Ponto;
     para: Ponto;
     /** true quando a linha termina na borda do quadro, sem ancora precisa. */
@@ -96,6 +97,7 @@ export function montarLinhas(conexoes: NodeConnection[], rects: ResolvedorDeRect
             titulo: conexao.title,
             score: conexao.score,
             termos: conexao.matchedTerms,
+            tipo: conexao.kind,
             de,
             para,
             aproximada: preciso === null,
@@ -110,4 +112,40 @@ export function caminhoDaLinha(de: Ponto, para: Ponto): string {
     const c1 = { x: de.x + (para.x >= de.x ? dx : -dx), y: de.y };
     const c2 = { x: para.x - (para.x >= de.x ? dx : -dx), y: para.y };
     return `M ${de.x} ${de.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${para.x} ${para.y}`;
+}
+
+/** Cor da aresta por tipo: norma (violeta), disciplina (verde-azulado), termo raro (primaria). */
+export function corPorTipo(tipo: NodeConnection["kind"]): string {
+    switch (tipo) {
+        case "mesma-norma":
+            return "#7c3aed";
+        case "mesma-disciplina":
+            return "#0d9488";
+        default:
+            return "hsl(var(--primary))";
+    }
+}
+
+function dobrar(texto: string): string {
+    return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+/**
+ * Indices das linhas do paragrafo que contem algum dos termos (token inteiro,
+ * sem acento): e o grifo do destino de uma conexao, "por que esta flecha
+ * chega aqui". Sem linhas gravadas, vazio.
+ */
+export function linhasComTermos(no: Pick<ParagraphNode, "metadata">, termos: string[]): number[] {
+    const alvos = termos.map(dobrar).filter(Boolean);
+    if (alvos.length === 0) {
+        return [];
+    }
+    const saida: number[] = [];
+    readLines(no).forEach((linha, indice) => {
+        const tokens = new Set(dobrar(linha.text).split(/[^a-z0-9-]+/));
+        if (alvos.some((termo) => tokens.has(termo))) {
+            saida.push(indice);
+        }
+    });
+    return saida;
 }

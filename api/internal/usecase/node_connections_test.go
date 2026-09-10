@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"strconv"
 	"testing"
 
 	"thing-index/internal/models"
@@ -263,5 +264,98 @@ func TestTermoOnipresenteNaoSustentaConexao(t *testing.T) {
 		if termo == "curso" || termo == "edital" || termo == "campus" {
 			t.Fatalf("termo onipresente na justificativa: %v", conexoes[0].MatchedTerms)
 		}
+	}
+}
+
+// Por substring, "lei" casava "leitura" e "estagio" casava "estagiario". Por
+// token inteiro, nao.
+func TestSubstringNaoCasa(t *testing.T) {
+	origem := noDeTeste(1, "doc1#s1", "DA LEI", "a lei do estagio manda")
+	nos := []models.DocumentOutlineNode{
+		origem,
+		noDeTeste(2, "doc2#s1", "LEITURA", "a leitura do estagiario manda"),
+		noDeTeste(3, "doc3#s1", "OUTRO", "outro assunto"),
+		noDeTeste(4, "doc4#s1", "MAIS UM", "mais um assunto"),
+	}
+	if conexoes := BuildNodeConnections(origem, nos, 2); len(conexoes) != 0 {
+		t.Fatalf("pedaco de palavra sustentou conexao: %+v", conexoes)
+	}
+}
+
+func TestNumeroENomeProprioNaoSustentamConexao(t *testing.T) {
+	origem := noDeTeste(1, "doc1#s1", "MEMBROS", "Andreia Marini assina em 2022 a portaria 18 sobre laboratorio")
+	nos := []models.DocumentOutlineNode{
+		origem,
+		noDeTeste(2, "doc2#s1", "QUADRO DO TECNICO", "Andreia Marini apresenta em 2022 o corpo docente"),
+		noDeTeste(3, "doc3#s1", "OUTRO", "outro assunto"),
+		noDeTeste(4, "doc4#s1", "MAIS UM", "mais um assunto"),
+	}
+	if conexoes := BuildNodeConnections(origem, nos, 2); len(conexoes) != 0 {
+		t.Fatalf("nome proprio e ano sustentaram conexao: %+v", conexoes)
+	}
+}
+
+func TestMesmaNormaSustentaConexaoTipada(t *testing.T) {
+	origem := noDeTeste(1, "doc1#estagio", "DO ESTAGIO", "regido pela Lei nº 11.788/2008 e pela Resolução CONSUP 82/2022")
+	nos := []models.DocumentOutlineNode{
+		origem,
+		noDeTeste(2, "doc2#politica", "POLITICA DE ESTAGIOS", "esta resolucao 82/2022 dispoe sobre convenios"),
+		noDeTeste(3, "doc3#outro", "OUTRO", "resolucao 50/2017 sobre avaliacao"),
+		noDeTeste(4, "doc4#mais", "MAIS UM", "mais um assunto"),
+	}
+	conexoes := BuildNodeConnections(origem, nos, 2)
+	if len(conexoes) != 1 || conexoes[0].NodeID != "doc2#politica" || conexoes[0].Kind != NodeConnectionKindSameNorm {
+		t.Fatalf("esperava uma conexao mesma-norma com doc2: %+v", conexoes)
+	}
+	if conexoes[0].MatchedTerms[0] != "resolucao 82/2022" {
+		t.Fatalf("a citacao normalizada deveria justificar a aresta: %v", conexoes[0].MatchedTerms)
+	}
+}
+
+func TestTetoDeGrauCortaOHub(t *testing.T) {
+	origem := noDeTeste(1, "doc1#hub", "HUB", "zebra quokka")
+	nos := []models.DocumentOutlineNode{origem}
+	for i := 0; i < 30; i++ {
+		nos = append(nos, noDeTeste(uint(2+i), "doc#"+string(rune('a'+i%26))+string(rune('a'+i/26)), "S", "zebra quokka aqui"))
+	}
+	// 30 candidatos: 2% = 0,6 -> piso 2... entao "zebra" e "quokka" nao seriam
+	// raros. Sobe o piso com candidatos suficientes para os termos contarem.
+	for i := 0; i < 1500; i++ {
+		nos = append(nos, noDeTeste(9999, "enche#"+strconv.Itoa(i), "E", "assunto qualquer"))
+	}
+	conexoes := BuildNodeConnections(origem, nos, 2)
+	if len(conexoes) != NodeConnectionMaxDegree {
+		t.Fatalf("esperava o teto de %d arestas, veio %d", NodeConnectionMaxDegree, len(conexoes))
+	}
+}
+
+func TestNumeralRomanoEAparatoBibliograficoNaoSustentamConexao(t *testing.T) {
+	origem := noDeTeste(1, "doc1#cap", "CAPITULO VI", "isbn 9788577803828 ed. Bookman vi")
+	nos := []models.DocumentOutlineNode{
+		origem,
+		noDeTeste(2, "doc2#cap", "CAPITULO VI", "isbn 9788535201580 ed. Campus vi"),
+		noDeTeste(3, "doc3#s", "OUTRO", "outro assunto"),
+		noDeTeste(4, "doc4#s", "MAIS", "mais um assunto"),
+	}
+	if conexoes := BuildNodeConnections(origem, nos, 2); len(conexoes) != 0 {
+		t.Fatalf("'vi', 'isbn' e 'ed' sustentaram conexao: %+v", conexoes)
+	}
+}
+
+// Dois trechos com o mesmo codigo de disciplina (SIS07302) se conectam por
+// isso, com o tipo "mesma-disciplina", mesmo sem termo raro em comum.
+func TestConexaoPorCodigoDeDisciplina(t *testing.T) {
+	t.Parallel()
+	origem := models.DocumentOutlineNode{DocumentID: 1, NodeID: "matriz#3", Title: "Terceiro periodo", Metadata: map[string]any{"retrieval_text": "SIS07302 Estrutura de Dados I 60 horas"}}
+	candidatos := []models.DocumentOutlineNode{
+		{DocumentID: 2, NodeID: "ementas#12", Title: "Ementa", Metadata: map[string]any{"retrieval_text": "Componente SIS07302: listas, pilhas, filas e arvores."}},
+		{DocumentID: 2, NodeID: "ementas#13", Title: "Outra ementa", Metadata: map[string]any{"retrieval_text": "Componente SIS07405: redes de computadores."}},
+	}
+	conexoes := BuildNodeConnections(origem, candidatos, 2)
+	if len(conexoes) != 1 || conexoes[0].NodeID != "ementas#12" || conexoes[0].Kind != NodeConnectionKindSameDiscipline {
+		t.Fatalf("esperava uma conexao mesma-disciplina com ementas#12: %+v", conexoes)
+	}
+	if conexoes[0].MatchedTerms[0] != "disciplina SIS07302" {
+		t.Fatalf("a justificativa devia ser o codigo: %v", conexoes[0].MatchedTerms)
 	}
 }

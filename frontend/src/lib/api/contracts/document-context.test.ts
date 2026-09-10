@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeOutlineNodes, normalizeParagraphNodes, readBox } from "@/lib/api/contracts/document-context";
+import { normalizeOutlineNodes, normalizeParagraphNodes, normalizeTableSections, readBox } from "@/lib/api/contracts/document-context";
 
 const BOX = { x_min: 72, x_max: 603.8, y_min: 85.9, y_max: 98.9, page_width: 612, page_height: 792 };
 
@@ -30,5 +30,27 @@ describe("readBox", () => {
         expect(readBox({ metadata: { box: { ...BOX, page_width: 0 } } })).toBeNull();
         expect(readBox({ metadata: { box: { ...BOX, x_max: 10 } } })).toBeNull();
         expect(readBox({ metadata: { box: [72, 603] } })).toBeNull();
+    });
+});
+
+describe("tabela com pagina", () => {
+    it("normaliza page_number e deixa null quando nao ha (HTML, planilha)", () => {
+        const tabelas = normalizeTableSections([
+            { id: 9, document_id: 265, sequence_order: 0, page_number: 1, headers: ["a"], rows: [["1"]], metadata: {} },
+            { id: 10, document_id: 265, sequence_order: 1, headers: [], rows: [], metadata: {} },
+        ]);
+        expect(tabelas.map((t) => t.pageNumber)).toEqual([1, null]);
+    });
+});
+
+describe("normalizeDocumentPages", () => {
+    it("guarda so numero, resumo e topicos; pagina sem nada fica de fora", async () => {
+        const { normalizeDocumentPages } = await import("@/lib/api/contracts/document-context");
+        const pages = normalizeDocumentPages([
+            { document_id: 3, page_number: 1, content: "texto longo", summary: " Resumo. ", metadata: { topics: "multa, prazo, , x" } },
+            { document_id: 3, page_number: 2, content: "sem resumo", metadata: {} },
+            { document_id: "x", page_number: 3, summary: "invalida" },
+        ]);
+        expect(pages).toEqual([{ documentId: 3, pageNumber: 1, summary: "Resumo.", topics: ["multa", "prazo", "x"] }]);
     });
 });

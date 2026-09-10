@@ -11,26 +11,55 @@ export type Source = {
     snippet: string;
     documentId?: number;
     nodeId?: string;
+    paragraphId?: number;
+    lines?: number[];
+    matchedTerms?: string[];
+    box?: { xMin: number; yMin: number; xMax: number; yMax: number; pageWidth: number; pageHeight: number };
+    lineBoxes?: number[][];
+    indexedAt?: string;
+    continuesOnPage?: number;
 };
 
 interface SourceReferenceProps {
     source: Source;
+    /** true quando o documento foi reindexado depois desta resposta. */
+    reindexado?: boolean;
+    /** Posicao na lista (1..n), a mesma ordem em que o modelo recebeu as fontes. */
+    numero?: number;
+    /** Fonte que esta focada no canvas. */
+    ativa?: boolean;
     /** Quando existe (e a fonte tem documentId), mostra "Ver no documento". */
     onVerNoDocumento?: (source: Source) => void;
 }
 
-const SourceReference = ({ source, onVerNoDocumento }: SourceReferenceProps) => {
+const SourceReference = ({ source, numero, ativa = false, reindexado = false, onVerNoDocumento }: SourceReferenceProps) => {
     const { t } = useI18n();
     const podeIr = Boolean(onVerNoDocumento && source.documentId);
 
     return (
-        <details className="group rounded-2xl border border-border/60 bg-background/70 transition-colors open:bg-muted/40">
+        <details
+            className={`group rounded-2xl border bg-background/70 transition-colors open:bg-muted/40 ${ativa ? "border-primary ring-1 ring-primary/40" : "border-border/60"}`}
+            data-testid="fonte"
+            data-ativa={ativa ? "true" : undefined}
+        >
             <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-2.5 marker:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35">
-                <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                {numero ? (
+                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold tabular-nums ${ativa ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                        {numero}
+                    </span>
+                ) : (
+                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                )}
                 <div className="min-w-0 flex-1">
                     <p className="truncate text-[11px] font-semibold text-foreground">{source.docName}</p>
                     <p className="text-[10px] text-muted-foreground">
                         {t("dashboard.chat.page")} {source.page}
+                        {source.continuesOnPage ? `–${source.continuesOnPage}` : ""}
+                        {reindexado ? (
+                            <span className="ml-1 rounded bg-amber-500/15 px-1 py-0.5 text-[9px] font-medium text-amber-600 dark:text-amber-400" title={t("dashboard.chat.reindexedTitle")} data-testid="fonte-reindexada">
+                                {t("dashboard.chat.reindexed")}
+                            </span>
+                        ) : null}
                     </p>
                 </div>
 
@@ -59,6 +88,15 @@ const SourceReference = ({ source, onVerNoDocumento }: SourceReferenceProps) => 
 
             <div className="space-y-2 border-t border-border/60 px-4 py-3">
                 <p className="text-sm leading-relaxed text-muted-foreground">&quot;...{source.snippet}...&quot;</p>
+                {source.matchedTerms && source.matchedTerms.length > 0 ? (
+                    <ul className="flex flex-wrap gap-1" aria-label={t("dashboard.chat.matchedTerms")} data-testid="termos-da-fonte">
+                        {source.matchedTerms.map((termo) => (
+                            <li key={termo} className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] text-primary">
+                                {termo}
+                            </li>
+                        ))}
+                    </ul>
+                ) : null}
                 <p className="text-[10px] text-muted-foreground">
                     {t("dashboard.chat.verifiedSource")}
                 </p>

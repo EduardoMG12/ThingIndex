@@ -2,9 +2,13 @@ package indexing
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 
 	"thing-index/internal/domain"
@@ -13,7 +17,32 @@ import (
 
 const llmOutlineLimit = 12
 
-type LLMEnricher struct{}
+type LLMEnricher struct {
+	// cache (opcional): resumos por hash do texto, para reindexar sem pagar.
+	cache domain.EnrichmentCache
+}
+
+// WithCache liga o cache de resumos; sem ele, cada reindexacao chama a LLM.
+func (e *LLMEnricher) WithCache(cache domain.EnrichmentCache) *LLMEnricher {
+	e.cache = cache
+	return e
+}
+
+// enrichmentPromptVersion entra no hash do cache: mudar o prompt invalida
+// os resumos guardados.
+const enrichmentPromptVersion = "2026-09-10a"
+
+func llmModelName(llm domain.LLMService) string {
+	if m, ok := llm.(domain.LLMMetadataProvider); ok {
+		return m.ModelName()
+	}
+	return ""
+}
+
+func enrichmentHash(text string) string {
+	sum := sha256.Sum256([]byte(enrichmentPromptVersion + "\n" + strings.TrimSpace(text)))
+	return hex.EncodeToString(sum[:])
+}
 
 type documentSynopsisResponse struct {
 	DocumentSummary string   `json:"document_summary"`
@@ -28,11 +57,14 @@ type sectionSummaryResponse struct {
 	} `json:"nodes"`
 }
 
+type pageSummaryItem struct {
+	PageNumber int      `json:"page_number"`
+	Summary    string   `json:"summary"`
+	Topics     []string `json:"topics"`
+}
+
 type pageSummaryResponse struct {
-	Pages []struct {
-		PageNumber int    `json:"page_number"`
-		Summary    string `json:"summary"`
-	} `json:"pages"`
+	Pages []pageSummaryItem `json:"pages"`
 }
 
 type retrievalSignalsResponse struct {
@@ -46,13 +78,36 @@ func NewLLMEnricher() *LLMEnricher {
 }
 
 func (e *LLMEnricher) Enrich(ctx context.Context, llm domain.LLMService, doc *models.Document, result domain.IndexingResult) (domain.IndexingResult, error) {
+	return e.EnrichWith(ctx, llm, doc, result, domain.DefaultIndexingPreferences())
+}
+
+// EnrichWith respeita o escopo escolhido pelo usuario: documento (arvore,
+// sinopse, sinais), paginas (resumo e topicos) e secoes (resumo). O que esta
+// desligado cai no fallback deterministico, sem chamada.
+func (e *LLMEnricher) EnrichWith(ctx context.Context, llm domain.LLMService, doc *models.Document, result domain.IndexingResult, prefs domain.IndexingPreferences) (domain.IndexingResult, error) {
 	if llm == nil {
 		return result, nil
 	}
 
 	updated := result
 	documentID := documentIDFromResult(result)
-	if treeBuilt, err := e.buildTree(ctx, llm, doc, updated); err == nil {
+	scope := make([]string, 0, 3)
+	if prefs.DocumentSynopsis {
+		scope = append(scope, "document")
+	}
+	if prefs.PageSummaries {
+		scope = append(scope, "pages")
+	}
+	if prefs.SectionSummaries {
+		scope = append(scope, "sections")
+	}
+	appendMetadata(&updated, documentID, "enrichment_scope", strings.Join(scope, ","))
+
+	treeBuilt, treeErr := domain.IndexingResult{}, errors.New("document scope disabled")
+	if prefs.DocumentSynopsis {
+		treeBuilt, treeErr = e.buildTree(ctx, llm, doc, updated)
+	}
+	if treeErr == nil {
 		updated = treeBuilt
 	} else {
 		if len(updated.DocumentPages) > 0 {
@@ -72,36 +127,58 @@ func (e *LLMEnricher) Enrich(ctx context.Context, llm domain.LLMService, doc *mo
 
 	// Fallback nunca e silencioso: sem o log, cinco chamadas devolvendo um
 	// token cada passaram meses como "enrichment_status=applied".
-	synopsis, err := e.generateDocumentSynopsis(ctx, llm, contextBlock)
-	if err != nil {
+	calls := 0
+	var synopsis documentSynopsisResponse
+	if !prefs.DocumentSynopsis {
+		synopsis = buildFallbackDocumentSynopsis(doc, updated)
+		appendMetadata(&updated, documentID, "synopsis_source", "disabled")
+	} else if got, err := e.generateDocumentSynopsis(ctx, llm, contextBlock); err != nil {
+		calls++
 		log.Printf("enricher: sinopse do documento %d caiu no fallback: %v", documentID, err)
 		synopsis = buildFallbackDocumentSynopsis(doc, updated)
 		appendMetadata(&updated, documentID, "synopsis_source", "fallback")
 	} else {
+		calls++
+		synopsis = got
 		appendMetadata(&updated, documentID, "synopsis_source", "llm")
 	}
 	applyDocumentSynopsis(&updated, documentID, synopsis)
-	sectionSummaries, err := e.generateOutlineNodeSummaries(ctx, llm, contextBlock)
-	if err == nil {
-		applyOutlineNodeSummaries(&updated, sectionSummaries)
-	} else {
-		log.Printf("enricher: resumos de secao do documento %d descartados: %v", documentID, err)
+	// Resumos para TODAS as secoes e TODAS as paginas com texto, em lotes:
+	// antes eram 12 secoes e 8 paginas por documento, e o PPC de 209 paginas
+	// ficava com 200 paginas em fallback (os 320 primeiros caracteres).
+	// O texto proprio de cada secao (paragrafos dela, sem os filhos) e o que
+	// vai ao prompt; com o texto da pagina inteira a LLM pulava metade dos nos.
+	populateOutlineRetrievalText(&updated)
+	hits := enrichmentCacheHits{}
+	var sections sectionSummaryResponse
+	if prefs.SectionSummaries {
+		sections = e.generateAllSectionSummaries(ctx, llm, doc, updated, &calls, &hits)
+		applyOutlineNodeSummaries(&updated, sections)
 	}
-	pageSummaries, err := e.generatePageSummaries(ctx, llm, contextBlock)
-	if err == nil {
-		applyPageSummaries(&updated, pageSummaries)
-	} else {
-		log.Printf("enricher: resumos de pagina do documento %d descartados: %v", documentID, err)
+	var pages pageSummaryResponse
+	if prefs.PageSummaries {
+		pages = e.generateAllPageSummaries(ctx, llm, doc, updated, &calls, &hits)
+		applyPageSummaries(&updated, pages)
 	}
 	fillMissingPageSummaries(&updated)
 	populateOutlineRetrievalText(&updated)
 
-	retrievalSignals, err := e.generateRetrievalSignals(ctx, llm, contextBlock)
-	if err == nil {
-		applyRetrievalSignals(&updated, documentID, retrievalSignals)
-	} else {
-		log.Printf("enricher: sinais de recuperacao do documento %d descartados: %v", documentID, err)
+	if prefs.DocumentSynopsis {
+		calls++
+		retrievalSignals, err := e.generateRetrievalSignals(ctx, llm, contextBlock)
+		if err == nil {
+			applyRetrievalSignals(&updated, documentID, retrievalSignals)
+		} else {
+			log.Printf("enricher: sinais de recuperacao do documento %d descartados: %v", documentID, err)
+		}
 	}
+	// enrichment_llm_calls conta sinopse, sinais e lotes (a arvore tem o seu
+	// proprio contador em tree_*); llm_request_count, do observador, conta tudo.
+	appendMetadata(&updated, documentID, "enrichment_llm_calls", strconv.Itoa(calls))
+	appendMetadata(&updated, documentID, "enrichment_sections_summarized", strconv.Itoa(len(sections.Nodes)))
+	appendMetadata(&updated, documentID, "enrichment_pages_summarized", strconv.Itoa(len(pages.Pages)))
+	appendMetadata(&updated, documentID, "enrichment_cache_hits_pages", strconv.Itoa(hits.pages))
+	appendMetadata(&updated, documentID, "enrichment_cache_hits_sections", strconv.Itoa(hits.sections))
 
 	return updated, nil
 }
@@ -118,43 +195,10 @@ func (e *LLMEnricher) generateDocumentSynopsis(ctx context.Context, llm domain.L
 		return documentSynopsisResponse{}, fmt.Errorf("parse synopsis enrichment json: %w", err)
 	}
 
-	payload.DocumentSummary = clampText(payload.DocumentSummary, 800)
+	payload.DocumentSummary = clampText(payload.DocumentSummary, 1400)
 	payload.DocumentPurpose = clampText(payload.DocumentPurpose, 400)
 	payload.Keywords = sanitizeStringList(payload.Keywords, 8, 80)
 
-	return payload, nil
-}
-
-func (e *LLMEnricher) generateOutlineNodeSummaries(ctx context.Context, llm domain.LLMService, contextBlock string) (sectionSummaryResponse, error) {
-	systemPrompt, userPrompt := buildOutlineNodeSummaryPrompt(contextBlock)
-	raw, err := llm.GenerateText(ctx, systemPrompt, userPrompt)
-	if err != nil {
-		return sectionSummaryResponse{}, err
-	}
-
-	var payload sectionSummaryResponse
-	if err := parseLLMJSON(raw, &payload); err != nil {
-		return sectionSummaryResponse{}, fmt.Errorf("parse section enrichment json: %w", err)
-	}
-
-	payload.Nodes = sanitizeSectionSummaries(payload.Nodes, llmOutlineLimit)
-
-	return payload, nil
-}
-
-func (e *LLMEnricher) generatePageSummaries(ctx context.Context, llm domain.LLMService, contextBlock string) (pageSummaryResponse, error) {
-	systemPrompt, userPrompt := buildPageSummaryPrompt(contextBlock)
-	raw, err := llm.GenerateText(ctx, systemPrompt, userPrompt)
-	if err != nil {
-		return pageSummaryResponse{}, err
-	}
-
-	var payload pageSummaryResponse
-	if err := parseLLMJSON(raw, &payload); err != nil {
-		return pageSummaryResponse{}, fmt.Errorf("parse page enrichment json: %w", err)
-	}
-
-	payload.Pages = sanitizePageSummaries(payload.Pages, 8)
 	return payload, nil
 }
 
@@ -175,6 +219,232 @@ func (e *LLMEnricher) generateRetrievalSignals(ctx context.Context, llm domain.L
 	payload.Dates = sanitizeStringList(payload.Dates, 10, 40)
 
 	return payload, nil
+}
+
+const (
+	enrichmentPageBatch     = 6
+	enrichmentSectionBatch  = 12
+	enrichmentMinPageChars  = 200
+	enrichmentPageChars     = 3000
+	enrichmentSectionChars  = 900
+	enrichmentMaxBatchCalls = 80
+)
+
+// generateAllPageSummaries resume todas as paginas com texto, em lotes de
+// enrichmentPageBatch por chamada. Lote que falha e logado e pulado; as
+// paginas dele caem no fallback de fillMissingPageSummaries.
+type enrichmentCacheHits struct {
+	pages    int
+	sections int
+}
+
+// lookupCache consulta o cache por (tipo, modelo, hash); sem cache ou com
+// erro, devolve mapa vazio e segue para a LLM.
+func (e *LLMEnricher) lookupCache(ctx context.Context, kind, model string, hashes []string) map[string]domain.EnrichmentCacheEntry {
+	if e.cache == nil || len(hashes) == 0 {
+		return map[string]domain.EnrichmentCacheEntry{}
+	}
+	found, err := e.cache.LookupEnrichment(ctx, kind, model, hashes)
+	if err != nil {
+		log.Printf("enricher: cache de %s indisponivel, seguindo sem ele: %v", kind, err)
+		return map[string]domain.EnrichmentCacheEntry{}
+	}
+	return found
+}
+
+func (e *LLMEnricher) storeCache(ctx context.Context, entries []domain.EnrichmentCacheEntry) {
+	if e.cache == nil || len(entries) == 0 {
+		return
+	}
+	if err := e.cache.StoreEnrichment(ctx, entries); err != nil {
+		log.Printf("enricher: falha ao gravar cache de resumos: %v", err)
+	}
+}
+
+func (e *LLMEnricher) generateAllPageSummaries(ctx context.Context, llm domain.LLMService, doc *models.Document, result domain.IndexingResult, calls *int, hits *enrichmentCacheHits) pageSummaryResponse {
+	var all pageSummaryResponse
+	model := llmModelName(llm)
+	hashByPage := make(map[int]string, len(result.DocumentPages))
+	hashes := make([]string, 0, len(result.DocumentPages))
+	for _, page := range result.DocumentPages {
+		if len(strings.TrimSpace(page.Content)) < enrichmentMinPageChars {
+			continue
+		}
+		h := enrichmentHash(page.Content)
+		hashByPage[page.PageNumber] = h
+		hashes = append(hashes, h)
+	}
+	cached := e.lookupCache(ctx, "page", model, hashes)
+	var batch []models.DocumentPage
+	flush := func() {
+		if len(batch) == 0 || *calls >= enrichmentMaxBatchCalls {
+			batch = nil
+			return
+		}
+		*calls++
+		systemPrompt, userPrompt := buildPageSummaryPrompt(buildPageBatchContext(doc, batch))
+		raw, err := llm.GenerateText(ctx, systemPrompt, userPrompt)
+		var payload pageSummaryResponse
+		if err == nil {
+			err = parseLLMJSON(raw, &payload)
+		}
+		if err != nil {
+			log.Printf("enricher: lote de paginas %d-%d do documento %d descartado: %v", batch[0].PageNumber, batch[len(batch)-1].PageNumber, doc.ID, err)
+		} else {
+			items := sanitizePageSummaries(payload.Pages, len(batch))
+			all.Pages = append(all.Pages, items...)
+			entries := make([]domain.EnrichmentCacheEntry, 0, len(items))
+			for _, item := range items {
+				if h := hashByPage[item.PageNumber]; h != "" {
+					entries = append(entries, domain.EnrichmentCacheEntry{Kind: "page", Model: model, ContentHash: h, Summary: item.Summary, Topics: strings.Join(item.Topics, ", ")})
+				}
+			}
+			e.storeCache(ctx, entries)
+		}
+		batch = nil
+	}
+	for _, page := range result.DocumentPages {
+		h, eligible := hashByPage[page.PageNumber]
+		if !eligible {
+			continue
+		}
+		if entry, ok := cached[h]; ok {
+			all.Pages = append(all.Pages, pageSummaryItem{PageNumber: page.PageNumber, Summary: entry.Summary, Topics: splitTopics(entry.Topics)})
+			hits.pages++
+			continue
+		}
+		batch = append(batch, page)
+		if len(batch) == enrichmentPageBatch {
+			flush()
+		}
+	}
+	flush()
+	return all
+}
+
+func buildPageBatchContext(doc *models.Document, pages []models.DocumentPage) string {
+	var b strings.Builder
+	b.WriteString(buildDocumentIdentityBlock(doc))
+	b.WriteString("Pages:\n")
+	for _, page := range pages {
+		b.WriteString("- page_number=")
+		b.WriteString(strconv.Itoa(page.PageNumber))
+		b.WriteString(", content=")
+		b.WriteString(clampText(page.Content, enrichmentPageChars))
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+// generateAllSectionSummaries resume todas as secoes, em lotes de
+// enrichmentSectionBatch, com o texto das paginas da secao como contexto.
+func (e *LLMEnricher) generateAllSectionSummaries(ctx context.Context, llm domain.LLMService, doc *models.Document, result domain.IndexingResult, calls *int, hits *enrichmentCacheHits) sectionSummaryResponse {
+	var all sectionSummaryResponse
+	pageContent := make(map[int]string, len(result.DocumentPages))
+	for _, page := range result.DocumentPages {
+		pageContent[page.PageNumber] = page.Content
+	}
+	model := llmModelName(llm)
+	hashByOrder := make(map[int]string, len(result.OutlineNodes))
+	hashes := make([]string, 0, len(result.OutlineNodes))
+	for _, node := range result.OutlineNodes {
+		h := enrichmentHash(node.Title + "\n" + sectionOwnText(node, pageContent))
+		hashByOrder[node.SequenceOrder] = h
+		hashes = append(hashes, h)
+	}
+	cached := e.lookupCache(ctx, "section", model, hashes)
+	var batch []models.DocumentOutlineNode
+	flush := func() {
+		if len(batch) == 0 || *calls >= enrichmentMaxBatchCalls {
+			batch = nil
+			return
+		}
+		*calls++
+		systemPrompt, userPrompt := buildOutlineNodeSummaryPrompt(buildSectionBatchContext(doc, batch, pageContent))
+		raw, err := llm.GenerateText(ctx, systemPrompt, userPrompt)
+		var payload sectionSummaryResponse
+		if err == nil {
+			err = parseLLMJSON(raw, &payload)
+		}
+		if err != nil {
+			log.Printf("enricher: lote de secoes do documento %d descartado: %v", doc.ID, err)
+		} else {
+			items := sanitizeSectionSummaries(payload.Nodes, len(batch))
+			all.Nodes = append(all.Nodes, items...)
+			entries := make([]domain.EnrichmentCacheEntry, 0, len(items))
+			for _, item := range items {
+				if h := hashByOrder[item.SequenceOrder]; h != "" {
+					entries = append(entries, domain.EnrichmentCacheEntry{Kind: "section", Model: model, ContentHash: h, Summary: item.Summary})
+				}
+			}
+			e.storeCache(ctx, entries)
+		}
+		batch = nil
+	}
+	for _, node := range result.OutlineNodes {
+		if entry, ok := cached[hashByOrder[node.SequenceOrder]]; ok {
+			all.Nodes = append(all.Nodes, struct {
+				SequenceOrder int    `json:"sequence_order"`
+				Summary       string `json:"summary"`
+			}{SequenceOrder: node.SequenceOrder, Summary: entry.Summary})
+			hits.sections++
+			continue
+		}
+		batch = append(batch, node)
+		if len(batch) == enrichmentSectionBatch {
+			flush()
+		}
+	}
+	flush()
+	return all
+}
+
+func buildSectionBatchContext(doc *models.Document, nodes []models.DocumentOutlineNode, pageContent map[int]string) string {
+	var b strings.Builder
+	b.WriteString(buildDocumentIdentityBlock(doc))
+	b.WriteString("Sections:\n")
+	for _, node := range nodes {
+		b.WriteString("- sequence_order=")
+		b.WriteString(strconv.Itoa(node.SequenceOrder))
+		b.WriteString(", level=")
+		b.WriteString(strconv.Itoa(node.Level))
+		b.WriteString(", title=")
+		b.WriteString(node.Title)
+		if text := sectionOwnText(node, pageContent); text != "" {
+			b.WriteString(", text=")
+			b.WriteString(text)
+		}
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+// sectionOwnText e o texto que representa a secao no prompt e no hash do
+// cache: o retrieval_text (paragrafos dela, sem os filhos) ou, sem ele, o
+// texto das paginas start..end. Sempre limitado a enrichmentSectionChars.
+func sectionOwnText(node models.DocumentOutlineNode, pageContent map[int]string) string {
+	if own, _ := metadataString(node.Metadata, "retrieval_text"); strings.TrimSpace(own) != "" {
+		return clampText(own, enrichmentSectionChars)
+	}
+	if node.StartPage == nil {
+		return ""
+	}
+	text := ""
+	end := *node.StartPage
+	if node.EndPage != nil && *node.EndPage > end {
+		end = *node.EndPage
+	}
+	for page := *node.StartPage; page <= end && len(text) < enrichmentSectionChars; page++ {
+		text += " " + pageContent[page]
+	}
+	return clampText(text, enrichmentSectionChars)
+}
+
+func splitTopics(value string) []string {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	return sanitizeStringList(strings.Split(value, ","), 5, 60)
 }
 
 func parseLLMJSON(raw string, target any) error {
@@ -322,6 +592,12 @@ func applyPageSummaries(result *domain.IndexingResult, payload pageSummaryRespon
 				continue
 			}
 			result.DocumentPages[idx].Summary = strings.TrimSpace(page.Summary)
+			if topics := sanitizeStringList(page.Topics, 5, 60); len(topics) > 0 {
+				if result.DocumentPages[idx].Metadata == nil {
+					result.DocumentPages[idx].Metadata = map[string]any{}
+				}
+				result.DocumentPages[idx].Metadata["topics"] = strings.Join(topics, ", ")
+			}
 			break
 		}
 	}
@@ -527,7 +803,7 @@ func sanitizeSectionSummaries(
 			continue
 		}
 
-		summary := clampText(section.Summary, 280)
+		summary := clampText(section.Summary, 500)
 		if summary == "" {
 			continue
 		}
@@ -548,20 +824,8 @@ func sanitizeSectionSummaries(
 	return items
 }
 
-func sanitizePageSummaries(
-	pages []struct {
-		PageNumber int    `json:"page_number"`
-		Summary    string `json:"summary"`
-	},
-	limit int,
-) []struct {
-	PageNumber int    `json:"page_number"`
-	Summary    string `json:"summary"`
-} {
-	items := make([]struct {
-		PageNumber int    `json:"page_number"`
-		Summary    string `json:"summary"`
-	}, 0, min(limit, len(pages)))
+func sanitizePageSummaries(pages []pageSummaryItem, limit int) []pageSummaryItem {
+	items := make([]pageSummaryItem, 0, min(limit, len(pages)))
 	seen := make(map[int]struct{}, len(pages))
 	for _, page := range pages {
 		if page.PageNumber <= 0 {
@@ -570,25 +834,16 @@ func sanitizePageSummaries(
 		if _, ok := seen[page.PageNumber]; ok {
 			continue
 		}
-
-		summary := clampText(page.Summary, 320)
+		summary := clampText(page.Summary, 600)
 		if summary == "" {
 			continue
 		}
-
 		seen[page.PageNumber] = struct{}{}
-		items = append(items, struct {
-			PageNumber int    `json:"page_number"`
-			Summary    string `json:"summary"`
-		}{
-			PageNumber: page.PageNumber,
-			Summary:    summary,
-		})
+		items = append(items, pageSummaryItem{PageNumber: page.PageNumber, Summary: summary, Topics: sanitizeStringList(page.Topics, 5, 60)})
 		if len(items) == limit {
 			break
 		}
 	}
-
 	return items
 }
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { AnimatePresence, motion } from "framer-motion";
 import { FolderOpen, Loader2, MessageSquarePlus } from "lucide-react";
 
@@ -39,9 +41,13 @@ type ChatTabProps = {
     /** Cabecalho de uma linha, sem acoes rapidas: para caber num painel. */
     compacto?: boolean;
     onVerNoDocumento?: (source: Source) => void;
+    /** Data do indice atual por documento (para marcar fonte de indice antigo). */
+    indexadoEm?: ReadonlyMap<number, string>;
 };
 
-const ChatTab = ({ className, collectionId = null, compacto = false, onVerNoDocumento }: ChatTabProps) => {
+const ChatTab = ({ className, collectionId = null, compacto = false, onVerNoDocumento, indexadoEm }: ChatTabProps) => {
+    // Fonte focada no canvas, pelo id: sobrevive ao recarregamento da conversa apos o stream.
+    const [fonteAtivaId, setFonteAtivaId] = useState<string | null>(null);
     const { t } = useI18n();
     const controlado = collectionId !== null;
     const {
@@ -244,6 +250,9 @@ const ChatTab = ({ className, collectionId = null, compacto = false, onVerNoDocu
                                     message={message}
                                     isStreaming={isStreaming && message.id === streamMessageId}
                                     onVerNoDocumento={onVerNoDocumento}
+                                    fonteAtivaId={fonteAtivaId}
+                                    onFonteAtiva={setFonteAtivaId}
+                                    indexadoEm={indexadoEm}
                                 />
                             </motion.div>
                         ))}

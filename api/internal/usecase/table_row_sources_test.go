@@ -1,8 +1,10 @@
 package usecase
 
 import (
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
@@ -112,5 +114,172 @@ func TestFonteDeLinhaVemPrimeiroEVaiAoPromptComoLinha(t *testing.T) {
 	}
 	if !strings.Contains(userPrompt, "3. Matriz (page 1):\nPAGINA INTEIRA DA MATRIZ") {
 		t.Fatalf("a pagina inteira ainda entra como terceira fonte:\n%s", userPrompt)
+	}
+}
+
+// A fonte de pagina aponta o paragrafo com mais termos da pergunta: e o que o
+// canvas grifa ao clicar.
+func TestFonteDePaginaApontaOParagrafoMaisProximoDaPergunta(t *testing.T) {
+	t.Parallel()
+	page := 126
+	context := &domain.CollectionContext{
+		Documents: []models.Document{{ID: 260, Title: "PPC"}},
+		ParagraphNodes: []models.ParagraphNode{
+			{ID: 71, DocumentID: 260, PageNumber: &page, Content: "os conceitos deverao ter emissao parcial apos cada bimestre"},
+			{ID: 72, DocumentID: 260, PageNumber: &page, Content: "conceito D quando a aprendizagem do estudante for insuficiente e nao atingir os objetivos"},
+			{ID: 73, DocumentID: 260, PageNumber: &page, Content: "o plano de avaliacao institucional atende ao SINAES"},
+		},
+	}
+	retrieval := &domain.CollectionRetrievalResult{
+		Query:    "O que significa o conceito D na avaliação dos cursos superiores?",
+		PageHits: []domain.CollectionPageHit{{DocumentID: 260, PageNumber: 126}},
+	}
+	sources := buildChatSources(context, retrieval)
+	if len(sources) != 1 || sources[0].ParagraphID != 72 {
+		t.Fatalf("esperava o paragrafo 72 (conceito, D, aprendizagem): %+v", sources)
+	}
+}
+
+// Com as linhas do paragrafo no metadata, a fonte aponta so as linhas que
+// casam a pergunta, e o trecho e o texto delas.
+func TestFonteApontaAsLinhasQueCasamAPergunta(t *testing.T) {
+	t.Parallel()
+	page := 199
+	context := &domain.CollectionContext{
+		Documents: []models.Document{{ID: 260, Title: "PPC"}},
+		ParagraphNodes: []models.ParagraphNode{{ID: 5, DocumentID: 260, PageNumber: &page, Content: "§ 3º. Para os estágios extracurriculares, elencados no inciso III, a carga horária limite é de 80 horas de estágio por atividade complementar aceita no cômputo total; § 4º. As atividades elencadas no inciso IV dependem de previa autorizacao deste Instituto,", Metadata: map[string]any{"lines": []any{
+			map[string]any{"t": "§ 3º. Para os estágios extracurriculares, elencados no inciso III, a carga horária limite é de 80", "b": []any{1.0, 1.0, 2.0, 2.0}},
+			map[string]any{"t": "horas de estágio por atividade complementar aceita no cômputo total;", "b": []any{1.0, 2.0, 2.0, 3.0}},
+			map[string]any{"t": "§ 4º. As atividades elencadas no inciso IV dependem de previa autorizacao deste Instituto,", "b": []any{1.0, 3.0, 2.0, 4.0}},
+		}}}},
+	}
+	retrieval := &domain.CollectionRetrievalResult{
+		Query:    "Qual é o limite de horas de estágio extracurricular aceito como atividade complementar?",
+		PageHits: []domain.CollectionPageHit{{DocumentID: 260, PageNumber: 199}},
+	}
+	sources := buildChatSources(context, retrieval)
+	if len(sources) != 1 || sources[0].ParagraphID != 5 {
+		t.Fatalf("fonte: %+v", sources)
+	}
+	if got := sources[0].Lines; len(got) != 2 || got[0] != 0 || got[1] != 1 {
+		t.Fatalf("esperava as linhas 0 e 1 (a do § 3º e a continuacao com 'atividades complementares'): %v", got)
+	}
+	if !strings.HasPrefix(sources[0].Snippet, "§ 3º. Para os estágios") {
+		t.Fatalf("o trecho deveria ser o texto das linhas: %q", sources[0].Snippet)
+	}
+}
+
+// A fonte leva a caixa do paragrafo, as caixas das linhas citadas e a data de
+// indexacao: depois de reindexar, o grifo continua no lugar e a tela sabe que
+// o indice mudou.
+func TestFonteLevaCaixaLinhasEDataDoIndice(t *testing.T) {
+	t.Parallel()
+	page := 199
+	indexado := time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC)
+	context := &domain.CollectionContext{
+		Documents: []models.Document{{ID: 260, Title: "PPC", IndexedAt: &indexado}},
+		ParagraphNodes: []models.ParagraphNode{{ID: 5, DocumentID: 260, PageNumber: &page,
+			Content: "para os estagios extracurriculares a carga horaria limite e de 80 horas de estagio",
+			Metadata: map[string]any{
+				"box":   map[string]any{"x_min": 70.0, "y_min": 100.0, "x_max": 500.0, "y_max": 140.0, "page_width": 595.0, "page_height": 842.0},
+				"lines": []any{map[string]any{"t": "para os estagios extracurriculares a carga horaria limite e de 80", "b": []any{70.0, 100.0, 500.0, 120.0}}, map[string]any{"t": "horas de estagio", "b": []any{70.0, 120.0, 200.0, 140.0}}},
+			}}},
+	}
+	retrieval := &domain.CollectionRetrievalResult{Query: "Qual o limite de horas de estágio extracurricular?", PageHits: []domain.CollectionPageHit{{DocumentID: 260, PageNumber: 199}}}
+	sources := buildChatSources(context, retrieval)
+	if len(sources) != 1 || sources[0].Box == nil || sources[0].Box.YMax != 140 || sources[0].IndexedAt == nil || !sources[0].IndexedAt.Equal(indexado) {
+		t.Fatalf("fonte sem caixa ou sem data do indice: %+v", sources)
+	}
+	if len(sources[0].LineBoxes) != len(sources[0].Lines) || sources[0].LineBoxes[0][1] != 100 {
+		t.Fatalf("caixas das linhas nao acompanham as linhas: %v / %v", sources[0].Lines, sources[0].LineBoxes)
+	}
+}
+
+// Entre secoes e paginas, a fonte com mais termos da pergunta vem antes,
+// independente de ser secao ou pagina. Antes: tres secoes com 2 termos na
+// frente da pagina da Lei com 5.
+func TestFontesOrdenadasPorTermosCasados(t *testing.T) {
+	t.Parallel()
+	p1, p3 := 1, 3
+	context := &domain.CollectionContext{
+		Documents: []models.Document{{ID: 265, Title: "Matriz"}, {ID: 327, Title: "Lei"}},
+		ParagraphNodes: []models.ParagraphNode{
+			{ID: 1, DocumentID: 265, PageNumber: &p3, Content: "carga horaria maxima do estagio"},
+			{ID: 2, DocumentID: 327, PageNumber: &p1, Content: "jornada maxima diaria e semanal do estagio para estudantes do ensino superior"},
+		},
+	}
+	retrieval := &domain.CollectionRetrievalResult{
+		Query:    "Qual a jornada máxima diária e semanal do estágio para estudantes do ensino superior?",
+		NodeHits: []domain.CollectionNodeHit{{DocumentID: 265, NodeID: "matriz#3", Title: "Estagio", StartPage: &p3}},
+		PageHits: []domain.CollectionPageHit{{DocumentID: 327, PageNumber: 1}},
+	}
+	sources := buildChatSources(context, retrieval)
+	if len(sources) != 2 || sources[0].DocumentID != 327 || sources[1].DocumentID != 265 {
+		t.Fatalf("esperava a Lei (mais termos) antes da Matriz: %+v", sources)
+	}
+}
+
+// Linha de tabela com pelo menos metade dos termos da pergunta continua na
+// frente (pergunta de tabela); linha com poucos termos entra na ordem comum.
+func TestLinhaDeTabelaSoPassaNaFrenteComMetadeDosTermos(t *testing.T) {
+	t.Parallel()
+	linha := func(termos ...string) domain.ChatSource { return domain.ChatSource{ID: "linha", MatchedTerms: termos} }
+	pagina := domain.ChatSource{ID: "pagina", MatchedTerms: []string{"jornada", "maxima", "diaria", "estagio", "ensino", "superior"}}
+	// Pergunta de tabela (4 termos): linha com 3 fica na frente da pagina com 6.
+	got := orderChatSources([]domain.ChatSource{linha("estrutura", "dados", "requisito"), pagina}, 1, 4)
+	if got[0].ID != "linha" {
+		t.Fatalf("linha com metade dos termos devia vir primeiro: %+v", got)
+	}
+	// Pergunta longa (8 termos): linha com 2 vai para depois da pagina com 6.
+	got = orderChatSources([]domain.ChatSource{linha("maxima", "estagio"), pagina}, 1, 8)
+	if got[0].ID != "pagina" || got[1].ID != "linha" {
+		t.Fatalf("linha fraca devia ceder a vez para a pagina com mais termos: %+v", got)
+	}
+}
+
+// Pagina que termina no meio da frase leva a pagina seguinte como
+// continuacao: a fonte cita as duas e o prompt recebe o comeco da seguinte.
+func TestFonteContinuaNaPaginaSeguinteQuandoAFraseQuebra(t *testing.T) {
+	t.Parallel()
+	context := &domain.CollectionContext{
+		Documents: []models.Document{{ID: 260, Title: "PPC"}},
+		DocumentPages: []models.DocumentPage{
+			{DocumentID: 260, PageNumber: 186, Content: "Para a matricula na disciplina de TCC II e requisito a aprovacao em TCC I. E vedada a"},
+			{DocumentID: 260, PageNumber: 187, Content: "matricula simultanea em TCC I e TCC II. Outra frase. " + strings.Repeat("Mais texto da pagina. ", 40)},
+			{DocumentID: 260, PageNumber: 196, Content: "O aluno aprovado em TCC I e reprovado em TCC II: a nova matricula nao e vedada."},
+		},
+	}
+	retrieval := &domain.CollectionRetrievalResult{Query: "É vedada a matrícula simultânea em TCC I e TCC II?", PageHits: []domain.CollectionPageHit{{DocumentID: 260, PageNumber: 186}, {DocumentID: 260, PageNumber: 196}}}
+	sources := buildChatSources(context, retrieval)
+	if len(sources) != 2 || sources[0].Page != 186 || sources[0].ContinuesOnPage != 187 {
+		t.Fatalf("p. 186 devia continuar na 187: %+v", sources)
+	}
+	if sources[1].ContinuesOnPage != 0 {
+		t.Fatalf("p. 196 termina com ponto, nao continua: %+v", sources[1])
+	}
+	// Pagina com tabela (calendario) nao continua, mesmo sem ponto no fim.
+	p3 := 3
+	comTabela := &domain.CollectionContext{
+		Documents: []models.Document{{ID: 261, Title: "Calendario"}},
+		DocumentPages: []models.DocumentPage{
+			{DocumentID: 261, PageNumber: 3, Content: "Setembro: prazo final para o protocolo das atividades complementares dos formandos, 23 dias letivos"},
+			{DocumentID: 261, PageNumber: 4, Content: "Outubro: outro prazo final de protocolo."},
+		},
+		TableSections: []models.TableSection{{ID: 9, DocumentID: 261, PageNumber: &p3, Title: "Setembro"}},
+	}
+	tabela := buildChatSources(comTabela, &domain.CollectionRetrievalResult{Query: "Qual o prazo final para o protocolo das atividades complementares dos formandos?", PageHits: []domain.CollectionPageHit{{DocumentID: 261, PageNumber: 3}}})
+	if len(tabela) != 1 || tabela[0].ContinuesOnPage != 0 {
+		t.Fatalf("pagina com tabela nao devia continuar: %+v", tabela)
+	}
+	if !pageEndsMidSentence("II - conceito B - quando a aprendizagem for PARCIALMENTE PLENA;") || pageEndsMidSentence("Fim da pagina.") {
+		t.Fatal("ponto e virgula no fim da pagina e item de lista que continua; ponto final nao")
+	}
+	pageContent := map[string]string{}
+	for _, p := range context.DocumentPages {
+		pageContent[fmt.Sprintf("%d:%d", p.DocumentID, p.PageNumber)] = p.Content
+	}
+	body, _ := chatSourceBody(sources[0], pageContent, 10000)
+	if !strings.Contains(body, "[continua na p. 187] matricula simultanea em TCC I e TCC II.") || len([]rune(body)) > 200+ChatContinuationCharLimit {
+		t.Fatalf("corpo sem a continuacao curta: %q", body)
 	}
 }

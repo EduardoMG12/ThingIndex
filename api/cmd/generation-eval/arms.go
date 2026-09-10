@@ -76,7 +76,7 @@ func (a *thingIndexArm) post(path string, body any, out any) error {
 	if a.token != "" {
 		req.Header.Set("Authorization", "Bearer "+a.token)
 	}
-	resp, err := a.client.Do(req)
+	resp, err := a.doResilient(req, raw)
 	if err != nil {
 		return err
 	}
@@ -89,6 +89,26 @@ func (a *thingIndexArm) post(path string, body any, out any) error {
 		return json.Unmarshal(data, out)
 	}
 	return nil
+}
+
+// doResilient repete a chamada quando a API cai no meio da rodada (o air
+// recompila a API a cada edicao em Go do mesmo modulo: "connection reset by
+// peer" ou EOF por uns 20 segundos). Sem isto, uma rodada de 72 perguntas
+// perdeu 52 por uma edicao no indexador.
+func (a *thingIndexArm) doResilient(req *http.Request, body []byte) (*http.Response, error) {
+	var resp *http.Response
+	var err error
+	for tries := 0; tries < 12; tries++ {
+		if tries > 0 {
+			time.Sleep(5 * time.Second)
+			req.Body = io.NopCloser(bytes.NewReader(body))
+		}
+		resp, err = a.client.Do(req)
+		if err == nil || req.Context().Err() != nil {
+			return resp, err
+		}
+	}
+	return resp, err
 }
 
 func (a *thingIndexArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) answer {
@@ -111,7 +131,7 @@ func (a *thingIndexArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) 
 	// idioma e o modelo responde em ingles, o que derruba o casamento.
 	req.Header.Set("Accept-Language", "pt-BR")
 	start := time.Now()
-	resp, err := a.client.Do(req)
+	resp, err := a.doResilient(req, raw)
 	if err != nil {
 		return answer{Err: err}
 	}
@@ -138,8 +158,13 @@ func (a *thingIndexArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) 
 	seen := map[citation]bool{}
 	scanner := bufio.NewScanner(resp.Body)
 	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+	eventName := ""
 	for scanner.Scan() {
 		line := scanner.Text()
+		if strings.HasPrefix(line, "event:") {
+			eventName = strings.TrimSpace(strings.TrimPrefix(line, "event:"))
+			continue
+		}
 		if !strings.HasPrefix(line, "data:") {
 			continue
 		}
@@ -147,16 +172,27 @@ func (a *thingIndexArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) 
 		if err := json.Unmarshal([]byte(strings.TrimSpace(strings.TrimPrefix(line, "data:"))), &event); err != nil {
 			continue
 		}
+		// O handler emite o erro do provedor como evento "error" com {message}
+		// sem o campo type; o nome do evento SSE e a fonte de verdade.
+		if event.Type == "" {
+			event.Type = eventName
+		}
 		text.WriteString(event.Delta)
 		for _, s := range event.Sources {
 			docID := a.docByTitle[fold(strings.TrimSpace(s.DocName))]
 			if docID == "" {
 				docID = s.DocName
 			}
-			c := citation{DocumentID: docID, Page: s.Page}
-			if !seen[c] {
-				seen[c] = true
-				out.Citations = append(out.Citations, c)
+			pages := []int{s.Page}
+			if s.ContinuesOnPage > 0 {
+				pages = append(pages, s.ContinuesOnPage)
+			}
+			for _, page := range pages {
+				c := citation{DocumentID: docID, Page: page}
+				if !seen[c] {
+					seen[c] = true
+					out.Citations = append(out.Citations, c)
+				}
 			}
 		}
 		if event.Usage != nil {
@@ -179,12 +215,23 @@ func (a *thingIndexArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) 
 	}
 	// Conversa descartavel: sem isso, 200+ conversas do experimento poluem a
 	// tela do usuario demo. Melhor esforco; a linha ja esta medida.
-	req, err = http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/chat/conversations/%d", a.api, created.Data.ID), nil)
-	if err == nil {
-		req.Header.Set("Authorization", "Bearer "+a.token)
-		if resp, err := a.client.Do(req); err == nil {
-			resp.Body.Close()
+	for tries := 0; tries < 5; tries++ {
+		req, err = http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/chat/conversations/%d", a.api, created.Data.ID), nil)
+		if err != nil {
+			break
 		}
+		req.Header.Set("Authorization", "Bearer "+a.token)
+		resp, err := a.client.Do(req)
+		if err != nil {
+			break
+		}
+		resp.Body.Close()
+		// O DELETE passa pelo mesmo limitador do chat (429): sem esperar, 182
+		// conversas "gabarito" ficaram na tela do usuario demo.
+		if resp.StatusCode != http.StatusTooManyRequests {
+			break
+		}
+		time.Sleep(15 * time.Second)
 	}
 	return out
 }
@@ -195,6 +242,7 @@ func (a *thingIndexArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) 
 // recuperacao. E o adversario que o artigo nunca tinha medido.
 type fullDocumentArm struct {
 	llm      domain.LLMService
+	fallback domain.LLMService
 	model    string
 	pdfDir   string
 	docs     []evalcorpus.GabaritoDocument
@@ -211,15 +259,25 @@ func newFullDocumentArm(pdfDir, scope, model string, g *evalcorpus.Gabarito) (*f
 	if model == "" {
 		model = strings.TrimSpace(os.Getenv("THINGINDEX_TEST_LLM_MODEL"))
 	}
-	llm, err := provider.NewLLMProvider(providerType, map[string]string{
-		"api_key":  os.Getenv("THINGINDEX_TEST_LLM_API_KEY"),
-		"base_url": os.Getenv("THINGINDEX_TEST_LLM_BASE_URL"),
-		"model":    model,
-	})
+	build := func(apiKey string) (domain.LLMService, error) {
+		return provider.NewLLMProvider(providerType, map[string]string{
+			"api_key":  apiKey,
+			"base_url": os.Getenv("THINGINDEX_TEST_LLM_BASE_URL"),
+			"model":    model,
+		})
+	}
+	llm, err := build(os.Getenv("THINGINDEX_TEST_LLM_API_KEY"))
 	if err != nil {
 		return nil, err
 	}
 	arm := &fullDocumentArm{llm: llm, model: model, pdfDir: pdfDir, docs: g.Documents, scope: scope, pages: map[string][]string{}}
+	// Chave reserva (THINGINDEX_TEST_LLM_API_KEY_FALLBACK, outra conta do
+	// mesmo provedor): entra quando a principal devolve "usage limit".
+	if fallback := strings.TrimSpace(os.Getenv("THINGINDEX_TEST_LLM_API_KEY_FALLBACK")); fallback != "" {
+		if alt, err := build(fallback); err == nil {
+			arm.fallback = alt
+		}
+	}
 	for _, d := range g.Documents {
 		pages, err := extractPages(filepath.Join(pdfDir, d.File))
 		if err != nil {
@@ -286,6 +344,12 @@ func (a *fullDocumentArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion
 	estimated := estimateTokens(systemPrompt + userPrompt)
 	start := time.Now()
 	text, err := a.llm.GenerateText(ctx, systemPrompt, userPrompt)
+	if err != nil && a.fallback != nil && strings.Contains(err.Error(), "usage limit") {
+		fmt.Fprintln(os.Stderr, "generation-eval: chave principal esgotada; passando para a chave reserva")
+		a.llm, a.fallback = a.fallback, nil
+		start = time.Now()
+		text, err = a.llm.GenerateText(ctx, systemPrompt, userPrompt)
+	}
 	out := answer{Text: strings.TrimSpace(text), Model: a.model, Latency: time.Since(start), Err: err}
 	if reporter, ok := a.llm.(domain.TokenUsageReporter); ok {
 		out.PromptTokens, out.CompletionTokens, _, out.UsageReported = reporter.LastTokenUsage()

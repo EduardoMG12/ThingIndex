@@ -22,6 +22,16 @@ func buildIndexingResult(documentID uint, headings []outlineDraft, paragraphs []
 		if paragraph.Box != nil {
 			metadata["box"] = paragraph.Box
 		}
+		// Linhas com caixa so quando ha mais de uma: com uma linha, a caixa
+		// do paragrafo ja e a da linha. Formato compacto: t = texto, b =
+		// [xMin, yMin, xMax, yMax] no mesmo espaco de "box".
+		if len(paragraph.Lines) > 1 {
+			lines := make([]map[string]any, 0, len(paragraph.Lines))
+			for _, line := range paragraph.Lines {
+				lines = append(lines, map[string]any{"t": line.Text, "b": []float64{round1(line.Box.XMin), round1(line.Box.YMin), round1(line.Box.XMax), round1(line.Box.YMax)}})
+			}
+			metadata["lines"] = lines
+		}
 
 		paragraphNodes = append(paragraphNodes, models.ParagraphNode{
 			DocumentID:    documentID,
@@ -32,7 +42,7 @@ func buildIndexingResult(documentID uint, headings []outlineDraft, paragraphs []
 		})
 	}
 
-	documentPages := buildDocumentPages(documentID, paragraphs)
+	documentPages := buildDocumentPages(documentID, headings, paragraphs)
 	outlineNodes := buildOutlineNodes(documentID, headings, paragraphs)
 	outlineNodes = populateDeterministicOutlineSummaries(outlineNodes, paragraphs, tables)
 
@@ -118,12 +128,37 @@ func buildIndexingResult(documentID uint, headings []outlineDraft, paragraphs []
 	return result
 }
 
-func buildDocumentPages(documentID uint, paragraphs []textBlock) []models.DocumentPage {
+// buildDocumentPages monta o texto de cada pagina a partir dos paragrafos E
+// dos titulos, na ordem em que aparecem. Antes so os paragrafos entravam, e
+// tudo que o detector de titulo capturava sumia da pagina: na identificacao
+// de um PPC ("1.1.4 Eixo Tecnologico" / "Informacao e Comunicacao" /
+// "1.1.6 Forma de Oferta" / "Integrado") a pagina ficava com o endereco e o
+// telefone, e a pergunta sobre eixo e oferta nunca achava a pagina.
+func round1(v float64) float64 { return float64(int(v*10+0.5)) / 10 }
+
+func buildDocumentPages(documentID uint, headings []outlineDraft, paragraphs []textBlock) []models.DocumentPage {
 	pageBuckets := make(map[int][]string)
 	pageSectionKeys := make(map[int]map[string]struct{})
 	pageSources := make(map[int]map[string]struct{})
 
-	for _, paragraph := range paragraphs {
+	headingsAt := make(map[int][]outlineDraft, len(headings))
+	for _, heading := range headings {
+		headingsAt[heading.ParagraphStart] = append(headingsAt[heading.ParagraphStart], heading)
+	}
+	addHeadings := func(index int) {
+		for _, heading := range headingsAt[index] {
+			pageNumber := 1
+			if heading.PageNumber != nil && *heading.PageNumber > 0 {
+				pageNumber = *heading.PageNumber
+			}
+			if title := strings.TrimSpace(heading.Title); title != "" {
+				pageBuckets[pageNumber] = append(pageBuckets[pageNumber], title)
+			}
+		}
+	}
+
+	for index, paragraph := range paragraphs {
+		addHeadings(index)
 		pageNumber := 1
 		if paragraph.PageNumber != nil && *paragraph.PageNumber > 0 {
 			pageNumber = *paragraph.PageNumber
@@ -146,6 +181,8 @@ func buildDocumentPages(documentID uint, paragraphs []textBlock) []models.Docume
 			pageSources[pageNumber][paragraph.Source] = struct{}{}
 		}
 	}
+
+	addHeadings(len(paragraphs))
 
 	if len(pageBuckets) == 0 {
 		return nil

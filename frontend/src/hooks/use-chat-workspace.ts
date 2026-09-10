@@ -77,6 +77,13 @@ function normalizeSources(sources: ChatSource[]): Source[] {
         snippet: source.snippet,
         documentId: source.documentId,
         nodeId: source.nodeId,
+        paragraphId: source.paragraphId,
+        lines: source.lines,
+        matchedTerms: source.matchedTerms,
+        box: source.box,
+        lineBoxes: source.lineBoxes,
+        indexedAt: source.indexedAt,
+        continuesOnPage: source.continuesOnPage,
     }));
 }
 
@@ -88,6 +95,8 @@ function normalizePersistedMessages(messages: PersistedChatMessage[]): ChatWorks
         sources: normalizeSources(message.sources),
         usage: message.usage,
         createdAt: message.createdAt,
+        status: message.status,
+        errorDetail: message.errorDetail,
     }));
 }
 
@@ -506,6 +515,16 @@ export function useChatWorkspace(opcoes: { collectionId?: number | null } = {}) 
                 flushAllPendingDelta();
                 hideStreamingCard();
                 setStreamError(event.message);
+                // As fontes ja chegaram antes do modelo falhar: o card fica
+                // com elas e com a causa, em vez de um balao vazio. E a prova
+                // de que a recuperacao funcionou mesmo sem resposta.
+                setMessages((current) =>
+                    current.map((message) =>
+                        message.id === assistantMessageId && !message.content.trim()
+                            ? { ...message, content: event.message }
+                            : message
+                    )
+                );
                 break;
             default:
                 break;
@@ -627,7 +646,7 @@ export function useChatWorkspace(opcoes: { collectionId?: number | null } = {}) 
             setMessages((current) =>
                 current.map((item) =>
                     item.id === assistantMessage.id && !item.content.trim()
-                        ? { ...item, content: t("dashboard.chat.fallbackError") }
+                        ? { ...item, status: "error" as const, errorDetail: message }
                         : item
                 )
             );

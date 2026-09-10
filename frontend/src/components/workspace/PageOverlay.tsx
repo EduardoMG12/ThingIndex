@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { readBox, type OutlineNode, type ParagraphNode } from "@/lib/api/contracts/document-context";
+import { readBox, readLines, type OutlineNode, type ParagraphBox, type ParagraphNode } from "@/lib/api/contracts/document-context";
 import { useI18n } from "@/lib/i18n/provider";
 import { retryDocumentIndexing } from "@/lib/api/documents";
 import { boxParaPixels } from "@/lib/workspace/geometry";
@@ -27,8 +27,22 @@ export type ParagrafoNaPagina = {
     secao: OutlineNode | null;
 };
 
+/** Tabela detectada nesta pagina, com a caixa no espaco do PDF. */
+export type TabelaNaPagina = {
+    id: number | string;
+    titulo: string;
+    box: ParagraphBox;
+};
+
 export type PageOverlayProps = {
     numero: number;
+    /** Tabelas da pagina; so a realcada e desenhada, como caixa tracejada. */
+    tabelas?: TabelaNaPagina[];
+    tabelaRealcada?: number | string | null;
+    /** Linhas de um paragrafo citadas pela fonte do chat: grifo forte so nelas. */
+    destaque?: { paragraphId: number; lines: number[] } | null;
+    /** Citacao gravada numa resposta antiga: caixa e linhas na pagina, sem depender do paragrafo existir. */
+    citacao?: { box: ParagraphBox; lineBoxes: number[][] } | null;
     tamanho: TamanhoDePagina;
     paragrafos: ParagrafoNaPagina[];
     /** Secoes cujo start_page e esta pagina. */
@@ -101,7 +115,11 @@ export function origemMajoritaria(nos: Pick<ParagraphNode, "metadata">[]): strin
 }
 
 export function PageOverlay({
-    numero,
+    numero,    citacao = null,
+    destaque = null,
+    tabelas,
+    tabelaRealcada = null,
+
     tamanho,
     paragrafos,
     secoes,
@@ -161,6 +179,64 @@ export function PageOverlay({
                     </span>
                 </span>
             ))}
+
+            {(tabelas ?? [])
+                .filter((tabela) => tabela.id === tabelaRealcada)
+                .map((tabela) => {
+                    const px = boxParaPixels(tabela.box, tamanho.largura, tamanho.altura);
+                    return (
+                        <div
+                            key={`tabela-${String(tabela.id)}`}
+                            className="pointer-events-none absolute rounded-sm border-2 border-dashed border-primary/80 bg-primary/5"
+                            style={{ left: px.left - 4, top: px.top - 4, width: px.width + 8, height: px.height + 8 }}
+                            role="img"
+                            aria-label={t("workspace.page.tableBox", { title: tabela.titulo })}
+                            data-testid="caixa-de-tabela"
+                        >
+                            <span className="absolute -top-5 left-0 rounded bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
+                                {tabela.titulo}
+                            </span>
+                        </div>
+                    );
+                })}
+
+            {citacao
+                ? (() => {
+                      const px = boxParaPixels(citacao.box, tamanho.largura, tamanho.altura);
+                      const linhas = citacao.lineBoxes.map((b) => boxParaPixels({ xMin: b[0], yMin: b[1], xMax: b[2], yMax: b[3], pageWidth: citacao.box.pageWidth, pageHeight: citacao.box.pageHeight }, tamanho.largura, tamanho.altura));
+                      return (
+                          <>
+                              <div className="pointer-events-none absolute rounded-sm border-2 border-dashed border-amber-500/80" style={{ left: px.left - 2, top: px.top - 2, width: px.width + 4, height: px.height + 4 }} data-testid="citacao-gravada" title={t("workspace.page.storedCitation")} />
+                              {linhas.map((l, i) => (
+                                  <div key={i} className="pointer-events-none absolute rounded-[2px] bg-rose-500/55 ring-2 ring-rose-600 mix-blend-multiply dark:mix-blend-screen" style={{ left: l.left - 2, top: l.top - 1, width: l.width + 4, height: l.height + 2 }} data-testid="grifo-linha" />
+                              ))}
+                          </>
+                      );
+                  })()
+                : null}
+
+            {destaque
+                ? paragrafos
+                      .filter(({ no }) => no.id === destaque.paragraphId)
+                      .flatMap(({ no }) => {
+                          const linhas = readLines(no);
+                          return destaque.lines
+                              .filter((indice) => linhas[indice])
+                              .map((indice) => {
+                                  const px = boxParaPixels(linhas[indice].box, tamanho.largura, tamanho.altura);
+                                  return (
+                                      <div
+                                          key={`linha-${String(no.id)}-${indice}`}
+                                          // Cor propria (rosa), diferente do ambar da selecao e do azul das marcas: e "isto foi citado".
+                                          className="pointer-events-none absolute rounded-[2px] bg-rose-500/55 ring-2 ring-rose-600 mix-blend-multiply dark:mix-blend-screen"
+                                          style={{ left: px.left - 2, top: px.top - 1, width: px.width + 4, height: px.height + 2 }}
+                                          title={linhas[indice].text}
+                                          data-testid="grifo-linha"
+                                      />
+                                  );
+                              });
+                      })
+                : null}
 
             {paragrafos.map(({ no, secao }) => {
                 const box = readBox(no);

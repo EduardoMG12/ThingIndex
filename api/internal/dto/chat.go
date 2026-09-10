@@ -28,12 +28,19 @@ type ChatStreamRequest struct {
 }
 
 type ChatSourceResponse struct {
-	ID         string `json:"id"`
-	DocName    string `json:"doc_name"`
-	Page       int    `json:"page"`
-	Snippet    string `json:"snippet"`
-	DocumentID uint   `json:"document_id,omitempty"`
-	NodeID     string `json:"node_id,omitempty"`
+	ID              string            `json:"id"`
+	DocName         string            `json:"doc_name"`
+	Page            int               `json:"page"`
+	Snippet         string            `json:"snippet"`
+	DocumentID      uint              `json:"document_id,omitempty"`
+	NodeID          string            `json:"node_id,omitempty"`
+	ParagraphID     uint              `json:"paragraph_id,omitempty"`
+	Lines           []int             `json:"lines,omitempty"`
+	MatchedTerms    []string          `json:"matched_terms,omitempty"`
+	ContinuesOnPage int               `json:"continues_on_page,omitempty"`
+	Box             *models.SourceBox `json:"box,omitempty"`
+	LineBoxes       [][4]float64      `json:"line_boxes,omitempty"`
+	IndexedAt       *time.Time        `json:"indexed_at,omitempty"`
 }
 
 type ChatConversationResponse struct {
@@ -55,13 +62,15 @@ type ChatUsageResponse struct {
 }
 
 type ChatConversationMessageResponse struct {
-	ID        uint                 `json:"id"`
-	Role      string               `json:"role"`
-	Content   string               `json:"content"`
-	Sources   []ChatSourceResponse `json:"sources,omitempty"`
-	Usage     *ChatUsageResponse   `json:"usage,omitempty"`
-	CreatedAt time.Time            `json:"created_at"`
-	UpdatedAt time.Time            `json:"updated_at"`
+	ID          uint                 `json:"id"`
+	Role        string               `json:"role"`
+	Content     string               `json:"content"`
+	Status      string               `json:"status,omitempty"`
+	ErrorDetail string               `json:"error_detail,omitempty"`
+	Sources     []ChatSourceResponse `json:"sources,omitempty"`
+	Usage       *ChatUsageResponse   `json:"usage,omitempty"`
+	CreatedAt   time.Time            `json:"created_at"`
+	UpdatedAt   time.Time            `json:"updated_at"`
 }
 
 type ChatConversationDetailResponse struct {
@@ -110,12 +119,19 @@ func ToChatConversationMessageResponses(messages []models.ChatConversationEntry)
 		sources := make([]ChatSourceResponse, 0, len(message.Sources))
 		for _, source := range message.Sources {
 			sources = append(sources, ChatSourceResponse{
-				ID:         source.ID,
-				DocName:    source.DocName,
-				Page:       source.Page,
-				Snippet:    source.Snippet,
-				DocumentID: source.DocumentID,
-				NodeID:     source.NodeID,
+				ID:              source.ID,
+				DocName:         source.DocName,
+				Page:            source.Page,
+				Snippet:         source.Snippet,
+				DocumentID:      source.DocumentID,
+				NodeID:          source.NodeID,
+				ParagraphID:     source.ParagraphID,
+				Lines:           source.Lines,
+				MatchedTerms:    source.MatchedTerms,
+				ContinuesOnPage: source.ContinuesOnPage,
+				Box:             source.Box,
+				LineBoxes:       source.LineBoxes,
+				IndexedAt:       source.IndexedAt,
 			})
 		}
 
@@ -132,13 +148,15 @@ func ToChatConversationMessageResponses(messages []models.ChatConversationEntry)
 			}
 		}
 		result = append(result, ChatConversationMessageResponse{
-			ID:        message.ID,
-			Role:      message.Role,
-			Usage:     usage,
-			Content:   message.Content,
-			Sources:   sources,
-			CreatedAt: message.CreatedAt,
-			UpdatedAt: message.UpdatedAt,
+			ID:          message.ID,
+			Role:        message.Role,
+			Usage:       usage,
+			Content:     message.Content,
+			Status:      message.Status,
+			ErrorDetail: message.ErrorDetail,
+			Sources:     sources,
+			CreatedAt:   message.CreatedAt,
+			UpdatedAt:   message.UpdatedAt,
 		})
 	}
 
