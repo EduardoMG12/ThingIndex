@@ -1,7 +1,7 @@
 {
-  "version": "si-2026-09-v2",
-  "notes": "Gabarito de perguntas de coordenador sobre a colecao de SI (5 PDFs de examples/faculdade). Escrito a partir dos PDFs com pdftotext -layout, sem consultar o sistema. answer_patterns: TODAS as regex devem casar na resposta com acentos e caixa dobrados (retrieval.FoldDiacritics + lower). targets: documento e paginas fisicas do PDF (1..N) que contem a resposta. Estrato negativa: a resposta certa e a recusa; targets vazio. origin rodada-cc5 marca perguntas que ja foram usadas para ajustar o sistema; o artigo reporta com e sem elas. v2 (2026-09-09, depois da rodada 3): t04 aceita '03'; c08 e c13 aceitam 'e'/'ao dia'; t06 aceita a coluna Categoria ('Obrigatória') alem de 'Extensão'; p01 inclui Matriz p. 3 (linha TOTAL 3000). Os CSVs de resultados foram rescorados com `cmd/generation-eval -rescore`, sem rerodar modelo.",
-  "frozen_sha256": "72b9312098d47975e47e3e50c2a462ec9996df253457a242789abd7e3fe4d13b",
+  "version": "si-2026-09-v3",
+  "notes": "Gabarito de perguntas de coordenador sobre a colecao de SI (5 PDFs de examples/faculdade). Escrito a partir dos PDFs com pdftotext -layout, sem consultar o sistema. answer_patterns: TODAS as regex devem casar na resposta com acentos e caixa dobrados (retrieval.FoldDiacritics + lower). targets: documento e paginas fisicas do PDF (1..N) que contem a resposta. Estrato negativa: a resposta certa e a recusa; targets vazio. origin rodada-cc5 marca perguntas que ja foram usadas para ajustar o sistema; o artigo reporta com e sem elas. v2 (2026-09-09, depois da rodada 3): t04 aceita '03'; c08 e c13 aceitam 'e'/'ao dia'; t06 aceita a coluna Categoria ('Obrigatória') alem de 'Extensão'; p01 inclui Matriz p. 3 (linha TOTAL 3000). Os CSVs de resultados foram rescorados com `cmd/generation-eval -rescore`, sem rerodar modelo. v3 (2026-09-10): p20 e p22 aceitam tambem a ementa dentro do PPC 2019 (p. 76 e 77), que responde igual.",
+  "frozen_sha256": "938692bcd9f18270bc827fa529f8ea75ad8d2ad0aa555100f918a608f683ac5d",
   "reviewed_by": [],
   "documents": [
     {
@@ -1126,6 +1126,12 @@
           "pages": [
             26
           ]
+        },
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            76
+          ]
         }
       ],
       "answer_patterns": [
@@ -1162,6 +1168,12 @@
           "document_id": "ementas",
           "pages": [
             27
+          ]
+        },
+        {
+          "document_id": "ppc-si",
+          "pages": [
+            77
           ]
         }
       ],
