@@ -233,8 +233,16 @@ func TestEnriquecimentoResumeTodasAsPaginasESecoesEmLotes(t *testing.T) {
 			t.Fatalf("secao %d sem resumo da LLM: %q", node.SequenceOrder, node.Summary)
 		}
 	}
-	if calls > 12 {
-		t.Fatalf("chamadas = %d, esperava poucas (sinopse, sinais, arvore e 6 lotes)", calls)
+	// O orcamento subiu de 12 para 14 em 2026-09-19, quando a geracao de
+	// perguntas de leigo entrou ao lado do resumo. O custo e conhecido e
+	// deliberado: um lote de perguntas por lote de paginas, ou seja, as
+	// chamadas de pagina DOBRAM quando o enriquecimento esta ligado.
+	//
+	// O numero fica travado em vez de virar ">= 0" porque orcamento de chamada
+	// de LLM que ninguem observa cresce sozinho: foi exatamente assim que o
+	// enriquecimento chegou a 700 mil tokens por 10 documentos.
+	if calls > 14 {
+		t.Fatalf("chamadas = %d, esperava no maximo 14 (sinopse, sinais, arvore, lotes de secao, de pagina e de pergunta)", calls)
 	}
 }
 

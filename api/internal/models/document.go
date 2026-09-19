@@ -68,16 +68,28 @@ type ParagraphNode struct {
 }
 
 type DocumentPage struct {
-	ID            uint           `gorm:"primarykey" json:"id"`
-	DocumentID    uint           `gorm:"not null;index;uniqueIndex:idx_document_pages_document_page" json:"document_id"`
-	PageNumber    int            `gorm:"not null;uniqueIndex:idx_document_pages_document_page" json:"page_number"`
-	Content       string         `gorm:"type:text;not null" json:"content"`
-	Summary       string         `gorm:"type:text" json:"summary,omitempty"`
-	TokenEstimate int            `gorm:"not null;default:0" json:"token_estimate"`
-	Metadata      map[string]any `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
-	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
+	ID         uint   `gorm:"primarykey" json:"id"`
+	DocumentID uint   `gorm:"not null;index;uniqueIndex:idx_document_pages_document_page" json:"document_id"`
+	PageNumber int    `gorm:"not null;uniqueIndex:idx_document_pages_document_page" json:"page_number"`
+	Content    string `gorm:"type:text;not null" json:"content"`
+	Summary    string `gorm:"type:text" json:"summary,omitempty"`
+	// GeneratedQuestions sao perguntas que esta pagina responde, escritas em
+	// linguagem de leigo pelo enriquecimento. Coluna PROPRIA, e nao concatenada
+	// ao resumo, porque o experimento pre-registrado compara os dois campos
+	// separadamente: o resumo e o controle negativo (ja medido como inutil para
+	// a busca) e as perguntas sao o tratamento.
+	//
+	// A razao de existir: um indice lexical so consegue usar vocabulario que NAO
+	// esta no documento. O resumo repete o jargao da pagina e por isso nao
+	// acrescenta termo nenhum (medido: zero termos exclusivos em 10 perguntas).
+	// A pergunta de leigo e a unica coisa que o enriquecimento pode produzir que
+	// o documento nao tem.
+	GeneratedQuestions string         `gorm:"type:text" json:"generated_questions,omitempty"`
+	TokenEstimate      int            `gorm:"not null;default:0" json:"token_estimate"`
+	Metadata           map[string]any `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
+	CreatedAt          time.Time      `json:"created_at"`
+	UpdatedAt          time.Time      `json:"updated_at"`
+	DeletedAt          gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 type TableSection struct {
