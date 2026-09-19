@@ -26,17 +26,20 @@ type chatUseCase struct {
 	collectionContextRepo domain.CollectionContextRepository
 	conversationRepo      domain.ChatConversationRepository
 	llmResolver           domain.UserLLMResolver
+	expander              *queryExpander
 }
 
 func NewChatUseCase(
 	collectionContextRepo domain.CollectionContextRepository,
 	conversationRepo domain.ChatConversationRepository,
 	llmResolver domain.UserLLMResolver,
+	expansionCache domain.EnrichmentCache,
 ) domain.ChatUseCase {
 	return &chatUseCase{
 		collectionContextRepo: collectionContextRepo,
 		conversationRepo:      conversationRepo,
 		llmResolver:           llmResolver,
+		expander:              newQueryExpander(expansionCache),
 	}
 }
 
@@ -163,8 +166,22 @@ func (u *chatUseCase) StreamCollectionChat(
 		return fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
 	}
 
+	llm, err := u.llmResolver.ResolveLLMForChat(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	// A expansao roda ANTES da recuperacao, porque o que ela muda e o texto da
+	// consulta. Ver docs/prds/pre-registro-expansao-consulta.md: braco E.
+	query := prompt
+	if queryExpansionEnabled() {
+		if extra := u.expander.Expand(ctx, llm, chatModelName(llm), prompt); extra != "" {
+			query = prompt + " " + extra
+		}
+	}
+
 	retrieval := buildCollectionRetrieval(
-		prompt,
+		query,
 		collectionContext.Documents,
 		collectionContext.DocumentPages,
 		collectionContext.OutlineNodes,
@@ -186,11 +203,6 @@ func (u *chatUseCase) StreamCollectionChat(
 		}); err != nil {
 			return err
 		}
-	}
-
-	llm, err := u.llmResolver.ResolveLLMForChat(ctx, userID)
-	if err != nil {
-		return err
 	}
 
 	if err := u.conversationRepo.AddMessage(ctx, userID, conversation.ID, &models.ChatConversationEntry{

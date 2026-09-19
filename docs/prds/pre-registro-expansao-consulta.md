@@ -75,8 +75,10 @@ Pergunta: <texto da pergunta>
 Termos:
 ```
 
-O hash deste prompt fica travado por teste, como o do experimento anterior:
-alterá-lo quebra o build.
+O hash deste prompt está travado em
+`TestPromptDaExpansaoEstaCongelado`:
+`bbc051efd4d6636b2682c7ffd33866845aaf894da6ad0172ccbe289bf44d2250`. Alterá-lo
+quebra o build.
 
 ## Os dois braços
 
