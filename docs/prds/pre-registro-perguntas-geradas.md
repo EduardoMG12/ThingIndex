@@ -137,3 +137,105 @@ medição e vai na seção de ameaças à validade.
 > inconclusivo; resolver isso exige gabarito maior."
 
 Qualquer afirmação além desta, nesta amostra, é indefensável.
+
+---
+
+# Resultado (2026-09-19, após a execução)
+
+Escrito depois de rodar, contra o pré-registro acima. Nada do que está acima foi
+alterado.
+
+## Checagem de mecanismo, feita antes da bateria
+
+Termos significativos da pergunta que existem **só** no campo de enriquecimento e
+não no conteúdo da página, nas 10 perguntas do tema de segurança do trabalho:
+
+| Campo | Termos exclusivos |
+|---|---|
+| Resumo em jargão | **0** |
+| Perguntas de leigo | **3** (em 3 das 10 perguntas) |
+
+A direção previstase confirmou: perguntas em linguagem de leigo introduzem
+vocabulário que o resumo não introduz. A magnitude, porém, é pequena.
+
+## Os braços
+
+O braço M não estava no pré-registro. Ele foi acrescentado **depois** de ver o
+resultado nulo dos três primeiros, para eliminar uma explicação alternativa
+específica (diluição por concatenação), e por isso é declarado como
+**exploratório**, não confirmatório. O critério dele é máximo, e não soma
+ponderada, justamente para não ter peso a ajustar: ajustar peso até o número
+melhorar é a mesma armadilha de rodar vários prompts e reportar o melhor.
+
+| Braço | Geral | Literal | Paráfrase | Proveniência |
+|---|---|---|---|---|
+| C, só conteúdo | 9/12 | 5/5 | 2/5 | 0,500 |
+| R, conteúdo + resumo (controle) | 9/12 | 5/5 | 2/5 | 0,500 |
+| P, conteúdo + perguntas (tratamento) | 9/12 | 5/5 | 2/5 | 0,500 |
+| M, máximo entre os dois (exploratório) | 9/12 | 5/5 | 2/5 | 0,500 |
+
+**Nenhuma pergunta mudou de resultado em nenhum braço.** O teste de sinais não
+chega a ser aplicável: o número de pares discordantes é zero.
+
+## Leitura
+
+Pela predição registrada, este é o terceiro caso: não subiu em nenhuma
+formulação. Vale como **resultado negativo medido**, e é a segunda evidência
+independente de que enriquecimento por LLM não ajuda a recuperação lexical neste
+sistema.
+
+Três coisas que os braços separam, e que um experimento de braço único não
+separaria:
+
+1. **C mostra que o resumo é indiferente, não apenas fraco.** Remover o resumo do
+   índice não muda um único item. A comparação C contra R é a medição mais direta
+   possível do valor do enriquecimento atual, e ela dá zero.
+2. **P mostra que trocar o prompt não basta**, embora o prompt novo de fato
+   produza vocabulário novo (3 termos contra 0).
+3. **M elimina a explicação de diluição.** Pontuar as perguntas em corpus próprio,
+   sem o conteúdo por cima, não muda nada. Não era um efeito escondido pelo
+   comprimento do texto; não havia efeito.
+
+## A causa, num caso concreto
+
+Pergunta do gabarito que falha (`sg3P`, escrita e congelada antes desta ideia):
+
+> "A partir de quanto de produto químico no ar a empresa já tem que tomar
+> providência?"
+
+Perguntas que o modelo gerou para a página-alvo, sob a instrução explícita de
+escrever "in the everyday Portuguese of a person who has NOT read the document":
+
+> - "Onde encontro as medidas de prevenção para cada tipo de agente?"
+> - "O que fazer quando ainda não existem anexos específicos para a norma?"
+> - "O que é considerado **nível de ação** para controle de riscos?"
+
+A terceira pergunta é exatamente a mesma necessidade de informação da pergunta do
+gabarito, e as duas não compartilham **nenhum** termo significativo. O modelo,
+instruído a evitar o jargão, usou "nível de ação", que é o termo técnico preciso
+que a pessoa não conhece.
+
+## Conclusão, e o que ela implica para a direção do trabalho
+
+> "Linguagem de leigo" não é um vocabulário único. O modelo escreve do lado do
+> documento e produz a paráfrase dele, que não é a da pessoa. Enriquecer o
+> documento tentando antecipar as palavras do usuário é adivinhar num espaço
+> grande demais para ser coberto por três a cinco perguntas por página.
+
+A implicação é direcional e agora tem evidência: em vez de expandir o
+**documento** (antecipar todas as formulações possíveis), expandir a **pergunta**
+(partir das palavras que a pessoa de fato usou). É a opção D do conselho, que
+tinha um voto isolado e passa a ser a hipótese preferida.
+
+O enriquecimento permanece útil para leitura na tela (resumo na barra lateral,
+tópicos) e as perguntas geradas têm um uso de produto que este experimento não
+mediu: sugestão de "talvez você queira saber". Nenhum dos dois é recuperação.
+
+## Ameaças à validade deste resultado
+
+- Uma repetição, 12 perguntas de um tema. O nulo é consistente entre quatro
+  braços, o que reduz a chance de ser ruído, mas não elimina.
+- A mesma família de modelo gera as perguntas do índice e redige a resposta.
+- O braço M é exploratório e está marcado como tal.
+- A medição foi feita sobre cópia das coleções; as coleções de demonstração não
+  foram alteradas.
