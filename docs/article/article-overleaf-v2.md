@@ -771,6 +771,58 @@ Uma medição posterior, com repetição única, incorporou ao prompt a continua
 \textbf{Dependência de um provedor e um modelo.} Todas as execuções usaram o mesmo modelo. Uma medição exploratória com modelo maior produziu acerto \emph{inferior} no braço F (0,681 contra 0,986), o que indica que a comparação entre braços é sensível ao modelo e que ``modelo maior'' não é sinônimo de ``resultado melhor'' nesta tarefa. O resultado está registrado como observação isolada, não como medição controlada.
 
 
+\subsection{Segundo Domínio: Legislação com Norma Revogada}
+\label{sec:segundo-dominio}
+
+O experimento anterior mede um acervo só, de documentos institucionais de ensino, e o braço T atinge 100\% de acerto nele. Um resultado assim tem duas leituras possíveis, e distinguir entre elas é o propósito desta seção: ou o sistema resolve a tarefa, ou o instrumento chegou ao teto. Um segundo acervo, de domínio diferente e construído para ser difícil, separa as duas hipóteses.
+
+\textbf{Corpus.} Duas leis federais brasileiras em texto compilado oficial: a Lei 8.666/1993 (52 páginas) e a Lei 14.133/2021 (77 páginas), que a revogou. A escolha não é por domínio apenas, mas pela relação entre os documentos: o Art. 193 da lei nova revoga a antiga com data determinada, e o Art. 190 determina que contratos assinados antes continuem regidos pela lei revogada. O acervo contém, portanto, duas respostas válidas para a mesma pergunta, e qual delas vale depende de quando.
+
+Essa configuração é comum em acervos normativos reais e é adversa por construção para recuperação por similaridade: os dois documentos compartilham vocabulário quase integralmente, tratam dos mesmos institutos e diferem em pontos específicos. É o cenário de conflito entre fontes que a literatura recente sobre modelos de linguagem classifica como conflito \emph{inter-contexto}~\cite{xu2024knowledge}, e que os protocolos de avaliação usuais, construídos sobre acervos sem contradição interna, não exercitam.
+
+\textbf{Gabarito.} Dezenove perguntas escritas a partir dos PDF, sem consultar o sistema, com documento e página verificados. Os estratos são próprios deste corpus, e um deles não existe no gabarito de ensino:
+
+\begin{itemize}
+  \item \textbf{divergente} (5): a mesma pergunta tem resposta diferente em cada lei. Acertar significa \emph{distinguir as duas}, e não escolher uma. Responder apenas pela lei revogada, sem sinalizar que a regra vigente é outra, conta como erro;
+  \item \textbf{temporal} (3): a resposta depende da data, por força do Art. 190;
+  \item \textbf{prosa} (8): resposta direta, localizada em um artigo;
+  \item \textbf{negativa} (3): a resposta correta é declarar que a informação não consta.
+\end{itemize}
+
+\textbf{Resultados.} Uma repetição, mesmo modelo e mesmo pipeline do experimento anterior.
+
+\begin{table}[htb]
+\centering
+\caption{Segundo domínio: 19 perguntas sobre duas leis federais, uma revogada pela outra. Comparação com o acervo de ensino na última linha.}
+\label{tab:dominio2}
+\begin{tabular}{lrrrr}
+\hline
+Estrato & n & Acerto & Proveniência & Tokens/pergunta \\
+\hline
+Divergente & 5 & 0,600 & 0,800 & 5.406 \\
+Temporal   & 3 & 1,000 & 1,000 & 7.147 \\
+Prosa      & 8 & 0,750 & 0,750 & 6.204 \\
+Negativa   & 3 & 1,000 & --- & 5.588 \\
+\hline
+\textbf{Legislação (total)} & \textbf{19} & \textbf{0,789} & \textbf{0,812} & \textbf{6.045} \\
+Ensino (Seção~\ref{sec:geracao}) & 72 & 1,000 & 0,970 & 4.215 \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{O achado principal é a queda.} O mesmo sistema, sem nenhuma alteração, passa de 1,000 para 0,789 de acerto ao trocar de acervo. Isso responde a pergunta que motivou a seção: o 100\% anterior era, em parte, propriedade do instrumento, e não apenas do sistema. O gabarito de ensino havia saturado, e este corpus volta a discriminar.
+
+\textbf{O estrato divergente é o mais difícil, como esperado, e falha do modo previsto.} Dos cinco itens, três acertam. Das duas falhas, uma é de recuperação e outra é do tipo que motivou o corpus: perguntado se a modalidade ``tomada de preços'' existe, o sistema responde que sim, citando corretamente o Art. 22 da Lei 8.666, sem registrar que o dispositivo foi revogado e que o rol vigente é outro. A citação está certa, a página está certa, e a resposta é enganosa. É o modo de falha mais relevante do trabalho, porque sobrevive à conferência da fonte: quem clicar na citação vai encontrar exatamente o que o sistema disse.
+
+O mesmo padrão aparece no estrato de prosa, na pergunta sobre o limite de valor para dispensa de licitação em obras: a resposta vem da lei revogada (percentual sobre o limite do convite) em vez do valor vigente de R\$ 100.000 do Art. 75 da Lei 14.133. Em um acervo normativo, esse erro tem consequência material.
+
+\textbf{O que não falhou.} Os três itens temporais foram respondidos corretamente, incluindo a data da revogação e a regra de transição dos contratos anteriores, com citação da página correta. Em uma delas o sistema resolveu uma dificuldade que não estava prevista: o Art. 191 aparece três vezes na mesma página, nas redações original, da Medida Provisória 1.167/2023 (marcada como vigência encerrada) e da Lei Complementar 198/2023, e a resposta reproduziu a vigente. As três negativas também foram corretas.
+
+\textbf{Auditoria das falhas.} Das quatro respostas marcadas como incorretas, uma é artefato do gabarito e não do sistema: na pergunta sobre contratos de até dez anos, a resposta está correta e cita o Art. 108 na página certa, mas a expressão regular exigia a forma ``10 (dez) anos'' e o modelo escreveu ``10 anos''. Corrigido o padrão, o acerto seria 0,842. As expressões regulares \textbf{não} foram alteradas após a medição, e o \emph{hash} do gabarito permanece o mesmo: a correção fica registrada para a próxima versão. Ajustar o gabarito depois de ver o resultado é a forma mais fácil de produzir um número favorável e sem valor.
+
+\textbf{Limitações desta medição.} Uma repetição apenas, contra três no experimento anterior; dezenove perguntas, insuficientes para comparação estatística entre estratos; anotação por um único autor; e ausência do braço comparativo F, que exigiria submeter 129 páginas de lei a cada pergunta. A finalidade do corpus é diagnóstica, não comparativa: ele existe para mostrar onde o sistema quebra quando o acervo contém normas que se contradizem no tempo, e nisso ele cumpriu.
+
+
 % =============================================================================
 % DISCUSSAO
 % =============================================================================
