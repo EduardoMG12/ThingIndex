@@ -1,340 +1,563 @@
 {
- "version": "licitacoes-2026-09-v2",
- "notes": "Perguntas em PAR: a mesma necessidade de informacao aparece duas vezes, com a mesma resposta esperada e o mesmo alvo, mudando so a formulacao. LITERAL usa os termos do documento; PARAFRASE usa o vocabulario de quem pergunta no dia a dia, sem repetir as palavras do texto. O par existe porque um gabarito escrito por quem ja leu a pagina herda o vocabulario dela, e ai a medicao vira casamento lexical se passando por compreensao. Formas: aberta, confirmacao, existencia, premissa-falsa (a pergunta embute um dado errado e a resposta certa e corrigir) e negativa (nao consta). Escrito a partir dos PDF com pdftotext -layout; cada pagina-alvo foi conferida.",
- "reviewed_by": [],
- "strata": {
-  "aberta": 6,
-  "confirmacao": 2,
-  "premissa-falsa": 2,
-  "existencia": 2,
-  "negativa": 2
- },
- "min_questions": 14,
- "documents": [
-  {
-   "id": "lei-8666",
-   "file": "lei-8666-1993-licitacoes.pdf",
-   "title": "Lei 8.666, de 21 de junho de 1993",
-   "pages": 52
-  },
-  {
-   "id": "lei-14133",
-   "file": "lei-14133-2021-licitacoes.pdf",
-   "title": "Lei 14.133, de 1 de abril de 2021",
-   "pages": 77
-  },
-  {
-   "id": "lei-10520",
-   "file": "lei-10520-pregao.pdf",
-   "title": "Lei 10.520, de 17 de julho de 2002 - Pregao",
-   "pages": 4
-  }
- ],
- "questions": [
-  {
-   "stratum": "aberta",
-   "targets": [
+  "documents": [
     {
-     "document_id": "lei-14133",
-     "pages": [
-      18
-     ]
+      "file": "lei-8666-1993-licitacoes.pdf",
+      "id": "lei-8666",
+      "pages": 52,
+      "title": "Lei 8.666, de 21 de junho de 1993"
     },
     {
-     "document_id": "lei-8666",
-     "pages": [
-      16
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "pregao",
-    "dialogo competitivo",
-    "tomada de precos"
-   ],
-   "expected": "Depende da lei: a 14.133 (art. 28) traz pregao, concorrencia, concurso, leilao e dialogo competitivo; a 8.666 (art. 22) trazia concorrencia, tomada de precos, convite, concurso e leilao.",
-   "origin": "pdf",
-   "pair_id": "lc1",
-   "id": "lc1L",
-   "text": "Quais sao as modalidades de licitacao?",
-   "variant": "literal"
-  },
-  {
-   "stratum": "aberta",
-   "targets": [
-    {
-     "document_id": "lei-14133",
-     "pages": [
-      18
-     ]
+      "file": "lei-14133-2021-licitacoes.pdf",
+      "id": "lei-14133",
+      "pages": 77,
+      "title": "Lei 14.133, de 1 de abril de 2021"
     },
     {
-     "document_id": "lei-8666",
-     "pages": [
-      16
-     ]
+      "file": "lei-10520-pregao.pdf",
+      "id": "lei-10520",
+      "pages": 4,
+      "title": "Lei 10.520, de 17 de julho de 2002 - Pregao"
     }
-   ],
-   "answer_patterns": [
-    "pregao",
-    "dialogo competitivo",
-    "tomada de precos"
-   ],
-   "expected": "Depende da lei: a 14.133 (art. 28) traz pregao, concorrencia, concurso, leilao e dialogo competitivo; a 8.666 (art. 22) trazia concorrencia, tomada de precos, convite, concurso e leilao.",
-   "origin": "pdf",
-   "pair_id": "lc1",
-   "id": "lc1P",
-   "text": "De quantos jeitos diferentes o governo pode fazer uma compra?",
-   "variant": "parafrase"
-  },
-  {
-   "stratum": "aberta",
-   "targets": [
+  ],
+  "frozen_sha256": "6d1033608edb060e9d7efa7f404aa2083a8c94e610f35424526a9f2f6169b0c7",
+  "min_questions": 25,
+  "notes": "Perguntas em PAR: a mesma necessidade de informacao aparece duas vezes, com a mesma resposta esperada e o mesmo alvo, mudando so a formulacao. LITERAL usa os termos do documento; PARAFRASE usa o vocabulario de quem pergunta no dia a dia, sem repetir as palavras do texto. O par existe porque um gabarito escrito por quem ja leu a pagina herda o vocabulario dela, e ai a medicao vira casamento lexical se passando por compreensao. Formas: aberta, confirmacao, existencia, premissa-falsa (a pergunta embute um dado errado e a resposta certa e corrigir) e negativa (nao consta). Escrito a partir dos PDF com pdftotext -layout; cada pagina-alvo foi conferida.",
+  "questions": [
     {
-     "document_id": "lei-14133",
-     "pages": [
-      36
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "100\\.000|cem mil"
-   ],
-   "expected": "R$ 100.000,00 pela lei em vigor (art. 75, I, da Lei 14.133).",
-   "origin": "pdf",
-   "pair_id": "lc2",
-   "id": "lc2L",
-   "text": "Qual e o valor limite para dispensa de licitacao em obras e servicos de engenharia?",
-   "variant": "literal"
-  },
-  {
-   "stratum": "aberta",
-   "targets": [
-    {
-     "document_id": "lei-14133",
-     "pages": [
-      36
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "100\\.000|cem mil"
-   ],
-   "expected": "R$ 100.000,00 pela lei em vigor (art. 75, I, da Lei 14.133).",
-   "origin": "pdf",
-   "pair_id": "lc2",
-   "id": "lc2P",
-   "text": "Ate quanto a prefeitura pode contratar uma reforma sem abrir concorrencia?",
-   "variant": "parafrase"
-  },
-  {
-   "stratum": "confirmacao",
-   "targets": [
-    {
-     "document_id": "lei-14133",
-     "pages": [
-      75
-     ]
+      "answer_patterns": [
+        "pregao",
+        "dialogo competitivo",
+        "tomada de precos"
+      ],
+      "expected": "Depende da lei: a 14.133 (art. 28) traz pregao, concorrencia, concurso, leilao e dialogo competitivo; a 8.666 (art. 22) trazia concorrencia, tomada de precos, convite, concurso e leilao.",
+      "id": "lc1L",
+      "origin": "pdf",
+      "pair_id": "lc1",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "lei-14133",
+          "pages": [
+            18
+          ]
+        },
+        {
+          "document_id": "lei-8666",
+          "pages": [
+            16
+          ]
+        }
+      ],
+      "text": "Quais sao as modalidades de licitacao?",
+      "variant": "literal"
     },
     {
-     "document_id": "lei-8666",
-     "pages": [
-      1
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "nao",
-    "revogad"
-   ],
-   "expected": "Nao. A Lei 8.666 foi revogada pela Lei 14.133 (art. 193), com efeito em 30 de dezembro de 2023.",
-   "origin": "pdf",
-   "pair_id": "lc3",
-   "id": "lc3L",
-   "text": "A Lei 8.666/1993 ainda esta em vigor?",
-   "variant": "literal"
-  },
-  {
-   "stratum": "confirmacao",
-   "targets": [
-    {
-     "document_id": "lei-14133",
-     "pages": [
-      75
-     ]
+      "answer_patterns": [
+        "pregao",
+        "dialogo competitivo",
+        "tomada de precos"
+      ],
+      "expected": "Depende da lei: a 14.133 (art. 28) traz pregao, concorrencia, concurso, leilao e dialogo competitivo; a 8.666 (art. 22) trazia concorrencia, tomada de precos, convite, concurso e leilao.",
+      "id": "lc1P",
+      "origin": "pdf",
+      "pair_id": "lc1",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "lei-14133",
+          "pages": [
+            18
+          ]
+        },
+        {
+          "document_id": "lei-8666",
+          "pages": [
+            16
+          ]
+        }
+      ],
+      "text": "De quantos jeitos diferentes o governo pode fazer uma compra?",
+      "variant": "parafrase"
     },
     {
-     "document_id": "lei-8666",
-     "pages": [
-      1
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "nao",
-    "revogad"
-   ],
-   "expected": "Nao. A Lei 8.666 foi revogada pela Lei 14.133 (art. 193), com efeito em 30 de dezembro de 2023.",
-   "origin": "pdf",
-   "pair_id": "lc3",
-   "id": "lc3P",
-   "text": "Aquela lei antiga de licitacao ainda vale hoje?",
-   "variant": "parafrase"
-  },
-  {
-   "stratum": "aberta",
-   "targets": [
-    {
-     "document_id": "lei-14133",
-     "pages": [
-      75
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "revogad|8\\.666|anterior|antiga"
-   ],
-   "expected": "Pela legislacao revogada: o art. 190 manda que contrato assinado antes da lei nova continue regido pelas regras anteriores.",
-   "origin": "pdf",
-   "pair_id": "lc4",
-   "id": "lc4L",
-   "text": "Um contrato assinado em 2020 e regido por qual lei?",
-   "variant": "literal"
-  },
-  {
-   "stratum": "aberta",
-   "targets": [
-    {
-     "document_id": "lei-14133",
-     "pages": [
-      75
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "revogad|8\\.666|anterior|antiga"
-   ],
-   "expected": "Pela legislacao revogada: o art. 190 manda que contrato assinado antes da lei nova continue regido pelas regras anteriores.",
-   "origin": "pdf",
-   "pair_id": "lc4",
-   "id": "lc4P",
-   "text": "Um contrato que ja estava rolando antes da lei nova muda de regra no meio do caminho?",
-   "variant": "parafrase"
-  },
-  {
-   "stratum": "premissa-falsa",
-   "targets": [
-    {
-     "document_id": "lei-8666",
-     "pages": [
-      16
-     ]
+      "answer_patterns": [
+        "100\\.000|cem mil"
+      ],
+      "expected": "R$ 100.000,00 pela lei em vigor (art. 75, I, da Lei 14.133).",
+      "id": "lc2L",
+      "origin": "pdf",
+      "pair_id": "lc2",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "lei-14133",
+          "pages": [
+            36
+          ]
+        }
+      ],
+      "text": "Qual e o valor limite para dispensa de licitacao em obras e servicos de engenharia?",
+      "variant": "literal"
     },
     {
-     "document_id": "lei-14133",
-     "pages": [
-      18
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "revogad|nao|8\\.666"
-   ],
-   "expected": "A premissa e falsa: tomada de precos era modalidade da Lei 8.666, revogada, e nao consta do rol do art. 28 da Lei 14.133.",
-   "origin": "pdf",
-   "pair_id": "lc5",
-   "id": "lc5L",
-   "text": "Como faco para abrir uma licitacao na modalidade tomada de precos hoje?",
-   "variant": "literal"
-  },
-  {
-   "stratum": "premissa-falsa",
-   "targets": [
-    {
-     "document_id": "lei-8666",
-     "pages": [
-      16
-     ]
+      "answer_patterns": [
+        "100\\.000|cem mil"
+      ],
+      "expected": "R$ 100.000,00 pela lei em vigor (art. 75, I, da Lei 14.133).",
+      "id": "lc2P",
+      "origin": "pdf",
+      "pair_id": "lc2",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "lei-14133",
+          "pages": [
+            36
+          ]
+        }
+      ],
+      "text": "Ate quanto a prefeitura pode contratar uma reforma sem abrir concorrencia?",
+      "variant": "parafrase"
     },
     {
-     "document_id": "lei-14133",
-     "pages": [
-      18
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "revogad|nao|8\\.666"
-   ],
-   "expected": "A premissa e falsa: tomada de precos era modalidade da Lei 8.666, revogada, e nao consta do rol do art. 28 da Lei 14.133.",
-   "origin": "pdf",
-   "pair_id": "lc5",
-   "id": "lc5P",
-   "text": "Quero comprar usando aquele formato antigo de cadastro previo. Como abro?",
-   "variant": "parafrase"
-  },
-  {
-   "stratum": "existencia",
-   "targets": [
+      "answer_patterns": [
+        "nao",
+        "revogad"
+      ],
+      "expected": "Nao. A Lei 8.666 foi revogada pela Lei 14.133 (art. 193), com efeito em 30 de dezembro de 2023.",
+      "id": "lc3L",
+      "origin": "pdf",
+      "pair_id": "lc3",
+      "stratum": "confirmacao",
+      "targets": [
+        {
+          "document_id": "lei-14133",
+          "pages": [
+            75
+          ]
+        },
+        {
+          "document_id": "lei-8666",
+          "pages": [
+            1
+          ]
+        }
+      ],
+      "text": "A Lei 8.666/1993 ainda esta em vigor?",
+      "variant": "literal"
+    },
     {
-     "document_id": "lei-14133",
-     "pages": [
-      63
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "sim|existe|ha |prev|trata"
-   ],
-   "origin": "pdf",
-   "pair_id": "lc8",
-   "expected": "Sim, a Lei 14.133 traz um capitulo de infracoes e sancoes administrativas (art. 155 e seguintes), com advertencia, multa, impedimento de licitar e declaracao de inidoneidade.",
-   "id": "lc8L",
-   "text": "A lei preve infracoes e sancoes administrativas para o licitante?",
-   "variant": "literal"
-  },
-  {
-   "stratum": "existencia",
-   "targets": [
+      "answer_patterns": [
+        "nao",
+        "revogad"
+      ],
+      "expected": "Nao. A Lei 8.666 foi revogada pela Lei 14.133 (art. 193), com efeito em 30 de dezembro de 2023.",
+      "id": "lc3P",
+      "origin": "pdf",
+      "pair_id": "lc3",
+      "stratum": "confirmacao",
+      "targets": [
+        {
+          "document_id": "lei-14133",
+          "pages": [
+            75
+          ]
+        },
+        {
+          "document_id": "lei-8666",
+          "pages": [
+            1
+          ]
+        }
+      ],
+      "text": "Aquela lei antiga de licitacao ainda vale hoje?",
+      "variant": "parafrase"
+    },
     {
-     "document_id": "lei-14133",
-     "pages": [
-      63
-     ]
+      "answer_patterns": [
+        "revogad|8\\.666|anterior|antiga"
+      ],
+      "expected": "Pela legislacao revogada: o art. 190 manda que contrato assinado antes da lei nova continue regido pelas regras anteriores.",
+      "id": "lc4L",
+      "origin": "pdf",
+      "pair_id": "lc4",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "lei-14133",
+          "pages": [
+            75
+          ]
+        }
+      ],
+      "text": "Um contrato assinado em 2020 e regido por qual lei?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "revogad|8\\.666|anterior|antiga"
+      ],
+      "expected": "Pela legislacao revogada: o art. 190 manda que contrato assinado antes da lei nova continue regido pelas regras anteriores.",
+      "id": "lc4P",
+      "origin": "pdf",
+      "pair_id": "lc4",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "lei-14133",
+          "pages": [
+            75
+          ]
+        }
+      ],
+      "text": "Um contrato que ja estava rolando antes da lei nova muda de regra no meio do caminho?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "revogad|nao|8\\.666"
+      ],
+      "expected": "A premissa e falsa: tomada de precos era modalidade da Lei 8.666, revogada, e nao consta do rol do art. 28 da Lei 14.133.",
+      "id": "lc5L",
+      "origin": "pdf",
+      "pair_id": "lc5",
+      "stratum": "premissa-falsa",
+      "targets": [
+        {
+          "document_id": "lei-8666",
+          "pages": [
+            16
+          ]
+        },
+        {
+          "document_id": "lei-14133",
+          "pages": [
+            18
+          ]
+        }
+      ],
+      "text": "Como faco para abrir uma licitacao na modalidade tomada de precos hoje?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "revogad|nao|8\\.666"
+      ],
+      "expected": "A premissa e falsa: tomada de precos era modalidade da Lei 8.666, revogada, e nao consta do rol do art. 28 da Lei 14.133.",
+      "id": "lc5P",
+      "origin": "pdf",
+      "pair_id": "lc5",
+      "stratum": "premissa-falsa",
+      "targets": [
+        {
+          "document_id": "lei-8666",
+          "pages": [
+            16
+          ]
+        },
+        {
+          "document_id": "lei-14133",
+          "pages": [
+            18
+          ]
+        }
+      ],
+      "text": "Quero comprar usando aquele formato antigo de cadastro previo. Como abro?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "sim|existe|ha |prev|trata"
+      ],
+      "expected": "Sim, a Lei 14.133 traz um capitulo de infracoes e sancoes administrativas (art. 155 e seguintes), com advertencia, multa, impedimento de licitar e declaracao de inidoneidade.",
+      "id": "lc8L",
+      "origin": "pdf",
+      "pair_id": "lc8",
+      "stratum": "existencia",
+      "targets": [
+        {
+          "document_id": "lei-14133",
+          "pages": [
+            63
+          ]
+        }
+      ],
+      "text": "A lei preve infracoes e sancoes administrativas para o licitante?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "sim|existe|ha |prev|trata"
+      ],
+      "expected": "Sim, a Lei 14.133 traz um capitulo de infracoes e sancoes administrativas (art. 155 e seguintes), com advertencia, multa, impedimento de licitar e declaracao de inidoneidade.",
+      "id": "lc8P",
+      "origin": "pdf",
+      "pair_id": "lc8",
+      "stratum": "existencia",
+      "targets": [
+        {
+          "document_id": "lei-14133",
+          "pages": [
+            63
+          ]
+        }
+      ],
+      "text": "Se a empresa aprontar no contrato com o governo, tem punicao escrita em algum lugar?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "estudo tecnico preliminar|estudo técnico preliminar"
+      ],
+      "expected": "A descricao da necessidade deve ser fundamentada em estudo tecnico preliminar que caracterize o interesse publico (art. 18).",
+      "id": "lc9L",
+      "origin": "pdf",
+      "pair_id": "lc9",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "lei-14133",
+          "pages": [
+            13
+          ]
+        }
+      ],
+      "text": "Em que a descricao da necessidade da contratacao deve ser fundamentada?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "estudo tecnico preliminar|estudo técnico preliminar"
+      ],
+      "expected": "A descricao da necessidade deve ser fundamentada em estudo tecnico preliminar que caracterize o interesse publico (art. 18).",
+      "id": "lc9P",
+      "origin": "pdf",
+      "pair_id": "lc9",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "lei-14133",
+          "pages": [
+            13
+          ]
+        }
+      ],
+      "text": "Antes de comprar, o orgao precisa escrever algum documento justificando? Qual?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "sim|existe|ha |prev|seguro-garantia"
+      ],
+      "expected": "Sim, o seguro-garantia e uma das modalidades de garantia, e serve para garantir o cumprimento das obrigacoes do contratado (art. 96 e 97).",
+      "id": "lc10L",
+      "origin": "pdf",
+      "pair_id": "lc10",
+      "stratum": "existencia",
+      "targets": [
+        {
+          "document_id": "lei-14133",
+          "pages": [
+            51
+          ]
+        }
+      ],
+      "text": "A lei preve seguro-garantia como modalidade de garantia?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "sim|existe|ha |prev|seguro-garantia"
+      ],
+      "expected": "Sim, o seguro-garantia e uma das modalidades de garantia, e serve para garantir o cumprimento das obrigacoes do contratado (art. 96 e 97).",
+      "id": "lc10P",
+      "origin": "pdf",
+      "pair_id": "lc10",
+      "stratum": "existencia",
+      "targets": [
+        {
+          "document_id": "lei-14133",
+          "pages": [
+            51
+          ]
+        }
+      ],
+      "text": "Se a empresa contratada sumir no meio da obra, tem algum tipo de seguro previsto?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "bens e servicos comuns|bens e serviços comuns"
+      ],
+      "expected": "Para aquisicao de bens e servicos comuns (Lei 10.520, art. 1), norma hoje revogada pela Lei 14.133.",
+      "id": "lc11L",
+      "origin": "pdf",
+      "pair_id": "lc11",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "lei-10520",
+          "pages": [
+            1
+          ]
+        }
+      ],
+      "text": "Para que tipo de aquisicao a Lei 10.520 previa o pregao?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "bens e servicos comuns|bens e serviços comuns"
+      ],
+      "expected": "Para aquisicao de bens e servicos comuns (Lei 10.520, art. 1), norma hoje revogada pela Lei 14.133.",
+      "id": "lc11P",
+      "origin": "pdf",
+      "pair_id": "lc11",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "lei-10520",
+          "pages": [
+            1
+          ]
+        }
+      ],
+      "text": "Aquela lei do pregao servia pra comprar o que, exatamente?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "sim|tambem|revogad"
+      ],
+      "expected": "Sim. O art. 193 da Lei 14.133 revoga tanto a Lei 8.666 quanto a Lei 10.520 na mesma data.",
+      "id": "lc12L",
+      "origin": "pdf",
+      "pair_id": "lc12",
+      "stratum": "confirmacao",
+      "targets": [
+        {
+          "document_id": "lei-14133",
+          "pages": [
+            75
+          ]
+        },
+        {
+          "document_id": "lei-10520",
+          "pages": [
+            1
+          ]
+        }
+      ],
+      "text": "A Lei 10.520 tambem foi revogada pela Lei 14.133?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "sim|tambem|revogad"
+      ],
+      "expected": "Sim. O art. 193 da Lei 14.133 revoga tanto a Lei 8.666 quanto a Lei 10.520 na mesma data.",
+      "id": "lc12P",
+      "origin": "pdf",
+      "pair_id": "lc12",
+      "stratum": "confirmacao",
+      "targets": [
+        {
+          "document_id": "lei-14133",
+          "pages": [
+            75
+          ]
+        },
+        {
+          "document_id": "lei-10520",
+          "pages": [
+            1
+          ]
+        }
+      ],
+      "text": "A lei do pregao caiu junto com a outra lei antiga?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "nao|pregao|dialogo|revogad|28"
+      ],
+      "expected": "A premissa e falsa: convite nao consta do rol de modalidades do art. 28 da Lei 14.133; era modalidade da Lei 8.666, revogada.",
+      "id": "lc13L",
+      "origin": "pdf",
+      "pair_id": "lc13",
+      "stratum": "premissa-falsa",
+      "targets": [
+        {
+          "document_id": "lei-14133",
+          "pages": [
+            18
+          ]
+        }
+      ],
+      "text": "Qual e o valor maximo para usar a modalidade convite hoje?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "nao|pregao|dialogo|revogad|28"
+      ],
+      "expected": "A premissa e falsa: convite nao consta do rol de modalidades do art. 28 da Lei 14.133; era modalidade da Lei 8.666, revogada.",
+      "id": "lc13P",
+      "origin": "pdf",
+      "pair_id": "lc13",
+      "stratum": "premissa-falsa",
+      "targets": [
+        {
+          "document_id": "lei-14133",
+          "pages": [
+            18
+          ]
+        }
+      ],
+      "text": "Ate quanto da pra comprar chamando so tres empresas conhecidas?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu|cont)|nenhuma informac|nenhum (endereco|preco|valor|dado)|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)|no information|not (mention|stat|contain|specif|provid|includ|found|available)|does not|do not"
+      ],
+      "expected": "Nao consta.",
+      "id": "lc6",
+      "origin": "pdf",
+      "stratum": "negativa",
+      "targets": [],
+      "text": "Qual e o salario de um pregoeiro?"
+    },
+    {
+      "answer_patterns": [
+        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu|cont)|nenhuma informac|nenhum (endereco|preco|valor|dado)|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)|no information|not (mention|stat|contain|specif|provid|includ|found|available)|does not|do not"
+      ],
+      "expected": "Nao consta.",
+      "id": "lc7",
+      "origin": "pdf",
+      "stratum": "negativa",
+      "targets": [],
+      "text": "Quantos contratos o Governo Federal assinou em 2024?"
+    },
+    {
+      "answer_patterns": [
+        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu|cont)|nenhuma informac|nenhum (endereco|preco|valor|dado)|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)|no information|not (mention|stat|contain|specif|provid|includ|found|available)|does not|do not"
+      ],
+      "expected": "Nao consta.",
+      "id": "lc14",
+      "origin": "pdf",
+      "stratum": "negativa",
+      "targets": [],
+      "text": "Quantas licitacoes foram anuladas por irregularidade em 2025?"
     }
-   ],
-   "answer_patterns": [
-    "sim|existe|ha |prev|trata"
-   ],
-   "origin": "pdf",
-   "pair_id": "lc8",
-   "expected": "Sim, a Lei 14.133 traz um capitulo de infracoes e sancoes administrativas (art. 155 e seguintes), com advertencia, multa, impedimento de licitar e declaracao de inidoneidade.",
-   "id": "lc8P",
-   "text": "Se a empresa aprontar no contrato com o governo, tem punicao escrita em algum lugar?",
-   "variant": "parafrase"
+  ],
+  "reviewed_by": [],
+  "strata": {
+    "aberta": 10,
+    "confirmacao": 4,
+    "existencia": 4,
+    "negativa": 3,
+    "premissa-falsa": 4
   },
-  {
-   "id": "lc6",
-   "text": "Qual e o salario de um pregoeiro?",
-   "stratum": "negativa",
-   "targets": [],
-   "answer_patterns": [
-    "nao consta|nao informa|nao ha|nao encontr|nao especific|nao define|nao traz|nao estabelec"
-   ],
-   "expected": "Nao consta.",
-   "origin": "pdf"
-  },
-  {
-   "id": "lc7",
-   "text": "Quantos contratos o Governo Federal assinou em 2024?",
-   "stratum": "negativa",
-   "targets": [],
-   "answer_patterns": [
-    "nao consta|nao informa|nao ha|nao encontr|nao especific|nao define|nao traz|nao estabelec"
-   ],
-   "expected": "Nao consta.",
-   "origin": "pdf"
-  }
- ],
- "frozen_sha256": "21fc43c7ac94a8c161c7fa6478596370c926f50a41b49dfdb02095b9733a4e86"
+  "version": "licitacoes-2026-09-v3"
 }
