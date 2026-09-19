@@ -1,6 +1,6 @@
 # Acompanhamento de TCC II — setembro de 2026
 
-**Tempo total: ~15 minutos | 22 slides + demonstração ao vivo**
+**Tempo total: ~15 minutos | 23 slides + demonstração ao vivo**
 
 > **A fala de cada slide está nas notas do apresentador, dentro do próprio deck.**
 > Este arquivo não repete essa fala. Ele tem só o que o deck não pode ter: o
@@ -25,8 +25,8 @@
 | Demonstração ao vivo e estado do trabalho | 6–7 | 2,5 min |
 | Custo, teto de contexto, citação | 8–11 | 2,5 min |
 | Como o número foi produzido, e os números | 13–16 | 3,5 min |
-| As duas falhas e o experimento que não funcionou | 17–19 | 2,5 min |
-| Limitações e próximos passos | 20–22 | 1 min |
+| As duas falhas, o que não funcionou e o que funcionou | 17–20 | 3 min |
+| Limitações e próximos passos | 21–23 | 1 min |
 
 Se o tempo apertar, corte o slide do índice vetorial aproximado (determinismo).
 É o único que sustenta sozinho a defesa da escolha de arquitetura, e a banca
@@ -47,6 +47,12 @@ A frase que justifica o clique:
 
 > "Esse clique é o ponto do trabalho inteiro: a citação não é o modelo dizendo
 > de onde tirou. É a coordenada do trecho que o banco realmente entregou para ele."
+
+**A máquina roda com a expansão da pergunta ligada** (`THINGINDEX_QUERY_EXPANSION=on`),
+que é o braço medido no slide 20. A pergunta da demo foi testada nesse estado e
+responde certo, citando a revogação. Se alguém perguntar por que o sistema ao vivo
+está melhor que a tabela do slide 14: porque a tabela é o braço de controle, e o
+slide 20 mede a diferença.
 
 **Se falhar:** não improvise conserto e não peça desculpas duas vezes. Diga
 *"tenho o resultado medido disso nos próximos slides"* e siga. Nenhum número da
@@ -69,9 +75,10 @@ corrigir a premissa. É o comportamento mais difícil de acreditar sem ver.
 > pessoa, e isso está declarado."
 
 **"Qual desses números você defende como significativo?"**
-> "Um só: a queda de vocabulário. São 31 pares, 10 discordantes, 9 para o mesmo
-> lado, teste de sinais p igual a 0,021. Os outros são descritivos e eu apresento
-> como descritivos."
+> "Um só: o efeito da expansão da pergunta. Dez perguntas passaram a acertar e
+> uma deixou de acertar, teste de sinais p igual a 0,012. A queda de vocabulário,
+> que é o efeito maior, dá p igual a 0,109: é direcional e eu apresento como
+> direcional. Os outros números são descritivos."
 
 **"Quem escreveu essas perguntas?"**
 > "Eu, a partir dos PDF, sem consultar o sistema. É uma limitação que eu declaro:
@@ -121,6 +128,25 @@ corrigir a premissa. É o comportamento mais difícil de acreditar sem ver.
 > "Pensei e decidi que não, por enquanto. Tenho três domínios medidos e resultado
 > diferente em cada um. Fechar num nicho agora jogaria fora essa evidência."
 
+**"Você conseguiu consertar a queda de vocabulário?"**
+> "Consegui, e é o slide 20. Em vez de enriquecer o documento, que já tinha
+> falhado, eu expando a pergunta com os termos técnicos que ela descreve sem
+> nomear. O acerto vai de 0,817 para 0,930, e as parafraseadas, que eram o
+> problema, de 0,677 para 0,903. Dez perguntas passaram a acertar e uma deixou de
+> acertar, p igual a 0,012. Custa 13% mais tokens na busca."
+
+**"E a pergunta que piorou?"**
+> "É a que eu mais gosto de mostrar: 'aquela lei antiga de licitação ainda vale
+> hoje'. Os termos expandidos puxaram as páginas da lei revogada. Eu registrei
+> esse risco no pré-registro antes de rodar, justamente para não poder escondê-lo
+> se acontecesse. É a mesma causa do slide 17, e é por isso que a frente 1 do
+> plano é vigência de norma."
+
+**"A expansão não quebra o determinismo?"**
+> "A primeira vez que uma pergunta aparece, sim: é uma chamada de LLM. Depois
+> disso ela fica em cache pela hash da pergunta normalizada, e a mesma pergunta
+> devolve sempre os mesmos termos. Eu declaro essa ressalva."
+
 **"O passo de IA na indexação serve para quê, então?"**
 > "Para leitura na tela, não para busca. Eu medi, está no slide 18, e o resultado
 > foi nulo nas quatro versões do índice. Deixei registrado como resultado
@@ -134,5 +160,6 @@ corrigir a premissa. É o comportamento mais difícil de acreditar sem ver.
 - [ ] Login da conta de demonstração funciona
 - [ ] Provedor de LLM com crédito (conferir em `ollama.com/api/usage`)
 - [ ] A coleção de licitações abre e responde
+- [ ] `docker compose exec api printenv THINGINDEX_QUERY_EXPANSION` devolve `on`
 - [ ] O deck abre e passa slide (testar no navegador da sala, não só no seu)
 - [ ] Números impressos em papel, para o caso de a tela falhar

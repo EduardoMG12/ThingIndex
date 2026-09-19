@@ -1,0 +1,449 @@
+question_id,stratum,variant,pair_id,origin,arm,scope,repeat,model,correct,cited_pages,provenance_ok,retrieval_hit,prompt_tokens,completion_tokens,usage_reported,latency_ms,cost_usd,truncated,error,answer
+lc1L,aberta,literal,lc1,pdf,T,,1,gemma4:31b,true,lei-14133:18;lei-14133:19;lei-8666:14;lei-8666:15;lei-8666:39;lei-8666:40;lei-8666:16;lei-8666:17;lei-14133:7;lei-14133:8;lei-8666:32;lei-8666:33,true,true,6627,206,true,1777,,false,,"As modalidades de licitação variam conforme a lei consultada:
+
+*   **De acordo com a Lei 14.133/2021 (Art. 28):**
+    *   Pregão;
+    *   Concorrência;
+    *   Concurso;
+    *   Leilão;
+    *   Diálogo competitivo.
+    (Lei 14.133, de 1 de abril de 2021, página 18).
+
+*   **De acordo com a Lei 8.666/1993 (Art. 22):**
+    *   Concorrência;
+    *   Tomada de preços;
+    *   Convite;
+    *   Concurso;
+    *   Leilão.
+    (Lei 8.666, de 21 de junho de 1993, página 16)."
+lc1L,aberta,literal,lc1,pdf,T,,2,gemma4:31b,true,lei-14133:18;lei-14133:19;lei-8666:14;lei-8666:15;lei-8666:39;lei-8666:40;lei-8666:16;lei-8666:17;lei-14133:7;lei-14133:8;lei-8666:32;lei-8666:33,true,true,6627,206,true,3354,,false,,"As modalidades de licitação variam conforme a lei consultada:
+
+*   **De acordo com a Lei 14.133/2021 (Art. 28):**
+    *   Pregão;
+    *   Concorrência;
+    *   Concurso;
+    *   Leilão;
+    *   Diálogo competitivo.
+    (Lei 14.133, de 1 de abril de 2021, página 18).
+
+*   **De acordo com a Lei 8.666/1993 (Art. 22):**
+    *   Concorrência;
+    *   Tomada de preços;
+    *   Convite;
+    *   Concurso;
+    *   Leilão.
+    (Lei 8.666, de 21 de junho de 1993, página 16)."
+lc1L,aberta,literal,lc1,pdf,T,,3,gemma4:31b,true,lei-14133:18;lei-14133:19;lei-8666:14;lei-8666:15;lei-8666:39;lei-8666:40;lei-8666:16;lei-8666:17;lei-14133:7;lei-14133:8;lei-8666:32;lei-8666:33,true,true,6627,206,true,1415,,false,,"As modalidades de licitação variam conforme a lei consultada:
+
+*   **De acordo com a Lei 14.133/2021 (Art. 28):**
+    *   Pregão;
+    *   Concorrência;
+    *   Concurso;
+    *   Leilão;
+    *   Diálogo competitivo.
+    (Lei 14.133, de 1 de abril de 2021, página 18).
+
+*   **De acordo com a Lei 8.666/1993 (Art. 22):**
+    *   Concorrência;
+    *   Tomada de preços;
+    *   Convite;
+    *   Concurso;
+    *   Leilão.
+    (Lei 8.666, de 21 de junho de 1993, página 16)."
+lc1P,aberta,parafrase,lc1,pdf,T,,1,gemma4:31b,false,lei-14133:2;lei-14133:3;lei-14133:7;lei-14133:8;lei-8666:20;lei-8666:21,false,false,3358,536,true,2539,,false,,"Com base nos documentos fornecidos, a Lei 14.133/2021 e a Lei 8.666/1993 descrevem diversas formas e modalidades para que a Administração Pública realize contratações e compras:
+
+**1. Modalidades de Licitação (Lei 14.133/2021):**
+A Lei 14.133 define modalidades específicas para diferentes finalidades (página 7):
+*   **Pregão:** Obrigatório para a aquisição de bens e serviços comuns.
+*   **Concorrência:** Mencionada como uma das modalidades para a realização de registro de preços.
+*   **Concurso:** Para escolha de trabalho técnico, científico ou artístico.
+*   **Leilão:** Para alienação de bens imóveis ou móveis inservíveis ou apreendidos.
+*   **Diálogo Competitivo:** Para contratação de obras, serviços e compras em que a Administração realiza diálogos com licitantes selecionados para desenvolver alternativas que atendam suas necessidades.
+
+**2. Procedimentos Auxiliares (Lei 14.133/2021):**
+Existem também processos que auxiliam a contratação (página 7):
+*   **Sistema de Registro de Preços:** Registro formal de preços para contratações futuras (via pregão ou concorrência).
+*   **Credenciamento:** Chamamento público para que interessados em prestar serviços ou fornecer bens se credenciem.
+*   **Pré-qualificação:** Procedimento seletivo prévio para análise de habilitação de interessados ou do objeto.
+
+**3. Hipóteses de Contratação Direta/Exceções (Lei 8.666/1993):**
+A Lei 8.666 lista diversas situações específicas de contratação (página 20), tais como:
+*   Aquisição de componentes/peças para manutenção de equipamentos em garantia junto ao fornecedor original.
+*   Compras de material de uso das Forças Armadas (exceto uso pessoal e administrativo) para manter padronização logística.
+*   Aquisição de bens e insumos para pesquisa científica e tecnológica com recursos de instituições de fomento (como CAPES, FINEP, CNPq).
+*   Contratação de fornecimento de energia elétrica e gás natural com concessionários.
+*   Contratações entre empresa pública ou sociedade de economia mista e suas subsidiárias/controladas."
+lc1P,aberta,parafrase,lc1,pdf,T,,2,gemma4:31b,false,lei-14133:2;lei-14133:3;lei-14133:7;lei-14133:8;lei-8666:20;lei-8666:21,false,false,3358,461,true,1881,,false,,"Com base nos documentos fornecidos, a Lei 14.133/2021 estabelece diversas formas e modalidades para que a Administração Pública realize contratações e compras:
+
+**1. Modalidades de Licitação (Lei 14.133, pág. 7):**
+*   **Pregão:** Modalidade obrigatória para a aquisição de bens e serviços comuns.
+*   **Concorrência:** Mencionada como uma das modalidades para a realização de registro de preços.
+*   **Concurso:** Para escolha de trabalho técnico, científico ou artístico.
+*   **Leilão:** Para alienação de bens imóveis ou móveis inservíveis ou apreendidos.
+*   **Diálogo Competitivo:** Para contratação de obras, serviços e compras, onde a Administração realiza diálogos com licitantes selecionados para desenvolver alternativas que atendam suas necessidades.
+
+**2. Procedimentos Auxiliares (Lei 14.133, pág. 7):**
+*   **Sistema de Registro de Preços:** Conjunto de procedimentos para registro formal de preços para contratações futuras (via pregão ou concorrência).
+*   **Credenciamento:** Chamamento público para que interessados em prestar serviços ou fornecer bens se credenciem.
+*   **Pré-qualificação:** Procedimento seletivo prévio à licitação para análise de habilitação ou do objeto.
+
+**3. Outras Formas de Contratação (Lei 14.133, pág. 2 e 7):**
+*   **Contrato de Eficiência:** Contrato para prestação de serviços (podendo incluir obras e bens) visando a redução de despesas correntes.
+*   **Contratações Diretas:** O sistema de registro de preços pode ser realizado mediante contratação direta.
+
+Além disso, a Lei 14.133 aplica-se a diversas categorias de aquisição, como compra (inclusive por encomenda), locação, prestação de serviços e contratações de tecnologia da informação e comunicação (Lei 14.133, pág. 2)."
+lc1P,aberta,parafrase,lc1,pdf,T,,3,gemma4:31b,false,lei-14133:2;lei-14133:3;lei-14133:7;lei-14133:8;lei-8666:20;lei-8666:21,false,false,3358,444,true,1968,,false,,"Com base nos documentos fornecidos, a Lei 14.133/2021 estabelece diversas formas e modalidades para que a Administração Pública realize contratações e compras:
+
+**1. Modalidades de Licitação (Lei 14.133, pág. 7):**
+*   **Pregão:** Modalidade obrigatória para a aquisição de bens e serviços comuns.
+*   **Concorrência:** Utilizada para o registro formal de preços (conforme mencionado na definição de sistema de registro de preços).
+*   **Concurso:** Para escolha de trabalho técnico, científico ou artístico.
+*   **Leilão:** Para alienação de bens imóveis ou móveis inservíveis ou apreendidos.
+*   **Diálogo Competitivo:** Para contratação de obras, serviços e compras onde a Administração dialoga com licitantes selecionados para desenvolver alternativas que atendam suas necessidades.
+
+**2. Procedimentos Auxiliares e Outras Formas (Lei 14.133, pág. 7):**
+*   **Sistema de Registro de Preços:** Conjunto de procedimentos para registro formal de preços para contratações futuras, podendo ocorrer via licitação (pregão ou concorrência) ou contratação direta.
+*   **Credenciamento:** Chamamento público para que interessados em prestar serviços ou fornecer bens se credenciem.
+*   **Pré-qualificação:** Procedimento seletivo prévio à licitação para análise de habilitação ou do objeto.
+
+**3. Escopo de Aplicação (Lei 14.133, pág. 2):**
+A lei aplica-se a diversas formas de aquisição e contratação, incluindo:
+*   Compra (inclusive por encomenda).
+*   Locação.
+*   Prestação de serviços (inclusive técnico-profissionais especializados).
+*   Obras e serviços de arquitetura e engenharia.
+*   Contratações de tecnologia da informação e de comunicação.
+*   Alienação e concessão de direito real de uso de bens."
+lc2L,aberta,literal,lc2,pdf,T,,1,gemma4:31b,false,lei-8666:22;lei-8666:23;lei-8666:18;lei-8666:19;lei-8666:5;lei-8666:6;lei-14133:8;lei-14133:9;lei-14133:41;lei-14133:42;lei-8666:39;lei-8666:40,false,false,6407,111,true,1202,,false,,"Com base na Lei 8.666, de 21 de junho de 1993 (página 18), a licitação é dispensável para obras e serviços de engenharia de valor até **10% (dez por cento) do limite previsto na alínea ""a"", do inciso I do artigo anterior**, desde que não se refiram a parcelas de uma mesma obra ou serviço, ou ainda para obras e serviços da mesma natureza e no mesmo local que possam ser realizadas conjunta e concomitantemente."
+lc2L,aberta,literal,lc2,pdf,T,,2,gemma4:31b,false,lei-8666:22;lei-8666:23;lei-8666:18;lei-8666:19;lei-8666:5;lei-8666:6;lei-14133:8;lei-14133:9;lei-14133:41;lei-14133:42;lei-8666:39;lei-8666:40,false,false,6407,110,true,913,,false,,"Com base na Lei 8.666, de 21 de junho de 1993 (página 18), a licitação é dispensável para obras e serviços de engenharia de valor até **10% (dez por cento) do limite previsto na alínea ""a"", do inciso I do artigo anterior**, desde que não se refiram a parcelas de uma mesma obra ou serviço ou ainda para obras e serviços da mesma natureza e no mesmo local que possam ser realizadas conjunta e concomitantemente."
+lc2L,aberta,literal,lc2,pdf,T,,3,gemma4:31b,false,lei-8666:22;lei-8666:23;lei-8666:18;lei-8666:19;lei-8666:5;lei-8666:6;lei-14133:8;lei-14133:9;lei-14133:41;lei-14133:42;lei-8666:39;lei-8666:40,false,false,6407,110,true,910,,false,,"Com base na Lei 8.666, de 21 de junho de 1993 (página 18), a licitação é dispensável para obras e serviços de engenharia de valor até **10% (dez por cento) do limite previsto na alínea ""a"", do inciso I do artigo anterior**, desde que não se refiram a parcelas de uma mesma obra ou serviço ou ainda para obras e serviços da mesma natureza e no mesmo local que possam ser realizadas conjunta e concomitantemente."
+lc2P,aberta,parafrase,lc2,pdf,T,,1,gemma4:31b,false,lei-8666:49;lei-8666:50;lei-8666:30;lei-8666:31;lei-14133:18;lei-14133:19;lei-8666:5;lei-8666:6;lei-8666:15;lei-8666:16;lei-8666:40;lei-8666:41,false,false,6780,151,true,2367,,false,,"Com base nos documentos fornecidos, não há informações sobre limites de valor que permitam a contratação de reformas sem a abertura de concorrência (dispensa de licitação por valor).
+
+Os documentos apresentam definições de ""Obra"" e ""Obras, serviços e compras de grande vulto"" (Lei 8.666, pág. 5), regras sobre a modalidade de concorrência e prazos de edital (Lei 8.666, pág. 15), e a lista de modalidades de licitação da nova lei (Lei 14.133, pág. 18), mas não especificam os valores máximos para contratação direta."
+lc2P,aberta,parafrase,lc2,pdf,T,,2,gemma4:31b,false,lei-8666:49;lei-8666:50;lei-8666:30;lei-8666:31;lei-14133:18;lei-14133:19;lei-8666:5;lei-8666:6;lei-8666:15;lei-8666:16;lei-8666:40;lei-8666:41,false,false,6780,150,true,2112,,false,,"Com base nos documentos fornecidos, não há informações sobre os limites de valor (dispensa de licitação) que permitam a uma prefeitura contratar uma reforma sem abrir concorrência.
+
+Os documentos detalham a definição de obra e serviço (Lei 8.666, pág. 5), as modalidades de licitação (Lei 14.133, pág. 18), prazos de editais (Lei 8.666, pág. 15) e regras para alteração de contratos (Lei 8.666, pág. 40), mas não mencionam os valores máximos para contratação direta ou dispensa de licitação."
+lc2P,aberta,parafrase,lc2,pdf,T,,3,gemma4:31b,false,lei-8666:49;lei-8666:50;lei-8666:30;lei-8666:31;lei-14133:18;lei-14133:19;lei-8666:5;lei-8666:6;lei-8666:15;lei-8666:16;lei-8666:40;lei-8666:41,false,false,6780,220,true,2898,,false,,"Com base nos documentos fornecidos, não há informações sobre os limites de valor (dispensa de licitação) que permitam a uma prefeitura contratar uma reforma sem abrir concorrência.
+
+Os documentos detalham:
+*   **Definições de obra e regimes de execução** (Lei 8.666, pág. 5).
+*   **Prazos de publicidade** para a modalidade concorrência (Lei 8.666, pág. 15).
+*   **Limites para alterações contratuais** em reformas (até 50% para acréscimos do valor inicial atualizado do contrato) (Lei 8.666, pág. 40).
+*   **Modalidades de licitação** previstas na Lei 14.133 (Lei 14.133, pág. 18).
+
+No entanto, as páginas disponibilizadas não mencionam os valores máximos para contratação direta ou dispensa de licitação."
+lc3L,confirmacao,literal,lc3,pdf,T,,1,gemma4:31b,false,lei-8666:44;lei-8666:45;lei-14133:75;lei-14133:76;lei-8666:51;lei-8666:52;lei-8666:1;lei-8666:2;lei-8666:36;lei-8666:37;Lei 10.520/2002 - Pregao:3;Lei 10.520/2002 - Pregao:4,true,true,6924,415,true,4720,,false,,"Com base nos documentos fornecidos, a situação da Lei 8.666/1993 é a seguinte:
+
+*   **Revogação:** A Lei 8.666/1993 foi revogada pela Lei 14.133, de 1 de abril de 2021 (Lei 8.666, p. 1).
+*   **Cronograma de Revogação:** De acordo com a Lei 14.133 (p. 75), a revogação ocorreu de forma gradual:
+    *   Os artigos 89 a 108 da Lei 8.666/1993 foram revogados na data de publicação da Lei 14.133.
+    *   A Lei 8.666/1993 foi integralmente revogada em **30 de dezembro de 2023** (conforme redações dadas pela Medida Provisória nº 1.167/2023 e pela Lei Complementar nº 198/2023).
+*   **Exceções e Transição:**
+    *   Contratos assinados antes da entrada em vigor da Lei 14.133 continuam a ser regidos pelas regras da legislação revogada (Lei 14.133, Art. 190, p. 75).
+    *   A Administração pôde optar por licitar ou contratar diretamente com base na Lei 8.666/1993, desde que a publicação do edital ou ato autorizativo ocorresse até 29 de dezembro de 2023; nesses casos, o contrato respectivo seria regido por ela durante toda a sua vigência (Lei 14.133, Art. 191, p. 75)."
+lc3L,confirmacao,literal,lc3,pdf,T,,2,gemma4:31b,false,lei-8666:44;lei-8666:45;lei-14133:75;lei-14133:76;lei-8666:51;lei-8666:52;lei-8666:1;lei-8666:2;lei-8666:36;lei-8666:37;Lei 10.520/2002 - Pregao:3;Lei 10.520/2002 - Pregao:4,true,true,6924,391,true,1863,,false,,"Com base nos documentos fornecidos, a situação da Lei 8.666/1993 é a seguinte:
+
+*   **Revogação:** A Lei 8.666/1993 foi revogada pela Lei 14.133, de 1 de abril de 2021 (Lei 8.666, pág. 1).
+*   **Cronograma de Revogação:** De acordo com a Lei 14.133 (pág. 75), a revogação ocorreu de forma gradual:
+    *   Os artigos 89 a 108 da Lei 8.666/1993 foram revogados na data de publicação da Lei 14.133.
+    *   A Lei 8.666/1993 foi integralmente revogada em **30 de dezembro de 2023** (conforme redação dada pela Lei Complementar nº 198, de 2023).
+*   **Exceções e Transição:**
+    *   Contratos assinados antes da entrada em vigor da Lei 14.133 continuam a ser regidos pelas regras da legislação revogada (Lei 14.133, Art. 190, pág. 75).
+    *   Houve um período de transição em que a Administração poderia optar por licitar de acordo com a Lei 14.133 ou com as leis anteriores (incluindo a Lei 8.666), desde que a opção fosse expressamente indicada no edital ou ato autorizativo (Lei 14.133, Art. 191, pág. 75)."
+lc3L,confirmacao,literal,lc3,pdf,T,,3,gemma4:31b,false,lei-8666:44;lei-8666:45;lei-14133:75;lei-14133:76;lei-8666:51;lei-8666:52;lei-8666:1;lei-8666:2;lei-8666:36;lei-8666:37;Lei 10.520/2002 - Pregao:3;Lei 10.520/2002 - Pregao:4,true,true,6924,392,true,2128,,false,,"Com base nos documentos fornecidos, a situação da Lei 8.666/1993 é a seguinte:
+
+*   **Revogação:** A Lei 8.666/1993 foi revogada pela Lei 14.133, de 1 de abril de 2021 (Lei 8.666, pág. 1).
+*   **Cronograma de Revogação:** De acordo com a Lei 14.133 (pág. 75), a revogação ocorreu de forma gradual:
+    *   Os artigos 89 a 108 da Lei 8.666/1993 foram revogados na data de publicação da Lei 14.133.
+    *   A Lei 8.666/1993 foi integralmente revogada em **30 de dezembro de 2023** (conforme redação dada pela Lei Complementar nº 198, de 2023).
+*   **Exceções e Transição:**
+    *   Contratos assinados antes da entrada em vigor da Lei 14.133 continuam a ser regidos pelas regras da legislação revogada (Lei 14.133, Art. 190, pág. 75).
+    *   Houve um período de transição em que a Administração Pública podia optar por licitar de acordo com a Lei 14.133 ou com as leis anteriores (incluindo a 8.666), desde que a opção fosse indicada expressamente no edital ou ato de contratação direta (Lei 14.133, Art. 191, pág. 75)."
+lc3P,confirmacao,parafrase,lc3,pdf,T,,1,gemma4:31b,true,lei-8666:25;lei-8666:26;lei-14133:56;lei-14133:57;lei-8666:39;lei-8666:40;lei-14133:27;lei-14133:28;lei-8666:5;lei-8666:6;lei-8666:28;lei-8666:29,false,false,6490,84,true,1099,,false,,"Com base nos documentos fornecidos, não há informações que indiquem se a Lei 8.666/1993 (lei antiga) ainda está em vigor ou se foi integralmente revogada pela Lei 14.133/2021. Os textos apresentam o conteúdo de ambas as leis, mas não mencionam a vigência atual ou a transição entre elas."
+lc3P,confirmacao,parafrase,lc3,pdf,T,,2,gemma4:31b,true,lei-8666:25;lei-8666:26;lei-14133:56;lei-14133:57;lei-8666:39;lei-8666:40;lei-14133:27;lei-14133:28;lei-8666:5;lei-8666:6;lei-8666:28;lei-8666:29,false,false,6490,88,true,983,,false,,"Com base nos documentos fornecidos, não há informações que indiquem se a Lei 8.666/1993 (referida como a lei antiga) ainda está em vigor ou se foi integralmente revogada pela Lei 14.133/2021. Os textos apresentam o conteúdo de ambas as leis, mas não mencionam a vigência atual ou a transição entre elas."
+lc3P,confirmacao,parafrase,lc3,pdf,T,,3,gemma4:31b,true,lei-8666:25;lei-8666:26;lei-14133:56;lei-14133:57;lei-8666:39;lei-8666:40;lei-14133:27;lei-14133:28;lei-8666:5;lei-8666:6;lei-8666:28;lei-8666:29,false,false,6490,88,true,1145,,false,,"Com base nos documentos fornecidos, não há informações que indiquem se a Lei 8.666/1993 (referida como a lei antiga) ainda está em vigor ou se foi integralmente revogada pela Lei 14.133/2021. Os textos apresentam o conteúdo de ambas as leis, mas não mencionam a vigência atual ou a transição entre elas."
+lc4L,aberta,literal,lc4,pdf,T,,1,gemma4:31b,true,lei-14133:75;lei-14133:76;lei-8666:39;lei-8666:40;lei-14133:53;lei-14133:54;lei-8666:1;lei-8666:2;lei-8666:37;lei-8666:38;lei-14133:56;lei-14133:57,true,true,7141,92,true,1411,,false,,"Um contrato assinado em 2020 será regido de acordo com as regras previstas na legislação revogada, conforme estabelece o Art. 190 da Lei 14.133, de 1 de abril de 2021 (página 75), que determina que o contrato cujo instrumento tenha sido assinado antes da entrada em vigor desta Lei continuará a ser regido pela legislação anterior."
+lc4L,aberta,literal,lc4,pdf,T,,2,gemma4:31b,true,lei-14133:75;lei-14133:76;lei-8666:39;lei-8666:40;lei-14133:53;lei-14133:54;lei-8666:1;lei-8666:2;lei-8666:37;lei-8666:38;lei-14133:56;lei-14133:57,true,true,7141,122,true,1229,,false,,"Com base nos documentos fornecidos, um contrato assinado em 2020 seria regido pela legislação revogada (como a Lei 8.666/1993), pois o Art. 190 da Lei 14.133, de 1 de abril de 2021, estabelece que o contrato cujo instrumento tenha sido assinado antes da entrada em vigor desta Lei continuará a ser regido de acordo com as regras previstas na legislação revogada (Lei 14.133, página 75)."
+lc4L,aberta,literal,lc4,pdf,T,,3,gemma4:31b,true,lei-14133:75;lei-14133:76;lei-8666:39;lei-8666:40;lei-14133:53;lei-14133:54;lei-8666:1;lei-8666:2;lei-8666:37;lei-8666:38;lei-14133:56;lei-14133:57,true,true,7141,122,true,1153,,false,,"Com base nos documentos fornecidos, um contrato assinado em 2020 seria regido pela legislação revogada (como a Lei 8.666/1993), pois o Art. 190 da Lei 14.133, de 1 de abril de 2021, estabelece que o contrato cujo instrumento tenha sido assinado antes da entrada em vigor desta Lei continuará a ser regido de acordo com as regras previstas na legislação revogada (Lei 14.133, página 75)."
+lc4P,aberta,parafrase,lc4,pdf,T,,1,gemma4:31b,true,lei-14133:62;lei-14133:63;lei-14133:48;lei-14133:49;lei-14133:57;lei-14133:58;lei-14133:29;lei-14133:30;lei-14133:54;lei-14133:55;lei-14133:53,false,false,6669,109,true,1371,,false,,"Com base nos documentos fornecidos, não há informações sobre a transição de contratos firmados sob a vigência de leis anteriores para a Lei 14.133/2021 ou se as regras mudam ""no meio do caminho"" para contratos já em execução. O texto fornecido detalha as regras de execução, duração, nulidade e alteração de contratos regidos pela Lei 14.133, mas não aborda a aplicação retroativa ou a transição entre regimes jurídicos distintos."
+lc4P,aberta,parafrase,lc4,pdf,T,,2,gemma4:31b,true,lei-14133:62;lei-14133:63;lei-14133:48;lei-14133:49;lei-14133:57;lei-14133:58;lei-14133:29;lei-14133:30;lei-14133:54;lei-14133:55;lei-14133:53,false,false,6669,116,true,1188,,false,,"Com base nos documentos fornecidos, não há informações específicas sobre a transição de contratos firmados sob a lei anterior para a Lei 14.133/2021 ou se as regras mudam ""no meio do caminho"" para contratos já em execução.
+
+Os documentos detalham as regras de execução, duração, nulidade e alteração de contratos regidos pela **Lei 14.133/2021**, mas não abordam a aplicação retroativa ou a transição de contratos celebrados sob legislações anteriores."
+lc4P,aberta,parafrase,lc4,pdf,T,,3,gemma4:31b,true,lei-14133:62;lei-14133:63;lei-14133:48;lei-14133:49;lei-14133:57;lei-14133:58;lei-14133:29;lei-14133:30;lei-14133:54;lei-14133:55;lei-14133:53,false,false,6669,94,true,1079,,false,,"Com base nos documentos fornecidos, não há informações sobre a transição de contratos firmados sob leis anteriores para a Lei 14.133/2021 ou se as regras mudam ""no meio do caminho"" para contratos já em execução. O texto fornecido foca nas regras de execução, nulidade, duração e alteração de contratos regidos especificamente pela Lei 14.133/2021."
+lc5L,premissa-falsa,literal,lc5,pdf,T,,1,gemma4:31b,true,lei-8666:18;lei-8666:19;lei-8666:16;lei-8666:17;lei-8666:14;lei-8666:15;lei-14133:76;lei-14133:77;lei-14133:50;lei-14133:51,true,true,6926,651,true,3418,,false,,"Com base nos documentos fornecidos, a modalidade **tomada de preços** é regida pela **Lei 8.666, de 21 de junho de 1993**. Para realizá-la, devem ser observados os seguintes pontos:
+
+**1. Critérios de Elegibilidade e Participação**
+*   A tomada de preços é destinada a interessados que estejam **devidamente cadastrados** ou que atendam a todas as condições exigidas para o cadastramento até o **terceiro dia anterior** à data do recebimento das propostas, respeitando a qualificação necessária (Lei 8.666, pág. 16).
+
+**2. Limites de Valor (Estimativa da Contratação)**
+A modalidade é determinada conforme o valor estimado, seguindo os limites da Lei 8.666 (pág. 17):
+*   **Obras e serviços de engenharia:** Até R$ 1.500.000,00.
+*   **Compras e serviços (não referidos acima):** Até R$ 650.000,00.
+*   **Observação para Municípios:** Esses valores podem ser reduzidos dependendo da população do município (variando de 25% a 100% dos valores indicados, conforme a população, segundo dados do IBGE) (Lei 8.666, pág. 17).
+
+**3. Divulgação e Publicidade**
+*   O resumo do edital deve ser publicado com antecedência mínima de **uma vez** nos seguintes veículos (Lei 8.666, pág. 14):
+    *   **Diário Oficial da União:** Para órgãos da Administração Pública Federal ou obras/compras financiadas/garantidas por recursos federais.
+    *   **Diário Oficial do Estado ou do Distrito Federal:** Para órgãos da Administração Estadual, Municipal ou do DF.
+    *   **Jornal diário de grande circulação:** No Estado ou Município onde a obra ou serviço será realizado.
+
+**4. Regras Adicionais**
+*   **Substituição:** Nos casos em que couber a modalidade ""convite"", a Administração poderá optar por utilizar a ""tomada de preços"" (Lei 8.666, pág. 18).
+*   **Vedação ao Fracionamento:** É proibido utilizar a tomada de preços para parcelas de uma mesma obra/serviço (ou de mesma natureza que possam ser realizados simultânea ou sucessivamente) quando a soma dos valores caracterizaria a necessidade de uma ""concorrência"" (Lei 8.666, pág. 18).
+*   **Licitações Internacionais:** A tomada de preços é admitida em licitações internacionais, desde que o órgão possua cadastro internacional de fornecedores e observe os limites de valor (Lei 8.666, pág. 17 e 18)."
+lc5L,premissa-falsa,literal,lc5,pdf,T,,2,gemma4:31b,true,lei-8666:18;lei-8666:19;lei-8666:16;lei-8666:17;lei-8666:14;lei-8666:15;lei-14133:76;lei-14133:77;lei-14133:50;lei-14133:51,true,true,6926,595,true,2865,,false,,"Com base nos documentos fornecidos, a modalidade **tomada de preços** é regida pela **Lei 8.666, de 21 de junho de 1993**. Para realizá-la, devem ser observados os seguintes pontos:
+
+**1. Critérios de Seleção e Habilitação**
+*   A tomada de preços é destinada a interessados que estejam **devidamente cadastrados** ou que atendam a todas as condições exigidas para o cadastramento até o terceiro dia anterior à data do recebimento das propostas, devendo ser observada a necessária qualificação (Lei 8.666, pág. 16).
+*   A Administração pode exigir do licitante não cadastrado apenas os documentos de habilitação compatíveis com o objeto da licitação, conforme previsto nos arts. 27 a 31 da referida lei (Lei 8.666, pág. 16).
+
+**2. Limites de Valor (Estimativa da Contratação)**
+A modalidade é determinada em função do valor estimado, conforme os seguintes limites (Lei 8.666, pág. 17):
+*   **Obras e serviços de engenharia:** até R$ 1.500.000,00.
+*   **Compras e serviços (não referidos acima):** até R$ 650.000,00.
+*   *Observação para Municípios:* Esses valores podem variar de 25% a 100%, dependendo da população do município (Lei 8.666, pág. 17).
+
+**3. Divulgação e Publicidade**
+*   Os avisos contendo os resumos dos editais devem ser publicados com antecedência, no mínimo, por uma vez, no Diário Oficial (da União, do Estado ou do Distrito Federal, dependendo do órgão) e em pelo menos um jornal diário de grande circulação no Estado ou Município onde a obra ou serviço será realizado (Lei 8.666, pág. 14).
+
+**4. Regras Importantes**
+*   **Substituição:** Nos casos em que couber a modalidade ""convite"", a Administração poderá optar por utilizar a ""tomada de preços"" (Lei 8.666, pág. 18).
+*   **Vedação ao Fracionamento:** É proibido utilizar a tomada de preços para parcelas de uma mesma obra/serviço (ou de natureza similar que possam ser realizados simultânea ou sucessivamente) quando a soma de seus valores caracterizasse a necessidade de uma ""concorrência"" (Lei 8.666, pág. 18)."
+lc5L,premissa-falsa,literal,lc5,pdf,T,,3,gemma4:31b,true,lei-8666:18;lei-8666:19;lei-8666:16;lei-8666:17;lei-8666:14;lei-8666:15;lei-14133:76;lei-14133:77;lei-14133:50;lei-14133:51,true,true,6926,606,true,2960,,false,,"Com base nos documentos fornecidos, a modalidade **tomada de preços** é regida pela **Lei 8.666, de 21 de junho de 1993**. Para realizá-la, devem ser observados os seguintes pontos:
+
+**1. Requisitos de Participação**
+A tomada de preços é a modalidade de licitação destinada a interessados que estejam devidamente cadastrados ou que atendam a todas as condições exigidas para o cadastramento até o terceiro dia anterior à data do recebimento das propostas, observada a necessária qualificação (Lei 8.666, pág. 16).
+
+**2. Limites de Valor (Estimativa da Contratação)**
+A escolha desta modalidade depende do valor estimado da contratação (Lei 8.666, pág. 17):
+*   **Para obras e serviços de engenharia:** até R$ 1.500.000,00.
+*   **Para compras e serviços não referidos acima:** até R$ 650.000,00.
+*   *Observação para Municípios:* Os limites acima podem variar conforme a população do município (de 25% a 100% dos valores), utilizando-se como parâmetro os dados do IBGE (Lei 8.666, pág. 17).
+
+**3. Publicidade e Divulgação**
+Os avisos contendo os resumos dos editais de tomadas de preços devem ser publicados com antecedência mínima de uma vez nos seguintes veículos (Lei 8.666, pág. 14):
+*   No Diário Oficial da União (para órgãos da Administração Pública Federal ou obras/compras com recursos federais);
+*   No Diário Oficial do Estado ou do Distrito Federal (para órgãos da Administração Estadual, Municipal ou do DF).
+
+**4. Regras Adicionais**
+*   **Substituição:** Nos casos em que couber a modalidade ""convite"", a Administração poderá optar por utilizar a tomada de preços (Lei 8.666, pág. 18).
+*   **Vedação ao Fracionamento:** É proibido utilizar a tomada de preços para parcelas de uma mesma obra ou serviço (ou de natureza similar que possam ser realizados simultânea ou sucessivamente) quando o somatório de seus valores caracterizar a necessidade de uma concorrência (Lei 8.666, pág. 18).
+*   **Licitações Internacionais:** A tomada de preços é admitida em licitações internacionais, desde que o órgão disponha de cadastro internacional de fornecedores e sejam observados os limites de valor (Lei 8.666, pág. 17 e 18)."
+lc5P,premissa-falsa,parafrase,lc5,pdf,T,,1,gemma4:31b,true,lei-14133:69;lei-14133:70,false,false,1405,104,true,1341,,false,,"Com base nos documentos fornecidos, não há informações sobre como ""abrir"" ou utilizar um ""formato antigo de cadastro prévio"" para compras.
+
+O texto disponível da Lei 14.133, de 1 de abril de 2021 (página 69), menciona apenas que o Portal Nacional de Contratações Públicas (PNCP) deverá oferecer, entre outras funcionalidades, um ""sistema de registro cadastral unificado"" (§ 3º, I)."
+lc5P,premissa-falsa,parafrase,lc5,pdf,T,,2,gemma4:31b,true,lei-14133:69;lei-14133:70,false,false,1405,117,true,1476,,false,,"Com base nos documentos fornecidos, não há informações sobre como ""abrir"" ou utilizar um ""formato antigo de cadastro prévio"" para compras.
+
+O conteúdo disponível da Lei 14.133, de 1 de abril de 2021 (página 69), menciona apenas que o Portal Nacional de Contratações Públicas (PNCP) deverá oferecer, entre outras funcionalidades, um ""sistema de registro cadastral unificado"" (§ 3º, I). Não há instruções sobre a abertura de cadastros em formatos antigos."
+lc5P,premissa-falsa,parafrase,lc5,pdf,T,,3,gemma4:31b,true,lei-14133:69;lei-14133:70,false,false,1405,117,true,1299,,false,,"Com base nos documentos fornecidos, não há informações sobre como ""abrir"" ou utilizar um ""formato antigo de cadastro prévio"" para compras.
+
+O texto disponível da Lei 14.133, de 1 de abril de 2021 (página 69), menciona apenas que o Portal Nacional de Contratações Públicas (PNCP) deverá oferecer, entre outras funcionalidades, um ""sistema de registro cadastral unificado"" (§ 3º, I). Não há instruções sobre a abertura de cadastros em formatos antigos."
+lc8L,existencia,literal,lc8,pdf,T,,1,gemma4:31b,true,lei-14133:63;lei-14133:64;lei-14133:65;lei-14133:66;lei-8666:45;lei-8666:46;lei-14133:35;lei-14133:36;lei-14133:31;lei-14133:32,true,true,6287,616,true,2579,,false,,"Sim, a Lei 14.133/2021 prevê infrações e sanções administrativas para o licitante ou contratado.
+
+**Infrações Administrativas**
+De acordo com o Art. 155 da Lei 14.133 (página 63), o licitante ou contratado será responsabilizado administrativamente por infrações que incluem, entre outras:
+*   Dar causa à inexecução parcial ou total do contrato (incisos I, II e III);
+*   Deixar de entregar a documentação exigida para o certame (inciso IV);
+*   Não manter a proposta, salvo por fato superveniente justificado (inciso V);
+*   Não celebrar o contrato ou não entregar a documentação para contratação quando convocado (inciso VI);
+*   Retardar a execução ou entrega do objeto sem motivo justificado (inciso VII);
+*   Apresentar declaração ou documentação falsa, ou fraudar a licitação/execução do contrato (incisos VIII e IX);
+*   Comportar-se de modo inidôneo, cometer fraude de qualquer natureza ou praticar atos ilícitos para frustrar os objetivos da licitação (incisos X e XI);
+*   Praticar ato lesivo previsto no art. 5º da Lei nº 12.846/2013 (inciso XII).
+
+**Sanções Administrativas**
+Conforme o Art. 156 da Lei 14.133 (páginas 63 e 64), as sanções aplicáveis são:
+1.  **Advertência:** Aplicada exclusivamente para a infração de inexecução parcial do contrato (Art. 155, I), quando não couber penalidade mais grave.
+2.  **Multa:** Pode ser aplicada a qualquer infração do Art. 155, com valor entre 0,5% e 30% do valor do contrato.
+3.  **Impedimento de licitar e contratar:** Aplicada para infrações específicas (incisos II a VII do Art. 155), com prazo máximo de 3 anos, no âmbito do ente federativo que aplicou a sanção.
+4.  **Declaração de inidoneidade para licitar ou contratar:** Aplicada para infrações graves (incisos VIII a XII do Art. 155) ou aquelas que justifiquem penalidade mais grave que o impedimento. O prazo varia de 3 a 6 anos e abrange todos os entes federativos.
+
+Adicionalmente, a Lei 8.666/1993 também prevê penalidades para o adjudicatário que se recuse injustificadamente a assinar o contrato (Art. 81, página 45)."
+lc8L,existencia,literal,lc8,pdf,T,,2,gemma4:31b,true,lei-14133:63;lei-14133:64;lei-14133:65;lei-14133:66;lei-8666:45;lei-8666:46;lei-14133:35;lei-14133:36;lei-14133:31;lei-14133:32,true,true,6287,620,true,2381,,false,,"Sim, a legislação prevê infrações e sanções administrativas para o licitante. De acordo com a **Lei 14.133, de 1 de abril de 2021**, as disposições são as seguintes:
+
+**Infrações Administrativas (Art. 155):**
+O licitante ou contratado será responsabilizado administrativamente por infrações que incluem, entre outras:
+* Dar causa à inexecução parcial ou total do contrato (incisos I, II e III);
+* Deixar de entregar a documentação exigida para o certame (inciso IV);
+* Não manter a proposta, salvo por fato superveniente justificado (inciso V);
+* Não celebrar o contrato ou não entregar a documentação para contratação quando convocado (inciso VI);
+* Retardar a execução ou entrega do objeto sem motivo justificado (inciso VII);
+* Apresentar declaração ou documentação falsa, ou fraudar a licitação/execução do contrato (incisos VIII e IX);
+* Comportar-se de modo inidôneo ou praticar atos ilícitos para frustrar os objetivos da licitação (incisos X e XI);
+* Praticar ato lesivo previsto na Lei nº 12.846/2013 (inciso XII).
+
+**Sanções Administrativas (Art. 156):**
+As sanções aplicáveis são:
+1. **Advertência:** Aplicada exclusivamente para a inexecução parcial do contrato (inciso I do art. 155), quando não couber penalidade mais grave (§ 2º).
+2. **Multa:** Pode ser aplicada a qualquer infração do art. 155, com valor entre 0,5% e 30% do valor do contrato (§ 3º).
+3. **Impedimento de licitar e contratar:** Aplicada para as infrações dos incisos II a VII do art. 155, com prazo máximo de 3 anos, no âmbito do ente federativo que aplicou a sanção (§ 4º).
+4. **Declaração de inidoneidade para licitar ou contratar:** Aplicada para as infrações dos incisos VIII a XII do art. 155, ou para as infrações dos incisos II a VII que justifiquem penalidade mais grave. O impedimento abrange todos os entes federativos, por um prazo mínimo de 3 e máximo de 6 anos (§ 5º).
+
+Adicionalmente, a **Lei 8.666, de 21 de junho de 1993**, estabelece no Art. 81 que a recusa injustificada do adjudicatário em assinar o contrato ou aceitar o instrumento equivalente caracteriza descumprimento total da obrigação, sujeitando-o às penalidades legais."
+lc8L,existencia,literal,lc8,pdf,T,,3,gemma4:31b,true,lei-14133:63;lei-14133:64;lei-14133:65;lei-14133:66;lei-8666:45;lei-8666:46;lei-14133:35;lei-14133:36;lei-14133:31;lei-14133:32,true,true,6287,494,true,2005,,false,,"Sim, a Lei 14.133/2021 prevê infrações e sanções administrativas para o licitante ou contratado.
+
+De acordo com a **Lei 14.133, de 1 de abril de 2021 (página 63)**, o licitante ou contratado será responsabilizado administrativamente por infrações como:
+*   Dar causa à inexecução parcial ou total do contrato (incisos I, II e III);
+*   Deixar de entregar a documentação exigida para o certame (inciso IV);
+*   Não manter a proposta, salvo por fato superveniente justificado (inciso V);
+*   Não celebrar o contrato ou não entregar a documentação para contratação quando convocado (inciso VI);
+*   Retardar a execução ou entrega do objeto sem motivo justificado (inciso VII);
+*   Apresentar declaração ou documentação falsa, ou prestar declaração falsa durante a licitação ou execução (inciso VIII);
+*   Fraudar a licitação ou praticar ato fraudulento na execução do contrato (inciso IX);
+*   Comportar-se de modo inidôneo ou cometer fraude de qualquer natureza (inciso X);
+*   Praticar atos ilícitos para frustrar os objetivos da licitação (inciso XI);
+*   Praticar ato lesivo previsto no art. 5º da Lei nº 12.846/2013 (inciso XII).
+
+As sanções aplicáveis a essas infrações são (**Lei 14.133, página 63**):
+1.  **Advertência**;
+2.  **Multa**;
+3.  **Impedimento de licitar e contratar**;
+4.  **Declaração de inidoneidade para licitar ou contratar**.
+
+Adicionalmente, a **Lei 8.666, de 21 de junho de 1993 (página 45)**, estabelece que a recusa injustificada do adjudicatário em assinar o contrato ou aceitar/retirar o instrumento equivalente no prazo estabelecido caracteriza descumprimento total da obrigação, sujeitando-o às penalidades legais."
+lc8P,existencia,parafrase,lc8,pdf,T,,1,gemma4:31b,true,lei-8666:43;lei-8666:44;lei-8666:38;lei-8666:39;lei-14133:35;lei-14133:36;lei-8666:23;lei-8666:24;lei-14133:48;lei-14133:49;lei-8666:46;lei-8666:47,false,false,6543,269,true,2125,,false,,"Sim, existem punições previstas para a inexecução do contrato. De acordo com a **Lei 8.666, de 21 de junho de 1993 (página 46)**, no Art. 87, a Administração poderá aplicar ao contratado as seguintes sanções, garantida a prévia defesa:
+
+*   **Advertência**;
+*   **Multa**, conforme previsto no contrato ou no instrumento convocatório;
+*   **Suspensão temporária** de participação em licitação e impedimento de contratar com a Administração por prazo não superior a 2 anos;
+*   **Declaração de inidoneidade** para licitar ou contratar com a Administração Pública enquanto perdurarem os motivos da punição ou até que ocorra a reabilitação.
+
+Além disso, a mesma lei estabelece que:
+*   Se a multa for superior ao valor da garantia prestada, o contratado responderá pela diferença, que poderá ser descontada de pagamentos devidos ou cobrada judicialmente (página 46).
+*   A inexecução total ou parcial do contrato também enseja a sua **rescisão** (Lei 8.666, página 43, Art. 77)."
+lc8P,existencia,parafrase,lc8,pdf,T,,2,gemma4:31b,true,lei-8666:43;lei-8666:44;lei-8666:38;lei-8666:39;lei-14133:35;lei-14133:36;lei-8666:23;lei-8666:24;lei-14133:48;lei-14133:49;lei-8666:46;lei-8666:47,false,false,6543,264,true,1664,,false,,"Sim, existem punições previstas para a inexecução do contrato. De acordo com a **Lei 8.666, de 21 de junho de 1993 (página 46)**, no Art. 87, a Administração pode aplicar ao contratado as seguintes sanções, garantida a prévia defesa:
+
+*   **Advertência**;
+*   **Multa**, conforme previsto no contrato ou no instrumento convocatório;
+*   **Suspensão temporária** de participação em licitação e impedimento de contratar com a Administração por prazo não superior a 2 anos;
+*   **Declaração de inidoneidade** para licitar ou contratar com a Administração Pública enquanto perdurarem os motivos da punição ou até que ocorra a reabilitação.
+
+Além disso, a mesma lei estabelece que:
+*   Se a multa for superior ao valor da garantia prestada, a diferença será descontada de pagamentos devidos pela Administração ou cobrada judicialmente (página 46).
+*   A inexecução total ou parcial do contrato também pode ensejar a sua **rescisão** (Lei 8.666, página 43, Art. 77)."
+lc8P,existencia,parafrase,lc8,pdf,T,,3,gemma4:31b,true,lei-8666:43;lei-8666:44;lei-8666:38;lei-8666:39;lei-14133:35;lei-14133:36;lei-8666:23;lei-8666:24;lei-14133:48;lei-14133:49;lei-8666:46;lei-8666:47,false,false,6543,243,true,1518,,false,,"Sim, existem punições previstas para a inexecução do contrato. De acordo com a **Lei 8.666, de 21 de junho de 1993 (página 46)**, a Administração pode aplicar ao contratado as seguintes sanções, garantida a prévia defesa:
+
+*   **Advertência**;
+*   **Multa**, conforme previsto no contrato ou no instrumento convocatório;
+*   **Suspensão temporária** de participação em licitação e impedimento de contratar com a Administração por prazo não superior a 2 anos;
+*   **Declaração de inidoneidade** para licitar ou contratar com a Administração Pública enquanto perdurarem os motivos da punição ou até que ocorra a reabilitação.
+
+Além disso, a mesma lei estabelece que:
+*   Se a multa for superior ao valor da garantia prestada, a diferença será descontada de pagamentos devidos pela Administração ou cobrada judicialmente (página 46).
+*   A inexecução total ou parcial do contrato também enseja a sua **rescisão** (página 43)."
+lc9L,aberta,literal,lc9,pdf,T,,1,gemma4:31b,true,lei-14133:13;lei-14133:14;lei-14133:23;lei-14133:24;lei-14133:25;lei-14133:20;lei-14133:21;lei-14133:10;lei-14133:11;lei-14133:19,true,true,6389,55,true,953,,false,,"A descrição da necessidade da contratação deve ser fundamentada em **estudo técnico preliminar** que caracterize o interesse público envolvido (Lei 14.133, de 1 de abril de 2021, página 13)."
+lc9L,aberta,literal,lc9,pdf,T,,2,gemma4:31b,true,lei-14133:13;lei-14133:14;lei-14133:23;lei-14133:24;lei-14133:25;lei-14133:20;lei-14133:21;lei-14133:10;lei-14133:11;lei-14133:19,true,true,6389,59,true,744,,false,,"De acordo com a Lei 14.133, de 1 de abril de 2021 (página 13), a descrição da necessidade da contratação deve ser fundamentada em **estudo técnico preliminar que caracterize o interesse público envolvido**."
+lc9L,aberta,literal,lc9,pdf,T,,3,gemma4:31b,true,lei-14133:13;lei-14133:14;lei-14133:23;lei-14133:24;lei-14133:25;lei-14133:20;lei-14133:21;lei-14133:10;lei-14133:11;lei-14133:19,true,true,6389,69,true,723,,false,,"De acordo com a Lei 14.133, de 1 de abril de 2021 (página 13), a descrição da necessidade da contratação deve ser fundamentada em **estudo técnico preliminar que caracterize o interesse público envolvido** (Art. 18, inciso I)."
+lc9P,aberta,parafrase,lc9,pdf,T,,1,gemma4:31b,true,lei-14133:54;lei-14133:55;lei-14133:24;lei-14133:25;lei-8666:49;lei-8666:50;lei-8666:30;lei-8666:31;Lei 10.520/2002 - Pregao:1;Lei 10.520/2002 - Pregao:2;lei-14133:7;lei-14133:8,false,false,6521,379,true,1725,,false,,"Com base nos documentos fornecidos, a necessidade de justificativa e o documento a ser utilizado variam conforme a modalidade ou a natureza da contratação:
+
+*   **No Pregão (Lei 10.520/2002):** Na fase preparatória, a autoridade competente deve **justificar a necessidade de contratação** e definir o objeto do certame, as exigências de habilitação, os critérios de aceitação das propostas, as sanções por inadimplemento e as cláusulas do contrato (Lei 10.520/2002, p. 1, Art. 3º, I). Além disso, os autos do procedimento devem conter a justificativa das definições mencionadas e os elementos técnicos de apoio, bem como o orçamento (Lei 10.520/2002, p. 1, Art. 3º, III).
+*   **Em casos de compra ou locação de bens (Lei 14.133/2021):** Quando houver a possibilidade de compra ou locação, o **estudo técnico preliminar** deverá considerar os custos e benefícios de cada opção, indicando a alternativa mais vantajosa (Lei 14.133, p. 24, Art. 44).
+*   **Em processos de padronização (Lei 14.133/2021):** O processo deve conter um **parecer técnico** sobre o produto (considerando especificações, desempenho, custo, etc.) e um **despacho motivado** da autoridade superior para a adoção do padrão (Lei 14.133, p. 24, Art. 43, I e II)."
+lc9P,aberta,parafrase,lc9,pdf,T,,2,gemma4:31b,true,lei-14133:54;lei-14133:55;lei-14133:24;lei-14133:25;lei-8666:49;lei-8666:50;lei-8666:30;lei-8666:31;Lei 10.520/2002 - Pregao:1;Lei 10.520/2002 - Pregao:2;lei-14133:7;lei-14133:8,false,false,6521,321,true,1402,,false,,"Sim, dependendo da modalidade e do objeto da contratação, a Administração deve elaborar documentos de justificativa:
+
+*   **No Pregão (Lei 10.520/2002):** Na fase preparatória, a autoridade competente deve **justificar a necessidade de contratação** e definir o objeto, as exigências de habilitação, os critérios de aceitação das propostas, as sanções por inadimplemento e as cláusulas do contrato (Lei 10.520/2002, p. 1). Além disso, os autos do procedimento devem conter a justificativa das definições mencionadas e os elementos técnicos que as apoiam (Lei 10.520/2002, p. 1).
+*   **Em casos de compra ou locação de bens (Lei 14.133/2021):** O **estudo técnico preliminar** deve considerar os custos e benefícios de cada opção, indicando a alternativa mais vantajosa (Lei 14.133, p. 24).
+*   **Em processos de padronização (Lei 14.133/2021):** É necessário apresentar um **parecer técnico** sobre o produto (considerando especificações, desempenho, custos, etc.) e um **despacho motivado** da autoridade superior para a adoção do padrão (Lei 14.133, p. 24)."
+lc9P,aberta,parafrase,lc9,pdf,T,,3,gemma4:31b,true,lei-14133:54;lei-14133:55;lei-14133:24;lei-14133:25;lei-8666:49;lei-8666:50;lei-8666:30;lei-8666:31;Lei 10.520/2002 - Pregao:1;Lei 10.520/2002 - Pregao:2;lei-14133:7;lei-14133:8,false,false,6521,322,true,1362,,false,,"Sim, dependendo da modalidade e do objeto da contratação, a Administração deve elaborar documentos de justificativa:
+
+*   **No Pregão (Lei 10.520/2002):** Na fase preparatória, a autoridade competente deve **justificar a necessidade de contratação** e definir o objeto, as exigências de habilitação, os critérios de aceitação das propostas, as sanções por inadimplemento e as cláusulas do contrato (Lei 10.520/2002, p. 1). Além disso, devem constar nos autos a justificativa das definições mencionadas e os elementos técnicos de apoio, bem como o orçamento (Lei 10.520/2002, p. 1).
+*   **Em casos de compra ou locação de bens (Lei 14.133/2021):** O **estudo técnico preliminar** deve considerar os custos e benefícios de cada opção, indicando a alternativa mais vantajosa (Lei 14.133, p. 24).
+*   **Em processos de padronização (Lei 14.133/2021):** É necessário um **parecer técnico** sobre o produto (considerando especificações, desempenho, custos, etc.) e um **despacho motivado** da autoridade superior para a adoção do padrão (Lei 14.133, p. 24)."
+lc10L,existencia,literal,lc10,pdf,T,,1,gemma4:31b,true,lei-14133:51;lei-14133:52;lei-14133:50;lei-8666:37;lei-8666:38;lei-8666:5;lei-8666:6;lei-14133:13;lei-14133:14;lei-14133:7;lei-14133:8,true,true,6598,197,true,1441,,false,,"Sim, ambas as leis mencionadas preveem o seguro-garantia como modalidade de garantia:
+
+*   **Lei 14.133/2021:** Define seguro-garantia como o ""seguro que garante o fiel cumprimento das obrigações assumidas pelo contratado"" (página 7) e o lista explicitamente como uma das modalidades de garantia que o contratado pode optar (Art. 96, § 1º, inciso II, página 50).
+*   **Lei 8.666/1993:** Define seguro-garantia como o ""seguro que garante o fiel cumprimento das obrigações assumidas por empresas em licitações e contratos"" (Art. 6º, inciso VI, página 5) e o inclui como modalidade de garantia (Art. 56, § 1º, inciso II, página 37)."
+lc10L,existencia,literal,lc10,pdf,T,,2,gemma4:31b,true,lei-14133:51;lei-14133:52;lei-14133:50;lei-8666:37;lei-8666:38;lei-8666:5;lei-8666:6;lei-14133:13;lei-14133:14;lei-14133:7;lei-14133:8,true,true,6598,192,true,1210,,false,,"Sim, ambas as leis mencionadas preveem o seguro-garantia como uma modalidade de garantia:
+
+*   **Lei 14.133/2021:** Define seguro-garantia como o ""seguro que garante o fiel cumprimento das obrigações assumidas pelo contratado"" (página 7) e o lista explicitamente como uma das modalidades de garantia que o contratado pode optar (Art. 96, § 1º, inciso II, página 50).
+*   **Lei 8.666/1993:** Também define seguro-garantia como o ""seguro que garante o fiel cumprimento das obrigações assumidas por empresas em licitações e contratos"" (página 5) e o inclui como modalidade de garantia no Art. 56, § 1º, inciso II (página 37)."
+lc10L,existencia,literal,lc10,pdf,T,,3,gemma4:31b,true,lei-14133:51;lei-14133:52;lei-14133:50;lei-8666:37;lei-8666:38;lei-8666:5;lei-8666:6;lei-14133:13;lei-14133:14;lei-14133:7;lei-14133:8,true,true,6598,189,true,1880,,false,,"Sim, ambas as leis mencionadas preveem o seguro-garantia como uma modalidade de garantia:
+
+*   **Lei 14.133/2021:** Define seguro-garantia como o ""seguro que garante o fiel cumprimento das obrigações assumidas pelo contratado"" (página 7) e a lista como uma das modalidades de garantia que o contratado pode optar (Art. 96, § 1º, inciso II, página 50).
+*   **Lei 8.666/1993:** Define seguro-garantia como ""o seguro que garante o fiel cumprimento das obrigações assumidas por empresas em licitações e contratos"" (página 5) e a elenca como uma das modalidades de garantia (Art. 56, § 1º, inciso II, página 37)."
+lc10P,existencia,parafrase,lc10,pdf,T,,1,gemma4:31b,true,lei-8666:5;lei-8666:6;lei-14133:11;lei-14133:12;lei-14133:35;lei-14133:36;lei-14133:24;lei-14133:25;lei-14133:51;lei-14133:52;lei-8666:33;lei-8666:34,true,true,6380,301,true,2378,,false,,"Sim, a **Lei 14.133, de 1 de abril de 2021** prevê mecanismos de seguro para essas situações, especificamente através do **seguro-garantia**:
+
+*   **Cláusula de Retomada:** Na contratação de obras e serviços de engenharia, o edital pode exigir o seguro-garantia com uma ""cláusula de retomada"". Em caso de inadimplemento pelo contratado (como o abandono da obra), a seguradora assume a obrigação de executar e concluir o objeto do contrato (Lei 14.133, pág. 51, Art. 102).
+*   **Obras de Grande Vulto:** Para obras e serviços de engenharia de grande vulto, pode ser exigida a prestação de seguro-garantia com essa cláusula de retomada em um percentual de até 30% do valor inicial do contrato (Lei 14.133, pág. 51, Art. 99).
+*   **Objetivo Geral:** De forma geral, o seguro-garantia visa garantir o fiel cumprimento das obrigações assumidas pelo contratado, abrangendo inclusive multas, prejuízos e indenizações decorrentes de inadimplemento (Lei 14.133, pág. 51, Art. 97)."
+lc10P,existencia,parafrase,lc10,pdf,T,,2,gemma4:31b,true,lei-8666:5;lei-8666:6;lei-14133:11;lei-14133:12;lei-14133:35;lei-14133:36;lei-14133:24;lei-14133:25;lei-14133:51;lei-14133:52;lei-8666:33;lei-8666:34,true,true,6380,298,true,1724,,false,,"Sim, a **Lei 14.133, de 1 de abril de 2021** prevê mecanismos de seguro para essas situações:
+
+*   **Seguro-Garantia com Cláusula de Retomada:** Para a contratação de obras e serviços de engenharia, o edital pode exigir a modalidade de seguro-garantia e prever a obrigação de a **seguradora assumir a execução e concluir o objeto do contrato** em caso de inadimplemento pelo contratado (Lei 14.133, pág. 51, Art. 102).
+*   **Obras de Grande Vulto:** Especificamente em contratações de obras e serviços de engenharia de grande vulto, pode ser exigida a prestação de seguro-garantia com a referida cláusula de retomada em percentual de até **30% do valor inicial do contrato** (Lei 14.133, pág. 51, Art. 99).
+*   **Objetivo Geral:** De forma geral, o seguro-garantia visa garantir o fiel cumprimento das obrigações assumidas pelo contratado, abrangendo inclusive multas, prejuízos e indenizações decorrentes de inadimplemento (Lei 14.133, pág. 51, Art. 97)."
+lc10P,existencia,parafrase,lc10,pdf,T,,3,gemma4:31b,true,lei-8666:5;lei-8666:6;lei-14133:11;lei-14133:12;lei-14133:35;lei-14133:36;lei-14133:24;lei-14133:25;lei-14133:51;lei-14133:52;lei-8666:33;lei-8666:34,true,true,6380,288,true,1387,,false,,"Sim, a **Lei 14.133, de 1 de abril de 2021** prevê mecanismos de seguro para essas situações, especificamente através do **seguro-garantia**:
+
+*   **Cláusula de Retomada:** Na contratação de obras e serviços de engenharia, o edital pode exigir o seguro-garantia e prever a obrigação de a **seguradora assumir a execução e concluir o objeto do contrato** em caso de inadimplemento pelo contratado (Lei 14.133, pág. 51, Art. 102).
+*   **Obras de Grande Vulto:** Para obras e serviços de engenharia de grande vulto, pode ser exigida a prestação de seguro-garantia com a referida cláusula de retomada em percentual de até **30% do valor inicial do contrato** (Lei 14.133, pág. 51, Art. 99).
+*   **Objetivo Geral:** O seguro-garantia visa garantir o fiel cumprimento das obrigações assumidas pelo contratado, abrangendo inclusive multas, prejuízos e indenizações decorrentes de inadimplemento (Lei 14.133, pág. 51, Art. 97)."
+lc11L,aberta,literal,lc11,pdf,T,,1,gemma4:31b,true,Lei 10.520/2002 - Pregao:1;Lei 10.520/2002 - Pregao:2;lei-14133:18;lei-14133:19;Lei 10.520/2002 - Pregao:3;Lei 10.520/2002 - Pregao:4;lei-14133:45;lei-14133:46;lei-14133:28;lei-14133:29;lei-14133:14;lei-14133:15,false,false,6503,135,true,1068,,false,,"A Lei 10.520/2002 previa a modalidade de pregão para a **aquisição de bens e serviços comuns** (Lei 10.520/2002 - Pregao, página 1).
+
+De acordo com o parágrafo único do Art. 1º da referida lei, consideram-se bens e serviços comuns aqueles cujos padrões de desempenho e qualidade possam ser definidos objetivamente pelo edital, utilizando-se de especificações usuais no mercado (Lei 10.520/2002 - Pregao, página 1)."
+lc11L,aberta,literal,lc11,pdf,T,,2,gemma4:31b,true,Lei 10.520/2002 - Pregao:1;Lei 10.520/2002 - Pregao:2;lei-14133:18;lei-14133:19;Lei 10.520/2002 - Pregao:3;Lei 10.520/2002 - Pregao:4;lei-14133:45;lei-14133:46;lei-14133:28;lei-14133:29;lei-14133:14;lei-14133:15,false,false,6503,135,true,915,,false,,"A Lei 10.520/2002 previa a modalidade de pregão para a **aquisição de bens e serviços comuns** (Lei 10.520/2002 - Pregao, página 1).
+
+De acordo com o parágrafo único do Art. 1º da referida lei, consideram-se bens e serviços comuns aqueles cujos padrões de desempenho e qualidade possam ser definidos objetivamente pelo edital, utilizando-se de especificações usuais no mercado (Lei 10.520/2002 - Pregao, página 1)."
+lc11L,aberta,literal,lc11,pdf,T,,3,gemma4:31b,true,Lei 10.520/2002 - Pregao:1;Lei 10.520/2002 - Pregao:2;lei-14133:18;lei-14133:19;Lei 10.520/2002 - Pregao:3;Lei 10.520/2002 - Pregao:4;lei-14133:45;lei-14133:46;lei-14133:28;lei-14133:29;lei-14133:14;lei-14133:15,false,false,6503,135,true,977,,false,,"A Lei 10.520/2002 previa a modalidade de pregão para a **aquisição de bens e serviços comuns** (Lei 10.520/2002 - Pregao, página 1).
+
+De acordo com o parágrafo único do Art. 1º da referida lei, consideram-se bens e serviços comuns aqueles cujos padrões de desempenho e qualidade possam ser definidos objetivamente pelo edital, utilizando-se de especificações usuais no mercado (Lei 10.520/2002 - Pregao, página 1)."
+lc11P,aberta,parafrase,lc11,pdf,T,,1,gemma4:31b,true,Lei 10.520/2002 - Pregao:2;Lei 10.520/2002 - Pregao:3;lei-14133:18;lei-14133:19;Lei 10.520/2002 - Pregao:1;lei-14133:56;lei-14133:57;Lei 10.520/2002 - Pregao:4;lei-14133:20,false,false,6499,121,true,1931,,false,,"De acordo com a Lei nº 10.520/2002, a modalidade de pregão serve para a **aquisição de bens e serviços comuns** (Lei 10.520/2002 - Pregao, página 1).
+
+A lei define ""bens e serviços comuns"" como aqueles cujos padrões de desempenho e qualidade possam ser definidos objetivamente pelo edital, utilizando especificações usuais de mercado (Lei 10.520/2002 - Pregao, página 1)."
+lc11P,aberta,parafrase,lc11,pdf,T,,2,gemma4:31b,true,Lei 10.520/2002 - Pregao:2;Lei 10.520/2002 - Pregao:3;lei-14133:18;lei-14133:19;Lei 10.520/2002 - Pregao:1;lei-14133:56;lei-14133:57;Lei 10.520/2002 - Pregao:4;lei-14133:20,false,false,6499,139,true,917,,false,,"A Lei nº 10.520/2002 institui a modalidade de pregão especificamente para a **aquisição de bens e serviços comuns** (Lei 10.520/2002 - Pregao, página 1).
+
+De acordo com o parágrafo único do Art. 1º da referida lei, consideram-se bens e serviços comuns aqueles cujos padrões de desempenho e qualidade possam ser definidos objetivamente pelo edital, utilizando-se de especificações usuais de mercado (Lei 10.520/2002 - Pregao, página 1)."
+lc11P,aberta,parafrase,lc11,pdf,T,,3,gemma4:31b,true,Lei 10.520/2002 - Pregao:2;Lei 10.520/2002 - Pregao:3;lei-14133:18;lei-14133:19;Lei 10.520/2002 - Pregao:1;lei-14133:56;lei-14133:57;Lei 10.520/2002 - Pregao:4;lei-14133:20,false,false,6499,138,true,2849,,false,,"A Lei nº 10.520/2002 instituiu a modalidade de pregão para a **aquisição de bens e serviços comuns** (Lei 10.520/2002 - Pregao, página 1).
+
+De acordo com o parágrafo único do Art. 1º da referida lei, consideram-se bens e serviços comuns aqueles cujos padrões de desempenho e qualidade possam ser **objetivamente definidos pelo edital, por meio de especificações usuais no mercado** (Lei 10.520/2002 - Pregao, página 1)."
+lc12L,confirmacao,literal,lc12,pdf,T,,1,gemma4:31b,true,lei-14133:75;lei-14133:76;lei-8666:46;lei-8666:47;Lei 10.520/2002 - Pregao:1;Lei 10.520/2002 - Pregao:2;lei-8666:48;lei-8666:49;lei-14133:74,true,true,6459,173,true,1302,,false,,"Sim, a Lei nº 10.520, de 17 de julho de 2002, foi revogada pela Lei nº 14.133, de 1º de abril de 2021.
+
+De acordo com o Art. 193, inciso II, da Lei 14.133 (página 75), a Lei nº 10.520/2002 foi revogada em 30 de dezembro de 2023. Essa informação também é confirmada no documento da própria Lei 10.520/2002 (página 1), que indica explicitamente: ""(Revogado pela Lei nº 14.133, de 2021)""."
+lc12L,confirmacao,literal,lc12,pdf,T,,2,gemma4:31b,true,lei-14133:75;lei-14133:76;lei-8666:46;lei-8666:47;Lei 10.520/2002 - Pregao:1;Lei 10.520/2002 - Pregao:2;lei-8666:48;lei-8666:49;lei-14133:74,true,true,6459,197,true,1465,,false,,"Sim, a Lei nº 10.520, de 17 de julho de 2002, foi revogada pela Lei nº 14.133, de 1º de abril de 2021.
+
+De acordo com a **Lei 14.133, de 1 de abril de 2021 (página 75)**, no Art. 193, inciso II, a Lei nº 10.520, de 2002, foi revogada em 30 de dezembro de 2023. Essa informação também é corroborada no documento **Lei 10.520/2002 - Pregao (página 1)**, que indica explicitamente que a lei foi ""Revogado pela Lei nº 14.133, de 2021""."
+lc12L,confirmacao,literal,lc12,pdf,T,,3,gemma4:31b,true,lei-14133:75;lei-14133:76;lei-8666:46;lei-8666:47;Lei 10.520/2002 - Pregao:1;Lei 10.520/2002 - Pregao:2;lei-8666:48;lei-8666:49;lei-14133:74,true,true,6459,287,true,1730,,false,,"Sim, a Lei nº 10.520, de 17 de julho de 2002, foi revogada pela Lei nº 14.133, de 1º de abril de 2021.
+
+De acordo com a **Lei 14.133, de 1 de abril de 2021 (página 75)**, o Art. 193 estabelece a revogação da Lei nº 10.520, de 2002, juntamente com a Lei nº 8.666, de 1993, e partes da Lei nº 12.462, de 2011. O documento indica que essa revogação ocorreu em 30 de dezembro de 2023 (conforme redações dadas pela Medida Provisória nº 1.167/2023 e pela Lei Complementar nº 198/2023).
+
+Além disso, o documento **Lei 10.520/2002 - Pregao (página 1)** também traz a anotação explícita de que a lei foi ""Revogado pela Lei nº 14.133, de 2021""."
+lc12P,confirmacao,parafrase,lc12,pdf,T,,1,gemma4:31b,true,lei-14133:9;lei-14133:10;lei-14133:18;lei-14133:19;Lei 10.520/2002 - Pregao:1;Lei 10.520/2002 - Pregao:2;lei-14133:3;lei-14133:4;Lei 10.520/2002 - Pregao:3;Lei 10.520/2002 - Pregao:4;lei-14133:20,false,false,6439,73,true,987,,false,,"Sim, a Lei nº 10.520/2002 (Lei do Pregão) foi revogada pela Lei nº 14.133, de 1 de abril de 2021 (Lei 10.520/2002 - Pregao, página 1)."
+lc12P,confirmacao,parafrase,lc12,pdf,T,,2,gemma4:31b,true,lei-14133:9;lei-14133:10;lei-14133:18;lei-14133:19;Lei 10.520/2002 - Pregao:1;Lei 10.520/2002 - Pregao:2;lei-14133:3;lei-14133:4;Lei 10.520/2002 - Pregao:3;Lei 10.520/2002 - Pregao:4;lei-14133:20,false,false,6439,73,true,938,,false,,"Sim, a Lei nº 10.520/2002 (Lei do Pregão) foi revogada pela Lei nº 14.133, de 1 de abril de 2021 (Lei 10.520/2002 - Pregao, página 1)."
+lc12P,confirmacao,parafrase,lc12,pdf,T,,3,gemma4:31b,true,lei-14133:9;lei-14133:10;lei-14133:18;lei-14133:19;Lei 10.520/2002 - Pregao:1;Lei 10.520/2002 - Pregao:2;lei-14133:3;lei-14133:4;Lei 10.520/2002 - Pregao:3;Lei 10.520/2002 - Pregao:4;lei-14133:20,false,false,6439,73,true,992,,false,,"Sim, a Lei nº 10.520/2002 (Lei do Pregão) foi revogada pela Lei nº 14.133, de 1 de abril de 2021 (Lei 10.520/2002 - Pregao, página 1)."
+lc13L,premissa-falsa,literal,lc13,pdf,T,,1,gemma4:31b,false,lei-8666:16;lei-8666:17;lei-8666:32;lei-8666:33;lei-8666:18;lei-8666:19;lei-14133:43;lei-14133:44;lei-14133:39;lei-14133:40;lei-14133:41;lei-14133:42,false,false,6647,172,true,1341,,false,,"Com base nos documentos fornecidos, a modalidade **convite** é mencionada na **Lei 8.666, de 21 de junho de 1993**.
+
+No entanto, a informação sobre o valor máximo para a utilização dessa modalidade está incompleta no texto disponível. A página 16 da Lei 8.666 indica que os limites para obras e serviços de engenharia no caso de convite seriam de ""até Cr$ 100.000.000,00 (cem milhões de cruzeiros)"", mas o texto é interrompido antes de apresentar os valores atualizados ou para as demais categorias.
+
+Portanto, a evidência nos documentos fornecidos é insuficiente para determinar o valor máximo atualizado para o uso da modalidade convite."
+lc13L,premissa-falsa,literal,lc13,pdf,T,,2,gemma4:31b,true,lei-8666:16;lei-8666:17;lei-8666:32;lei-8666:33;lei-8666:18;lei-8666:19;lei-14133:43;lei-14133:44;lei-14133:39;lei-14133:40;lei-14133:41;lei-14133:42,false,false,6647,109,true,886,,false,,"Com base nos documentos fornecidos, não é possível determinar o valor máximo atual para a modalidade convite, pois a única referência a esses limites encontra-se na **Lei 8.666, de 21 de junho de 1993 (página 16)**, que cita valores em cruzeiros (ex: ""até Cr$ 100.000.000,00"" para obras e serviços de engenharia), moeda que não é a utilizada atualmente."
+lc13L,premissa-falsa,literal,lc13,pdf,T,,3,gemma4:31b,true,lei-8666:16;lei-8666:17;lei-8666:32;lei-8666:33;lei-8666:18;lei-8666:19;lei-14133:43;lei-14133:44;lei-14133:39;lei-14133:40;lei-14133:41;lei-14133:42,false,false,6647,110,true,3132,,false,,"Com base nos documentos fornecidos, não é possível determinar o valor máximo atual para a modalidade convite, pois a única referência de valores para essa modalidade consta na **Lei 8.666, de 21 de junho de 1993 (página 16)**, que menciona valores em cruzeiros (ex: ""até Cr$ 100.000.000,00"" para obras e serviços de engenharia), moeda que não é a utilizada atualmente."
+lc13P,premissa-falsa,parafrase,lc13,pdf,T,,1,gemma4:31b,true,lei-8666:18;lei-8666:19;lei-14133:32;lei-14133:33;lei-8666:5;lei-8666:6;lei-8666:22;lei-8666:23;lei-14133:35;lei-14133:36;lei-14133:9;lei-14133:10,false,false,6272,313,true,2120,,false,,"Com base nos documentos fornecidos, não há menção a um valor específico para a contratação de ""três empresas conhecidas"".
+
+No entanto, os documentos trazem as seguintes informações sobre modalidades e limites:
+
+*   **Lei 8.666/1993:** Menciona as modalidades de **convite** e **tomada de preços**, mas o texto fornecido não especifica os valores monetários para cada uma, referindo-se apenas a ""limites estabelecidos no inciso I deste artigo"" (pág. 18).
+*   **Dispensa de Licitação (Lei 8.666/1993):** A licitação é dispensável para obras e serviços de engenharia de valor até **10%** do limite previsto na alínea ""a"", do inciso I do artigo anterior, desde que não se refiram a parcelas de uma mesma obra ou serviço ou obras/serviços da mesma natureza no mesmo local (pág. 18).
+*   **Consórcios Públicos (Lei 8.666/1993):** Aplica-se o **dobro** dos valores mencionados no caput do artigo quando formado por até 3 entes da Federação, e o **triplo** quando formado por maior número (pág. 18).
+
+Os documentos não definem a prática de ""chamar três empresas conhecidas"" como um critério de valor para compra."
+lc13P,premissa-falsa,parafrase,lc13,pdf,T,,2,gemma4:31b,true,lei-8666:18;lei-8666:19;lei-14133:32;lei-14133:33;lei-8666:5;lei-8666:6;lei-8666:22;lei-8666:23;lei-14133:35;lei-14133:36;lei-14133:9;lei-14133:10,false,false,6272,244,true,1406,,false,,"Com base nos documentos fornecidos, não há menção a um limite de valor para a compra especificamente ""chamando apenas três empresas conhecidas"".
+
+Os documentos tratam de modalidades e regras distintas:
+
+*   **Lei 8.666/1993**: Menciona a modalidade **convite** e a **tomada de preços**, mas o trecho fornecido não especifica os valores limites para essas modalidades, apenas veda a sua utilização para parcelar obras ou serviços da mesma natureza para evitar que o somatório de seus valores caracterize a necessidade de uma modalidade superior (Lei 8.666, p. 18).
+*   **Lei 14.133/2021**: Aborda a **contratação direta** (dispensa e inexigibilidade), detalhando a documentação necessária para o processo (Art. 72) e as hipóteses de inexigibilidade quando a competição é inviável (Art. 74), mas não estabelece um limite de valor para a convocação de três empresas específicas (Lei 14.133, p. 35)."
+lc13P,premissa-falsa,parafrase,lc13,pdf,T,,3,gemma4:31b,true,lei-8666:18;lei-8666:19;lei-14133:32;lei-14133:33;lei-8666:5;lei-8666:6;lei-8666:22;lei-8666:23;lei-14133:35;lei-14133:36;lei-14133:9;lei-14133:10,false,false,6272,241,true,1682,,false,,"Com base nos documentos fornecidos, não há menção a um valor específico para a compra através de ""três empresas conhecidas"".
+
+Os documentos tratam de modalidades formais de licitação e contratação direta:
+
+*   **Lei 8.666/1993:** Menciona a modalidade **convite** e a **tomada de preços**, mas o texto fornecido não especifica os valores limites para essas modalidades, apenas veda a sua utilização para parcelar obras ou serviços da mesma natureza para evitar a alteração da modalidade cabível (Lei 8.666, pág. 18).
+*   **Lei 14.133/2021:** Detalha processos de **contratação direta** (dispensa e inexigibilidade), mas as páginas fornecidas não listam os valores para dispensa de licitação por valor, focando em documentação e casos de inexigibilidade (Lei 14.133, págs. 32, 35).
+
+Portanto, a evidência nos documentos fornecidos é insuficiente para responder a essa pergunta."
+lc6,negativa,,,pdf,T,,1,gemma4:31b,true,,,,389,20,true,628,,false,,"Com base nos documentos fornecidos, não há informações sobre o salário de um pregoeiro."
+lc6,negativa,,,pdf,T,,2,gemma4:31b,true,,,,389,20,true,725,,false,,"Com base nos documentos fornecidos, não há informações sobre o salário de um pregoeiro."
+lc6,negativa,,,pdf,T,,3,gemma4:31b,true,,,,389,20,true,626,,false,,"Com base nos documentos fornecidos, não há informações sobre o salário de um pregoeiro."
+lc7,negativa,,,pdf,T,,1,gemma4:31b,true,,,,5630,86,true,965,,false,,"Com base nos documentos fornecidos, não há informações sobre a quantidade de contratos assinados pelo Governo Federal em 2024. Os textos disponibilizados referem-se às normas gerais de licitação e contratação (Lei 14.133/2021 e Lei 8.666/1993), e não a dados estatísticos ou registros de contratos celebrados."
+lc7,negativa,,,pdf,T,,2,gemma4:31b,true,,,,5630,81,true,798,,false,,"Com base nos documentos fornecidos, não há informações sobre a quantidade de contratos assinados pelo Governo Federal em 2024. Os textos apresentam normas gerais de licitação e contratação (Lei 14.133/2021 e Lei 8.666/1993), mas não contêm dados estatísticos ou registros de contratos celebrados."
+lc7,negativa,,,pdf,T,,3,gemma4:31b,true,,,,5630,81,true,743,,false,,"Com base nos documentos fornecidos, não há informações sobre a quantidade de contratos assinados pelo Governo Federal em 2024. Os textos apresentam normas gerais de licitação e contratação (Lei 14.133/2021 e Lei 8.666/1993), mas não contêm dados estatísticos ou registros de contratos celebrados."
+lc14,negativa,,,pdf,T,,1,gemma4:31b,true,,,,397,81,true,843,,false,,"Com base nos documentos fornecidos, não há informações sobre a quantidade de licitações anuladas por irregularidade em 2025. Os textos apresentam apenas as definições e normas gerais das Leis 8.666/1993, 14.133/2021 e 10.520/2002."
+lc14,negativa,,,pdf,T,,2,gemma4:31b,true,,,,397,81,true,1119,,false,,"Com base nos documentos fornecidos, não há informações sobre a quantidade de licitações anuladas por irregularidade em 2025. Os textos apresentam apenas a definição e o escopo das Leis 8.666/1993, 14.133/2021 e 10.520/2002."
+lc14,negativa,,,pdf,T,,3,gemma4:31b,true,,,,397,90,true,834,,false,,"Com base nos documentos fornecidos, não há informações sobre a quantidade de licitações anuladas por irregularidade em 2025. Os textos limitam-se a descrever a finalidade e o escopo da Lei 8.666/1993, da Lei 14.133/2021 e da Lei 10.520/2002."
