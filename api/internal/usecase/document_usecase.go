@@ -1969,6 +1969,14 @@ const (
 	pageFieldsContent          = "content"
 	pageFieldsContentSummary   = "content+summary"
 	pageFieldsContentQuestions = "content+questions"
+	// pageFieldsMaxQuestions pontua conteudo e perguntas SEPARADAMENTE e fica
+	// com o maior dos dois: a pagina e relevante se o conteudo dela casa a
+	// pergunta OU se uma das perguntas geradas casa.
+	//
+	// Maximo, e nao soma ponderada, de proposito: peso e um botao de ajuste, e
+	// ajustar o peso ate o numero melhorar e a mesma armadilha de rodar varios
+	// prompts e reportar o melhor. O maximo nao tem parametro para girar.
+	pageFieldsMaxQuestions = "max(content,questions)"
 )
 
 // pageSearchFields devolve o braco ativo. Valor desconhecido cai no padrao e
@@ -1978,7 +1986,7 @@ func pageSearchFields() string {
 	switch v := strings.TrimSpace(os.Getenv("THINGINDEX_PAGE_SEARCH_FIELDS")); v {
 	case "":
 		return pageFieldsContentSummary
-	case pageFieldsContent, pageFieldsContentSummary, pageFieldsContentQuestions:
+	case pageFieldsContent, pageFieldsContentSummary, pageFieldsContentQuestions, pageFieldsMaxQuestions:
 		return v
 	default:
 		log.Printf("THINGINDEX_PAGE_SEARCH_FIELDS=%q desconhecido; usando %q", v, pageFieldsContentSummary)
@@ -2087,6 +2095,21 @@ func buildCollectionRetrieval(
 		pageTexts[i] = pageSearchText(page)
 	}
 	pageScores := bm25Scores(query, pageTexts)
+	// Braco de maximo: o campo de perguntas e pontuado no seu PROPRIO corpus,
+	// e nao colado ao conteudo. Colar dilui, porque o BM25 normaliza por
+	// comprimento e 40 palavras de pergunta somem em 400 de conteudo; pontuar
+	// a parte deixa o casamento curto e exato valer o que ele vale.
+	if pageSearchFields() == pageFieldsMaxQuestions {
+		perguntaTexts := make([]string, len(pages))
+		for i, page := range pages {
+			perguntaTexts[i] = page.GeneratedQuestions
+		}
+		for i, s := range bm25Scores(query, perguntaTexts) {
+			if s > pageScores[i] {
+				pageScores[i] = s
+			}
+		}
+	}
 	pageHits := make([]domain.CollectionPageHit, 0)
 	for i, page := range pages {
 		score := pageScores[i] * 2
