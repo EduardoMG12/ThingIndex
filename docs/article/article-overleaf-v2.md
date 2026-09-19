@@ -823,6 +823,87 @@ O mesmo padrão aparece no estrato de prosa, na pergunta sobre o limite de valor
 \textbf{Limitações desta medição.} Uma repetição apenas, contra três no experimento anterior; dezenove perguntas, insuficientes para comparação estatística entre estratos; anotação por um único autor; e ausência do braço comparativo F, que exigiria submeter 129 páginas de lei a cada pergunta. A finalidade do corpus é diagnóstica, não comparativa: ele existe para mostrar onde o sistema quebra quando o acervo contém normas que se contradizem no tempo, e nisso ele cumpriu.
 
 
+\subsection{Bateria Multidomínio: Três Acervos, Formas de Pergunta e Formulação}
+\label{sec:bateria}
+
+A Seção~\ref{sec:segundo-dominio} mostrou que o acerto de 1,000 do gabarito de ensino era, em parte, propriedade do instrumento. Duas perguntas ficaram abertas: se a queda observada em legislação se reproduz em outros domínios, e o que, dentro de uma pergunta, determina se o sistema acerta. Esta seção responde às duas com um corpus construído para isolar dois fatores que o gabarito anterior confundia: a \emph{forma} da pergunta e a \emph{formulação} do vocabulário.
+
+\textbf{Corpus.} Três acervos de domínios sem interseção de vocabulário, montados a partir de documentos públicos:
+
+\begin{itemize}
+  \item \textbf{segurança do trabalho} (5 PDF): Normas Regulamentadoras NR-6 (equipamento de proteção individual), NR-9 (agentes nocivos) e NR-18 (construção), mais a NR-1 em \emph{duas redações}, a de 2024 e a de 2025, que divergem entre si;
+  \item \textbf{produto e consumidor} (3 PDF): Código de Defesa do Consumidor, manual de usuário do monitor Philips 241V8 e termo de garantia da Samsung;
+  \item \textbf{licitações} (3 PDF): Lei 8.666/1993 (revogada), Lei 14.133/2021 (vigente) e Lei 10.520/2002 (pregão).
+\end{itemize}
+
+Em cada acervo entraram, deliberadamente, documentos que se contradizem ou se sobrepõem. Acervos reais têm essa propriedade, e protocolos construídos sobre corpora internamente consistentes não a exercitam~\cite{xu2024knowledge}.
+
+\textbf{Forma da pergunta.} As perguntas são estratificadas em cinco formas, porque a mesma necessidade de informação admite redações que exercitam capacidades diferentes:
+
+\begin{itemize}
+  \item \textbf{aberta}: pede um dado localizado no texto;
+  \item \textbf{confirmação}: pergunta de sim ou não sobre um fato do acervo;
+  \item \textbf{existência}: pergunta se o acervo trata de determinado assunto;
+  \item \textbf{premissa falsa}: embute um dado incorreto, e a resposta certa é \emph{corrigir a premissa}, não respondê-la. Mede o comportamento oposto à complacência, que a literatura sobre alinhamento denomina bajulação~\cite{sharma2024sycophancy};
+  \item \textbf{negativa}: a informação não está no acervo, e a resposta certa é declarar isso.
+\end{itemize}
+
+\textbf{Formulação, e o controle de circularidade.} Cada necessidade de informação foi escrita em duas versões pareadas, com a mesma resposta esperada e a mesma página-alvo: uma \emph{literal}, que reutiliza os termos do documento, e uma \emph{paráfrase}, na linguagem de quem não leu o documento. O par é a unidade de análise, e existe para medir um viés do próprio método de avaliação: perguntas escritas por quem acabou de ler a página herdam o vocabulário dela, e o acerto resultante mede coincidência lexical em vez de recuperação. O gabarito de ensino da Seção~\ref{sec:geracao} não tinha esse controle, e a hipótese de que o seu 1,000 se devia em parte a esse efeito é testável aqui.
+
+\textbf{Congelamento.} Cada gabarito registra o \emph{hash} SHA-256 das perguntas serializadas, verificado na carga: alterar qualquer pergunta, resposta esperada ou página-alvo depois da medição quebra a execução. As perguntas foram escritas a partir dos PDF, com documento e página conferidos, sem consultar o sistema.
+
+\textbf{Protocolo.} Setenta e uma perguntas, 31 pares, três repetições cada, totalizando 213 respostas. Mesmo modelo, mesmo \emph{pipeline} e mesma coleção indexada em todas. A correção é automática e exige duas condições simultâneas: a resposta casa o padrão esperado e a página citada é a do gabarito.
+
+\begin{table}[htb]
+\centering
+\caption{Bateria multidomínio: 71 perguntas em três acervos, três repetições por pergunta. Acerto por tema.}
+\label{tab:bateria-tema}
+\begin{tabular}{lrrrr}
+\hline
+Acervo & PDF & Perguntas & Respostas & Acerto \\
+\hline
+Segurança do trabalho & 5 & 23 & 69 & 0,783 \\
+Produto e consumidor  & 3 & 23 & 69 & 0,841 \\
+Licitações            & 3 & 25 & 75 & 0,827 \\
+\hline
+\textbf{Total} & \textbf{11} & \textbf{71} & \textbf{213} & \textbf{0,817} \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{O resultado é homogêneo entre domínios.} Os três acervos ficam entre 0,783 e 0,841, num intervalo de 5,8 pontos, apesar de não compartilharem vocabulário nem estrutura documental. Isso reduz a hipótese de que o número seja propriedade de um acervo específico. A comparação relevante é com o gabarito de ensino da Seção~\ref{sec:geracao}, que dava 1,000: a queda persiste em três domínios independentes, e não apenas no de legislação.
+
+\textbf{Estabilidade entre repetições.} Das 71 perguntas, 57 acertaram nas três repetições, 12 erraram nas três e apenas \textbf{2 oscilaram}. O resultado por item é, portanto, quase inteiramente determinado pelo sistema, e não pela amostragem do modelo: quando ele erra, erra de forma reproduzível, o que torna cada erro investigável. Uma execução anterior completa do acervo de segurança do trabalho, sob o mesmo protocolo, produziu resultado idêntico em todas as 23 perguntas, o que eleva a seis o número de repetições concordantes naquele acervo.
+
+\begin{table}[htb]
+\centering
+\caption{Bateria multidomínio: acerto por forma da pergunta, agregado nos três acervos.}
+\label{tab:bateria-forma}
+\begin{tabular}{lrr}
+\hline
+Forma & Acertos & Taxa \\
+\hline
+Existência     & 36/36 & 1,000 \\
+Negativa       & 27/27 & 1,000 \\
+Premissa falsa & 35/36 & 0,972 \\
+Confirmação    & 27/36 & 0,750 \\
+Aberta         & 49/78 & 0,628 \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{As formas se separam em dois regimes.} Existência, negativa e premissa falsa ficam em 0,97 ou acima; confirmação e aberta, abaixo de 0,76. As três primeiras têm em comum não depender de localizar um valor específico: basta estabelecer que o acervo trata, ou não trata, de determinado assunto. As duas últimas exigem recuperar o trecho exato. A separação é direcional e não sustenta comparação estatística entre estratos com este $n$.
+
+O desempenho no estrato de premissa falsa merece registro isolado: em 35 das 36 respostas o sistema corrigiu a premissa embutida na pergunta em vez de acomodá-la. É o comportamento oposto à bajulação descrita por~\cite{sharma2024sycophancy}, e ele não decorre do modelo: decorre de o contexto submetido conter apenas trechos recuperados do acervo, sem material que sustente a premissa falsa.
+
+\textbf{O efeito da formulação, e o único resultado com significância.} Agregando os três acervos, o acerto é 0,903 nas perguntas literais e 0,677 nas parafraseadas, uma queda de 22,6 pontos. A análise correta não é a diferença de médias, porque as duas versões de um par não são amostras independentes: é o mesmo item medido duas vezes. Dos 31 pares, 21 tiveram resultado concordante e \textbf{10 discordantes}, dos quais \textbf{9 a favor da versão literal}. Um teste de sinais exato sobre os pares discordantes dá $p = 0{,}021$ bilateral.
+
+Este é o único resultado deste trabalho que atinge significância estatística convencional, e ele mede algo desconfortável: o sistema recupera melhor quando a pergunta reutiliza o vocabulário do documento. A implicação metodológica atinge o próprio instrumento anterior. O gabarito de ensino da Seção~\ref{sec:geracao} foi escrito pelo autor após a leitura das páginas-alvo, sem controle de formulação, e o seu 1,000 é compatível com a hipótese de herança lexical. O par literal/paráfrase existe precisamente para tornar esse viés mensurável em vez de invisível.
+
+\textbf{Correção do instrumento, declarada.} Durante a análise verificou-se que a expressão regular do estrato negativa, nos três gabaritos novos, era mais restrita que a do gabarito anterior do projeto: recusas corretas redigidas como ``os documentos não mencionam'' ou ``não contêm'' eram contadas como erro. O padrão foi substituído pelo padrão amplo já em uso, os \emph{hashes} foram recalculados e \textbf{a bateria inteira foi reexecutada do zero nos três acervos}. Os CSV da execução anterior permanecem versionados em \texttt{docs/article/results/antes-correcao-negativas/}. A alternativa --- corrigir apenas os itens afetados e reaproveitar o restante --- produziria o mesmo número por um caminho que não se pode auditar.
+
+\textbf{Limitações desta medição.} Setenta e uma perguntas escritas por um único autor; três repetições, suficientes para caracterizar estabilidade mas não para intervalos por estrato; um provedor e um modelo, com registro de que uma execução com modelo maior produziu resultado pior (Seção~\ref{sec:geracao}); e ausência de revisor externo para o gabarito, que permanece a limitação mais séria e está no plano de trabalho.
+
 % =============================================================================
 % DISCUSSAO
 % =============================================================================
