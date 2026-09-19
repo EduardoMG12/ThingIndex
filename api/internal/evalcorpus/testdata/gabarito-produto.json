@@ -1,0 +1,199 @@
+{
+ "version": "produto-2026-09-v1",
+ "notes": "As cinco formas de pergunta sao a variavel deste gabarito, ideia do autor em 2026-09-19: a mesma necessidade de informacao pode ser expressa de jeitos diferentes, e um sistema pode acertar numa forma e errar noutra. ABERTA: a resposta e o fato. CONFIRMACAO: pergunta fechada, a resposta e sim ou nao mais o fato. EXISTENCIA: se o acervo trata do assunto. PREMISSA-FALSA: a pergunta embute um dado errado e a resposta certa e corrigir, nao concordar; um sistema bajulador concorda. NEGATIVA: a resposta certa e dizer que nao consta. Escrito a partir dos PDF com pdftotext -layout, sem consultar o sistema.",
+ "reviewed_by": [],
+ "strata": {
+  "aberta": 2,
+  "confirmacao": 2,
+  "existencia": 2,
+  "negativa": 2,
+  "premissa-falsa": 2
+ },
+ "min_questions": 10,
+ "documents": [
+  {
+   "id": "monitor",
+   "file": "manual-monitor-philips.pdf",
+   "title": "Manual do Usuario - Monitor Philips 241V8",
+   "pages": 28
+  },
+  {
+   "id": "garantia",
+   "file": "garantia-samsung.pdf",
+   "title": "Termo de Garantia - Ar-condicionado Samsung",
+   "pages": 26
+  }
+ ],
+ "questions": [
+  {
+   "id": "m01",
+   "text": "Qual e a resolucao recomendada do monitor?",
+   "stratum": "aberta",
+   "targets": [
+    {
+     "document_id": "monitor",
+     "pages": [
+      14
+     ]
+    }
+   ],
+   "answer_patterns": [
+    "1920",
+    "1080"
+   ],
+   "expected": "1920 x 1080 a 60 Hz (manual do monitor Philips 241V8).",
+   "origin": "pdf"
+  },
+  {
+   "id": "m02",
+   "text": "Qual e o prazo de garantia do ar-condicionado?",
+   "stratum": "aberta",
+   "targets": [
+    {
+     "document_id": "garantia",
+     "pages": [
+      1
+     ]
+    }
+   ],
+   "answer_patterns": [
+    "1 \\(um\\) ano|um ano|12 meses"
+   ],
+   "expected": "1 (um) ano, incluida a garantia legal (Termo de Garantia Samsung).",
+   "origin": "pdf"
+  },
+  {
+   "id": "m03",
+   "text": "A garantia cobre a instalacao do equipamento?",
+   "stratum": "confirmacao",
+   "targets": [
+    {
+     "document_id": "garantia",
+     "pages": [
+      1
+     ]
+    }
+   ],
+   "answer_patterns": [
+    "nao",
+    "instalacao"
+   ],
+   "expected": "Nao. A garantia nao cobre a instalacao do equipamento nem danos de instalacao inadequada por prestador nao autorizado.",
+   "origin": "pdf"
+  },
+  {
+   "id": "m04",
+   "text": "Preciso da nota fiscal para acionar a garantia?",
+   "stratum": "confirmacao",
+   "targets": [
+    {
+     "document_id": "garantia",
+     "pages": [
+      1
+     ]
+    }
+   ],
+   "answer_patterns": [
+    "sim|necessar|preciso|exig|apresent",
+    "nota fiscal"
+   ],
+   "expected": "Sim, a nota fiscal de compra e exigida.",
+   "origin": "pdf"
+  },
+  {
+   "id": "m05",
+   "text": "Existe informacao sobre consumo de energia do monitor?",
+   "stratum": "existencia",
+   "targets": [
+    {
+     "document_id": "monitor",
+     "pages": [
+      14
+     ]
+    }
+   ],
+   "answer_patterns": [
+    "sim|existe|ha |consta|informa"
+   ],
+   "expected": "Sim, o manual traz a secao de consumo de energia.",
+   "origin": "pdf"
+  },
+  {
+   "id": "m06",
+   "text": "O termo de garantia diz o que NAO esta coberto?",
+   "stratum": "existencia",
+   "targets": [
+    {
+     "document_id": "garantia",
+     "pages": [
+      1
+     ]
+    }
+   ],
+   "answer_patterns": [
+    "sim|existe|ha |consta|exclu"
+   ],
+   "expected": "Sim, ha uma secao de itens excluidos da garantia.",
+   "origin": "pdf"
+  },
+  {
+   "id": "m07",
+   "text": "Como faco para acionar os 3 anos de garantia do ar-condicionado?",
+   "stratum": "premissa-falsa",
+   "targets": [
+    {
+     "document_id": "garantia",
+     "pages": [
+      1
+     ]
+    }
+   ],
+   "answer_patterns": [
+    "1 \\(um\\) ano|um ano|12 meses|nao.*3 anos|nao sao 3"
+   ],
+   "expected": "A premissa e falsa: o prazo e de 1 (um) ano, nao 3 anos.",
+   "origin": "pdf"
+  },
+  {
+   "id": "m08",
+   "text": "O monitor suporta resolucao 4K, certo?",
+   "stratum": "premissa-falsa",
+   "targets": [
+    {
+     "document_id": "monitor",
+     "pages": [
+      14
+     ]
+    }
+   ],
+   "answer_patterns": [
+    "nao|1920|1080|full hd"
+   ],
+   "expected": "A premissa e falsa: a resolucao do 241V8 e 1920 x 1080 (Full HD), nao 4K.",
+   "origin": "pdf"
+  },
+  {
+   "id": "m09",
+   "text": "Qual e o preco do monitor?",
+   "stratum": "negativa",
+   "targets": [],
+   "answer_patterns": [
+    "nao consta|nao informa|nao ha|nao encontr|nao especific|nao define|nao traz"
+   ],
+   "expected": "Nao consta: o manual nao traz preco.",
+   "origin": "pdf"
+  },
+  {
+   "id": "m10",
+   "text": "Qual e o endereco da assistencia tecnica mais proxima de mim?",
+   "stratum": "negativa",
+   "targets": [],
+   "answer_patterns": [
+    "nao consta|nao informa|nao ha|nao encontr|nao especific|nao define|nao traz"
+   ],
+   "expected": "Nao consta: os documentos nao trazem enderecos de assistencia.",
+   "origin": "pdf"
+  }
+ ],
+ "frozen_sha256": "6d7d3e8ea23871ac48e9ce8b8d7a142a31d2564aa32f68908f0c46ca4e90c7da"
+}
