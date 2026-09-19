@@ -42,7 +42,11 @@ func defaultGabaritoPath() string {
 	return filepath.Join(filepath.Dir(thisFile), "..", "..", "internal", "evalcorpus", "testdata", "gabarito-si.json")
 }
 
-var csvHeader = []string{"question_id", "stratum", "origin", "arm", "scope", "repeat", "model", "correct", "cited_pages", "provenance_ok", "retrieval_hit", "prompt_tokens", "completion_tokens", "usage_reported", "latency_ms", "cost_usd", "truncated", "error", "answer"}
+// variant e pair_id entram no CSV porque sem eles a comparacao literal x
+// parafrase so sai cruzando o CSV com o gabarito na mao, que foi como ela
+// precisou ser feita na primeira medicao. O par e a variavel central do
+// experimento de formulacao: ela pertence ao dado bruto.
+var csvHeader = []string{"question_id", "stratum", "variant", "pair_id", "origin", "arm", "scope", "repeat", "model", "correct", "cited_pages", "provenance_ok", "retrieval_hit", "prompt_tokens", "completion_tokens", "usage_reported", "latency_ms", "cost_usd", "truncated", "error", "answer"}
 
 type asker interface {
 	Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) answer
@@ -207,7 +211,7 @@ func buildRow(q evalcorpus.GabaritoQuestion, arm, scope string, repeat int, mode
 		errText = a.Err.Error()
 	}
 	return []string{
-		q.ID, q.Stratum, q.Origin, arm, scope, strconv.Itoa(repeat), model,
+		q.ID, q.Stratum, q.Variant, q.PairID, q.Origin, arm, scope, strconv.Itoa(repeat), model,
 		strconv.FormatBool(correct), cited, prov, hit,
 		strconv.Itoa(a.PromptTokens), strconv.Itoa(a.CompletionTokens), strconv.FormatBool(a.UsageReported),
 		strconv.FormatInt(a.Latency.Milliseconds(), 10), cost, strconv.FormatBool(a.Truncated), errText,

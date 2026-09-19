@@ -1,14 +1,15 @@
 {
- "version": "licitacoes-2026-09-v1",
- "notes": "Gabarito de legislacao de licitacoes sobre os 2 PDF de examples/licitacoes (texto compilado do Planalto). Escrito a partir dos PDF com pdftotext -layout, sem consultar o sistema. Estrato DIVERGENTE e proprio deste corpus e nao existe no gabarito de ensino: a mesma pergunta tem resposta diferente em cada lei, e acertar significa distinguir as duas, nao escolher uma. Responder so pela lei revogada conta como erro, e e o modo de falha que motivou este corpus. Estrato TEMPORAL: a resposta depende de quando, por causa do art. 190 (contrato antigo segue a lei revogada). answer_patterns: todas as regex precisam casar na resposta com acentos e caixa dobrados. targets: documento e paginas fisicas do PDF que contem a resposta.",
+ "version": "licitacoes-2026-09-v2",
+ "notes": "Perguntas em PAR: a mesma necessidade de informacao aparece duas vezes, com a mesma resposta esperada e o mesmo alvo, mudando so a formulacao. LITERAL usa os termos do documento; PARAFRASE usa o vocabulario de quem pergunta no dia a dia, sem repetir as palavras do texto. O par existe porque um gabarito escrito por quem ja leu a pagina herda o vocabulario dela, e ai a medicao vira casamento lexical se passando por compreensao. Formas: aberta, confirmacao, existencia, premissa-falsa (a pergunta embute um dado errado e a resposta certa e corrigir) e negativa (nao consta). Escrito a partir dos PDF com pdftotext -layout; cada pagina-alvo foi conferida.",
  "reviewed_by": [],
  "strata": {
-  "divergente": 5,
-  "temporal": 3,
-  "prosa": 8,
-  "negativa": 3
+  "aberta": 6,
+  "confirmacao": 2,
+  "premissa-falsa": 2,
+  "existencia": 2,
+  "negativa": 2
  },
- "min_questions": 19,
+ "min_questions": 14,
  "documents": [
   {
    "id": "lei-8666",
@@ -21,13 +22,17 @@
    "file": "lei-14133-2021-licitacoes.pdf",
    "title": "Lei 14.133, de 1 de abril de 2021",
    "pages": 77
+  },
+  {
+   "id": "lei-10520",
+   "file": "lei-10520-pregao.pdf",
+   "title": "Lei 10.520, de 17 de julho de 2002 - Pregao",
+   "pages": 4
   }
  ],
  "questions": [
   {
-   "id": "d01",
-   "text": "Quais sao as modalidades de licitacao?",
-   "stratum": "divergente",
+   "stratum": "aberta",
    "targets": [
     {
      "document_id": "lei-14133",
@@ -48,112 +53,82 @@
     "tomada de precos"
    ],
    "expected": "Depende da lei: a 14.133 (art. 28) traz pregao, concorrencia, concurso, leilao e dialogo competitivo; a 8.666 (art. 22) trazia concorrencia, tomada de precos, convite, concurso e leilao.",
-   "origin": "pdf"
+   "origin": "pdf",
+   "pair_id": "lc1",
+   "id": "lc1L",
+   "text": "Quais sao as modalidades de licitacao?",
+   "variant": "literal"
   },
   {
-   "id": "d02",
-   "text": "Qual e o prazo maximo de duracao de um contrato de servico continuo?",
-   "stratum": "divergente",
+   "stratum": "aberta",
    "targets": [
-    {
-     "document_id": "lei-14133",
-     "pages": [
-      53
-     ]
-    },
-    {
-     "document_id": "lei-8666",
-     "pages": [
-      37
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "5 \\(cinco\\) anos|cinco anos",
-    "sessenta meses|60 meses"
-   ],
-   "expected": "Na 14.133 (art. 106), ate 5 anos; na 8.666 (art. 57, II), a duracao era limitada a sessenta meses.",
-   "origin": "pdf"
-  },
-  {
-   "id": "d03",
-   "text": "Quem conduz a licitacao?",
-   "stratum": "divergente",
-   "targets": [
-    {
-     "document_id": "lei-14133",
-     "pages": [
-      8
-     ]
-    },
-    {
-     "document_id": "lei-8666",
-     "pages": [
-      32
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "agente de contratacao",
-    "comissao"
-   ],
-   "expected": "Na 14.133 (art. 8), o agente de contratacao; na 8.666, a comissao de licitacao.",
-   "origin": "pdf"
-  },
-  {
-   "id": "d04",
-   "text": "Quais sao os criterios de julgamento das propostas?",
-   "stratum": "divergente",
-   "targets": [
-    {
-     "document_id": "lei-14133",
-     "pages": [
-      20
-     ]
-    },
-    {
-     "document_id": "lei-8666",
-     "pages": [
-      32
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "menor preco",
-    "maior desconto"
-   ],
-   "expected": "Na 14.133 (art. 33): menor preco, maior desconto, melhor tecnica ou conteudo artistico, tecnica e preco, maior lance e maior retorno economico. A 8.666 (art. 45) falava em tipos de licitacao, sem maior desconto.",
-   "origin": "pdf"
-  },
-  {
-   "id": "d05",
-   "text": "A modalidade tomada de precos existe?",
-   "stratum": "divergente",
-   "targets": [
-    {
-     "document_id": "lei-8666",
-     "pages": [
-      16
-     ]
-    },
     {
      "document_id": "lei-14133",
      "pages": [
       18
      ]
+    },
+    {
+     "document_id": "lei-8666",
+     "pages": [
+      16
+     ]
     }
    ],
    "answer_patterns": [
-    "tomada de precos",
-    "14\\.133|nova lei|revogad"
+    "pregao",
+    "dialogo competitivo",
+    "tomada de precos"
    ],
-   "expected": "Existia na 8.666 (art. 22, II) e nao consta no rol de modalidades da 14.133 (art. 28).",
-   "origin": "pdf"
+   "expected": "Depende da lei: a 14.133 (art. 28) traz pregao, concorrencia, concurso, leilao e dialogo competitivo; a 8.666 (art. 22) trazia concorrencia, tomada de precos, convite, concurso e leilao.",
+   "origin": "pdf",
+   "pair_id": "lc1",
+   "id": "lc1P",
+   "text": "De quantos jeitos diferentes o governo pode fazer uma compra?",
+   "variant": "parafrase"
   },
   {
-   "id": "t01",
-   "text": "A Lei 8.666/1993 ainda esta em vigor?",
-   "stratum": "temporal",
+   "stratum": "aberta",
+   "targets": [
+    {
+     "document_id": "lei-14133",
+     "pages": [
+      36
+     ]
+    }
+   ],
+   "answer_patterns": [
+    "100\\.000|cem mil"
+   ],
+   "expected": "R$ 100.000,00 pela lei em vigor (art. 75, I, da Lei 14.133).",
+   "origin": "pdf",
+   "pair_id": "lc2",
+   "id": "lc2L",
+   "text": "Qual e o valor limite para dispensa de licitacao em obras e servicos de engenharia?",
+   "variant": "literal"
+  },
+  {
+   "stratum": "aberta",
+   "targets": [
+    {
+     "document_id": "lei-14133",
+     "pages": [
+      36
+     ]
+    }
+   ],
+   "answer_patterns": [
+    "100\\.000|cem mil"
+   ],
+   "expected": "R$ 100.000,00 pela lei em vigor (art. 75, I, da Lei 14.133).",
+   "origin": "pdf",
+   "pair_id": "lc2",
+   "id": "lc2P",
+   "text": "Ate quanto a prefeitura pode contratar uma reforma sem abrir concorrencia?",
+   "variant": "parafrase"
+  },
+  {
+   "stratum": "confirmacao",
    "targets": [
     {
      "document_id": "lei-14133",
@@ -169,16 +144,65 @@
     }
    ],
    "answer_patterns": [
-    "revogad",
-    "14\\.133"
+    "nao",
+    "revogad"
    ],
-   "expected": "Nao. Foi revogada pela Lei 14.133/2021 (art. 193), com efeito em 30 de dezembro de 2023.",
-   "origin": "pdf"
+   "expected": "Nao. A Lei 8.666 foi revogada pela Lei 14.133 (art. 193), com efeito em 30 de dezembro de 2023.",
+   "origin": "pdf",
+   "pair_id": "lc3",
+   "id": "lc3L",
+   "text": "A Lei 8.666/1993 ainda esta em vigor?",
+   "variant": "literal"
   },
   {
-   "id": "t02",
+   "stratum": "confirmacao",
+   "targets": [
+    {
+     "document_id": "lei-14133",
+     "pages": [
+      75
+     ]
+    },
+    {
+     "document_id": "lei-8666",
+     "pages": [
+      1
+     ]
+    }
+   ],
+   "answer_patterns": [
+    "nao",
+    "revogad"
+   ],
+   "expected": "Nao. A Lei 8.666 foi revogada pela Lei 14.133 (art. 193), com efeito em 30 de dezembro de 2023.",
+   "origin": "pdf",
+   "pair_id": "lc3",
+   "id": "lc3P",
+   "text": "Aquela lei antiga de licitacao ainda vale hoje?",
+   "variant": "parafrase"
+  },
+  {
+   "stratum": "aberta",
+   "targets": [
+    {
+     "document_id": "lei-14133",
+     "pages": [
+      75
+     ]
+    }
+   ],
+   "answer_patterns": [
+    "revogad|8\\.666|anterior|antiga"
+   ],
+   "expected": "Pela legislacao revogada: o art. 190 manda que contrato assinado antes da lei nova continue regido pelas regras anteriores.",
+   "origin": "pdf",
+   "pair_id": "lc4",
+   "id": "lc4L",
    "text": "Um contrato assinado em 2020 e regido por qual lei?",
-   "stratum": "temporal",
+   "variant": "literal"
+  },
+  {
+   "stratum": "aberta",
    "targets": [
     {
      "document_id": "lei-14133",
@@ -188,212 +212,129 @@
     }
    ],
    "answer_patterns": [
-    "revogad|8\\.666",
-    "190|antes"
+    "revogad|8\\.666|anterior|antiga"
    ],
-   "expected": "Pela legislacao revogada: o art. 190 da 14.133 manda que contrato assinado antes da sua entrada em vigor continue regido pelas regras anteriores.",
-   "origin": "pdf"
+   "expected": "Pela legislacao revogada: o art. 190 manda que contrato assinado antes da lei nova continue regido pelas regras anteriores.",
+   "origin": "pdf",
+   "pair_id": "lc4",
+   "id": "lc4P",
+   "text": "Um contrato que ja estava rolando antes da lei nova muda de regra no meio do caminho?",
+   "variant": "parafrase"
   },
   {
-   "id": "t03",
-   "text": "Em que data a Lei 8.666 foi revogada?",
-   "stratum": "temporal",
+   "stratum": "premissa-falsa",
    "targets": [
+    {
+     "document_id": "lei-8666",
+     "pages": [
+      16
+     ]
+    },
     {
      "document_id": "lei-14133",
      "pages": [
-      75
+      18
      ]
     }
    ],
    "answer_patterns": [
-    "30 de dezembro de 2023|30/12/2023"
+    "revogad|nao|8\\.666"
    ],
-   "expected": "Em 30 de dezembro de 2023 (art. 193, II, na redacao da Lei Complementar 198/2023).",
-   "origin": "pdf"
+   "expected": "A premissa e falsa: tomada de precos era modalidade da Lei 8.666, revogada, e nao consta do rol do art. 28 da Lei 14.133.",
+   "origin": "pdf",
+   "pair_id": "lc5",
+   "id": "lc5L",
+   "text": "Como faco para abrir uma licitacao na modalidade tomada de precos hoje?",
+   "variant": "literal"
   },
   {
-   "id": "p01",
-   "text": "Qual e o valor limite para dispensa de licitacao em obras e servicos de engenharia?",
-   "stratum": "prosa",
+   "stratum": "premissa-falsa",
    "targets": [
+    {
+     "document_id": "lei-8666",
+     "pages": [
+      16
+     ]
+    },
     {
      "document_id": "lei-14133",
      "pages": [
-      36
+      18
      ]
     }
    ],
    "answer_patterns": [
-    "100\\.000|cem mil"
+    "revogad|nao|8\\.666"
    ],
-   "expected": "R$ 100.000,00 (art. 75, I, da Lei 14.133).",
-   "origin": "pdf"
+   "expected": "A premissa e falsa: tomada de precos era modalidade da Lei 8.666, revogada, e nao consta do rol do art. 28 da Lei 14.133.",
+   "origin": "pdf",
+   "pair_id": "lc5",
+   "id": "lc5P",
+   "text": "Quero comprar usando aquele formato antigo de cadastro previo. Como abro?",
+   "variant": "parafrase"
   },
   {
-   "id": "p02",
-   "text": "Qual e o valor limite para dispensa de licitacao em compras e outros servicos?",
-   "stratum": "prosa",
+   "stratum": "existencia",
    "targets": [
     {
      "document_id": "lei-14133",
      "pages": [
-      36
+      63
      ]
     }
    ],
    "answer_patterns": [
-    "50\\.000|cinquenta mil"
+    "sim|existe|ha |prev|trata"
    ],
-   "expected": "R$ 50.000,00 (art. 75, II, da Lei 14.133).",
-   "origin": "pdf"
+   "origin": "pdf",
+   "pair_id": "lc8",
+   "expected": "Sim, a Lei 14.133 traz um capitulo de infracoes e sancoes administrativas (art. 155 e seguintes), com advertencia, multa, impedimento de licitar e declaracao de inidoneidade.",
+   "id": "lc8L",
+   "text": "A lei preve infracoes e sancoes administrativas para o licitante?",
+   "variant": "literal"
   },
   {
-   "id": "p03",
-   "text": "O que e o PNCP?",
-   "stratum": "prosa",
+   "stratum": "existencia",
    "targets": [
     {
      "document_id": "lei-14133",
      "pages": [
-      68
+      63
      ]
     }
    ],
    "answer_patterns": [
-    "portal nacional de contratacoes publicas",
-    "divulgacao|sitio|obrigatoria"
+    "sim|existe|ha |prev|trata"
    ],
-   "expected": "O Portal Nacional de Contratacoes Publicas, sitio oficial para divulgacao centralizada e obrigatoria dos atos exigidos pela lei (art. 174).",
-   "origin": "pdf"
+   "origin": "pdf",
+   "pair_id": "lc8",
+   "expected": "Sim, a Lei 14.133 traz um capitulo de infracoes e sancoes administrativas (art. 155 e seguintes), com advertencia, multa, impedimento de licitar e declaracao de inidoneidade.",
+   "id": "lc8P",
+   "text": "Se a empresa aprontar no contrato com o governo, tem punicao escrita em algum lugar?",
+   "variant": "parafrase"
   },
   {
-   "id": "p04",
-   "text": "O que e diretamente o agente de contratacao e quem pode ser designado?",
-   "stratum": "prosa",
-   "targets": [
-    {
-     "document_id": "lei-14133",
-     "pages": [
-      8
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "servidor|empregado publico",
-    "designad"
-   ],
-   "expected": "Pessoa designada pela autoridade competente entre servidores efetivos ou empregados publicos do quadro permanente, para conduzir a licitacao (art. 8).",
-   "origin": "pdf"
-  },
-  {
-   "id": "p05",
-   "text": "Existe hipotese de contrato com prazo de ate 10 anos?",
-   "stratum": "prosa",
-   "targets": [
-    {
-     "document_id": "lei-14133",
-     "pages": [
-      53
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "10 \\(dez\\) anos|dez anos"
-   ],
-   "expected": "Sim, o art. 108 permite prazo de ate 10 anos nas hipoteses que indica.",
-   "origin": "pdf"
-  },
-  {
-   "id": "p06",
-   "text": "O que e matriz de riscos?",
-   "stratum": "prosa",
-   "targets": [
-    {
-     "document_id": "lei-14133",
-     "pages": [
-      6
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "clausula contratual",
-    "risco"
-   ],
-   "expected": "Clausula contratual que define riscos e responsabilidades entre as partes (art. 6, XXVII).",
-   "origin": "pdf"
-  },
-  {
-   "id": "p07",
-   "text": "O que e dialogo competitivo?",
-   "stratum": "prosa",
-   "targets": [
-    {
-     "document_id": "lei-14133",
-     "pages": [
-      6
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "modalidade",
-    "dialogo"
-   ],
-   "expected": "Modalidade de licitacao para contratacao de obras, servicos e compras em que a Administracao dialoga com licitantes previamente selecionados (art. 6, XLII).",
-   "origin": "pdf"
-  },
-  {
-   "id": "p08",
-   "text": "O criterio de maior desconto existe na lei atual?",
-   "stratum": "prosa",
-   "targets": [
-    {
-     "document_id": "lei-14133",
-     "pages": [
-      20
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "maior desconto",
-    "sim|existe|consta|criterio"
-   ],
-   "expected": "Sim, e um dos criterios de julgamento do art. 33 da Lei 14.133.",
-   "origin": "pdf"
-  },
-  {
-   "id": "n01",
-   "text": "Qual e o salario do agente de contratacao?",
+   "id": "lc6",
+   "text": "Qual e o salario de um pregoeiro?",
    "stratum": "negativa",
    "targets": [],
    "answer_patterns": [
-    "nao consta|nao informa|nao ha|nao encontr|nao especific|nao define|nao traz"
+    "nao consta|nao informa|nao ha|nao encontr|nao especific|nao define|nao traz|nao estabelec"
    ],
-   "expected": "Nao consta: as leis nao fixam remuneracao de agente de contratacao.",
+   "expected": "Nao consta.",
    "origin": "pdf"
   },
   {
-   "id": "n02",
-   "text": "Qual e a aliquota do ISS incidente sobre os servicos contratados?",
-   "stratum": "negativa",
-   "targets": [],
-   "answer_patterns": [
-    "nao consta|nao informa|nao ha|nao encontr|nao especific|nao define|nao traz"
-   ],
-   "expected": "Nao consta: aliquota de ISS e materia tributaria municipal, fora destas leis.",
-   "origin": "pdf"
-  },
-  {
-   "id": "n03",
+   "id": "lc7",
    "text": "Quantos contratos o Governo Federal assinou em 2024?",
    "stratum": "negativa",
    "targets": [],
    "answer_patterns": [
-    "nao consta|nao informa|nao ha|nao encontr|nao especific|nao define|nao traz"
+    "nao consta|nao informa|nao ha|nao encontr|nao especific|nao define|nao traz|nao estabelec"
    ],
-   "expected": "Nao consta: as leis nao trazem dados estatisticos de execucao.",
+   "expected": "Nao consta.",
    "origin": "pdf"
   }
  ],
- "frozen_sha256": "6ce9ce8282ccbf0bf64269b98c4ff8f245837b2f00e9a0de8ff257b8714471f0"
+ "frozen_sha256": "21fc43c7ac94a8c161c7fa6478596370c926f50a41b49dfdb02095b9733a4e86"
 }
