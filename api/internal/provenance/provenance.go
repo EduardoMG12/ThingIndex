@@ -37,6 +37,39 @@ type Item struct {
 	PageNumber    *int
 	SequenceOrder int
 	Content       string
+	// Scope diz em que unidade a origem do item pode ser apontada:
+	//
+	//	ScopePage     -- a evidencia existe numa pagina do documento
+	//	ScopeDocument -- o item descreve o documento inteiro
+	//
+	// A distincao existe porque nem todo item indexado e um trecho. Os pares
+	// de metadado que o indexador gera sao estatisticas do documento
+	// ("paragraph_count", "tree_builder"): eles nao estao em pagina nenhuma.
+	// Exigir pagina deles deixava duas saidas ruins -- contar como falha
+	// permanente, afundando a media com um defeito que nao existe, ou
+	// preencher uma pagina qualquer, que seria FABRICAR proveniencia e viola
+	// o principio I da constituicao. Classificar o escopo e a terceira saida:
+	// o item continua visivel na conta, com o criterio que cabe a ele.
+	//
+	// Vazio e tratado como ScopePage de proposito. O padrao tem que ser o
+	// criterio ESTRITO: se alguem esquecer de classificar um item novo, ele
+	// aparece como incompleto e o teste reclama. O contrario faria um
+	// esquecimento virar silenciosamente um item "completo".
+	Scope string
+}
+
+// Escopos de proveniencia. Ver o comentario de Item.Scope.
+const (
+	ScopePage     = "page"
+	ScopeDocument = "document"
+)
+
+// scopeOf devolve o escopo efetivo do item, aplicando o padrao estrito.
+func scopeOf(item Item) string {
+	if item.Scope == ScopeDocument {
+		return ScopeDocument
+	}
+	return ScopePage
 }
 
 // Report e o resultado da avaliacao de proveniencia.
@@ -53,6 +86,10 @@ type Report struct {
 	EmptyContent         int
 	// ByKind permite reportar TPC por tipo estrutural.
 	ByKind map[string]KindReport
+	// ByScope permite reportar TPC por escopo de origem. Sem esse recorte, um
+	// leitor nao consegue separar "item que deveria ter pagina e nao tem" de
+	// "item que nunca teria pagina", e as duas coisas viram o mesmo numero.
+	ByScope map[string]KindReport
 }
 
 // KindReport e o recorte por tipo estrutural.
@@ -82,6 +119,25 @@ func (r Report) RateFor(kind string) float64 {
 	return float64(item.Complete) / float64(item.Total)
 }
 
+// RateForScope devolve a TPC de um escopo de origem.
+func (r Report) RateForScope(scope string) float64 {
+	item, ok := r.ByScope[scope]
+	if !ok || item.Total == 0 {
+		return 0
+	}
+	return float64(item.Complete) / float64(item.Total)
+}
+
+// Scopes devolve os escopos presentes, ordenados, para reporte estavel.
+func (r Report) Scopes() []string {
+	scopes := make([]string, 0, len(r.ByScope))
+	for scope := range r.ByScope {
+		scopes = append(scopes, scope)
+	}
+	sort.Strings(scopes)
+	return scopes
+}
+
 // Kinds devolve os tipos presentes, ordenados, para reporte estavel em tabela.
 func (r Report) Kinds() []string {
 	kinds := make([]string, 0, len(r.ByKind))
@@ -94,15 +150,24 @@ func (r Report) Kinds() []string {
 
 // Evaluate calcula a taxa de proveniencia completa.
 //
-// Um item so conta como completo quando TODAS as coordenadas de origem estao
-// presentes. O criterio e deliberadamente rigido: proveniencia parcial nao
-// permite apontar o trecho no documento original, e portanto nao serve para
-// auditoria -- saber que algo veio do documento 7 sem saber de qual pagina nao
-// e melhor, na pratica, do que nao saber nada.
+// Um item so conta como completo quando TODAS as coordenadas de origem que
+// CABEM NELE estao presentes. O criterio e deliberadamente rigido: proveniencia
+// parcial nao permite apontar o trecho no documento original, e portanto nao
+// serve para auditoria -- saber que algo veio do documento 7 sem saber de qual
+// pagina nao e melhor, na pratica, do que nao saber nada.
+//
+// "Que cabem nele" nao e afrouxamento: a pagina so e exigida de item cuja
+// origem E uma pagina (ScopePage). Uma estatistica do documento inteiro
+// (ScopeDocument) esta completamente rastreada quando aponta o documento, e
+// exigir pagina dela nao aumentaria auditabilidade nenhuma -- apenas
+// produziria um numero pior sem que exista defeito a corrigir. O relatorio
+// publica os dois recortes lado a lado justamente para o leitor conferir que a
+// distincao nao esta escondendo item que deveria ter pagina.
 func Evaluate(items []Item) Report {
 	report := Report{
-		Total:  len(items),
-		ByKind: map[string]KindReport{},
+		Total:   len(items),
+		ByKind:  map[string]KindReport{},
+		ByScope: map[string]KindReport{},
 	}
 
 	for _, item := range items {
@@ -110,9 +175,12 @@ func Evaluate(items []Item) Report {
 		if kind == "" {
 			kind = "unknown"
 		}
+		scope := scopeOf(item)
 
 		entry := report.ByKind[kind]
 		entry.Total++
+		scopeEntry := report.ByScope[scope]
+		scopeEntry.Total++
 
 		complete := true
 
@@ -120,7 +188,7 @@ func Evaluate(items []Item) Report {
 			report.MissingDocumentID++
 			complete = false
 		}
-		if item.PageNumber == nil {
+		if scope == ScopePage && item.PageNumber == nil {
 			report.MissingPageNumber++
 			complete = false
 		}
@@ -136,9 +204,11 @@ func Evaluate(items []Item) Report {
 		if complete {
 			report.Complete++
 			entry.Complete++
+			scopeEntry.Complete++
 		}
 
 		report.ByKind[kind] = entry
+		report.ByScope[scope] = scopeEntry
 	}
 
 	return report
