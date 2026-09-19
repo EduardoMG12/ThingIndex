@@ -1,0 +1,44 @@
+question_id,stratum,origin,arm,scope,repeat,model,correct,cited_pages,provenance_ok,retrieval_hit,prompt_tokens,completion_tokens,usage_reported,latency_ms,cost_usd,truncated,error,answer
+s01,aberta,pdf,T,,1,gemma4:31b,true,nr-18:3;nr-18:4;nr-06:2;nr-06:3;nr-18:30;nr-18:31;nr-18:5;nr-18:26;nr-18:27;nr-18:25,true,true,4939,116,true,939,,false,,"De acordo com a **NR 6 - Equipamentos de Proteção Individual (página 2)**, cabe à **organização** fornecer o EPI ao empregado.
+
+O fornecimento deve ocorrer sob as seguintes condições:
+*   **Gratuidade:** O EPI deve ser fornecido gratuitamente;
+*   **Adequação:** Deve ser adequado ao risco;
+*   **Estado de conservação:** Deve estar em perfeito estado de conservação e funcionamento;
+*   **Hierarquia:** O fornecimento deve observar a hierarquia das medidas de prevenção."
+s02,aberta,pdf,T,,1,gemma4:31b,true,nr-06:2;nr-06:3;nr-06:4;nr-06:5;nr-06:1;nr-06:6,true,true,4380,140,true,1482,,false,,"De acordo com a NR 6 - Equipamentos de Proteção Individual (página 4), cabe ao trabalhador as seguintes responsabilidades quanto ao EPI:
+
+*   Usar o equipamento fornecido pela organização, observando o disposto no item 6.5.2;
+*   Utilizá-lo apenas para a finalidade a que se destina;
+*   Responsabilizar-se pela sua limpeza, guarda e conservação;
+*   Comunicar à organização quando o EPI for extraviado, danificado ou apresentar qualquer alteração que o torne impróprio para uso;
+*   Cumprir as determinações da organização referentes ao uso adequado."
+s03,confirmacao,pdf,T,,1,gemma4:31b,true,nr-06:2;nr-06:3;nr-06:4;nr-06:5;nr-18:41;nr-18:42;nr-06:1,true,true,4449,61,true,988,,false,,"Não, o trabalhador não precisa pagar pelo EPI. De acordo com a NR 6 - Equipamentos de Proteção Individual (página 2), cabe à organização fornecer ao empregado o EPI adequado ao risco, em perfeito estado de conservação e funcionamento, de forma **gratuita**."
+s04,confirmacao,pdf,T,,1,gemma4:31b,true,nr-06:2;nr-06:3;nr-06:5;nr-06:6;nr-06:7;nr-06:11;nr-06:12;nr-06:1,true,true,4170,167,true,1646,,false,,"Sim, o EPI precisa de Certificado de Aprovação (CA). De acordo com a NR 6 - Equipamentos de Proteção Individual:
+
+*   **Comercialização e Utilização:** O EPI, seja de fabricação nacional ou importado, só pode ser utilizado ou posto à venda com a indicação do Certificado de Aprovação (CA), expedido pelo órgão de âmbito nacional competente em matéria de segurança e saúde no trabalho (página 2).
+*   **Responsabilidades:** Cabe à organização adquirir somente o EPI aprovado pelo órgão competente (página 2), e ao fabricante ou importador comercializar apenas o EPI que possua o CA (página 5).
+*   **Validade:** O EPI deve ser comercializado com o CA válido (página 5)."
+s05,existencia,pdf,T,,1,gemma4:31b,true,nr-06:5;nr-06:6;nr-06:7;nr-06:2;nr-06:3;nr-06:12;nr-06:4,true,true,3360,303,true,1798,,false,,"Sim, existem regras sobre a higienização de EPIs detalhadas na NR 6 - Equipamentos de Proteção Individual:
+
+*   **Responsabilidade da Organização:** Cabe à organização responsabilizar-se pela higienização e manutenção periódica do EPI, quando esses procedimentos forem aplicáveis, seguindo as informações fornecidas pelo fabricante ou importador (página 2 e 3). A organização também pode estabelecer procedimentos específicos para essa higienização, devendo informar os empregados envolvidos (página 3).
+*   **Responsabilidade de Fabricantes e Importadores:** Devem comercializar o EPI com um manual de instruções em língua portuguesa que oriente sobre os processos de limpeza e higienização (página 5). Além disso, as informações sobre esses processos devem indicar, se for o caso, o número de higienizações acima do qual a proteção original não pode mais ser garantida, tornando necessária a substituição do equipamento (página 5).
+*   **Definições:** A norma diferencia ""limpeza"" de ""higienização"" (página 12):
+    *   **Limpeza:** Remoção de sujidades e resíduos de forma manual ou mecânica, utilizando produtos comuns como água, sabão, detergente ou sanitizante.
+    *   **Higienização:** Remoção de contaminantes que exigem cuidados ou procedimentos específicos, englobando os processos de desinfecção e descontaminação."
+s06,existencia,pdf,T,,1,gemma4:31b,true,nr-18:4;nr-18:5;nr-18:2;nr-18:3;nr-18:49;nr-18:50;nr-18:23;nr-18:24;nr-18:6;nr-18:7;nr-18:44;nr-18:45,true,true,4977,241,true,1375,,false,,"Sim, o acervo trata de áreas de vivência em canteiros de obras.
+
+De acordo com a **NR 18 - Segurança na Indústria da Construção (página 4)**, as áreas de vivência devem ser projetadas para oferecer condições mínimas de segurança, conforto e privacidade, sendo mantidas em perfeito estado de conservação, higiene e limpeza. As instalações devem contemplar:
+
+*   Instalação sanitária;
+*   Vestiário;
+*   Local para refeição;
+*   Alojamento (quando houver trabalhador alojado).
+
+O documento detalha ainda requisitos específicos, como a proporção de bacias sanitárias e chuveiros por número de trabalhadores, a distância máxima do posto de trabalho até a instalação sanitária (150 metros) e as regras para o fornecimento de água potável (NR 18, página 4). Além disso, a elaboração do Programa de Gerenciamento de Riscos (PGR) deve incluir o projeto da área de vivência do canteiro de obras e de eventual frente de trabalho (NR 18, página 2)."
+s07,premissa-falsa,pdf,T,,1,gemma4:31b,true,nr-06:3;nr-06:4;nr-06:5;nr-06:2;nr-06:6;nr-18:30;nr-18:31;nr-18:48;nr-18:49,true,true,4660,73,true,998,,false,,"Com base nos documentos fornecidos, não há qualquer menção a percentuais de desconto no salário do trabalhador em casos de EPI danificado.
+
+A NR 6 estabelece que cabe à organização ""substituir imediatamente"" o EPI quando este for danificado ou extraviado (NR 6 - Equipamentos de Protecao Individual, página 3)."
+s08,aberta,pdf,T,,1,gemma4:31b,true,nr-18:42;nr-18:43;nr-18:51;nr-18:52;nr-18:39;nr-18:40;nr-18:41;nr-18:44;nr-18:53;nr-18:54,true,true,4754,70,true,804,,false,,"Na periferia da plataforma flutuante, deve haver guarda-corpo de proteção contra quedas de trabalhadores (balaustrada), em conformidade com a Norma da Autoridade Marítima (NORMAM-02/DPC) (NR 18 - Seguranca na Industria da Construcao, página 42)."
+s09,negativa,pdf,T,,1,gemma4:31b,true,,,,4292,76,true,1307,,false,,"Com base nos documentos fornecidos, não há informações sobre o valor de multas aplicadas por não fornecer EPI ao trabalhador. Os documentos detalham as responsabilidades da organização, do trabalhador, de fabricantes e importadores, bem como as definições e requisitos de comercialização e uso dos equipamentos, mas não mencionam penalidades financeiras ou valores de multas."
+s10,negativa,pdf,T,,1,gemma4:31b,true,,,,4738,23,true,930,,false,,"Com base nos documentos fornecidos, não há informações sobre o piso salarial do técnico de segurança do trabalho."
