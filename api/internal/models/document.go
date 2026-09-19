@@ -109,19 +109,29 @@ type MetadataPair struct {
 }
 
 type DocumentChunk struct {
-	ID                   uint           `gorm:"primarykey" json:"id"`
-	DocumentID           uint           `gorm:"not null;index;uniqueIndex:idx_document_chunks_document_sequence" json:"document_id"`
-	SequenceOrder        int            `gorm:"not null;uniqueIndex:idx_document_chunks_document_sequence" json:"sequence_order"`
-	ChunkType            string         `gorm:"size:64;not null;index" json:"chunk_type"`
-	Title                string         `gorm:"size:255" json:"title,omitempty"`
-	Content              string         `gorm:"type:text;not null" json:"content"`
-	SourceParagraphStart *int           `json:"source_paragraph_start,omitempty"`
-	SourceParagraphEnd   *int           `json:"source_paragraph_end,omitempty"`
-	TokenEstimate        int            `gorm:"not null;default:0" json:"token_estimate"`
-	Metadata             map[string]any `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
-	CreatedAt            time.Time      `json:"created_at"`
-	UpdatedAt            time.Time      `json:"updated_at"`
-	DeletedAt            gorm.DeletedAt `gorm:"index" json:"-"`
+	ID                   uint   `gorm:"primarykey" json:"id"`
+	DocumentID           uint   `gorm:"not null;index;uniqueIndex:idx_document_chunks_document_sequence" json:"document_id"`
+	SequenceOrder        int    `gorm:"not null;uniqueIndex:idx_document_chunks_document_sequence" json:"sequence_order"`
+	ChunkType            string `gorm:"size:64;not null;index" json:"chunk_type"`
+	Title                string `gorm:"size:255" json:"title,omitempty"`
+	Content              string `gorm:"type:text;not null" json:"content"`
+	SourceParagraphStart *int   `json:"source_paragraph_start,omitempty"`
+	SourceParagraphEnd   *int   `json:"source_paragraph_end,omitempty"`
+	// PageNumber e a pagina onde o chunk COMECA. Chunk e evidencia citavel: ele
+	// entra na recuperacao da colecao e vira fonte da resposta do chat. Sem
+	// pagina, a fonte nao e clicavel ate o trecho, que e o que auditabilidade
+	// significa neste trabalho (constituicao, principio I).
+	//
+	// Vem da estrutura de origem, nunca de heuristica: pagina do primeiro
+	// paragrafo do intervalo do no, com o StartPage do no como segunda opcao.
+	// Nulavel porque HTML e planilha nao tem pagina, e porque um no sem
+	// paragrafo com pagina precisa ficar nulo em vez de mentir "pagina 1".
+	PageNumber    *int           `gorm:"index" json:"page_number,omitempty"`
+	TokenEstimate int            `gorm:"not null;default:0" json:"token_estimate"`
+	Metadata      map[string]any `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 type DocumentOutlineNode struct {
