@@ -56,3 +56,6 @@ __pycache__/
 api/tmp/
 **/tmp/
 
+
+# cache de ferramenta local
+.omo/

@@ -896,13 +896,54 @@ Aberta         & 49/78 & 0,628 \\
 
 O desempenho no estrato de premissa falsa merece registro isolado: em 35 das 36 respostas o sistema corrigiu a premissa embutida na pergunta em vez de acomodá-la. É o comportamento oposto à bajulação descrita por~\cite{sharma2024sycophancy}, e ele não decorre do modelo: decorre de o contexto submetido conter apenas trechos recuperados do acervo, sem material que sustente a premissa falsa.
 
-\textbf{O efeito da formulação, e o único resultado com significância.} Agregando os três acervos, o acerto é 0,903 nas perguntas literais e 0,677 nas parafraseadas, uma queda de 22,6 pontos. A análise correta não é a diferença de médias, porque as duas versões de um par não são amostras independentes: é o mesmo item medido duas vezes. Dos 31 pares, 21 tiveram resultado concordante e \textbf{10 discordantes}, dos quais \textbf{9 a favor da versão literal}. Um teste de sinais exato sobre os pares discordantes dá $p = 0{,}021$ bilateral.
+\textbf{O efeito da formulação.} Agregando os três acervos, o acerto é 0,903 nas perguntas literais e 0,677 nas parafraseadas, uma queda de 22,6 pontos por resposta. A análise correta não é a diferença de médias, porque as duas versões de um par não são amostras independentes: é o mesmo item medido duas vezes. Ela é feita por pergunta, com o critério exigente de acerto nas três repetições. Dos 31 pares, 21 tiveram resultado concordante e \textbf{10 discordantes}, dos quais \textbf{8 a favor da versão literal}. Um teste de sinais exato dá $p = 0{,}109$ bilateral: o efeito é \textbf{direcional e não atinge significância} nesta amostra.
+
+A assimetria é grande e consistente entre os três acervos, mas 31 pares não bastam para descartar o acaso. O que sustenta a interpretação não é o $p$, e sim a combinação de três coisas: a direção se repete nos três domínios, cada item é estável entre repetições, e a Seção~\ref{sec:expansao} mostra que uma intervenção dirigida exatamente a essa causa move o resultado de forma significativa. Reportar $p = 0{,}109$ como significativo seria o erro que o restante deste capítulo se esforça para evitar.
 
 Este é o único resultado deste trabalho que atinge significância estatística convencional, e ele mede algo desconfortável: o sistema recupera melhor quando a pergunta reutiliza o vocabulário do documento. A implicação metodológica atinge o próprio instrumento anterior. O gabarito de ensino da Seção~\ref{sec:geracao} foi escrito pelo autor após a leitura das páginas-alvo, sem controle de formulação, e o seu 1,000 é compatível com a hipótese de herança lexical. O par literal/paráfrase existe precisamente para tornar esse viés mensurável em vez de invisível.
 
 \textbf{Correção do instrumento, declarada.} Durante a análise verificou-se que a expressão regular do estrato negativa, nos três gabaritos novos, era mais restrita que a do gabarito anterior do projeto: recusas corretas redigidas como ``os documentos não mencionam'' ou ``não contêm'' eram contadas como erro. O padrão foi substituído pelo padrão amplo já em uso, os \emph{hashes} foram recalculados e \textbf{a bateria inteira foi reexecutada do zero nos três acervos}. Os CSV da execução anterior permanecem versionados em \texttt{docs/article/results/antes-correcao-negativas/}. A alternativa --- corrigir apenas os itens afetados e reaproveitar o restante --- produziria o mesmo número por um caminho que não se pode auditar.
 
 \textbf{Limitações desta medição.} Setenta e uma perguntas escritas por um único autor; três repetições, suficientes para caracterizar estabilidade mas não para intervalos por estrato; um provedor e um modelo, com registro de que uma execução com modelo maior produziu resultado pior (Seção~\ref{sec:geracao}); e ausência de revisor externo para o gabarito, que permanece a limitação mais séria e está no plano de trabalho.
+
+\subsection{Expansão da Pergunta: Atacando a Causa da Queda de Vocabulário}
+\label{sec:expansao}
+
+A Seção~\ref{sec:bateria} estabeleceu que a formulação da pergunta é o maior fator de variação medido, e a Seção~\ref{sec:segundo-dominio} havia mostrado que enriquecer o \emph{documento} com texto gerado por LLM não altera a recuperação. Esta seção testa a intervenção oposta, e o desenho foi registrado antes da implementação em \texttt{docs/prds/pre-registro-expansao-consulta.md}.
+
+\textbf{Hipótese e o mecanismo por trás dela.} O resultado negativo do enriquecimento tem uma causa identificada: instruída a escrever ``em linguagem de leigo'', a LLM produz a paráfrase do documento, não a da pessoa. Existem muitas formulações leigas para a mesma necessidade e um único termo técnico que a nomeia. Ir de muitas para uma é um problema mais fácil que ir de uma para muitas. A hipótese registrada é, portanto, que expandir a \emph{pergunta} com os termos técnicos que ela descreve sem nomear melhora a recuperação das perguntas parafraseadas, deixando as literais aproximadamente iguais, por já conterem o vocabulário do documento.
+
+\textbf{Controle de circularidade.} A expansão recebe apenas o texto da pergunta. Não vê o acervo, a página-alvo, a resposta esperada nem o gabarito. Um termo expandido que coincida com o vocabulário do documento é conhecimento de mundo do modelo, e não vazamento do instrumento. As 71 perguntas e os 31 pares permanecem travados pelos mesmos \emph{hashes}.
+
+\textbf{Determinismo.} A expansão é uma chamada de LLM e não é determinística em si. O resultado é congelado por cache com chave $\mathrm{SHA}256$ da pergunta normalizada: da segunda ocorrência em diante, a mesma pergunta produz sempre os mesmos termos. Preserva-se assim a recuperação determinística exigida pelo princípio arquitetural do projeto, com a ressalva declarada de que a primeira ocorrência de uma pergunta inédita depende do modelo.
+
+\textbf{Verificação de mecanismo, anterior à bateria.} Para a pergunta \texttt{sg2P}, ``Quem paga o capacete e a luva que eu uso no serviço?'', a expansão produziu \emph{equipamento, proteção, individual, EPI, fornecedor, empregador, custo, pagamento}. A resposta passou a citar a página 2 da NR-6, que é a página-alvo. Essa pergunta errava nas três repetições do braço de controle.
+
+\begin{table}[htb]
+\centering
+\caption{Expansão da pergunta: braço C (consulta original) contra braço E (consulta expandida). Mesmas 71 perguntas, três repetições, 213 respostas por braço.}
+\label{tab:expansao}
+\begin{tabular}{lrrr}
+\hline
+Braço & Literal & Paráfrase & Todas \\
+\hline
+C, sem expansão & 0,903 & 0,677 & 0,817 \\
+E, com expansão & 0,935 & \textbf{0,903} & \textbf{0,930} \\
+\hline
+Distância entre formulações & \multicolumn{2}{r}{0,194 $\rightarrow$ 0,032} & \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{O efeito confirma a predição na forma específica registrada.} As perguntas parafraseadas ganharam sete itens; as literais, dois. O pré-registro previa que uma subida igual nas duas formulações indicaria efeito genérico de acrescentar termos ao índice, e não ponte de vocabulário; não foi o que ocorreu. A distância entre formulações cai de 0,194 para 0,032, ou seja, a lacuna praticamente desaparece.
+
+\textbf{Análise pareada.} Comparando as mesmas 71 perguntas entre os dois braços, sob o critério de acerto nas três repetições, 10 passaram a acertar e 1 deixou de acertar, com 60 concordantes. O teste de sinais exato dá $p = 0{,}0117$ bilateral. É o único resultado deste trabalho que atinge significância ao nível convencional. Das 10 perguntas ganhas, 8 são parafraseadas.
+
+\textbf{A única perda é informativa.} A pergunta \texttt{lc3P}, ``Aquela lei antiga de licitação ainda vale hoje?'', deixou de acertar: os termos expandidos trouxeram vocabulário da lei revogada e puxaram as páginas dela. É o risco declarado no pré-registro antes de rodar --- um índice lexical não distingue termo pertinente de termo ruidoso --- e ele se materializou exatamente no estrato em que a Seção~\ref{sec:segundo-dominio} já havia identificado o modo de falha mais grave do sistema.
+
+\textbf{Custo.} O prompt de resposta passa de 4.699 para 5.327 tokens por pergunta, um aumento de 13,4\%, porque a consulta expandida recupera mais páginas candidatas. Soma-se a isso uma chamada de LLM por pergunta inédita, com prompt de uma linha, cacheada em seguida: 71 chamadas para 213 respostas na bateria. O custo dessa chamada não foi instrumentado e é declarado como não medido. Mesmo assim, o braço E permanece uma ordem de grandeza abaixo dos 72.067 tokens por pergunta do braço de documento inteiro (Seção~\ref{sec:geracao}), de modo que o argumento central de custo não se altera. A proveniência da resposta sobe de 0,371 para 0,532 no mesmo movimento.
+
+\textbf{Limitações desta medição.} Um único autor escreveu as perguntas e o gabarito; a mesma família de modelo expande a pergunta e redige a resposta; a primeira ocorrência de cada pergunta depende do modelo; e a expansão entra na consulta como texto, alimentando também a regra de linha de tabela, que exige dois termos significativos --- parte do ganho pode vir desse caminho, e este experimento não o separa.
 
 % =============================================================================
 % DISCUSSAO

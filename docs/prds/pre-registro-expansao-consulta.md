@@ -12,8 +12,9 @@
 
 1. O sistema acerta **0,903** quando a pergunta reutiliza o vocabulário do
    documento e **0,677** quando a mesma necessidade é expressa com as palavras
-   de quem não leu. São 31 pares, 10 discordantes, 9 para o mesmo lado, teste de
-   sinais $p = 0{,}021$. É o único efeito com significância no trabalho.
+   de quem não leu. São 31 pares e 10 discordantes, 8 a favor do literal: teste
+   de sinais $p = 0{,}109$, direcional e **não** significativo. É o maior efeito
+   medido no trabalho, e o mais reproduzível entre acervos.
 2. Expandir o **documento** não resolve. Quatro braços de enriquecimento, nulo
    em todos, nenhuma pergunta mudou de resultado.
 3. A causa apurada: pedir à LLM que escreva "linguagem de leigo" produz a
@@ -121,6 +122,10 @@ nova.
 | C, sem expansão (já medido) | 0,903 | 0,677 |
 | E, com expansão | a medir | a medir |
 
+Os valores acima são por resposta (213 respostas). A análise pareada usa o
+critério por pergunta, mais exigente: a pergunta conta como acerto quando
+acertou nas **três** repetições.
+
 ## Análise estatística
 
 A comparação é **pareada por pergunta entre os braços**, não entre formulações:
@@ -140,8 +145,8 @@ custo e piorá-lo em silêncio invalidaria o resto.
 
 ## Afirmação máxima permitida na apresentação
 
-> "A queda de vocabulário é o único efeito com significância que eu medi, e eu
-> ataquei ela expandindo a pergunta, não o documento. Em 71 perguntas
+> "A queda de vocabulário é o maior efeito que eu medi, e eu ataquei ela
+> expandindo a pergunta, não o documento. Em 71 perguntas
 > pré-registradas, três repetições, o acerto nas parafraseadas foi de 0,677 para
 > X. O prompt e o critério estavam congelados antes de rodar, e o braço de
 > controle é o sistema atual. São 71 perguntas de um autor só: é indício
@@ -149,3 +154,124 @@ custo e piorá-lo em silêncio invalidaria o resto.
 > do modelo permanece."
 
 Qualquer afirmação além desta, nesta amostra, é indefensável.
+
+---
+
+# Resultado (2026-09-19, após a execução)
+
+Escrito depois de rodar, contra o pré-registro acima. Nada do que está acima foi
+alterado, exceto a correção do $p$ do efeito de vocabulário, descrita ao fim.
+
+## Checagem de mecanismo, feita antes da bateria
+
+Pergunta `sg2P`, congelada por hash antes desta ideia existir:
+
+> "Quem paga o capacete e a luva que eu uso no serviço?"
+
+Termos que a expansão produziu, vendo apenas o texto da pergunta:
+
+> `equipamento proteção individual epi fornecedor empregador custo pagamento`
+
+A resposta passou a citar NR-6 página 2, que é a página-alvo do gabarito. Essa
+pergunta errava nas três repetições do braço de controle. A previsão de
+mecanismo se confirmou antes de qualquer número agregado.
+
+## Os quatro números
+
+Por resposta, 213 respostas por braço:
+
+|  | Literal | Paráfrase | Todas |
+|---|---|---|---|
+| C, sem expansão | 0,903 | 0,677 | **0,817** |
+| E, com expansão | 0,935 | 0,903 | **0,930** |
+
+Por pergunta, critério de acerto nas três repetições:
+
+|  | Literal | Paráfrase | Todas |
+|---|---|---|---|
+| C, sem expansão | 27/31 | 21/31 | 57/71 |
+| E, com expansão | 29/31 | 28/31 | 66/71 |
+
+**A predição registrada se confirmou na forma específica.** As parafraseadas
+subiram 7 perguntas; as literais subiram 2. Não foi uma subida igual nas duas,
+que o pré-registro classificava como efeito genérico de acrescentar termos. A
+distância entre as duas formulações cai de 0,194 para **0,032**: a lacuna de
+vocabulário praticamente fecha.
+
+## Análise pareada entre braços
+
+| | |
+|---|---|
+| Só E acertou | **10** |
+| Só C acertou | **1** |
+| Concordantes | 60 de 71 |
+
+Teste de sinais exato, bilateral: **$p = 0{,}0117$**. É significativo ao nível
+convencional, e é o único resultado deste trabalho que atinge esse patamar.
+
+Das 10 perguntas ganhas, **8 são parafraseadas**. A única perda também é
+parafraseada, e é informativa: `lc3P`, "Aquela lei antiga de licitação ainda vale
+hoje?". Os termos expandidos trouxeram vocabulário da lei revogada e puxaram as
+páginas dela, que é exatamente o risco declarado no pré-registro — um índice
+lexical não distingue termo bom de termo ruim.
+
+## Proveniência e custo
+
+| | C | E |
+|---|---|---|
+| Proveniência da resposta | 0,371 | **0,532** |
+| Tokens de prompt por pergunta | 4.699 | **5.327** |
+
+A recuperação ficou 13,4% mais cara em tokens de prompt, porque a consulta
+expandida traz mais páginas candidatas. A isso soma-se **uma chamada de LLM por
+pergunta inédita**, com prompt de uma linha, cacheada depois da primeira
+ocorrência: na bateria inteira foram 71 chamadas para 213 respostas. O custo
+dessa chamada não foi instrumentado e está declarado como não medido; o que está
+medido é o aumento no prompt da resposta.
+
+Mesmo com o aumento, o braço E continua uma ordem de grandeza abaixo do braço de
+documento inteiro (72.067 tokens por pergunta).
+
+## Determinismo
+
+A ressalva registrada permanece e não foi eliminada: a **primeira** ocorrência de
+uma pergunta inédita depende do modelo. Da segunda em diante, o cache por
+`sha256` da pergunta normalizada devolve sempre os mesmos termos. Na bateria, as
+três repetições de cada pergunta usaram termos idênticos, por construção.
+
+## Correção de um erro na análise anterior
+
+Ao escrever a comparação pareada entre braços, apareceu que o script
+`resumo-bateria.py` montava os pares literal/paráfrase dentro do laço de linhas
+do CSV, de modo que a **última repetição sobrescrevia as outras**. O teste de
+sinais do efeito de vocabulário saía, portanto, de uma repetição só.
+
+Com o critério correto, agregando as três repetições, o efeito de vocabulário do
+braço C é de 10 pares discordantes, 8 a favor do literal, **$p = 0{,}109$**:
+direcional e **não** significativo. O valor $p = 0{,}021$ reportado antes estava
+errado e foi corrigido no artigo, no roteiro de apresentação e nos slides.
+
+O efeito continua sendo o maior medido no trabalho e se repete nos três acervos;
+o que muda é que ele não pode ser chamado de significativo com 31 pares. O
+resultado que passa em teste é o desta intervenção.
+
+## Afirmação máxima, revisada com os números na mão
+
+> "A lacuna de vocabulário é o maior efeito que eu medi: 0,903 contra 0,677. Ela
+> é direcional e não significativa com 31 pares, p igual a 0,109. Eu ataquei a
+> causa expandindo a pergunta em vez do documento, com prompt congelado antes de
+> rodar, e o acerto foi de 0,817 para 0,930, com as parafraseadas indo de 0,677
+> para 0,903. Pareado por pergunta, dez passaram a acertar e uma deixou de
+> acertar: p igual a 0,012. Custa 13% mais tokens na recuperação e uma chamada de
+> LLM por pergunta inédita, cacheada depois. São 71 perguntas de um autor só, e a
+> primeira ocorrência de cada pergunta depende do modelo."
+
+## Ameaças à validade deste resultado
+
+- Setenta e uma perguntas de um único autor, o mesmo do gabarito.
+- A mesma família de modelo expande a pergunta e redige a resposta.
+- A expansão entra na consulta como texto, então também alimenta a regra de
+  linha de tabela, que exige dois termos significativos. Parte do ganho pode vir
+  desse caminho, e este experimento não o separa.
+- A única perda mostra que o risco de puxar vocabulário errado é real e não
+  hipotético.

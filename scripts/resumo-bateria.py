@@ -14,6 +14,7 @@ import csv
 import json
 import pathlib
 import sys
+from math import comb
 
 FORMAS = ["aberta", "confirmacao", "existencia", "premissa-falsa", "negativa"]
 
@@ -124,22 +125,35 @@ def main():
 
     # Pares em que uma variante acertou e a outra não: é a evidência item a item
     # da queda, e serve para escolher exemplos para o slide.
+    #
+    # O resultado de cada variante agrega TODAS as repetições. A versão anterior
+    # deste bloco indexava um dicionário por pair_id dentro do laço de linhas,
+    # então a última repetição sobrescrevia as outras e o teste de sinais saía
+    # de uma repetição só, com p-valor menor que o defensável.
     quebrados = []
     for linhas in por_tema.values():
-        pares = {}
+        reps = {}
         for x in linhas:
             if x["pair_id"]:
-                pares.setdefault(x["pair_id"], {})[x["variant"]] = x
+                reps.setdefault((x["pair_id"], x["variant"]), []).append(x["correct"] == "true")
+        pares = {}
+        for (pid, variante), acertos in reps.items():
+            pares.setdefault(pid, {})[variante] = all(acertos)
         for pid, v in pares.items():
-            if len(v) == 2:
-                cl = v.get("literal", {}).get("correct") == "true"
-                cp = v.get("parafrase", {}).get("correct") == "true"
-                if cl != cp:
-                    quebrados.append((pid, "literal" if cl else "parafrase"))
+            if len(v) == 2 and v["literal"] != v["parafrase"]:
+                quebrados.append((pid, "literal" if v["literal"] else "parafrase"))
     if quebrados:
         print("\n## Pares em que a formulação decidiu o resultado\n")
+        print("Critério: a variante acertou em todas as repetições.\n")
         for pid, ganhou in sorted(quebrados):
             print(f"- `{pid}`: só a versão **{ganhou}** acertou")
+        pro_literal = sum(1 for _, g in quebrados if g == "literal")
+        n = len(quebrados)
+        k = max(pro_literal, n - pro_literal)
+        p_valor = min(1.0, 2 * sum(comb(n, i) for i in range(k, n + 1)) / 2 ** n)
+        veredito = "significativo" if p_valor < 0.05 else "direcional, nao significativo"
+        print(f"\nTeste de sinais bilateral sobre os {n} pares discordantes "
+              f"({pro_literal} a favor do literal): **p = {p_valor:.4f}** ({veredito}).")
     por, reps, sempre, nunca, oscilou = estabilidade(todos)
     if reps and max(reps) > 1:
         print("\n## Estabilidade entre repetições\n")
