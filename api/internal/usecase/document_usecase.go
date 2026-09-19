@@ -10,6 +10,7 @@ import (
 	"math"
 	"mime"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -1956,6 +1957,47 @@ func expandNumberVariants(tokens []string) []string {
 	return out
 }
 
+// Bracos do experimento pre-registrado de enriquecimento
+// (docs/prds/pre-registro-perguntas-geradas.md). Selecionados por variavel de
+// ambiente para que os tres possam ser medidos sobre o MESMO indice, sem
+// reindexar entre eles: reindexar entre bracos trocaria duas coisas ao mesmo
+// tempo e a comparacao perderia o sentido.
+//
+// O padrao preserva o comportamento historico (conteudo + resumo), entao quem
+// nao conhece a variavel nao muda de regime sem saber.
+const (
+	pageFieldsContent          = "content"
+	pageFieldsContentSummary   = "content+summary"
+	pageFieldsContentQuestions = "content+questions"
+)
+
+// pageSearchFields devolve o braco ativo. Valor desconhecido cai no padrao e
+// avisa: um erro de digitacao na variavel mediria silenciosamente o braco
+// errado, que e o pior resultado possivel numa comparacao.
+func pageSearchFields() string {
+	switch v := strings.TrimSpace(os.Getenv("THINGINDEX_PAGE_SEARCH_FIELDS")); v {
+	case "":
+		return pageFieldsContentSummary
+	case pageFieldsContent, pageFieldsContentSummary, pageFieldsContentQuestions:
+		return v
+	default:
+		log.Printf("THINGINDEX_PAGE_SEARCH_FIELDS=%q desconhecido; usando %q", v, pageFieldsContentSummary)
+		return pageFieldsContentSummary
+	}
+}
+
+// pageSearchText monta o texto da pagina que vai ao BM25, conforme o braco.
+func pageSearchText(page models.DocumentPage) string {
+	switch pageSearchFields() {
+	case pageFieldsContent:
+		return page.Content
+	case pageFieldsContentQuestions:
+		return strings.Join([]string{page.GeneratedQuestions, page.Content}, " ")
+	default:
+		return strings.Join([]string{page.Summary, page.Content}, " ")
+	}
+}
+
 func buildCollectionRetrieval(
 	query string,
 	documents []models.Document,
@@ -2042,7 +2084,7 @@ func buildCollectionRetrieval(
 
 	pageTexts := make([]string, len(pages))
 	for i, page := range pages {
-		pageTexts[i] = strings.Join([]string{page.Summary, page.Content}, " ")
+		pageTexts[i] = pageSearchText(page)
 	}
 	pageScores := bm25Scores(query, pageTexts)
 	pageHits := make([]domain.CollectionPageHit, 0)
@@ -2463,7 +2505,7 @@ func scoreCollectionNode(node models.DocumentOutlineNode, queryTerms []string) i
 }
 
 func scoreCollectionPage(page models.DocumentPage, queryTerms []string) int {
-	return retrievalScore(strings.Join([]string{page.Summary, page.Content}, " "), queryTerms) * 2
+	return retrievalScore(pageSearchText(page), queryTerms) * 2
 }
 
 func scoreTreePage(page models.DocumentPage, queryTerms []string) int {

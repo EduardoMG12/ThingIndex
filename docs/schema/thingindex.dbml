@@ -136,6 +136,7 @@ Table document_pages {
   page_number integer [not null]
   content text [not null]
   summary text
+  generated_questions text
   token_estimate integer [not null, default: `0`]
   metadata jsonb
   created_at timestamptz

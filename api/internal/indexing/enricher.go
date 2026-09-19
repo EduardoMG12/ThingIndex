@@ -67,6 +67,18 @@ type pageSummaryResponse struct {
 	Pages []pageSummaryItem `json:"pages"`
 }
 
+// pageQuestionsResponse e a saida do gerador de perguntas de leigo. Formato
+// separado do resumo de proposito: os dois coexistem para que a medicao possa
+// comparar um contra o outro.
+type pageQuestionsResponse struct {
+	Pages []pageQuestionsItem `json:"pages"`
+}
+
+type pageQuestionsItem struct {
+	PageNumber int      `json:"page_number"`
+	Questions  []string `json:"questions"`
+}
+
 type retrievalSignalsResponse struct {
 	Topics   []string `json:"topics"`
 	Entities []string `json:"entities"`
@@ -159,6 +171,12 @@ func (e *LLMEnricher) EnrichWith(ctx context.Context, llm domain.LLMService, doc
 	if prefs.PageSummaries {
 		pages = e.generateAllPageSummaries(ctx, llm, doc, updated, &calls, &hits)
 		applyPageSummaries(&updated, pages)
+		// As perguntas de leigo saem da MESMA preferencia do resumo, para que o
+		// experimento compare os dois campos gerados sobre o mesmo conjunto de
+		// paginas. Sem cache: o cache e chaveado por (tipo, modelo, hash do
+		// texto) e guarda resumo, entao reaproveita-lo aqui devolveria resumo
+		// no lugar de pergunta.
+		applyPageQuestions(updated, e.generateAllPageQuestions(ctx, llm, doc, updated, &calls))
 	}
 	fillMissingPageSummaries(&updated)
 	populateOutlineRetrievalText(&updated)
@@ -320,6 +338,71 @@ func (e *LLMEnricher) generateAllPageSummaries(ctx context.Context, llm domain.L
 	}
 	flush()
 	return all
+}
+
+// generateAllPageQuestions gera, para cada pagina com texto, as perguntas que
+// ela responde em linguagem de leigo. Mesma estrutura em lotes do resumo, e o
+// resultado vai para uma COLUNA PROPRIA: os dois campos coexistem porque o
+// experimento pre-registrado compara um contra o outro.
+//
+// Lote que falha e pulado, como no resumo: perder as perguntas de uma pagina
+// degrada a busca daquela pagina, nao quebra a indexacao.
+func (e *LLMEnricher) generateAllPageQuestions(ctx context.Context, llm domain.LLMService, doc *models.Document, result domain.IndexingResult, calls *int) pageQuestionsResponse {
+	var all pageQuestionsResponse
+	var batch []models.DocumentPage
+	flush := func() {
+		if len(batch) == 0 || *calls >= enrichmentMaxBatchCalls {
+			batch = nil
+			return
+		}
+		*calls++
+		systemPrompt, userPrompt := buildPageQuestionsPrompt(buildPageBatchContext(doc, batch))
+		raw, err := llm.GenerateText(ctx, systemPrompt, userPrompt)
+		var payload pageQuestionsResponse
+		if err == nil {
+			err = parseLLMJSON(raw, &payload)
+		}
+		if err != nil {
+			log.Printf("enricher: lote de perguntas das paginas %d-%d do documento %d descartado: %v",
+				batch[0].PageNumber, batch[len(batch)-1].PageNumber, doc.ID, err)
+		} else {
+			all.Pages = append(all.Pages, payload.Pages...)
+		}
+		batch = nil
+	}
+	for _, page := range result.DocumentPages {
+		if len(strings.TrimSpace(page.Content)) < enrichmentMinPageChars {
+			continue
+		}
+		batch = append(batch, page)
+		if len(batch) == enrichmentPageBatch {
+			flush()
+		}
+	}
+	flush()
+	return all
+}
+
+// applyPageQuestions grava as perguntas na coluna propria, uma por linha.
+// Uma por linha, e nao separadas por virgula, porque o BM25 tokeniza por
+// espaco e a quebra de linha evita colar a ultima palavra de uma pergunta na
+// primeira da seguinte.
+func applyPageQuestions(result domain.IndexingResult, payload pageQuestionsResponse) {
+	for _, page := range payload.Pages {
+		if page.PageNumber <= 0 {
+			continue
+		}
+		perguntas := sanitizeStringList(page.Questions, 5, 200)
+		if len(perguntas) == 0 {
+			continue
+		}
+		for idx := range result.DocumentPages {
+			if result.DocumentPages[idx].PageNumber == page.PageNumber {
+				result.DocumentPages[idx].GeneratedQuestions = strings.Join(perguntas, "\n")
+				break
+			}
+		}
+	}
 }
 
 func buildPageBatchContext(doc *models.Document, pages []models.DocumentPage) string {
