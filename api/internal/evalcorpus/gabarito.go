@@ -25,6 +25,30 @@ type Gabarito struct {
 	ReviewedBy   []string           `json:"reviewed_by"`
 	Documents    []GabaritoDocument `json:"documents"`
 	Questions    []GabaritoQuestion `json:"questions"`
+	// Strata e MinQuestions permitem que cada gabarito declare as proprias
+	// regras. Sem isso, as regras do acervo de ensino (prosa, tabela,
+	// calendario, negativa) valeriam para todo gabarito, e um corpus de
+	// legislacao so entraria inventando perguntas de calendario sobre lei
+	// federal ou afrouxando a constante para todo mundo. Ausentes, valem os
+	// padroes historicos, entao o gabarito de ensino nao muda.
+	Strata       map[string]int `json:"strata,omitempty"`
+	MinQuestions int            `json:"min_questions,omitempty"`
+}
+
+// strata devolve os estratos exigidos deste gabarito.
+func (g *Gabarito) strata() map[string]int {
+	if len(g.Strata) > 0 {
+		return g.Strata
+	}
+	return GabaritoStrata
+}
+
+// minQuestions devolve o minimo de perguntas deste gabarito.
+func (g *Gabarito) minQuestions() int {
+	if g.MinQuestions > 0 {
+		return g.MinQuestions
+	}
+	return GabaritoMinQuestions
 }
 
 type GabaritoDocument struct {
@@ -56,9 +80,12 @@ type GabaritoQuestion struct {
 	Origin string `json:"origin"`
 }
 
-// GabaritoStrata sao os estratos aceitos e o minimo de perguntas em cada um.
+// GabaritoStrata sao os estratos PADRAO, do acervo de ensino, e o minimo de
+// perguntas em cada um. Um gabarito pode declarar os seus em "strata".
 var GabaritoStrata = map[string]int{"prosa": 20, "tabela": 15, "calendario": 10, "negativa": 5}
 
+// GabaritoMinQuestions e o minimo PADRAO. Um gabarito pode declarar o seu em
+// "min_questions".
 const GabaritoMinQuestions = 50
 
 func LoadGabarito(path string) (*Gabarito, error) {
@@ -85,8 +112,9 @@ func (g *Gabarito) QuestionsSHA256() string {
 }
 
 func (g *Gabarito) Validate() error {
-	if len(g.Questions) < GabaritoMinQuestions {
-		return fmt.Errorf("gabarito tem %d perguntas; minimo %d", len(g.Questions), GabaritoMinQuestions)
+	estratos := g.strata()
+	if minimo := g.minQuestions(); len(g.Questions) < minimo {
+		return fmt.Errorf("gabarito tem %d perguntas; minimo %d", len(g.Questions), minimo)
 	}
 	if got := g.QuestionsSHA256(); got != g.FrozenSHA256 {
 		return fmt.Errorf("frozen_sha256 nao confere: arquivo %q, perguntas %q (recalcule e registre em Discoveries)", g.FrozenSHA256, got)
@@ -105,8 +133,13 @@ func (g *Gabarito) Validate() error {
 			return fmt.Errorf("pergunta %q duplicada", q.ID)
 		}
 		seen[q.ID] = true
-		if _, ok := GabaritoStrata[q.Stratum]; !ok {
-			return fmt.Errorf("pergunta %q: estrato %q desconhecido", q.ID, q.Stratum)
+		if _, ok := estratos[q.Stratum]; !ok {
+			aceitos := make([]string, 0, len(estratos))
+			for s := range estratos {
+				aceitos = append(aceitos, s)
+			}
+			sort.Strings(aceitos)
+			return fmt.Errorf("pergunta %q: estrato %q desconhecido; aceitos neste gabarito: %v", q.ID, q.Stratum, aceitos)
 		}
 		perStratum[q.Stratum]++
 		if q.Origin != "pdf" && q.Origin != "rodada-cc5" {
@@ -138,14 +171,14 @@ func (g *Gabarito) Validate() error {
 			}
 		}
 	}
-	names := make([]string, 0, len(GabaritoStrata))
-	for s := range GabaritoStrata {
+	names := make([]string, 0, len(estratos))
+	for s := range estratos {
 		names = append(names, s)
 	}
 	sort.Strings(names)
 	for _, s := range names {
-		if perStratum[s] < GabaritoStrata[s] {
-			return fmt.Errorf("estrato %q tem %d perguntas; minimo %d", s, perStratum[s], GabaritoStrata[s])
+		if perStratum[s] < estratos[s] {
+			return fmt.Errorf("estrato %q tem %d perguntas; minimo %d", s, perStratum[s], estratos[s])
 		}
 	}
 	return nil
