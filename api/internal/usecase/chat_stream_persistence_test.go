@@ -105,7 +105,7 @@ func (r *chatLLMResolverStub) ResolveLLMForChat(context.Context, uint) (domain.L
 }
 
 func newChatUseCaseForTest(repo *chatConversationRepoStub, llm domain.LLMService) domain.ChatUseCase {
-	return NewChatUseCase(chatCollectionContextStub{}, repo, &chatLLMResolverStub{llm: llm})
+	return NewChatUseCase(chatCollectionContextStub{}, repo, &chatLLMResolverStub{llm: llm}, nil)
 }
 
 // O caso que motivou a correcao: o LLM entrega parte da resposta e a conexao
