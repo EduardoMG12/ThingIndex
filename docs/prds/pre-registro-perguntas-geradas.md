@@ -155,7 +155,7 @@ não no conteúdo da página, nas 10 perguntas do tema de segurança do trabalho
 | Resumo em jargão | **0** |
 | Perguntas de leigo | **3** (em 3 das 10 perguntas) |
 
-A direção previstase confirmou: perguntas em linguagem de leigo introduzem
+A direção prevista se confirmou: perguntas em linguagem de leigo introduzem
 vocabulário que o resumo não introduz. A magnitude, porém, é pequena.
 
 ## Os braços
