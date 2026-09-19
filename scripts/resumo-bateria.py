@@ -52,6 +52,24 @@ def linha_md(rotulo, r):
     return f"| {rotulo} | {certas}/{total} | {frac:.3f} |"
 
 
+
+def estabilidade(linhas):
+    """Cada pergunta deu o mesmo resultado em todas as repetições?
+
+    É o número que responde "como você sabe que essa taxa não foi sorte":
+    uma pergunta que oscila entre repetições não tem taxa, tem moeda. A
+    contagem separa acerto estável, erro estável e oscilação.
+    """
+    por = {}
+    for x in linhas:
+        por.setdefault(x["question_id"], []).append(x["correct"] == "true")
+    reps = {len(v) for v in por.values()}
+    sempre = sum(1 for v in por.values() if all(v))
+    nunca = sum(1 for v in por.values() if not any(v))
+    oscilou = [k for k, v in por.items() if len(set(v)) > 1]
+    return por, reps, sempre, nunca, oscilou
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("saida", type=pathlib.Path)
@@ -122,6 +140,21 @@ def main():
         print("\n## Pares em que a formulação decidiu o resultado\n")
         for pid, ganhou in sorted(quebrados):
             print(f"- `{pid}`: só a versão **{ganhou}** acertou")
+    por, reps, sempre, nunca, oscilou = estabilidade(todos)
+    if reps and max(reps) > 1:
+        print("\n## Estabilidade entre repetições\n")
+        print(f"Repetições por pergunta: {sorted(reps)}")
+        print("\n| Comportamento | Perguntas |")
+        print("|---|---|")
+        print(f"| Acertou em todas | {sempre} |")
+        print(f"| Errou em todas | {nunca} |")
+        print(f"| Oscilou entre repetições | {len(oscilou)} |")
+        print(f"| **Total** | **{len(por)}** |")
+        if oscilou:
+            print("\nOscilaram: " + ", ".join(f"`{k}`" for k in sorted(oscilou)))
+        else:
+            print("\nNenhuma pergunta mudou de resultado entre repetições: "
+                  "a taxa é do sistema, não da amostragem do modelo.")
     return 0
 
 
