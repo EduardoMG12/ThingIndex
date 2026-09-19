@@ -42,3 +42,10 @@ exatamente o tipo de armadilha que o corpus existe para exercitar.
 | Revogação da Lei 8.666 em 30/12/2023 | 14.133, Art. 193, II, p. 75 |
 | Contrato assinado antes segue a lei revogada | 14.133, Art. 190, p. 75 |
 | Marcação "Revogado pela Lei nº 14.133, de 2021" no cabeçalho | 8.666, p. 1 |
+
+## Ampliação de 2026-09-19
+
+Acrescentada a `lei-10520-pregao.pdf` (Lei do Pregão, 4 p.), que integra a mesma
+cadeia de revogação: o art. 193, II, da Lei 14.133 revoga a Lei 8.666 **e** a Lei
+10.520 na mesma data. O acervo passa a ter duas normas revogadas e uma vigente,
+o que torna a pergunta "qual regra vale" menos trivial que com dois documentos.

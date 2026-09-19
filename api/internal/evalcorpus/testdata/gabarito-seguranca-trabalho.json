@@ -1,73 +1,92 @@
 {
- "version": "seguranca-trabalho-2026-09-v1",
- "notes": "As cinco formas de pergunta sao a variavel deste gabarito, ideia do autor em 2026-09-19: a mesma necessidade de informacao pode ser expressa de jeitos diferentes, e um sistema pode acertar numa forma e errar noutra. ABERTA: a resposta e o fato. CONFIRMACAO: pergunta fechada, a resposta e sim ou nao mais o fato. EXISTENCIA: se o acervo trata do assunto. PREMISSA-FALSA: a pergunta embute um dado errado e a resposta certa e corrigir, nao concordar; um sistema bajulador concorda. NEGATIVA: a resposta certa e dizer que nao consta. Escrito a partir dos PDF com pdftotext -layout, sem consultar o sistema.",
+ "version": "seguranca-trabalho-2026-09-v2",
+ "notes": "Perguntas em PAR: a mesma necessidade de informacao aparece duas vezes, com a mesma resposta esperada e o mesmo alvo, mudando so a formulacao. LITERAL usa os termos do documento; PARAFRASE usa o vocabulario de quem pergunta no dia a dia, sem repetir as palavras do texto. O par existe porque um gabarito escrito por quem ja leu a pagina herda o vocabulario dela, e ai a medicao vira casamento lexical se passando por compreensao. Formas: aberta, confirmacao, existencia, premissa-falsa (a pergunta embute um dado errado e a resposta certa e corrigir) e negativa (nao consta). Escrito a partir dos PDF com pdftotext -layout; cada pagina-alvo foi conferida.",
  "reviewed_by": [],
  "strata": {
-  "aberta": 3,
+  "premissa-falsa": 2,
+  "aberta": 4,
   "confirmacao": 2,
   "existencia": 2,
-  "negativa": 2,
-  "premissa-falsa": 1
+  "negativa": 2
  },
- "min_questions": 10,
+ "min_questions": 12,
  "documents": [
+  {
+   "id": "nr-01-2024",
+   "file": "nr-01-versao-2024.pdf",
+   "title": "NR 1 - versao de 2024",
+   "pages": 18
+  },
+  {
+   "id": "nr-01-2025",
+   "file": "nr-01-versao-2025.pdf",
+   "title": "NR 1 - versao de 2025",
+   "pages": 21
+  },
   {
    "id": "nr-06",
    "file": "nr-06-epi.pdf",
-   "title": "NR 6 - Equipamentos de Protecao Individual",
+   "title": "NR 6 - EPI",
    "pages": 12
+  },
+  {
+   "id": "nr-09",
+   "file": "nr-09-agentes.pdf",
+   "title": "NR 9 - Agentes fisicos, quimicos e biologicos",
+   "pages": 15
   },
   {
    "id": "nr-18",
    "file": "nr-18-construcao.pdf",
-   "title": "NR 18 - Seguranca na Industria da Construcao",
+   "title": "NR 18 - Industria da construcao",
    "pages": 54
   }
  ],
  "questions": [
   {
-   "id": "s01",
-   "text": "Quem deve fornecer o EPI ao trabalhador e em que condicoes?",
-   "stratum": "aberta",
+   "stratum": "premissa-falsa",
    "targets": [
     {
      "document_id": "nr-06",
      "pages": [
-      2
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "gratuit",
-    "adequado ao risco|perfeito estado"
-   ],
-   "expected": "A organizacao/empregador, gratuitamente, EPI adequado ao risco e em perfeito estado de conservacao e funcionamento (NR-6, item 6.5).",
-   "origin": "pdf"
-  },
-  {
-   "id": "s02",
-   "text": "Quais sao as responsabilidades do trabalhador quanto ao EPI?",
-   "stratum": "aberta",
-   "targets": [
-    {
-     "document_id": "nr-06",
-     "pages": [
+      2,
       4
      ]
     }
    ],
    "answer_patterns": [
-    "usar|utilizar",
-    "conservacao|limpeza|guarda",
-    "comunicar"
+    "nao|nenhum|gratuit|incorret|improced"
    ],
-   "expected": "Usar o EPI fornecido, so para a finalidade a que se destina, responsabilizar-se pela limpeza, guarda e conservacao, comunicar extravio ou dano e cumprir as determinacoes da organizacao (NR-6, item 6.6.1).",
-   "origin": "pdf"
+   "expected": "A premissa e falsa: o EPI e fornecido gratuitamente pela organizacao e a norma nao preve desconto (NR-6, item 6.5).",
+   "origin": "pdf",
+   "pair_id": "sg1",
+   "id": "sg1L",
+   "text": "Qual e o percentual maximo que o empregador pode descontar do trabalhador pelo EPI danificado?",
+   "variant": "literal"
   },
   {
-   "id": "s03",
-   "text": "O trabalhador precisa pagar pelo EPI?",
-   "stratum": "confirmacao",
+   "stratum": "premissa-falsa",
+   "targets": [
+    {
+     "document_id": "nr-06",
+     "pages": [
+      2,
+      4
+     ]
+    }
+   ],
+   "answer_patterns": [
+    "nao|nenhum|gratuit|incorret|improced"
+   ],
+   "expected": "A premissa e falsa: o EPI e fornecido gratuitamente pela organizacao e a norma nao preve desconto (NR-6, item 6.5).",
+   "origin": "pdf",
+   "pair_id": "sg1",
+   "id": "sg1P",
+   "text": "Quanto a firma pode tirar do meu pagamento por causa da bota que estragou?",
+   "variant": "parafrase"
+  },
+  {
+   "stratum": "aberta",
    "targets": [
     {
      "document_id": "nr-06",
@@ -77,16 +96,17 @@
     }
    ],
    "answer_patterns": [
-    "nao",
     "gratuit"
    ],
-   "expected": "Nao. O EPI e fornecido gratuitamente pela organizacao (NR-6, item 6.5).",
-   "origin": "pdf"
+   "expected": "A organizacao fornece gratuitamente, adequado ao risco e em perfeito estado de conservacao (NR-6, item 6.5).",
+   "origin": "pdf",
+   "pair_id": "sg2",
+   "id": "sg2L",
+   "text": "Quem deve fornecer o EPI ao trabalhador e em que condicoes?",
+   "variant": "literal"
   },
   {
-   "id": "s04",
-   "text": "O EPI precisa de Certificado de Aprovacao?",
-   "stratum": "confirmacao",
+   "stratum": "aberta",
    "targets": [
     {
      "document_id": "nr-06",
@@ -96,33 +116,98 @@
     }
    ],
    "answer_patterns": [
-    "sim|deve|obrigat|exige",
-    "certificado de aprovacao|c\\.?a\\.?"
+    "gratuit"
    ],
-   "expected": "Sim. O EPI so pode ser posto a venda ou utilizado com indicacao do Certificado de Aprovacao (NR-6).",
-   "origin": "pdf"
+   "expected": "A organizacao fornece gratuitamente, adequado ao risco e em perfeito estado de conservacao (NR-6, item 6.5).",
+   "origin": "pdf",
+   "pair_id": "sg2",
+   "id": "sg2P",
+   "text": "Quem paga o capacete e a luva que eu uso no servico?",
+   "variant": "parafrase"
   },
   {
-   "id": "s05",
-   "text": "Existe alguma regra sobre higienizacao do EPI?",
-   "stratum": "existencia",
+   "stratum": "aberta",
    "targets": [
     {
-     "document_id": "nr-06",
+     "document_id": "nr-09",
      "pages": [
       3
      ]
     }
    ],
    "answer_patterns": [
-    "sim|existe|ha |prev"
+    "metade"
    ],
-   "expected": "Sim, a NR-6 trata da higienizacao e manutencao periodica do EPI.",
-   "origin": "pdf"
+   "expected": "Metade do limite de tolerancia, para agentes quimicos, e metade da dose, para ruido (NR-9, item 9.6.1).",
+   "origin": "pdf",
+   "pair_id": "sg3",
+   "id": "sg3L",
+   "text": "Qual e o nivel de acao para agentes quimicos?",
+   "variant": "literal"
   },
   {
-   "id": "s06",
-   "text": "O acervo trata de area de vivencia em canteiro de obras?",
+   "stratum": "aberta",
+   "targets": [
+    {
+     "document_id": "nr-09",
+     "pages": [
+      3
+     ]
+    }
+   ],
+   "answer_patterns": [
+    "metade"
+   ],
+   "expected": "Metade do limite de tolerancia, para agentes quimicos, e metade da dose, para ruido (NR-9, item 9.6.1).",
+   "origin": "pdf",
+   "pair_id": "sg3",
+   "id": "sg3P",
+   "text": "A partir de quanto de produto quimico no ar a empresa ja tem que tomar providencia?",
+   "variant": "parafrase"
+  },
+  {
+   "stratum": "confirmacao",
+   "targets": [
+    {
+     "document_id": "nr-01-2025",
+     "pages": [
+      5
+     ]
+    }
+   ],
+   "answer_patterns": [
+    "sim|deve|inclui|abrange",
+    "psicossoci"
+   ],
+   "expected": "Sim, na versao de 2025 o gerenciamento de riscos inclui expressamente os fatores de risco psicossociais relacionados ao trabalho (item 1.5.3.1.4). A versao de 2024 nao os menciona.",
+   "origin": "pdf",
+   "pair_id": "sg4",
+   "id": "sg4L",
+   "text": "A NR-1 exige considerar os fatores de risco psicossociais?",
+   "variant": "literal"
+  },
+  {
+   "stratum": "confirmacao",
+   "targets": [
+    {
+     "document_id": "nr-01-2025",
+     "pages": [
+      5
+     ]
+    }
+   ],
+   "answer_patterns": [
+    "sim|deve|inclui|abrange",
+    "psicossoci"
+   ],
+   "expected": "Sim, na versao de 2025 o gerenciamento de riscos inclui expressamente os fatores de risco psicossociais relacionados ao trabalho (item 1.5.3.1.4). A versao de 2024 nao os menciona.",
+   "origin": "pdf",
+   "pair_id": "sg4",
+   "id": "sg4P",
+   "text": "Pressao e assedio no trabalho entram na conta de risco que a empresa tem que fazer?",
+   "variant": "parafrase"
+  },
+  {
    "stratum": "existencia",
    "targets": [
     {
@@ -135,68 +220,55 @@
    "answer_patterns": [
     "sim|existe|ha |trata|prev"
    ],
-   "expected": "Sim, a NR-18 trata de areas de vivencia no canteiro de obras.",
-   "origin": "pdf"
+   "expected": "Sim, a NR-18 trata das areas de vivencia do canteiro de obras.",
+   "origin": "pdf",
+   "pair_id": "sg5",
+   "id": "sg5L",
+   "text": "A NR-18 trata de area de vivencia no canteiro de obras?",
+   "variant": "literal"
   },
   {
-   "id": "s07",
-   "text": "Qual e o percentual do salario que o empregador pode descontar do trabalhador quando o EPI e danificado?",
-   "stratum": "premissa-falsa",
-   "targets": [
-    {
-     "document_id": "nr-06",
-     "pages": [
-      2,
-      4
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "nao|nenhum|gratuit|incorret|improced|equivoc"
-   ],
-   "expected": "A premissa e falsa: o EPI e fornecido gratuitamente e a norma nao preve desconto. Ao trabalhador cabe comunicar o dano, nao pagar (NR-6, itens 6.5 e 6.6.1).",
-   "origin": "pdf"
-  },
-  {
-   "id": "s08",
-   "text": "O que deve haver na periferia da plataforma flutuante?",
-   "stratum": "aberta",
+   "stratum": "existencia",
    "targets": [
     {
      "document_id": "nr-18",
      "pages": [
-      42
+      2
      ]
     }
    ],
    "answer_patterns": [
-    "guarda-corpo"
+    "sim|existe|ha |trata|prev"
    ],
-   "expected": "Guarda-corpo de protecao contra quedas (NR-18, item 18.15.2).",
-   "origin": "pdf"
+   "expected": "Sim, a NR-18 trata das areas de vivencia do canteiro de obras.",
+   "origin": "pdf",
+   "pair_id": "sg5",
+   "id": "sg5P",
+   "text": "Tem alguma regra sobre banheiro e lugar para comer na obra?",
+   "variant": "parafrase"
   },
   {
-   "id": "s09",
-   "text": "Qual e o valor da multa por nao fornecer EPI ao trabalhador?",
+   "id": "sg6",
+   "text": "Qual e o valor da multa por nao fornecer EPI?",
    "stratum": "negativa",
    "targets": [],
    "answer_patterns": [
     "nao consta|nao informa|nao ha|nao encontr|nao especific|nao define|nao traz|nao estabelec"
    ],
-   "expected": "Nao consta: as NR nao fixam valor de multa, que esta em outra norma.",
+   "expected": "Nao consta: as NR nao fixam valor de multa.",
    "origin": "pdf"
   },
   {
-   "id": "s10",
+   "id": "sg7",
    "text": "Qual e o piso salarial do tecnico de seguranca do trabalho?",
    "stratum": "negativa",
    "targets": [],
    "answer_patterns": [
     "nao consta|nao informa|nao ha|nao encontr|nao especific|nao define|nao traz|nao estabelec"
    ],
-   "expected": "Nao consta: materia de convencao coletiva, fora destas normas.",
+   "expected": "Nao consta: materia de convencao coletiva.",
    "origin": "pdf"
   }
  ],
- "frozen_sha256": "7abf046afc3968b1f86b77f1181aa06a295e6a688b611ed40ddc12a5a5701928"
+ "frozen_sha256": "4658036c3f9204ba5aa2eb5b994845e58990b440a8fc186009b1bb1d149b8ea5"
 }

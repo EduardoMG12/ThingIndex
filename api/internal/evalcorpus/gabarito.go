@@ -75,6 +75,23 @@ type GabaritoQuestion struct {
 	// equivalentes ("sis07206|programacao de computadores i").
 	AnswerPatterns []string `json:"answer_patterns"`
 	Expected       string   `json:"expected"`
+	// Variant e PairID sustentam o achado central do trabalho sobre reuso de
+	// vocabulario: a recuperacao acerta quase tudo quando a pergunta repete as
+	// palavras do documento e despenca quando a mesma necessidade e expressa de
+	// outro jeito.
+	//
+	// Medir isso exige que a MESMA necessidade de informacao apareca duas vezes,
+	// com a mesma resposta esperada e o mesmo alvo, mudando so a formulacao:
+	//
+	//	literal   -- usa os termos do documento
+	//	parafrase -- expressa a necessidade com o vocabulario de quem pergunta
+	//
+	// PairID liga as duas. Sem o par, um gabarito escrito por quem ja leu a
+	// pagina herda o vocabulario dela e mede casamento lexical se passando por
+	// compreensao, que foi exatamente o diagnostico do conselho sobre os 100%
+	// obtidos nos primeiros temas.
+	Variant string `json:"variant,omitempty"`
+	PairID  string `json:"pair_id,omitempty"`
 	// Origin: "pdf" (escrita a partir do PDF) ou "rodada-cc5" (ja usada para
 	// ajustar o sistema; o artigo reporta com e sem elas).
 	Origin string `json:"origin"`
@@ -87,6 +104,12 @@ var GabaritoStrata = map[string]int{"prosa": 20, "tabela": 15, "calendario": 10,
 // GabaritoMinQuestions e o minimo PADRAO. Um gabarito pode declarar o seu em
 // "min_questions".
 const GabaritoMinQuestions = 50
+
+// Variantes de formulacao. Ver o comentario de GabaritoQuestion.Variant.
+const (
+	VariantLiteral   = "literal"
+	VariantParafrase = "parafrase"
+)
 
 func LoadGabarito(path string) (*Gabarito, error) {
 	raw, err := os.ReadFile(path)
@@ -128,6 +151,7 @@ func (g *Gabarito) Validate() error {
 	}
 	seen := map[string]bool{}
 	perStratum := map[string]int{}
+	pares := map[string][]GabaritoQuestion{}
 	for _, q := range g.Questions {
 		if seen[q.ID] {
 			return fmt.Errorf("pergunta %q duplicada", q.ID)
@@ -152,6 +176,17 @@ func (g *Gabarito) Validate() error {
 			if _, err := regexp.Compile(p); err != nil {
 				return fmt.Errorf("pergunta %q: regex %q: %w", q.ID, p, err)
 			}
+		}
+		switch q.Variant {
+		case "", VariantLiteral, VariantParafrase:
+		default:
+			return fmt.Errorf("pergunta %q: variant %q desconhecida (use %q ou %q)", q.ID, q.Variant, VariantLiteral, VariantParafrase)
+		}
+		if (q.Variant == "") != (q.PairID == "") {
+			return fmt.Errorf("pergunta %q: variant e pair_id andam juntos, veio variant=%q pair_id=%q", q.ID, q.Variant, q.PairID)
+		}
+		if q.PairID != "" {
+			pares[q.PairID] = append(pares[q.PairID], q)
 		}
 		if (q.Stratum == "negativa") != (len(q.Targets) == 0) {
 			return fmt.Errorf("pergunta %q: negativa sem alvo e vice-versa", q.ID)
@@ -179,6 +214,29 @@ func (g *Gabarito) Validate() error {
 	for _, s := range names {
 		if perStratum[s] < estratos[s] {
 			return fmt.Errorf("estrato %q tem %d perguntas; minimo %d", s, perStratum[s], estratos[s])
+		}
+	}
+
+	// Um par incompleto ou incoerente invalida a comparacao literal x parafrase,
+	// que e justamente o que o par existe para medir.
+	pairIDs := make([]string, 0, len(pares))
+	for id := range pares {
+		pairIDs = append(pairIDs, id)
+	}
+	sort.Strings(pairIDs)
+	for _, id := range pairIDs {
+		grupo := pares[id]
+		if len(grupo) != 2 {
+			return fmt.Errorf("par %q tem %d perguntas; precisa de exatamente 2 (literal e parafrase)", id, len(grupo))
+		}
+		if grupo[0].Variant == grupo[1].Variant {
+			return fmt.Errorf("par %q tem duas perguntas %q; precisa de uma de cada variante", id, grupo[0].Variant)
+		}
+		if grupo[0].Expected != grupo[1].Expected {
+			return fmt.Errorf("par %q: as duas variantes precisam esperar a MESMA resposta, senao nao sao a mesma necessidade de informacao", id)
+		}
+		if grupo[0].Stratum != grupo[1].Stratum {
+			return fmt.Errorf("par %q: as duas variantes precisam ter a mesma forma de pergunta", id)
 		}
 	}
 	return nil

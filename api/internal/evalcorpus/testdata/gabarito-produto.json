@@ -1,53 +1,78 @@
 {
- "version": "produto-2026-09-v1",
- "notes": "As cinco formas de pergunta sao a variavel deste gabarito, ideia do autor em 2026-09-19: a mesma necessidade de informacao pode ser expressa de jeitos diferentes, e um sistema pode acertar numa forma e errar noutra. ABERTA: a resposta e o fato. CONFIRMACAO: pergunta fechada, a resposta e sim ou nao mais o fato. EXISTENCIA: se o acervo trata do assunto. PREMISSA-FALSA: a pergunta embute um dado errado e a resposta certa e corrigir, nao concordar; um sistema bajulador concorda. NEGATIVA: a resposta certa e dizer que nao consta. Escrito a partir dos PDF com pdftotext -layout, sem consultar o sistema.",
+ "version": "produto-2026-09-v2",
+ "notes": "Perguntas em PAR: a mesma necessidade de informacao aparece duas vezes, com a mesma resposta esperada e o mesmo alvo, mudando so a formulacao. LITERAL usa os termos do documento; PARAFRASE usa o vocabulario de quem pergunta no dia a dia, sem repetir as palavras do texto. O par existe porque um gabarito escrito por quem ja leu a pagina herda o vocabulario dela, e ai a medicao vira casamento lexical se passando por compreensao. Formas: aberta, confirmacao, existencia, premissa-falsa (a pergunta embute um dado errado e a resposta certa e corrigir) e negativa (nao consta). Escrito a partir dos PDF com pdftotext -layout; cada pagina-alvo foi conferida.",
  "reviewed_by": [],
  "strata": {
-  "aberta": 2,
+  "aberta": 4,
+  "premissa-falsa": 2,
   "confirmacao": 2,
   "existencia": 2,
-  "negativa": 2,
-  "premissa-falsa": 2
+  "negativa": 2
  },
- "min_questions": 10,
+ "min_questions": 12,
  "documents": [
   {
-   "id": "monitor",
-   "file": "manual-monitor-philips.pdf",
-   "title": "Manual do Usuario - Monitor Philips 241V8",
-   "pages": 28
+   "id": "cdc",
+   "file": "lei-8078-cdc.pdf",
+   "title": "Lei 8.078/1990 - Codigo de Defesa do Consumidor",
+   "pages": 24
   },
   {
    "id": "garantia",
    "file": "garantia-samsung.pdf",
    "title": "Termo de Garantia - Ar-condicionado Samsung",
    "pages": 26
+  },
+  {
+   "id": "monitor",
+   "file": "manual-monitor-philips.pdf",
+   "title": "Manual do Monitor Philips 241V8",
+   "pages": 28
   }
  ],
  "questions": [
   {
-   "id": "m01",
-   "text": "Qual e a resolucao recomendada do monitor?",
    "stratum": "aberta",
    "targets": [
     {
-     "document_id": "monitor",
+     "document_id": "cdc",
      "pages": [
-      14
+      6
      ]
     }
    ],
    "answer_patterns": [
-    "1920",
-    "1080"
+    "noventa dias|90 dias|90 \\(noventa\\)"
    ],
-   "expected": "1920 x 1080 a 60 Hz (manual do monitor Philips 241V8).",
-   "origin": "pdf"
+   "expected": "Noventa dias para produto duravel, contados da entrega efetiva (CDC, art. 26, II).",
+   "origin": "pdf",
+   "pair_id": "pr1",
+   "id": "pr1L",
+   "text": "Qual e o prazo para reclamar de vicio aparente em produto duravel?",
+   "variant": "literal"
   },
   {
-   "id": "m02",
-   "text": "Qual e o prazo de garantia do ar-condicionado?",
    "stratum": "aberta",
+   "targets": [
+    {
+     "document_id": "cdc",
+     "pages": [
+      6
+     ]
+    }
+   ],
+   "answer_patterns": [
+    "noventa dias|90 dias|90 \\(noventa\\)"
+   ],
+   "expected": "Noventa dias para produto duravel, contados da entrega efetiva (CDC, art. 26, II).",
+   "origin": "pdf",
+   "pair_id": "pr1",
+   "id": "pr1P",
+   "text": "Comprei uma geladeira e ela veio com defeito que da pra ver. Quanto tempo eu tenho pra reclamar?",
+   "variant": "parafrase"
+  },
+  {
+   "stratum": "premissa-falsa",
    "targets": [
     {
      "document_id": "garantia",
@@ -57,14 +82,36 @@
     }
    ],
    "answer_patterns": [
-    "1 \\(um\\) ano|um ano|12 meses"
+    "1 \\(um\\) ano|um ano|12 meses|nao"
    ],
-   "expected": "1 (um) ano, incluida a garantia legal (Termo de Garantia Samsung).",
-   "origin": "pdf"
+   "expected": "A premissa e falsa: o prazo de garantia do produto e de 1 (um) ano, nao 3 anos.",
+   "origin": "pdf",
+   "pair_id": "pr2",
+   "id": "pr2L",
+   "text": "Como faco para acionar os 3 anos de garantia do ar-condicionado?",
+   "variant": "literal"
   },
   {
-   "id": "m03",
-   "text": "A garantia cobre a instalacao do equipamento?",
+   "stratum": "premissa-falsa",
+   "targets": [
+    {
+     "document_id": "garantia",
+     "pages": [
+      1
+     ]
+    }
+   ],
+   "answer_patterns": [
+    "1 \\(um\\) ano|um ano|12 meses|nao"
+   ],
+   "expected": "A premissa e falsa: o prazo de garantia do produto e de 1 (um) ano, nao 3 anos.",
+   "origin": "pdf",
+   "pair_id": "pr2",
+   "id": "pr2P",
+   "text": "Meu aparelho tem 2 anos de uso. Ainda da pra pedir conserto de fabrica sem pagar?",
+   "variant": "parafrase"
+  },
+  {
    "stratum": "confirmacao",
    "targets": [
     {
@@ -78,12 +125,14 @@
     "nao",
     "instalacao"
    ],
-   "expected": "Nao. A garantia nao cobre a instalacao do equipamento nem danos de instalacao inadequada por prestador nao autorizado.",
-   "origin": "pdf"
+   "expected": "Nao. A garantia nao cobre a instalacao do equipamento nem danos de instalacao feita por prestador nao autorizado.",
+   "origin": "pdf",
+   "pair_id": "pr3",
+   "id": "pr3L",
+   "text": "A garantia cobre a instalacao do equipamento?",
+   "variant": "literal"
   },
   {
-   "id": "m04",
-   "text": "Preciso da nota fiscal para acionar a garantia?",
    "stratum": "confirmacao",
    "targets": [
     {
@@ -94,106 +143,124 @@
     }
    ],
    "answer_patterns": [
-    "sim|necessar|preciso|exig|apresent",
-    "nota fiscal"
+    "nao",
+    "instalacao"
    ],
-   "expected": "Sim, a nota fiscal de compra e exigida.",
-   "origin": "pdf"
+   "expected": "Nao. A garantia nao cobre a instalacao do equipamento nem danos de instalacao feita por prestador nao autorizado.",
+   "origin": "pdf",
+   "pair_id": "pr3",
+   "id": "pr3P",
+   "text": "Se quem colocou o aparelho na parede estragar ele, o fabricante arruma de graca?",
+   "variant": "parafrase"
   },
   {
-   "id": "m05",
-   "text": "Existe informacao sobre consumo de energia do monitor?",
-   "stratum": "existencia",
+   "stratum": "aberta",
    "targets": [
     {
      "document_id": "monitor",
      "pages": [
-      14
+      14,
+      17
      ]
     }
    ],
    "answer_patterns": [
-    "sim|existe|ha |consta|informa"
+    "1920",
+    "1080"
    ],
-   "expected": "Sim, o manual traz a secao de consumo de energia.",
-   "origin": "pdf"
+   "expected": "1920 x 1080 a 60 Hz (manual do monitor Philips 241V8).",
+   "origin": "pdf",
+   "pair_id": "pr4",
+   "id": "pr4L",
+   "text": "Qual e a resolucao recomendada do monitor?",
+   "variant": "literal"
   },
   {
-   "id": "m06",
-   "text": "O termo de garantia diz o que NAO esta coberto?",
+   "stratum": "aberta",
+   "targets": [
+    {
+     "document_id": "monitor",
+     "pages": [
+      14,
+      17
+     ]
+    }
+   ],
+   "answer_patterns": [
+    "1920",
+    "1080"
+   ],
+   "expected": "1920 x 1080 a 60 Hz (manual do monitor Philips 241V8).",
+   "origin": "pdf",
+   "pair_id": "pr4",
+   "id": "pr4P",
+   "text": "Em quantos pontos essa tela fica mais nitida?",
+   "variant": "parafrase"
+  },
+  {
    "stratum": "existencia",
    "targets": [
     {
      "document_id": "garantia",
      "pages": [
-      1
+      1,
+      20
      ]
     }
    ],
    "answer_patterns": [
     "sim|existe|ha |consta|exclu"
    ],
-   "expected": "Sim, ha uma secao de itens excluidos da garantia.",
-   "origin": "pdf"
+   "expected": "Sim, o termo traz uma secao de itens excluidos da garantia.",
+   "origin": "pdf",
+   "pair_id": "pr5",
+   "id": "pr5L",
+   "text": "O termo de garantia lista os itens excluidos da cobertura?",
+   "variant": "literal"
   },
   {
-   "id": "m07",
-   "text": "Como faco para acionar os 3 anos de garantia do ar-condicionado?",
-   "stratum": "premissa-falsa",
+   "stratum": "existencia",
    "targets": [
     {
      "document_id": "garantia",
      "pages": [
-      1
+      1,
+      20
      ]
     }
    ],
    "answer_patterns": [
-    "1 \\(um\\) ano|um ano|12 meses|nao.*3 anos|nao sao 3"
+    "sim|existe|ha |consta|exclu"
    ],
-   "expected": "A premissa e falsa: o prazo e de 1 (um) ano, nao 3 anos.",
-   "origin": "pdf"
+   "expected": "Sim, o termo traz uma secao de itens excluidos da garantia.",
+   "origin": "pdf",
+   "pair_id": "pr5",
+   "id": "pr5P",
+   "text": "Tem escrito em algum lugar o que eles NAO consertam?",
+   "variant": "parafrase"
   },
   {
-   "id": "m08",
-   "text": "O monitor suporta resolucao 4K, certo?",
-   "stratum": "premissa-falsa",
-   "targets": [
-    {
-     "document_id": "monitor",
-     "pages": [
-      14
-     ]
-    }
-   ],
-   "answer_patterns": [
-    "nao|1920|1080|full hd"
-   ],
-   "expected": "A premissa e falsa: a resolucao do 241V8 e 1920 x 1080 (Full HD), nao 4K.",
-   "origin": "pdf"
-  },
-  {
-   "id": "m09",
+   "id": "pr6",
    "text": "Qual e o preco do monitor?",
    "stratum": "negativa",
    "targets": [],
    "answer_patterns": [
-    "nao consta|nao informa|nao ha|nao encontr|nao especific|nao define|nao traz"
+    "nao consta|nao informa|nao ha|nao encontr|nao especific|nao define|nao traz|nao estabelec"
    ],
    "expected": "Nao consta: o manual nao traz preco.",
    "origin": "pdf"
   },
   {
-   "id": "m10",
+   "id": "pr7",
    "text": "Qual e o endereco da assistencia tecnica mais proxima de mim?",
    "stratum": "negativa",
    "targets": [],
    "answer_patterns": [
-    "nao consta|nao informa|nao ha|nao encontr|nao especific|nao define|nao traz"
+    "nao consta|nao informa|nao ha|nao encontr|nao especific|nao define|nao traz|nao estabelec"
    ],
-   "expected": "Nao consta: os documentos nao trazem enderecos de assistencia.",
+   "expected": "Nao consta.",
    "origin": "pdf"
   }
  ],
- "frozen_sha256": "6d7d3e8ea23871ac48e9ce8b8d7a142a31d2564aa32f68908f0c46ca4e90c7da"
+ "frozen_sha256": "f8e82259b0c71a2f91696bc5cc83f6bf4d69721637a0905c24ceca3951900393"
 }
