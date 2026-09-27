@@ -22,7 +22,7 @@
       ]
     }
   ],
-  "frozen_sha256": "e56e946a12be39044a04650e7f7813bcfc51d494fb16c1ffb5cd8151b4ca04ba",
+  "frozen_sha256": "76119e4583b1cafa2d4121b24cf9e62ad98cd662a43ac85a65bafa716ba95ebb",
   "min_questions": 25,
   "notes": "Perguntas em PAR: a mesma necessidade de informacao aparece duas vezes, com a mesma resposta esperada e o mesmo alvo, mudando so a formulacao. LITERAL usa os termos do documento; PARAFRASE usa o vocabulario de quem pergunta no dia a dia, sem repetir as palavras do texto. O par existe porque um gabarito escrito por quem ja leu a pagina herda o vocabulario dela, e ai a medicao vira casamento lexical se passando por compreensao. Formas: aberta, confirmacao, existencia, premissa-falsa (a pergunta embute um dado errado e a resposta certa e corrigir) e negativa (nao consta). Escrito a partir dos PDF com pdftotext -layout; cada pagina-alvo foi conferida.",
   "questions": [
@@ -148,7 +148,8 @@
       "text": "A Lei 8.666/1993 ainda esta em vigor?",
       "variant": "literal",
       "reject_patterns": [
-        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "nao (foi|esta|estava) (integralmente )?revogad|continua (em vigor|valendo|vigente)|ainda (esta em vigor|vale|e valida|vigora)"
       ]
     },
     {
@@ -177,12 +178,13 @@
       "text": "Aquela lei antiga de licitacao ainda vale hoje?",
       "variant": "parafrase",
       "reject_patterns": [
-        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "nao (foi|esta|estava) (integralmente )?revogad|continua (em vigor|valendo|vigente)|ainda (esta em vigor|vale|e valida|vigora)"
       ]
     },
     {
       "answer_patterns": [
-        "revogad|8\\.666|anterior|antiga"
+        "art\\.? ?190|legislacao revogada|regras? anteriores?[^.]{0,40}(continu|mant|reg)|(continu|permanec|mant)\\w*[^.]{0,40}(regid|regulad)[^.]{0,40}(lei|legislacao|regras?) (anterior|antiga|revogada)|(regid|regulad)\\w*[^.]{0,20}(pela|pela lei|pela legislacao) (8\\.?666|anterior|antiga|revogada)"
       ],
       "expected": "Pela legislacao revogada: o art. 190 manda que contrato assinado antes da lei nova continue regido pelas regras anteriores.",
       "id": "lc4L",
@@ -198,11 +200,15 @@
         }
       ],
       "text": "Um contrato assinado em 2020 e regido por qual lei?",
-      "variant": "literal"
+      "variant": "literal",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "(aplica|passa a valer|vale)\\w*[^.]{0,30}imediatamente|muda de regra|passa a ser regid\\w* pela (lei )?(14\\.?133|nova)"
+      ]
     },
     {
       "answer_patterns": [
-        "revogad|8\\.666|anterior|antiga"
+        "art\\.? ?190|legislacao revogada|regras? anteriores?[^.]{0,40}(continu|mant|reg)|(continu|permanec|mant)\\w*[^.]{0,40}(regid|regulad)[^.]{0,40}(lei|legislacao|regras?) (anterior|antiga|revogada)|(regid|regulad)\\w*[^.]{0,20}(pela|pela lei|pela legislacao) (8\\.?666|anterior|antiga|revogada)"
       ],
       "expected": "Pela legislacao revogada: o art. 190 manda que contrato assinado antes da lei nova continue regido pelas regras anteriores.",
       "id": "lc4P",
@@ -218,7 +224,11 @@
         }
       ],
       "text": "Um contrato que ja estava rolando antes da lei nova muda de regra no meio do caminho?",
-      "variant": "parafrase"
+      "variant": "parafrase",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "(aplica|passa a valer|vale)\\w*[^.]{0,30}imediatamente|muda de regra|passa a ser regid\\w* pela (lei )?(14\\.?133|nova)"
+      ]
     },
     {
       "answer_patterns": [
@@ -292,7 +302,8 @@
       "text": "A lei preve infracoes e sancoes administrativas para o licitante?",
       "variant": "literal",
       "reject_patterns": [
-        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
       ]
     },
     {
@@ -315,7 +326,8 @@
       "text": "Se a empresa aprontar no contrato com o governo, tem punicao escrita em algum lugar?",
       "variant": "parafrase",
       "reject_patterns": [
-        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
       ]
     },
     {
@@ -378,7 +390,8 @@
       "text": "A lei preve seguro-garantia como modalidade de garantia?",
       "variant": "literal",
       "reject_patterns": [
-        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
       ]
     },
     {
@@ -401,7 +414,8 @@
       "text": "Se a empresa contratada sumir no meio da obra, tem algum tipo de seguro previsto?",
       "variant": "parafrase",
       "reject_patterns": [
-        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
       ]
     },
     {
@@ -578,5 +592,5 @@
     "negativa": 3,
     "premissa-falsa": 4
   },
-  "version": "licitacoes-2026-09-v4"
+  "version": "licitacoes-2026-09-v5"
 }

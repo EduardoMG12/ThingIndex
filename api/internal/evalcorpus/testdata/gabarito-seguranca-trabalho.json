@@ -40,7 +40,7 @@
       ]
     }
   ],
-  "frozen_sha256": "02368c708e000d35fbf55684668b698c682377d7cdd5beca708c6967a894791f",
+  "frozen_sha256": "be94942ae80c1211a85eb8f2a6eaef53ba35359c6fa79ef467a7ae204b0644b2",
   "min_questions": 23,
   "notes": "Perguntas em PAR: a mesma necessidade de informacao aparece duas vezes, com a mesma resposta esperada e o mesmo alvo, mudando so a formulacao. LITERAL usa os termos do documento; PARAFRASE usa o vocabulario de quem pergunta no dia a dia, sem repetir as palavras do texto. O par existe porque um gabarito escrito por quem ja leu a pagina herda o vocabulario dela, e ai a medicao vira casamento lexical se passando por compreensao. Formas: aberta, confirmacao, existencia, premissa-falsa (a pergunta embute um dado errado e a resposta certa e corrigir) e negativa (nao consta). Escrito a partir dos PDF com pdftotext -layout; cada pagina-alvo foi conferida.",
   "questions": [
@@ -228,7 +228,8 @@
       "text": "A NR-18 trata de area de vivencia no canteiro de obras?",
       "variant": "literal",
       "reject_patterns": [
-        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
       ]
     },
     {
@@ -251,7 +252,8 @@
       "text": "Tem alguma regra sobre banheiro e lugar para comer na obra?",
       "variant": "parafrase",
       "reject_patterns": [
-        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
       ]
     },
     {
@@ -358,7 +360,8 @@
       "text": "A norma trata de cinto de seguranca na construcao?",
       "variant": "literal",
       "reject_patterns": [
-        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
       ]
     },
     {
@@ -381,7 +384,8 @@
       "text": "Tem regra sobre o equipamento que prende a gente pra nao cair la de cima?",
       "variant": "parafrase",
       "reject_patterns": [
-        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
       ]
     },
     {
@@ -506,5 +510,5 @@
     "negativa": 3,
     "premissa-falsa": 4
   },
-  "version": "seguranca-trabalho-2026-09-v4"
+  "version": "seguranca-trabalho-2026-09-v5"
 }
