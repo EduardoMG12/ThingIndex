@@ -459,6 +459,12 @@ func (u *documentCatalogUseCase) UploadDocument(ctx context.Context, userID uint
 	})
 
 	if err := u.documentRepo.CreateDocumentWithOutbox(ctx, doc, event, &auditEvent); err != nil {
+		// Sem a linha no banco o objeto enviado fica no bucket sem dono: nao
+		// e auditavel nem removivel pela interface. WithoutCancel porque o
+		// erro pode ter vindo justamente do cancelamento da requisicao.
+		if cleanupErr := storageClient.DeleteFile(context.WithoutCancel(ctx), fileURL); cleanupErr != nil {
+			log.Printf("upload cleanup failed after document insert error: user=%d file=%q err=%v", userID, fileURL, cleanupErr)
+		}
 		return nil, fmt.Errorf("%w: %v", domain.ErrInternal, err)
 	}
 
@@ -529,12 +535,12 @@ func (u *documentCatalogUseCase) DeleteDocument(ctx context.Context, userID, doc
 	if err != nil {
 		detail := fmt.Sprintf("Falha ao remover o arquivo original do storage durante a exclusao do documento: %v", err)
 		log.Printf("document deletion source removal failed: user=%d document=%d file=%q err=%v", userID, documentID, doc.FileURL, err)
-		_ = u.documentRepo.CreateDocumentAuditEvents(ctx, []models.DocumentAuditEvent{
+		auditErr := u.recordDeletionFailureAudits(ctx, userID, []models.DocumentAuditEvent{
 			buildDocumentDeletionAuditEvent(ctx, doc, "FAILED", detail, "single", map[string]any{
 				"file_url": doc.FileURL,
 			}),
 		})
-		return err
+		return errors.Join(err, auditErr)
 	}
 
 	successAudit := buildDocumentDeletionAuditEvent(ctx, doc, "SUCCESS", "Documento excluido com remocao do arquivo original e limpeza dos dados derivados.", "single", map[string]any{
@@ -547,18 +553,19 @@ func (u *documentCatalogUseCase) DeleteDocument(ctx context.Context, userID, doc
 
 	if err := u.documentRepo.DeleteDocument(ctx, userID, documentID, &successAudit); err != nil {
 		log.Printf("document deletion repository cleanup failed after source removal: user=%d document=%d err=%v", userID, documentID, err)
+		var orphanErr error
 		if deleteResult.removed {
-			_, _ = u.documentRepo.MarkDocumentOrphaned(ctx, userID, documentID, "O arquivo original foi removido, mas a exclusao final do documento falhou antes da limpeza completa.")
+			orphanErr = u.markDocumentOrphanedLogged(ctx, userID, documentID, "O arquivo original foi removido, mas a exclusao final do documento falhou antes da limpeza completa.")
 		}
-		_ = u.documentRepo.CreateDocumentAuditEvents(ctx, []models.DocumentAuditEvent{
+		auditErr := u.recordDeletionFailureAudits(ctx, userID, []models.DocumentAuditEvent{
 			buildDocumentDeletionAuditEvent(ctx, doc, "FAILED", fmt.Sprintf("O arquivo original foi removido, mas a limpeza final do documento falhou: %v", err), "single", map[string]any{
 				"file_url": doc.FileURL,
 			}),
 		})
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return domain.ErrDocumentNotFound
+			return errors.Join(domain.ErrDocumentNotFound, orphanErr, auditErr)
 		}
-		return fmt.Errorf("%w: %v", domain.ErrInternal, err)
+		return errors.Join(fmt.Errorf("%w: %v", domain.ErrInternal, err), orphanErr, auditErr)
 	}
 
 	log.Printf("document deleted successfully: user=%d document=%d file=%q", userID, documentID, doc.FileURL)
@@ -589,15 +596,16 @@ func (u *documentCatalogUseCase) DeleteCollectionDocuments(ctx context.Context, 
 				"collection_id": collectionID,
 				"file_url":      document.FileURL,
 			}))
+			var orphanErrs []error
 			for _, partiallyRemoved := range successfullyRemovedSources {
-				_, _ = u.documentRepo.MarkDocumentOrphaned(ctx, partiallyRemoved.UserID, partiallyRemoved.ID, "O arquivo original foi removido durante uma exclusao em lote interrompida antes da limpeza completa.")
+				orphanErrs = append(orphanErrs, u.markDocumentOrphanedLogged(ctx, partiallyRemoved.UserID, partiallyRemoved.ID, "O arquivo original foi removido durante uma exclusao em lote interrompida antes da limpeza completa."))
 				failureAudits = append(failureAudits, buildDocumentDeletionAuditEvent(ctx, &partiallyRemoved, "FAILED", "O arquivo original foi removido, mas a exclusao em lote foi interrompida antes da limpeza final do documento.", "collection-bulk", map[string]any{
 					"collection_id": collectionID,
 					"file_url":      partiallyRemoved.FileURL,
 				}))
 			}
-			_ = u.documentRepo.CreateDocumentAuditEvents(ctx, failureAudits)
-			return 0, nil, deleteErr
+			auditErr := u.recordDeletionFailureAudits(ctx, userID, failureAudits)
+			return 0, nil, errors.Join(append([]error{deleteErr, auditErr}, orphanErrs...)...)
 		}
 
 		successfullyRemovedSources = append(successfullyRemovedSources, document)
@@ -616,15 +624,16 @@ func (u *documentCatalogUseCase) DeleteCollectionDocuments(ctx context.Context, 
 	if err != nil {
 		log.Printf("collection document deletion repository cleanup failed after source removal: user=%d collection=%d err=%v", userID, collectionID, err)
 		failureAudits = make([]models.DocumentAuditEvent, 0, len(successfullyRemovedSources))
+		var orphanErrs []error
 		for _, partiallyRemoved := range successfullyRemovedSources {
-			_, _ = u.documentRepo.MarkDocumentOrphaned(ctx, partiallyRemoved.UserID, partiallyRemoved.ID, "O arquivo original foi removido, mas a exclusao em lote falhou antes da limpeza completa.")
+			orphanErrs = append(orphanErrs, u.markDocumentOrphanedLogged(ctx, partiallyRemoved.UserID, partiallyRemoved.ID, "O arquivo original foi removido, mas a exclusao em lote falhou antes da limpeza completa."))
 			failureAudits = append(failureAudits, buildDocumentDeletionAuditEvent(ctx, &partiallyRemoved, "FAILED", fmt.Sprintf("O arquivo original foi removido, mas a exclusao em lote falhou antes da limpeza completa: %v", err), "collection-bulk", map[string]any{
 				"collection_id": collectionID,
 				"file_url":      partiallyRemoved.FileURL,
 			}))
 		}
-		_ = u.documentRepo.CreateDocumentAuditEvents(ctx, failureAudits)
-		return 0, nil, fmt.Errorf("%w: %v", domain.ErrInternal, err)
+		auditErr := u.recordDeletionFailureAudits(ctx, userID, failureAudits)
+		return 0, nil, errors.Join(append([]error{fmt.Errorf("%w: %v", domain.ErrInternal, err), auditErr}, orphanErrs...)...)
 	}
 
 	log.Printf("collection documents deleted successfully: user=%d collection=%d deleted=%d", userID, collectionID, deletedCount)
@@ -704,8 +713,38 @@ func (u *documentCatalogUseCase) shouldMarkDocumentAsOrphaned(ctx context.Contex
 		return false
 	}
 
-	_, _ = u.documentRepo.MarkDocumentOrphaned(ctx, doc.UserID, doc.ID, "O arquivo original nao foi encontrado no storage configurado.")
+	// O erro ja sai no log; o chamador responde ErrDocumentSourceMissing de
+	// qualquer forma, porque o arquivo de fato nao esta no storage.
+	_ = u.markDocumentOrphanedLogged(ctx, doc.UserID, doc.ID, "O arquivo original nao foi encontrado no storage configurado.")
 	return true
+}
+
+// markDocumentOrphanedLogged marca o documento como ORPHANED e loga a falha
+// com contexto.
+//
+// MOTIVO: o retorno era descartado com `_, _ =`. Se a marcacao falhasse, o
+// arquivo ja tinha saido do storage e o documento continuava apontando para
+// ele sem nenhum rastro (Principio I).
+func (u *documentCatalogUseCase) markDocumentOrphanedLogged(ctx context.Context, userID, documentID uint, detail string) error {
+	if _, err := u.documentRepo.MarkDocumentOrphaned(ctx, userID, documentID, detail); err != nil {
+		log.Printf("document orphan marking failed: user=%d document=%d err=%v", userID, documentID, err)
+		return fmt.Errorf("marcar documento %d como orfao: %w", documentID, err)
+	}
+	return nil
+}
+
+// recordDeletionFailureAudits grava os eventos FAILED de uma exclusao e loga a
+// falha com contexto. Antes o erro era descartado com `_ =`, e uma exclusao
+// que removia o arquivo mas falhava depois nao deixava evento nenhum.
+func (u *documentCatalogUseCase) recordDeletionFailureAudits(ctx context.Context, userID uint, events []models.DocumentAuditEvent) error {
+	if len(events) == 0 {
+		return nil
+	}
+	if err := u.documentRepo.CreateDocumentAuditEvents(ctx, events); err != nil {
+		log.Printf("document deletion failure audit could not be recorded: user=%d events=%d err=%v", userID, len(events), err)
+		return fmt.Errorf("gravar auditoria da falha de exclusao: %w", err)
+	}
+	return nil
 }
 
 func (u *documentCatalogUseCase) deleteDocumentSource(ctx context.Context, userID uint, fileURL string) (documentDeletionSourceResult, error) {
