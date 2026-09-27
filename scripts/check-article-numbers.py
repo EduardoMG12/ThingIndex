@@ -174,6 +174,7 @@ def conferir_geracao(texto: str) -> int:
     p_antigo = _br(antigo[2]).replace(",", "{,}")
     esperados["redacao, gabarito original"] = f"eram {antigo[0]} pares a favor da literal e {antigo[1]} a favor da paráfrase ($p = {p_antigo}$)"
     esperados["gpt-oss sem falhas de API"] = gpt_oss_sem_falhas()
+    esperados.update(expansao_por_variante())
 
     falhas = 0
     for descricao, trecho in esperados.items():
@@ -221,12 +222,37 @@ def redacao_com_gabarito_original() -> tuple[int, int, float]:
 
 
 def gpt_oss_sem_falhas() -> str:
-    """Acerto do F com gpt-oss:120b descontadas as falhas da API do provedor."""
-    rows = list(csv.DictReader(open(RAIZ / "docs" / "article" / "results" / "generation-results-F-document-gpt-oss-120b.csv", encoding="utf-8")))
-    falha = [r for r in rows if re.search(r"prompt is too long|timeout|deadline", r.get("answer", "") + r.get("error", ""), re.I)]
-    validas = [r for r in rows if r not in falha]
+    """Acerto do F com gpt-oss:120b, descontadas as falhas da API do provedor,
+    contra o modelo principal nas MESMAS perguntas (banca, terceira leitura)."""
+    res = RAIZ / "docs" / "article" / "results"
+    rows = list(csv.DictReader(open(res / "generation-results-F-document-gpt-oss-120b.csv", encoding="utf-8")))
+    falha = {r["question_id"] for r in rows
+             if re.search(r"prompt is too long|timeout|deadline", r.get("answer", "") + r.get("error", ""), re.I)}
+    validas = [r for r in rows if r["question_id"] not in falha]
     k = sum(r["correct"] == "true" for r in validas)
-    return f"{_br(k / len(validas))} contra 0,986, descontadas {len(falha)} falhas"
+    ids = {r["question_id"] for r in validas}
+    base = [r for r in csv.DictReader(open(res / "generation-results-F-document.csv", encoding="utf-8"))
+            if r["question_id"] in ids]
+    kb = sum(r["correct"] == "true" for r in base)
+    return (f"{_br(k / len(validas))} contra {_br(kb / len(base))} do modelo principal nas mesmas "
+            f"{len(ids)} perguntas, descontadas {len(falha)} falhas")
+
+
+def expansao_por_variante() -> dict[str, str]:
+    """Paraframes e literais que erravam sem expansao e quantas ela corrigiu."""
+    res = RAIZ / "docs" / "article" / "results" / "expansao"
+    def por_pergunta(arm):
+        d: dict[str, list[bool]] = {}
+        for t in ("seguranca-trabalho", "produto", "licitacoes"):
+            for r in csv.DictReader(open(res / f"{arm}-{t}.csv", encoding="utf-8")):
+                d.setdefault(r["question_id"], []).append(r["correct"] == "true")
+        return d
+    c, e = por_pergunta("off"), por_pergunta("on")
+    err = [q for q, v in c.items() if not all(v)]
+    par = [q for q in err if q.endswith("P")]
+    lit = [q for q in err if q.endswith("L")]
+    ok = lambda qs: sum(all(e[q]) for q in qs)
+    return {"expansao por variante": f"corrigiu {ok(par)} de {len(par)} paráfrases e {ok(lit)} de {len(lit)} literais"}
 
 
 def main() -> int:

@@ -138,7 +138,7 @@ func UserRateLimitMiddleware(limit int, window time.Duration) gin.HandlerFunc {
 // Motivo (parecer A3): o limite por IP nao protege uma conta contra forca bruta
 // distribuida -- cada IP de uma botnet tem a propria cota. Chavear pelo e-mail
 // alvo limita as tentativas contra a MESMA conta, venham de onde vierem. Usado
-// em /auth/login e /auth/forgot-password.
+// em /auth/register, /auth/login e /auth/forgot-password.
 //
 // O e-mail e normalizado como no caso de uso (trim + minusculas), senao
 // "Alice@x.com" e "alice@x.com " teriam baldes separados para a mesma conta.
