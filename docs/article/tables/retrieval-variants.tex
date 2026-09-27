@@ -1,18 +1,18 @@
 % GERADO POR scripts/analyze.py -- nao edite a mao.
 \begin{table}[htb]
 \centering
-\caption{P@1 por variante de consulta. A queda de \emph{literal} para \emph{paraphrase} e \emph{noisy} mede a dependência de casamento lexical de cada braço.}
+\caption{P@1 por variante de consulta em C1, unidade de recuperação: documento. A última coluna é a queda de P@1 da consulta literal para a paráfrase, medida da dependência de casamento lexical de cada braço.}
 \label{tab:retrieval-variants}
 \begin{tabular}{lcccc}
-\hline
+\toprule
 Braço & Literal & Paráfrase & Ruidosa & Queda literal$\rightarrow$paráfrase \\
-\hline
-A-relacional & 1.000 & 0.571 & 0.750 & +0.429 \\
-B-bm25 & 1.000 & 0.714 & 0.750 & +0.286 \\
-C-denso & 0.600 & 0.571 & 1.000 & +0.029 \\
-C-denso-ivf & 0.600 & 0.714 & 0.750 & -0.114 \\
-D-rrf & 1.000 & 0.571 & 1.000 & +0.429 \\
-E-rrf-denso & 0.800 & 0.714 & 1.000 & +0.086 \\
-\hline
+\midrule
+A, contagem & 1{,}000 & 0{,}571 & 0{,}750 & +0{,}429 \\
+B, BM25 & 1{,}000 & 0{,}714 & 0{,}750 & +0{,}286 \\
+C, denso exato & 0{,}600 & 0{,}571 & 1{,}000 & +0{,}029 \\
+C$'$, denso IVF & 0{,}600 & 0{,}714 & 0{,}750 & $-$0{,}114 \\
+D, RRF(A,B) & 1{,}000 & 0{,}571 & 1{,}000 & +0{,}429 \\
+E, RRF(B,C) & 0{,}800 & 0{,}714 & 1{,}000 & +0{,}086 \\
+\bottomrule
 \end{tabular}
 \end{table}

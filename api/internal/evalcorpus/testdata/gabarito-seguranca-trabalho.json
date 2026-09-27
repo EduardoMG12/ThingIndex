@@ -1,0 +1,538 @@
+{
+  "documents": [
+    {
+      "file": "nr-01-versao-2024.pdf",
+      "id": "nr-01-2024",
+      "pages": 18,
+      "title": "NR 1 - versao de 2024",
+      "aliases": [
+        "NR 1 - versao de 2024 (vigencia ate 25/05/2026)"
+      ]
+    },
+    {
+      "file": "nr-01-versao-2025.pdf",
+      "id": "nr-01-2025",
+      "pages": 21,
+      "title": "NR 1 - versao de 2025"
+    },
+    {
+      "file": "nr-06-epi.pdf",
+      "id": "nr-06",
+      "pages": 12,
+      "title": "NR 6 - EPI",
+      "aliases": [
+        "NR 6 - Equipamentos de Protecao Individual"
+      ]
+    },
+    {
+      "file": "nr-09-agentes.pdf",
+      "id": "nr-09",
+      "pages": 15,
+      "title": "NR 9 - Agentes fisicos, quimicos e biologicos"
+    },
+    {
+      "file": "nr-18-construcao.pdf",
+      "id": "nr-18",
+      "pages": 54,
+      "title": "NR 18 - Industria da construcao",
+      "aliases": [
+        "NR 18 - Seguranca na Industria da Construcao"
+      ]
+    }
+  ],
+  "frozen_sha256": "96e36a1f0f80604a625ea713facec87f7c5d7714528b3e86052ab38e2d8c53bc",
+  "min_questions": 23,
+  "notes": "Perguntas em PAR: a mesma necessidade de informacao aparece duas vezes, com a mesma resposta esperada e o mesmo alvo, mudando so a formulacao. LITERAL usa os termos do documento; PARAFRASE usa o vocabulario de quem pergunta no dia a dia, sem repetir as palavras do texto. O par existe porque um gabarito escrito por quem ja leu a pagina herda o vocabulario dela, e ai a medicao vira casamento lexical se passando por compreensao. Formas: aberta, confirmacao, existencia, premissa-falsa (a pergunta embute um dado errado e a resposta certa e corrigir) e negativa (nao consta). Escrito a partir dos PDF com pdftotext -layout; cada pagina-alvo foi conferida.",
+  "questions": [
+    {
+      "answer_patterns": [
+        "gratuit|sem (custo|onus)|nao (pode|e permitido|ha previsao de) (descont|cobr)"
+      ],
+      "expected": "A premissa e falsa: o EPI e fornecido gratuitamente pela organizacao e a norma nao preve desconto (NR-6, item 6.5).",
+      "id": "sg1L",
+      "origin": "pdf",
+      "pair_id": "sg1",
+      "stratum": "premissa-falsa",
+      "targets": [
+        {
+          "document_id": "nr-06",
+          "pages": [
+            2,
+            4
+          ]
+        }
+      ],
+      "text": "Qual e o percentual maximo que o empregador pode descontar do trabalhador pelo EPI danificado?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "gratuit|sem (custo|onus)|nao (pode|e permitido|ha previsao de) (descont|cobr)"
+      ],
+      "expected": "A premissa e falsa: o EPI e fornecido gratuitamente pela organizacao e a norma nao preve desconto (NR-6, item 6.5).",
+      "id": "sg1P",
+      "origin": "pdf",
+      "pair_id": "sg1",
+      "stratum": "premissa-falsa",
+      "targets": [
+        {
+          "document_id": "nr-06",
+          "pages": [
+            2,
+            4
+          ]
+        }
+      ],
+      "text": "Quanto a firma pode tirar do meu pagamento por causa da bota que estragou?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "gratuit"
+      ],
+      "expected": "A organizacao fornece gratuitamente, adequado ao risco e em perfeito estado de conservacao (NR-6, item 6.5).",
+      "id": "sg2L",
+      "origin": "pdf",
+      "pair_id": "sg2",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "nr-06",
+          "pages": [
+            2
+          ]
+        }
+      ],
+      "text": "Quem deve fornecer o EPI ao trabalhador e em que condicoes?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "gratuit"
+      ],
+      "expected": "A organizacao fornece gratuitamente, adequado ao risco e em perfeito estado de conservacao (NR-6, item 6.5).",
+      "id": "sg2P",
+      "origin": "pdf",
+      "pair_id": "sg2",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "nr-06",
+          "pages": [
+            2
+          ]
+        }
+      ],
+      "text": "Quem paga o capacete e a luva que eu uso no servico?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "metade"
+      ],
+      "expected": "Metade do limite de tolerancia, para agentes quimicos, e metade da dose, para ruido (NR-9, item 9.6.1).",
+      "id": "sg3L",
+      "origin": "pdf",
+      "pair_id": "sg3",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "nr-09",
+          "pages": [
+            3
+          ]
+        }
+      ],
+      "text": "Qual e o nivel de acao para agentes quimicos?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "metade"
+      ],
+      "expected": "Metade do limite de tolerancia, para agentes quimicos, e metade da dose, para ruido (NR-9, item 9.6.1).",
+      "id": "sg3P",
+      "origin": "pdf",
+      "pair_id": "sg3",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "nr-09",
+          "pages": [
+            3
+          ]
+        }
+      ],
+      "text": "A partir de quanto de produto quimico no ar a empresa ja tem que tomar providencia?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "sim|deve|inclui|abrange",
+        "psicossoci"
+      ],
+      "expected": "Sim, na versao de 2025 o gerenciamento de riscos inclui expressamente os fatores de risco psicossociais relacionados ao trabalho (item 1.5.3.1.4). A versao de 2024 nao os menciona.",
+      "id": "sg4L",
+      "origin": "pdf",
+      "pair_id": "sg4",
+      "stratum": "confirmacao",
+      "targets": [
+        {
+          "document_id": "nr-01-2025",
+          "pages": [
+            5
+          ]
+        }
+      ],
+      "text": "A NR-1 exige considerar os fatores de risco psicossociais?",
+      "variant": "literal",
+      "reject_patterns": [
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "^\\W*nao\\b"
+      ]
+    },
+    {
+      "answer_patterns": [
+        "sim|deve|inclui|abrange",
+        "psicossoci"
+      ],
+      "expected": "Sim, na versao de 2025 o gerenciamento de riscos inclui expressamente os fatores de risco psicossociais relacionados ao trabalho (item 1.5.3.1.4). A versao de 2024 nao os menciona.",
+      "id": "sg4P",
+      "origin": "pdf",
+      "pair_id": "sg4",
+      "stratum": "confirmacao",
+      "targets": [
+        {
+          "document_id": "nr-01-2025",
+          "pages": [
+            5
+          ]
+        }
+      ],
+      "text": "Pressao e assedio no trabalho entram na conta de risco que a empresa tem que fazer?",
+      "variant": "parafrase",
+      "reject_patterns": [
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "^\\W*nao\\b"
+      ]
+    },
+    {
+      "answer_patterns": [
+        "\\bsim\\b|existe|trata|prev"
+      ],
+      "expected": "Sim, a NR-18 trata das areas de vivencia do canteiro de obras.",
+      "id": "sg5L",
+      "origin": "pdf",
+      "pair_id": "sg5",
+      "stratum": "existencia",
+      "targets": [
+        {
+          "document_id": "nr-18",
+          "pages": [
+            2
+          ]
+        }
+      ],
+      "text": "A NR-18 trata de area de vivencia no canteiro de obras?",
+      "variant": "literal",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b",
+        "^\\W*nao\\b"
+      ]
+    },
+    {
+      "answer_patterns": [
+        "\\bsim\\b|existe|trata|prev"
+      ],
+      "expected": "Sim, a NR-18 trata das areas de vivencia do canteiro de obras.",
+      "id": "sg5P",
+      "origin": "pdf",
+      "pair_id": "sg5",
+      "stratum": "existencia",
+      "targets": [
+        {
+          "document_id": "nr-18",
+          "pages": [
+            2
+          ]
+        }
+      ],
+      "text": "Tem alguma regra sobre banheiro e lugar para comer na obra?",
+      "variant": "parafrase",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b",
+        "^\\W*nao\\b"
+      ]
+    },
+    {
+      "answer_patterns": [
+        "interromper|parar|recusar",
+        "risco grave"
+      ],
+      "expected": "Pode interromper as atividades e informar imediatamente o superior hierarquico, quando constatar risco grave e iminente para a vida ou saude (NR-1, item 1.4.3).",
+      "id": "sg8L",
+      "origin": "pdf",
+      "pair_id": "sg8",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "nr-01-2025",
+          "pages": [
+            4
+          ]
+        }
+      ],
+      "text": "O trabalhador pode interromper a atividade diante de risco grave e iminente?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "interromper|parar|recusar",
+        "risco grave"
+      ],
+      "expected": "Pode interromper as atividades e informar imediatamente o superior hierarquico, quando constatar risco grave e iminente para a vida ou saude (NR-1, item 1.4.3).",
+      "id": "sg8P",
+      "origin": "pdf",
+      "pair_id": "sg8",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "nr-01-2025",
+          "pages": [
+            4
+          ]
+        }
+      ],
+      "text": "Posso parar de trabalhar se achar que vou me machucar de verdade ali?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "substitu",
+        "danificado|extraviado"
+      ],
+      "expected": "Deve substituir imediatamente quando danificado ou extraviado (NR-6, item 6.5.1, alinea g).",
+      "id": "sg9L",
+      "origin": "pdf",
+      "pair_id": "sg9",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "nr-06",
+          "pages": [
+            3
+          ]
+        }
+      ],
+      "text": "O que a organizacao deve fazer com o EPI danificado ou extraviado?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "substitu",
+        "danificado|extraviado"
+      ],
+      "expected": "Deve substituir imediatamente quando danificado ou extraviado (NR-6, item 6.5.1, alinea g).",
+      "id": "sg9P",
+      "origin": "pdf",
+      "pair_id": "sg9",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "nr-06",
+          "pages": [
+            3
+          ]
+        }
+      ],
+      "text": "Rasgou a luva no meio do servico. E agora?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "\\bsim\\b|existe|trata|prev"
+      ],
+      "expected": "Sim, a NR-18 trata de cinto de seguranca e protecao contra quedas.",
+      "id": "sg10L",
+      "origin": "pdf",
+      "pair_id": "sg10",
+      "stratum": "existencia",
+      "targets": [
+        {
+          "document_id": "nr-18",
+          "pages": [
+            41
+          ]
+        }
+      ],
+      "text": "A norma trata de cinto de seguranca na construcao?",
+      "variant": "literal",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b",
+        "^\\W*nao\\b"
+      ]
+    },
+    {
+      "answer_patterns": [
+        "\\bsim\\b|existe|trata|prev"
+      ],
+      "expected": "Sim, a NR-18 trata de cinto de seguranca e protecao contra quedas.",
+      "id": "sg10P",
+      "origin": "pdf",
+      "pair_id": "sg10",
+      "stratum": "existencia",
+      "targets": [
+        {
+          "document_id": "nr-18",
+          "pages": [
+            41
+          ]
+        }
+      ],
+      "text": "Tem regra sobre o equipamento que prende a gente pra nao cair la de cima?",
+      "variant": "parafrase",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b",
+        "^\\W*nao\\b"
+      ]
+    },
+    {
+      "answer_patterns": [
+        "sim|pode|dispensad|nao precisa"
+      ],
+      "expected": "Sim, microempresas e empresas de pequeno porte de grau de risco 1 e 2 que nao identificarem exposicoes podem ficar dispensadas do PGR (NR-1, item 1.8.4).",
+      "id": "sg11L",
+      "origin": "pdf",
+      "pair_id": "sg11",
+      "stratum": "confirmacao",
+      "targets": [
+        {
+          "document_id": "nr-01-2025",
+          "pages": [
+            14
+          ]
+        }
+      ],
+      "text": "Microempresa pode ser dispensada de elaborar o PGR?",
+      "variant": "literal",
+      "reject_patterns": [
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "^\\W*nao\\b"
+      ]
+    },
+    {
+      "answer_patterns": [
+        "sim|pode|dispensad|nao precisa"
+      ],
+      "expected": "Sim, microempresas e empresas de pequeno porte de grau de risco 1 e 2 que nao identificarem exposicoes podem ficar dispensadas do PGR (NR-1, item 1.8.4).",
+      "id": "sg11P",
+      "origin": "pdf",
+      "pair_id": "sg11",
+      "stratum": "confirmacao",
+      "targets": [
+        {
+          "document_id": "nr-01-2025",
+          "pages": [
+            14
+          ]
+        }
+      ],
+      "text": "Empresa bem pequenininha tambem precisa fazer todo esse documentao de risco?",
+      "variant": "parafrase",
+      "reject_patterns": [
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "^\\W*nao\\b"
+      ]
+    },
+    {
+      "answer_patterns": [
+        "gratuit|sem (custo|onus)|(organizacao|empregador|empresa)[^.]{0,60}fornec|fornec[^.]{0,60}(organizacao|empregador|empresa)"
+      ],
+      "expected": "A premissa e falsa: nao existe prazo para o trabalhador comprar o EPI, porque quem fornece e a organizacao, gratuitamente.",
+      "id": "sg12L",
+      "origin": "pdf",
+      "pair_id": "sg12",
+      "stratum": "premissa-falsa",
+      "targets": [
+        {
+          "document_id": "nr-06",
+          "pages": [
+            2
+          ]
+        }
+      ],
+      "text": "Qual e o prazo que o trabalhador tem para comprar o proprio EPI?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "gratuit|sem (custo|onus)|(organizacao|empregador|empresa)[^.]{0,60}fornec|fornec[^.]{0,60}(organizacao|empregador|empresa)"
+      ],
+      "expected": "A premissa e falsa: nao existe prazo para o trabalhador comprar o EPI, porque quem fornece e a organizacao, gratuitamente.",
+      "id": "sg12P",
+      "origin": "pdf",
+      "pair_id": "sg12",
+      "stratum": "premissa-falsa",
+      "targets": [
+        {
+          "document_id": "nr-06",
+          "pages": [
+            2
+          ]
+        }
+      ],
+      "text": "Quanto tempo eu tenho pra ir na loja comprar meu equipamento de protecao?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu|cont)|nenhuma informac|nenhum (endereco|preco|valor|dado)|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)|no information|not (mention|stat|contain|specif|provid|includ|found|available)|does not|do not"
+      ],
+      "expected": "Nao consta: as NR nao fixam valor de multa.",
+      "id": "sg6",
+      "origin": "pdf",
+      "stratum": "negativa",
+      "targets": [],
+      "text": "Qual e o valor da multa por nao fornecer EPI?"
+    },
+    {
+      "answer_patterns": [
+        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu|cont)|nenhuma informac|nenhum (endereco|preco|valor|dado)|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)|no information|not (mention|stat|contain|specif|provid|includ|found|available)|does not|do not"
+      ],
+      "expected": "Nao consta: materia de convencao coletiva.",
+      "id": "sg7",
+      "origin": "pdf",
+      "stratum": "negativa",
+      "targets": [],
+      "text": "Qual e o piso salarial do tecnico de seguranca do trabalho?"
+    },
+    {
+      "answer_patterns": [
+        "nao (consta|ha|encontr|esta|foi possivel|localiz|informa|aparece|menciona|possui|tem|traz|especific|inclu|cont)|nenhuma informac|nenhum (endereco|preco|valor|dado)|sem informac|nao e possivel|nao (sao|e) (informad|mencionad|apresentad|especificad)|no information|not (mention|stat|contain|specif|provid|includ|found|available)|does not|do not"
+      ],
+      "expected": "Nao consta: as NR nao trazem estatisticas.",
+      "id": "sg13",
+      "origin": "pdf",
+      "stratum": "negativa",
+      "targets": [],
+      "text": "Quantos acidentes de trabalho ocorreram no Brasil no ano passado?"
+    }
+  ],
+  "reviewed_by": [],
+  "strata": {
+    "aberta": 8,
+    "confirmacao": 4,
+    "existencia": 4,
+    "negativa": 3,
+    "premissa-falsa": 4
+  },
+  "version": "seguranca-trabalho-2026-09-v6"
+}

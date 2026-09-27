@@ -20,6 +20,41 @@ func newChunkBuilder(documentID uint) *chunkBuilder {
 	return &chunkBuilder{documentID: documentID}
 }
 
+// chunkPageFor decide a pagina de origem dos chunks de um no do sumario.
+//
+// Precedencia, da origem mais proxima para a mais distante: pagina do primeiro
+// paragrafo NAO VAZIO do intervalo do no; se nula, o StartPage do proprio no;
+// se tambem nula, nulo. Nunca zero.
+//
+// A ordem importa. O StartPage do no e derivado dos mesmos paragrafos, entao
+// usar o paragrafo direto e um passo de derivacao a menos entre a evidencia e
+// a coordenada publicada. E nada aqui infere pagina por semelhanca de texto:
+// heuristica de atribuicao produziria uma pagina plausivel e errada, que e o
+// pior resultado possivel numa metrica de auditabilidade (principio I).
+//
+// O retorno e sempre um ponteiro NOVO, nunca o do paragrafo ou o do no. Devolver
+// o ponteiro de origem faria o chunk compartilhar memoria com a estrutura que o
+// gerou: alterar a pagina do paragrafo depois mudaria a pagina do chunk sem que
+// ninguem tivesse escrito nele. Nao ha esse caminho hoje, mas o principio II
+// exige que a mesma entrada produza a mesma saida, e proveniencia que muda
+// sozinha e o oposto disso.
+func chunkPageFor(node models.DocumentOutlineNode, paragraphs []models.ParagraphNode) *int {
+	if start, end, ok := outlineParagraphRange(node); ok {
+		for idx := start; idx <= end && idx < len(paragraphs); idx++ {
+			if strings.TrimSpace(paragraphs[idx].Content) == "" {
+				continue
+			}
+			if page := paragraphs[idx].PageNumber; page != nil {
+				return intPtr(*page)
+			}
+		}
+	}
+	if node.StartPage != nil {
+		return intPtr(*node.StartPage)
+	}
+	return nil
+}
+
 func (b *chunkBuilder) buildFromOutline(
 	nodes []models.DocumentOutlineNode,
 	paragraphs []models.ParagraphNode,
@@ -87,8 +122,10 @@ func (b *chunkBuilder) buildChunksForNode(
 		return nil
 	}
 
+	pageNumber := chunkPageFor(node, paragraphs)
+
 	if len([]rune(fullContent)) > maxChunkContentLength {
-		return b.splitOversizedChunk(node, fullContent)
+		return b.splitOversizedChunk(node, fullContent, pageNumber)
 	}
 
 	return []models.DocumentChunk{
@@ -100,6 +137,7 @@ func (b *chunkBuilder) buildChunksForNode(
 			Content:              fullContent,
 			SourceParagraphStart: intPtr(start),
 			SourceParagraphEnd:   intPtr(end),
+			PageNumber:           pageNumber,
 			TokenEstimate:        estimateTextTokens(fullContent),
 			Metadata: map[string]any{
 				"node_id":     node.NodeID,
@@ -110,9 +148,13 @@ func (b *chunkBuilder) buildChunksForNode(
 	}
 }
 
+// splitOversizedChunk recebe a pagina ja resolvida em vez de recalcular: as
+// partes de um mesmo no compartilham a pagina de inicio do no, e recalcular
+// abriria espaco para as partes divergirem entre si.
 func (b *chunkBuilder) splitOversizedChunk(
 	node models.DocumentOutlineNode,
 	content string,
+	pageNumber *int,
 ) []models.DocumentChunk {
 	sentences := splitIntoSentences(content)
 	if len(sentences) == 0 {
@@ -138,6 +180,7 @@ func (b *chunkBuilder) splitOversizedChunk(
 				ChunkType:     "outline-split",
 				Title:         node.Title,
 				Content:       strings.TrimSpace(current.String()),
+				PageNumber:    pageNumber,
 				TokenEstimate: estimateTextTokens(current.String()),
 				Metadata: map[string]any{
 					"node_id":     node.NodeID,
@@ -161,6 +204,7 @@ func (b *chunkBuilder) splitOversizedChunk(
 			ChunkType:     "outline-split",
 			Title:         node.Title,
 			Content:       strings.TrimSpace(current.String()),
+			PageNumber:    pageNumber,
 			TokenEstimate: estimateTextTokens(current.String()),
 			Metadata: map[string]any{
 				"node_id":     node.NodeID,
@@ -196,6 +240,7 @@ func (b *chunkBuilder) buildFallbackFromPages(pages []models.DocumentPage) []mod
 			ChunkType:     "page",
 			Title:         pageTitle(page),
 			Content:       content,
+			PageNumber:    intPtr(page.PageNumber),
 			TokenEstimate: page.TokenEstimate,
 			Metadata: map[string]any{
 				"page_number": page.PageNumber,

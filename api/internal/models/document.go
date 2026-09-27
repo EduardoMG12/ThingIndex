@@ -33,7 +33,7 @@ type Collection struct {
 
 type Document struct {
 	ID                  uint                        `gorm:"primarykey" json:"id"`
-	UserID              uint                        `gorm:"not null;index" json:"user_id"`
+	UserID              uint                        `gorm:"not null;index;index:idx_documents_user_collection_created,priority:1" json:"user_id"`
 	Title               string                      `gorm:"size:255;not null" json:"title"`
 	FileURL             string                      `gorm:"size:512;not null" json:"file_url"`
 	Size                int64                       `json:"size"`
@@ -45,19 +45,31 @@ type Document struct {
 	IndexedAt           *time.Time                  `json:"indexed_at,omitempty"`
 	LastProcessingError string                      `gorm:"type:text" json:"last_processing_error,omitempty"`
 	Collection          string                      `gorm:"column:collection;size:255;index" json:"-"`
-	CollectionID        *uint                       `gorm:"index" json:"collection_id,omitempty"`
+	CollectionID        *uint                       `gorm:"index;index:idx_documents_user_collection_created,priority:2" json:"collection_id,omitempty"`
 	CollectionRef       *Collection                 `gorm:"foreignKey:CollectionID" json:"collection,omitempty"`
 	CategoryID          *uint                       `gorm:"column:category_id" json:"-"`
 	Category            *DocumentCategory           `gorm:"foreignKey:CategoryID" json:"-"`
 	ProcessingAttempts  []DocumentProcessingAttempt `gorm:"foreignKey:DocumentID" json:"-"`
-	CreatedAt           time.Time                   `json:"created_at"`
+	CreatedAt           time.Time                   `gorm:"index:idx_documents_user_collection_created,priority:3" json:"created_at"`
 	UpdatedAt           time.Time                   `json:"updated_at"`
 	DeletedAt           gorm.DeletedAt              `gorm:"index" json:"-"`
 }
 
+// As seis tabelas de estrutura extraida (paragrafos, paginas, tabelas, pares
+// de metadado, chunks e nos de sumario) apontam para o documento por chave
+// estrangeira. Sem o campo Document o GORM nao cria a constraint, e por muito
+// tempo document_id foi so uma coluna NOT NULL: nada impedia uma linha
+// estrutural de apontar para um documento que nao existe, que e justamente o
+// dado sem proveniencia que o principio I da constituicao proibe.
+//
+// RESTRICT, e nao CASCADE: a exclusao de documento ja apaga as linhas
+// estruturais na mesma transacao (deleteStructuredDocumentData) antes do soft
+// delete do documento, e um DELETE fisico de documento que deixasse filhas
+// para tras deve falhar, nao arrastar conteudo sem registro.
 type ParagraphNode struct {
 	ID            uint           `gorm:"primarykey" json:"id"`
 	DocumentID    uint           `gorm:"not null;index;uniqueIndex:idx_paragraph_nodes_document_sequence" json:"document_id"`
+	Document      *Document      `gorm:"foreignKey:DocumentID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	SequenceOrder int            `gorm:"not null;uniqueIndex:idx_paragraph_nodes_document_sequence" json:"sequence_order"`
 	PageNumber    *int           `json:"page_number,omitempty"`
 	Content       string         `gorm:"type:text;not null" json:"content"`
@@ -68,23 +80,37 @@ type ParagraphNode struct {
 }
 
 type DocumentPage struct {
-	ID            uint           `gorm:"primarykey" json:"id"`
-	DocumentID    uint           `gorm:"not null;index;uniqueIndex:idx_document_pages_document_page" json:"document_id"`
-	PageNumber    int            `gorm:"not null;uniqueIndex:idx_document_pages_document_page" json:"page_number"`
-	Content       string         `gorm:"type:text;not null" json:"content"`
-	Summary       string         `gorm:"type:text" json:"summary,omitempty"`
-	TokenEstimate int            `gorm:"not null;default:0" json:"token_estimate"`
-	Metadata      map[string]any `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
-	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
+	ID         uint      `gorm:"primarykey" json:"id"`
+	DocumentID uint      `gorm:"not null;index;uniqueIndex:idx_document_pages_document_page" json:"document_id"`
+	Document   *Document `gorm:"foreignKey:DocumentID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
+	PageNumber int       `gorm:"not null;uniqueIndex:idx_document_pages_document_page" json:"page_number"`
+	Content    string    `gorm:"type:text;not null" json:"content"`
+	Summary    string    `gorm:"type:text" json:"summary,omitempty"`
+	// GeneratedQuestions sao perguntas que esta pagina responde, escritas em
+	// linguagem de leigo pelo enriquecimento. Coluna PROPRIA, e nao concatenada
+	// ao resumo, porque o experimento pre-registrado compara os dois campos
+	// separadamente: o resumo e o controle negativo (ja medido como inutil para
+	// a busca) e as perguntas sao o tratamento.
+	//
+	// A razao de existir: um indice lexical so consegue usar vocabulario que NAO
+	// esta no documento. O resumo repete o jargao da pagina e por isso nao
+	// acrescenta termo nenhum (medido: zero termos exclusivos em 10 perguntas).
+	// A pergunta de leigo e a unica coisa que o enriquecimento pode produzir que
+	// o documento nao tem.
+	GeneratedQuestions string         `gorm:"type:text" json:"generated_questions,omitempty"`
+	TokenEstimate      int            `gorm:"not null;default:0" json:"token_estimate"`
+	Metadata           map[string]any `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
+	CreatedAt          time.Time      `json:"created_at"`
+	UpdatedAt          time.Time      `json:"updated_at"`
+	DeletedAt          gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 type TableSection struct {
-	ID            uint   `gorm:"primarykey" json:"id"`
-	DocumentID    uint   `gorm:"not null;index;uniqueIndex:idx_table_sections_document_sequence" json:"document_id"`
-	SequenceOrder int    `gorm:"not null;uniqueIndex:idx_table_sections_document_sequence" json:"sequence_order"`
-	Title         string `gorm:"size:255" json:"title,omitempty"`
+	ID            uint      `gorm:"primarykey" json:"id"`
+	DocumentID    uint      `gorm:"not null;index;uniqueIndex:idx_table_sections_document_sequence" json:"document_id"`
+	Document      *Document `gorm:"foreignKey:DocumentID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
+	SequenceOrder int       `gorm:"not null;uniqueIndex:idx_table_sections_document_sequence" json:"sequence_order"`
+	Title         string    `gorm:"size:255" json:"title,omitempty"`
 	// PageNumber e a pagina fisica onde a tabela esta. Uma tabela que atravessa
 	// paginas vira uma TableSection por pagina: sem pagina a celula nao e
 	// auditavel (constituicao I). Nulo em HTML e planilha, que nao tem pagina.
@@ -100,6 +126,7 @@ type TableSection struct {
 type MetadataPair struct {
 	ID            uint           `gorm:"primarykey" json:"id"`
 	DocumentID    uint           `gorm:"not null;index;uniqueIndex:idx_metadata_pairs_document_sequence_key,priority:1" json:"document_id"`
+	Document      *Document      `gorm:"foreignKey:DocumentID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	SequenceOrder int            `gorm:"not null;uniqueIndex:idx_metadata_pairs_document_sequence_key,priority:2" json:"sequence_order"`
 	Key           string         `gorm:"size:255;not null;uniqueIndex:idx_metadata_pairs_document_sequence_key,priority:3" json:"key"`
 	Value         string         `gorm:"type:text;not null" json:"value"`
@@ -109,24 +136,36 @@ type MetadataPair struct {
 }
 
 type DocumentChunk struct {
-	ID                   uint           `gorm:"primarykey" json:"id"`
-	DocumentID           uint           `gorm:"not null;index;uniqueIndex:idx_document_chunks_document_sequence" json:"document_id"`
-	SequenceOrder        int            `gorm:"not null;uniqueIndex:idx_document_chunks_document_sequence" json:"sequence_order"`
-	ChunkType            string         `gorm:"size:64;not null;index" json:"chunk_type"`
-	Title                string         `gorm:"size:255" json:"title,omitempty"`
-	Content              string         `gorm:"type:text;not null" json:"content"`
-	SourceParagraphStart *int           `json:"source_paragraph_start,omitempty"`
-	SourceParagraphEnd   *int           `json:"source_paragraph_end,omitempty"`
-	TokenEstimate        int            `gorm:"not null;default:0" json:"token_estimate"`
-	Metadata             map[string]any `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
-	CreatedAt            time.Time      `json:"created_at"`
-	UpdatedAt            time.Time      `json:"updated_at"`
-	DeletedAt            gorm.DeletedAt `gorm:"index" json:"-"`
+	ID                   uint      `gorm:"primarykey" json:"id"`
+	DocumentID           uint      `gorm:"not null;index;uniqueIndex:idx_document_chunks_document_sequence" json:"document_id"`
+	Document             *Document `gorm:"foreignKey:DocumentID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
+	SequenceOrder        int       `gorm:"not null;uniqueIndex:idx_document_chunks_document_sequence" json:"sequence_order"`
+	ChunkType            string    `gorm:"size:64;not null;index" json:"chunk_type"`
+	Title                string    `gorm:"size:255" json:"title,omitempty"`
+	Content              string    `gorm:"type:text;not null" json:"content"`
+	SourceParagraphStart *int      `json:"source_paragraph_start,omitempty"`
+	SourceParagraphEnd   *int      `json:"source_paragraph_end,omitempty"`
+	// PageNumber e a pagina onde o chunk COMECA. Chunk e evidencia citavel: ele
+	// entra na recuperacao da colecao e vira fonte da resposta do chat. Sem
+	// pagina, a fonte nao e clicavel ate o trecho, que e o que auditabilidade
+	// significa neste trabalho (constituicao, principio I).
+	//
+	// Vem da estrutura de origem, nunca de heuristica: pagina do primeiro
+	// paragrafo do intervalo do no, com o StartPage do no como segunda opcao.
+	// Nulavel porque HTML e planilha nao tem pagina, e porque um no sem
+	// paragrafo com pagina precisa ficar nulo em vez de mentir "pagina 1".
+	PageNumber    *int           `gorm:"index" json:"page_number,omitempty"`
+	TokenEstimate int            `gorm:"not null;default:0" json:"token_estimate"`
+	Metadata      map[string]any `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 type DocumentOutlineNode struct {
 	ID            uint                 `gorm:"primarykey" json:"id"`
 	DocumentID    uint                 `gorm:"not null;index;uniqueIndex:idx_outline_nodes_document_sequence,priority:1;uniqueIndex:idx_outline_nodes_document_node,priority:1" json:"document_id"`
+	Document      *Document            `gorm:"foreignKey:DocumentID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	SequenceOrder int                  `gorm:"not null;uniqueIndex:idx_outline_nodes_document_sequence" json:"sequence_order"`
 	NodeID        string               `gorm:"size:128;not null;uniqueIndex:idx_outline_nodes_document_node,priority:2" json:"node_id"`
 	ParentID      *uint                `gorm:"index" json:"parent_id,omitempty"`
@@ -145,14 +184,14 @@ type DocumentOutlineNode struct {
 }
 
 type OutboxEvent struct {
-	ID            uint           `gorm:"primarykey" json:"id"`
+	ID            uint           `gorm:"primarykey;index:idx_outbox_events_claim,priority:3" json:"id"`
 	AggregateType string         `gorm:"size:64;not null;index:idx_outbox_events_aggregate" json:"aggregate_type"`
 	AggregateID   uint           `gorm:"not null;index:idx_outbox_events_aggregate" json:"aggregate_id"`
 	EventType     string         `gorm:"size:128;not null;index" json:"event_type"`
-	Status        string         `gorm:"size:32;not null;index" json:"status"`
+	Status        string         `gorm:"size:32;not null;index;index:idx_outbox_events_claim,priority:1" json:"status"`
 	Payload       map[string]any `gorm:"type:jsonb;serializer:json" json:"payload"`
 	Attempts      int            `gorm:"not null;default:0" json:"attempts"`
-	AvailableAt   time.Time      `gorm:"not null;index" json:"available_at"`
+	AvailableAt   time.Time      `gorm:"not null;index;index:idx_outbox_events_claim,priority:2" json:"available_at"`
 	PublishedAt   *time.Time     `json:"published_at,omitempty"`
 	LastError     string         `gorm:"type:text" json:"last_error,omitempty"`
 	CreatedAt     time.Time      `json:"created_at"`
@@ -179,8 +218,8 @@ type DocumentProcessingAttempt struct {
 }
 
 type DocumentAuditEvent struct {
-	ID            uint           `gorm:"primarykey" json:"id"`
-	UserID        uint           `gorm:"not null;index" json:"user_id"`
+	ID            uint           `gorm:"primarykey;index:idx_document_audit_events_user_created,priority:3" json:"id"`
+	UserID        uint           `gorm:"not null;index;index:idx_document_audit_events_user_created,priority:1" json:"user_id"`
 	DocumentID    *uint          `gorm:"index" json:"document_id,omitempty"`
 	CollectionID  *uint          `gorm:"index" json:"collection_id,omitempty"`
 	ActorType     string         `gorm:"size:32;not null;default:'USER';index" json:"actor_type"`
@@ -192,7 +231,7 @@ type DocumentAuditEvent struct {
 	Title         string         `gorm:"size:255" json:"title,omitempty"`
 	Detail        string         `gorm:"type:text" json:"detail,omitempty"`
 	Metadata      map[string]any `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
-	CreatedAt     time.Time      `json:"created_at"`
+	CreatedAt     time.Time      `gorm:"index:idx_document_audit_events_user_created,priority:2" json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
 }

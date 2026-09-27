@@ -32,18 +32,18 @@ import AppShell from "@/components/layout/AppShell";
 import ProviderRuntimeCallout from "@/components/runtime/ProviderRuntimeCallout";
 import DocumentAuditExplorer from "@/components/audit/DocumentAuditExplorer";
 import OperationalObservabilityPanel from "@/components/documents/OperationalObservabilityPanel";
+import { AggregatedCostCard } from "@/components/documents/AggregatedCostCard";
 import { DangerConfirmModal } from "@/components/ui/danger-confirm-modal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDocuments } from "@/hooks/use-documents";
+import { useDocumentPreviewData } from "@/hooks/use-document-preview-data";
 import { useProviderRuntimeOverview } from "@/hooks/use-provider-runtime-overview";
-import { fetchCollectionContext } from "@/lib/api/collections";
 import type { CollectionContext } from "@/lib/api/contracts/document-context";
 import {
     downloadDocumentIndexExport,
     downloadDocumentOriginal,
     deleteCollectionDocuments,
     deleteDocument,
-    fetchDocumentIndex,
     fetchDocumentMonitoringSummary,
     retryDocumentIndexing,
     type Document,
@@ -377,8 +377,8 @@ function MonitoringView({
                         <p><span className="text-muted-foreground">{t("documentsPage.monitoring.inputTokens")}:</span> <span className="font-mono">{llm?.estimated_input_tokens ?? 0}</span></p>
                         <p><span className="text-muted-foreground">{t("documentsPage.monitoring.outputTokens")}:</span> <span className="font-mono">{llm?.estimated_output_tokens ?? 0}</span></p>
                         <p><span className="text-muted-foreground">{t("documentsPage.monitoring.totalTokens")}:</span> <span className="font-mono">{llm?.estimated_total_tokens ?? 0}</span></p>
-                        <p><span className="text-muted-foreground">{t("documentsPage.monitoring.inputCost")}:</span> <span className="font-mono">{formatUSD(llm?.input_cost_usd ?? 0, locale)}</span></p>
-                        <p><span className="text-muted-foreground">{t("documentsPage.monitoring.outputCost")}:</span> <span className="font-mono">{formatUSD(llm?.output_cost_usd ?? 0, locale)}</span></p>
+                        <p><span className="text-muted-foreground">{t("documentsPage.monitoring.inputCost")}:</span> <span className="font-mono">{llm?.pricing_available ? formatUSD(llm.input_cost_usd, locale) : t("documentsPage.summary.costNotReported")}</span></p>
+                        <p><span className="text-muted-foreground">{t("documentsPage.monitoring.outputCost")}:</span> <span className="font-mono">{llm?.pricing_available ? formatUSD(llm.output_cost_usd, locale) : t("documentsPage.summary.costNotReported")}</span></p>
                     </div>
                 </div>
             </div>
@@ -423,19 +423,7 @@ function MonitoringSummaryPanel({
                         })}
                     </p>
                 </div>
-                <div className="rounded-xl border border-border bg-background/60 p-4">
-                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
-                        <Coins className="h-3.5 w-3.5 text-primary" />
-                        {t("documentsPage.summary.aggregatedCost")}
-                    </div>
-                    <p className="mt-3 text-lg font-semibold">{formatUSD(summary.total_estimated_cost_usd, locale)}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                        {t("documentsPage.summary.aggregatedCostDetail", {
-                            tokens: summary.total_tokens.toLocaleString(locale),
-                            requests: summary.total_llm_requests,
-                        })}
-                    </p>
-                </div>
+                <AggregatedCostCard summary={summary} />
                 <div className="rounded-xl border border-border bg-background/60 p-4">
                     <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
                         <Gauge className="h-3.5 w-3.5 text-primary" />
@@ -874,65 +862,7 @@ function DocumentPreviewPanel({
     onClose: () => void;
 }) {
     const { locale, t } = useI18n();
-    const [context, setContext] = useState<CollectionContext | null>(null);
-    const [documentIndex, setDocumentIndex] = useState<DocumentIndex | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (!document) {
-            setContext(null);
-            setDocumentIndex(null);
-            setIsLoading(false);
-            setError(null);
-            return;
-        }
-        const currentDocument = document;
-
-        const controller = new AbortController();
-        let pollTimer: ReturnType<typeof setTimeout> | null = null;
-
-        async function loadContext() {
-            try {
-                setIsLoading(true);
-                setError(null);
-                const [indexData, contextData] = await Promise.all([
-                    fetchDocumentIndex(currentDocument.id, controller.signal),
-                    currentDocument.collection_id
-                        ? fetchCollectionContext(currentDocument.collection_id, controller.signal)
-                        : Promise.resolve(null),
-                ]);
-                setDocumentIndex(indexData);
-                setContext(contextData);
-
-                const currentStatus = indexData.document?.status ?? currentDocument.status;
-                if (!controller.signal.aborted && (currentStatus === "QUEUED" || currentStatus === "PROCESSING")) {
-                    pollTimer = setTimeout(() => {
-                        void loadContext();
-                    }, 3000);
-                }
-            } catch (err) {
-                if (controller.signal.aborted) {
-                    return;
-                }
-
-                setError(err instanceof Error ? err.message : translate(locale, "documentsPage.errors.loadIndexStructure"));
-            } finally {
-                if (!controller.signal.aborted) {
-                    setIsLoading(false);
-                }
-            }
-        }
-
-        void loadContext();
-
-        return () => {
-            controller.abort();
-            if (pollTimer) {
-                clearTimeout(pollTimer);
-            }
-        };
-    }, [document, locale]);
+    const { context, documentIndex, isLoading, error } = useDocumentPreviewData(document, locale);
 
     if (!document) {
         return null;

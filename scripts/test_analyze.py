@@ -27,10 +27,26 @@ from analyze import (  # noqa: E402
     build_variant_table,
     ceiling_key,
     cliffs_delta,
+    vitorias_pareadas,
     filter_granularity,
+    holm,
     mean,
+    randomization_test,
+    regras_booktabs,
+    sinal_menos,
     wilcoxon_signed_rank,
 )
+
+
+class TestVitoriasPareadas(unittest.TestCase):
+    def test_conta_por_par_e_ignora_empates(self):
+        self.assertEqual(vitorias_pareadas([1, 0, 1, 0.5], [0, 0, 0.5, 1]), (2, 1))
+
+    def test_sinal_acompanha_a_diferenca_media(self):
+        # O delta de Cliff dava sinal oposto a Delta neste padrao pareado.
+        a, b = [1, 1, 0.2], [0.9, 0.9, 1]
+        va, vb = vitorias_pareadas(a, b)
+        self.assertGreater(va, vb)
 
 
 class TestCliffsDelta(unittest.TestCase):
@@ -118,6 +134,52 @@ class TestWilcoxon(unittest.TestCase):
         self.assertLessEqual(p, 1.0)
 
 
+class TestAleatorizacao(unittest.TestCase):
+    # Valores calculados a mao a partir da definicao: com n diferencas, ha 2^n
+    # atribuicoes de sinal equiprovaveis sob H0.
+
+    def test_tres_diferencas_iguais_dao_dois_em_oito(self):
+        # diffs = (1, 1, 1): so (+,+,+) e (-,-,-) atingem |soma| = 3.
+        p, n = randomization_test([1, 1, 1, 0], [0, 0, 0, 0])
+        self.assertEqual(n, 3)
+        self.assertAlmostEqual(p, 2 / 8)
+
+    def test_sinais_opostos_dao_p_um(self):
+        # diffs = (1, -1): soma observada 0, toda atribuicao atinge.
+        p, n = randomization_test([1, 0], [0, 1])
+        self.assertEqual(n, 2)
+        self.assertAlmostEqual(p, 1.0)
+
+    def test_magnitudes_diferentes(self):
+        # diffs = (0,5; 0,25): somas possiveis 0,75; 0,25; -0,25; -0,75.
+        # |s| >= 0,75 em 2 das 4.
+        p, _ = randomization_test([0.5, 0.25], [0.0, 0.0])
+        self.assertAlmostEqual(p, 0.5)
+
+    def test_sem_diferenca(self):
+        self.assertEqual(randomization_test([1, 0], [1, 0]), (1.0, 0))
+
+    def test_nao_devolve_mais_o_sentinela(self):
+        # Oito diferencas todas no mesmo sentido: 2/256. O Wilcoxon por
+        # aproximacao devolvia 1,0 aqui por ter menos de 10 pares.
+        p, n = randomization_test([1] * 8, [0] * 8)
+        self.assertEqual(n, 8)
+        self.assertAlmostEqual(p, 2 / 256)
+        self.assertEqual(wilcoxon_signed_rank([1] * 8, [0] * 8)[1], 1.0)
+
+
+class TestHolm(unittest.TestCase):
+    def test_exemplo_manual(self):
+        # p = (0,01; 0,04; 0,03), m = 3. Ordenado: 0,01*3 = 0,03; 0,03*2 = 0,06;
+        # 0,04*1 = 0,04 -> max acumulado 0,06.
+        ajustados = holm([0.01, 0.04, 0.03])
+        for obtido, esperado in zip(ajustados, [0.03, 0.06, 0.06]):
+            self.assertAlmostEqual(obtido, esperado)
+
+    def test_limitado_a_um(self):
+        self.assertEqual(holm([0.9, 0.8]), [1.0, 1.0])
+
+
 class TestBootstrap(unittest.TestCase):
     def test_valores_constantes_dao_intervalo_degenerado(self):
         lo, hi = bootstrap_ci([0.7] * 30)
@@ -189,8 +251,11 @@ class TestTabelas(unittest.TestCase):
             ("significance", build_significance_table(self.rows)),
             ("negatives", build_negative_table(self.rows)),
         ):
-            self.assertIn(r"\begin{table}", tabela, nome)
-            self.assertIn(r"\end{table}", tabela, nome)
+            # A de significancia e longtable (75 linhas nao cabem numa pagina);
+            # as demais sao table flutuante.
+            ambiente = "longtable" if nome == "significance" else "table"
+            self.assertIn(rf"\begin{{{ambiente}}}", tabela, nome)
+            self.assertIn(rf"\end{{{ambiente}}}", tabela, nome)
             self.assertEqual(tabela.count(r"\begin{tabular}"), tabela.count(r"\end{tabular}"), nome)
             self.assertIn("GERADO POR", tabela, f"{nome}: falta o aviso de arquivo gerado")
 
@@ -456,6 +521,21 @@ class TestLabelsUnicos(unittest.TestCase):
             label_sec = re.findall(r"\\label\{([^}]+)\}", build(linhas, "-section"))
             self.assertTrue(label_doc and label_sec)
             self.assertNotEqual(label_doc[0], label_sec[0])
+
+
+class TestConvencoesTabela(unittest.TestCase):
+    def test_booktabs(self):
+        entrada = "\\begin{tabular}{lr}\n\\hline\nA & B \\\\\n\\hline\nx & 1 \\\\\n\\hline\n\\end{tabular}"
+        saida = regras_booktabs(entrada)
+        self.assertEqual(saida.count("\\toprule"), 1)
+        self.assertEqual(saida.count("\\midrule"), 1)
+        self.assertEqual(saida.count("\\bottomrule"), 1)
+        self.assertNotIn("\\hline", saida)
+
+    def test_sinal_menos(self):
+        self.assertEqual(sinal_menos("& -0{,}114 \\\\"), "& $-$0{,}114 \\\\")
+        self.assertEqual(sinal_menos("& +0{,}429"), "& +0{,}429")
+        self.assertEqual(sinal_menos("top-10"), "top-10")
 
 
 if __name__ == "__main__":

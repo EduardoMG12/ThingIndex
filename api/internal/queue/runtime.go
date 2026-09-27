@@ -15,43 +15,36 @@ type BootstrapOptions struct {
 	RetryDelay   time.Duration
 	Sleep        func(context.Context, time.Duration) error
 	NewPublisher func(*config.Config) (*RabbitMQPublisher, error)
-	NewConsumer  func(*config.Config) (*RabbitMQConsumer, error)
 }
 
+// BootstrapRabbitMQRuntime espera o broker e devolve o publisher.
+//
+// O consumidor nao e criado aqui: quem consome e o ConsumerSupervisor, que
+// recria o consumidor a cada tentativa (ver ConsumoComCallbacks). Um
+// consumidor criado no bootstrap ficava ocioso segurando conexao e canal AMQP
+// durante toda a vida do processo, e era nele que as callbacks de falha eram
+// instaladas por engano.
 func BootstrapRabbitMQRuntime(
 	ctx context.Context,
 	cfg *config.Config,
 	opts BootstrapOptions,
-) (*RabbitMQPublisher, *RabbitMQConsumer, error) {
+) (*RabbitMQPublisher, error) {
 	opts = withBootstrapDefaults(opts)
 
 	for {
 		if err := ctx.Err(); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		publisher, err := opts.NewPublisher(cfg)
-		if err != nil {
-			if !isRetryableBootstrapError(err) {
-				return nil, nil, err
-			}
-			if waitErr := waitForBootstrapRetry(ctx, opts.Sleep, opts.RetryDelay, "publisher", err); waitErr != nil {
-				return nil, nil, waitErr
-			}
-			continue
-		}
-
-		consumer, err := opts.NewConsumer(cfg)
 		if err == nil {
-			return publisher, consumer, nil
+			return publisher, nil
 		}
-
-		_ = publisher.Close()
 		if !isRetryableBootstrapError(err) {
-			return nil, nil, err
+			return nil, err
 		}
-		if waitErr := waitForBootstrapRetry(ctx, opts.Sleep, opts.RetryDelay, "consumer", err); waitErr != nil {
-			return nil, nil, waitErr
+		if waitErr := waitForBootstrapRetry(ctx, opts.Sleep, opts.RetryDelay, "publisher", err); waitErr != nil {
+			return nil, waitErr
 		}
 	}
 }
@@ -65,9 +58,6 @@ func withBootstrapDefaults(opts BootstrapOptions) BootstrapOptions {
 	}
 	if opts.NewPublisher == nil {
 		opts.NewPublisher = NewRabbitMQPublisher
-	}
-	if opts.NewConsumer == nil {
-		opts.NewConsumer = NewRabbitMQConsumer
 	}
 	return opts
 }

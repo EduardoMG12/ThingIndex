@@ -8,6 +8,15 @@ bin/
 /api
 /api-server
 
+# Binarios das ferramentas de experimento (cmd/*) quando compiladas com
+# `go build ./cmd/<nome>` a partir de api/. Dois deles (provenance-eval,
+# threshold-eval, ~13 MB juntos) chegaram a ser versionados assim.
+/provenance-eval
+/threshold-eval
+/retrieval-eval
+/generation-eval
+/dense-determinism
+
 # Environment
 .env
 .env.*

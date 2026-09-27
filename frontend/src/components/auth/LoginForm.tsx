@@ -21,6 +21,12 @@ export const LoginForm = () => {
         e.preventDefault();
         setIsLoading(true);
         const formData = new FormData(e.currentTarget);
+        // O proxy de auth grava o destino em ?next=; o server action valida
+        // contra open redirect antes de usar.
+        const next = new URLSearchParams(window.location.search).get("next");
+        if (next) {
+            formData.set("next", next);
+        }
         const res = await login(formData);
         setIsLoading(false);
 

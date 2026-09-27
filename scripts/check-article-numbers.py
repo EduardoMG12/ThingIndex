@@ -18,12 +18,14 @@ from __future__ import annotations
 
 import collections
 import csv
+import importlib.util
 import sys
+import re
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 CSV = RAIZ / "docs" / "article" / "results" / "results.csv"
-ARTIGO = RAIZ / "docs" / "article" / "article-overleaf.md"
+ARTIGO = RAIZ / "docs" / "article" / "artigo.tex"
 
 # Tolerancia: o artigo publica 3 casas decimais.
 TOL = 0.0005
@@ -48,6 +50,140 @@ def media(rows: list[dict], gran: str, arm: str, metrica: str) -> float | None:
     return sum(vals) / len(vals) if vals else None
 
 
+def _numeros_geracao():
+    spec = importlib.util.spec_from_file_location("numeros_geracao", RAIZ / "scripts" / "numeros-geracao.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _proveniencia_geracao():
+    spec = importlib.util.spec_from_file_location("proveniencia_geracao", RAIZ / "scripts" / "proveniencia-geracao.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _br(valor: float, casas: int = 3) -> str:
+    return f"{valor:.{casas}f}".replace(".", ",")
+
+
+def _milhar(valor: float) -> str:
+    return f"{round(valor):,}".replace(",", ".")
+
+
+def conferir_geracao(texto: str) -> int:
+    """Recalcula dos CSV os numeros das secoes de geracao, bateria,
+    enriquecimento e expansao e exige que cada um apareca no artigo como
+    esta escrito. Um numero que mude no CSV, ou que suma do texto, falha."""
+    ng = _numeros_geracao()
+    g = ng.geracao()
+    c, e = ng.bateria("off"), ng.bateria("on")
+    en = ng.enriquecimento()
+    ef = ng.efeito_formulacao(c)
+    ex = ng.efeito_expansao(c, e)
+
+    def taxa(par):
+        return par[0] / par[1]
+
+    def p_texto(p: float) -> str:
+        return r"p < 0{,}001" if p < 0.001 else "p = " + _br(p).replace(",", "{,}")
+
+    pg = _proveniencia_geracao()
+    prov_t = pg.resumo("generation-results-T-ordem.csv", "T")["todas"]
+    prov_f = pg.resumo("generation-results-F-document.csv", "F")["todas"]
+    ic_c = ng.ic_conglomerado("off", ("seguranca-trabalho", "produto", "licitacoes"))
+    ic_e = ng.ic_conglomerado("on", ("seguranca-trabalho", "produto", "licitacoes"))
+
+    esperados = {
+        "tokens T": _milhar(g["T"]["todas"]["tokens"]),
+        "tokens F": _milhar(g["F"]["todas"]["tokens"]),
+        "pagina exibida T em respostas": f"{prov_t['exibida']} de {prov_t['respostas']}",
+        "pagina citada T": f"correta em {prov_t['prosa_com_folio']} de {prov_t['respostas']} respostas em T",
+        "pagina citada F": f"{prov_f['prosa_com_folio']} de {prov_f['respostas']} em F",
+        "pagina citada F sem folio": f"F cairia para {prov_f['prosa']}",
+        # Cada numero ancorado na frase em que aparece: um valor solto casaria
+        # com qualquer outra ocorrencia (a banca mostrou que 0,685 -> 0,686
+        # passava).
+        "acerto da bateria (resumo)": f"a taxa de acerto foi de {_br(taxa(c['total']))} com a pergunta original e de {_br(taxa(e['total']))} com expans",
+        "acerto da bateria (secao)": f"a taxa de acerto foi de {_br(taxa(c['total']))}, com os tr",
+        "acerto da bateria (conclusao)": f"a taxa de acerto foi de {_br(taxa(c['total']))} com a pergunta original. As par",
+        "acerto E (conclusao)": f"elevou o acerto a {_br(taxa(e['total']))}, em configura",
+        "faixa dos acervos": f"entre {_br(min(taxa(c['tema'][t]) for t in c['tema']))} e {_br(max(taxa(c['tema'][t]) for t in c['tema']))} e intervalos",
+        "literal x parafrase C": f"o acerto foi {_br(taxa(c['variante']['literal']))} nas literais e {_br(taxa(c['variante']['parafrase']))} nas par",
+        "literal x parafrase C (discussao)": f"as paráfrases acertaram {_br(taxa(c['variante']['parafrase']))} contra {_br(taxa(c['variante']['literal']))} das literais",
+        "lacuna literal-parafrase": f"cai de {_br(taxa(c['variante']['literal']) - taxa(c['variante']['parafrase']))} para {_br(taxa(e['variante']['literal']) - taxa(e['variante']['parafrase']))}",
+        "lacuna E (discussao)": f"distância a {_br(taxa(e['variante']['literal']) - taxa(e['variante']['parafrase']))}",
+        "proveniencia C": _br(taxa(c["prov"])),
+        "literal E": _br(taxa(e["variante"]["literal"])),
+        "parafrase E": _br(taxa(e["variante"]["parafrase"])),
+        "acerto E": _br(taxa(e["total"])),
+        "proveniencia E": _br(taxa(e["prov"])),
+        "tokens C": _milhar(c["tokens"]),
+        "tokens E": _milhar(e["tokens"]),
+        "sempre certa": f"{c['sempre_certa']} das 71 acertaram nas tr",
+        "sempre errada": f"{c['sempre_errada']} erraram nas tr",
+        "pares a favor da literal": f"{ef['a_favor_literal']} discordantes, todos a favor da literal",
+        "p da formulacao": p_texto(ef["p"]),
+        "expansao ganhou": f"{len(ex['ganhou'])} passaram a acertar",
+        "expansao perdeu": "nenhuma deixou de acertar" if not ex["perdeu"] else f"{len(ex['perdeu'])} deixou de acertar",
+        "p da expansao": p_texto(ex["p"]),
+        "enriquecimento, fontes mudam": f"em {en['fontes_mudam']} das 12 perguntas",
+    }
+    for braco in ("content", "content-summary", "content-questions", "max"):
+        k, n = en[braco]["geral"]
+        esperados[f"enriquecimento {braco}"] = f"{k}/{n}"
+
+    # Linhas inteiras das tabelas: um numero isolado pode reaparecer em outro
+    # paragrafo e mascarar a troca; a linha da tabela, nao.
+    def linha(*celulas):
+        return " & ".join(celulas) + r" \\"
+
+    t, f = g["T"], g["F"]
+    for est, rot in (("prosa", "Prosa (30)"), ("tabela", "Tabela (21)"), ("calendario", "Calendário (16)")):
+        esperados[f"tabela geracao {est}"] = linha(
+            f"{rot:<15}", _br(t[est]["acerto"]), _br(f[est]["acerto"]), _br(t[est]["prov"]),
+            _br(pg.taxa_estrato("generation-results-T-ordem.csv", est)),
+            _br(pg.taxa_estrato("generation-results-F-document.csv", est)),
+            _milhar(t[est]["tokens"]), _milhar(f[est]["tokens"]))
+    esperados["tabela geracao todas"] = linha(
+        f"{'Todas (72)':<15}", _br(t["todas"]["acerto"]), _br(f["todas"]["acerto"]), _br(t["todas"]["prov"]),
+        _br(prov_t["prosa_com_folio"] / prov_t["respostas"]), _br(prov_f["prosa_com_folio"] / prov_f["respostas"]),
+        _milhar(t["todas"]["tokens"]), _milhar(f["todas"]["tokens"]))
+    for nome, b in (("Sem expansão", c), ("Com expansão", e)):
+        esperados[f"tabela expansao {nome}"] = linha(
+            nome, _br(taxa(b["variante"]["literal"])), _br(taxa(b["variante"]["parafrase"])), _br(taxa(b["total"])),
+            _br(taxa(b["prov"])), _milhar(b["tokens"]), f"{b['sempre_certa']}/71")
+    temas = (("seguranca-trabalho", "Segurança do trabalho"), ("produto", "Produto e consumidor "), ("licitacoes", "Licitações           "))
+    for tema, rot in temas:
+        k, n = c["tema"][tema]
+        lo, hi = ng.ic_conglomerado("off", (tema,))
+        certas = sum(all(v) for q, v in ng.por_pergunta("off", (tema,)).items())
+        total_q = len(ng.por_pergunta("off", (tema,)))
+        esperados[f"tabela bateria {tema}"] = linha(rot, str(n), _br(k / n), f"{_br(lo)}--{_br(hi)}", f"{certas}/{total_q}")
+    esperados["tabela bateria total"] = linha(
+        f"{'Total':<21}", str(c["total"][1]), _br(taxa(c["total"])), f"{_br(ic_c[0])}--{_br(ic_c[1])}", f"{c['sempre_certa']}/71")
+    esperados["ic E (texto)"] = f"intervalo de {_br(ic_e[0])} a {_br(ic_e[1])}, contra {_br(ic_c[0])} a {_br(ic_c[1])} sem ela"
+    for forma, rot in (("negativa", "Negativa      "), ("existencia", "Existência    "), ("confirmacao", "Confirmação   "),
+                       ("aberta", "Aberta        "), ("premissa-falsa", "Premissa falsa")):
+        k, n = c["forma"][forma]
+        esperados[f"tabela forma {forma}"] = linha(f"{rot:<14}", f"{k}/{n}", _br(k / n))
+    # O teste de redacao com o gabarito original, citado no texto e na
+    # Tabela de alteracoes.
+    antigo = redacao_com_gabarito_original()
+    p_antigo = _br(antigo[2]).replace(",", "{,}")
+    esperados["redacao, gabarito original"] = f"eram {antigo[0]} pares a favor da literal e {antigo[1]} a favor da paráfrase ($p = {p_antigo}$)"
+    esperados["gpt-oss sem falhas de API"] = gpt_oss_sem_falhas()
+    esperados.update(expansao_por_variante())
+
+    falhas = 0
+    for descricao, trecho in esperados.items():
+        if trecho not in texto:
+            print(f"FALHA  {descricao}: o CSV da '{trecho}', que nao aparece no artigo", file=sys.stderr)
+            falhas += 1
+    return falhas
+
+
 def queda_literal_parafrase(rows: list[dict], gran: str, arm: str) -> float | None:
     """P@1(parafrase) - P@1(literal): a dependencia de casamento lexical."""
     por_variante = collections.defaultdict(list)
@@ -61,6 +197,62 @@ def queda_literal_parafrase(rows: list[dict], gran: str, arm: str) -> float | No
     lit = sum(por_variante["literal"]) / len(por_variante["literal"])
     par = sum(por_variante["paraphrase"]) / len(por_variante["paraphrase"])
     return par - lit
+
+
+def redacao_com_gabarito_original() -> tuple[int, int, float]:
+    """Pares a favor da literal, da parafrase e p exato, com os CSVs anteriores
+    a revisao do gabarito (commit 10f4846^)."""
+    import io
+    import math
+    import subprocess
+    pares: dict[str, dict[str, list[bool]]] = {}
+    for tema in ("seguranca-trabalho", "produto", "licitacoes"):
+        saida = subprocess.run(["git", "show", f"10f4846^:docs/article/results/expansao/off-{tema}.csv"],
+                               cwd=RAIZ, capture_output=True, text=True, check=True).stdout
+        for r in csv.DictReader(io.StringIO(saida)):
+            q = r["question_id"]
+            if r.get("stratum") == "negativa" or q[-1] not in "LP":
+                continue
+            pares.setdefault(q[:-1], {}).setdefault(q[-1], []).append(r["correct"] == "true")
+    a = sum(1 for v in pares.values() if "L" in v and "P" in v and all(v["L"]) and not all(v["P"]))
+    b = sum(1 for v in pares.values() if "L" in v and "P" in v and all(v["P"]) and not all(v["L"]))
+    n = a + b
+    p = min(1.0, 2 * sum(math.comb(n, i) for i in range(min(a, b) + 1)) / 2 ** n) if n else 1.0
+    return a, b, p
+
+
+def gpt_oss_sem_falhas() -> str:
+    """Acerto do F com gpt-oss:120b, descontadas as falhas da API do provedor,
+    contra o modelo principal nas MESMAS perguntas (banca, terceira leitura)."""
+    res = RAIZ / "docs" / "article" / "results"
+    rows = list(csv.DictReader(open(res / "generation-results-F-document-gpt-oss-120b.csv", encoding="utf-8")))
+    falha = {r["question_id"] for r in rows
+             if re.search(r"prompt is too long|timeout|deadline", r.get("answer", "") + r.get("error", ""), re.I)}
+    validas = [r for r in rows if r["question_id"] not in falha]
+    k = sum(r["correct"] == "true" for r in validas)
+    ids = {r["question_id"] for r in validas}
+    base = [r for r in csv.DictReader(open(res / "generation-results-F-document.csv", encoding="utf-8"))
+            if r["question_id"] in ids]
+    kb = sum(r["correct"] == "true" for r in base)
+    return (f"{_br(k / len(validas))} contra {_br(kb / len(base))} do modelo principal nas mesmas "
+            f"{len(ids)} perguntas, descontadas {len(falha)} falhas")
+
+
+def expansao_por_variante() -> dict[str, str]:
+    """Paraframes e literais que erravam sem expansao e quantas ela corrigiu."""
+    res = RAIZ / "docs" / "article" / "results" / "expansao"
+    def por_pergunta(arm):
+        d: dict[str, list[bool]] = {}
+        for t in ("seguranca-trabalho", "produto", "licitacoes"):
+            for r in csv.DictReader(open(res / f"{arm}-{t}.csv", encoding="utf-8")):
+                d.setdefault(r["question_id"], []).append(r["correct"] == "true")
+        return d
+    c, e = por_pergunta("off"), por_pergunta("on")
+    err = [q for q, v in c.items() if not all(v)]
+    par = [q for q in err if q.endswith("P")]
+    lit = [q for q in err if q.endswith("L")]
+    ok = lambda qs: sum(all(e[q]) for q in qs)
+    return {"expansao por variante": f"corrigiu {ok(par)} de {len(par)} paráfrases e {ok(lit)} de {len(lit)} literais"}
 
 
 def main() -> int:
@@ -123,7 +315,7 @@ def main() -> int:
     # O texto do artigo precisa mesmo conter os numeros conferidos, senao este
     # script estaria validando afirmacoes que ninguem faz.
     texto = ARTIGO.read_text(encoding="utf-8")
-    for trecho in ("0,869", "0,844", "0,562", "0,750", "-0{,}857"):
+    for trecho in ("0,869", "0,844", "0,562", "0,750", "0,857"):
         if trecho not in texto:
             print(
                 f"FALHA  o artigo nao contem mais '{trecho}': a lista deste script esta desatualizada",
@@ -131,7 +323,9 @@ def main() -> int:
             )
             falhas += 1
 
-    print(f"afirmacoes conferidas: {len(afirmacoes)}")
+    falhas += conferir_geracao(texto)
+
+    print(f"afirmacoes conferidas: {len(afirmacoes)} de recuperacao, mais as de geracao")
 
     if falhas:
         print(f"\n{falhas} divergencia(s) entre o artigo e a medicao.", file=sys.stderr)

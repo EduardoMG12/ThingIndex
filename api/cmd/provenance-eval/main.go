@@ -49,7 +49,7 @@ func main() {
 	if *texPath == "" {
 		fmt.Print(tabela)
 	} else {
-		if err := os.WriteFile(*texPath, []byte(tabela), 0o644); err != nil {
+		if err := os.WriteFile(*texPath, []byte(evalcorpus.Tabela(tabela)), 0o644); err != nil {
 			fmt.Fprintf(os.Stderr, "provenance-eval: %v\n", err)
 			os.Exit(1)
 		}
@@ -96,6 +96,7 @@ func itemsFromResult(documentID uint, result domain.IndexingResult) []provenance
 	for _, node := range result.ParagraphNodes {
 		items = append(items, provenance.Item{
 			Kind:          "paragraph",
+			Scope:         provenance.ScopePage,
 			DocumentID:    documentID,
 			PageNumber:    node.PageNumber,
 			SequenceOrder: node.SequenceOrder,
@@ -106,6 +107,7 @@ func itemsFromResult(documentID uint, result domain.IndexingResult) []provenance
 		pageNumber := page.PageNumber
 		items = append(items, provenance.Item{
 			Kind:          "page",
+			Scope:         provenance.ScopePage,
 			DocumentID:    documentID,
 			PageNumber:    &pageNumber,
 			SequenceOrder: page.PageNumber,
@@ -113,22 +115,35 @@ func itemsFromResult(documentID uint, result domain.IndexingResult) []provenance
 		})
 	}
 	for _, table := range result.TableSections {
-		// TableSection NAO tem PageNumber no esquema. Passar nil aqui e
-		// deliberado: e exatamente o furo de auditabilidade que a TPC existe
-		// para medir. Inventar uma pagina mascararia o defeito e a metrica
-		// perderia o sentido.
+		// Historia desta linha, porque ela explica um erro de medicao: durante
+		// um periodo TableSection de fato nao tinha PageNumber, e passar nil
+		// aqui era a leitura honesta do esquema. A coluna passou a existir
+		// quando as tabelas de PDF viraram fonte do chat, e o nil ficou para
+		// tras -- o instrumento seguiu reportando um furo que o sistema ja
+		// tinha fechado. Ressalva para quem for ler o artigo: isso NAO muda o
+		// numero do corpus C1, que e texto puro e nao produz tabela nenhuma;
+		// muda a medicao de qualquer corpus com tabela daqui para frente.
 		items = append(items, provenance.Item{
 			Kind:          "table",
+			Scope:         provenance.ScopePage,
 			DocumentID:    documentID,
-			PageNumber:    nil,
+			PageNumber:    table.PageNumber,
 			SequenceOrder: table.SequenceOrder,
 			Content:       strings.Join(table.Headers, " "),
 		})
 	}
 	for _, pair := range result.MetadataPairs {
-		// MetadataPair tambem nao carrega pagina. Mesmo criterio da tabela.
+		// MetadataPair nao carrega pagina, e aqui isso NAO e furo: os pares que
+		// o indexador gera sao estatisticas do documento inteiro
+		// ("paragraph_count", "tree_builder", "tree_coverage_ratio"). Elas nao
+		// estao na pagina 3 nem em nenhuma outra. Dar pagina a elas seria
+		// fabricar proveniencia, que o principio I proibe; conta-las como
+		// falha permanente afundaria a media com um defeito inexistente. Por
+		// isso entram com escopo de documento: continuam visiveis na conta,
+		// com o criterio que cabe a elas.
 		items = append(items, provenance.Item{
 			Kind:          "metadata",
+			Scope:         provenance.ScopeDocument,
 			DocumentID:    documentID,
 			PageNumber:    nil,
 			SequenceOrder: pair.SequenceOrder,
@@ -136,14 +151,18 @@ func itemsFromResult(documentID uint, result domain.IndexingResult) []provenance
 		})
 	}
 	for _, chunk := range result.Chunks {
-		// DocumentChunk aponta os paragrafos de origem, mas nao a pagina.
-		// A proveniencia dele e indireta: resolve-se via paragrafo, e nao
-		// diretamente. Para a TPC isso conta como incompleto, porque
-		// auditoria exige apontar a pagina sem passo intermediario.
+		// Chunk e evidencia citavel: entra na recuperacao da colecao e vira
+		// fonte da resposta. Ate 2026-09-19 ele so apontava os paragrafos de
+		// origem, e a proveniencia era indireta -- resolvia-se via paragrafo,
+		// num passo a mais. A TPC contava isso como incompleto com razao,
+		// porque auditoria e apontar a pagina sem intermediario. A coluna
+		// passou a existir e a ser preenchida a partir do paragrafo de origem
+		// (ver internal/indexing/chunks.go, chunkPageFor).
 		items = append(items, provenance.Item{
 			Kind:          "chunk",
+			Scope:         provenance.ScopePage,
 			DocumentID:    documentID,
-			PageNumber:    nil,
+			PageNumber:    chunk.PageNumber,
 			SequenceOrder: chunk.SequenceOrder,
 			Content:       chunk.Content,
 		})
@@ -151,6 +170,7 @@ func itemsFromResult(documentID uint, result domain.IndexingResult) []provenance
 	for _, node := range result.OutlineNodes {
 		items = append(items, provenance.Item{
 			Kind:          "outline",
+			Scope:         provenance.ScopePage,
 			DocumentID:    documentID,
 			PageNumber:    node.StartPage,
 			SequenceOrder: node.SequenceOrder,
@@ -186,7 +206,8 @@ func buildTable(report provenance.Report, citations provenance.CitationReport, d
 	b.WriteString("\\caption{Auditabilidade do índice sobre o corpus C1. ")
 	b.WriteString("TPC (taxa de proveniência completa) é a fração de itens cuja origem é resolvível: ")
 	b.WriteString("documento, página, posição sequencial e conteúdo, todos presentes. ")
-	b.WriteString("O recorte por tipo estrutural é deliberado: uma média global esconderia um tipo com proveniência incompleta.}\n")
+	b.WriteString("O recorte por tipo estrutural é deliberado: uma média global esconderia um tipo com proveniência incompleta. ")
+	b.WriteString("Itens de escopo de documento (pares de metadado, que são estatísticas do documento inteiro) são avaliados sem exigência de página, porque não existem em página alguma; os demais tipos permanecem sob o critério estrito.}\n")
 	b.WriteString("\\label{tab:provenance}\n")
 	b.WriteString("\\begin{tabular}{lrrr}\n\\hline\n")
 	b.WriteString("Tipo estrutural & Itens & Completos & TPC \\\\\n\\hline\n")
@@ -216,7 +237,7 @@ func traduzirTipo(kind string) string {
 	case "metadata":
 		return "Metadado"
 	case "chunk":
-		return "Chunk"
+		return "Trecho"
 	case "outline":
 		return "Nó de sumário"
 	default:
@@ -232,6 +253,18 @@ func printSummary(w *os.File, report provenance.Report, citations provenance.Cit
 	for _, kind := range kinds {
 		entry := report.ByKind[kind]
 		fmt.Fprintf(w, "  %-14s %.3f (%d/%d)\n", kind, report.RateFor(kind), entry.Complete, entry.Total)
+	}
+
+	// O recorte por escopo vem DEPOIS do recorte por tipo, e nao no lugar dele.
+	// A ordem e deliberada: o leitor ve primeiro o numero sem nenhuma
+	// qualificacao, depois a decomposicao por estrutura, e so entao a
+	// separacao entre "item que deveria ter pagina" e "item que nunca teria".
+	// Publicar so o recorte por escopo seria o caminho facil para um numero
+	// bonito; publicar os tres deixa a distincao conferivel.
+	fmt.Fprintf(w, "\npor escopo de origem:\n")
+	for _, scope := range report.Scopes() {
+		entry := report.ByScope[scope]
+		fmt.Fprintf(w, "  %-14s %.3f (%d/%d)\n", scope, report.RateForScope(scope), entry.Complete, entry.Total)
 	}
 
 	if report.Complete < report.Total {

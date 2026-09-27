@@ -43,14 +43,11 @@ type thingIndexArm struct {
 	token      string
 	collection uint
 	client     *http.Client
-	docByTitle map[string]string // titulo dobrado -> id do gabarito
+	resolveDoc func(string) string // nome da fonte -> id do gabarito
 }
 
 func newThingIndexArm(api, email, password string, collection uint, g *evalcorpus.Gabarito) (*thingIndexArm, error) {
-	arm := &thingIndexArm{api: strings.TrimRight(api, "/"), collection: collection, client: &http.Client{}, docByTitle: map[string]string{}}
-	for _, d := range g.Documents {
-		arm.docByTitle[fold(strings.TrimSpace(d.Title))] = d.ID
-	}
+	arm := &thingIndexArm{api: strings.TrimRight(api, "/"), collection: collection, client: &http.Client{}, resolveDoc: g.DocumentResolver(fold)}
 	var login struct {
 		Data struct {
 			Token string `json:"token"`
@@ -179,10 +176,7 @@ func (a *thingIndexArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) 
 		}
 		text.WriteString(event.Delta)
 		for _, s := range event.Sources {
-			docID := a.docByTitle[fold(strings.TrimSpace(s.DocName))]
-			if docID == "" {
-				docID = s.DocName
-			}
+			docID := a.resolveDoc(s.DocName)
 			pages := []int{s.Page}
 			if s.ContinuesOnPage > 0 {
 				pages = append(pages, s.ContinuesOnPage)
@@ -248,7 +242,6 @@ type fullDocumentArm struct {
 	docs     []evalcorpus.GabaritoDocument
 	scope    string // document | collection
 	pages    map[string][]string
-	language string
 }
 
 func newFullDocumentArm(pdfDir, scope, model string, g *evalcorpus.Gabarito) (*fullDocumentArm, error) {

@@ -145,7 +145,7 @@ func main() {
 	// ------------------------------------------------------------------
 	// CONTROLE: o braco exato, repetido. Tem de dar 100%.
 	// ------------------------------------------------------------------
-	controle := stability{fator: "C-denso (exato), 30 execucoes", consultasTotal: len(consultas)}
+	controle := stability{fator: "C (exato), 30 execuções", consultasTotal: len(consultas)}
 	for _, current := range consultas {
 		hashes := map[string]bool{}
 		for i := 0; i < *repeticoes; i++ {
@@ -164,7 +164,7 @@ func main() {
 	// FATOR 1: a seed do k-means.
 	// ------------------------------------------------------------------
 	seedFactor := stability{
-		fator:          fmt.Sprintf("C-denso-ivf, %d seeds", *repeticoes),
+		fator:          fmt.Sprintf("C$'$ (IVF), %d sementes", *repeticoes),
 		consultasTotal: len(consultas),
 	}
 	perdaAcumulada := 0.0
@@ -202,7 +202,7 @@ func main() {
 	// diferentes.
 	// ------------------------------------------------------------------
 	orderFactor := stability{
-		fator:          fmt.Sprintf("C-denso-ivf, %d ordens de insercao (seed fixa)", *repeticoes),
+		fator:          fmt.Sprintf("C$'$ (IVF), %d ordens de inserção", *repeticoes),
 		consultasTotal: len(consultas),
 	}
 	source := rand.New(rand.NewSource(2026))
@@ -235,7 +235,7 @@ func main() {
 	// respostas diferentes, e que o usuario que nunca ouviu falar de `probes`
 	// esta rodando com o default.
 	// ------------------------------------------------------------------
-	probeFactor := stability{fator: "C-denso-ivf, probes de 1 a lists", consultasTotal: len(consultas)}
+	probeFactor := stability{fator: "C$'$ (IVF), \\texttt{probes} de 1 a \\texttt{lists}", consultasTotal: len(consultas)}
 	maxProbes := retrieval.DefaultIVFParams(len(vectors)).Lists
 	for _, current := range consultas {
 		hashes := map[string]bool{}
@@ -286,12 +286,12 @@ func writeTeX(path string, medidas []stability, documentos, consultas int) error
 	builder.WriteString("\\begin{table}[htb]\n\\centering\n")
 	fmt.Fprintf(&builder,
 		"\\caption{Estabilidade do ranking do braço denso sob variação de fatores que não são propriedades da consulta. "+
-			"Corpus C1 (%d documentos, %d consultas). Um ranking é considerado estável quando o hash SHA-256 da lista "+
-			"completa (identificador e score) é idêntico em todas as repetições.}\n",
+			"Corpus C1 (%d documentos, %d consultas). Uma ordenação é considerada estável quando o \\emph{hash} SHA-256 da lista "+
+			"completa (identificador e escore) é idêntico em todas as repetições.}\n",
 		documentos, consultas)
 	builder.WriteString("\\label{tab:dense-determinism}\n")
-	builder.WriteString("\\begin{tabular}{lccc}\n\\hline\n")
-	builder.WriteString("Fator variado & Consultas estáveis & Máx.\\ rankings distintos & Perda de recall \\\\\n\\hline\n")
+	builder.WriteString("\\small\n\\begin{tabular}{lccc}\n\\hline\n")
+	builder.WriteString("Fator variado & Estáveis & Ordenações distintas & Perda de revocação \\\\\n\\hline\n")
 
 	for _, medida := range medidas {
 		perda := "--"
@@ -304,7 +304,7 @@ func writeTeX(path string, medidas []stability, documentos, consultas int) error
 
 	builder.WriteString("\\hline\n\\end{tabular}\n\\end{table}\n")
 
-	return os.WriteFile(path, []byte(builder.String()), 0o644)
+	return os.WriteFile(path, []byte(evalcorpus.Tabela(builder.String())), 0o644)
 }
 
 func escapeTeX(text string) string {

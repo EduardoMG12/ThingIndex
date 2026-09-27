@@ -2,6 +2,8 @@ package domain
 
 import (
 	"context"
+	"strings"
+
 	"thing-index/internal/models"
 )
 
@@ -103,6 +105,28 @@ type LLMPricing struct {
 type LLMMetadataProvider interface {
 	ProviderType() string
 	ModelName() string
+}
+
+// LLMEndpointIdentity e implementado por clientes que sabem para qual host
+// falam. Entra na chave do cache de enriquecimento (EnrichmentCacheScope).
+type LLMEndpointIdentity interface {
+	EndpointHost() string
+}
+
+// LLMCacheScope monta o escopo do cache de enriquecimento para o usuario e o
+// cliente de LLM informados. Provider e "TIPO|host" normalizado; sem
+// metadados (clientes de teste) os campos ficam vazios, e o UserID continua
+// isolando os usuarios.
+func LLMCacheScope(userID uint, llm LLMService) EnrichmentCacheScope {
+	scope := EnrichmentCacheScope{UserID: userID}
+	if m, ok := llm.(LLMMetadataProvider); ok {
+		scope.Model = strings.TrimSpace(m.ModelName())
+		scope.Provider = strings.ToUpper(strings.TrimSpace(m.ProviderType()))
+	}
+	if e, ok := llm.(LLMEndpointIdentity); ok {
+		scope.Provider += "|" + strings.ToLower(strings.TrimSpace(e.EndpointHost()))
+	}
+	return scope
 }
 
 type LLMPricingProvider interface {

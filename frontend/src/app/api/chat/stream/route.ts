@@ -26,6 +26,7 @@ export async function POST(request: Request) {
             }),
             body: payload,
             cache: "no-store",
+            signal: request.signal,
         });
 
         if (response.status === 401) {
@@ -39,33 +40,10 @@ export async function POST(request: Request) {
             return NextResponse.json(errorPayload, { status: response.status });
         }
 
-        const stream = new ReadableStream<Uint8Array>({
-            async start(controller) {
-                const reader = response.body!.getReader();
-
-                try {
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) {
-                            break;
-                        }
-                        if (value) {
-                            controller.enqueue(value);
-                        }
-                    }
-                    controller.close();
-                } catch (error) {
-                    controller.error(error);
-                } finally {
-                    reader.releaseLock();
-                }
-            },
-            cancel() {
-                response.body?.cancel().catch(() => undefined);
-            },
-        });
-
-        return new NextResponse(stream, {
+        // Devolve o body do upstream direto: quando o cliente aborta, o cancel
+        // chega ao upstream e o LLM para de gerar (antes, o pipe manual travava
+        // o body num reader e o cancel era engolido).
+        return new NextResponse(response.body, {
             status: response.status,
             headers: {
                 "Content-Type": "text/event-stream; charset=utf-8",

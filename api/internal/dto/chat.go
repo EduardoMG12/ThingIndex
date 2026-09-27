@@ -6,9 +6,19 @@ import (
 	"thing-index/internal/models"
 )
 
+// Limites do corpo do chat. Sem eles o papel era texto livre -- ia para o
+// prompt em maiusculas, entao "system" virava uma linha SYSTEM: -- e o corpo
+// inteiro era decodificado antes de o use case cortar o historico para 6.
+// O frontend manda as 6 ultimas mensagens; 20 deixa folga sem abrir a porta.
+const (
+	ChatHistoryMaxItems        = 20
+	ChatPromptMaxRunes         = 8000
+	ChatHistoryContentMaxRunes = 20000
+)
+
 type ChatMessageRequest struct {
 	Role    string `json:"role" binding:"required,oneof=user assistant"`
-	Content string `json:"content" binding:"required"`
+	Content string `json:"content" binding:"required,max=20000"`
 }
 
 type CreateChatConversationRequest struct {
@@ -23,8 +33,8 @@ type UpdateChatConversationRequest struct {
 type ChatStreamRequest struct {
 	ConversationID uint                 `json:"conversation_id" binding:"required,gte=1"`
 	CollectionID   uint                 `json:"collection_id" binding:"required,gte=1"`
-	Prompt         string               `json:"prompt" binding:"required"`
-	History        []ChatMessageRequest `json:"history"`
+	Prompt         string               `json:"prompt" binding:"required,max=8000"`
+	History        []ChatMessageRequest `json:"history" binding:"omitempty,max=20,dive"`
 }
 
 type ChatSourceResponse struct {
