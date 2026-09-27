@@ -7,7 +7,7 @@
       "title": "Edital 01/2026 - Concurso Publico Prefeitura de Francisco Morato"
     }
   ],
-  "frozen_sha256": "f556d5716ffbcdd21b77b222379ac85777084b948bc0dd478d6a9f536f4eaa31",
+  "frozen_sha256": "0eb6efcceeb0aa4bc7d4ebacb382b5fad680966436a4e6f0f939ff1ebf2cdaca",
   "min_questions": 18,
   "notes": "Corpus adversarial de documento municipal real (edital de concurso publico, Prefeitura de Francisco Morato/SP, 52 paginas). Escrito a partir do PDF, sem consultar o sistema. Cada par ataca um modo de falha especifico: valor que depende do nivel do cargo (pf1), agregacao de linhas de tabela em tres paginas (pf2), requisito presente em uma unica linha (pf3), nota de rodape de tabela (pf4), data repetida em dois lugares do documento (pf5), premissa falsa sobre validade (pf6), negativa SUTIL onde o termo consta mas o valor nao (pf7), existencia (pf8) e defeito do proprio documento, com dois capitulos numerados XVI (pf9).",
   "questions": [
@@ -153,7 +153,11 @@
         }
       ],
       "text": "A jornada semanal de 30 horas do cargo de Auxiliar de Atendimento Educacional pode ser ampliada?",
-      "variant": "literal"
+      "variant": "literal",
+      "reject_patterns": [
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "^\\W*nao\\b"
+      ]
     },
     {
       "answer_patterns": [
@@ -173,7 +177,11 @@
         }
       ],
       "text": "Eles podem me obrigar a ficar mais tempo do que as horas combinadas no contrato?",
-      "variant": "parafrase"
+      "variant": "parafrase",
+      "reject_patterns": [
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "^\\W*nao\\b"
+      ]
     },
     {
       "answer_patterns": [
@@ -304,7 +312,9 @@
       "variant": "literal",
       "reject_patterns": [
         "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
-        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b",
+        "^\\W*nao\\b"
       ]
     },
     {
@@ -328,7 +338,9 @@
       "variant": "parafrase",
       "reject_patterns": [
         "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
-        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b",
+        "^\\W*nao\\b"
       ]
     },
     {
@@ -380,5 +392,5 @@
     "negativa": 2,
     "premissa-falsa": 2
   },
-  "version": "prefeitura-2026-09-v3"
+  "version": "prefeitura-2026-09-v4"
 }

@@ -172,3 +172,17 @@ func TestGabaritoPrefeituraConfereOHash(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// Gabarito da Secao 8.7 (legislacao, 19 perguntas, ids d01..n03), restaurado
+// de caf7624 com outro nome: o arquivo gabarito-licitacoes.json passou a ser o
+// da bateria. Sem ele o instrumento da Tabela 15 so existia no historico.
+func TestGabaritoLegislacaoConfereOHash(t *testing.T) {
+	t.Parallel()
+	g, err := LoadGabarito("testdata/gabarito-legislacao.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(g.Questions) != 19 {
+		t.Fatalf("gabarito da Secao 8.7 com %d perguntas; o artigo cita 19", len(g.Questions))
+	}
+}

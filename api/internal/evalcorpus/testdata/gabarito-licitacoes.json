@@ -22,7 +22,7 @@
       ]
     }
   ],
-  "frozen_sha256": "76119e4583b1cafa2d4121b24cf9e62ad98cd662a43ac85a65bafa716ba95ebb",
+  "frozen_sha256": "937d00527cdedb770a192039b509eb5dc4085de6492b4653e094798fa2e07571",
   "min_questions": 25,
   "notes": "Perguntas em PAR: a mesma necessidade de informacao aparece duas vezes, com a mesma resposta esperada e o mesmo alvo, mudando so a formulacao. LITERAL usa os termos do documento; PARAFRASE usa o vocabulario de quem pergunta no dia a dia, sem repetir as palavras do texto. O par existe porque um gabarito escrito por quem ja leu a pagina herda o vocabulario dela, e ai a medicao vira casamento lexical se passando por compreensao. Formas: aberta, confirmacao, existencia, premissa-falsa (a pergunta embute um dado errado e a resposta certa e corrigir) e negativa (nao consta). Escrito a partir dos PDF com pdftotext -layout; cada pagina-alvo foi conferida.",
   "questions": [
@@ -149,7 +149,9 @@
       "variant": "literal",
       "reject_patterns": [
         "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
-        "nao (foi|esta|estava) (integralmente )?revogad|continua (em vigor|valendo|vigente)|ainda (esta em vigor|vale|e valida|vigora)"
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "^\\W*sim\\b",
+        "nao (foi|esta|estava) (integralmente |totalmente )?revogad|continua (em vigor|valendo|vigente)|ainda (esta em vigor|vale|e valida|vigora)"
       ]
     },
     {
@@ -179,7 +181,9 @@
       "variant": "parafrase",
       "reject_patterns": [
         "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
-        "nao (foi|esta|estava) (integralmente )?revogad|continua (em vigor|valendo|vigente)|ainda (esta em vigor|vale|e valida|vigora)"
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "^\\W*sim\\b",
+        "nao (foi|esta|estava) (integralmente |totalmente )?revogad|continua (em vigor|valendo|vigente)|ainda (esta em vigor|vale|e valida|vigora)"
       ]
     },
     {
@@ -203,6 +207,7 @@
       "variant": "literal",
       "reject_patterns": [
         "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
         "(aplica|passa a valer|vale)\\w*[^.]{0,30}imediatamente|muda de regra|passa a ser regid\\w* pela (lei )?(14\\.?133|nova)"
       ]
     },
@@ -227,6 +232,7 @@
       "variant": "parafrase",
       "reject_patterns": [
         "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
         "(aplica|passa a valer|vale)\\w*[^.]{0,30}imediatamente|muda de regra|passa a ser regid\\w* pela (lei )?(14\\.?133|nova)"
       ]
     },
@@ -303,7 +309,9 @@
       "variant": "literal",
       "reject_patterns": [
         "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
-        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b",
+        "^\\W*nao\\b"
       ]
     },
     {
@@ -327,7 +335,9 @@
       "variant": "parafrase",
       "reject_patterns": [
         "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
-        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b",
+        "^\\W*nao\\b"
       ]
     },
     {
@@ -391,7 +401,9 @@
       "variant": "literal",
       "reject_patterns": [
         "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
-        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b",
+        "^\\W*nao\\b"
       ]
     },
     {
@@ -415,7 +427,9 @@
       "variant": "parafrase",
       "reject_patterns": [
         "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
-        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b",
+        "^\\W*nao\\b"
       ]
     },
     {
@@ -482,7 +496,13 @@
         }
       ],
       "text": "A Lei 10.520 tambem foi revogada pela Lei 14.133?",
-      "variant": "literal"
+      "variant": "literal",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "^\\W*nao\\b",
+        "nao (foi|esta|estava) (integralmente |totalmente )?revogad|continua (em vigor|valendo|vigente)"
+      ]
     },
     {
       "answer_patterns": [
@@ -508,7 +528,13 @@
         }
       ],
       "text": "A lei do pregao caiu junto com a outra lei antiga?",
-      "variant": "parafrase"
+      "variant": "parafrase",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "^\\W*nao\\b",
+        "nao (foi|esta|estava) (integralmente |totalmente )?revogad|continua (em vigor|valendo|vigente)"
+      ]
     },
     {
       "answer_patterns": [
@@ -528,7 +554,12 @@
         }
       ],
       "text": "Qual e o valor maximo para usar a modalidade convite hoje?",
-      "variant": "literal"
+      "variant": "literal",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "(ainda|continua a) exist|nao foi (revogad|extint)|continua (valid|previst|vigente)"
+      ]
     },
     {
       "answer_patterns": [
@@ -548,7 +579,12 @@
         }
       ],
       "text": "Ate quanto da pra comprar chamando so tres empresas conhecidas?",
-      "variant": "parafrase"
+      "variant": "parafrase",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "(ainda|continua a) exist|nao foi (revogad|extint)|continua (valid|previst|vigente)"
+      ]
     },
     {
       "answer_patterns": [
@@ -592,5 +628,5 @@
     "negativa": 3,
     "premissa-falsa": 4
   },
-  "version": "licitacoes-2026-09-v5"
+  "version": "licitacoes-2026-09-v6"
 }
