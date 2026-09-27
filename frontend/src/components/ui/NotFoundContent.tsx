@@ -10,7 +10,7 @@ import { useI18n } from "@/lib/i18n/provider";
 
 export const NotFoundContent = () => {
     const pathname = usePathname();
-    const { href } = useI18n();
+    const { href, t } = useI18n();
 
     useEffect(() => {
         console.error("404 Error: Usuário tentou acessar rota inexistente:", pathname);
@@ -53,10 +53,12 @@ export const NotFoundContent = () => {
                     transition={{ delay: 0.3 }}
                 >
                     <h2 className="mt-4 text-xl font-semibold text-foreground">
-                        Página não encontrada
+                        {t("notFound.title")}
                     </h2>
                     <p className="mt-2 text-muted-foreground">
-                        A rota <code className="rounded bg-muted px-1 py-0.5 font-mono text-sm text-primary">{pathname}</code> não existe ou foi movida.
+                        {t("notFound.routePrefix")}{" "}
+                        <code className="rounded bg-muted px-1 py-0.5 font-mono text-sm text-primary">{pathname}</code>{" "}
+                        {t("notFound.routeSuffix")}
                     </p>
                 </motion.div>
 
@@ -69,7 +71,7 @@ export const NotFoundContent = () => {
                     <Link href={href("/workspace")} className="inline-block">
                         <Button variant="primary" size="lg" className="gap-2 px-8">
                             <Home className="h-4 w-4 text-primary-foreground" />
-                            <span>Voltar para o Início</span>
+                            <span>{t("notFound.backHome")}</span>
                         </Button>
                     </Link>
                 </motion.div>

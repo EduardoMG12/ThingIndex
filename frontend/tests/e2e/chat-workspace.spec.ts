@@ -51,10 +51,10 @@ async function authenticate(context: BrowserContext, baseURL: string | undefined
 test.use({ locale: "en-US" });
 
 // O diagnostico anterior estava errado: nao era seletor desatualizado. O h1
-// "ThingIndex Chat" vive em ChatWorkspaceHero e a lista de conversas em
-// ChatConversationRail — os dois componentes existem, tem teste unitario e
-// story, mas nenhuma pagina os renderiza. A lista de conversas migrou para a
-// sidebar do AppShell, sincronizada por evento (thingindex:chat-sidebar-sync).
+// "ThingIndex Chat" e a lista de conversas antiga viviam em componentes que
+// nenhuma pagina renderizava (removidos como codigo morto). A lista de
+// conversas migrou para a sidebar do AppShell, sincronizada por evento
+// (thingindex:chat-sidebar-sync).
 // O teste agora exercita o fluxo real: sidebar vazia -> primeira mensagem cria
 // a conversa -> resposta com fonte citada -> exclusao volta ao estado vazio.
 // O chat vive no painel da Area de trabalho; a lista de conversas continua no

@@ -373,6 +373,7 @@ const AppShell = ({ children, contentClassName }: AppShellProps) => {
                                                                                 <button
                                                                                     type="button"
                                                                                     onClick={cancelEditingConversation}
+                                                                                    aria-label={t("dashboard.chat.cancelRenameConversationLabel")}
                                                                                     className="rounded-md p-1 text-muted-foreground hover:bg-muted"
                                                                                 >
                                                                                     <X className="h-3.5 w-3.5" />
@@ -380,6 +381,7 @@ const AppShell = ({ children, contentClassName }: AppShellProps) => {
                                                                                 <button
                                                                                     type="button"
                                                                                     onClick={() => void saveConversationTitle(conversation.id)}
+                                                                                    aria-label={t("dashboard.chat.saveRenameConversationLabel")}
                                                                                     disabled={isSavingConversationTitle || !editingTitle.trim()}
                                                                                     className="rounded-md p-1 text-primary hover:bg-primary/10 disabled:opacity-50"
                                                                                 >

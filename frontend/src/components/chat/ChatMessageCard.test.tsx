@@ -98,3 +98,16 @@ describe("ChatMessageCard: resposta com erro", () => {
         expect(screen.getAllByTestId("fonte")).toHaveLength(1);
     });
 });
+
+describe("ChatMessageCard: grade de fontes no painel estreito", () => {
+    it("a grade cai para uma coluna pela largura do conteiner, nao da janela", () => {
+        const fontes = [1, 2].map((n) => ({ id: `1:${n}`, docName: `Doc ${n}`, page: n, snippet: "x" }));
+        render(<ChatMessageCard isStreaming={false} message={{ ...base, sources: fontes }} />, {
+            wrapper: createTestWrapper("pt-BR"),
+        });
+
+        const grade = screen.getAllByTestId("fonte")[0]!.parentElement!;
+        expect(grade).toHaveClass("grid-cols-[repeat(auto-fill,minmax(16rem,1fr))]");
+        expect(grade).not.toHaveClass("sm:grid-cols-2");
+    });
+});

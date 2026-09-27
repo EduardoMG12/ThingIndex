@@ -51,12 +51,16 @@ const SourceReference = ({ source, numero, ativa = false, reindexado = false, on
                     <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                 )}
                 <div className="min-w-0 flex-1">
-                    <p className="truncate text-[11px] font-semibold text-foreground">{source.docName}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                        {t("dashboard.chat.page")} {source.page}
-                        {source.continuesOnPage ? `–${source.continuesOnPage}` : ""}
+                    <p className="truncate text-[11px] font-semibold text-foreground" title={source.docName}>
+                        {source.docName}
+                    </p>
+                    <p className="flex flex-wrap items-center gap-x-1 text-[10px] text-muted-foreground">
+                        {/* Um texto so e sem quebra: "Pag. 4-5" nao pode virar tres linhas. */}
+                        <span className="whitespace-nowrap tabular-nums">
+                            {`${t("dashboard.chat.page")} ${source.page}${source.continuesOnPage ? `–${source.continuesOnPage}` : ""}`}
+                        </span>
                         {reindexado ? (
-                            <span className="ml-1 rounded bg-amber-500/15 px-1 py-0.5 text-[9px] font-medium text-amber-600 dark:text-amber-400" title={t("dashboard.chat.reindexedTitle")} data-testid="fonte-reindexada">
+                            <span className="rounded bg-amber-500/15 px-1 py-0.5 text-[9px] font-medium text-amber-600 dark:text-amber-400" title={t("dashboard.chat.reindexedTitle")} data-testid="fonte-reindexada">
                                 {t("dashboard.chat.reindexed")}
                             </span>
                         ) : null}

@@ -160,7 +160,15 @@ export function useChatWorkspace(opcoes: { collectionId?: number | null } = {}) 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const abortRef = useRef<AbortController | null>(null);
     const pendingDeltaRef = useRef("");
+    // O id vive em state (para o render) e na ref (para os callbacks do stream
+    // e do flush de deltas, que precisam do valor atual sem re-render). Antes
+    // o hook devolvia a ref lida no render, que podia ficar desatualizada.
     const streamMessageIdRef = useRef<string | null>(null);
+    const [streamMessageId, setStreamMessageIdState] = useState<string | null>(null);
+    const setStreamMessageId = useCallback((id: string | null) => {
+        streamMessageIdRef.current = id;
+        setStreamMessageIdState(id);
+    }, []);
     const flushTimerRef = useRef<number | null>(null);
     const streamingCardTimerRef = useRef<number | null>(null);
     const hasShownDeltaRef = useRef(false);
@@ -190,7 +198,7 @@ export function useChatWorkspace(opcoes: { collectionId?: number | null } = {}) 
     const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId) ?? null;
     const canType = hasCollections && !isLoading;
     const canSubmit = Boolean(input.trim()) && Boolean(selectedCollectionId) && hasChatRuntime && !isLoading;
-    const isStreaming = isLoading && Boolean(streamMessageIdRef.current);
+    const isStreaming = isLoading && Boolean(streamMessageId);
 
     const stopDeltaFlush = useCallback(() => {
         if (flushTimerRef.current !== null) {
@@ -232,7 +240,7 @@ export function useChatWorkspace(opcoes: { collectionId?: number | null } = {}) 
             return;
         }
 
-        streamMessageIdRef.current = messageId;
+        setStreamMessageId(messageId);
         pendingDeltaRef.current += delta;
 
         if (flushTimerRef.current === null) {
@@ -287,7 +295,7 @@ export function useChatWorkspace(opcoes: { collectionId?: number | null } = {}) 
         }
 
         pendingDeltaRef.current = "";
-        streamMessageIdRef.current = null;
+        setStreamMessageId(null);
         stopDeltaFlush();
         streamingConversationIdRef.current = null;
         setActiveConversationId(null);
@@ -589,7 +597,7 @@ export function useChatWorkspace(opcoes: { collectionId?: number | null } = {}) 
         streamingConversationIdRef.current = conversation.id;
 
         pendingDeltaRef.current = "";
-        streamMessageIdRef.current = assistantMessage.id;
+        setStreamMessageId(assistantMessage.id);
         stopDeltaFlush();
 
         const history: ChatHistoryMessage[] = messages
@@ -708,7 +716,7 @@ export function useChatWorkspace(opcoes: { collectionId?: number | null } = {}) 
                 }
 
                 pendingDeltaRef.current = "";
-                streamMessageIdRef.current = null;
+                setStreamMessageId(null);
                 stopDeltaFlush();
                 streamingConversationIdRef.current = null;
                 setIsLoading(false);
@@ -847,7 +855,7 @@ export function useChatWorkspace(opcoes: { collectionId?: number | null } = {}) 
         showStreamingCard,
         startNewConversation,
         streamError,
-        streamMessageId: streamMessageIdRef.current,
+        streamMessageId,
         textareaRef,
     };
 }
