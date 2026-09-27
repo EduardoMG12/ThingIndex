@@ -1,8 +1,12 @@
 package middleware
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"thing-index/internal/pkg/i18n"
 	"thing-index/internal/pkg/response"
@@ -126,4 +130,72 @@ func UserRateLimitMiddleware(limit int, window time.Duration) gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// EmailRateLimitMiddleware limita por e-mail informado no corpo JSON, alem do
+// limite por IP de RateLimitMiddleware.
+//
+// Motivo (parecer A3): o limite por IP nao protege uma conta contra forca bruta
+// distribuida -- cada IP de uma botnet tem a propria cota. Chavear pelo e-mail
+// alvo limita as tentativas contra a MESMA conta, venham de onde vierem. Usado
+// em /auth/login e /auth/forgot-password.
+//
+// O e-mail e normalizado como no caso de uso (trim + minusculas), senao
+// "Alice@x.com" e "alice@x.com " teriam baldes separados para a mesma conta.
+// Corpo sem e-mail (ou invalido) passa: o handler devolve 400 na validacao, e
+// o limite por IP continua valendo. O corpo e restaurado para o handler.
+//
+// Assim como os demais limitadores, e um mapa em memoria por processo.
+// limit ou window <= 0 desliga este limite (o por IP continua valendo); assim
+// um Config montado a mao, sem os campos novos, nao bloqueia todo login.
+func EmailRateLimitMiddleware(limit int, window time.Duration) gin.HandlerFunc {
+	if limit <= 0 || window <= 0 {
+		return func(c *gin.Context) { c.Next() }
+	}
+	limiter := NewFixedWindowRateLimiter(limit, window)
+
+	return func(c *gin.Context) {
+		email := readNormalizedEmail(c)
+		if email == "" {
+			c.Next()
+			return
+		}
+
+		key := "email:" + email + ":" + c.Request.Method + ":" + c.FullPath()
+		if !limiter.Allow(key, time.Now()) {
+			lang := c.GetString("language")
+			response.Error(c, http.StatusTooManyRequests, "error", i18n.T(lang, "error.rate_limited"), nil)
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
+// readNormalizedEmail le o campo "email" do corpo JSON sem consumi-lo.
+func readNormalizedEmail(c *gin.Context) string {
+	if c.Request == nil || c.Request.Body == nil {
+		return ""
+	}
+
+	body, err := io.ReadAll(c.Request.Body)
+	c.Request.Body = io.NopCloser(bytes.NewReader(body))
+	if err != nil || len(body) == 0 {
+		return ""
+	}
+
+	var payload struct {
+		Email string `json:"email"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return ""
+	}
+
+	return NormalizeEmail(payload.Email)
+}
+
+// NormalizeEmail aplica a mesma normalizacao do caso de uso de autenticacao.
+func NormalizeEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
 }

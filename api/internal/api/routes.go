@@ -126,10 +126,13 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 
 		auth := v1.Group("/auth")
 		auth.Use(middleware.RateLimitMiddleware(cfg.AuthRateLimitRequests, cfg.AuthRateLimitWindow))
+		// Limite adicional por conta alvo: o limite por IP nao segura forca
+		// bruta distribuida contra o mesmo e-mail.
+		emailLimit := middleware.EmailRateLimitMiddleware(cfg.AuthEmailRateLimitRequests, cfg.AuthEmailRateLimitWindow)
 		{
 			auth.POST("/register", authHandler.Register)
-			auth.POST("/login", authHandler.Login)
-			auth.POST("/forgot-password", authHandler.ForgotPassword)
+			auth.POST("/login", emailLimit, authHandler.Login)
+			auth.POST("/forgot-password", emailLimit, authHandler.ForgotPassword)
 			auth.POST("/reset-password", authHandler.ResetPassword)
 		}
 

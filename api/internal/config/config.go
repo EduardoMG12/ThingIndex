@@ -32,6 +32,10 @@ type Config struct {
 	AllowPrivateStorageEndpoints bool
 	AuthRateLimitRequests        int
 	AuthRateLimitWindow          time.Duration
+	// Limite por e-mail (normalizado) em /auth/login e /auth/forgot-password,
+	// somado ao limite por IP acima.
+	AuthEmailRateLimitRequests int
+	AuthEmailRateLimitWindow   time.Duration
 
 	SMTPHost         string
 	SMTPPort         string
@@ -130,6 +134,8 @@ func Load() {
 		JWTSecret:                      getEnv("JWT_SECRET", defaultValueForEnvironment(environment, defaultDevelopmentJWT)),
 		AuthRateLimitRequests:          getEnvInt("AUTH_RATE_LIMIT_REQUESTS", 10),
 		AuthRateLimitWindow:            getEnvDurationSeconds("AUTH_RATE_LIMIT_WINDOW_SECONDS", 60),
+		AuthEmailRateLimitRequests:     getEnvInt("AUTH_EMAIL_RATE_LIMIT_REQUESTS", 10),
+		AuthEmailRateLimitWindow:       getEnvDurationSeconds("AUTH_EMAIL_RATE_LIMIT_WINDOW_SECONDS", 900),
 		ConsumerReconnectInterval:      getEnvDurationSeconds("CONSUMER_RECONNECT_INTERVAL_SECONDS", 5),
 		UploadRateLimitRequests:        getEnvInt("UPLOAD_RATE_LIMIT_REQUESTS", 30),
 		UploadRateLimitWindow:          getEnvDurationSeconds("UPLOAD_RATE_LIMIT_WINDOW_SECONDS", 60),
