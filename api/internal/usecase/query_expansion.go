@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"log"
-	"os"
 	"strings"
 
 	"thing-index/internal/domain"
@@ -41,10 +40,11 @@ const (
 	queryExpansionMaxTerms  = 8
 )
 
-// queryExpansionEnabled le o braco do experimento. Desligado por padrao: o
-// braco C do pre-registro e o comportamento atual do sistema.
-func queryExpansionEnabled() bool {
-	switch strings.ToLower(strings.TrimSpace(os.Getenv("THINGINDEX_QUERY_EXPANSION"))) {
+// parseQueryExpansion interpreta o braco do experimento. Desligado por padrao:
+// o braco C do pre-registro e o comportamento atual do sistema. Chamada uma vez,
+// em NewRetrievalOptions.
+func parseQueryExpansion(raw string) bool {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
 	case "1", "true", "on":
 		return true
 	default:

@@ -10,7 +10,6 @@ import (
 	"math"
 	"mime"
 	"net/http"
-	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -42,6 +41,7 @@ type documentCatalogUseCase struct {
 	storage               domain.StorageService
 	storageResolver       domain.UserStorageResolver
 	maxUploadSizeBytes    int64
+	retrievalOptions      RetrievalOptions
 }
 
 func NewDocumentUseCase(
@@ -53,6 +53,7 @@ func NewDocumentUseCase(
 	storage domain.StorageService,
 	storageResolver domain.UserStorageResolver,
 	maxUploadSizeBytes int64,
+	retrievalOptions RetrievalOptions,
 ) domain.DocumentCatalogUseCase {
 	return &documentCatalogUseCase{
 		categoryRepo:          categoryRepo,
@@ -63,6 +64,7 @@ func NewDocumentUseCase(
 		storage:               storage,
 		storageResolver:       storageResolver,
 		maxUploadSizeBytes:    maxUploadSizeBytes,
+		retrievalOptions:      retrievalOptions,
 	}
 }
 
@@ -919,7 +921,7 @@ func (u *documentCatalogUseCase) GetDocumentIndex(ctx context.Context, userID, d
 	}
 
 	if strings.TrimSpace(query) != "" {
-		index.TreeRetrieval = buildTreeRetrieval(strings.TrimSpace(query), outlineNodes, documentPages, chunks)
+		index.TreeRetrieval = buildTreeRetrievalWith(u.retrievalOptions, strings.TrimSpace(query), outlineNodes, documentPages, chunks)
 	}
 	index.IndexEvaluation = buildIndexEvaluation(metadataPairs, outlineNodes)
 	index.Monitoring = buildIndexMonitoring(doc, metadataPairs, index.IndexEvaluation)
@@ -1079,7 +1081,8 @@ func (u *documentCatalogUseCase) GetCollectionContext(ctx context.Context, userI
 	}
 
 	if strings.TrimSpace(query) != "" {
-		collectionContext.CollectionRetrieval = buildCollectionRetrieval(
+		collectionContext.CollectionRetrieval = buildCollectionRetrievalWith(
+			u.retrievalOptions,
 			strings.TrimSpace(query),
 			collectionContext.Documents,
 			collectionContext.DocumentPages,
@@ -1132,7 +1135,13 @@ func (u *documentCatalogUseCase) GetNodeConnections(
 	return BuildNodeConnections(*origin, collectionContext.OutlineNodes, minScore), nil
 }
 
+// buildTreeRetrieval usa as opcoes padrao; ver buildCollectionRetrieval.
 func buildTreeRetrieval(query string, nodes []models.DocumentOutlineNode, pages []models.DocumentPage, chunks []models.DocumentChunk) *domain.TreeRetrievalResult {
+	return buildTreeRetrievalWith(DefaultRetrievalOptions(), query, nodes, pages, chunks)
+}
+
+func buildTreeRetrievalWith(opts RetrievalOptions, query string, nodes []models.DocumentOutlineNode, pages []models.DocumentPage, chunks []models.DocumentChunk) *domain.TreeRetrievalResult {
+	pageFields := opts.pageSearchFields()
 	queryTerms := tokenizeRetrievalText(query)
 	if len(queryTerms) == 0 {
 		return nil
@@ -1154,7 +1163,7 @@ func buildTreeRetrieval(query string, nodes []models.DocumentOutlineNode, pages 
 	bestDirectPageScore := 0
 	pageHits := make([]domain.TreePageHit, 0, len(pages))
 	for _, page := range pages {
-		directScore := scoreTreePage(page, queryTerms) + directEvidence.PageScoreByNumber[page.PageNumber]
+		directScore := scoreTreePage(page, queryTerms, pageFields) + directEvidence.PageScoreByNumber[page.PageNumber]
 		if directScore > bestDirectPageScore {
 			bestDirectPageScore = directScore
 		}
@@ -1966,11 +1975,13 @@ const (
 	pageFieldsMaxQuestions = "max(content,questions)"
 )
 
-// pageSearchFields devolve o braco ativo. Valor desconhecido cai no padrao e
-// avisa: um erro de digitacao na variavel mediria silenciosamente o braco
-// errado, que e o pior resultado possivel numa comparacao.
-func pageSearchFields() string {
-	switch v := strings.TrimSpace(os.Getenv("THINGINDEX_PAGE_SEARCH_FIELDS")); v {
+// normalizePageSearchFields valida o braco configurado. Valor desconhecido cai
+// no padrao e avisa: um erro de digitacao na variavel mediria silenciosamente o
+// braco errado, que e o pior resultado possivel numa comparacao. Chamada UMA vez,
+// na construcao de RetrievalOptions (antes era por pagina de cada pergunta, e o
+// aviso inundava o log).
+func normalizePageSearchFields(raw string) string {
+	switch v := strings.TrimSpace(raw); v {
 	case "":
 		return pageFieldsContentSummary
 	case pageFieldsContent, pageFieldsContentSummary, pageFieldsContentQuestions, pageFieldsMaxQuestions:
@@ -1982,8 +1993,8 @@ func pageSearchFields() string {
 }
 
 // pageSearchText monta o texto da pagina que vai ao BM25, conforme o braco.
-func pageSearchText(page models.DocumentPage) string {
-	switch pageSearchFields() {
+func pageSearchText(page models.DocumentPage, fields string) string {
+	switch fields {
 	case pageFieldsContent:
 		return page.Content
 	case pageFieldsContentQuestions:
@@ -1993,6 +2004,9 @@ func pageSearchText(page models.DocumentPage) string {
 	}
 }
 
+// buildCollectionRetrieval usa as opcoes padrao (content+summary). Mantida para
+// os testes; o caminho de producao usa buildCollectionRetrievalWith com as
+// opcoes lidas uma vez na subida do processo.
 func buildCollectionRetrieval(
 	query string,
 	documents []models.Document,
@@ -2001,6 +2015,19 @@ func buildCollectionRetrieval(
 	chunks []models.DocumentChunk,
 	tables []models.TableSection,
 ) *domain.CollectionRetrievalResult {
+	return buildCollectionRetrievalWith(DefaultRetrievalOptions(), query, documents, pages, nodes, chunks, tables)
+}
+
+func buildCollectionRetrievalWith(
+	opts RetrievalOptions,
+	query string,
+	documents []models.Document,
+	pages []models.DocumentPage,
+	nodes []models.DocumentOutlineNode,
+	chunks []models.DocumentChunk,
+	tables []models.TableSection,
+) *domain.CollectionRetrievalResult {
+	pageFields := opts.pageSearchFields()
 	queryTerms := tokenizeRetrievalText(query)
 	if len(queryTerms) == 0 {
 		return nil
@@ -2079,14 +2106,14 @@ func buildCollectionRetrieval(
 
 	pageTexts := make([]string, len(pages))
 	for i, page := range pages {
-		pageTexts[i] = pageSearchText(page)
+		pageTexts[i] = pageSearchText(page, pageFields)
 	}
 	pageScores := bm25Scores(query, pageTexts)
 	// Braco de maximo: o campo de perguntas e pontuado no seu PROPRIO corpus,
 	// e nao colado ao conteudo. Colar dilui, porque o BM25 normaliza por
 	// comprimento e 40 palavras de pergunta somem em 400 de conteudo; pontuar
 	// a parte deixa o casamento curto e exato valer o que ele vale.
-	if pageSearchFields() == pageFieldsMaxQuestions {
+	if pageFields == pageFieldsMaxQuestions {
 		perguntaTexts := make([]string, len(pages))
 		for i, page := range pages {
 			perguntaTexts[i] = page.GeneratedQuestions
@@ -2505,12 +2532,12 @@ func estimateDepthQualityBonus(maxDepth int) float64 {
 	}
 }
 
-func scoreCollectionPage(page models.DocumentPage, queryTerms []string) int {
-	return retrievalScore(pageSearchText(page), queryTerms) * 2
+func scoreCollectionPage(page models.DocumentPage, queryTerms []string, pageFields string) int {
+	return retrievalScore(pageSearchText(page, pageFields), queryTerms) * 2
 }
 
-func scoreTreePage(page models.DocumentPage, queryTerms []string) int {
-	return scoreCollectionPage(page, queryTerms)
+func scoreTreePage(page models.DocumentPage, queryTerms []string, pageFields string) int {
+	return scoreCollectionPage(page, queryTerms, pageFields)
 }
 
 func scoreCollectionChunk(chunk models.DocumentChunk, queryTerms []string) int {

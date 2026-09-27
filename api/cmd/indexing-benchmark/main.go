@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	report, err := usecase.NewIndexingBenchmarkProvider().GetPublicIndexingBenchmark(context.Background())
+	report, err := usecase.NewIndexingBenchmarkProvider(usecase.RetrievalOptionsFromEnv()).GetPublicIndexingBenchmark(context.Background())
 	if err != nil {
 		log.Fatalf("failed to build indexing benchmark report: %v", err)
 	}
