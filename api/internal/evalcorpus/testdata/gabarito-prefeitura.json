@@ -1,0 +1,376 @@
+{
+  "documents": [
+    {
+      "file": "edital-01-2026-francisco-morato.pdf",
+      "id": "edital-fm",
+      "pages": 52,
+      "title": "Edital 01/2026 - Concurso Publico Prefeitura de Francisco Morato"
+    }
+  ],
+  "frozen_sha256": "b85f072e485708488c8b14ab8e6d7fc4e89283f0d14206ff0905b9b132f03e8f",
+  "min_questions": 18,
+  "notes": "Corpus adversarial de documento municipal real (edital de concurso publico, Prefeitura de Francisco Morato/SP, 52 paginas). Escrito a partir do PDF, sem consultar o sistema. Cada par ataca um modo de falha especifico: valor que depende do nivel do cargo (pf1), agregacao de linhas de tabela em tres paginas (pf2), requisito presente em uma unica linha (pf3), nota de rodape de tabela (pf4), data repetida em dois lugares do documento (pf5), premissa falsa sobre validade (pf6), negativa SUTIL onde o termo consta mas o valor nao (pf7), existencia (pf8) e defeito do proprio documento, com dois capitulos numerados XVI (pf9).",
+  "questions": [
+    {
+      "answer_patterns": [
+        "78"
+      ],
+      "expected": "R$ 78,00 para os cargos de ensino superior (Tabela I); os de ensino medio pagam R$ 66,00.",
+      "id": "pf1L",
+      "origin": "pdf",
+      "pair_id": "pf1",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "edital-fm",
+          "pages": [
+            2
+          ]
+        }
+      ],
+      "text": "Qual e o valor da taxa de inscricao para os cargos de ensino superior completo?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "78"
+      ],
+      "expected": "R$ 78,00 para os cargos de ensino superior (Tabela I); os de ensino medio pagam R$ 66,00.",
+      "id": "pf1P",
+      "origin": "pdf",
+      "pair_id": "pf1",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "edital-fm",
+          "pages": [
+            2
+          ]
+        }
+      ],
+      "text": "Quanto eu pago pra me inscrever numa vaga que pede faculdade?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "\\b20\\b|vinte"
+      ],
+      "expected": "20 vagas: 10 de Auxiliar de Atendimento Educacional mais 1 vaga em cada um dos 10 cargos de Assistente Tecnico Pedagogico.",
+      "id": "pf2L",
+      "origin": "pdf",
+      "pair_id": "pf2",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "edital-fm",
+          "pages": [
+            2,
+            3,
+            4
+          ]
+        }
+      ],
+      "text": "Somando todos os cargos da Tabela I, quantas vagas existentes o Concurso Publico oferece?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "\\b20\\b|vinte"
+      ],
+      "expected": "20 vagas: 10 de Auxiliar de Atendimento Educacional mais 1 vaga em cada um dos 10 cargos de Assistente Tecnico Pedagogico.",
+      "id": "pf2P",
+      "origin": "pdf",
+      "pair_id": "pf2",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "edital-fm",
+          "pages": [
+            2,
+            3,
+            4
+          ]
+        }
+      ],
+      "text": "No fim das contas, quantas pessoas a prefeitura vai contratar com esse concurso?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "conselho regional de educa|cref"
+      ],
+      "expected": "Registro ativo no Conselho Regional de Educacao Fisica (CREF).",
+      "id": "pf3L",
+      "origin": "pdf",
+      "pair_id": "pf3",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "edital-fm",
+          "pages": [
+            3
+          ]
+        }
+      ],
+      "text": "Qual registro profissional e exigido do candidato ao cargo de Assistente Tecnico Pedagogico - Educacao Fisica?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "conselho regional de educa|cref"
+      ],
+      "expected": "Registro ativo no Conselho Regional de Educacao Fisica (CREF).",
+      "id": "pf3P",
+      "origin": "pdf",
+      "pair_id": "pf3",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "edital-fm",
+          "pages": [
+            3
+          ]
+        }
+      ],
+      "text": "Pra dar aula de esporte nessa prefeitura precisa estar inscrito em algum conselho?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "duas\\)? horas|2 \\(duas\\)|dois horas|ate 2|até 2"
+      ],
+      "expected": "Sim, excepcionalmente em ate 2 (duas) horas, por decisao da Secretaria Municipal de Educacao (nota *3 da Tabela I).",
+      "id": "pf4L",
+      "origin": "pdf",
+      "pair_id": "pf4",
+      "stratum": "confirmacao",
+      "targets": [
+        {
+          "document_id": "edital-fm",
+          "pages": [
+            4
+          ]
+        }
+      ],
+      "text": "A jornada semanal de 30 horas do cargo de Auxiliar de Atendimento Educacional pode ser ampliada?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "duas\\)? horas|2 \\(duas\\)|dois horas|ate 2|até 2"
+      ],
+      "expected": "Sim, excepcionalmente em ate 2 (duas) horas, por decisao da Secretaria Municipal de Educacao (nota *3 da Tabela I).",
+      "id": "pf4P",
+      "origin": "pdf",
+      "pair_id": "pf4",
+      "stratum": "confirmacao",
+      "targets": [
+        {
+          "document_id": "edital-fm",
+          "pages": [
+            4
+          ]
+        }
+      ],
+      "text": "Eles podem me obrigar a ficar mais tempo do que as horas combinadas no contrato?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "22/03/2026|22 de marco|22 de março"
+      ],
+      "expected": "22/03/2026.",
+      "id": "pf5L",
+      "origin": "pdf",
+      "pair_id": "pf5",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "edital-fm",
+          "pages": [
+            6,
+            51
+          ]
+        }
+      ],
+      "text": "Qual a data prevista para a aplicacao das Provas Objetivas e Dissertativa?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "22/03/2026|22 de marco|22 de março"
+      ],
+      "expected": "22/03/2026.",
+      "id": "pf5P",
+      "origin": "pdf",
+      "pair_id": "pf5",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "edital-fm",
+          "pages": [
+            6,
+            51
+          ]
+        }
+      ],
+      "text": "Que dia eu faco a prova?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "02 \\(dois\\)|dois anos|2 anos"
+      ],
+      "expected": "A premissa esta errada: a validade e de 2 (dois) anos, prorrogavel uma unica vez por igual periodo, contada da Homologacao do Resultado Final.",
+      "id": "pf6L",
+      "origin": "pdf",
+      "pair_id": "pf6",
+      "stratum": "premissa-falsa",
+      "targets": [
+        {
+          "document_id": "edital-fm",
+          "pages": [
+            1
+          ]
+        }
+      ],
+      "text": "Considerando que o prazo de validade deste Concurso Publico e de 05 (cinco) anos, a partir de quando ele conta?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "02 \\(dois\\)|dois anos|2 anos"
+      ],
+      "expected": "A premissa esta errada: a validade e de 2 (dois) anos, prorrogavel uma unica vez por igual periodo, contada da Homologacao do Resultado Final.",
+      "id": "pf6P",
+      "origin": "pdf",
+      "pair_id": "pf6",
+      "stratum": "premissa-falsa",
+      "targets": [
+        {
+          "document_id": "edital-fm",
+          "pages": [
+            1
+          ]
+        }
+      ],
+      "text": "Esse concurso vale cinco anos, ne? Quando comeca a contar esse prazo?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "nao (consta|informa|menciona|especifica|traz|cont)|não (consta|informa|menciona|especifica|traz|cont)|nao ha|não há|sem (essa )?informacao|sem (essa )?informação"
+      ],
+      "expected": "Nao consta: o edital cita o beneficio de Vale Alimentacao, mas nao informa o valor.",
+      "id": "pf7L",
+      "origin": "pdf",
+      "pair_id": "pf7",
+      "stratum": "negativa",
+      "targets": [],
+      "text": "Qual e o valor em reais do Vale Alimentacao concedido aos candidatos nomeados?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "nao (consta|informa|menciona|especifica|traz|cont)|não (consta|informa|menciona|especifica|traz|cont)|nao ha|não há|sem (essa )?informacao|sem (essa )?informação"
+      ],
+      "expected": "Nao consta: o edital cita o beneficio de Vale Alimentacao, mas nao informa o valor.",
+      "id": "pf7P",
+      "origin": "pdf",
+      "pair_id": "pf7",
+      "stratum": "negativa",
+      "targets": [],
+      "text": "Quanto vem de vale refeicao por mes nesse emprego?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "isen"
+      ],
+      "expected": "Sim, Capitulo IV, para inscritos no CadUnico (Decreto 6.593/2008) e pela Lei Municipal 3.392/2013.",
+      "id": "pf8L",
+      "origin": "pdf",
+      "pair_id": "pf8",
+      "stratum": "existencia",
+      "targets": [
+        {
+          "document_id": "edital-fm",
+          "pages": [
+            10
+          ]
+        }
+      ],
+      "text": "O edital preve isencao do pagamento da taxa de inscricao?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "isen"
+      ],
+      "expected": "Sim, Capitulo IV, para inscritos no CadUnico (Decreto 6.593/2008) e pela Lei Municipal 3.392/2013.",
+      "id": "pf8P",
+      "origin": "pdf",
+      "pair_id": "pf8",
+      "stratum": "existencia",
+      "targets": [
+        {
+          "document_id": "edital-fm",
+          "pages": [
+            10
+          ]
+        }
+      ],
+      "text": "Quem e de baixa renda consegue algum desconto pra participar?",
+      "variant": "parafrase"
+    },
+    {
+      "answer_patterns": [
+        "admiss"
+      ],
+      "expected": "O edital traz DOIS capitulos numerados XVI: 'Capitulo XVI - Admissao' e 'Capitulo XVI - Das Disposicoes Finais', ambos na pagina 32.",
+      "id": "pf9L",
+      "origin": "pdf",
+      "pair_id": "pf9",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "edital-fm",
+          "pages": [
+            32
+          ]
+        }
+      ],
+      "text": "O que o Capitulo XVI do edital estabelece?",
+      "variant": "literal"
+    },
+    {
+      "answer_patterns": [
+        "admiss"
+      ],
+      "expected": "O edital traz DOIS capitulos numerados XVI: 'Capitulo XVI - Admissao' e 'Capitulo XVI - Das Disposicoes Finais', ambos na pagina 32.",
+      "id": "pf9P",
+      "origin": "pdf",
+      "pair_id": "pf9",
+      "stratum": "aberta",
+      "targets": [
+        {
+          "document_id": "edital-fm",
+          "pages": [
+            32
+          ]
+        }
+      ],
+      "text": "O que ta escrito na parte final do edital sobre ser chamado pra assumir a vaga?",
+      "variant": "parafrase"
+    }
+  ],
+  "reviewed_by": [],
+  "strata": {
+    "aberta": 8,
+    "confirmacao": 2,
+    "existencia": 2,
+    "negativa": 2,
+    "premissa-falsa": 2
+  },
+  "version": "prefeitura-2026-09-v1"
+}
