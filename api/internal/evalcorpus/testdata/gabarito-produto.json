@@ -22,7 +22,7 @@
       ]
     }
   ],
-  "frozen_sha256": "3b9a1c7d53a4bc18247554537b5b32361c773b5bd9befdf1c4f44f0e9199a30d",
+  "frozen_sha256": "7e7b3520895700a48eeed5f83e50fb0ad043073fa3cf30637b0e01156a149e40",
   "min_questions": 23,
   "notes": "Perguntas em PAR: a mesma necessidade de informacao aparece duas vezes, com a mesma resposta esperada e o mesmo alvo, mudando so a formulacao. LITERAL usa os termos do documento; PARAFRASE usa o vocabulario de quem pergunta no dia a dia, sem repetir as palavras do texto. O par existe porque um gabarito escrito por quem ja leu a pagina herda o vocabulario dela, e ai a medicao vira casamento lexical se passando por compreensao. Formas: aberta, confirmacao, existencia, premissa-falsa (a pergunta embute um dado errado e a resposta certa e corrigir) e negativa (nao consta). Escrito a partir dos PDF com pdftotext -layout; cada pagina-alvo foi conferida.",
   "questions": [
@@ -213,7 +213,8 @@
       "text": "O termo de garantia lista os itens excluidos da cobertura?",
       "variant": "literal",
       "reject_patterns": [
-        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
       ]
     },
     {
@@ -237,7 +238,8 @@
       "text": "Tem escrito em algum lugar o que eles NAO consertam?",
       "variant": "parafrase",
       "reject_patterns": [
-        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
       ]
     },
     {
@@ -342,7 +344,8 @@
       "text": "O manual traz instrucoes de limpeza do monitor?",
       "variant": "literal",
       "reject_patterns": [
-        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
       ]
     },
     {
@@ -365,7 +368,8 @@
       "text": "Da pra passar pano na tela? Tem alguma recomendacao?",
       "variant": "parafrase",
       "reject_patterns": [
-        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
       ]
     },
     {
@@ -490,5 +494,5 @@
     "negativa": 3,
     "premissa-falsa": 4
   },
-  "version": "produto-2026-09-v4"
+  "version": "produto-2026-09-v5"
 }

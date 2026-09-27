@@ -7,7 +7,7 @@
       "title": "Edital 01/2026 - Concurso Publico Prefeitura de Francisco Morato"
     }
   ],
-  "frozen_sha256": "06a2892b9ba6b5427d46dedfbc68a792cacf67590f8fc33b363879ad17814d8d",
+  "frozen_sha256": "f556d5716ffbcdd21b77b222379ac85777084b948bc0dd478d6a9f536f4eaa31",
   "min_questions": 18,
   "notes": "Corpus adversarial de documento municipal real (edital de concurso publico, Prefeitura de Francisco Morato/SP, 52 paginas). Escrito a partir do PDF, sem consultar o sistema. Cada par ataca um modo de falha especifico: valor que depende do nivel do cargo (pf1), agregacao de linhas de tabela em tres paginas (pf2), requisito presente em uma unica linha (pf3), nota de rodape de tabela (pf4), data repetida em dois lugares do documento (pf5), premissa falsa sobre validade (pf6), negativa SUTIL onde o termo consta mas o valor nao (pf7), existencia (pf8) e defeito do proprio documento, com dois capitulos numerados XVI (pf9).",
   "questions": [
@@ -303,7 +303,8 @@
       "text": "O edital preve isencao do pagamento da taxa de inscricao?",
       "variant": "literal",
       "reject_patterns": [
-        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
       ]
     },
     {
@@ -326,7 +327,8 @@
       "text": "Quem e de baixa renda consegue algum desconto pra participar?",
       "variant": "parafrase",
       "reject_patterns": [
-        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
       ]
     },
     {
@@ -378,5 +380,5 @@
     "negativa": 2,
     "premissa-falsa": 2
   },
-  "version": "prefeitura-2026-09-v2"
+  "version": "prefeitura-2026-09-v3"
 }
