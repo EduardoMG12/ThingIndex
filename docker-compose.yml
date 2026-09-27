@@ -87,6 +87,18 @@ services:
     env_file:
       - .env
     environment:
+      # Proxies cujo X-Forwarded-For a API aceita (parecer A3). O navegador so
+      # fala com o Next; o Next chama a API pela rede interna do compose e
+      # repassa o IP do cliente em X-Forwarded-For (createForwardHeaders). Sem
+      # confiar nessa rede, o Gin ignora o cabecalho, ClientIP() e sempre o IP
+      # do container do frontend e o limite por IP de /auth vira uma cota
+      # global para todos os usuarios. 172.16.0.0/12 e 192.168.0.0/16 cobrem
+      # os pools padrao de sub-rede das redes bridge do Docker. Ressalva: quem
+      # acessa a porta publicada 8000 pelo proprio host chega pelo gateway da
+      # bridge (tambem nessa faixa) e poderia forjar o cabecalho; em producao,
+      # nao publique a porta da API ou restrinja esta lista a sub-rede real
+      # (docker network inspect <projeto>_default).
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12,192.168.0.0/16}
       TELEMETRY_EXCHANGE: ${TELEMETRY_EXCHANGE:-pipeline_telemetry}
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}
       DOCUMENT_INDEX_EXCHANGE: ${DOCUMENT_INDEX_EXCHANGE:-thingindex.document.index}
