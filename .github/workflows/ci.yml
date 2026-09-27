@@ -282,7 +282,7 @@ jobs:
           THINGINDEX_TEST_DB_PASSWORD: thingindex
           THINGINDEX_TEST_DB_NAME: thingindex_test
           THINGINDEX_TEST_DB_SSLMODE: disable
-        run: go test -tags=integration ./internal/repository/ ./internal/indeximport/ -v
+        run: go test -tags=integration ./db/ ./internal/repository/ ./internal/indeximport/ -v
 
       # A fila e o ponto onde o worker morria em silencio quando o broker caia
       # (ver ErrDeliveriesChannelClosed). O teste que distingue queda do broker

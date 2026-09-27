@@ -1081,6 +1081,20 @@ func (c *openAICompatibleLLMClient) ModelName() string {
 	return c.model
 }
 
+func (c *openAICompatibleLLMClient) EndpointHost() string {
+	return endpointHost(c.endpoint)
+}
+
+// endpointHost devolve o host (com porta) do endpoint, em minusculas. E a
+// identidade do provedor na chave do cache de enriquecimento.
+func endpointHost(endpoint string) string {
+	parsed, err := url.Parse(strings.TrimSpace(endpoint))
+	if err != nil {
+		return ""
+	}
+	return strings.ToLower(parsed.Host)
+}
+
 func (c *openAICompatibleLLMClient) Pricing() (domain.LLMPricing, bool) {
 	return c.pricing, c.hasPricing
 }
@@ -1091,6 +1105,10 @@ func (c *ollamaNativeLLMClient) ProviderType() string {
 
 func (c *ollamaNativeLLMClient) ModelName() string {
 	return c.model
+}
+
+func (c *ollamaNativeLLMClient) EndpointHost() string {
+	return endpointHost(c.endpoint)
 }
 
 func (c *ollamaNativeLLMClient) Pricing() (domain.LLMPricing, bool) {
