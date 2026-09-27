@@ -35,15 +35,14 @@ import OperationalObservabilityPanel from "@/components/documents/OperationalObs
 import { DangerConfirmModal } from "@/components/ui/danger-confirm-modal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDocuments } from "@/hooks/use-documents";
+import { useDocumentPreviewData } from "@/hooks/use-document-preview-data";
 import { useProviderRuntimeOverview } from "@/hooks/use-provider-runtime-overview";
-import { fetchCollectionContext } from "@/lib/api/collections";
 import type { CollectionContext } from "@/lib/api/contracts/document-context";
 import {
     downloadDocumentIndexExport,
     downloadDocumentOriginal,
     deleteCollectionDocuments,
     deleteDocument,
-    fetchDocumentIndex,
     fetchDocumentMonitoringSummary,
     retryDocumentIndexing,
     type Document,
@@ -874,65 +873,7 @@ function DocumentPreviewPanel({
     onClose: () => void;
 }) {
     const { locale, t } = useI18n();
-    const [context, setContext] = useState<CollectionContext | null>(null);
-    const [documentIndex, setDocumentIndex] = useState<DocumentIndex | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (!document) {
-            setContext(null);
-            setDocumentIndex(null);
-            setIsLoading(false);
-            setError(null);
-            return;
-        }
-        const currentDocument = document;
-
-        const controller = new AbortController();
-        let pollTimer: ReturnType<typeof setTimeout> | null = null;
-
-        async function loadContext() {
-            try {
-                setIsLoading(true);
-                setError(null);
-                const [indexData, contextData] = await Promise.all([
-                    fetchDocumentIndex(currentDocument.id, controller.signal),
-                    currentDocument.collection_id
-                        ? fetchCollectionContext(currentDocument.collection_id, controller.signal)
-                        : Promise.resolve(null),
-                ]);
-                setDocumentIndex(indexData);
-                setContext(contextData);
-
-                const currentStatus = indexData.document?.status ?? currentDocument.status;
-                if (!controller.signal.aborted && (currentStatus === "QUEUED" || currentStatus === "PROCESSING")) {
-                    pollTimer = setTimeout(() => {
-                        void loadContext();
-                    }, 3000);
-                }
-            } catch (err) {
-                if (controller.signal.aborted) {
-                    return;
-                }
-
-                setError(err instanceof Error ? err.message : translate(locale, "documentsPage.errors.loadIndexStructure"));
-            } finally {
-                if (!controller.signal.aborted) {
-                    setIsLoading(false);
-                }
-            }
-        }
-
-        void loadContext();
-
-        return () => {
-            controller.abort();
-            if (pollTimer) {
-                clearTimeout(pollTimer);
-            }
-        };
-    }, [document, locale]);
+    const { context, documentIndex, isLoading, error } = useDocumentPreviewData(document, locale);
 
     if (!document) {
         return null;
