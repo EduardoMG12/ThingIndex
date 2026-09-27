@@ -55,11 +55,9 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 		AllowCredentials: true,
 	}))
 
-	defaultStorage, err := newDefaultStorageProvider(cfg)
-	if err != nil {
-		log.Printf("warning: failed to initialize default storage provider, continuing with unavailable storage: %v", err)
-		defaultStorage = newUnavailableStorage(err)
-	}
+	defaultStorage := resolveDefaultStorage(func() (domain.StorageService, error) {
+		return newDefaultStorageProvider(cfg)
+	})
 
 	authRepo := repository.NewGormAuthRepository(db)
 	categoryRepo := repository.NewGormCategoryRepository(db)
