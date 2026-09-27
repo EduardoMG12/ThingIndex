@@ -87,18 +87,17 @@ services:
     env_file:
       - .env
     environment:
-      # Proxies cujo X-Forwarded-For a API aceita (parecer A3). O navegador so
-      # fala com o Next; o Next chama a API pela rede interna do compose e
-      # repassa o IP do cliente em X-Forwarded-For (createForwardHeaders). Sem
-      # confiar nessa rede, o Gin ignora o cabecalho, ClientIP() e sempre o IP
-      # do container do frontend e o limite por IP de /auth vira uma cota
-      # global para todos os usuarios. 172.16.0.0/12 e 192.168.0.0/16 cobrem
-      # os pools padrao de sub-rede das redes bridge do Docker. Ressalva: quem
-      # acessa a porta publicada 8000 pelo proprio host chega pelo gateway da
-      # bridge (tambem nessa faixa) e poderia forjar o cabecalho; em producao,
-      # nao publique a porta da API ou restrinja esta lista a sub-rede real
-      # (docker network inspect <projeto>_default).
-      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12,192.168.0.0/16}
+      # Proxies cujo X-Forwarded-For a API aceita. Vazio por padrao: o Gin
+      # ignora o cabecalho e o limite por IP de /auth conta o IP de quem
+      # conecta (o container do frontend, para quem usa a interface), que
+      # somado ao limite por e-mail nao pode ser contornado forjando cabecalho.
+      # Para limitar por IP do usuario final, ponha um proxy reverso na frente
+      # que SOBRESCREVA X-Forwarded-For, ligue FRONTEND_TRUST_PROXY_HEADERS no
+      # frontend e liste aqui so a sub-rede real do frontend
+      # (docker network inspect <projeto>_default). Confiar em toda a faixa
+      # 172.16.0.0/12 com a porta 8000 publicada deixa qualquer cliente forjar
+      # o IP.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       TELEMETRY_EXCHANGE: ${TELEMETRY_EXCHANGE:-pipeline_telemetry}
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}
       DOCUMENT_INDEX_EXCHANGE: ${DOCUMENT_INDEX_EXCHANGE:-thingindex.document.index}
@@ -225,6 +224,9 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
       API_INTERNAL_URL: http://api:8080/api/v1
+      # So "true" atras de um proxy reverso que sobrescreve X-Forwarded-For;
+      # ver TRUSTED_PROXIES na api.
+      FRONTEND_TRUST_PROXY_HEADERS: ${FRONTEND_TRUST_PROXY_HEADERS:-false}
 
   db:
     image: postgres:16

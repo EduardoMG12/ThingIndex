@@ -134,9 +134,11 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 		// bruta distribuida contra o mesmo e-mail.
 		emailLimit := middleware.EmailRateLimitMiddleware(cfg.AuthEmailRateLimitRequests, cfg.AuthEmailRateLimitWindow)
 		{
-			auth.POST("/register", authHandler.Register)
+			auth.POST("/register", emailLimit, authHandler.Register)
 			auth.POST("/login", emailLimit, authHandler.Login)
 			auth.POST("/forgot-password", emailLimit, authHandler.ForgotPassword)
+			// reset-password nao recebe e-mail no corpo (so token e senha nova);
+			// fica com o limite por IP do grupo.
 			auth.POST("/reset-password", authHandler.ResetPassword)
 		}
 
