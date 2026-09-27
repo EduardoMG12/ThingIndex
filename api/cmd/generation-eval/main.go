@@ -90,6 +90,7 @@ func main() {
 	summary := flag.Bool("summary", false, "em vez de rodar, resume os CSVs de -in")
 	rescore := flag.Bool("rescore", false, "em vez de rodar, reavalia correct/provenance dos CSVs de -in com o gabarito atual (sem chamar modelo) e reescreve cada arquivo")
 	in := flag.String("in", "", "CSV(s) para -summary, separados por virgula")
+	prose := flag.Bool("prose", false, "em vez de rodar, mede nos CSVs de -in se a pagina escrita na prosa da resposta e pagina-alvo (mesmo criterio para T e F)")
 	flag.Parse()
 
 	if *summary {
@@ -104,6 +105,13 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "generation-eval: %v\n", err)
 		os.Exit(1)
+	}
+	if *prose {
+		if err := printProseProvenance(*in, g); err != nil {
+			fmt.Fprintf(os.Stderr, "generation-eval: %v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 	if *rescore {
 		for _, path := range strings.Split(*in, ",") {
@@ -209,7 +217,7 @@ func buildRow(q evalcorpus.GabaritoQuestion, arm, scope string, repeat int, mode
 	if a.Model != "" {
 		model = a.Model
 	}
-	correct := a.Err == nil && matchesAnswer(a.Text, q.AnswerPatterns)
+	correct := a.Err == nil && answerCorrect(a.Text, q)
 	cited, prov, hit := "", "", ""
 	if !q.IsNegative() {
 		if arm == "T" {

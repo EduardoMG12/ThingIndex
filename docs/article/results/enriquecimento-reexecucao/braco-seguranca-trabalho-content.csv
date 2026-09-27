@@ -1,10 +1,10 @@
 question_id,stratum,variant,pair_id,origin,arm,scope,repeat,model,correct,cited_pages,provenance_ok,retrieval_hit,prompt_tokens,completion_tokens,usage_reported,latency_ms,cost_usd,truncated,error,answer
-sg1L,premissa-falsa,literal,sg1,pdf,T,,1,gemma4:31b,true,nr-06:3;nr-06:4;nr-06:5;nr-01-2024:3;nr-01-2024:4;nr-01-2025:3;nr-01-2025:4;nr-06:6;nr-01-2025:12;nr-01-2025:13,true,true,5214,109,true,1014,,false,,"Com base nos documentos fornecidos, não há nenhuma informação sobre percentuais de desconto que o empregador possa aplicar ao trabalhador por EPI danificado.
+sg1L,premissa-falsa,literal,sg1,pdf,T,,1,gemma4:31b,false,nr-06:3;nr-06:4;nr-06:5;nr-01-2024:3;nr-01-2024:4;nr-01-2025:3;nr-01-2025:4;nr-06:6;nr-01-2025:12;nr-01-2025:13,true,true,5214,109,true,1014,,false,,"Com base nos documentos fornecidos, não há nenhuma informação sobre percentuais de desconto que o empregador possa aplicar ao trabalhador por EPI danificado.
 
 Os documentos mencionam apenas que:
 *   Cabe à organização substituir imediatamente o EPI quando danificado ou extraviado (NR 6 - EPI, página 3).
 *   Cabe ao trabalhador comunicar à organização quando o EPI for extraviado, danificado ou apresentar qualquer alteração que o torne impróprio para uso (NR 6 - EPI, página 4)."
-sg1P,premissa-falsa,parafrase,sg1,pdf,T,,1,gemma4:31b,true,nr-01-2024:14;nr-01-2024:15;nr-01-2025:17;nr-01-2025:18,false,false,2447,56,true,953,,false,,"Com base nos documentos fornecidos, não há informações sobre descontos em pagamentos de trabalhadores devido a danos em equipamentos (como botas). Os textos limitam-se a definições de termos, conceitos de segurança e saúde no trabalho e diretrizes de gerenciamento de riscos."
+sg1P,premissa-falsa,parafrase,sg1,pdf,T,,1,gemma4:31b,false,nr-01-2024:14;nr-01-2024:15;nr-01-2025:17;nr-01-2025:18,false,false,2447,56,true,953,,false,,"Com base nos documentos fornecidos, não há informações sobre descontos em pagamentos de trabalhadores devido a danos em equipamentos (como botas). Os textos limitam-se a definições de termos, conceitos de segurança e saúde no trabalho e diretrizes de gerenciamento de riscos."
 sg2L,aberta,literal,sg2,pdf,T,,1,gemma4:31b,true,nr-18:3;nr-18:4;nr-06:2;nr-06:3;nr-09:7;nr-09:8;nr-06:4;nr-06:5;nr-09:6;nr-06:6,true,true,4846,171,true,1029,,false,,"Cabe à **organização** fornecer o EPI ao trabalhador (NR 6 - EPI, página 2).
 
 O fornecimento deve ocorrer sob as seguintes condições:

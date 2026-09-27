@@ -162,3 +162,13 @@ func TestGabaritoDeEnsinoContinuaValidoComOsPadroes(t *testing.T) {
 		t.Fatalf("o minimo padrao deixou de ser aplicado: %d perguntas", len(g.Questions))
 	}
 }
+
+// O edital municipal e um acervo de documento unico, medido so como
+// generalizacao (o artigo declara isso), e por isso nao passa pelas regras de
+// tema acima. O hash das perguntas, porem, vale para ele como para os outros.
+func TestGabaritoPrefeituraConfereOHash(t *testing.T) {
+	t.Parallel()
+	if _, err := LoadGabarito("testdata/gabarito-prefeitura.json"); err != nil {
+		t.Fatal(err)
+	}
+}

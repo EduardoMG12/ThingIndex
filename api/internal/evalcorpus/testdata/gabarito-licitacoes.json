@@ -22,7 +22,7 @@
       ]
     }
   ],
-  "frozen_sha256": "6d1033608edb060e9d7efa7f404aa2083a8c94e610f35424526a9f2f6169b0c7",
+  "frozen_sha256": "e56e946a12be39044a04650e7f7813bcfc51d494fb16c1ffb5cd8151b4ca04ba",
   "min_questions": 25,
   "notes": "Perguntas em PAR: a mesma necessidade de informacao aparece duas vezes, com a mesma resposta esperada e o mesmo alvo, mudando so a formulacao. LITERAL usa os termos do documento; PARAFRASE usa o vocabulario de quem pergunta no dia a dia, sem repetir as palavras do texto. O par existe porque um gabarito escrito por quem ja leu a pagina herda o vocabulario dela, e ai a medicao vira casamento lexical se passando por compreensao. Formas: aberta, confirmacao, existencia, premissa-falsa (a pergunta embute um dado errado e a resposta certa e corrigir) e negativa (nao consta). Escrito a partir dos PDF com pdftotext -layout; cada pagina-alvo foi conferida.",
   "questions": [
@@ -124,7 +124,6 @@
     },
     {
       "answer_patterns": [
-        "nao",
         "revogad"
       ],
       "expected": "Nao. A Lei 8.666 foi revogada pela Lei 14.133 (art. 193), com efeito em 30 de dezembro de 2023.",
@@ -147,11 +146,13 @@
         }
       ],
       "text": "A Lei 8.666/1993 ainda esta em vigor?",
-      "variant": "literal"
+      "variant": "literal",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+      ]
     },
     {
       "answer_patterns": [
-        "nao",
         "revogad"
       ],
       "expected": "Nao. A Lei 8.666 foi revogada pela Lei 14.133 (art. 193), com efeito em 30 de dezembro de 2023.",
@@ -174,7 +175,10 @@
         }
       ],
       "text": "Aquela lei antiga de licitacao ainda vale hoje?",
-      "variant": "parafrase"
+      "variant": "parafrase",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+      ]
     },
     {
       "answer_patterns": [
@@ -218,7 +222,7 @@
     },
     {
       "answer_patterns": [
-        "revogad|nao|8\\.666"
+        "revogad|extint|deixou de existir|nao (existe|consta|e mais|esta mais|ha mais)[^.]{0,60}(modalidade|tomada|rol)"
       ],
       "expected": "A premissa e falsa: tomada de precos era modalidade da Lei 8.666, revogada, e nao consta do rol do art. 28 da Lei 14.133.",
       "id": "lc5L",
@@ -244,7 +248,7 @@
     },
     {
       "answer_patterns": [
-        "revogad|nao|8\\.666"
+        "revogad|extint|deixou de existir|nao (existe|consta|e mais|esta mais|ha mais)[^.]{0,60}(modalidade|tomada|rol)"
       ],
       "expected": "A premissa e falsa: tomada de precos era modalidade da Lei 8.666, revogada, e nao consta do rol do art. 28 da Lei 14.133.",
       "id": "lc5P",
@@ -270,7 +274,7 @@
     },
     {
       "answer_patterns": [
-        "sim|existe|ha |prev|trata"
+        "\\bsim\\b|existe|prev|trata"
       ],
       "expected": "Sim, a Lei 14.133 traz um capitulo de infracoes e sancoes administrativas (art. 155 e seguintes), com advertencia, multa, impedimento de licitar e declaracao de inidoneidade.",
       "id": "lc8L",
@@ -286,11 +290,14 @@
         }
       ],
       "text": "A lei preve infracoes e sancoes administrativas para o licitante?",
-      "variant": "literal"
+      "variant": "literal",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+      ]
     },
     {
       "answer_patterns": [
-        "sim|existe|ha |prev|trata"
+        "\\bsim\\b|existe|prev|trata"
       ],
       "expected": "Sim, a Lei 14.133 traz um capitulo de infracoes e sancoes administrativas (art. 155 e seguintes), com advertencia, multa, impedimento de licitar e declaracao de inidoneidade.",
       "id": "lc8P",
@@ -306,7 +313,10 @@
         }
       ],
       "text": "Se a empresa aprontar no contrato com o governo, tem punicao escrita em algum lugar?",
-      "variant": "parafrase"
+      "variant": "parafrase",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+      ]
     },
     {
       "answer_patterns": [
@@ -350,7 +360,7 @@
     },
     {
       "answer_patterns": [
-        "sim|existe|ha |prev|seguro-garantia"
+        "\\bsim\\b|existe|prev|seguro-garantia"
       ],
       "expected": "Sim, o seguro-garantia e uma das modalidades de garantia, e serve para garantir o cumprimento das obrigacoes do contratado (art. 96 e 97).",
       "id": "lc10L",
@@ -366,11 +376,14 @@
         }
       ],
       "text": "A lei preve seguro-garantia como modalidade de garantia?",
-      "variant": "literal"
+      "variant": "literal",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+      ]
     },
     {
       "answer_patterns": [
-        "sim|existe|ha |prev|seguro-garantia"
+        "\\bsim\\b|existe|prev|seguro-garantia"
       ],
       "expected": "Sim, o seguro-garantia e uma das modalidades de garantia, e serve para garantir o cumprimento das obrigacoes do contratado (art. 96 e 97).",
       "id": "lc10P",
@@ -386,7 +399,10 @@
         }
       ],
       "text": "Se a empresa contratada sumir no meio da obra, tem algum tipo de seguro previsto?",
-      "variant": "parafrase"
+      "variant": "parafrase",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+      ]
     },
     {
       "answer_patterns": [
@@ -482,7 +498,7 @@
     },
     {
       "answer_patterns": [
-        "nao|pregao|dialogo|revogad|28"
+        "revogad|extint|deixou de existir|nao (existe|consta|e mais|esta mais|ha mais)[^.]{0,60}(modalidade|convite|rol)"
       ],
       "expected": "A premissa e falsa: convite nao consta do rol de modalidades do art. 28 da Lei 14.133; era modalidade da Lei 8.666, revogada.",
       "id": "lc13L",
@@ -502,7 +518,7 @@
     },
     {
       "answer_patterns": [
-        "nao|pregao|dialogo|revogad|28"
+        "revogad|extint|deixou de existir|nao (existe|consta|e mais|esta mais|ha mais)[^.]{0,60}(modalidade|convite|rol)"
       ],
       "expected": "A premissa e falsa: convite nao consta do rol de modalidades do art. 28 da Lei 14.133; era modalidade da Lei 8.666, revogada.",
       "id": "lc13P",
@@ -562,5 +578,5 @@
     "negativa": 3,
     "premissa-falsa": 4
   },
-  "version": "licitacoes-2026-09-v3"
+  "version": "licitacoes-2026-09-v4"
 }

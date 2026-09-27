@@ -7,7 +7,7 @@
       "title": "Edital 01/2026 - Concurso Publico Prefeitura de Francisco Morato"
     }
   ],
-  "frozen_sha256": "b85f072e485708488c8b14ab8e6d7fc4e89283f0d14206ff0905b9b132f03e8f",
+  "frozen_sha256": "06a2892b9ba6b5427d46dedfbc68a792cacf67590f8fc33b363879ad17814d8d",
   "min_questions": 18,
   "notes": "Corpus adversarial de documento municipal real (edital de concurso publico, Prefeitura de Francisco Morato/SP, 52 paginas). Escrito a partir do PDF, sem consultar o sistema. Cada par ataca um modo de falha especifico: valor que depende do nivel do cargo (pf1), agregacao de linhas de tabela em tres paginas (pf2), requisito presente em uma unica linha (pf3), nota de rodape de tabela (pf4), data repetida em dois lugares do documento (pf5), premissa falsa sobre validade (pf6), negativa SUTIL onde o termo consta mas o valor nao (pf7), existencia (pf8) e defeito do proprio documento, com dois capitulos numerados XVI (pf9).",
   "questions": [
@@ -301,7 +301,10 @@
         }
       ],
       "text": "O edital preve isencao do pagamento da taxa de inscricao?",
-      "variant": "literal"
+      "variant": "literal",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+      ]
     },
     {
       "answer_patterns": [
@@ -321,7 +324,10 @@
         }
       ],
       "text": "Quem e de baixa renda consegue algum desconto pra participar?",
-      "variant": "parafrase"
+      "variant": "parafrase",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+      ]
     },
     {
       "answer_patterns": [
@@ -372,5 +378,5 @@
     "negativa": 2,
     "premissa-falsa": 2
   },
-  "version": "prefeitura-2026-09-v1"
+  "version": "prefeitura-2026-09-v2"
 }

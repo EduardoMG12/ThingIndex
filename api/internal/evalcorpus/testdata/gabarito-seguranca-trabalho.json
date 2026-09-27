@@ -40,13 +40,13 @@
       ]
     }
   ],
-  "frozen_sha256": "8dfd376387d0064dc8ab9d11911eba15065a25883e7d9fe051caafea239e8de4",
+  "frozen_sha256": "02368c708e000d35fbf55684668b698c682377d7cdd5beca708c6967a894791f",
   "min_questions": 23,
   "notes": "Perguntas em PAR: a mesma necessidade de informacao aparece duas vezes, com a mesma resposta esperada e o mesmo alvo, mudando so a formulacao. LITERAL usa os termos do documento; PARAFRASE usa o vocabulario de quem pergunta no dia a dia, sem repetir as palavras do texto. O par existe porque um gabarito escrito por quem ja leu a pagina herda o vocabulario dela, e ai a medicao vira casamento lexical se passando por compreensao. Formas: aberta, confirmacao, existencia, premissa-falsa (a pergunta embute um dado errado e a resposta certa e corrigir) e negativa (nao consta). Escrito a partir dos PDF com pdftotext -layout; cada pagina-alvo foi conferida.",
   "questions": [
     {
       "answer_patterns": [
-        "nao|nenhum|gratuit|incorret|improced"
+        "gratuit|sem (custo|onus)|nao (pode|e permitido|ha previsao de) (descont|cobr)"
       ],
       "expected": "A premissa e falsa: o EPI e fornecido gratuitamente pela organizacao e a norma nao preve desconto (NR-6, item 6.5).",
       "id": "sg1L",
@@ -67,7 +67,7 @@
     },
     {
       "answer_patterns": [
-        "nao|nenhum|gratuit|incorret|improced"
+        "gratuit|sem (custo|onus)|nao (pode|e permitido|ha previsao de) (descont|cobr)"
       ],
       "expected": "A premissa e falsa: o EPI e fornecido gratuitamente pela organizacao e a norma nao preve desconto (NR-6, item 6.5).",
       "id": "sg1P",
@@ -210,7 +210,7 @@
     },
     {
       "answer_patterns": [
-        "sim|existe|ha |trata|prev"
+        "\\bsim\\b|existe|trata|prev"
       ],
       "expected": "Sim, a NR-18 trata das areas de vivencia do canteiro de obras.",
       "id": "sg5L",
@@ -226,11 +226,14 @@
         }
       ],
       "text": "A NR-18 trata de area de vivencia no canteiro de obras?",
-      "variant": "literal"
+      "variant": "literal",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+      ]
     },
     {
       "answer_patterns": [
-        "sim|existe|ha |trata|prev"
+        "\\bsim\\b|existe|trata|prev"
       ],
       "expected": "Sim, a NR-18 trata das areas de vivencia do canteiro de obras.",
       "id": "sg5P",
@@ -246,7 +249,10 @@
         }
       ],
       "text": "Tem alguma regra sobre banheiro e lugar para comer na obra?",
-      "variant": "parafrase"
+      "variant": "parafrase",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+      ]
     },
     {
       "answer_patterns": [
@@ -334,7 +340,7 @@
     },
     {
       "answer_patterns": [
-        "sim|existe|ha |trata|prev"
+        "\\bsim\\b|existe|trata|prev"
       ],
       "expected": "Sim, a NR-18 trata de cinto de seguranca e protecao contra quedas.",
       "id": "sg10L",
@@ -350,11 +356,14 @@
         }
       ],
       "text": "A norma trata de cinto de seguranca na construcao?",
-      "variant": "literal"
+      "variant": "literal",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+      ]
     },
     {
       "answer_patterns": [
-        "sim|existe|ha |trata|prev"
+        "\\bsim\\b|existe|trata|prev"
       ],
       "expected": "Sim, a NR-18 trata de cinto de seguranca e protecao contra quedas.",
       "id": "sg10P",
@@ -370,7 +379,10 @@
         }
       ],
       "text": "Tem regra sobre o equipamento que prende a gente pra nao cair la de cima?",
-      "variant": "parafrase"
+      "variant": "parafrase",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+      ]
     },
     {
       "answer_patterns": [
@@ -414,7 +426,7 @@
     },
     {
       "answer_patterns": [
-        "nao|incorret|gratuit|nenhum"
+        "gratuit|sem (custo|onus)|(organizacao|empregador|empresa)[^.]{0,60}fornec|fornec[^.]{0,60}(organizacao|empregador|empresa)"
       ],
       "expected": "A premissa e falsa: nao existe prazo para o trabalhador comprar o EPI, porque quem fornece e a organizacao, gratuitamente.",
       "id": "sg12L",
@@ -434,7 +446,7 @@
     },
     {
       "answer_patterns": [
-        "nao|incorret|gratuit|nenhum"
+        "gratuit|sem (custo|onus)|(organizacao|empregador|empresa)[^.]{0,60}fornec|fornec[^.]{0,60}(organizacao|empregador|empresa)"
       ],
       "expected": "A premissa e falsa: nao existe prazo para o trabalhador comprar o EPI, porque quem fornece e a organizacao, gratuitamente.",
       "id": "sg12P",
@@ -494,5 +506,5 @@
     "negativa": 3,
     "premissa-falsa": 4
   },
-  "version": "seguranca-trabalho-2026-09-v3"
+  "version": "seguranca-trabalho-2026-09-v4"
 }
