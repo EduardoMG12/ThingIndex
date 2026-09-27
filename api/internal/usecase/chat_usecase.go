@@ -57,6 +57,7 @@ type chatUseCase struct {
 	conversationRepo      domain.ChatConversationRepository
 	llmResolver           domain.UserLLMResolver
 	expander              *queryExpander
+	retrievalOptions      RetrievalOptions
 }
 
 func NewChatUseCase(
@@ -65,6 +66,7 @@ func NewChatUseCase(
 	conversationRepo domain.ChatConversationRepository,
 	llmResolver domain.UserLLMResolver,
 	expansionCache domain.EnrichmentCache,
+	retrievalOptions RetrievalOptions,
 ) domain.ChatUseCase {
 	return &chatUseCase{
 		collectionRepo:        collectionRepo,
@@ -72,6 +74,7 @@ func NewChatUseCase(
 		conversationRepo:      conversationRepo,
 		llmResolver:           llmResolver,
 		expander:              newQueryExpander(expansionCache),
+		retrievalOptions:      retrievalOptions,
 	}
 }
 
@@ -212,13 +215,14 @@ func (u *chatUseCase) StreamCollectionChat(
 	// A expansao roda ANTES da recuperacao, porque o que ela muda e o texto da
 	// consulta. Ver docs/prds/pre-registro-expansao-consulta.md: braco E.
 	query := prompt
-	if queryExpansionEnabled() {
+	if u.retrievalOptions.QueryExpansion {
 		if extra := u.expander.Expand(llmCtx, llm, domain.LLMCacheScope(userID, llm), prompt); extra != "" {
 			query = prompt + " " + extra
 		}
 	}
 
-	retrieval := buildCollectionRetrieval(
+	retrieval := buildCollectionRetrievalWith(
+		u.retrievalOptions,
 		query,
 		collectionContext.Documents,
 		collectionContext.DocumentPages,

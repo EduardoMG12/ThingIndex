@@ -14,9 +14,14 @@ import (
 )
 
 type Config struct {
-	Environment        string
-	Port               string
-	TrustedProxies     string
+	Environment    string
+	Port           string
+	TrustedProxies string
+	// Bracos experimentais da recuperacao, lidos UMA vez na subida (antes eram
+	// os.Getenv por pagina/pergunta). Valores crus; a validacao e o aviso de
+	// valor invalido ficam em usecase.NewRetrievalOptions.
+	PageSearchFields   string
+	QueryExpansion     string
 	DBHost             string
 	DBPort             string
 	DBUser             string
@@ -122,6 +127,8 @@ func Load() {
 		Environment:                    environment,
 		Port:                           getEnv("PORT", "8000"),
 		TrustedProxies:                 getEnv("TRUSTED_PROXIES", ""),
+		PageSearchFields:               os.Getenv("THINGINDEX_PAGE_SEARCH_FIELDS"),
+		QueryExpansion:                 os.Getenv("THINGINDEX_QUERY_EXPANSION"),
 		DBHost:                         getEnv("DB_HOST", "localhost"),
 		DBPort:                         getEnv("DB_PORT", "5432"),
 		DBUser:                         getEnv("DB_USER", "postgres"),

@@ -185,11 +185,11 @@ func TestExpandFalhaSilenciosaNaoQuebraABusca(t *testing.T) {
 
 func TestBracoDesligadoPorPadrao(t *testing.T) {
 	t.Setenv("THINGINDEX_QUERY_EXPANSION", "")
-	if queryExpansionEnabled() {
+	if RetrievalOptionsFromEnv().QueryExpansion {
 		t.Fatal("o braco de controle e o padrao: sem a variavel, a expansao fica desligada")
 	}
 	t.Setenv("THINGINDEX_QUERY_EXPANSION", "1")
-	if !queryExpansionEnabled() {
+	if !RetrievalOptionsFromEnv().QueryExpansion {
 		t.Fatal("THINGINDEX_QUERY_EXPANSION=1 devia ligar a expansao")
 	}
 }
