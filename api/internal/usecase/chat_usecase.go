@@ -454,7 +454,9 @@ func buildConversationTitle(title string) string {
 // artigo compara custo por consulta, entao o teto tem de ser um numero
 // nomeado e travado por teste, nao um literal escondido.
 const (
-	// ChatSourceLimit e o total de fontes citadas por resposta.
+	// ChatSourceLimit e o teto de fontes de SECAO e PAGINA por resposta. As
+	// linhas de tabela contam a parte (ChatTableRowSourceLimit), entao o total
+	// citado pode chegar a ChatSourceLimit + ChatTableRowSourceLimit = 9.
 	ChatSourceLimit = 6
 	// ChatNodeSourceLimit e quantas dessas fontes vem de secoes do sumario
 	// (node hits), que entram ANTES das paginas por serem a unidade
