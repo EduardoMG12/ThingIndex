@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { createForwardHeaders } from "@/app/api/_utils/locale";
 import { fetchApiUpstream } from "@/app/api/_utils/upstream";
 import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, normalizeLocale } from "@/lib/i18n/config";
+import { translate } from "@/lib/i18n/translate";
 
 export async function login(formData: FormData) {
   const cookieStore = await cookies();
@@ -13,7 +14,7 @@ export async function login(formData: FormData) {
   const password = formData.get("password");
 
   if (!email || !password) {
-    return { error: "Email e senha são obrigatórios", type: "error" };
+    return { error: translate(locale, "auth.errors.loginRequired"), type: "error" };
   }
 
   try {
@@ -23,11 +24,11 @@ export async function login(formData: FormData) {
       body: JSON.stringify({ email, password }),
     });
 
-    const result = await res.json().catch(() => ({ message: "Erro ao processar resposta" }));
+    const result = await res.json().catch(() => ({ message: translate(locale, "auth.errors.invalidResponse") }));
 
     if (!res.ok) {
       return { 
-        error: result.message || "Credenciais inválidas",
+        error: result.message || translate(locale, "auth.errors.invalidCredentials"),
         type: result.type || "error",
         status: res.status,
         errors: result.errors
@@ -37,7 +38,7 @@ export async function login(formData: FormData) {
     const token = result.data?.token;
     
     if (!token) {
-      return { error: "Token não recebido do servidor" };
+      return { error: translate(locale, "auth.errors.missingToken") };
     }
 
     // Configura o cookie com o token JWT
@@ -50,7 +51,7 @@ export async function login(formData: FormData) {
     });
   } catch (error: unknown) {
     console.error("Login error:", error);
-    return { error: "Erro de conexão com o servidor", type: "error" };
+    return { error: translate(locale, "auth.errors.connection"), type: "error" };
   }
 
   redirect(`/${locale}/workspace`);
@@ -64,7 +65,7 @@ export async function register(formData: FormData) {
   const password = formData.get("password");
 
   if (!name || !email || !password) {
-    return { error: "Todos os campos são obrigatórios", type: "error" };
+    return { error: translate(locale, "auth.errors.registerRequired"), type: "error" };
   }
 
   try {
@@ -74,11 +75,11 @@ export async function register(formData: FormData) {
       body: JSON.stringify({ name, email, password }),
     });
 
-    const result = await res.json().catch(() => ({ message: "Erro ao processar resposta" }));
+    const result = await res.json().catch(() => ({ message: translate(locale, "auth.errors.invalidResponse") }));
 
     if (!res.ok) {
       return { 
-        error: result.message || "Erro ao criar conta",
+        error: result.message || translate(locale, "auth.errors.registerFailed"),
         type: result.type || "error",
         status: res.status,
         errors: result.errors
@@ -88,7 +89,7 @@ export async function register(formData: FormData) {
     const token = result.data?.token;
 
     if (!token) {
-      return { error: "Token não recebido do servidor" };
+      return { error: translate(locale, "auth.errors.missingToken") };
     }
 
     // Configura o cookie com o token JWT
@@ -101,7 +102,7 @@ export async function register(formData: FormData) {
     });
   } catch (error: unknown) {
     console.error("Registration error:", error);
-    return { error: "Erro de conexão com o servidor", type: "error" };
+    return { error: translate(locale, "auth.errors.connection"), type: "error" };
   }
 
   redirect(`/${locale}/workspace`);

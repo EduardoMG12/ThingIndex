@@ -620,6 +620,15 @@ export const messages: LocaleMessages = {
                 or: "ou",
                 city: "sao paulo",
             },
+            errors: {
+                loginRequired: "Email e senha são obrigatórios",
+                registerRequired: "Todos os campos são obrigatórios",
+                invalidCredentials: "Credenciais inválidas",
+                registerFailed: "Erro ao criar conta",
+                missingToken: "Token não recebido do servidor",
+                connection: "Erro de conexão com o servidor",
+                invalidResponse: "Erro ao processar resposta",
+            },
         },
         dashboard: {
             eyebrow: "Workspace relacional",
@@ -2007,6 +2016,15 @@ export const messages: LocaleMessages = {
                 or: "or",
                 city: "sao paulo",
             },
+            errors: {
+                loginRequired: "Email and password are required",
+                registerRequired: "All fields are required",
+                invalidCredentials: "Invalid credentials",
+                registerFailed: "Could not create the account",
+                missingToken: "Token not received from the server",
+                connection: "Could not connect to the server",
+                invalidResponse: "Could not process the server response",
+            },
         },
         dashboard: {
             eyebrow: "Relational workspace",
@@ -3393,6 +3411,15 @@ export const messages: LocaleMessages = {
                 email: "Email",
                 or: "o",
                 city: "sao paulo",
+            },
+            errors: {
+                loginRequired: "El correo y la contraseña son obligatorios",
+                registerRequired: "Todos los campos son obligatorios",
+                invalidCredentials: "Credenciales inválidas",
+                registerFailed: "No se pudo crear la cuenta",
+                missingToken: "Token no recibido del servidor",
+                connection: "No se pudo conectar con el servidor",
+                invalidResponse: "No se pudo procesar la respuesta del servidor",
             },
         },
         dashboard: {
