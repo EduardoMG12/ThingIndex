@@ -109,10 +109,30 @@ jobs:
       # A Secao de verificacao cita quantos testes existem. Numero escrito a
       # mao envelhece a cada teste novo; o .tex e gerado e comparado aqui.
       - name: contagem de testes citada no artigo esta em dia
+        # A cobertura e medida no job de testes do backend; aqui se reaproveita
+        # o valor versionado para nao rodar a suite inteira de novo.
         run: |
           cp docs/article/tables/contagem-testes.tex /tmp/contagem-versionada.tex
-          bash scripts/contagem-testes.sh > /dev/null
+          COBERTURA=$(sed -nE 's/.*coberturaBackend\}\{([0-9]+),([0-9]+)\}.*/\1.\2/p' /tmp/contagem-versionada.tex) \
+            bash scripts/contagem-testes.sh > /dev/null
           diff -u /tmp/contagem-versionada.tex docs/article/tables/contagem-testes.tex
+
+      # O Overleaf compila com pdflatex + bibtex e o modelo da SBC. Compilar
+      # aqui do mesmo jeito pega pacote ausente, macro quebrada e citacao
+      # indefinida antes da entrega.
+      - name: artigo compila com pdflatex e o modelo da SBC
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq texlive-latex-recommended texlive-latex-extra texlive-lang-portuguese texlive-fonts-recommended > /dev/null
+          cd docs/article
+          curl -fsSL -o /tmp/sbc.zip https://www.sbc.org.br/wp-content/uploads/2024/07/modelosparapublicaodeartigos.zip
+          echo "2c4524a43fa1a6cc20b2f444448bb74ba42a3d33d56e9c8a4aba4654fdc6731a  /tmp/sbc.zip" | sha256sum -c -
+          unzip -qj /tmp/sbc.zip '*/template-latex/sbc-template.sty' '*/template-latex/sbc.bst' -d .
+          pdflatex -interaction=nonstopmode artigo.tex > /dev/null || true
+          bibtex artigo
+          pdflatex -interaction=nonstopmode artigo.tex > /dev/null || true
+          pdflatex -interaction=nonstopmode -halt-on-error artigo.tex > /dev/null
+          ! grep -E "Citation .* undefined|Reference .* undefined|^! " artigo.log
 
       # Prosa se descola do artefato que descreve. O caso perigoso nao e o
       # numero obviamente errado -- e o que ficou desatualizado apos uma
@@ -167,6 +187,10 @@ jobs:
           # Sem esta comparacao o CI gerava em /tmp e descartava: uma tabela
           # desatualizada no artigo passava verde.
           for t in /tmp/tables/*.tex; do diff -u "docs/article/tables/$(basename "$t")" "$t"; done
+          # A tabela do pgvector sai do CSV medido (a medicao sobe um banco e
+          # leva minutos; aqui so se confere que a tabela e a do CSV).
+          python3 scripts/ann-pgvector.py --so-tabela --csv docs/article/results/ann-pgvector.csv --tex /tmp/ann-pgvector.tex
+          diff -u docs/article/tables/ann-pgvector.tex /tmp/ann-pgvector.tex
 
       # A TPC e a TCV sao afirmadas na Secao de Auditabilidade com valores
       # exatos (0,329 e 1,000). Os testes do comando travam essas constantes,
