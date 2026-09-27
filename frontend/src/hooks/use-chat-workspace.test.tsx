@@ -284,4 +284,48 @@ describe("useChatWorkspace", () => {
         expect(resposta?.content).toContain("monthly usage limit");
         expect(result.current.streamError).toContain("monthly usage limit");
     });
+
+    it("streamMessageId acompanha a mensagem em stream e zera ao abrir conversa nova (F-11)", async () => {
+        vi.mocked(fetchChatConversations).mockResolvedValue([createConversation(10, "Conversa")]);
+        vi.mocked(fetchChatConversation).mockResolvedValue({ conversation: createConversation(10, "Conversa"), messages: [] });
+        let terminar: () => void = () => undefined;
+        vi.mocked(streamCollectionChat).mockImplementation(async ({ onEvent }) => {
+            onEvent({ type: "delta", delta: "Oi" } as never);
+            await new Promise<void>((resolve) => {
+                terminar = resolve;
+            });
+        });
+
+        const { result } = renderHook(() => useChatWorkspace(), { wrapper: createTestWrapper("pt-BR") });
+        await waitFor(() => {
+            expect(result.current.activeConversationId).toBe(10);
+        });
+        expect(result.current.streamMessageId).toBeNull();
+
+        act(() => {
+            result.current.setInput("Pergunta");
+        });
+        let envio: Promise<void> = Promise.resolve();
+        act(() => {
+            envio = result.current.sendMessage();
+        });
+
+        await waitFor(() => {
+            expect(result.current.isStreaming).toBe(true);
+        });
+        const resposta = result.current.messages.at(-1);
+        expect(resposta?.role).toBe("assistant");
+        expect(result.current.streamMessageId).toBe(resposta?.id);
+
+        await act(async () => {
+            terminar();
+            await envio;
+        });
+        expect(result.current.isStreaming).toBe(false);
+
+        act(() => {
+            result.current.startNewConversation();
+        });
+        expect(result.current.streamMessageId).toBeNull();
+    });
 });
