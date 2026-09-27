@@ -33,7 +33,7 @@ type Collection struct {
 
 type Document struct {
 	ID                  uint                        `gorm:"primarykey" json:"id"`
-	UserID              uint                        `gorm:"not null;index" json:"user_id"`
+	UserID              uint                        `gorm:"not null;index;index:idx_documents_user_collection_created,priority:1" json:"user_id"`
 	Title               string                      `gorm:"size:255;not null" json:"title"`
 	FileURL             string                      `gorm:"size:512;not null" json:"file_url"`
 	Size                int64                       `json:"size"`
@@ -45,12 +45,12 @@ type Document struct {
 	IndexedAt           *time.Time                  `json:"indexed_at,omitempty"`
 	LastProcessingError string                      `gorm:"type:text" json:"last_processing_error,omitempty"`
 	Collection          string                      `gorm:"column:collection;size:255;index" json:"-"`
-	CollectionID        *uint                       `gorm:"index" json:"collection_id,omitempty"`
+	CollectionID        *uint                       `gorm:"index;index:idx_documents_user_collection_created,priority:2" json:"collection_id,omitempty"`
 	CollectionRef       *Collection                 `gorm:"foreignKey:CollectionID" json:"collection,omitempty"`
 	CategoryID          *uint                       `gorm:"column:category_id" json:"-"`
 	Category            *DocumentCategory           `gorm:"foreignKey:CategoryID" json:"-"`
 	ProcessingAttempts  []DocumentProcessingAttempt `gorm:"foreignKey:DocumentID" json:"-"`
-	CreatedAt           time.Time                   `json:"created_at"`
+	CreatedAt           time.Time                   `gorm:"index:idx_documents_user_collection_created,priority:3" json:"created_at"`
 	UpdatedAt           time.Time                   `json:"updated_at"`
 	DeletedAt           gorm.DeletedAt              `gorm:"index" json:"-"`
 }
@@ -167,14 +167,14 @@ type DocumentOutlineNode struct {
 }
 
 type OutboxEvent struct {
-	ID            uint           `gorm:"primarykey" json:"id"`
+	ID            uint           `gorm:"primarykey;index:idx_outbox_events_claim,priority:3" json:"id"`
 	AggregateType string         `gorm:"size:64;not null;index:idx_outbox_events_aggregate" json:"aggregate_type"`
 	AggregateID   uint           `gorm:"not null;index:idx_outbox_events_aggregate" json:"aggregate_id"`
 	EventType     string         `gorm:"size:128;not null;index" json:"event_type"`
-	Status        string         `gorm:"size:32;not null;index" json:"status"`
+	Status        string         `gorm:"size:32;not null;index;index:idx_outbox_events_claim,priority:1" json:"status"`
 	Payload       map[string]any `gorm:"type:jsonb;serializer:json" json:"payload"`
 	Attempts      int            `gorm:"not null;default:0" json:"attempts"`
-	AvailableAt   time.Time      `gorm:"not null;index" json:"available_at"`
+	AvailableAt   time.Time      `gorm:"not null;index;index:idx_outbox_events_claim,priority:2" json:"available_at"`
 	PublishedAt   *time.Time     `json:"published_at,omitempty"`
 	LastError     string         `gorm:"type:text" json:"last_error,omitempty"`
 	CreatedAt     time.Time      `json:"created_at"`
@@ -201,8 +201,8 @@ type DocumentProcessingAttempt struct {
 }
 
 type DocumentAuditEvent struct {
-	ID            uint           `gorm:"primarykey" json:"id"`
-	UserID        uint           `gorm:"not null;index" json:"user_id"`
+	ID            uint           `gorm:"primarykey;index:idx_document_audit_events_user_created,priority:3" json:"id"`
+	UserID        uint           `gorm:"not null;index;index:idx_document_audit_events_user_created,priority:1" json:"user_id"`
 	DocumentID    *uint          `gorm:"index" json:"document_id,omitempty"`
 	CollectionID  *uint          `gorm:"index" json:"collection_id,omitempty"`
 	ActorType     string         `gorm:"size:32;not null;default:'USER';index" json:"actor_type"`
@@ -214,7 +214,7 @@ type DocumentAuditEvent struct {
 	Title         string         `gorm:"size:255" json:"title,omitempty"`
 	Detail        string         `gorm:"type:text" json:"detail,omitempty"`
 	Metadata      map[string]any `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
-	CreatedAt     time.Time      `json:"created_at"`
+	CreatedAt     time.Time      `gorm:"index:idx_document_audit_events_user_created,priority:2" json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
 }

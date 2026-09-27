@@ -99,6 +99,7 @@ Table documents {
     collection_id [name: "idx_documents_collection_id"]
     deleted_at [name: "idx_documents_deleted_at"]
     status [name: "idx_documents_status"]
+    (user_id, collection_id, created_at) [name: "idx_documents_user_collection_created"]
     user_id [name: "idx_documents_user_id"]
   }
 }
@@ -296,6 +297,7 @@ Table outbox_events {
   indexes {
     (aggregate_type, aggregate_id) [name: "idx_outbox_events_aggregate"]
     available_at [name: "idx_outbox_events_available_at"]
+    (status, available_at, id) [name: "idx_outbox_events_claim"]
     event_type [name: "idx_outbox_events_event_type"]
     status [name: "idx_outbox_events_status"]
   }
@@ -329,6 +331,7 @@ Table document_audit_events {
     document_id [name: "idx_document_audit_events_document_id"]
     origin [name: "idx_document_audit_events_origin"]
     status [name: "idx_document_audit_events_status"]
+    (user_id, created_at, id) [name: "idx_document_audit_events_user_created"]
     user_id [name: "idx_document_audit_events_user_id"]
   }
 }
@@ -490,6 +493,7 @@ Table chat_conversations {
     collection_id [name: "idx_chat_conversations_collection_id"]
     deleted_at [name: "idx_chat_conversations_deleted_at"]
     last_message_at [name: "idx_chat_conversations_last_message_at"]
+    (user_id, collection_id) [name: "idx_chat_conversations_user_collection"]
     user_id [name: "idx_chat_conversations_user_id"]
   }
 }
