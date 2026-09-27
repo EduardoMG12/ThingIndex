@@ -194,8 +194,10 @@ jobs:
   # comportamento de retry/DLQ da fila. Precisam de servicos de verdade, entao
   # rodam em job proprio.
   #
-  # Escopo: repository (Postgres), queue (RabbitMQ), pkg/storage (MinIO) e
-  # indeximport. Ficam de fora processing, usecase e pkg/provider, que exigem
+  # Escopo: repository (Postgres), queue (RabbitMQ), pkg/storage (MinIO, com
+  # os testes de resiliencia), indeximport, o desligamento gracioso da api e a
+  # suite -tags=e2e das rotas (Postgres + MinIO). Ficam de fora o GCS (exige
+  # emulador) e processing, usecase e pkg/provider, que exigem
   # chamadas reais de LLM -- essas dependem de credencial e de rede externa, e
   # um CI que depende de provedor pago falha por motivo alheio ao codigo.
   backend-integration:
@@ -311,7 +313,36 @@ jobs:
           MINIO_ACCESS_KEY: thingindexminio
           MINIO_SECRET_KEY: thingindexminio
           MINIO_USE_SSL: "false"
-        run: go test -tags=integration ./internal/pkg/storage/ -run Minio -v
+        # Inclui os testes de resiliencia (resiliencia_integration_test.go),
+        # que sustentam o cenario de caos do MinIO: o cliente nao guarda sessao
+        # e volta a funcionar sozinho depois de erro de rede. O de GCS fica de
+        # fora porque exige o emulador, que este job nao sobe.
+        run: go test -tags=integration ./internal/pkg/storage/ -run 'Minio|ClienteDeStorageSobreviveAErroDeRede|OperacoesSucessivasNaoDegradam' -v
+
+      # Desligamento gracioso (graceful_shutdown_integration_test.go): servidor
+      # HTTP real com rota lenta; nao depende de servico externo, so da tag.
+      - name: testes de integracao da api (desligamento gracioso)
+        working-directory: api
+        run: go test -tags=integration ./internal/api/ -v
+
+      # Suite de rotas ponta a ponta do backend (routes_e2e_test.go): sobe o
+      # router completo contra o Postgres e o MinIO deste job. O RabbitMQ nao e
+      # usado (o upload grava no outbox; ninguem publica). O LLM do chat e um
+      # servidor falso em processo, entao nao ha credencial externa.
+      - name: testes ponta a ponta das rotas da api
+        working-directory: api
+        env:
+          THINGINDEX_TEST_DB_HOST: 127.0.0.1
+          THINGINDEX_TEST_DB_PORT: "5432"
+          THINGINDEX_TEST_DB_USER: thingindex
+          THINGINDEX_TEST_DB_PASSWORD: thingindex
+          THINGINDEX_TEST_DB_NAME: thingindex_test
+          THINGINDEX_TEST_DB_SSLMODE: disable
+          MINIO_ENDPOINT: 127.0.0.1:9000
+          MINIO_ACCESS_KEY: thingindexminio
+          MINIO_SECRET_KEY: thingindexminio
+          MINIO_USE_SSL: "false"
+        run: go test -tags=e2e ./internal/api/ -v
 
   frontend:
     name: frontend (next)
