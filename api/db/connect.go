@@ -65,6 +65,9 @@ func Connect() (*gorm.DB, error) {
 
 func bootstrapSchema(db *gorm.DB) error {
 	return withSchemaMigrationLock(db, func(tx *gorm.DB) error {
+		if err := removeOrphanStructuralRows(tx); err != nil {
+			return fmt.Errorf("fail to remove orphan structural rows: %w", err)
+		}
 		if err := tx.AutoMigrate(ManagedModels()...); err != nil {
 			return fmt.Errorf("fail to run automatic migrations: %w", err)
 		}
@@ -81,6 +84,44 @@ func bootstrapSchema(db *gorm.DB) error {
 
 		return nil
 	})
+}
+
+// structuralTables sao as tabelas cuja linha so tem sentido com o documento de
+// origem. A ordem nao importa: nenhuma referencia a outra.
+var structuralTables = []string{
+	"paragraph_nodes",
+	"document_pages",
+	"table_sections",
+	"metadata_pairs",
+	"document_chunks",
+	"document_outline_nodes",
+}
+
+// removeOrphanStructuralRows roda ANTES do AutoMigrate, porque criar a chave
+// estrangeira falha se ja existir linha apontando para documento inexistente.
+// Apagar e a unica saida coerente: linha estrutural sem documento nao tem
+// proveniencia, e inventar um documento para ela seria pior. O numero de
+// linhas removidas vai para o log por tabela, para a remocao ficar auditavel.
+//
+// Idempotente: numa base que ja tem as FKs nao ha orfao e nada e apagado. Numa
+// base nova as tabelas ainda nao existem e o passo e pulado.
+func removeOrphanStructuralRows(tx *gorm.DB) error {
+	if !tx.Migrator().HasTable("documents") {
+		return nil
+	}
+	for _, table := range structuralTables {
+		if !tx.Migrator().HasTable(table) {
+			continue
+		}
+		res := tx.Exec(`DELETE FROM ` + table + ` t WHERE NOT EXISTS (SELECT 1 FROM documents d WHERE d.id = t.document_id)`)
+		if res.Error != nil {
+			return fmt.Errorf("%s: %w", table, res.Error)
+		}
+		if res.RowsAffected > 0 {
+			log.Printf("migracao: %d linha(s) de %s sem documento de origem removidas antes de criar a chave estrangeira", res.RowsAffected, table)
+		}
+	}
+	return nil
 }
 
 func withSchemaMigrationLock(db *gorm.DB, fn func(tx *gorm.DB) error) (err error) {
