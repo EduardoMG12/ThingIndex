@@ -94,7 +94,7 @@ O foco declarado do runtime atual e:
 
 Os artefatos versionados que registram esse posicionamento agora sao:
 
-- `docs/article/article-overleaf.md`
+- `docs/article/artigo.tex`
 - `docs/estado-do-projeto.md`
 - `frontend/architecture/relational-context-architecture.md`
 - `api/internal/usecase/testdata/indexing-benchmark/corpus.json`
@@ -867,7 +867,7 @@ Os materiais em `docs/` e `frontend/architecture/` registram essa evolucao e tam
 
 Os artefatos academicos versionados desta fase agora ficam em:
 
-- `docs/article/article-overleaf.md` para o texto do artigo;
+- `docs/article/artigo.tex` para o texto do artigo;
 - `docs/article/references.bib` para as referencias bibliograficas;
 - `docs/article/anexos/` para as figuras e anexos;
 - `docs/article/Apresentação de TCC ThingIndex Slides.pdf` para os slides da defesa;
