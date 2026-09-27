@@ -25,6 +25,14 @@ type processingRepoStub struct {
 	reapCutoffs []time.Time
 	reapCount   int64
 	reapErr     error
+
+	requeueCutoffs []time.Time
+	requeueErr     error
+}
+
+func (r *processingRepoStub) RequeueStuckQueuedDocuments(_ context.Context, olderThan time.Time) (int64, error) {
+	r.requeueCutoffs = append(r.requeueCutoffs, olderThan)
+	return 0, r.requeueErr
 }
 
 func (r *processingRepoStub) ReapStuckProcessingDocuments(_ context.Context, olderThan time.Time) (int64, error) {

@@ -84,6 +84,11 @@ type DocumentProcessingRepository interface {
 	// ReapStuckProcessingDocuments marca como FAILED os documentos presos em
 	// PROCESSING desde antes de `olderThan`. Devolve quantos foram liberados.
 	ReapStuckProcessingDocuments(ctx context.Context, olderThan time.Time) (int64, error)
+	// RequeueStuckQueuedDocuments cria um evento PENDING novo no outbox para
+	// cada documento em QUEUED cujo ultimo evento esta PUBLISHED desde antes de
+	// `olderThan` (a mensagem se perdeu depois do broker). Devolve quantos
+	// documentos foram reenfileirados.
+	RequeueStuckQueuedDocuments(ctx context.Context, olderThan time.Time) (int64, error)
 }
 
 type MessagePublisher interface {
