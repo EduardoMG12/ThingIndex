@@ -23,7 +23,7 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 CSV = RAIZ / "docs" / "article" / "results" / "results.csv"
-ARTIGO = RAIZ / "docs" / "article" / "article-overleaf.md"
+ARTIGO = RAIZ / "docs" / "article" / "article-overleaf-v2.md"
 
 # Tolerancia: o artigo publica 3 casas decimais.
 TOL = 0.0005

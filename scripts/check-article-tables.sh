@@ -14,7 +14,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-ARTIGO="docs/article/article-overleaf.md"
+ARTIGO="docs/article/article-overleaf-v2.md"
 TABELAS="docs/article/tables"
 
 if [[ ! -f "$ARTIGO" ]]; then

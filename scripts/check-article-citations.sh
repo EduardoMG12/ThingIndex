@@ -18,7 +18,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ARTICLE="${REPO_ROOT}/docs/article/article-overleaf.md"
+ARTICLE="${REPO_ROOT}/docs/article/article-overleaf-v2.md"
 BIB="${REPO_ROOT}/docs/article/references.bib"
 
 if [[ ! -f "${ARTICLE}" ]]; then
