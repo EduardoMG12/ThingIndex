@@ -59,6 +59,27 @@ jobs:
       - name: cobertura de testes
         run: bash scripts/check-coverage.sh
 
+  # Varre o historico inteiro, nao so o diff: um segredo apagado num commit
+  # posterior continua legivel em quem clonar. As excecoes conferidas estao em
+  # .gitleaks.toml, cada uma com o motivo.
+  segredos:
+    name: segredos (gitleaks no historico)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: api/go.mod
+          cache-dependency-path: api/go.sum
+
+      - name: gitleaks
+        run: |
+          go install github.com/zricethezav/gitleaks/v8@v8.30.1
+          "$(go env GOPATH)/bin/gitleaks" git --config .gitleaks.toml --redact --exit-code 1 .
+
   # O artigo e um artefato versionado como qualquer outro, e ja quebrou em
   # silencio duas vezes: uma citacao (schymik2015benefits) existia no Overleaf e
   # nao no .bib versionado, e o Apendice A prometia arquivos DBML que nao
@@ -217,6 +238,10 @@ jobs:
       # descontinuada -- o CI falhou com "manifest unknown" antes mesmo do
       # checkout.
       #
+      # Em 2026-09 a propria minio/minio deixou de ser publicada (pull com
+      # "access denied"); a imagem passou a ser a da Chainguard, a mesma do
+      # docker-compose.
+      #
       # Rodar via docker run resolve os dois problemas e usa a MESMA imagem do
       # docker-compose do projeto, o que evita a divergencia de testar contra um
       # MinIO diferente do que roda em desenvolvimento.
@@ -226,7 +251,7 @@ jobs:
             -p 9000:9000 \
             -e MINIO_ROOT_USER=thingindexminio \
             -e MINIO_ROOT_PASSWORD=thingindexminio \
-            minio/minio server /data
+            cgr.dev/chainguard/minio:latest server /data
 
           # Espera ativa em vez de sleep fixo: o endpoint de health e a unica
           # evidencia de que o servico aceita conexao. Sem o `pronto`, um
