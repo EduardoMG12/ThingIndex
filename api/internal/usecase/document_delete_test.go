@@ -99,10 +99,6 @@ func (r *documentRepoStub) GetDocumentsByCollectionID(context.Context, uint, uin
 	return r.documentsByCollection, nil
 }
 
-func (r *documentRepoStub) UpdateDocumentStatus(context.Context, uint, string) error {
-	return nil
-}
-
 func (r *documentRepoStub) RetryDocumentIndexing(_ context.Context, _ uint, documentID uint, auditEvent *models.DocumentAuditEvent) (*models.Document, error) {
 	if auditEvent != nil {
 		copied := *auditEvent

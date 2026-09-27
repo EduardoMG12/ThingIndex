@@ -273,13 +273,6 @@ func (r *GormCatalogDocumentRepository) GetDocumentsByCollectionID(ctx context.C
 	return docs, nil
 }
 
-func (r *GormCatalogDocumentRepository) UpdateDocumentStatus(ctx context.Context, documentID uint, status string) error {
-	return r.db.WithContext(ctx).
-		Model(&models.Document{}).
-		Where("id = ?", documentID).
-		Update("status", status).Error
-}
-
 func (r *GormCatalogDocumentRepository) RetryDocumentIndexing(ctx context.Context, userID uint, documentID uint, auditEvent *models.DocumentAuditEvent) (*models.Document, error) {
 	var document models.Document
 
