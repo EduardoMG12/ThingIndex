@@ -3,6 +3,7 @@ import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
 import { SplashScreen } from "@/components/ui/SplashScreen";
 import { I18nProvider } from "@/lib/i18n/provider";
+import { SkipToContentLink } from "@/components/ui/SkipToContentLink";
 import "./globals.css";
 
 const themeInitScript = `
@@ -99,12 +100,7 @@ export default function RootLayout({
               },
             }}
           />
-          <a
-            href="#main-content"
-            className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-foreground focus:shadow-lg focus:outline-none"
-          >
-            Skip to main content
-          </a>
+          <SkipToContentLink />
           {children}
         </I18nProvider>
       </body>
