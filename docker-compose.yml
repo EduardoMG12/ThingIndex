@@ -87,6 +87,17 @@ services:
     env_file:
       - .env
     environment:
+      # Proxies cujo X-Forwarded-For a API aceita. Vazio por padrao: o Gin
+      # ignora o cabecalho e o limite por IP de /auth conta o IP de quem
+      # conecta (o container do frontend, para quem usa a interface), que
+      # somado ao limite por e-mail nao pode ser contornado forjando cabecalho.
+      # Para limitar por IP do usuario final, ponha um proxy reverso na frente
+      # que SOBRESCREVA X-Forwarded-For, ligue FRONTEND_TRUST_PROXY_HEADERS no
+      # frontend e liste aqui so a sub-rede real do frontend
+      # (docker network inspect <projeto>_default). Confiar em toda a faixa
+      # 172.16.0.0/12 com a porta 8000 publicada deixa qualquer cliente forjar
+      # o IP.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       TELEMETRY_EXCHANGE: ${TELEMETRY_EXCHANGE:-pipeline_telemetry}
       RABBITMQ_URL: ${RABBITMQ_URL:-amqp://guest:guest@rabbitmq:5672/}
       DOCUMENT_INDEX_EXCHANGE: ${DOCUMENT_INDEX_EXCHANGE:-thingindex.document.index}
@@ -135,6 +146,7 @@ services:
       # mensagem, senao o reaper mata trabalho legitimo (validado no boot).
       STUCK_DOCUMENT_THRESHOLD_SECONDS: ${STUCK_DOCUMENT_THRESHOLD_SECONDS:-1800}
       STUCK_DOCUMENT_POLL_INTERVAL_SECONDS: ${STUCK_DOCUMENT_POLL_INTERVAL_SECONDS:-300}
+      QUEUED_DOCUMENT_REQUEUE_THRESHOLD_SECONDS: ${QUEUED_DOCUMENT_REQUEUE_THRESHOLD_SECONDS:-1800}
       DB_HOST: db
       DB_PORT: 5432
       DB_USER: ${POSTGRES_USER}
@@ -212,6 +224,9 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
       API_INTERNAL_URL: http://api:8080/api/v1
+      # So "true" atras de um proxy reverso que sobrescreve X-Forwarded-For;
+      # ver TRUSTED_PROXIES na api.
+      FRONTEND_TRUST_PROXY_HEADERS: ${FRONTEND_TRUST_PROXY_HEADERS:-false}
 
   db:
     image: postgres:16

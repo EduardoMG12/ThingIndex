@@ -1,15 +1,15 @@
 % GERADO POR scripts/analyze.py -- nao edite a mao.
 \begin{table}[htb]
 \centering
-\caption{P@1 por variante de consulta. A queda de \emph{literal} para \emph{paraphrase} e \emph{noisy} mede a dependência de casamento lexical de cada braço.}
+\caption{P@1 por variante de consulta em C1, unidade de recuperação: seção. A última coluna é a queda de P@1 da consulta literal para a paráfrase, medida da dependência de casamento lexical de cada braço.}
 \label{tab:retrieval-variants-section}
 \begin{tabular}{lcccc}
-\hline
+\toprule
 Braço & Literal & Paráfrase & Ruidosa & Queda literal$\rightarrow$paráfrase \\
-\hline
-A-relacional & 1.000 & 0.143 & 0.750 & +0.857 \\
-B-bm25 & 1.000 & 0.429 & 1.000 & +0.571 \\
-D-rrf & 1.000 & 0.143 & 0.750 & +0.857 \\
-\hline
+\midrule
+A, contagem & 1{,}000 & 0{,}143 & 0{,}750 & +0{,}857 \\
+B, BM25 & 1{,}000 & 0{,}429 & 1{,}000 & +0{,}571 \\
+D, RRF(A,B) & 1{,}000 & 0{,}143 & 0{,}750 & +0{,}857 \\
+\bottomrule
 \end{tabular}
 \end{table}

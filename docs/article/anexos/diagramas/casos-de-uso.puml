@@ -1,0 +1,61 @@
+@startuml
+' Casos de uso do ThingIndex, derivados das rotas de api/internal/api/routes.go
+' (revisao de 2026-09-26). Regerar: POST deste arquivo em https://kroki.io/plantuml/png
+left to right direction
+skinparam dpi 200
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 17
+skinparam packageStyle rectangle
+skinparam linetype polyline
+skinparam usecase {
+  BackgroundColor #F7F7F7
+  BorderColor #444444
+}
+
+actor "Usuário" as U
+actor "Provedor de LLM\n<<externo>>" as L
+
+rectangle "ThingIndex" {
+  package "Conta" {
+    usecase "Cadastrar-se, autenticar\ne redefinir senha" as UC1
+  }
+  package "Acervo" {
+    usecase "Organizar categorias\ne coleções" as UC4
+    usecase "Enviar documento\n(PDF, HTML, XLSX)" as UC5
+    usecase "Reprocessar documento\ncom falha" as UC6
+    usecase "Excluir documento" as UC7
+  }
+  package "Consulta" {
+    usecase "Perguntar à coleção\n(chat com fontes)" as UC8
+    usecase "Abrir a fonte na página\ne na caixa do PDF" as UC9
+    usecase "Grifar e anotar\nno workspace" as UC10
+  }
+  package "Operação" {
+    usecase "Configurar provedores\n(credencial cifrada)" as UC12
+    usecase "Acompanhar indexação,\ncusto e auditoria" as UC13
+  }
+  package "Indexação assíncrona" {
+    usecase "Indexar documento\n(páginas, parágrafos,\ntabelas, seções)" as UC14
+    usecase "Enriquecer com LLM\n(opcional)" as UC15
+  }
+}
+
+U --> UC1
+U --> UC4
+U --> UC5
+U --> UC6
+U --> UC7
+U --> UC8
+U --> UC10
+U --> UC12
+U --> UC13
+
+UC8 ..> UC9 : <<extend>>
+UC5 ..> UC14 : <<include>>
+UC6 ..> UC14 : <<include>>
+UC14 ..> UC15 : <<extend>>
+
+UC8 --> L
+UC15 --> L
+@enduml

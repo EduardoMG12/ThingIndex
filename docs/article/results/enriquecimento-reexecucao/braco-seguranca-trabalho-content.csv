@@ -1,0 +1,39 @@
+question_id,stratum,variant,pair_id,origin,arm,scope,repeat,model,correct,cited_pages,provenance_ok,retrieval_hit,prompt_tokens,completion_tokens,usage_reported,latency_ms,cost_usd,truncated,error,answer
+sg1L,premissa-falsa,literal,sg1,pdf,T,,1,gemma4:31b,false,nr-06:3;nr-06:4;nr-06:5;nr-01-2024:3;nr-01-2024:4;nr-01-2025:3;nr-01-2025:4;nr-06:6;nr-01-2025:12;nr-01-2025:13,true,true,5214,109,true,1014,,false,,"Com base nos documentos fornecidos, não há nenhuma informação sobre percentuais de desconto que o empregador possa aplicar ao trabalhador por EPI danificado.
+
+Os documentos mencionam apenas que:
+*   Cabe à organização substituir imediatamente o EPI quando danificado ou extraviado (NR 6 - EPI, página 3).
+*   Cabe ao trabalhador comunicar à organização quando o EPI for extraviado, danificado ou apresentar qualquer alteração que o torne impróprio para uso (NR 6 - EPI, página 4)."
+sg1P,premissa-falsa,parafrase,sg1,pdf,T,,1,gemma4:31b,false,nr-01-2024:14;nr-01-2024:15;nr-01-2025:17;nr-01-2025:18,false,false,2447,56,true,953,,false,,"Com base nos documentos fornecidos, não há informações sobre descontos em pagamentos de trabalhadores devido a danos em equipamentos (como botas). Os textos limitam-se a definições de termos, conceitos de segurança e saúde no trabalho e diretrizes de gerenciamento de riscos."
+sg2L,aberta,literal,sg2,pdf,T,,1,gemma4:31b,true,nr-18:3;nr-18:4;nr-06:2;nr-06:3;nr-09:7;nr-09:8;nr-06:4;nr-06:5;nr-09:6;nr-06:6,true,true,4846,171,true,1029,,false,,"Cabe à **organização** fornecer o EPI ao trabalhador (NR 6 - EPI, página 2).
+
+O fornecimento deve ocorrer sob as seguintes condições:
+*   **Gratuidade:** O EPI deve ser fornecido gratuitamente ao empregado (NR 6 - EPI, página 2).
+*   **Adequação e Estado:** Deve ser adequado ao risco e estar em perfeito estado de conservação e funcionamento (NR 6 - EPI, página 2).
+*   **Aprovação:** A organização deve adquirir somente o EPI aprovado pelo órgão de âmbito nacional competente em matéria de segurança e saúde no trabalho (NR 6 - EPI, página 2).
+*   **Hierarquia:** O fornecimento deve observar a hierarquia das medidas de prevenção (NR 6 - EPI, página 2)."
+sg2P,aberta,parafrase,sg2,pdf,T,,1,gemma4:31b,false,nr-18:13;nr-18:14;nr-06:6;nr-06:7;nr-18:40;nr-18:41;nr-18:15;nr-01-2025:18;nr-01-2025:19;nr-18:32;nr-18:33,false,false,4876,75,true,901,,false,,"Com base nos documentos fornecidos, não há informações sobre quem é o responsável pelo pagamento dos Equipamentos de Proteção Individual (EPI), como capacetes e luvas. O documento **NR 6 - EPI** detalha requisitos de fornecimento, marcação, validade e competências do órgão nacional, mas não especifica a responsabilidade financeira pelo pagamento."
+sg3L,aberta,literal,sg3,pdf,T,,1,gemma4:31b,true,nr-09:3;nr-09:4;nr-09:2;nr-06:9;nr-06:10;nr-06:11;nr-06:12;nr-01-2025:15;nr-01-2025:16;nr-01-2024:13;nr-01-2024:14,true,true,4946,38,true,951,,false,,"Para agentes químicos, o nível de ação é a metade dos limites de tolerância (NR 9 - Agentes fisicos, quimicos e biologicos, página 3)."
+sg3P,aberta,parafrase,sg3,pdf,T,,1,gemma4:31b,false,nr-09:8;nr-09:9;nr-01-2024:14;nr-01-2024:15,false,false,2054,114,true,1174,,false,,"Com base nos documentos fornecidos, não há a indicação de uma quantidade ou limite específico de produto químico no ar que determine o momento em que a empresa deve tomar providências.
+
+O documento **NR 1 - versao de 2024 (página 14)** define ""Agente químico"" como a substância que, ""em função de sua natureza, concentração e exposição, é capaz de causar lesão ou agravo à saúde do trabalhador"", mas não estabelece valores numéricos de concentração para a tomada de medidas."
+sg4L,confirmacao,literal,sg4,pdf,T,,1,gemma4:31b,true,nr-01-2025:5;nr-01-2025:6;nr-01-2025:7;nr-01-2025:8;nr-01-2024:8;nr-01-2024:9;nr-01-2025:9;nr-01-2025:10;nr-01-2024:3;nr-01-2024:4;nr-01-2025:3;nr-01-2025:4,true,true,5192,147,true,1149,,false,,"Sim, a NR-1 exige a consideração de fatores de risco psicossociais. De acordo com a **NR 1 - versao de 2025 (página 5)**:
+
+*   O gerenciamento de riscos ocupacionais deve abranger riscos relacionados aos fatores ergonômicos, o que inclui os **fatores de risco psicossociais relacionados ao trabalho** (subitem 1.5.3.1.4).
+*   A organização deve considerar as condições de trabalho, nos termos da NR-17, incluindo também os **fatores de risco psicossociais relacionados ao trabalho** (subitem 1.5.3.2.1)."
+sg4P,confirmacao,parafrase,sg4,pdf,T,,1,gemma4:31b,false,nr-01-2024:3;nr-01-2024:4;nr-01-2024:2;nr-01-2025:2;nr-01-2025:3;nr-01-2024:13;nr-01-2024:14;nr-01-2024:15;nr-18:13;nr-18:14,false,false,5312,215,true,1878,,false,,"Com base nos documentos fornecidos, a resposta divide-se em dois pontos:
+
+*   **Assédio e Violência:** Sim. De acordo com a **NR 1 - versao de 2024 (página 3)**, as organizações obrigadas a constituir CIPA devem adotar medidas para a prevenção e o combate ao assédio sexual e a outras formas de violência no trabalho. Essas medidas incluem a inclusão de regras de conduta nas normas internas da empresa e a realização de ações de capacitação, orientação e sensibilização sobre violência, assédio, igualdade e diversidade a cada 12 meses.
+*   **Pressão:** Os documentos fornecidos não mencionam explicitamente a ""pressão"" como um risco a ser contabilizado, embora a **NR 1 - versao de 2024 (página 13)** mencione a dispensa de PCMSO para certas empresas que não identifiquem riscos relacionados a ""fatores ergonômicos""."
+sg5L,existencia,literal,sg5,pdf,T,,1,gemma4:31b,true,nr-18:4;nr-18:5;nr-18:2;nr-18:3;nr-18:49;nr-18:50;nr-18:47;nr-18:48;nr-18:23;nr-18:24;nr-18:44;nr-18:45,true,true,5211,190,true,2102,,false,,"Sim, a NR-18 trata de áreas de vivência no canteiro de obras. De acordo com o item 18.5 (página 4), as áreas de vivência devem ser projetadas para oferecer aos trabalhadores condições mínimas de segurança, conforto e privacidade, sendo mantidas em perfeito estado de conservação, higiene e limpeza.
+
+As instalações que devem ser contempladas incluem:
+*   Instalação sanitária;
+*   Vestiário;
+*   Local para refeição;
+*   Alojamento (quando houver trabalhador alojado).
+
+Além disso, o Programa de Gerenciamento de Riscos (PGR) deve conter o projeto da área de vivência do canteiro de obras e de eventual frente de trabalho, elaborado por profissional legalmente habilitado (item 18.4.3, alínea ""a"", página 2)."
+sg5P,existencia,parafrase,sg5,pdf,T,,1,gemma4:31b,true,,false,false,465,52,true,851,,false,,"Sim, a NR 18 - Industria da construcao estabelece que o Programa de Gerenciamento de Riscos (PGR) deve incluir projetos de áreas de vivência, o que abrange as necessidades de infraestrutura na indústria da construção."
+sg6,negativa,,,pdf,T,,1,gemma4:31b,true,,,,4477,69,true,1039,,false,,"Com base nos documentos fornecidos, não há informações sobre o valor de multas aplicadas pelo não fornecimento de EPI. Os documentos detalham as responsabilidades da organização, do trabalhador, de fabricantes e importadores, bem como as definições e requisitos técnicos, mas não mencionam penalidades financeiras ou valores de multas."
+sg7,negativa,,,pdf,T,,1,gemma4:31b,true,,,,5043,23,true,906,,false,,"Com base nos documentos fornecidos, não há informações sobre o piso salarial do técnico de segurança do trabalho."

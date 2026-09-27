@@ -260,6 +260,9 @@ func (h *ChatHandler) StreamCollectionChat(c *gin.Context) {
 	c.Header("X-Accel-Buffering", "no")
 	c.Status(http.StatusOK)
 
+	eventLog := newChatStreamEventLog(log.Printf)
+	defer eventLog.finish(req.ConversationID)
+
 	if err := h.useCase.StreamCollectionChat(c.Request.Context(), userID, domain.ChatRequest{
 		ConversationID: req.ConversationID,
 		CollectionID:   req.CollectionID,
@@ -267,7 +270,7 @@ func (h *ChatHandler) StreamCollectionChat(c *gin.Context) {
 		Language:       lang,
 		History:        history,
 	}, func(event domain.ChatStreamEvent) error {
-		log.Printf("chat stream event type=%s stage=%s delta_len=%d sources=%d", event.Type, event.Stage, len(event.Delta), len(event.Sources))
+		eventLog.observe(event)
 		return writeChatEvent(c, event.Type, event)
 	}); err != nil {
 		switch {
@@ -284,6 +287,35 @@ func (h *ChatHandler) StreamCollectionChat(c *gin.Context) {
 			_ = writeChatEvent(c, "error", gin.H{"message": i18n.T(lang, "chat.error_stream"), "detail": chatErrorDetail(err)})
 		}
 	}
+}
+
+// chatStreamEventLog loga os eventos do SSE sem uma linha por delta.
+//
+// MOTIVO: havia um log.Printf por evento -- cada token/delta --, centenas de
+// linhas por resposta no caminho quente e sob o lock do logger. Agora so os
+// eventos de estagio/fontes/fim saem na hora; os deltas sao contados e
+// resumidos numa linha ao final.
+type chatStreamEventLog struct {
+	logf       func(format string, args ...any)
+	deltas     int
+	deltaBytes int
+}
+
+func newChatStreamEventLog(logf func(format string, args ...any)) *chatStreamEventLog {
+	return &chatStreamEventLog{logf: logf}
+}
+
+func (l *chatStreamEventLog) observe(event domain.ChatStreamEvent) {
+	if event.Type == "delta" {
+		l.deltas++
+		l.deltaBytes += len(event.Delta)
+		return
+	}
+	l.logf("chat stream event type=%s stage=%s sources=%d", event.Type, event.Stage, len(event.Sources))
+}
+
+func (l *chatStreamEventLog) finish(conversationID uint) {
+	l.logf("chat stream finished conversation=%d deltas=%d delta_bytes=%d", conversationID, l.deltas, l.deltaBytes)
 }
 
 // chatErrorDetail devolve a causa do erro do provedor em uma linha de ate 200

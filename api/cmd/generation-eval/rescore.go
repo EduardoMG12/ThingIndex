@@ -34,6 +34,7 @@ func rescoreFile(path string, g *evalcorpus.Gabarito) (int, error) {
 			return 0, fmt.Errorf("coluna %q ausente", k)
 		}
 	}
+	resolve := g.DocumentResolver(fold)
 	questions := map[string]evalcorpus.GabaritoQuestion{}
 	for _, q := range g.Questions {
 		questions[q.ID] = q
@@ -45,11 +46,11 @@ func rescoreFile(path string, g *evalcorpus.Gabarito) (int, error) {
 			continue
 		}
 		before := r[idx["correct"]] + r[idx["provenance_ok"]]
-		correct := r[idx["error"]] == "" && matchesAnswer(r[idx["answer"]], q.AnswerPatterns)
+		correct := r[idx["error"]] == "" && answerCorrect(r[idx["answer"]], q)
 		r[idx["correct"]] = strconv.FormatBool(correct)
 		if !q.IsNegative() {
 			if r[idx["arm"]] == "T" {
-				cites := parseCitations(r[idx["cited_pages"]])
+				cites := parseCitations(r[idx["cited_pages"]], resolve)
 				prov := strconv.FormatBool(provenanceOK(q, cites))
 				r[idx["provenance_ok"]], r[idx["retrieval_hit"]] = prov, prov
 			} else {
@@ -72,15 +73,19 @@ func rescoreFile(path string, g *evalcorpus.Gabarito) (int, error) {
 	return changed, nil
 }
 
-func parseCitations(s string) []citation {
+// parseCitations le "documento:pagina;..." e normaliza o documento pelo
+// resolvedor do gabarito. O corte e no ULTIMO ':', porque titulo de documento
+// pode ter dois-pontos.
+func parseCitations(s string, resolve func(string) string) []citation {
 	var out []citation
 	for _, part := range strings.Split(s, ";") {
-		doc, page, ok := strings.Cut(part, ":")
-		if !ok {
+		i := strings.LastIndex(part, ":")
+		if i < 0 {
 			continue
 		}
+		doc, page := part[:i], part[i+1:]
 		if n, err := strconv.Atoi(page); err == nil {
-			out = append(out, citation{DocumentID: doc, Page: n})
+			out = append(out, citation{DocumentID: resolve(doc), Page: n})
 		}
 	}
 	return out

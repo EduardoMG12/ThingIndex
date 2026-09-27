@@ -42,3 +42,28 @@ func TestProvenanciaEstruturadaEPorPagina(t *testing.T) {
 		t.Fatal("proveniencia por pagina frouxa")
 	}
 }
+
+// Bug de 2026-09: as fontes do chat trazem o titulo gravado na colecao, e ele
+// nem sempre e o do gabarito. "NR 6 - Equipamentos de Protecao Individual" nao
+// casava com o id nr-06 (titulo no gabarito: "NR 6 - EPI"), e toda citacao
+// correta dessa norma contava como proveniencia errada. Na bateria isso
+// derrubava a proveniencia de 0,581 para 0,371.
+func TestCitacaoPeloTituloDaColecaoCasaComOAlvoViaAlias(t *testing.T) {
+	g := &evalcorpus.Gabarito{Documents: []evalcorpus.GabaritoDocument{
+		{ID: "nr-06", Title: "NR 6 - EPI", Aliases: []string{"NR 6 - Equipamentos de Protecao Individual"}},
+		{ID: "lei-10520", Title: "Lei 10.520: Pregao"},
+	}}
+	resolve := g.DocumentResolver(fold)
+	q := evalcorpus.GabaritoQuestion{Targets: []evalcorpus.GabaritoTarget{{DocumentID: "nr-06", Pages: []int{2}}}}
+
+	cites := parseCitations("NR 6 - Equipamentos de Proteção Individual:2;nr-18:5", resolve)
+	if !provenanceOK(q, cites) {
+		t.Fatalf("o alias (com acento dobrado) deveria resolver para nr-06: %+v", cites)
+	}
+	if got := parseCitations("Lei 10.520: Pregao:7", resolve); len(got) != 1 || got[0] != (citation{"lei-10520", 7}) {
+		t.Fatalf("titulo com dois-pontos precisa cortar no ultimo ':': %+v", got)
+	}
+	if got := resolve("documento que ninguem conhece"); got != "documento que ninguem conhece" {
+		t.Fatalf("nome desconhecido deve voltar como veio, veio %q", got)
+	}
+}

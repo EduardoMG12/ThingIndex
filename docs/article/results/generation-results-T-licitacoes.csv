@@ -1,0 +1,117 @@
+question_id,stratum,origin,arm,scope,repeat,model,correct,cited_pages,provenance_ok,retrieval_hit,prompt_tokens,completion_tokens,usage_reported,latency_ms,cost_usd,truncated,error,answer
+d01,divergente,pdf,T,,1,gemma4:31b,true,lei-14133:18;lei-14133:19;lei-8666:14;lei-8666:15;lei-8666:39;lei-8666:40;lei-8666:16;lei-8666:17;lei-14133:7;lei-14133:8;lei-8666:32;lei-8666:33,true,true,6549,185,true,1318,,false,,"As modalidades de licitação variam conforme a lei consultada:
+
+*   **De acordo com a Lei 14.133/2021 (Art. 28):**
+    *   Pregão;
+    *   Concorrência;
+    *   Concurso;
+    *   Leilão;
+    *   Diálogo competitivo.
+    (Lei 14.133, pág. 18).
+
+*   **De acordo com a Lei 8.666/1993 (Art. 22):**
+    *   Concorrência;
+    *   Tomada de preços;
+    *   Convite;
+    *   Concurso;
+    *   Leilão.
+    (Lei 8.666, pág. 16)."
+d02,divergente,pdf,T,,1,gemma4:31b,true,lei-14133:53;lei-14133:54;lei-14133:49;lei-14133:50;lei-8666:38;lei-8666:39;lei-14133:3;lei-14133:4;lei-14133:51;lei-14133:52;lei-14133:58;lei-14133:59,true,true,6395,247,true,1234,,false,,"Com base nos documentos fornecidos, o prazo máximo de duração para contratos de serviços contínuos varia conforme a lei aplicada:
+
+*   **Lei 14.133/2021:** A Administração pode celebrar contratos com prazo de **até 5 (cinco) anos** para serviços e fornecimentos contínuos (Lei 14.133, pág. 53, Art. 106). Além disso, esses contratos podem ser prorrogados sucessivamente, respeitada a **vigência máxima decenal** (10 anos), desde que haja previsão em edital e a autoridade competente ateste que as condições e preços permanecem vantajosos (Lei 14.133, pág. 53, Art. 107).
+*   **Lei 8.666/1993:** A prestação de serviços executados de forma contínua pode ter sua duração prorrogada por iguais e sucessivos períodos, sendo **limitada a sessenta meses** (Lei 8.666, pág. 38, Art. 57, inciso II)."
+d03,divergente,pdf,T,,1,gemma4:31b,false,,false,false,308,65,true,704,,false,,"Com base nos documentos fornecidos, não há informações sobre quem conduz a licitação. Os textos limitam-se a descrever a finalidade e o escopo de aplicação da Lei 8.666/1993 e da Lei 14.133/2021."
+d04,divergente,pdf,T,,1,gemma4:31b,true,lei-14133:28;lei-14133:29;lei-14133:30;lei-14133:31;lei-14133:20;lei-14133:21;lei-8666:32;lei-8666:33;lei-8666:31,true,true,6442,254,true,1779,,false,,"Com base nos documentos fornecidos, os critérios de julgamento das propostas variam conforme a lei aplicada:
+
+**De acordo com a Lei 14.133/2021 (pág. 20):**
+O julgamento das propostas será realizado segundo os seguintes critérios:
+*   Menor preço;
+*   Maior desconto;
+*   Melhor técnica ou conteúdo artístico;
+*   Técnica e preço;
+*   Maior lance (no caso de leilão);
+*   Maior retorno econômico.
+
+**De acordo com a Lei 8.666/1993 (pág. 32):**
+Exceto nas modalidades de concurso e leilão, os tipos de licitação para obras, serviços e compras são:
+*   **Menor preço:** vence o licitante que apresentar a proposta conforme as especificações do edital ou convite e ofertar o menor preço;
+*   **Melhor técnica;**
+*   **Técnica e preço;**
+*   **Maior lance ou oferta:** utilizado nos casos de concessão de direito real de uso ou alienação de bens."
+d05,divergente,pdf,T,,1,gemma4:31b,false,lei-8666:16;lei-8666:17;lei-8666:32;lei-8666:33;lei-8666:18;lei-8666:19;lei-8666:15;lei-8666:14,true,true,7340,137,true,1276,,false,,"Sim, a modalidade tomada de preços existe. De acordo com a Lei 8.666, de 21 de junho de 1993 (página 16), ela é listada no Art. 22 como uma das modalidades de licitação.
+
+A lei a define como a modalidade de licitação entre interessados devidamente cadastrados ou que atendam a todas as condições exigidas para cadastramento até o terceiro dia anterior à data do recebimento das propostas, observada a necessária qualificação (Lei 8.666, página 16, Art. 22, § 2º)."
+t01,temporal,pdf,T,,1,gemma4:31b,true,lei-8666:44;lei-8666:45;lei-8666:23;lei-8666:24;lei-14133:75;lei-14133:76;lei-8666:51;lei-8666:52;lei-8666:1;lei-8666:2;lei-14133:74,true,true,7141,357,true,1772,,false,,"Com base nos documentos fornecidos, a situação da Lei 8.666/1993 é a seguinte:
+
+*   **Revogação:** A Lei 8.666, de 21 de junho de 1993, foi revogada pela Lei 14.133, de 1º de abril de 2021 (Lei 8.666, pág. 1; Lei 14.133, pág. 75).
+*   **Data da Revogação:** De acordo com a Lei Complementar nº 198, de 2023, a revogação da Lei nº 8.666 ocorreu em **30 de dezembro de 2023** (Lei 14.133, pág. 75).
+*   **Exceções e Transição:** 
+    *   Contratos cujo instrumento tenha sido assinado antes da entrada em vigor da Lei 14.133 continuam a ser regidos pelas regras da legislação revogada (Lei 14.133, pág. 75, Art. 190).
+    *   Houve um período de transição em que a Administração Pública podia optar por licitar ou contratar diretamente de acordo com a Lei 14.133 ou com as leis anteriores (incluindo a Lei 8.666), desde que a opção fosse indicada expressamente no edital ou ato autorizativo (Lei 14.133, pág. 75, Art. 191)."
+t02,temporal,pdf,T,,1,gemma4:31b,true,lei-14133:75;lei-14133:76;lei-8666:39;lei-8666:40;lei-14133:53;lei-14133:54;lei-8666:1;lei-8666:2;lei-8666:37;lei-8666:38;lei-14133:56;lei-14133:57,true,true,7063,94,true,1155,,false,,"Um contrato assinado em 2020 será regido pelas regras previstas na legislação revogada, conforme estabelece o Art. 190 da Lei 14.133, de 1 de abril de 2021 (página 75), que determina que o contrato cujo instrumento tenha sido assinado antes da entrada em vigor desta Lei continuará a ser regido de acordo com as regras da legislação anterior."
+t03,temporal,pdf,T,,1,gemma4:31b,true,lei-14133:75;lei-14133:76;lei-8666:29;lei-8666:30;lei-8666:44;lei-8666:45;lei-8666:51;lei-8666:52;lei-8666:1;lei-8666:2;lei-14133:74,true,true,7237,83,true,970,,false,,"A Lei nº 8.666, de 21 de junho de 1993, foi revogada em 30 de dezembro de 2023, conforme estabelecido no Art. 193, inciso II, da Lei 14.133, de 1 de abril de 2021 (página 75)."
+p01,prosa,pdf,T,,1,gemma4:31b,false,lei-8666:22;lei-8666:23;lei-8666:18;lei-8666:19;lei-8666:5;lei-8666:6;lei-14133:8;lei-14133:9;lei-14133:41;lei-14133:42;lei-8666:39;lei-8666:40,false,false,6329,124,true,1029,,false,,"Com base na Lei 8.666, de 21 de junho de 1993 (página 18), a licitação é dispensável para obras e serviços de engenharia nos seguintes termos:
+
+O valor limite é de **10% (dez por cento) do limite previsto na alínea ""a"", do inciso I do artigo anterior** (Art. 23), desde que não se refiram a parcelas de uma mesma obra ou serviço, ou a obras e serviços da mesma natureza e no mesmo local que possam ser realizadas conjunta e concomitantemente."
+p02,prosa,pdf,T,,1,gemma4:31b,true,lei-8666:14;lei-8666:15;lei-8666:39;lei-8666:40;lei-8666:18;lei-8666:19;lei-14133:34;lei-14133:35;lei-8666:5;lei-8666:6;lei-14133:36;lei-14133:37,true,true,6700,175,true,1138,,false,,"Com base nos documentos fornecidos, os valores limites para dispensa de licitação em compras e outros serviços variam conforme a lei:
+
+*   **Lei 14.133/2021:** A licitação é dispensável para contratações que envolvam valores inferiores a **R$ 50.000,00 (cinquenta mil reais)** no caso de outros serviços e compras (Lei 14.133, página 36).
+*   **Lei 8.666/1993:** A licitação é dispensável para outros serviços e compras de valor até **5% (cinco por cento) do limite previsto na alínea ""a"", do inciso II do artigo anterior** (Lei 8.666, página 18)."
+p03,prosa,pdf,T,,1,gemma4:31b,true,lei-14133:68;lei-14133:69;lei-14133:46;lei-14133:47;lei-14133:73;lei-14133:74;lei-14133:70;lei-14133:28;lei-14133:29;lei-14133:50;lei-14133:51,true,true,6669,573,true,2046,,false,,"O Portal Nacional de Contratações Públicas (PNCP) é o sítio eletrônico oficial criado pela Lei 14.133, de 1 de abril de 2021, destinado a:
+
+*   **Divulgação centralizada e obrigatória** dos atos exigidos pela referida Lei (Lei 14.133, pág. 68);
+*   **Realização facultativa de contratações** por órgãos e entidades dos Poderes Executivo, Legislativo e Judiciário de todos os entes federativos (Lei 14.133, pág. 68).
+
+**Informações e Funcionalidades:**
+O PNCP deve conter, entre outras informações, planos de contratação anuais, catálogos eletrônicos de padronização, editais de licitação, credenciamento e pré-qualificação, avisos de contratação direta, atas de registro de preços, contratos, termos aditivos e notas fiscais eletrônicas (quando for o caso) (Lei 14.133, pág. 68 e 69).
+
+Entre suas funcionalidades, o portal deve oferecer:
+*   Sistema de registro cadastral unificado para licitantes e contratados (Lei 14.133, pág. 46 e 69);
+*   Painel para consulta de preços e acesso à base nacional de notas fiscais eletrônicas (Lei 14.133, pág. 69);
+*   Sistema de planejamento e gerenciamento de contratações (Lei 14.133, pág. 69);
+*   Sistema eletrônico para sessões públicas (Lei 14.133, pág. 69);
+*   Acesso ao Cadastro Nacional de Empresas Inidôneas e Suspensas (Ceis) e ao Cadastro Nacional de Empresas Punidas (Cnep) (Lei 14.133, pág. 69);
+*   Sistema de gestão compartilhada com a sociedade sobre a execução do contrato (Lei 14.133, pág. 69);
+*   O Sicx (Lei 14.133, pág. 69).
+
+**Gestão e Formato:**
+O portal é gerido pelo Comitê Gestor da Rede Nacional de Contratações Públicas e adota o formato de dados abertos, observando as exigências da Lei nº 12.527/2011 (Lei 14.133, pág. 68 e 69)."
+p04,prosa,pdf,T,,1,gemma4:31b,true,lei-14133:9;lei-14133:10;lei-14133:8;lei-14133:18;lei-14133:19;lei-14133:7;lei-8666:35;lei-8666:36;lei-14133:26;lei-14133:27,true,true,6075,313,true,1378,,false,,"De acordo com a Lei 14.133, de 1 de abril de 2021:
+
+*   **O que é:** O agente de contratação é a pessoa designada pela autoridade competente para tomar decisões, acompanhar o trâmite da licitação, dar impulso ao procedimento licitatório e executar quaisquer outras atividades necessárias ao bom andamento do certame até a homologação (Lei 14.133, página 8).
+*   **Quem pode ser designado:** Deve ser designado entre servidores efetivos ou empregados públicos dos quadros permanentes da Administração Pública (Lei 14.133, página 8).
+
+Além disso, para o desempenho dessas funções, a autoridade máxima deve designar agentes que preencham os seguintes requisitos (Lei 14.133, página 8):
+1.  Sejam, preferencialmente, servidor efetivo ou empregado público dos quadros permanentes da Administração Pública;
+2.  Tenham atribuições relacionadas a licitações e contratos ou possuam formação compatível ou qualificação atestada por certificação profissional emitida por escola de governo criada e mantida pelo poder público;
+3.  Não sejam cônjuge ou companheiro de licitantes ou contratados habituais da Administração, nem tenham com eles vínculo de parentesco (colateral ou por afinidade até o terceiro grau) ou vínculo de natureza técnica, comercial, econômica, financeira, trabalhista e civil."
+p05,prosa,pdf,T,,1,gemma4:31b,false,lei-14133:53;lei-14133:54;lei-14133:75;lei-14133:76;lei-8666:46;lei-8666:47;lei-14133:73;lei-14133:74;lei-8666:38;lei-8666:39;lei-14133:70;lei-14133:71,true,true,7028,297,true,1448,,false,,"Sim, existem hipóteses de contratos com prazo de até 10 anos, conforme a Lei 14.133/2021:
+
+*   **Hipóteses específicas de contratação:** A Administração poderá celebrar contratos com prazo de até 10 anos nos casos previstos nas alíneas ""f"" e ""g"" do inciso IV e nos incisos V, VI, XII e XVI do caput do art. 75 da referida lei (Lei 14.133, pág. 53, Art. 108).
+*   **Contratações que gerem receita ou eficiência:** Nos contratos de eficiência que gerem economia para a Administração ou em contratações que gerem receita, o prazo poderá ser de até 10 anos nos casos de contratos sem investimento (Lei 14.133, pág. 53, Art. 110, I).
+*   **Serviços e fornecimentos contínuos:** Embora o prazo inicial para esses contratos seja de até 5 anos, eles podem ser prorrogados sucessivamente, respeitando-se a vigência máxima decenal (10 anos), desde que haja previsão em edital e a autoridade competente ateste a vantagem dos preços e condições (Lei 14.133, pág. 53, Art. 107)."
+p06,prosa,pdf,T,,1,gemma4:31b,true,lei-14133:52;lei-14133:53;lei-14133:15;lei-14133:16;lei-14133:6;lei-14133:7;lei-14133:57;lei-14133:58,true,true,4049,293,true,1377,,false,,"De acordo com a Lei 14.133, de 1 de abril de 2021, a matriz de riscos é definida como uma cláusula contratual que:
+
+*   **Define riscos e responsabilidades:** Estabelece a divisão de riscos e responsabilidades entre as partes (contratante e contratado) (pág. 6).
+*   **Caracteriza o equilíbrio econômico-financeiro:** Define o equilíbrio econômico-financeiro inicial do contrato em relação aos ônus financeiros decorrentes de eventos supervenientes à contratação (pág. 6 e pág. 52).
+
+Para cumprir sua função, a matriz de riscos deve conter, no mínimo:
+1.  Uma listagem de possíveis eventos supervenientes à assinatura do contrato que possam impactar o equilíbrio econômico-financeiro, prevendo a eventual necessidade de termo aditivo (pág. 6).
+2.  No caso de **obrigações de resultado**, a definição das frações do objeto onde o contratado tem liberdade para inovar em soluções tecnológicas ou metodológicas (pág. 6).
+3.  No caso de **obrigações de meio**, a definição precisa das frações do objeto onde não há liberdade para inovação, exigindo-se a aderência à solução predefinida no projeto básico ou anteprojeto (pág. 6)."
+p07,prosa,pdf,T,,1,gemma4:31b,true,lei-14133:18;lei-14133:19;lei-14133:20;lei-14133:21;lei-14133:72;lei-14133:73;lei-14133:7;lei-14133:8;lei-14133:74,false,false,6378,315,true,1695,,false,,"De acordo com a Lei 14.133, de 1 de abril de 2021, o diálogo competitivo é definido da seguinte forma:
+
+*   **Definição:** É uma modalidade de licitação para a contratação de compras, serviços e obras na qual a Administração Pública realiza diálogos com licitantes previamente selecionados por meio de critérios objetivos. O objetivo é desenvolver uma ou mais alternativas que atendam às necessidades da Administração, devendo os licitantes apresentar a proposta final após o encerramento desses diálogos (página 7).
+*   **Restrições de Uso:** Esta modalidade é restrita a contratações em que a Administração (página 19):
+    1.  Vise contratar objeto que envolva inovação tecnológica ou técnica; impossibilidade de satisfazer a necessidade sem a adaptação de soluções de mercado; ou impossibilidade de definir as especificações técnicas com precisão suficiente.
+    2.  Verifique a necessidade de identificar meios e alternativas para satisfazer suas necessidades, especialmente quanto à solução técnica mais adequada, requisitos técnicos para concretizar a solução ou a estrutura financeira e jurídica do contrato.
+*   **Aplicações Específicas:** A modalidade diálogo competitivo (ou a concorrência) deve ser utilizada para a licitação de concessões de serviço público, concessões de serviço público precedidas de execução de obra pública e contratações de parceria público-privada (página 72 e 73)."
+p08,prosa,pdf,T,,1,gemma4:31b,true,lei-14133:44;lei-14133:45;lei-14133:29;lei-14133:30;lei-14133:7;lei-14133:8;lei-14133:20;lei-14133:21;lei-14133:28;lei-8666:29;lei-8666:30,true,true,6405,246,true,1529,,false,,"Sim, o critério de maior desconto existe na lei atual (Lei 14.133, de 1 de abril de 2021).
+
+De acordo com a Lei 14.133/2021:
+*   Ele é listado como um dos critérios de julgamento das propostas no **Art. 33, inciso II** (página 20).
+*   O **Art. 34, § 2º**, especifica que o julgamento por maior desconto terá como referência o preço global fixado no edital de licitação, e que esse desconto será estendido a eventuais termos aditivos (página 20).
+*   Além disso, o critério de maior desconto pode ser utilizado na modalidade de **pregão** para a aquisição de bens e serviços comuns (Art. 6º, inciso XLI, página 7) e no **Sistema de Registro de Preços**, onde o critério de julgamento será o de menor preço ou o de maior desconto sobre tabela de preços praticada no mercado (Art. 82, inciso V, página 44)."
+n01,negativa,pdf,T,,1,gemma4:31b,true,,,,6056,44,true,1145,,false,,"Com base nos documentos fornecidos, não há informações sobre o valor do salário do agente de contratação. O texto define quem pode ser designado para a função e seus requisitos, mas não menciona a remuneração."
+n02,negativa,pdf,T,,1,gemma4:31b,true,,,,6145,31,true,901,,false,,"Com base nos documentos fornecidos, não há informações sobre a alíquota do ISS (Imposto Sobre Serviços) incidente sobre os serviços contratados."
+n03,negativa,pdf,T,,1,gemma4:31b,true,,,,4563,81,true,1036,,false,,"Com base nos documentos fornecidos, não há informações sobre a quantidade de contratos assinados pelo Governo Federal em 2024. Os textos apresentam normas gerais de licitação e contratação (Lei 14.133/2021 e Lei 8.666/1993), mas não contêm dados estatísticos ou registros de contratos celebrados."

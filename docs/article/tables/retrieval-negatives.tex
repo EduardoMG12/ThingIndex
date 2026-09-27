@@ -4,15 +4,15 @@
 \caption{Comportamento em casos negativos (consultas cuja resposta correta é não recuperar nada). Taxa de falso positivo: 0{,}0 significa reconhecer a ausência de resposta; 1{,}0 significa responder mesmo assim.}
 \label{tab:retrieval-negatives}
 \begin{tabular}{lcc}
-\hline
+\toprule
 Braço & Taxa de falso positivo & Itens devolvidos (média) \\
-\hline
-A-relacional & 1.000 & 5.0 \\
-B-bm25 & 1.000 & 5.0 \\
-C-denso & 1.000 & 5.0 \\
-C-denso-ivf & 1.000 & 2.5 \\
-D-rrf & 1.000 & 5.0 \\
-E-rrf-denso & 1.000 & 5.0 \\
-\hline
+\midrule
+A, contagem & 1{,}000 & 5{,}0 \\
+B, BM25 & 1{,}000 & 5{,}0 \\
+C, denso exato & 1{,}000 & 5{,}0 \\
+C$'$, denso IVF & 1{,}000 & 2{,}5 \\
+D, RRF(A,B) & 1{,}000 & 5{,}0 \\
+E, RRF(B,C) & 1{,}000 & 5{,}0 \\
+\bottomrule
 \end{tabular}
 \end{table}

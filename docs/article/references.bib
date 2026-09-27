@@ -1,10 +1,16 @@
-@software{pageindex2025,
+% Bibliografia do artigo. Cada entrada foi conferida pelo DOI na Crossref, no
+% DataCite (arXiv) ou na pagina oficial dos anais ou da norma.
+% O estilo sbc.bst ignora os campos doi, url e eprint e nao conhece o tipo
+% software; por isso entradas de arXiv e de repositorio usam misc com
+% howpublished e note.
+
+@misc{pageindex2025,
   author       = {{VectifyAI}},
   title        = {{PageIndex}: Document Index for Vectorless, Reasoning-based {RAG}},
+  howpublished = {Repositório de código aberto (licença MIT). Disponível em: \url{https://github.com/VectifyAI/PageIndex}},
   year         = {2025},
-  url          = {https://github.com/VectifyAI/PageIndex},
-  urldate      = {2026-09-05},
-  note         = {Repositorio de codigo aberto}
+  note         = {Acesso em: 5 set. 2026},
+  url          = {https://github.com/VectifyAI/PageIndex}
 }
 
 @article{codd1970,
@@ -22,25 +28,28 @@
   author    = {Buneman, Peter and Khanna, Sanjeev and Tan, Wang-Chiew},
   title     = {Why and Where: A Characterization of Data Provenance},
   booktitle = {Database Theory --- ICDT 2001},
+  editor    = {Van den Bussche, Jan and Vianu, Victor},
   series    = {Lecture Notes in Computer Science},
   volume    = {1973},
   pages     = {316--330},
   publisher = {Springer},
+  address   = {Berlin, Heidelberg},
   year      = {2001},
   doi       = {10.1007/3-540-44503-X_20}
 }
 
 @book{manning2008ir,
-  author    = {Manning, Christopher D. and Raghavan, Prabhakar and Sch\"utze, Hinrich},
+  author    = {Manning, Christopher D. and Raghavan, Prabhakar and Sch{\"u}tze, Hinrich},
   title     = {Introduction to Information Retrieval},
   publisher = {Cambridge University Press},
+  address   = {New York},
   year      = {2008}
 }
 
 @inproceedings{xu2020layoutlm,
   author    = {Xu, Yiheng and Li, Minghao and Cui, Lei and Huang, Shaohan and Wei, Furu and Zhou, Ming},
   title     = {{LayoutLM}: Pre-training of Text and Layout for Document Image Understanding},
-  booktitle = {Proceedings of the 26th ACM SIGKDD Conference on Knowledge Discovery \& Data Mining},
+  booktitle = {Proceedings of the 26th ACM SIGKDD International Conference on Knowledge Discovery \& Data Mining},
   pages     = {1192--1200},
   publisher = {ACM},
   year      = {2020},
@@ -48,11 +57,13 @@
 }
 
 @inproceedings{lewis2020rag,
-  author    = {Lewis, Patrick and Perez, Ethan and Piktus, Aleksandra and Petroni, Fabio and Karpukhin, Vladimir and Goyal, Naman and K{\"u}ttler, Heinrich and Lewis, Mike and Yih, Wen{-}tau and Rockt{\"a}schel, Tim and Riedel, Sebastian and Kiela, Douwe},
+  author    = {Lewis, Patrick and Perez, Ethan and Piktus, Aleksandra and Petroni, Fabio and Karpukhin, Vladimir and Goyal, Naman and K{\"u}ttler, Heinrich and Lewis, Mike and Yih, Wen-tau and Rockt{\"a}schel, Tim and Riedel, Sebastian and Kiela, Douwe},
   title     = {Retrieval-Augmented Generation for Knowledge-Intensive {NLP} Tasks},
   booktitle = {Advances in Neural Information Processing Systems},
+  editor    = {Larochelle, H. and Ranzato, M. and Hadsell, R. and Balcan, M. F. and Lin, H.},
   volume    = {33},
   pages     = {9459--9474},
+  publisher = {Curran Associates, Inc.},
   year      = {2020}
 }
 
@@ -62,16 +73,9 @@
   journal = {MIS Quarterly},
   volume  = {28},
   number  = {1},
-  pages   = {75--105},
-  year    = {2004}
-}
-
-@book{pressman2014,
-  author    = {Pressman, Roger S. and Maxim, Bruce R.},
-  title     = {Software Engineering: A Practitioner's Approach},
-  edition   = {8},
-  publisher = {McGraw-Hill Education},
-  year      = {2014}
+  pages   = {75--106},
+  year    = {2004},
+  doi     = {10.2307/25148625}
 }
 
 @book{richards2015patterns,
@@ -79,7 +83,8 @@
   title     = {Software Architecture Patterns},
   publisher = {O'Reilly Media},
   address   = {Sebastopol},
-  year      = {2015}
+  year      = {2015},
+  isbn      = {978-1-491-92424-2}
 }
 
 @article{robertson2009bm25,
@@ -89,7 +94,8 @@
   volume  = {3},
   number  = {4},
   pages   = {333--389},
-  year    = {2009}
+  year    = {2009},
+  doi     = {10.1561/1500000019}
 }
 
 @book{richardson2018microservices,
@@ -132,17 +138,10 @@
   year      = {1989}
 }
 
-@inproceedings{mikolov2013efficient,
-  author    = {Mikolov, Tom\'a\v{s} and Chen, Kai and Corrado, Greg and Dean, Jeffrey},
-  title     = {Efficient Estimation of Word Representations in Vector Space},
-  booktitle = {Proceedings of the International Conference on Learning Representations (ICLR)},
-  year      = {2013}
-}
-
 @inproceedings{devlin2019bert,
   author    = {Devlin, Jacob and Chang, Ming-Wei and Lee, Kenton and Toutanova, Kristina},
   title     = {{BERT}: Pre-training of Deep Bidirectional Transformers for Language Understanding},
-  booktitle = {Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies},
+  booktitle = {Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, Volume 1 (Long and Short Papers)},
   pages     = {4171--4186},
   publisher = {Association for Computational Linguistics},
   year      = {2019},
@@ -162,13 +161,13 @@
   author    = {Date, C. J.},
   title     = {An Introduction to Database Systems},
   edition   = {8},
-  publisher = {Addison-Wesley},
+  publisher = {Pearson/Addison-Wesley},
   address   = {Boston},
   year      = {2004}
 }
 
 @article{ji2023survey,
-  author  = {Ji, Ziwei and Lee, Nayeon and Frieske, Rita and Yu, Tiezheng and Su, Dan and Xu, Yan and Ishii, Etsuko and Bang, Yejin and Dai, Wenliang and Madotto, Andrea and Fung, Pascale},
+  author  = {Ji, Ziwei and Lee, Nayeon and Frieske, Rita and Yu, Tiezheng and Su, Dan and Xu, Yan and Ishii, Etsuko and Bang, Ye Jin and Madotto, Andrea and Fung, Pascale},
   title   = {Survey of Hallucination in Natural Language Generation},
   journal = {ACM Computing Surveys},
   volume  = {55},
@@ -186,7 +185,7 @@
   number  = {6},
   pages   = {1049--1075},
   year    = {2015},
-  doi     = {10.1111/deci.12165}
+  doi     = {10.1111/deci.12154}
 }
 
 @inproceedings{cormack2009rrf,
@@ -194,6 +193,7 @@
   title     = {Reciprocal Rank Fusion Outperforms Condorcet and Individual Rank Learning Methods},
   booktitle = {Proceedings of the 32nd International ACM SIGIR Conference on Research and Development in Information Retrieval},
   pages     = {758--759},
+  publisher = {ACM},
   year      = {2009},
   doi       = {10.1145/1571941.1572114}
 }
@@ -209,37 +209,457 @@
   doi     = {10.1145/582415.582418}
 }
 
-@article{wang2022e5,
-  author  = {Wang, Liang and Yang, Nan and Huang, Xiaolong and Jiao, Binxing and Yang, Linjun and Jiang, Daxin and Majumder, Rangan and Wei, Furu},
-  title   = {Text Embeddings by Weakly-Supervised Contrastive Pre-training},
-  journal = {arXiv preprint arXiv:2212.03533},
-  year    = {2022}
-}
-
-@article{wilcoxon1945individual,
-  author  = {Wilcoxon, Frank},
-  title   = {Individual Comparisons by Ranking Methods},
-  journal = {Biometrics Bulletin},
-  volume  = {1},
-  number  = {6},
-  pages   = {80--83},
-  year    = {1945},
-  doi     = {10.2307/3001968}
-}
-
-@inproceedings{romano2006appropriate,
-  author    = {Romano, Jeanine and Kromrey, Jeffrey D. and Coraggio, Jesse and Skowronek, Jeff},
-  title     = {Appropriate Statistics for Ordinal Level Data: Should We Really Be Using t-test and {Cohen's} d for Evaluating Group Differences on the {NSSE} and Other Surveys?},
-  booktitle = {Annual Meeting of the Florida Association of Institutional Research},
-  pages     = {1--33},
-  year      = {2006}
+@misc{wang2022e5,
+  author       = {Wang, Liang and Yang, Nan and Huang, Xiaolong and Jiao, Binxing and Yang, Linjun and Jiang, Daxin and Majumder, Rangan and Wei, Furu},
+  title        = {Text Embeddings by Weakly-Supervised Contrastive Pre-training},
+  howpublished = {arXiv preprint arXiv:2212.03533},
+  year         = {2022},
+  doi          = {10.48550/arXiv.2212.03533},
+  eprint       = {2212.03533},
+  archivePrefix = {arXiv}
 }
 
 @inproceedings{ethayarajh2019contextual,
   author    = {Ethayarajh, Kawin},
   title     = {How Contextual are Contextualized Word Representations? {Comparing} the Geometry of {BERT}, {ELMo}, and {GPT-2} Embeddings},
-  booktitle = {Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing (EMNLP-IJCNLP)},
+  booktitle = {Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)},
   pages     = {55--65},
+  publisher = {Association for Computational Linguistics},
   year      = {2019},
   doi       = {10.18653/v1/D19-1006}
+}
+
+@article{liu2024lost,
+  author    = {Liu, Nelson F. and Lin, Kevin and Hewitt, John and Paranjape, Ashwin and Bevilacqua, Michele and Petroni, Fabio and Liang, Percy},
+  title     = {Lost in the Middle: How Language Models Use Long Contexts},
+  journal   = {Transactions of the Association for Computational Linguistics},
+  volume    = {12},
+  pages     = {157--173},
+  year      = {2024},
+  doi       = {10.1162/tacl_a_00638}
+}
+
+@inproceedings{xu2024knowledge,
+  author    = {Xu, Rongwu and Qi, Zehan and Guo, Zhijiang and Wang, Cunxiang and Wang, Hongru and Zhang, Yue and Xu, Wei},
+  title     = {Knowledge Conflicts for {LLM}s: A Survey},
+  booktitle = {Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing},
+  pages     = {8541--8565},
+  publisher = {Association for Computational Linguistics},
+  year      = {2024},
+  doi       = {10.18653/v1/2024.emnlp-main.486}
+}
+
+@article{kulkarni2012temporal,
+  author  = {Kulkarni, Krishna and Michels, Jan-Eike},
+  title   = {Temporal Features in {SQL:2011}},
+  journal = {ACM SIGMOD Record},
+  volume  = {41},
+  number  = {3},
+  pages   = {34--43},
+  year    = {2012},
+  doi     = {10.1145/2380776.2380786}
+}
+
+@article{allen1983maintaining,
+  author  = {Allen, James F.},
+  title   = {Maintaining Knowledge about Temporal Intervals},
+  journal = {Communications of the ACM},
+  volume  = {26},
+  number  = {11},
+  pages   = {832--843},
+  year    = {1983},
+  doi     = {10.1145/182.358434}
+}
+
+@inproceedings{sharma2024sycophancy,
+  author    = {Sharma, Mrinank and Tong, Meg and Korbak, Tomasz and Duvenaud, David and Askell, Amanda and Bowman, Samuel R. and Cheng, Newton and Durmus, Esin and Hatfield-Dodds, Zac and Johnston, Scott R. and Kravec, Shauna and Maxwell, Timothy and McCandlish, Sam and Ndousse, Kamal and Rausch, Oliver and Schiefer, Nicholas and Yan, Da and Zhang, Miranda and Perez, Ethan},
+  title     = {Towards Understanding Sycophancy in Language Models},
+  booktitle = {Proceedings of the Twelfth International Conference on Learning Representations (ICLR 2024)},
+  year      = {2024},
+  url       = {https://proceedings.iclr.cc/paper_files/paper/2024/hash/0105f7972202c1d4fb817da9f21a9663-Abstract-Conference.html},
+  eprint    = {2310.13548},
+  archivePrefix = {arXiv}
+}
+
+% ======================================================================
+% Entradas acrescentadas na revisao de 2026-09-26, conferidas pelo DOI na
+% Crossref, no DataCite (arXiv) ou na pagina oficial dos anais.
+% ======================================================================
+
+% ---------- Recuperação densa / esparsa aprendida ----------
+@inproceedings{karpukhin2020dense,
+  author    = {Karpukhin, Vladimir and Oguz, Barlas and Min, Sewon and Lewis, Patrick and Wu, Ledell and Edunov, Sergey and Chen, Danqi and Yih, Wen-tau},
+  title     = {Dense Passage Retrieval for Open-Domain Question Answering},
+  booktitle = {Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)},
+  pages     = {6769--6781},
+  publisher = {Association for Computational Linguistics},
+  year      = {2020},
+  doi       = {10.18653/v1/2020.emnlp-main.550}
+}
+
+@inproceedings{khattab2020colbert,
+  author    = {Khattab, Omar and Zaharia, Matei},
+  title     = {{ColBERT}: Efficient and Effective Passage Search via Contextualized Late Interaction over {BERT}},
+  booktitle = {Proceedings of the 43rd International ACM SIGIR Conference on Research and Development in Information Retrieval},
+  pages     = {39--48},
+  publisher = {ACM},
+  year      = {2020},
+  doi       = {10.1145/3397271.3401075}
+}
+
+@inproceedings{formal2021splade,
+  author    = {Formal, Thibault and Piwowarski, Benjamin and Clinchant, St{\'e}phane},
+  title     = {{SPLADE}: Sparse Lexical and Expansion Model for First Stage Ranking},
+  booktitle = {Proceedings of the 44th International ACM SIGIR Conference on Research and Development in Information Retrieval},
+  pages     = {2288--2292},
+  publisher = {ACM},
+  year      = {2021},
+  doi       = {10.1145/3404835.3463098}
+}
+
+@inproceedings{thakur2021beir,
+  author    = {Thakur, Nandan and Reimers, Nils and R{\"u}ckl{\'e}, Andreas and Srivastava, Abhishek and Gurevych, Iryna},
+  title     = {{BEIR}: A Heterogeneous Benchmark for Zero-shot Evaluation of Information Retrieval Models},
+  booktitle = {Proceedings of the Neural Information Processing Systems Track on Datasets and Benchmarks},
+  editor    = {Vanschoren, J. and Yeung, S.},
+  volume    = {1},
+  year      = {2021},
+  url       = {https://datasets-benchmarks-proceedings.neurips.cc/paper_files/paper/2021/hash/65b9eea6e1cc6bb9f0cd2a47751a186f-Abstract-round2.html},
+  eprint    = {2104.08663},
+  archivePrefix = {arXiv}
+}
+
+% ---------- Busca vetorial aproximada (ANN) ----------
+@article{jegou2011product,
+  author  = {J{\'e}gou, Herv{\'e} and Douze, Matthijs and Schmid, Cordelia},
+  title   = {Product Quantization for Nearest Neighbor Search},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  volume  = {33},
+  number  = {1},
+  pages   = {117--128},
+  year    = {2011},
+  doi     = {10.1109/TPAMI.2010.57}
+}
+
+@article{johnson2021billion,
+  author  = {Johnson, Jeff and Douze, Matthijs and J{\'e}gou, Herv{\'e}},
+  title   = {Billion-Scale Similarity Search with {GPUs}},
+  journal = {IEEE Transactions on Big Data},
+  volume  = {7},
+  number  = {3},
+  pages   = {535--547},
+  year    = {2021},
+  doi     = {10.1109/TBDATA.2019.2921572}
+}
+
+@article{malkov2020hnsw,
+  author  = {Malkov, Yu. A. and Yashunin, D. A.},
+  title   = {Efficient and Robust Approximate Nearest Neighbor Search Using Hierarchical Navigable Small World Graphs},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  volume  = {42},
+  number  = {4},
+  pages   = {824--836},
+  year    = {2020},
+  doi     = {10.1109/TPAMI.2018.2889473}
+}
+
+% ---------- RAG: panorama, variantes, avaliação ----------
+@misc{gao2023ragsurvey,
+  author       = {Gao, Yunfan and Xiong, Yun and Gao, Xinyu and Jia, Kangxiang and Pan, Jinliu and Bi, Yuxi and Dai, Yi and Sun, Jiawei and Wang, Meng and Wang, Haofen},
+  title        = {Retrieval-Augmented Generation for Large Language Models: A Survey},
+  howpublished = {arXiv preprint arXiv:2312.10997},
+  year         = {2023},
+  doi          = {10.48550/arXiv.2312.10997},
+  eprint       = {2312.10997},
+  archivePrefix = {arXiv}
+}
+
+@misc{edge2024graphrag,
+  author       = {Edge, Darren and Trinh, Ha and Cheng, Newman and Bradley, Joshua and Chao, Alex and Mody, Apurva and Truitt, Steven and Metropolitansky, Dasha and Ness, Robert Osazuwa and Larson, Jonathan},
+  title        = {From Local to Global: A Graph {RAG} Approach to Query-Focused Summarization},
+  howpublished = {arXiv preprint arXiv:2404.16130},
+  year         = {2024},
+  doi          = {10.48550/arXiv.2404.16130},
+  eprint       = {2404.16130},
+  archivePrefix = {arXiv}
+}
+
+@inproceedings{es2024ragas,
+  author    = {Es, Shahul and James, Jithin and Espinosa Anke, Luis and Schockaert, Steven},
+  title     = {{RAGAs}: Automated Evaluation of Retrieval Augmented Generation},
+  booktitle = {Proceedings of the 18th Conference of the European Chapter of the Association for Computational Linguistics: System Demonstrations},
+  pages     = {150--158},
+  publisher = {Association for Computational Linguistics},
+  year      = {2024},
+  doi       = {10.18653/v1/2024.eacl-demo.16}
+}
+
+% ---------- Expansão de consulta ----------
+@article{carpineto2012survey,
+  author  = {Carpineto, Claudio and Romano, Giovanni},
+  title   = {A Survey of Automatic Query Expansion in Information Retrieval},
+  journal = {ACM Computing Surveys},
+  volume  = {44},
+  number  = {1},
+  pages   = {1--50},
+  year    = {2012},
+  doi     = {10.1145/2071389.2071390}
+}
+
+@inproceedings{wang2023query2doc,
+  author    = {Wang, Liang and Yang, Nan and Wei, Furu},
+  title     = {{Query2doc}: Query Expansion with Large Language Models},
+  booktitle = {Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing},
+  pages     = {9414--9423},
+  publisher = {Association for Computational Linguistics},
+  year      = {2023},
+  doi       = {10.18653/v1/2023.emnlp-main.585}
+}
+
+@inproceedings{gao2023hyde,
+  author    = {Gao, Luyu and Ma, Xueguang and Lin, Jimmy and Callan, Jamie},
+  title     = {Precise Zero-Shot Dense Retrieval without Relevance Labels},
+  booktitle = {Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)},
+  pages     = {1762--1777},
+  publisher = {Association for Computational Linguistics},
+  year      = {2023},
+  doi       = {10.18653/v1/2023.acl-long.99}
+}
+
+% ---------- Proveniência ----------
+@article{cheney2009provenance,
+  author  = {Cheney, James and Chiticariu, Laura and Tan, Wang-Chiew},
+  title   = {Provenance in Databases: Why, How, and Where},
+  journal = {Foundations and Trends in Databases},
+  volume  = {1},
+  number  = {4},
+  pages   = {379--474},
+  year    = {2009},
+  doi     = {10.1561/1900000006}
+}
+
+@misc{moreau2013provdm,
+  author       = {Moreau, Luc and Missier, Paolo},
+  title        = {{PROV-DM}: The {PROV} Data Model},
+  howpublished = {W3C Recommendation, 30 abr. 2013. Disponível em: \url{https://www.w3.org/TR/2013/REC-prov-dm-20130430/}},
+  year         = {2013},
+  url          = {https://www.w3.org/TR/2013/REC-prov-dm-20130430/}
+}
+
+% ---------- Metodologia e estatística ----------
+@inproceedings{smucker2007comparison,
+  author    = {Smucker, Mark D. and Allan, James and Carterette, Ben},
+  title     = {A Comparison of Statistical Significance Tests for Information Retrieval Evaluation},
+  booktitle = {Proceedings of the Sixteenth ACM Conference on Information and Knowledge Management (CIKM)},
+  pages     = {623--632},
+  publisher = {ACM},
+  year      = {2007},
+  doi       = {10.1145/1321440.1321528}
+}
+
+@article{cohen1960coefficient,
+  author  = {Cohen, Jacob},
+  title   = {A Coefficient of Agreement for Nominal Scales},
+  journal = {Educational and Psychological Measurement},
+  volume  = {20},
+  number  = {1},
+  pages   = {37--46},
+  year    = {1960},
+  doi     = {10.1177/001316446002000104}
+}
+
+@article{peffers2007design,
+  author  = {Peffers, Ken and Tuunanen, Tuure and Rothenberger, Marcus A. and Chatterjee, Samir},
+  title   = {A Design Science Research Methodology for Information Systems Research},
+  journal = {Journal of Management Information Systems},
+  volume  = {24},
+  number  = {3},
+  pages   = {45--77},
+  year    = {2007},
+  doi     = {10.2753/MIS0742-1222240302}
+}
+
+@article{mcnemar1947note,
+  author  = {McNemar, Quinn},
+  title   = {Note on the Sampling Error of the Difference Between Correlated Proportions or Percentages},
+  journal = {Psychometrika},
+  volume  = {12},
+  number  = {2},
+  pages   = {153--157},
+  year    = {1947},
+  doi     = {10.1007/BF02295996}
+}
+
+% ======================================================================
+% Entradas acrescentadas na rodada 1 da banca simulada (2026-09-27),
+% conferidas pelo DOI na Crossref ou pelo id no arXiv.
+% ======================================================================
+
+@inproceedings{lin2024lucene,
+  author    = {Lin, Jimmy and Pradeep, Ronak and Teofili, Tommaso and Xian, Jasper},
+  title     = {Vector Search with {OpenAI} Embeddings: {Lucene} Is All You Need},
+  booktitle = {Proceedings of the 17th ACM International Conference on Web Search and Data Mining (WSDM)},
+  pages     = {1090--1093},
+  year      = {2024},
+  doi       = {10.1145/3616855.3635691}
+}
+
+@article{aumuller2020ann,
+  author  = {Aum{\"u}ller, Martin and Bernhardsson, Erik and Faithfull, Alexander},
+  title   = {{ANN-Benchmarks}: A Benchmarking Tool for Approximate Nearest Neighbor Algorithms},
+  journal = {Information Systems},
+  volume  = {87},
+  pages   = {101374},
+  year    = {2020},
+  doi     = {10.1016/j.is.2019.02.006}
+}
+
+@inproceedings{li2024ragorlc,
+  author    = {Li, Zhuowan and Li, Cheng and Zhang, Mingyang and Mei, Qiaozhu and Bendersky, Michael},
+  title     = {Retrieval Augmented Generation or Long-Context {LLMs}? A Comprehensive Study and Hybrid Approach},
+  booktitle = {Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing: Industry Track},
+  pages     = {881--893},
+  year      = {2024},
+  doi       = {10.18653/v1/2024.emnlp-industry.66}
+}
+
+@article{rashkin2023attribution,
+  author  = {Rashkin, Hannah and Nikolaev, Vitaly and Lamm, Matthew and Aroyo, Lora and Collins, Michael and Das, Dipanjan and Petrov, Slav and Tomar, Gaurav Singh and Turc, Iulia and Reitter, David},
+  title   = {Measuring Attribution in Natural Language Generation Models},
+  journal = {Computational Linguistics},
+  volume  = {49},
+  number  = {4},
+  pages   = {777--840},
+  year    = {2023},
+  doi     = {10.1162/coli_a_00486}
+}
+
+@inproceedings{gao2023alce,
+  author    = {Gao, Tianyu and Yen, Howard and Yu, Jiatong and Chen, Danqi},
+  title     = {Enabling Large Language Models to Generate Text with Citations},
+  booktitle = {Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing},
+  pages     = {6465--6488},
+  year      = {2023},
+  doi       = {10.18653/v1/2023.emnlp-main.398}
+}
+
+@inproceedings{liu2023verifiability,
+  author    = {Liu, Nelson and Zhang, Tianyi and Liang, Percy},
+  title     = {Evaluating Verifiability in Generative Search Engines},
+  booktitle = {Findings of the Association for Computational Linguistics: EMNLP 2023},
+  pages     = {7001--7025},
+  year      = {2023},
+  doi       = {10.18653/v1/2023.findings-emnlp.467}
+}
+
+@inproceedings{robertson2004bm25f,
+  author    = {Robertson, Stephen and Zaragoza, Hugo and Taylor, Michael},
+  title     = {Simple {BM25} Extension to Multiple Weighted Fields},
+  booktitle = {Proceedings of the 13th ACM International Conference on Information and Knowledge Management (CIKM)},
+  pages     = {42--49},
+  year      = {2004},
+  doi       = {10.1145/1031171.1031181}
+}
+
+@inproceedings{weller2024expansion,
+  author    = {Weller, Orion and Lo, Kyle and Wadden, David and Lawrie, Dawn and Van Durme, Benjamin and Cohan, Arman and Soldaini, Luca},
+  title     = {When do Generative Query and Document Expansions Fail? {A} Comprehensive Study Across Methods, Retrievers, and Datasets},
+  booktitle = {Findings of the Association for Computational Linguistics: EACL 2024},
+  pages     = {1987--2003},
+  year      = {2024},
+  doi       = {10.18653/v1/2024.findings-eacl.134}
+}
+
+@article{furnas1987vocabulary,
+  author  = {Furnas, George W. and Landauer, Thomas K. and Gomez, Louis M. and Dumais, Susan T.},
+  title   = {The Vocabulary Problem in Human-System Communication},
+  journal = {Communications of the ACM},
+  volume  = {30},
+  number  = {11},
+  pages   = {964--971},
+  year    = {1987},
+  doi     = {10.1145/32206.32212}
+}
+
+@inproceedings{li2020sentence,
+  author    = {Li, Bohan and Zhou, Hao and He, Junxian and Wang, Mingxuan and Yang, Yiming and Li, Lei},
+  title     = {On the Sentence Embeddings from Pre-trained Language Models},
+  booktitle = {Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP)},
+  pages     = {9119--9130},
+  year      = {2020},
+  doi       = {10.18653/v1/2020.emnlp-main.733}
+}
+
+@misc{wang2024me5,
+  author        = {Wang, Liang and Yang, Nan and Huang, Xiaolong and Yang, Linjun and Majumder, Rangan and Wei, Furu},
+  title         = {Multilingual {E5} Text Embeddings: A Technical Report},
+  year          = {2024},
+  eprint        = {2402.05672},
+  archivePrefix = {arXiv},
+  howpublished  = {arXiv preprint arXiv:2402.05672}
+}
+
+@misc{jagerman2023qe,
+  author        = {Jagerman, Rolf and Zhuang, Honglei and Qin, Zhen and Wang, Xuanhui and Bendersky, Michael},
+  title         = {Query Expansion by Prompting Large Language Models},
+  year          = {2023},
+  eprint        = {2305.03653},
+  archivePrefix = {arXiv},
+  howpublished  = {arXiv preprint arXiv:2305.03653}
+}
+
+@inproceedings{sarthi2024raptor,
+  author    = {Sarthi, Parth and Abdullah, Salman and Tuli, Aditi and Khanna, Shubh and Goldie, Anna and Manning, Christopher D.},
+  title     = {{RAPTOR}: Recursive Abstractive Processing for Tree-Organized Retrieval},
+  booktitle = {The Twelfth International Conference on Learning Representations (ICLR)},
+  year      = {2024},
+  url       = {https://openreview.net/forum?id=GN921JHCRw}
+}
+
+@misc{auer2024docling,
+  author        = {Auer, Christoph and Lysak, Maksym and Nassar, Ahmed and Dolfi, Michele and Livathinos, Nikolaos and others},
+  title         = {Docling Technical Report},
+  year          = {2024},
+  eprint        = {2408.09869},
+  archivePrefix = {arXiv},
+  howpublished  = {arXiv preprint arXiv:2408.09869}
+}
+
+@misc{langchain2022,
+  author       = {Chase, Harrison},
+  title        = {{LangChain}},
+  year         = {2022},
+  howpublished = {Repositório de software. Disponível em: \url{https://github.com/langchain-ai/langchain}. Acesso em: 27 set. 2026}
+}
+
+@misc{llamaindex2022,
+  author       = {Liu, Jerry},
+  title        = {{LlamaIndex}},
+  year         = {2022},
+  howpublished = {Repositório de software. Disponível em: \url{https://github.com/run-llama/llama_index}. Acesso em: 27 set. 2026}
+}
+
+@misc{pgvector2026,
+  author       = {Kane, Andrew},
+  title        = {pgvector: Open-source vector similarity search for {Postgres}},
+  year         = {2026},
+  howpublished = {Repositório de software, versão 0.8.6. Disponível em: \url{https://github.com/pgvector/pgvector}. Acesso em: 27 set. 2026}
+}
+
+@misc{e5modelcard2023,
+  author       = {Wang, Liang and Yang, Nan and Huang, Xiaolong and Yang, Linjun and Majumder, Rangan and Wei, Furu},
+  title        = {intfloat/multilingual-e5-base: cartão do modelo},
+  year         = {2023},
+  howpublished = {Hugging Face. Disponível em: \url{https://huggingface.co/intfloat/multilingual-e5-base}. Acesso em: 27 set. 2026}
+}
+
+@inproceedings{gospodinov2023doc2query,
+  author    = {Gospodinov, Mitko and MacAvaney, Sean and Macdonald, Craig},
+  title     = {{Doc2Query--}: When Less is More},
+  booktitle = {Advances in Information Retrieval (ECIR 2023)},
+  series    = {Lecture Notes in Computer Science},
+  pages     = {414--422},
+  publisher = {Springer},
+  year      = {2023},
+  doi       = {10.1007/978-3-031-28238-6_31}
 }

@@ -20,6 +20,10 @@ function hasActiveProcessing(docs: Document[]): boolean {
 // O merge existe para nao perder o que ja estava carregado enquanto uma rodada
 // nao termina, entao ele mantem a ORDEM atual e reaproveita o objeto anterior
 // quando o servidor nao mudou nada; mas quem nao veio na resposta e removido.
+function sameDocument(a: Document, b: Document): boolean {
+    return a === b || JSON.stringify(a) === JSON.stringify(b);
+}
+
 function mergeDocuments(current: Document[], updated: Document[]): Document[] {
     const currentById = new Map(current.map((doc) => [doc.id, doc]));
     const orderedIds = current.map((doc) => doc.id);
@@ -29,7 +33,11 @@ function mergeDocuments(current: Document[], updated: Document[]): Document[] {
     for (const id of orderedIds) {
         const fresh = updatedById.get(id);
         if (fresh) {
-            merged.push(fresh);
+            const previous = currentById.get(id)!;
+            // Reaproveitar o objeto anterior quando nada mudou evita que quem
+            // depende da referencia (ex.: o preview de /documents) refaca
+            // fetch a cada rodada de polling.
+            merged.push(sameDocument(previous, fresh) ? previous : fresh);
         }
     }
     for (const doc of updated) {
@@ -37,7 +45,8 @@ function mergeDocuments(current: Document[], updated: Document[]): Document[] {
             merged.push(doc);
         }
     }
-    return merged;
+    const unchanged = merged.length === current.length && merged.every((doc, index) => doc === current[index]);
+    return unchanged ? current : merged;
 }
 
 export function useDocuments() {

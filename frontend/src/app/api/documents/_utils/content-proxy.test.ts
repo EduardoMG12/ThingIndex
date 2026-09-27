@@ -57,8 +57,8 @@ describe("content proxy", () => {
         expect(response.headers.get("Content-Security-Policy")).toContain("sandbox");
 
         const body = await response.text();
-        expect(body).toContain("Preview bloqueado por seguranca");
-        expect(body).toContain("download explicito do original");
+        expect(body).toContain("Preview bloqueado por segurança");
+        expect(body).toContain("download explícito do original");
         expect(body).not.toContain("active content");
     });
 

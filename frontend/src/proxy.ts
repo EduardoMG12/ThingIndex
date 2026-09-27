@@ -7,9 +7,7 @@ import {
     LOCALE_COOKIE_NAME,
     stripLocaleFromPathname,
 } from "@/lib/i18n/config";
-
-const PROTECTED_PATHS = ["/workspace", "/documents", "/cost-visibility", "/settings"];
-const AUTH_PATHS = ["/login", "/register"];
+import { AUTH_PATHS, PROTECTED_PATHS } from "@/lib/route-access";
 
 function isStaticAsset(pathname: string) {
     return pathname.startsWith("/_next") || pathname.startsWith("/api") || /\.[a-z0-9]+$/i.test(pathname);
