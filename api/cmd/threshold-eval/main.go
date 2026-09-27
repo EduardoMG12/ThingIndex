@@ -46,7 +46,7 @@ func main() {
 	if *texPath == "" {
 		fmt.Print(tabela)
 	} else {
-		if err := os.WriteFile(*texPath, []byte(tabela), 0o644); err != nil {
+		if err := os.WriteFile(*texPath, []byte(evalcorpus.VirgulaDecimal(tabela)), 0o644); err != nil {
 			fmt.Fprintf(os.Stderr, "threshold-eval: %v\n", err)
 			os.Exit(1)
 		}

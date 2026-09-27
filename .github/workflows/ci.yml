@@ -146,13 +146,19 @@ jobs:
       # publicado sem ninguem perceber.
       - name: estabilidade do ranking dos bracos densos
         working-directory: api
-        run: go run ./cmd/dense-determinism
+        run: |
+          go run ./cmd/dense-determinism -tex /tmp/dense-determinism.tex
+          diff -u ../docs/article/tables/dense-determinism.tex /tmp/dense-determinism.tex
 
       - name: script de analise estatistica
         run: |
           python3 scripts/test_analyze.py
           python3 scripts/analyze.py /tmp/results.csv --outdir /tmp/tables --granularity document
           python3 scripts/analyze.py /tmp/results.csv --outdir /tmp/tables --granularity section
+          # A tabela versionada no artigo tem de ser a que o script gera hoje.
+          # Sem esta comparacao o CI gerava em /tmp e descartava: uma tabela
+          # desatualizada no artigo passava verde.
+          for t in /tmp/tables/*.tex; do diff -u "docs/article/tables/$(basename "$t")" "$t"; done
 
       # A TPC e a TCV sao afirmadas na Secao de Auditabilidade com valores
       # exatos (0,329 e 1,000). Os testes do comando travam essas constantes,
@@ -163,6 +169,7 @@ jobs:
         run: |
           go test ./cmd/provenance-eval/
           go run ./cmd/provenance-eval -tex /tmp/provenance.tex
+          diff -u ../docs/article/tables/provenance.tex /tmp/provenance.tex
 
       # A Secao de Limiar afirma que existe sinal exploravel nos scores e que o
       # corte reduz o falso positivo. Se o scorer mudar e a separabilidade
@@ -172,6 +179,7 @@ jobs:
         run: |
           go test ./cmd/threshold-eval/
           go run ./cmd/threshold-eval -tex /tmp/threshold.tex
+          diff -u ../docs/article/tables/threshold.tex /tmp/threshold.tex
 
       # O artigo cita numeros do corpus (5 documentos, 19 secoes, 22 pares
       # julgados) e a mudanca de granularidade depende deles. Travar aqui

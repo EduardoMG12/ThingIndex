@@ -38,6 +38,7 @@ Uso:
 
 from __future__ import annotations
 
+import re
 import argparse
 import csv
 import math
@@ -225,6 +226,23 @@ def cliffs_delta(a: list[float], b: list[float]) -> tuple[float, str]:
     return (delta, label)
 
 
+_NUMERO_DECIMAL = re.compile(r"(^|[^0-9.])(-?[0-9]+)\.([0-9]+)($|[^0-9.])")
+
+
+def virgula_decimal(tex: str) -> str:
+    """Separador decimal em virgula, como pede o portugues, so na escrita do
+    .tex. Mesma regra de evalcorpus.VirgulaDecimal (Go); {,} evita o espaco
+    que o LaTeX poe depois da virgula em modo matematico."""
+    for _ in range(2):
+        tex = _NUMERO_DECIMAL.sub(r"\1\2{,}\3\4", tex)
+    return tex
+
+
+# Rotulos de magnitude acentuados so na saida para o artigo; o calculo e os
+# testes seguem com os rotulos ASCII.
+MAGNITUDE_TEX = {"desprezivel": "desprezível", "pequeno": "pequeno", "medio": "médio", "grande": "grande"}
+
+
 def latex_escape(text: str) -> str:
     return text.replace("_", r"\_").replace("&", r"\&").replace("%", r"\%")
 
@@ -355,16 +373,23 @@ def build_significance_table(rows: list[dict], label_suffix: str = "") -> str:
     pairs = [(arms[i], arms[j]) for i in range(len(arms)) for j in range(i + 1, len(arms))]
     comparisons = len(pairs) * len(METRICS)
 
+    # longtable, e nao table: com 75 linhas a tabela nao cabe numa pagina e,
+    # como flutuante, saia pelo rodape. O cabecalho se repete a cada pagina.
+    cabecalho = r"Comparação & Métrica & $\Delta$ & $p$ & $p$ corr. & $\delta$ de Cliff \\"
     lines = [
         r"% GERADO POR scripts/analyze.py -- nao edite a mao.",
-        r"\begin{table}[htb]",
-        r"\centering",
-        rf"\caption{{Comparações pareadas (Wilcoxon signed-rank) com correção de Bonferroni para {comparisons} comparações. Tamanho de efeito por Cliff's $\delta$.}}",
-        f"\\label{{tab:retrieval-significance{label_suffix}}}",
-        r"\begin{tabular}{llcccl}",
+        r"{\small",
+        r"\begin{longtable}{llcccl}",
+        rf"\caption{{Comparações pareadas (Wilcoxon) com correção de Bonferroni para {comparisons} comparações. Tamanho de efeito pelo $\delta$ de Cliff.}}",
+        f"\\label{{tab:retrieval-significance{label_suffix}}} \\\\",
         r"\hline",
-        r"Comparação & Métrica & $\Delta$ média & $p$ & $p$ corrigido & Cliff's $\delta$ \\",
+        cabecalho,
         r"\hline",
+        r"\endfirsthead",
+        r"\hline",
+        cabecalho,
+        r"\hline",
+        r"\endhead",
     ]
 
     for arm_a, arm_b in pairs:
@@ -380,10 +405,10 @@ def build_significance_table(rows: list[dict], label_suffix: str = "") -> str:
             lines.append(
                 f"{latex_escape(arm_a)} vs {latex_escape(arm_b)} & {label} & "
                 f"{mean(values_a) - mean(values_b):+.3f} & {p_value:.3f} & {p_corrected:.3f} & "
-                f"{delta:+.3f} ({magnitude}) \\\\"
+                f"{delta:+.3f} ({MAGNITUDE_TEX[magnitude]}) \\\\"
             )
 
-    lines += [r"\hline", r"\end{tabular}", r"\end{table}"]
+    lines += [r"\hline", r"\end{longtable}", r"}"]
     return "\n".join(lines)
 
 
@@ -462,7 +487,7 @@ def main() -> int:
     args.outdir.mkdir(parents=True, exist_ok=True)
     for name, content in tables.items():
         path = args.outdir / name
-        path.write_text(content + "\n", encoding="utf-8")
+        path.write_text(virgula_decimal(content) + "\n", encoding="utf-8")
         print(f"analyze: {path}")
 
     return 0

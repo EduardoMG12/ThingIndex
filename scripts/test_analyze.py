@@ -189,8 +189,11 @@ class TestTabelas(unittest.TestCase):
             ("significance", build_significance_table(self.rows)),
             ("negatives", build_negative_table(self.rows)),
         ):
-            self.assertIn(r"\begin{table}", tabela, nome)
-            self.assertIn(r"\end{table}", tabela, nome)
+            # A de significancia e longtable (75 linhas nao cabem numa pagina);
+            # as demais sao table flutuante.
+            ambiente = "longtable" if nome == "significance" else "table"
+            self.assertIn(rf"\begin{{{ambiente}}}", tabela, nome)
+            self.assertIn(rf"\end{{{ambiente}}}", tabela, nome)
             self.assertEqual(tabela.count(r"\begin{tabular}"), tabela.count(r"\end{tabular}"), nome)
             self.assertIn("GERADO POR", tabela, f"{nome}: falta o aviso de arquivo gerado")
 
