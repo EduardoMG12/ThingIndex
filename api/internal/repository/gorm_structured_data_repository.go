@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	appdb "thing-index/db"
 	"thing-index/internal/domain"
 	"thing-index/internal/models"
 
@@ -24,7 +25,7 @@ func (r *GormStructuredDataRepository) ReplaceDocumentPages(ctx context.Context,
 		if len(pages) == 0 {
 			return nil
 		}
-		return tx.Create(&pages).Error
+		return tx.CreateInBatches(&pages, appdb.InsertBatchSize).Error
 	})
 }
 
@@ -36,7 +37,7 @@ func (r *GormStructuredDataRepository) ReplaceParagraphNodes(ctx context.Context
 		if len(nodes) == 0 {
 			return nil
 		}
-		return tx.Create(&nodes).Error
+		return tx.CreateInBatches(&nodes, appdb.InsertBatchSize).Error
 	})
 }
 
@@ -48,7 +49,7 @@ func (r *GormStructuredDataRepository) ReplaceTableSections(ctx context.Context,
 		if len(sections) == 0 {
 			return nil
 		}
-		return tx.Create(&sections).Error
+		return tx.CreateInBatches(&sections, appdb.InsertBatchSize).Error
 	})
 }
 
@@ -60,7 +61,7 @@ func (r *GormStructuredDataRepository) ReplaceMetadataPairs(ctx context.Context,
 		if len(pairs) == 0 {
 			return nil
 		}
-		return tx.Create(&pairs).Error
+		return tx.CreateInBatches(&pairs, appdb.InsertBatchSize).Error
 	})
 }
 
@@ -72,7 +73,7 @@ func (r *GormStructuredDataRepository) ReplaceDocumentChunks(ctx context.Context
 		if len(chunks) == 0 {
 			return nil
 		}
-		return tx.Create(&chunks).Error
+		return tx.CreateInBatches(&chunks, appdb.InsertBatchSize).Error
 	})
 }
 
@@ -189,7 +190,7 @@ func createStructuredOutlineNodesWithParents(tx *gorm.DB, nodes []models.Documen
 		nodes[idx].ParentID = nil
 	}
 
-	if err := tx.Create(&nodes).Error; err != nil {
+	if err := tx.CreateInBatches(&nodes, appdb.InsertBatchSize).Error; err != nil {
 		return err
 	}
 

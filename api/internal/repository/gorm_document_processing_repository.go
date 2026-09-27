@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	appdb "thing-index/db"
 	"time"
 
 	"thing-index/internal/domain"
@@ -104,7 +105,7 @@ func (r *gormDocumentProcessingRepository) ReplaceIndexingResult(ctx context.Con
 			return err
 		}
 		if len(result.DocumentPages) > 0 {
-			if err := tx.Create(&result.DocumentPages).Error; err != nil {
+			if err := tx.CreateInBatches(&result.DocumentPages, appdb.InsertBatchSize).Error; err != nil {
 				return err
 			}
 		}
@@ -113,7 +114,7 @@ func (r *gormDocumentProcessingRepository) ReplaceIndexingResult(ctx context.Con
 			return err
 		}
 		if len(result.ParagraphNodes) > 0 {
-			if err := tx.Create(&result.ParagraphNodes).Error; err != nil {
+			if err := tx.CreateInBatches(&result.ParagraphNodes, appdb.InsertBatchSize).Error; err != nil {
 				return err
 			}
 		}
@@ -122,7 +123,7 @@ func (r *gormDocumentProcessingRepository) ReplaceIndexingResult(ctx context.Con
 			return err
 		}
 		if len(result.TableSections) > 0 {
-			if err := tx.Create(&result.TableSections).Error; err != nil {
+			if err := tx.CreateInBatches(&result.TableSections, appdb.InsertBatchSize).Error; err != nil {
 				return err
 			}
 		}
@@ -131,7 +132,7 @@ func (r *gormDocumentProcessingRepository) ReplaceIndexingResult(ctx context.Con
 			return err
 		}
 		if len(result.MetadataPairs) > 0 {
-			if err := tx.Create(&result.MetadataPairs).Error; err != nil {
+			if err := tx.CreateInBatches(&result.MetadataPairs, appdb.InsertBatchSize).Error; err != nil {
 				return err
 			}
 		}
@@ -140,7 +141,7 @@ func (r *gormDocumentProcessingRepository) ReplaceIndexingResult(ctx context.Con
 			return err
 		}
 		if len(result.Chunks) > 0 {
-			if err := tx.Create(&result.Chunks).Error; err != nil {
+			if err := tx.CreateInBatches(&result.Chunks, appdb.InsertBatchSize).Error; err != nil {
 				return err
 			}
 		}
@@ -172,7 +173,7 @@ func createOutlineNodesWithParents(tx *gorm.DB, nodes []models.DocumentOutlineNo
 		nodes[idx].ParentID = nil
 	}
 
-	if err := tx.Create(&nodes).Error; err != nil {
+	if err := tx.CreateInBatches(&nodes, appdb.InsertBatchSize).Error; err != nil {
 		return err
 	}
 

@@ -52,15 +52,6 @@ func queryExpansionEnabled() bool {
 	}
 }
 
-// chatModelName entra na chave do cache: trocar de modelo tem que invalidar as
-// expansoes guardadas, senao uma medicao herdaria os termos da outra.
-func chatModelName(llm domain.LLMService) string {
-	if m, ok := llm.(domain.LLMMetadataProvider); ok {
-		return m.ModelName()
-	}
-	return ""
-}
-
 type queryExpander struct {
 	cache domain.EnrichmentCache
 }
@@ -116,7 +107,11 @@ func sanitizeExpansion(raw string) string {
 // Expand devolve os termos a acrescentar a pergunta, ou "" quando nao ha nada a
 // acrescentar. Erro de LLM ou de cache nao e fatal: a busca segue com a
 // pergunta original, que e o braco de controle.
-func (e *queryExpander) Expand(ctx context.Context, llm domain.LLMService, model, question string) string {
+//
+// O escopo do cache (domain.LLMCacheScope) tem o usuario e o LLM que ele
+// configurou: trocar de modelo invalida as expansoes guardadas, e um usuario
+// nunca recebe termos gerados pelo provedor de outro.
+func (e *queryExpander) Expand(ctx context.Context, llm domain.LLMService, scope domain.EnrichmentCacheScope, question string) string {
 	if e == nil || llm == nil {
 		return ""
 	}
@@ -127,7 +122,7 @@ func (e *queryExpander) Expand(ctx context.Context, llm domain.LLMService, model
 	key := queryExpansionKey(trimmed)
 
 	if e.cache != nil {
-		if found, err := e.cache.LookupEnrichment(ctx, queryExpansionCacheKind, model, []string{key}); err == nil {
+		if found, err := e.cache.LookupEnrichment(ctx, scope, queryExpansionCacheKind, []string{key}); err == nil {
 			if entry, ok := found[key]; ok {
 				return entry.Summary
 			}
@@ -145,9 +140,8 @@ func (e *queryExpander) Expand(ctx context.Context, llm domain.LLMService, model
 	// vocabulario formal pagaria uma chamada de LLM em cada repeticao, e a
 	// medicao de custo do experimento sairia errada.
 	if e.cache != nil {
-		if err := e.cache.StoreEnrichment(ctx, []domain.EnrichmentCacheEntry{{
+		if err := e.cache.StoreEnrichment(ctx, scope, []domain.EnrichmentCacheEntry{{
 			Kind:        queryExpansionCacheKind,
-			Model:       model,
 			ContentHash: key,
 			Summary:     terms,
 		}}); err != nil {

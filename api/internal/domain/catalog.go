@@ -264,7 +264,6 @@ type CatalogDocumentRepository interface {
 	GetDocumentsByUserID(ctx context.Context, userID uint) ([]models.Document, error)
 	GetDocumentsByCategoryID(ctx context.Context, categoryID uint, userID uint) ([]models.Document, error)
 	GetDocumentsByCollectionID(ctx context.Context, collectionID uint, userID uint) ([]models.Document, error)
-	UpdateDocumentStatus(ctx context.Context, documentID uint, status string) error
 	RetryDocumentIndexing(ctx context.Context, userID uint, documentID uint, auditEvent *models.DocumentAuditEvent) (*models.Document, error)
 	MarkDocumentOrphaned(ctx context.Context, userID uint, documentID uint, detail string) (*models.Document, error)
 	DeleteDocument(ctx context.Context, userID uint, documentID uint, auditEvent *models.DocumentAuditEvent) error
