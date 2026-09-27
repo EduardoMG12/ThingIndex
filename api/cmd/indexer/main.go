@@ -52,7 +52,7 @@ func main() {
 	enricher := indexing.NewLLMEnricher().WithCache(indexingRepo)
 	processor := processing.NewDocumentProcessor(processingRepo, defaultStorage, providerService, indexer, providerService, enricher).WithIndexingPreferences(indexingRepo)
 
-	publisher, consumer, err := queue.BootstrapRabbitMQRuntime(
+	publisher, err := queue.BootstrapRabbitMQRuntime(
 		ctx,
 		config.AppConfig,
 		queue.BootstrapOptions{},
@@ -64,12 +64,6 @@ func main() {
 		log.Fatalf("failed to initialize rabbitmq runtime: %v", err)
 	}
 	defer publisher.Close()
-	defer consumer.Close()
-	consumer.SetFailureCallbacks(queue.DocumentIndexFailureCallbacks{
-		OnRetryScheduled: processor.MarkRetryScheduled,
-		OnMovedToDLQ:     processor.MarkMovedToDLQ,
-		OnPermanentError: processor.MarkPermanentFailure,
-	})
 
 	dispatcher := processing.NewOutboxDispatcher(
 		outboxRepo,
@@ -115,16 +109,21 @@ func main() {
 	// dois documentos travaram em QUEUED. Reiniciar so o consumidor tambem
 	// preserva o dispatcher de outbox e o reaper, que rodam neste binario e tem
 	// trabalho a fazer enquanto o RabbitMQ volta.
+	//
+	// As callbacks de falha sao instaladas em CADA consumidor recriado; antes
+	// iam para um consumidor ocioso do bootstrap e nunca rodavam.
 	supervisor := queue.NewConsumerSupervisor(
-		func(ctx context.Context) error {
-			consumidor, err := queue.NewRabbitMQConsumer(config.AppConfig)
-			if err != nil {
-				return err
-			}
-			defer consumidor.Close()
-
-			return consumidor.ConsumeDocumentIndexRequested(ctx, processor.Process)
-		},
+		queue.ConsumoComCallbacks(
+			func() (queue.ConsumidorDeIndexacao, error) {
+				return queue.NewRabbitMQConsumer(config.AppConfig)
+			},
+			queue.DocumentIndexFailureCallbacks{
+				OnRetryScheduled: processor.MarkRetryScheduled,
+				OnMovedToDLQ:     processor.MarkMovedToDLQ,
+				OnPermanentError: processor.MarkPermanentFailure,
+			},
+			processor.Process,
+		),
 		config.AppConfig.ConsumerReconnectInterval,
 	)
 
