@@ -21,9 +21,10 @@ export async function getRequestLocale(request?: Request): Promise<AppLocale> {
 
 // Cabecalho que carrega o IP do cliente ate a API. O Next chama a API pelo
 // servidor, entao sem ele o ClientIP visto pelo Gin e sempre o do container do
-// frontend e o limite por IP de /auth vira uma cota global: 10 logins por minuto
-// para todos os usuarios somados (parecer A3). A API so confia neste cabecalho
-// quando a conexao vem de TRUSTED_PROXIES (a rede interna do compose).
+// frontend e o limite por IP de /auth vira uma cota da instalacao (10 logins
+// por minuto para todos os usuarios somados). So e enviado com
+// FRONTEND_TRUST_PROXY_HEADERS=true, e a API so confia nele quando a conexao
+// vem de TRUSTED_PROXIES (vazio por padrao). Ver resolveClientForwardedFor.
 const FORWARDED_FOR_HEADER = "X-Forwarded-For";
 // Um endereco IPv4/IPv6 por item, separados por virgula. Qualquer outra coisa
 // (texto livre, quebra de linha) e descartada em vez de repassada.

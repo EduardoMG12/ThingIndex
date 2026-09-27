@@ -57,7 +57,17 @@ jobs:
       # -coverprofile em lugar nenhum: nao existia percentual publicavel.
       # O piso protege contra regressao; nao e meta de perseguir 100%.
       - name: cobertura de testes
-        run: bash scripts/check-coverage.sh
+        run: bash scripts/check-coverage.sh | tee /tmp/cobertura.log
+
+      # O artigo cita a cobertura (\coberturaBackend em contagem-testes.tex).
+      # O job do artigo nao roda a suite; a conferencia e aqui, onde a
+      # cobertura foi medida: diferenca de mais de 1 ponto quebra o build.
+      - name: cobertura citada no artigo esta em dia
+        run: |
+          medida=$(sed -nE 's/.*cobertura de instrucoes: ([0-9.]+)%.*/\1/p' /tmp/cobertura.log)
+          citada=$(sed -nE 's/.*coberturaBackend\}\{([0-9]+),([0-9]+)\}.*/\1.\2/p' docs/article/tables/contagem-testes.tex)
+          echo "medida ${medida}%, citada no artigo ${citada}%"
+          awk -v m="$medida" -v c="$citada" 'BEGIN { d = m - c; if (d < 0) d = -d; exit !(d <= 1.0) }'
 
   # Varre o historico inteiro, nao so o diff: um segredo apagado num commit
   # posterior continua legivel em quem clonar. As excecoes conferidas estao em

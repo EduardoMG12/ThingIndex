@@ -37,7 +37,7 @@ trap 'rm -f "${CITED}" "${DEFINED}"' EXIT
 
 # Chaves citadas: \cite{a,b} e \cite{c} — ignorando linhas comentadas com %.
 grep -v '^\s*%' "${ARTICLE}" \
-    | grep -oP '\\cite\{\K[^}]+' \
+    | grep -oP '\\cite(year)?\{\K[^}]+' \
     | tr ',' '\n' \
     | tr -d ' ' \
     | grep -v '^$' \
