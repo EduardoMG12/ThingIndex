@@ -40,13 +40,20 @@ function sanitizeForwardedFor(value: string | null | undefined): string | null {
         .join(", ");
 }
 
-// Le a cadeia X-Forwarded-For da requisicao recebida pelo Next. Em route
-// handler a requisicao vem por parametro; em server action (login, cadastro,
-// esqueci a senha) nao ha Request, entao le de next/headers. O proprio Next
-// preenche x-forwarded-for com o endereco do socket quando o cliente nao envia.
-// A cadeia e repassada inteira: quem decide qual item e o cliente real e o Gin,
-// andando da direita para a esquerda e pulando os proxies confiaveis.
+// Le o IP do cliente para repassar a API, SO quando ha um proxy reverso na
+// frente do Next que sobrescreve X-Forwarded-For (FRONTEND_TRUST_PROXY_HEADERS=true).
+// Sem esse proxy o valor vem do navegador: o Next so preenche x-forwarded-for
+// com o endereco do socket quando o cliente nao manda o cabecalho, e um valor
+// forjado passaria intacto, dando a cada tentativa de login um balde novo no
+// limite por IP da API. Nesse caso nada e repassado: a API ve o IP do container
+// do frontend e o limite por IP de /auth vira uma cota da instalacao, que
+// somado ao limite por e-mail e o comportamento seguro.
+// Em route handler a requisicao vem por parametro; em server action (login,
+// cadastro, esqueci a senha) nao ha Request, entao le de next/headers.
 export async function resolveClientForwardedFor(request?: Request): Promise<string | null> {
+    if (process.env.FRONTEND_TRUST_PROXY_HEADERS !== "true") {
+        return null;
+    }
     let source: Pick<Headers, "get"> | undefined = request?.headers;
     if (!source) {
         try {
