@@ -296,7 +296,25 @@ def virgula_decimal(tex: str) -> str:
 MAGNITUDE_TEX = {"desprezivel": "desprezível", "pequeno": "pequeno", "medio": "médio", "grande": "grande"}
 
 
+# Rotulos dos bracos na tabela. "A-relacional" era o nome interno do
+# pontuador de contagem de termos e confundia o leitor com o armazenamento
+# relacional, que e comum a todos os bracos lexicais.
+ARM_TEX = {
+    "A-relacional": "A, contagem",
+    "B-bm25": "B, BM25",
+    "C-denso": "C, denso exato",
+    "C-denso-ivf": "C$'$, denso IVF",
+    "D-rrf": "D, RRF(A,B)",
+    "E-rrf-denso": "E, RRF(B,C)",
+}
+
+
+UNIDADE = {"": "unidade de recuperação: documento", "-section": "unidade de recuperação: seção"}
+
+
 def latex_escape(text: str) -> str:
+    if text in ARM_TEX:
+        return ARM_TEX[text]
     return text.replace("_", r"\_").replace("&", r"\&").replace("%", r"\%")
 
 
@@ -349,7 +367,7 @@ def build_summary_table(rows: list[dict], label_suffix: str = "") -> str:
         r"% GERADO POR scripts/analyze.py -- nao edite a mao.",
         r"\begin{table}[htb]",
         r"\centering",
-        r"\caption{Desempenho de recuperação por braço. Intervalos de confiança de 95\% obtidos por bootstrap sobre as consultas (10.000 reamostragens). A última linha traz o teto alcançável de cada métrica dado o gabarito: P@k divide por $k$, então uma consulta com um único item relevante limita P@3 a $1/3$ mesmo sob ranking perfeito.}",
+        r"\caption{Desempenho de recuperação por braço em C1, " + UNIDADE[label_suffix] + r". Intervalos de confiança de 95\% por \emph{bootstrap} sobre as consultas (10.000 reamostragens). A última linha é o teto alcançável de cada métrica: P@k divide por $k$, então uma consulta com um único item relevante limita P@3 a $1/3$ mesmo sob ordenação perfeita.}",
         f"\\label{{tab:retrieval-summary{label_suffix}}}",
         r"\begin{tabular}{l" + "c" * len(METRICS) + "}",
         r"\hline",
@@ -392,7 +410,7 @@ def build_variant_table(rows: list[dict], label_suffix: str = "") -> str:
         r"% GERADO POR scripts/analyze.py -- nao edite a mao.",
         r"\begin{table}[htb]",
         r"\centering",
-        r"\caption{P@1 por variante de consulta. A queda de \emph{literal} para \emph{paraphrase} e \emph{noisy} mede a dependência de casamento lexical de cada braço.}",
+        r"\caption{P@1 por variante de consulta em C1, " + UNIDADE[label_suffix] + r". A última coluna é a queda de P@1 da consulta literal para a paráfrase, medida da dependência de casamento lexical de cada braço.}",
         f"\\label{{tab:retrieval-variants{label_suffix}}}",
         r"\begin{tabular}{lcccc}",
         r"\hline",
