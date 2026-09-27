@@ -10,6 +10,7 @@ import (
 	"thing-index/db"
 	internalapi "thing-index/internal/api"
 	"thing-index/internal/config"
+	"thing-index/internal/domain"
 	"thing-index/internal/indexing"
 	providerpkg "thing-index/internal/pkg/provider"
 	"thing-index/internal/processing"
@@ -36,11 +37,9 @@ func main() {
 		defer sqlDB.Close()
 	}
 
-	defaultStorage, err := providerpkg.NewDefaultStorageProvider(config.AppConfig)
-	if err != nil {
-		log.Printf("warning: failed to initialize default storage provider, continuing with unavailable storage: %v", err)
-		defaultStorage = internalapi.NewUnavailableStorageForIndexer(err)
-	}
+	defaultStorage := internalapi.ResolveDefaultStorageForIndexer(func() (domain.StorageService, error) {
+		return providerpkg.NewDefaultStorageProvider(config.AppConfig)
+	})
 
 	providerRepo := repository.NewGormProviderRepository(database)
 	providerService := usecase.NewProviderUseCase(providerRepo, config.AppConfig)
