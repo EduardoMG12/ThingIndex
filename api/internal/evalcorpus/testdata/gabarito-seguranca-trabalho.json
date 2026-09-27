@@ -40,7 +40,7 @@
       ]
     }
   ],
-  "frozen_sha256": "be94942ae80c1211a85eb8f2a6eaef53ba35359c6fa79ef467a7ae204b0644b2",
+  "frozen_sha256": "96e36a1f0f80604a625ea713facec87f7c5d7714528b3e86052ab38e2d8c53bc",
   "min_questions": 23,
   "notes": "Perguntas em PAR: a mesma necessidade de informacao aparece duas vezes, com a mesma resposta esperada e o mesmo alvo, mudando so a formulacao. LITERAL usa os termos do documento; PARAFRASE usa o vocabulario de quem pergunta no dia a dia, sem repetir as palavras do texto. O par existe porque um gabarito escrito por quem ja leu a pagina herda o vocabulario dela, e ai a medicao vira casamento lexical se passando por compreensao. Formas: aberta, confirmacao, existencia, premissa-falsa (a pergunta embute um dado errado e a resposta certa e corrigir) e negativa (nao consta). Escrito a partir dos PDF com pdftotext -layout; cada pagina-alvo foi conferida.",
   "questions": [
@@ -185,7 +185,11 @@
         }
       ],
       "text": "A NR-1 exige considerar os fatores de risco psicossociais?",
-      "variant": "literal"
+      "variant": "literal",
+      "reject_patterns": [
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "^\\W*nao\\b"
+      ]
     },
     {
       "answer_patterns": [
@@ -206,7 +210,11 @@
         }
       ],
       "text": "Pressao e assedio no trabalho entram na conta de risco que a empresa tem que fazer?",
-      "variant": "parafrase"
+      "variant": "parafrase",
+      "reject_patterns": [
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "^\\W*nao\\b"
+      ]
     },
     {
       "answer_patterns": [
@@ -229,7 +237,9 @@
       "variant": "literal",
       "reject_patterns": [
         "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
-        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b",
+        "^\\W*nao\\b"
       ]
     },
     {
@@ -253,7 +263,9 @@
       "variant": "parafrase",
       "reject_patterns": [
         "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
-        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b",
+        "^\\W*nao\\b"
       ]
     },
     {
@@ -361,7 +373,9 @@
       "variant": "literal",
       "reject_patterns": [
         "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
-        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b",
+        "^\\W*nao\\b"
       ]
     },
     {
@@ -385,7 +399,9 @@
       "variant": "parafrase",
       "reject_patterns": [
         "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica|previs|determinar)|nenhuma informac|sem informac|(os|nos|o|no) (documentos?|trechos?|textos?)[^.]{0,40}nao (trazem|traz|mencionam?|contem|tratam?|abordam?|especificam?|informam?|apresentam?|indicam?|preveem|preve)",
-        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b"
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "\\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\\b",
+        "^\\W*nao\\b"
       ]
     },
     {
@@ -406,7 +422,11 @@
         }
       ],
       "text": "Microempresa pode ser dispensada de elaborar o PGR?",
-      "variant": "literal"
+      "variant": "literal",
+      "reject_patterns": [
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "^\\W*nao\\b"
+      ]
     },
     {
       "answer_patterns": [
@@ -426,7 +446,11 @@
         }
       ],
       "text": "Empresa bem pequenininha tambem precisa fazer todo esse documentao de risco?",
-      "variant": "parafrase"
+      "variant": "parafrase",
+      "reject_patterns": [
+        "nao (esta|estao|foi|foram) (previst|mencionad|encontrad|tratad|abordad)|nao ha (dispositivo|artigo|norma|trecho|regra)[^.]{0,30}(prev|trat|mencion|regul)|nenhum (dos|documento|trecho|texto)[^.]{0,30}(trata|menciona|preve|aborda|traz|contem)|nao se trata disso|nada consta|nao pode ser (encontrad|determinad|respondid)|nao (e|foi) possivel (encontrar|determinar|responder|identificar)",
+        "^\\W*nao\\b"
+      ]
     },
     {
       "answer_patterns": [
@@ -510,5 +534,5 @@
     "negativa": 3,
     "premissa-falsa": 4
   },
-  "version": "seguranca-trabalho-2026-09-v5"
+  "version": "seguranca-trabalho-2026-09-v6"
 }
