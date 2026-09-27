@@ -1,31 +1,31 @@
 % GERADO POR scripts/analyze.py -- nao edite a mao.
 {\small
-\begin{longtable}{llcccl}
-\caption{Comparações pareadas (Wilcoxon) com correção de Bonferroni para 15 comparações. Tamanho de efeito pelo $\delta$ de Cliff.}
+\begin{longtable}{llccccl}
+\caption{Comparações pareadas: teste de aleatorização exato sobre as consultas, com correção de Holm para 15 comparações. $n$ é o número de consultas em que os dois braços diferem. Tamanho de efeito pelo $\delta$ de Cliff.}
 \label{tab:retrieval-significance-section} \\
 \hline
-Comparação & Métrica & $\Delta$ & $p$ & $p$ corr. & $\delta$ de Cliff \\
+Comparação & Métrica & $\Delta$ & $n$ & $p$ & $p$ Holm & $\delta$ de Cliff \\
 \hline
 \endfirsthead
 \hline
-Comparação & Métrica & $\Delta$ & $p$ & $p$ corr. & $\delta$ de Cliff \\
+Comparação & Métrica & $\Delta$ & $n$ & $p$ & $p$ Holm & $\delta$ de Cliff \\
 \hline
 \endhead
-A-relacional vs B-bm25 & P@1 & -0{,}188 & 1{,}000 & 1{,}000 & -0{,}188 (pequeno) \\
-A-relacional vs B-bm25 & P@3 & -0{,}062 & 1{,}000 & 1{,}000 & -0{,}156 (pequeno) \\
-A-relacional vs B-bm25 & R@5 & -0{,}094 & 1{,}000 & 1{,}000 & -0{,}125 (desprezível) \\
-A-relacional vs B-bm25 & MRR & -0{,}130 & 1{,}000 & 1{,}000 & -0{,}191 (pequeno) \\
-A-relacional vs B-bm25 & nDCG@10 & -0{,}123 & 1{,}000 & 1{,}000 & -0{,}172 (pequeno) \\
-A-relacional vs D-rrf & P@1 & +0{,}000 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-A-relacional vs D-rrf & P@3 & -0{,}062 & 1{,}000 & 1{,}000 & -0{,}156 (pequeno) \\
-A-relacional vs D-rrf & R@5 & -0{,}094 & 1{,}000 & 1{,}000 & -0{,}125 (desprezível) \\
-A-relacional vs D-rrf & MRR & -0{,}019 & 1{,}000 & 1{,}000 & -0{,}031 (desprezível) \\
-A-relacional vs D-rrf & nDCG@10 & -0{,}023 & 1{,}000 & 1{,}000 & -0{,}027 (desprezível) \\
-B-bm25 vs D-rrf & P@1 & +0{,}188 & 1{,}000 & 1{,}000 & +0{,}188 (pequeno) \\
-B-bm25 vs D-rrf & P@3 & +0{,}000 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-B-bm25 vs D-rrf & R@5 & +0{,}000 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-B-bm25 vs D-rrf & MRR & +0{,}111 & 1{,}000 & 1{,}000 & +0{,}176 (pequeno) \\
-B-bm25 vs D-rrf & nDCG@10 & +0{,}099 & 1{,}000 & 1{,}000 & +0{,}156 (pequeno) \\
+A-relacional vs B-bm25 & P@1 & -0{,}188 & 3 & 0{,}250 & 1{,}000 & -0{,}188 (pequeno) \\
+A-relacional vs B-bm25 & P@3 & -0{,}062 & 3 & 0{,}250 & 1{,}000 & -0{,}156 (pequeno) \\
+A-relacional vs B-bm25 & R@5 & -0{,}094 & 2 & 0{,}500 & 1{,}000 & -0{,}125 (desprezível) \\
+A-relacional vs B-bm25 & MRR & -0{,}130 & 6 & 0{,}156 & 1{,}000 & -0{,}191 (pequeno) \\
+A-relacional vs B-bm25 & nDCG@10 & -0{,}123 & 6 & 0{,}062 & 0{,}938 & -0{,}172 (pequeno) \\
+A-relacional vs D-rrf & P@1 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
+A-relacional vs D-rrf & P@3 & -0{,}062 & 3 & 0{,}250 & 1{,}000 & -0{,}156 (pequeno) \\
+A-relacional vs D-rrf & R@5 & -0{,}094 & 2 & 0{,}500 & 1{,}000 & -0{,}125 (desprezível) \\
+A-relacional vs D-rrf & MRR & -0{,}019 & 5 & 0{,}312 & 1{,}000 & -0{,}031 (desprezível) \\
+A-relacional vs D-rrf & nDCG@10 & -0{,}023 & 4 & 0{,}250 & 1{,}000 & -0{,}027 (desprezível) \\
+B-bm25 vs D-rrf & P@1 & +0{,}188 & 3 & 0{,}250 & 1{,}000 & +0{,}188 (pequeno) \\
+B-bm25 vs D-rrf & P@3 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
+B-bm25 vs D-rrf & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
+B-bm25 vs D-rrf & MRR & +0{,}111 & 5 & 0{,}062 & 0{,}938 & +0{,}176 (pequeno) \\
+B-bm25 vs D-rrf & nDCG@10 & +0{,}099 & 5 & 0{,}062 & 0{,}938 & +0{,}156 (pequeno) \\
 \hline
 \end{longtable}
 }

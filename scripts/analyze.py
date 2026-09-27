@@ -196,6 +196,59 @@ def wilcoxon_signed_rank(a: list[float], b: list[float]) -> tuple[float, float, 
     return (w, min(p, 1.0), n)
 
 
+def randomization_test(a: list[float], b: list[float], max_exact: int = 20, samples: int = 100_000) -> tuple[float, int]:
+    """Teste de aleatorizacao pareado, bilateral, sobre a diferenca de medias.
+
+    E o teste que Smucker, Allan e Carterette (2007) recomendam para comparar
+    sistemas de RI por consulta. Sob a hipotese nula os rotulos dos dois bracos
+    sao permutaveis dentro de cada consulta, entao cada diferenca pode trocar
+    de sinal. Com ate `max_exact` diferencas nao nulas enumeram-se as 2^n
+    combinacoes de sinais (p exato); acima disso, amostragem com semente fixa.
+
+    Substitui o valor sentinela p = 1 que o Wilcoxon por aproximacao normal
+    devolvia com menos de 10 pares nao nulos: em C1 nenhuma das 75 comparacoes
+    chegava a 10, e a tabela mostrava 1,000 em todas sem que teste algum
+    tivesse sido calculado.
+    """
+    diffs = [x - y for x, y in zip(a, b) if x != y]
+    n = len(diffs)
+    if n == 0:
+        return (1.0, 0)
+    observado = abs(sum(diffs))
+    # Tolerancia para empates de ponto flutuante na comparacao com o observado.
+    eps = 1e-12
+    if n <= max_exact:
+        extremos = 0
+        total = 1 << n
+        for mascara in range(total):
+            s = 0.0
+            for i, d in enumerate(diffs):
+                s += -d if (mascara >> i) & 1 else d
+            if abs(s) >= observado - eps:
+                extremos += 1
+        return (extremos / total, n)
+    rng = random.Random(20260926)
+    extremos = 0
+    for _ in range(samples):
+        s = sum(d if rng.random() < 0.5 else -d for d in diffs)
+        if abs(s) >= observado - eps:
+            extremos += 1
+    return ((extremos + 1) / (samples + 1), n)
+
+
+def holm(p_values: list[float]) -> list[float]:
+    """Correcao de Holm-Bonferroni (step-down). Controla a taxa de erro por
+    familia como Bonferroni e e uniformemente mais poderosa que ele."""
+    m = len(p_values)
+    ordem = sorted(range(m), key=lambda i: p_values[i])
+    ajustados = [0.0] * m
+    acumulado = 0.0
+    for posto, i in enumerate(ordem):
+        acumulado = max(acumulado, min(1.0, (m - posto) * p_values[i]))
+        ajustados[i] = acumulado
+    return ajustados
+
+
 def cliffs_delta(a: list[float], b: list[float]) -> tuple[float, str]:
     """Cliff's delta e sua interpretacao qualitativa.
 
@@ -375,12 +428,12 @@ def build_significance_table(rows: list[dict], label_suffix: str = "") -> str:
 
     # longtable, e nao table: com 75 linhas a tabela nao cabe numa pagina e,
     # como flutuante, saia pelo rodape. O cabecalho se repete a cada pagina.
-    cabecalho = r"Comparação & Métrica & $\Delta$ & $p$ & $p$ corr. & $\delta$ de Cliff \\"
+    cabecalho = r"Comparação & Métrica & $\Delta$ & $n$ & $p$ & $p$ Holm & $\delta$ de Cliff \\"
     lines = [
         r"% GERADO POR scripts/analyze.py -- nao edite a mao.",
         r"{\small",
-        r"\begin{longtable}{llcccl}",
-        rf"\caption{{Comparações pareadas (Wilcoxon) com correção de Bonferroni para {comparisons} comparações. Tamanho de efeito pelo $\delta$ de Cliff.}}",
+        r"\begin{longtable}{llccccl}",
+        rf"\caption{{Comparações pareadas: teste de aleatorização exato sobre as consultas, com correção de Holm para {comparisons} comparações. $n$ é o número de consultas em que os dois braços diferem. Tamanho de efeito pelo $\delta$ de Cliff.}}",
         f"\\label{{tab:retrieval-significance{label_suffix}}} \\\\",
         r"\hline",
         cabecalho,
@@ -392,21 +445,23 @@ def build_significance_table(rows: list[dict], label_suffix: str = "") -> str:
         r"\endhead",
     ]
 
+    resultados = []
     for arm_a, arm_b in pairs:
         shared = sorted(set(by_arm_query[arm_a]) & set(by_arm_query[arm_b]))
         for key, label in METRICS:
             values_a = [to_float(by_arm_query[arm_a][q][key]) for q in shared]
             values_b = [to_float(by_arm_query[arm_b][q][key]) for q in shared]
-
-            _, p_value, _ = wilcoxon_signed_rank(values_a, values_b)
-            p_corrected = min(p_value * comparisons, 1.0)
+            p_value, nonzero = randomization_test(values_a, values_b)
             delta, magnitude = cliffs_delta(values_a, values_b)
+            resultados.append((arm_a, arm_b, label, mean(values_a) - mean(values_b), nonzero, p_value, delta, magnitude))
 
-            lines.append(
-                f"{latex_escape(arm_a)} vs {latex_escape(arm_b)} & {label} & "
-                f"{mean(values_a) - mean(values_b):+.3f} & {p_value:.3f} & {p_corrected:.3f} & "
-                f"{delta:+.3f} ({MAGNITUDE_TEX[magnitude]}) \\\\"
-            )
+    ajustados = holm([r[5] for r in resultados])
+    for (arm_a, arm_b, label, diff, nonzero, p_value, delta, magnitude), p_corrected in zip(resultados, ajustados):
+        lines.append(
+            f"{latex_escape(arm_a)} vs {latex_escape(arm_b)} & {label} & "
+            f"{diff:+.3f} & {nonzero} & {p_value:.3f} & {p_corrected:.3f} & "
+            f"{delta:+.3f} ({MAGNITUDE_TEX[magnitude]}) \\\\"
+        )
 
     lines += [r"\hline", r"\end{longtable}", r"}"]
     return "\n".join(lines)
