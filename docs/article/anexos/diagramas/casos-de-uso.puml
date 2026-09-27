@@ -5,7 +5,7 @@ left to right direction
 skinparam dpi 200
 skinparam shadowing false
 skinparam defaultFontName Helvetica
-skinparam defaultFontSize 13
+skinparam defaultFontSize 17
 skinparam packageStyle rectangle
 skinparam linetype polyline
 skinparam usecase {
@@ -22,7 +22,7 @@ rectangle "ThingIndex" {
   }
   package "Acervo" {
     usecase "Organizar categorias\ne coleções" as UC4
-    usecase "Enviar documento PDF" as UC5
+    usecase "Enviar documento\n(PDF, HTML, XLSX)" as UC5
     usecase "Reprocessar documento\ncom falha" as UC6
     usecase "Excluir documento" as UC7
   }
