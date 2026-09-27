@@ -449,7 +449,7 @@ def build_significance_table(rows: list[dict], label_suffix: str = "") -> str:
     cabecalho = r"Comparação & Métrica & $\Delta$ & $n$ & $p$ & $p$ Holm & $\delta$ de Cliff \\"
     lines = [
         r"% GERADO POR scripts/analyze.py -- nao edite a mao.",
-        r"{\small",
+        r"{\footnotesize\setlength{\tabcolsep}{4pt}",
         r"\begin{longtable}{llccccl}",
         rf"\caption{{Comparações pareadas: teste de aleatorização exato sobre as consultas, com correção de Holm para {comparisons} comparações. $n$ é o número de consultas em que os dois braços diferem. Tamanho de efeito pelo $\delta$ de Cliff.}}",
         f"\\label{{tab:retrieval-significance{label_suffix}}} \\\\",
