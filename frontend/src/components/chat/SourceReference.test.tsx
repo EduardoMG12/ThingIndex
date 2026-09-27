@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import SourceReference from "@/components/chat/SourceReference";
+import { translate } from "@/lib/i18n/translate";
 import { createTestWrapper } from "@/test/test-utils";
 
 const fonte = {
@@ -23,7 +24,21 @@ describe("SourceReference", () => {
         await user.click(screen.getByText("Master Service Agreement"));
 
         expect(screen.getByText(/Invoices must be paid within 15 days/i)).toBeInTheDocument();
-        expect(screen.getByText("Verified source")).toBeInTheDocument();
+        // O cartao diz de onde veio o trecho, nao que ele foi verificado: o
+        // sistema nao confere atribuicao nem vigencia, e um selo "verificada"
+        // numa fonte de lei revogada induz a falsa confianca.
+        expect(screen.queryByText(/verified/i)).not.toBeInTheDocument();
+        expect(screen.getByText("Location recorded in the index: document, page and region")).toBeInTheDocument();
+    });
+
+    it("em nenhum idioma o rodape diz que a fonte foi verificada", () => {
+        // O provider de teste segue o pathname simulado (en); o texto dos
+        // outros idiomas e conferido direto nas mensagens.
+        for (const locale of ["pt-BR", "en", "es"] as const) {
+            const rodape = translate(locale, "dashboard.chat.sourceOrigin");
+            expect(rodape).not.toMatch(/verifi/i);
+            expect(rodape).toMatch(/(índice|index)/i);
+        }
     });
 
     it("so mostra 'Ver no documento' quando a fonte tem documentId e ha callback; o clique nao abre o card", async () => {
