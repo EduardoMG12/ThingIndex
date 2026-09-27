@@ -1,91 +1,91 @@
 % GERADO POR scripts/analyze.py -- nao edite a mao.
 {\small
-\begin{longtable}{llcccl}
-\caption{Comparações pareadas (Wilcoxon) com correção de Bonferroni para 75 comparações. Tamanho de efeito pelo $\delta$ de Cliff.}
+\begin{longtable}{llccccl}
+\caption{Comparações pareadas: teste de aleatorização exato sobre as consultas, com correção de Holm para 75 comparações. $n$ é o número de consultas em que os dois braços diferem. Tamanho de efeito pelo $\delta$ de Cliff.}
 \label{tab:retrieval-significance} \\
 \hline
-Comparação & Métrica & $\Delta$ & $p$ & $p$ corr. & $\delta$ de Cliff \\
+Comparação & Métrica & $\Delta$ & $n$ & $p$ & $p$ Holm & $\delta$ de Cliff \\
 \hline
 \endfirsthead
 \hline
-Comparação & Métrica & $\Delta$ & $p$ & $p$ corr. & $\delta$ de Cliff \\
+Comparação & Métrica & $\Delta$ & $n$ & $p$ & $p$ Holm & $\delta$ de Cliff \\
 \hline
 \endhead
-A-relacional vs B-bm25 & P@1 & -0{,}062 & 1{,}000 & 1{,}000 & -0{,}062 (desprezível) \\
-A-relacional vs B-bm25 & P@3 & -0{,}021 & 1{,}000 & 1{,}000 & -0{,}055 (desprezível) \\
-A-relacional vs B-bm25 & R@5 & +0{,}000 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-A-relacional vs B-bm25 & MRR & -0{,}031 & 1{,}000 & 1{,}000 & -0{,}051 (desprezível) \\
-A-relacional vs B-bm25 & nDCG@10 & -0{,}025 & 1{,}000 & 1{,}000 & -0{,}109 (desprezível) \\
-A-relacional vs C-denso & P@1 & +0{,}062 & 1{,}000 & 1{,}000 & +0{,}062 (desprezível) \\
-A-relacional vs C-denso & P@3 & -0{,}042 & 1{,}000 & 1{,}000 & -0{,}117 (desprezível) \\
-A-relacional vs C-denso & R@5 & +0{,}000 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-A-relacional vs C-denso & MRR & +0{,}007 & 1{,}000 & 1{,}000 & +0{,}020 (desprezível) \\
-A-relacional vs C-denso & nDCG@10 & +0{,}025 & 1{,}000 & 1{,}000 & -0{,}008 (desprezível) \\
-A-relacional vs C-denso-ivf & P@1 & +0{,}062 & 1{,}000 & 1{,}000 & +0{,}062 (desprezível) \\
-A-relacional vs C-denso-ivf & P@3 & +0{,}021 & 1{,}000 & 1{,}000 & +0{,}055 (desprezível) \\
-A-relacional vs C-denso-ivf & R@5 & +0{,}188 & 1{,}000 & 1{,}000 & +0{,}250 (pequeno) \\
-A-relacional vs C-denso-ivf & MRR & +0{,}049 & 1{,}000 & 1{,}000 & +0{,}059 (desprezível) \\
-A-relacional vs C-denso-ivf & nDCG@10 & +0{,}071 & 1{,}000 & 1{,}000 & +0{,}031 (desprezível) \\
-A-relacional vs D-rrf & P@1 & -0{,}062 & 1{,}000 & 1{,}000 & -0{,}062 (desprezível) \\
-A-relacional vs D-rrf & P@3 & +0{,}000 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-A-relacional vs D-rrf & R@5 & +0{,}000 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-A-relacional vs D-rrf & MRR & -0{,}034 & 1{,}000 & 1{,}000 & -0{,}059 (desprezível) \\
-A-relacional vs D-rrf & nDCG@10 & -0{,}027 & 1{,}000 & 1{,}000 & -0{,}113 (desprezível) \\
-A-relacional vs E-rrf-denso & P@1 & -0{,}062 & 1{,}000 & 1{,}000 & -0{,}062 (desprezível) \\
-A-relacional vs E-rrf-denso & P@3 & -0{,}021 & 1{,}000 & 1{,}000 & -0{,}059 (desprezível) \\
-A-relacional vs E-rrf-denso & R@5 & +0{,}000 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-A-relacional vs E-rrf-denso & MRR & -0{,}050 & 1{,}000 & 1{,}000 & -0{,}074 (desprezível) \\
-A-relacional vs E-rrf-denso & nDCG@10 & -0{,}022 & 1{,}000 & 1{,}000 & -0{,}074 (desprezível) \\
-B-bm25 vs C-denso & P@1 & +0{,}125 & 1{,}000 & 1{,}000 & +0{,}125 (desprezível) \\
-B-bm25 vs C-denso & P@3 & -0{,}021 & 1{,}000 & 1{,}000 & -0{,}055 (desprezível) \\
-B-bm25 vs C-denso & R@5 & +0{,}000 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-B-bm25 vs C-denso & MRR & +0{,}039 & 1{,}000 & 1{,}000 & +0{,}074 (desprezível) \\
-B-bm25 vs C-denso & nDCG@10 & +0{,}050 & 1{,}000 & 1{,}000 & +0{,}082 (desprezível) \\
-B-bm25 vs C-denso-ivf & P@1 & +0{,}125 & 1{,}000 & 1{,}000 & +0{,}125 (desprezível) \\
-B-bm25 vs C-denso-ivf & P@3 & +0{,}042 & 1{,}000 & 1{,}000 & +0{,}109 (desprezível) \\
-B-bm25 vs C-denso-ivf & R@5 & +0{,}188 & 1{,}000 & 1{,}000 & +0{,}250 (pequeno) \\
-B-bm25 vs C-denso-ivf & MRR & +0{,}080 & 1{,}000 & 1{,}000 & +0{,}113 (desprezível) \\
-B-bm25 vs C-denso-ivf & nDCG@10 & +0{,}096 & 1{,}000 & 1{,}000 & +0{,}125 (desprezível) \\
-B-bm25 vs D-rrf & P@1 & +0{,}000 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-B-bm25 vs D-rrf & P@3 & +0{,}021 & 1{,}000 & 1{,}000 & +0{,}055 (desprezível) \\
-B-bm25 vs D-rrf & R@5 & +0{,}000 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-B-bm25 vs D-rrf & MRR & -0{,}003 & 1{,}000 & 1{,}000 & -0{,}008 (desprezível) \\
-B-bm25 vs D-rrf & nDCG@10 & -0{,}002 & 1{,}000 & 1{,}000 & -0{,}004 (desprezível) \\
-B-bm25 vs E-rrf-denso & P@1 & +0{,}000 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-B-bm25 vs E-rrf-denso & P@3 & +0{,}000 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-B-bm25 vs E-rrf-denso & R@5 & +0{,}000 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-B-bm25 vs E-rrf-denso & MRR & -0{,}019 & 1{,}000 & 1{,}000 & -0{,}020 (desprezível) \\
-B-bm25 vs E-rrf-denso & nDCG@10 & +0{,}003 & 1{,}000 & 1{,}000 & +0{,}039 (desprezível) \\
-C-denso vs C-denso-ivf & P@1 & +0{,}000 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-C-denso vs C-denso-ivf & P@3 & +0{,}062 & 1{,}000 & 1{,}000 & +0{,}180 (pequeno) \\
-C-denso vs C-denso-ivf & R@5 & +0{,}188 & 1{,}000 & 1{,}000 & +0{,}250 (pequeno) \\
-C-denso vs C-denso-ivf & MRR & +0{,}042 & 1{,}000 & 1{,}000 & +0{,}016 (desprezível) \\
-C-denso vs C-denso-ivf & nDCG@10 & +0{,}046 & 1{,}000 & 1{,}000 & +0{,}008 (desprezível) \\
-C-denso vs D-rrf & P@1 & -0{,}125 & 1{,}000 & 1{,}000 & -0{,}125 (desprezível) \\
-C-denso vs D-rrf & P@3 & +0{,}042 & 1{,}000 & 1{,}000 & +0{,}117 (desprezível) \\
-C-denso vs D-rrf & R@5 & +0{,}000 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-C-denso vs D-rrf & MRR & -0{,}042 & 1{,}000 & 1{,}000 & -0{,}074 (desprezível) \\
-C-denso vs D-rrf & nDCG@10 & -0{,}052 & 1{,}000 & 1{,}000 & -0{,}082 (desprezível) \\
-C-denso vs E-rrf-denso & P@1 & -0{,}125 & 1{,}000 & 1{,}000 & -0{,}125 (desprezível) \\
-C-denso vs E-rrf-denso & P@3 & +0{,}021 & 1{,}000 & 1{,}000 & +0{,}059 (desprezível) \\
-C-denso vs E-rrf-denso & R@5 & +0{,}000 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-C-denso vs E-rrf-denso & MRR & -0{,}057 & 1{,}000 & 1{,}000 & -0{,}102 (desprezível) \\
-C-denso vs E-rrf-denso & nDCG@10 & -0{,}047 & 1{,}000 & 1{,}000 & -0{,}078 (desprezível) \\
-C-denso-ivf vs D-rrf & P@1 & -0{,}125 & 1{,}000 & 1{,}000 & -0{,}125 (desprezível) \\
-C-denso-ivf vs D-rrf & P@3 & -0{,}021 & 1{,}000 & 1{,}000 & -0{,}055 (desprezível) \\
-C-denso-ivf vs D-rrf & R@5 & -0{,}188 & 1{,}000 & 1{,}000 & -0{,}250 (pequeno) \\
-C-denso-ivf vs D-rrf & MRR & -0{,}083 & 1{,}000 & 1{,}000 & -0{,}113 (desprezível) \\
-C-denso-ivf vs D-rrf & nDCG@10 & -0{,}099 & 1{,}000 & 1{,}000 & -0{,}125 (desprezível) \\
-C-denso-ivf vs E-rrf-denso & P@1 & -0{,}125 & 1{,}000 & 1{,}000 & -0{,}125 (desprezível) \\
-C-denso-ivf vs E-rrf-denso & P@3 & -0{,}042 & 1{,}000 & 1{,}000 & -0{,}117 (desprezível) \\
-C-denso-ivf vs E-rrf-denso & R@5 & -0{,}188 & 1{,}000 & 1{,}000 & -0{,}250 (pequeno) \\
-C-denso-ivf vs E-rrf-denso & MRR & -0{,}099 & 1{,}000 & 1{,}000 & -0{,}125 (desprezível) \\
-C-denso-ivf vs E-rrf-denso & nDCG@10 & -0{,}093 & 1{,}000 & 1{,}000 & -0{,}094 (desprezível) \\
-D-rrf vs E-rrf-denso & P@1 & +0{,}000 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-D-rrf vs E-rrf-denso & P@3 & -0{,}021 & 1{,}000 & 1{,}000 & -0{,}059 (desprezível) \\
-D-rrf vs E-rrf-denso & R@5 & +0{,}000 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-D-rrf vs E-rrf-denso & MRR & -0{,}016 & 1{,}000 & 1{,}000 & -0{,}016 (desprezível) \\
-D-rrf vs E-rrf-denso & nDCG@10 & +0{,}006 & 1{,}000 & 1{,}000 & +0{,}039 (desprezível) \\
+A-relacional vs B-bm25 & P@1 & -0{,}062 & 1 & 1{,}000 & 1{,}000 & -0{,}062 (desprezível) \\
+A-relacional vs B-bm25 & P@3 & -0{,}021 & 3 & 0{,}750 & 1{,}000 & -0{,}055 (desprezível) \\
+A-relacional vs B-bm25 & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
+A-relacional vs B-bm25 & MRR & -0{,}031 & 4 & 1{,}000 & 1{,}000 & -0{,}051 (desprezível) \\
+A-relacional vs B-bm25 & nDCG@10 & -0{,}025 & 5 & 0{,}938 & 1{,}000 & -0{,}109 (desprezível) \\
+A-relacional vs C-denso & P@1 & +0{,}062 & 5 & 1{,}000 & 1{,}000 & +0{,}062 (desprezível) \\
+A-relacional vs C-denso & P@3 & -0{,}042 & 2 & 0{,}500 & 1{,}000 & -0{,}117 (desprezível) \\
+A-relacional vs C-denso & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
+A-relacional vs C-denso & MRR & +0{,}007 & 7 & 0{,}984 & 1{,}000 & +0{,}020 (desprezível) \\
+A-relacional vs C-denso & nDCG@10 & +0{,}025 & 8 & 0{,}727 & 1{,}000 & -0{,}008 (desprezível) \\
+A-relacional vs C-denso-ivf & P@1 & +0{,}062 & 5 & 1{,}000 & 1{,}000 & +0{,}062 (desprezível) \\
+A-relacional vs C-denso-ivf & P@3 & +0{,}021 & 5 & 0{,}750 & 1{,}000 & +0{,}055 (desprezível) \\
+A-relacional vs C-denso-ivf & R@5 & +0{,}188 & 4 & 0{,}125 & 1{,}000 & +0{,}250 (pequeno) \\
+A-relacional vs C-denso-ivf & MRR & +0{,}049 & 7 & 0{,}656 & 1{,}000 & +0{,}059 (desprezível) \\
+A-relacional vs C-denso-ivf & nDCG@10 & +0{,}071 & 8 & 0{,}492 & 1{,}000 & +0{,}031 (desprezível) \\
+A-relacional vs D-rrf & P@1 & -0{,}062 & 1 & 1{,}000 & 1{,}000 & -0{,}062 (desprezível) \\
+A-relacional vs D-rrf & P@3 & +0{,}000 & 2 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
+A-relacional vs D-rrf & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
+A-relacional vs D-rrf & MRR & -0{,}034 & 2 & 0{,}500 & 1{,}000 & -0{,}059 (desprezível) \\
+A-relacional vs D-rrf & nDCG@10 & -0{,}027 & 4 & 0{,}250 & 1{,}000 & -0{,}113 (desprezível) \\
+A-relacional vs E-rrf-denso & P@1 & -0{,}062 & 3 & 1{,}000 & 1{,}000 & -0{,}062 (desprezível) \\
+A-relacional vs E-rrf-denso & P@3 & -0{,}021 & 3 & 1{,}000 & 1{,}000 & -0{,}059 (desprezível) \\
+A-relacional vs E-rrf-denso & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
+A-relacional vs E-rrf-denso & MRR & -0{,}050 & 5 & 0{,}625 & 1{,}000 & -0{,}074 (desprezível) \\
+A-relacional vs E-rrf-denso & nDCG@10 & -0{,}022 & 7 & 0{,}719 & 1{,}000 & -0{,}074 (desprezível) \\
+B-bm25 vs C-denso & P@1 & +0{,}125 & 6 & 0{,}688 & 1{,}000 & +0{,}125 (desprezível) \\
+B-bm25 vs C-denso & P@3 & -0{,}021 & 3 & 1{,}000 & 1{,}000 & -0{,}055 (desprezível) \\
+B-bm25 vs C-denso & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
+B-bm25 vs C-denso & MRR & +0{,}039 & 7 & 0{,}734 & 1{,}000 & +0{,}074 (desprezível) \\
+B-bm25 vs C-denso & nDCG@10 & +0{,}050 & 8 & 0{,}531 & 1{,}000 & +0{,}082 (desprezível) \\
+B-bm25 vs C-denso-ivf & P@1 & +0{,}125 & 4 & 0{,}625 & 1{,}000 & +0{,}125 (desprezível) \\
+B-bm25 vs C-denso-ivf & P@3 & +0{,}042 & 6 & 0{,}406 & 1{,}000 & +0{,}109 (desprezível) \\
+B-bm25 vs C-denso-ivf & R@5 & +0{,}188 & 4 & 0{,}125 & 1{,}000 & +0{,}250 (pequeno) \\
+B-bm25 vs C-denso-ivf & MRR & +0{,}080 & 6 & 0{,}438 & 1{,}000 & +0{,}113 (desprezível) \\
+B-bm25 vs C-denso-ivf & nDCG@10 & +0{,}096 & 7 & 0{,}312 & 1{,}000 & +0{,}125 (desprezível) \\
+B-bm25 vs D-rrf & P@1 & +0{,}000 & 2 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
+B-bm25 vs D-rrf & P@3 & +0{,}021 & 3 & 0{,}750 & 1{,}000 & +0{,}055 (desprezível) \\
+B-bm25 vs D-rrf & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
+B-bm25 vs D-rrf & MRR & -0{,}003 & 4 & 1{,}000 & 1{,}000 & -0{,}008 (desprezível) \\
+B-bm25 vs D-rrf & nDCG@10 & -0{,}002 & 5 & 1{,}000 & 1{,}000 & -0{,}004 (desprezível) \\
+B-bm25 vs E-rrf-denso & P@1 & +0{,}000 & 2 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
+B-bm25 vs E-rrf-denso & P@3 & +0{,}000 & 2 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
+B-bm25 vs E-rrf-denso & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
+B-bm25 vs E-rrf-denso & MRR & -0{,}019 & 3 & 0{,}750 & 1{,}000 & -0{,}020 (desprezível) \\
+B-bm25 vs E-rrf-denso & nDCG@10 & +0{,}003 & 5 & 0{,}938 & 1{,}000 & +0{,}039 (desprezível) \\
+C-denso vs C-denso-ivf & P@1 & +0{,}000 & 2 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
+C-denso vs C-denso-ivf & P@3 & +0{,}062 & 3 & 0{,}250 & 1{,}000 & +0{,}180 (pequeno) \\
+C-denso vs C-denso-ivf & R@5 & +0{,}188 & 4 & 0{,}125 & 1{,}000 & +0{,}250 (pequeno) \\
+C-denso vs C-denso-ivf & MRR & +0{,}042 & 5 & 0{,}750 & 1{,}000 & +0{,}016 (desprezível) \\
+C-denso vs C-denso-ivf & nDCG@10 & +0{,}046 & 6 & 0{,}625 & 1{,}000 & +0{,}008 (desprezível) \\
+C-denso vs D-rrf & P@1 & -0{,}125 & 4 & 0{,}625 & 1{,}000 & -0{,}125 (desprezível) \\
+C-denso vs D-rrf & P@3 & +0{,}042 & 4 & 0{,}625 & 1{,}000 & +0{,}117 (desprezível) \\
+C-denso vs D-rrf & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
+C-denso vs D-rrf & MRR & -0{,}042 & 6 & 0{,}688 & 1{,}000 & -0{,}074 (desprezível) \\
+C-denso vs D-rrf & nDCG@10 & -0{,}052 & 7 & 0{,}469 & 1{,}000 & -0{,}082 (desprezível) \\
+C-denso vs E-rrf-denso & P@1 & -0{,}125 & 4 & 0{,}625 & 1{,}000 & -0{,}125 (desprezível) \\
+C-denso vs E-rrf-denso & P@3 & +0{,}021 & 1 & 1{,}000 & 1{,}000 & +0{,}059 (desprezível) \\
+C-denso vs E-rrf-denso & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
+C-denso vs E-rrf-denso & MRR & -0{,}057 & 6 & 0{,}562 & 1{,}000 & -0{,}102 (desprezível) \\
+C-denso vs E-rrf-denso & nDCG@10 & -0{,}047 & 7 & 0{,}469 & 1{,}000 & -0{,}078 (desprezível) \\
+C-denso-ivf vs D-rrf & P@1 & -0{,}125 & 6 & 0{,}688 & 1{,}000 & -0{,}125 (desprezível) \\
+C-denso-ivf vs D-rrf & P@3 & -0{,}021 & 5 & 0{,}750 & 1{,}000 & -0{,}055 (desprezível) \\
+C-denso-ivf vs D-rrf & R@5 & -0{,}188 & 4 & 0{,}125 & 1{,}000 & -0{,}250 (pequeno) \\
+C-denso-ivf vs D-rrf & MRR & -0{,}083 & 7 & 0{,}531 & 1{,}000 & -0{,}113 (desprezível) \\
+C-denso-ivf vs D-rrf & nDCG@10 & -0{,}099 & 8 & 0{,}398 & 1{,}000 & -0{,}125 (desprezível) \\
+C-denso-ivf vs E-rrf-denso & P@1 & -0{,}125 & 4 & 0{,}625 & 1{,}000 & -0{,}125 (desprezível) \\
+C-denso-ivf vs E-rrf-denso & P@3 & -0{,}042 & 4 & 0{,}500 & 1{,}000 & -0{,}117 (desprezível) \\
+C-denso-ivf vs E-rrf-denso & R@5 & -0{,}188 & 4 & 0{,}125 & 1{,}000 & -0{,}250 (pequeno) \\
+C-denso-ivf vs E-rrf-denso & MRR & -0{,}099 & 5 & 0{,}375 & 1{,}000 & -0{,}125 (desprezível) \\
+C-denso-ivf vs E-rrf-denso & nDCG@10 & -0{,}093 & 6 & 0{,}406 & 1{,}000 & -0{,}094 (desprezível) \\
+D-rrf vs E-rrf-denso & P@1 & +0{,}000 & 2 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
+D-rrf vs E-rrf-denso & P@3 & -0{,}021 & 5 & 0{,}938 & 1{,}000 & -0{,}059 (desprezível) \\
+D-rrf vs E-rrf-denso & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
+D-rrf vs E-rrf-denso & MRR & -0{,}016 & 4 & 0{,}875 & 1{,}000 & -0{,}016 (desprezível) \\
+D-rrf vs E-rrf-denso & nDCG@10 & +0{,}006 & 6 & 0{,}906 & 1{,}000 & +0{,}039 (desprezível) \\
 \hline
 \end{longtable}
 }
