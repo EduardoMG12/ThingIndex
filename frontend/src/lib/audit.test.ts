@@ -4,9 +4,9 @@ import { formatAuditActor, formatAuditActorType, parseAuditActorId } from "@/lib
 
 describe("audit helpers", () => {
     it("formats actor labels with localized defaults", () => {
-        expect(formatAuditActorType("USER", "pt-BR")).toBe("Usuario");
+        expect(formatAuditActorType("USER", "pt-BR")).toBe("Usuário");
         expect(formatAuditActorType("SYSTEM", "pt-BR")).toBe("Sistema");
-        expect(formatAuditActor("USER", 7, "pt-BR")).toBe("Usuario #7");
+        expect(formatAuditActor("USER", 7, "pt-BR")).toBe("Usuário #7");
         expect(formatAuditActor("SERVICE", undefined, "pt-BR")).toBe("Servico");
         expect(formatAuditActorType("USER", "en")).toBe("User");
         expect(formatAuditActor("SYSTEM", 3, "en")).toBe("System #3");
