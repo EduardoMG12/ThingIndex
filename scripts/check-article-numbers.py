@@ -20,6 +20,7 @@ import collections
 import csv
 import importlib.util
 import sys
+import re
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -101,12 +102,18 @@ def conferir_geracao(texto: str) -> int:
         "pagina citada T": f"correta em {prov_t['prosa_com_folio']} de {prov_t['respostas']} respostas em T",
         "pagina citada F": f"{prov_f['prosa_com_folio']} de {prov_f['respostas']} em F",
         "pagina citada F sem folio": f"F cairia para {prov_f['prosa']}",
-        "acerto da bateria": _br(taxa(c["total"])),
-        "acerto seguranca": _br(taxa(c["tema"]["seguranca-trabalho"])),
-        "acerto produto": _br(taxa(c["tema"]["produto"])),
-        "acerto licitacoes": _br(taxa(c["tema"]["licitacoes"])),
-        "literal C": _br(taxa(c["variante"]["literal"])),
-        "parafrase C": _br(taxa(c["variante"]["parafrase"])),
+        # Cada numero ancorado na frase em que aparece: um valor solto casaria
+        # com qualquer outra ocorrencia (a banca mostrou que 0,685 -> 0,686
+        # passava).
+        "acerto da bateria (resumo)": f"a taxa de acerto foi de {_br(taxa(c['total']))} com a pergunta original e de {_br(taxa(e['total']))} com expans",
+        "acerto da bateria (secao)": f"a taxa de acerto foi de {_br(taxa(c['total']))}, com os tr",
+        "acerto da bateria (conclusao)": f"a taxa de acerto foi de {_br(taxa(c['total']))} com a pergunta original. As par",
+        "acerto E (conclusao)": f"elevou o acerto a {_br(taxa(e['total']))}, em configura",
+        "faixa dos acervos": f"entre {_br(min(taxa(c['tema'][t]) for t in c['tema']))} e {_br(max(taxa(c['tema'][t]) for t in c['tema']))} e intervalos",
+        "literal x parafrase C": f"o acerto foi {_br(taxa(c['variante']['literal']))} nas literais e {_br(taxa(c['variante']['parafrase']))} nas par",
+        "literal x parafrase C (discussao)": f"as paráfrases acertaram {_br(taxa(c['variante']['parafrase']))} contra {_br(taxa(c['variante']['literal']))} das literais",
+        "lacuna literal-parafrase": f"cai de {_br(taxa(c['variante']['literal']) - taxa(c['variante']['parafrase']))} para {_br(taxa(e['variante']['literal']) - taxa(e['variante']['parafrase']))}",
+        "lacuna E (discussao)": f"distância a {_br(taxa(e['variante']['literal']) - taxa(e['variante']['parafrase']))}",
         "proveniencia C": _br(taxa(c["prov"])),
         "literal E": _br(taxa(e["variante"]["literal"])),
         "parafrase E": _br(taxa(e["variante"]["parafrase"])),
@@ -156,7 +163,17 @@ def conferir_geracao(texto: str) -> int:
         esperados[f"tabela bateria {tema}"] = linha(rot, str(n), _br(k / n), f"{_br(lo)}--{_br(hi)}", f"{certas}/{total_q}")
     esperados["tabela bateria total"] = linha(
         f"{'Total':<21}", str(c["total"][1]), _br(taxa(c["total"])), f"{_br(ic_c[0])}--{_br(ic_c[1])}", f"{c['sempre_certa']}/71")
-    esperados["ic E (texto)"] = _br(ic_e[0])
+    esperados["ic E (texto)"] = f"intervalo de {_br(ic_e[0])} a {_br(ic_e[1])}, contra {_br(ic_c[0])} a {_br(ic_c[1])} sem ela"
+    for forma, rot in (("negativa", "Negativa      "), ("existencia", "Existência    "), ("confirmacao", "Confirmação   "),
+                       ("aberta", "Aberta        "), ("premissa-falsa", "Premissa falsa")):
+        k, n = c["forma"][forma]
+        esperados[f"tabela forma {forma}"] = linha(f"{rot:<14}", f"{k}/{n}", _br(k / n))
+    # O teste de redacao com o gabarito original, citado no texto e na
+    # Tabela de alteracoes.
+    antigo = redacao_com_gabarito_original()
+    p_antigo = _br(antigo[2]).replace(",", "{,}")
+    esperados["redacao, gabarito original"] = f"eram {antigo[0]} pares a favor da literal e {antigo[1]} a favor da paráfrase ($p = {p_antigo}$)"
+    esperados["gpt-oss sem falhas de API"] = gpt_oss_sem_falhas()
 
     falhas = 0
     for descricao, trecho in esperados.items():
@@ -179,6 +196,37 @@ def queda_literal_parafrase(rows: list[dict], gran: str, arm: str) -> float | No
     lit = sum(por_variante["literal"]) / len(por_variante["literal"])
     par = sum(por_variante["paraphrase"]) / len(por_variante["paraphrase"])
     return par - lit
+
+
+def redacao_com_gabarito_original() -> tuple[int, int, float]:
+    """Pares a favor da literal, da parafrase e p exato, com os CSVs anteriores
+    a revisao do gabarito (commit 10f4846^)."""
+    import io
+    import math
+    import subprocess
+    pares: dict[str, dict[str, list[bool]]] = {}
+    for tema in ("seguranca-trabalho", "produto", "licitacoes"):
+        saida = subprocess.run(["git", "show", f"10f4846^:docs/article/results/expansao/off-{tema}.csv"],
+                               cwd=RAIZ, capture_output=True, text=True, check=True).stdout
+        for r in csv.DictReader(io.StringIO(saida)):
+            q = r["question_id"]
+            if r.get("stratum") == "negativa" or q[-1] not in "LP":
+                continue
+            pares.setdefault(q[:-1], {}).setdefault(q[-1], []).append(r["correct"] == "true")
+    a = sum(1 for v in pares.values() if "L" in v and "P" in v and all(v["L"]) and not all(v["P"]))
+    b = sum(1 for v in pares.values() if "L" in v and "P" in v and all(v["P"]) and not all(v["L"]))
+    n = a + b
+    p = min(1.0, 2 * sum(math.comb(n, i) for i in range(min(a, b) + 1)) / 2 ** n) if n else 1.0
+    return a, b, p
+
+
+def gpt_oss_sem_falhas() -> str:
+    """Acerto do F com gpt-oss:120b descontadas as falhas da API do provedor."""
+    rows = list(csv.DictReader(open(RAIZ / "docs" / "article" / "results" / "generation-results-F-document-gpt-oss-120b.csv", encoding="utf-8")))
+    falha = [r for r in rows if re.search(r"prompt is too long|timeout|deadline", r.get("answer", "") + r.get("error", ""), re.I)]
+    validas = [r for r in rows if r not in falha]
+    k = sum(r["correct"] == "true" for r in validas)
+    return f"{_br(k / len(validas))} contra 0,986, descontadas {len(falha)} falhas"
 
 
 def main() -> int:

@@ -249,6 +249,11 @@ def holm(p_values: list[float]) -> list[float]:
     return ajustados
 
 
+def vitorias_pareadas(a: list[float], b: list[float]) -> tuple[int, int]:
+    """Em quantos pares a_i > b_i e em quantos b_i > a_i (empates fora)."""
+    return sum(x > y for x, y in zip(a, b)), sum(y > x for x, y in zip(a, b))
+
+
 def cliffs_delta(a: list[float], b: list[float]) -> tuple[float, str]:
     """Cliff's delta e sua interpretacao qualitativa.
 
@@ -474,12 +479,15 @@ def build_significance_table(rows: list[dict], label_suffix: str = "") -> str:
 
     # longtable, e nao table: com 75 linhas a tabela nao cabe numa pagina e,
     # como flutuante, saia pelo rodape. O cabecalho se repete a cada pagina.
-    cabecalho = r"Comparação & Métrica & $\Delta$ & $n$ & $p$ & $p$ Holm & $\delta$ de Cliff \\"
+    # Dados pareados por consulta: o efeito e dito pelas vitorias de cada lado
+    # (o delta de Cliff e para amostras independentes e, aqui, podia ter sinal
+    # oposto ao de Delta).
+    cabecalho = r"Comparação & Métrica & $\Delta$ & $n$ & $p$ & $p$ Holm & Vitórias A/B \\"
     lines = [
         r"% GERADO POR scripts/analyze.py -- nao edite a mao.",
         r"{\footnotesize\setlength{\tabcolsep}{4pt}",
         r"\begin{longtable}{llccccl}",
-        rf"\caption{{Comparações pareadas: teste de aleatorização exato sobre as consultas, com correção de Holm para {comparisons} comparações. $n$ é o número de consultas em que os dois braços diferem. Tamanho de efeito pelo $\delta$ de Cliff.}}",
+        rf"\caption{{Comparações pareadas: teste de aleatorização exato sobre as consultas, com correção de Holm para {comparisons} comparações. $n$ é o número de consultas em que os dois braços diferem; a última coluna conta em quantas delas cada braço da comparação teve o valor maior.}}",
         f"\\label{{tab:retrieval-significance{label_suffix}}} \\\\",
         r"\hline",
         cabecalho,
@@ -498,15 +506,15 @@ def build_significance_table(rows: list[dict], label_suffix: str = "") -> str:
             values_a = [to_float(by_arm_query[arm_a][q][key]) for q in shared]
             values_b = [to_float(by_arm_query[arm_b][q][key]) for q in shared]
             p_value, nonzero = randomization_test(values_a, values_b)
-            delta, magnitude = cliffs_delta(values_a, values_b)
-            resultados.append((arm_a, arm_b, label, mean(values_a) - mean(values_b), nonzero, p_value, delta, magnitude))
+            vitorias = vitorias_pareadas(values_a, values_b)
+            resultados.append((arm_a, arm_b, label, mean(values_a) - mean(values_b), nonzero, p_value, vitorias))
 
     ajustados = holm([r[5] for r in resultados])
-    for (arm_a, arm_b, label, diff, nonzero, p_value, delta, magnitude), p_corrected in zip(resultados, ajustados):
+    for (arm_a, arm_b, label, diff, nonzero, p_value, (vence_a, vence_b)), p_corrected in zip(resultados, ajustados):
         lines.append(
             f"{latex_escape(arm_a)} vs {latex_escape(arm_b)} & {label} & "
             f"{diff:+.3f} & {nonzero} & {p_value:.3f} & {p_corrected:.3f} & "
-            f"{delta:+.3f} ({MAGNITUDE_TEX[magnitude]}) \\\\"
+            f"{vence_a}/{vence_b} \\\\"
         )
 
     lines += [r"\hline", r"\end{longtable}", r"}"]

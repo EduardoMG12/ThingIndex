@@ -27,6 +27,7 @@ from analyze import (  # noqa: E402
     build_variant_table,
     ceiling_key,
     cliffs_delta,
+    vitorias_pareadas,
     filter_granularity,
     holm,
     mean,
@@ -35,6 +36,17 @@ from analyze import (  # noqa: E402
     sinal_menos,
     wilcoxon_signed_rank,
 )
+
+
+class TestVitoriasPareadas(unittest.TestCase):
+    def test_conta_por_par_e_ignora_empates(self):
+        self.assertEqual(vitorias_pareadas([1, 0, 1, 0.5], [0, 0, 0.5, 1]), (2, 1))
+
+    def test_sinal_acompanha_a_diferenca_media(self):
+        # O delta de Cliff dava sinal oposto a Delta neste padrao pareado.
+        a, b = [1, 1, 0.2], [0.9, 0.9, 1]
+        va, vb = vitorias_pareadas(a, b)
+        self.assertGreater(va, vb)
 
 
 class TestCliffsDelta(unittest.TestCase):
