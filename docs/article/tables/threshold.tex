@@ -4,11 +4,11 @@
 \caption{Separabilidade dos escores e efeito de um limiar de corte. A sobreposição é a fração de itens irrelevantes que pontuam acima do menor item relevante; $J$ é o índice de Youden no limiar ótimo, valendo 1 para separação perfeita e 0 quando o corte não supera o acaso. A taxa de falso positivo é medida sobre as consultas negativas, cuja resposta correta é não devolver nada.}
 \label{tab:threshold}
 \begin{tabular}{lrrrrr}
-\hline
+\toprule
 Braço & Sobrep. & Limiar & $J$ & FP sem limiar & FP com limiar \\
-\hline
+\midrule
 A, contagem & 0{,}782 & 4{,}000 & 0{,}288 & 1{,}000 & 0{,}500 \\
 B, BM25 & 0{,}980 & 2{,}127 & 0{,}673 & 1{,}000 & 0{,}500 \\
-\hline
+\bottomrule
 \end{tabular}
 \end{table}

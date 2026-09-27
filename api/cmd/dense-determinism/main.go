@@ -304,7 +304,7 @@ func writeTeX(path string, medidas []stability, documentos, consultas int) error
 
 	builder.WriteString("\\hline\n\\end{tabular}\n\\end{table}\n")
 
-	return os.WriteFile(path, []byte(evalcorpus.VirgulaDecimal(builder.String())), 0o644)
+	return os.WriteFile(path, []byte(evalcorpus.Tabela(builder.String())), 0o644)
 }
 
 func escapeTeX(text string) string {

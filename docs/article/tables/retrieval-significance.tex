@@ -3,41 +3,41 @@
 \begin{longtable}{llccccl}
 \caption{Comparações pareadas: teste de aleatorização exato sobre as consultas, com correção de Holm para 75 comparações. $n$ é o número de consultas em que os dois braços diferem. Tamanho de efeito pelo $\delta$ de Cliff.}
 \label{tab:retrieval-significance} \\
-\hline
+\toprule
 Comparação & Métrica & $\Delta$ & $n$ & $p$ & $p$ Holm & $\delta$ de Cliff \\
-\hline
+\midrule
 \endfirsthead
-\hline
+\toprule
 Comparação & Métrica & $\Delta$ & $n$ & $p$ & $p$ Holm & $\delta$ de Cliff \\
-\hline
+\midrule
 \endhead
-A, contagem vs B, BM25 & P@1 & -0{,}062 & 1 & 1{,}000 & 1{,}000 & -0{,}062 (desprezível) \\
-A, contagem vs B, BM25 & P@3 & -0{,}021 & 3 & 0{,}750 & 1{,}000 & -0{,}055 (desprezível) \\
+A, contagem vs B, BM25 & P@1 & $-$0{,}062 & 1 & 1{,}000 & 1{,}000 & $-$0{,}062 (desprezível) \\
+A, contagem vs B, BM25 & P@3 & $-$0{,}021 & 3 & 0{,}750 & 1{,}000 & $-$0{,}055 (desprezível) \\
 A, contagem vs B, BM25 & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-A, contagem vs B, BM25 & MRR & -0{,}031 & 4 & 1{,}000 & 1{,}000 & -0{,}051 (desprezível) \\
-A, contagem vs B, BM25 & nDCG@10 & -0{,}025 & 5 & 0{,}938 & 1{,}000 & -0{,}109 (desprezível) \\
+A, contagem vs B, BM25 & MRR & $-$0{,}031 & 4 & 1{,}000 & 1{,}000 & $-$0{,}051 (desprezível) \\
+A, contagem vs B, BM25 & nDCG@10 & $-$0{,}025 & 5 & 0{,}938 & 1{,}000 & $-$0{,}109 (desprezível) \\
 A, contagem vs C, denso exato & P@1 & +0{,}062 & 5 & 1{,}000 & 1{,}000 & +0{,}062 (desprezível) \\
-A, contagem vs C, denso exato & P@3 & -0{,}042 & 2 & 0{,}500 & 1{,}000 & -0{,}117 (desprezível) \\
+A, contagem vs C, denso exato & P@3 & $-$0{,}042 & 2 & 0{,}500 & 1{,}000 & $-$0{,}117 (desprezível) \\
 A, contagem vs C, denso exato & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
 A, contagem vs C, denso exato & MRR & +0{,}007 & 7 & 0{,}984 & 1{,}000 & +0{,}020 (desprezível) \\
-A, contagem vs C, denso exato & nDCG@10 & +0{,}025 & 8 & 0{,}727 & 1{,}000 & -0{,}008 (desprezível) \\
+A, contagem vs C, denso exato & nDCG@10 & +0{,}025 & 8 & 0{,}727 & 1{,}000 & $-$0{,}008 (desprezível) \\
 A, contagem vs C$'$, denso IVF & P@1 & +0{,}062 & 5 & 1{,}000 & 1{,}000 & +0{,}062 (desprezível) \\
 A, contagem vs C$'$, denso IVF & P@3 & +0{,}021 & 5 & 0{,}750 & 1{,}000 & +0{,}055 (desprezível) \\
 A, contagem vs C$'$, denso IVF & R@5 & +0{,}188 & 4 & 0{,}125 & 1{,}000 & +0{,}250 (pequeno) \\
 A, contagem vs C$'$, denso IVF & MRR & +0{,}049 & 7 & 0{,}656 & 1{,}000 & +0{,}059 (desprezível) \\
 A, contagem vs C$'$, denso IVF & nDCG@10 & +0{,}071 & 8 & 0{,}492 & 1{,}000 & +0{,}031 (desprezível) \\
-A, contagem vs D, RRF(A,B) & P@1 & -0{,}062 & 1 & 1{,}000 & 1{,}000 & -0{,}062 (desprezível) \\
+A, contagem vs D, RRF(A,B) & P@1 & $-$0{,}062 & 1 & 1{,}000 & 1{,}000 & $-$0{,}062 (desprezível) \\
 A, contagem vs D, RRF(A,B) & P@3 & +0{,}000 & 2 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
 A, contagem vs D, RRF(A,B) & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-A, contagem vs D, RRF(A,B) & MRR & -0{,}034 & 2 & 0{,}500 & 1{,}000 & -0{,}059 (desprezível) \\
-A, contagem vs D, RRF(A,B) & nDCG@10 & -0{,}027 & 4 & 0{,}250 & 1{,}000 & -0{,}113 (desprezível) \\
-A, contagem vs E, RRF(B,C) & P@1 & -0{,}062 & 3 & 1{,}000 & 1{,}000 & -0{,}062 (desprezível) \\
-A, contagem vs E, RRF(B,C) & P@3 & -0{,}021 & 3 & 1{,}000 & 1{,}000 & -0{,}059 (desprezível) \\
+A, contagem vs D, RRF(A,B) & MRR & $-$0{,}034 & 2 & 0{,}500 & 1{,}000 & $-$0{,}059 (desprezível) \\
+A, contagem vs D, RRF(A,B) & nDCG@10 & $-$0{,}027 & 4 & 0{,}250 & 1{,}000 & $-$0{,}113 (desprezível) \\
+A, contagem vs E, RRF(B,C) & P@1 & $-$0{,}062 & 3 & 1{,}000 & 1{,}000 & $-$0{,}062 (desprezível) \\
+A, contagem vs E, RRF(B,C) & P@3 & $-$0{,}021 & 3 & 1{,}000 & 1{,}000 & $-$0{,}059 (desprezível) \\
 A, contagem vs E, RRF(B,C) & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-A, contagem vs E, RRF(B,C) & MRR & -0{,}050 & 5 & 0{,}625 & 1{,}000 & -0{,}074 (desprezível) \\
-A, contagem vs E, RRF(B,C) & nDCG@10 & -0{,}022 & 7 & 0{,}719 & 1{,}000 & -0{,}074 (desprezível) \\
+A, contagem vs E, RRF(B,C) & MRR & $-$0{,}050 & 5 & 0{,}625 & 1{,}000 & $-$0{,}074 (desprezível) \\
+A, contagem vs E, RRF(B,C) & nDCG@10 & $-$0{,}022 & 7 & 0{,}719 & 1{,}000 & $-$0{,}074 (desprezível) \\
 B, BM25 vs C, denso exato & P@1 & +0{,}125 & 6 & 0{,}688 & 1{,}000 & +0{,}125 (desprezível) \\
-B, BM25 vs C, denso exato & P@3 & -0{,}021 & 3 & 1{,}000 & 1{,}000 & -0{,}055 (desprezível) \\
+B, BM25 vs C, denso exato & P@3 & $-$0{,}021 & 3 & 1{,}000 & 1{,}000 & $-$0{,}055 (desprezível) \\
 B, BM25 vs C, denso exato & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
 B, BM25 vs C, denso exato & MRR & +0{,}039 & 7 & 0{,}734 & 1{,}000 & +0{,}074 (desprezível) \\
 B, BM25 vs C, denso exato & nDCG@10 & +0{,}050 & 8 & 0{,}531 & 1{,}000 & +0{,}082 (desprezível) \\
@@ -49,43 +49,43 @@ B, BM25 vs C$'$, denso IVF & nDCG@10 & +0{,}096 & 7 & 0{,}312 & 1{,}000 & +0{,}1
 B, BM25 vs D, RRF(A,B) & P@1 & +0{,}000 & 2 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
 B, BM25 vs D, RRF(A,B) & P@3 & +0{,}021 & 3 & 0{,}750 & 1{,}000 & +0{,}055 (desprezível) \\
 B, BM25 vs D, RRF(A,B) & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-B, BM25 vs D, RRF(A,B) & MRR & -0{,}003 & 4 & 1{,}000 & 1{,}000 & -0{,}008 (desprezível) \\
-B, BM25 vs D, RRF(A,B) & nDCG@10 & -0{,}002 & 5 & 1{,}000 & 1{,}000 & -0{,}004 (desprezível) \\
+B, BM25 vs D, RRF(A,B) & MRR & $-$0{,}003 & 4 & 1{,}000 & 1{,}000 & $-$0{,}008 (desprezível) \\
+B, BM25 vs D, RRF(A,B) & nDCG@10 & $-$0{,}002 & 5 & 1{,}000 & 1{,}000 & $-$0{,}004 (desprezível) \\
 B, BM25 vs E, RRF(B,C) & P@1 & +0{,}000 & 2 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
 B, BM25 vs E, RRF(B,C) & P@3 & +0{,}000 & 2 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
 B, BM25 vs E, RRF(B,C) & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-B, BM25 vs E, RRF(B,C) & MRR & -0{,}019 & 3 & 0{,}750 & 1{,}000 & -0{,}020 (desprezível) \\
+B, BM25 vs E, RRF(B,C) & MRR & $-$0{,}019 & 3 & 0{,}750 & 1{,}000 & $-$0{,}020 (desprezível) \\
 B, BM25 vs E, RRF(B,C) & nDCG@10 & +0{,}003 & 5 & 0{,}938 & 1{,}000 & +0{,}039 (desprezível) \\
 C, denso exato vs C$'$, denso IVF & P@1 & +0{,}000 & 2 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
 C, denso exato vs C$'$, denso IVF & P@3 & +0{,}062 & 3 & 0{,}250 & 1{,}000 & +0{,}180 (pequeno) \\
 C, denso exato vs C$'$, denso IVF & R@5 & +0{,}188 & 4 & 0{,}125 & 1{,}000 & +0{,}250 (pequeno) \\
 C, denso exato vs C$'$, denso IVF & MRR & +0{,}042 & 5 & 0{,}750 & 1{,}000 & +0{,}016 (desprezível) \\
 C, denso exato vs C$'$, denso IVF & nDCG@10 & +0{,}046 & 6 & 0{,}625 & 1{,}000 & +0{,}008 (desprezível) \\
-C, denso exato vs D, RRF(A,B) & P@1 & -0{,}125 & 4 & 0{,}625 & 1{,}000 & -0{,}125 (desprezível) \\
+C, denso exato vs D, RRF(A,B) & P@1 & $-$0{,}125 & 4 & 0{,}625 & 1{,}000 & $-$0{,}125 (desprezível) \\
 C, denso exato vs D, RRF(A,B) & P@3 & +0{,}042 & 4 & 0{,}625 & 1{,}000 & +0{,}117 (desprezível) \\
 C, denso exato vs D, RRF(A,B) & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-C, denso exato vs D, RRF(A,B) & MRR & -0{,}042 & 6 & 0{,}688 & 1{,}000 & -0{,}074 (desprezível) \\
-C, denso exato vs D, RRF(A,B) & nDCG@10 & -0{,}052 & 7 & 0{,}469 & 1{,}000 & -0{,}082 (desprezível) \\
-C, denso exato vs E, RRF(B,C) & P@1 & -0{,}125 & 4 & 0{,}625 & 1{,}000 & -0{,}125 (desprezível) \\
+C, denso exato vs D, RRF(A,B) & MRR & $-$0{,}042 & 6 & 0{,}688 & 1{,}000 & $-$0{,}074 (desprezível) \\
+C, denso exato vs D, RRF(A,B) & nDCG@10 & $-$0{,}052 & 7 & 0{,}469 & 1{,}000 & $-$0{,}082 (desprezível) \\
+C, denso exato vs E, RRF(B,C) & P@1 & $-$0{,}125 & 4 & 0{,}625 & 1{,}000 & $-$0{,}125 (desprezível) \\
 C, denso exato vs E, RRF(B,C) & P@3 & +0{,}021 & 1 & 1{,}000 & 1{,}000 & +0{,}059 (desprezível) \\
 C, denso exato vs E, RRF(B,C) & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-C, denso exato vs E, RRF(B,C) & MRR & -0{,}057 & 6 & 0{,}562 & 1{,}000 & -0{,}102 (desprezível) \\
-C, denso exato vs E, RRF(B,C) & nDCG@10 & -0{,}047 & 7 & 0{,}469 & 1{,}000 & -0{,}078 (desprezível) \\
-C$'$, denso IVF vs D, RRF(A,B) & P@1 & -0{,}125 & 6 & 0{,}688 & 1{,}000 & -0{,}125 (desprezível) \\
-C$'$, denso IVF vs D, RRF(A,B) & P@3 & -0{,}021 & 5 & 0{,}750 & 1{,}000 & -0{,}055 (desprezível) \\
-C$'$, denso IVF vs D, RRF(A,B) & R@5 & -0{,}188 & 4 & 0{,}125 & 1{,}000 & -0{,}250 (pequeno) \\
-C$'$, denso IVF vs D, RRF(A,B) & MRR & -0{,}083 & 7 & 0{,}531 & 1{,}000 & -0{,}113 (desprezível) \\
-C$'$, denso IVF vs D, RRF(A,B) & nDCG@10 & -0{,}099 & 8 & 0{,}398 & 1{,}000 & -0{,}125 (desprezível) \\
-C$'$, denso IVF vs E, RRF(B,C) & P@1 & -0{,}125 & 4 & 0{,}625 & 1{,}000 & -0{,}125 (desprezível) \\
-C$'$, denso IVF vs E, RRF(B,C) & P@3 & -0{,}042 & 4 & 0{,}500 & 1{,}000 & -0{,}117 (desprezível) \\
-C$'$, denso IVF vs E, RRF(B,C) & R@5 & -0{,}188 & 4 & 0{,}125 & 1{,}000 & -0{,}250 (pequeno) \\
-C$'$, denso IVF vs E, RRF(B,C) & MRR & -0{,}099 & 5 & 0{,}375 & 1{,}000 & -0{,}125 (desprezível) \\
-C$'$, denso IVF vs E, RRF(B,C) & nDCG@10 & -0{,}093 & 6 & 0{,}406 & 1{,}000 & -0{,}094 (desprezível) \\
+C, denso exato vs E, RRF(B,C) & MRR & $-$0{,}057 & 6 & 0{,}562 & 1{,}000 & $-$0{,}102 (desprezível) \\
+C, denso exato vs E, RRF(B,C) & nDCG@10 & $-$0{,}047 & 7 & 0{,}469 & 1{,}000 & $-$0{,}078 (desprezível) \\
+C$'$, denso IVF vs D, RRF(A,B) & P@1 & $-$0{,}125 & 6 & 0{,}688 & 1{,}000 & $-$0{,}125 (desprezível) \\
+C$'$, denso IVF vs D, RRF(A,B) & P@3 & $-$0{,}021 & 5 & 0{,}750 & 1{,}000 & $-$0{,}055 (desprezível) \\
+C$'$, denso IVF vs D, RRF(A,B) & R@5 & $-$0{,}188 & 4 & 0{,}125 & 1{,}000 & $-$0{,}250 (pequeno) \\
+C$'$, denso IVF vs D, RRF(A,B) & MRR & $-$0{,}083 & 7 & 0{,}531 & 1{,}000 & $-$0{,}113 (desprezível) \\
+C$'$, denso IVF vs D, RRF(A,B) & nDCG@10 & $-$0{,}099 & 8 & 0{,}398 & 1{,}000 & $-$0{,}125 (desprezível) \\
+C$'$, denso IVF vs E, RRF(B,C) & P@1 & $-$0{,}125 & 4 & 0{,}625 & 1{,}000 & $-$0{,}125 (desprezível) \\
+C$'$, denso IVF vs E, RRF(B,C) & P@3 & $-$0{,}042 & 4 & 0{,}500 & 1{,}000 & $-$0{,}117 (desprezível) \\
+C$'$, denso IVF vs E, RRF(B,C) & R@5 & $-$0{,}188 & 4 & 0{,}125 & 1{,}000 & $-$0{,}250 (pequeno) \\
+C$'$, denso IVF vs E, RRF(B,C) & MRR & $-$0{,}099 & 5 & 0{,}375 & 1{,}000 & $-$0{,}125 (desprezível) \\
+C$'$, denso IVF vs E, RRF(B,C) & nDCG@10 & $-$0{,}093 & 6 & 0{,}406 & 1{,}000 & $-$0{,}094 (desprezível) \\
 D, RRF(A,B) vs E, RRF(B,C) & P@1 & +0{,}000 & 2 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-D, RRF(A,B) vs E, RRF(B,C) & P@3 & -0{,}021 & 5 & 0{,}938 & 1{,}000 & -0{,}059 (desprezível) \\
+D, RRF(A,B) vs E, RRF(B,C) & P@3 & $-$0{,}021 & 5 & 0{,}938 & 1{,}000 & $-$0{,}059 (desprezível) \\
 D, RRF(A,B) vs E, RRF(B,C) & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-D, RRF(A,B) vs E, RRF(B,C) & MRR & -0{,}016 & 4 & 0{,}875 & 1{,}000 & -0{,}016 (desprezível) \\
+D, RRF(A,B) vs E, RRF(B,C) & MRR & $-$0{,}016 & 4 & 0{,}875 & 1{,}000 & $-$0{,}016 (desprezível) \\
 D, RRF(A,B) vs E, RRF(B,C) & nDCG@10 & +0{,}006 & 6 & 0{,}906 & 1{,}000 & +0{,}039 (desprezível) \\
-\hline
+\bottomrule
 \end{longtable}
 }

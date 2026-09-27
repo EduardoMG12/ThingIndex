@@ -282,6 +282,34 @@ def cliffs_delta(a: list[float], b: list[float]) -> tuple[float, str]:
 _NUMERO_DECIMAL = re.compile(r"(^|[^0-9.])(-?[0-9]+)\.([0-9]+)($|[^0-9.])")
 
 
+def regras_booktabs(tex: str) -> str:
+    """\\hline -> \\toprule/\\midrule/\\bottomrule em cada tabular. Mesma regra de
+    evalcorpus.RegrasBooktabs (Go)."""
+    linhas = tex.split("\n")
+    abertas: list[int] = []
+    for i, linha in enumerate(linhas):
+        t = linha.strip()
+        if t == r"\hline":
+            abertas.append(i)
+        elif t.startswith(r"\end{tabular}") or t.startswith(r"\end{longtable}"):
+            for j, idx in enumerate(abertas):
+                regra = r"\toprule" if j == 0 else (r"\bottomrule" if j == len(abertas) - 1 else r"\midrule")
+                if idx > 0 and linhas[idx - 1].strip() == r"\endfirsthead":
+                    regra = r"\toprule"  # abre o cabecalho repetido da longtable
+                linhas[idx] = linhas[idx].replace(r"\hline", regra, 1)
+            abertas = []
+    return "\n".join(linhas)
+
+
+_SINAL_NUMERO = re.compile(r"(^|[ &])-([0-9])")
+
+
+def sinal_menos(tex: str) -> str:
+    """Hifen usado como sinal de numero em celula vira $-$. Mesma regra de
+    evalcorpus.SinalMenos (Go)."""
+    return _SINAL_NUMERO.sub(r"\1$-$\2", tex)
+
+
 def virgula_decimal(tex: str) -> str:
     """Separador decimal em virgula, como pede o portugues, so na escrita do
     .tex. Mesma regra de evalcorpus.VirgulaDecimal (Go); {,} evita o espaco
@@ -367,7 +395,7 @@ def build_summary_table(rows: list[dict], label_suffix: str = "") -> str:
         r"% GERADO POR scripts/analyze.py -- nao edite a mao.",
         r"\begin{table}[htb]",
         r"\centering",
-        r"\caption{Desempenho de recuperação por braço em C1, " + UNIDADE[label_suffix] + r". Intervalos de confiança de 95\% por \emph{bootstrap} sobre as consultas (10.000 reamostragens). A última linha é o teto alcançável de cada métrica: P@k divide por $k$, então uma consulta com um único item relevante limita P@3 a $1/3$ mesmo sob ordenação perfeita.}",
+        r"\caption{Desempenho de recuperação por braço em C1, " + UNIDADE[label_suffix] + r". Intervalos de confiança de 95\% por \emph{bootstrap} sobre as consultas (10 mil reamostragens). A última linha é o teto alcançável de cada métrica: P@k divide por $k$, então uma consulta com um único item relevante limita P@3 a $1/3$ mesmo sob ordenação perfeita.}",
         f"\\label{{tab:retrieval-summary{label_suffix}}}",
         r"\begin{tabular}{l" + "c" * len(METRICS) + "}",
         r"\hline",
@@ -560,7 +588,7 @@ def main() -> int:
     args.outdir.mkdir(parents=True, exist_ok=True)
     for name, content in tables.items():
         path = args.outdir / name
-        path.write_text(virgula_decimal(content) + "\n", encoding="utf-8")
+        path.write_text(sinal_menos(regras_booktabs(virgula_decimal(content))) + "\n", encoding="utf-8")
         print(f"analyze: {path}")
 
     return 0

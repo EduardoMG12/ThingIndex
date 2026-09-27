@@ -31,6 +31,8 @@ from analyze import (  # noqa: E402
     holm,
     mean,
     randomization_test,
+    regras_booktabs,
+    sinal_menos,
     wilcoxon_signed_rank,
 )
 
@@ -507,6 +509,21 @@ class TestLabelsUnicos(unittest.TestCase):
             label_sec = re.findall(r"\\label\{([^}]+)\}", build(linhas, "-section"))
             self.assertTrue(label_doc and label_sec)
             self.assertNotEqual(label_doc[0], label_sec[0])
+
+
+class TestConvencoesTabela(unittest.TestCase):
+    def test_booktabs(self):
+        entrada = "\\begin{tabular}{lr}\n\\hline\nA & B \\\\\n\\hline\nx & 1 \\\\\n\\hline\n\\end{tabular}"
+        saida = regras_booktabs(entrada)
+        self.assertEqual(saida.count("\\toprule"), 1)
+        self.assertEqual(saida.count("\\midrule"), 1)
+        self.assertEqual(saida.count("\\bottomrule"), 1)
+        self.assertNotIn("\\hline", saida)
+
+    def test_sinal_menos(self):
+        self.assertEqual(sinal_menos("& -0{,}114 \\\\"), "& $-$0{,}114 \\\\")
+        self.assertEqual(sinal_menos("& +0{,}429"), "& +0{,}429")
+        self.assertEqual(sinal_menos("top-10"), "top-10")
 
 
 if __name__ == "__main__":

@@ -36,8 +36,12 @@ import sys
 import time
 from pathlib import Path
 
-import numpy as np
-import psycopg2
+try:  # so a medicao precisa deles; --so-tabela roda com a biblioteca padrao
+    import numpy as np
+    import psycopg2
+except ImportError:  # pragma: no cover
+    np = None
+    psycopg2 = None
 
 IMAGEM = "pgvector/pgvector:pg16"
 CONTEINER = "thingindex-ann-pgvector"
@@ -145,11 +149,46 @@ def medir(cur, v, qs, exato, cfg, n, construcoes) -> tuple[float, int]:
     return float(rev), instaveis
 
 
+def tabela_tex(linhas: list[dict]) -> str:
+    """Tabela do artigo a partir das linhas medidas (ou lidas do CSV)."""
+    versao = linhas[0]["pgvector"]
+    tex = [
+        "% GERADO POR scripts/ann-pgvector.py a partir de docs/article/results/ann-pgvector.csv -- nao edite a mao.",
+        "\\begin{table}[htb]", "\\centering",
+        f"\\caption{{Índices aproximados do pgvector {versao} sobre \\emph{{corpora}} sintéticos (768 dimensões, {CONSULTAS} consultas). "
+        f"Revocação dos 10 primeiros frente à busca exata e número de consultas cujos 10 primeiros resultados mudaram ao reconstruir o índice {RECONSTRUCOES} vezes "
+        f"sobre os mesmos dados e ao inserir os mesmos vetores em {ORDENS} ordens.}}",
+        "\\label{tab:ann-pgvector}", "\\small",
+        "\\begin{tabular}{lrrrr}", "\\toprule",
+        "Índice & $N$ & Revocação@10 & Reconstrução & Ordem \\\\", "\\midrule",
+    ]
+    atual = None
+    for l in linhas:
+        n = int(l["n"])
+        if atual is not None and n != atual:
+            tex.append("\\midrule")
+        atual = n
+        n_br = f"{n:,}".replace(",", ".")
+        rev_br = f"{100 * float(l['revocacao_at_10']):.1f}".replace(".", "{,}")
+        tex.append(f"{l['indice']} & {n_br} & {rev_br}\\% & "
+                   f"{l['instaveis_reconstrucao']}/{CONSULTAS} & {l['instaveis_ordem']}/{CONSULTAS} \\\\")
+    tex += ["\\bottomrule", "\\end{tabular}", "\\end{table}"]
+    return "\n".join(tex) + "\n"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--tex")
     ap.add_argument("--csv")
+    ap.add_argument("--so-tabela", action="store_true",
+                    help="nao mede: le --csv e escreve --tex (o CI usa para conferir a tabela)")
     args = ap.parse_args()
+
+    if args.so_tabela:
+        with open(args.csv, encoding="utf-8") as f:
+            linhas = list(csv.DictReader(f))
+        Path(args.tex).write_text(tabela_tex(linhas), encoding="utf-8")
+        return 0
 
     subir_banco()
     con = conectar()
@@ -191,27 +230,7 @@ def main() -> int:
             w.writeheader()
             w.writerows(linhas)
 
-    tex = [
-        "% GERADO POR scripts/ann-pgvector.py a partir de docs/article/results/ann-pgvector.csv -- nao edite a mao.",
-        "\\begin{table}[htb]", "\\centering",
-        f"\\caption{{Índices aproximados do pgvector {versao} sobre corpora sintéticos (768 dimensões, {CONSULTAS} consultas). "
-        f"Revocação@10 frente à busca exata e número de consultas cujo top-10 mudou ao reconstruir o índice {RECONSTRUCOES} vezes "
-        f"sobre os mesmos dados e ao inserir os mesmos vetores em {ORDENS} ordens.}}",
-        "\\label{tab:ann-pgvector}", "\\small",
-        "\\begin{tabular}{lrrrr}", "\\hline",
-        "Índice & $N$ & Revocação@10 & Reconstrução & Ordem \\\\", "\\hline",
-    ]
-    atual = None
-    for l in linhas:
-        if atual is not None and l["n"] != atual:
-            tex.append("\\hline")
-        atual = l["n"]
-        n_br = f"{l['n']:,}".replace(",", ".")
-        rev_br = f"{100 * l['revocacao_at_10']:.1f}".replace(".", "{,}")
-        tex.append(f"{l['indice']} & {n_br} & {rev_br}\\% & "
-                   f"{l['instaveis_reconstrucao']}/{CONSULTAS} & {l['instaveis_ordem']}/{CONSULTAS} \\\\")
-    tex += ["\\hline", "\\end{tabular}", "\\end{table}"]
-    saida = "\n".join(tex) + "\n"
+    saida = tabela_tex(linhas)
     if args.tex:
         Path(args.tex).write_text(saida, encoding="utf-8")
     else:

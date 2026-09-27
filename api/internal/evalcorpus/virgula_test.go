@@ -18,3 +18,30 @@ func TestVirgulaDecimal(t *testing.T) {
 		}
 	}
 }
+
+func TestRegrasBooktabs(t *testing.T) {
+	entrada := "\\begin{tabular}{lr}\n\\hline\nA & B \\\\\n\\hline\nx & 1 \\\\\n\\hline\n\\end{tabular}"
+	esperado := "\\begin{tabular}{lr}\n\\toprule\nA & B \\\\\n\\midrule\nx & 1 \\\\\n\\bottomrule\n\\end{tabular}"
+	if got := RegrasBooktabs(entrada); got != esperado {
+		t.Fatalf("RegrasBooktabs:\n%s\nesperado:\n%s", got, esperado)
+	}
+	// Duas tabelas no mesmo texto sao tratadas uma a uma.
+	dupla := entrada + "\n" + entrada
+	if got := RegrasBooktabs(dupla); got != esperado+"\n"+esperado {
+		t.Fatalf("duas tabelas: %s", got)
+	}
+}
+
+func TestSinalMenos(t *testing.T) {
+	casos := map[string]string{
+		"& -0{,}114 \\\\": "& $-$0{,}114 \\\\",
+		"& +0{,}429 \\\\": "& +0{,}429 \\\\",
+		"$-0{,}188$":      "$-0{,}188$",
+		"top-10":          "top-10",
+	}
+	for entrada, esperado := range casos {
+		if got := SinalMenos(entrada); got != esperado {
+			t.Errorf("SinalMenos(%q) = %q, esperado %q", entrada, got, esperado)
+		}
+	}
+}
