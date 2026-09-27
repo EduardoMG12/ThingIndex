@@ -16,6 +16,31 @@ import (
 
 const schemaMigrationLockID int64 = 8452314179902
 
+// InsertBatchSize e o numero maximo de linhas por INSERT multi-linha.
+//
+// MOTIVO: sem lote, o GORM gera um unico INSERT para o slice inteiro e o pgx
+// recusa acima de 65535 parametros. ParagraphNode tem 8 colunas, entao um
+// documento com mais de ~8 mil paragrafos (um PDF de ~400 paginas) falhava em
+// FAILED_PERSISTING_INDEX e nunca indexava. 500 linhas x a tabela mais larga
+// fica muito abaixo do teto; o teste trava essa conta.
+const InsertBatchSize = 500
+
+func newGormConfig() *gorm.Config {
+	return &gorm.Config{
+		TranslateError:  true,
+		CreateBatchSize: InsertBatchSize,
+		Logger: gormlogger.New(
+			log.New(os.Stdout, "\r\n", log.LstdFlags),
+			gormlogger.Config{
+				SlowThreshold:             time.Second,
+				LogLevel:                  gormlogger.Warn,
+				IgnoreRecordNotFoundError: true,
+				Colorful:                  false,
+			},
+		),
+	}
+}
+
 func Connect() (*gorm.DB, error) {
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		config.AppConfig.DBHost,
@@ -26,18 +51,7 @@ func Connect() (*gorm.DB, error) {
 		config.AppConfig.DBSSLMode,
 	)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		TranslateError: true,
-		Logger: gormlogger.New(
-			log.New(os.Stdout, "\r\n", log.LstdFlags),
-			gormlogger.Config{
-				SlowThreshold:             time.Second,
-				LogLevel:                  gormlogger.Warn,
-				IgnoreRecordNotFoundError: true,
-				Colorful:                  false,
-			},
-		),
-	})
+	db, err := gorm.Open(postgres.Open(dsn), newGormConfig())
 	if err != nil {
 		return nil, fmt.Errorf("fail to connect to database: %w", err)
 	}
