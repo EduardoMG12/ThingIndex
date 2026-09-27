@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"sort"
+	"strings"
 )
 
 // Gabarito e o conjunto de perguntas de coordenador sobre a colecao real de SI,
@@ -56,6 +57,34 @@ type GabaritoDocument struct {
 	File  string `json:"file"`
 	Title string `json:"title"`
 	Pages int    `json:"pages"`
+	// Aliases sao os outros nomes com que o documento aparece nas fontes do
+	// chat: o titulo que ficou gravado na colecao nem sempre e o do gabarito
+	// ("NR 6 - Equipamentos de Protecao Individual" contra "NR 6 - EPI"). Sem
+	// eles a citacao correta nao casa com o alvo e a proveniencia sai
+	// subestimada. Ficam fora do hash congelado, que cobre so as perguntas:
+	// dizer como um documento se chama nao muda o que se pergunta nem o que
+	// se espera.
+	Aliases []string `json:"aliases,omitempty"`
+}
+
+// DocumentResolver devolve o id do gabarito a partir do nome com que o
+// documento aparece numa fonte (id, titulo ou alias), com caixa e acento
+// dobrados. Nome desconhecido volta como veio.
+func (g *Gabarito) DocumentResolver(fold func(string) string) func(string) string {
+	porNome := map[string]string{}
+	for _, d := range g.Documents {
+		for _, nome := range append([]string{d.ID, d.Title}, d.Aliases...) {
+			if n := fold(strings.TrimSpace(nome)); n != "" {
+				porNome[n] = d.ID
+			}
+		}
+	}
+	return func(nome string) string {
+		if id, ok := porNome[fold(strings.TrimSpace(nome))]; ok {
+			return id
+		}
+		return nome
+	}
 }
 
 type GabaritoTarget struct {
