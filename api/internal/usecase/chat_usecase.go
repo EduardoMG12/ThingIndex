@@ -15,6 +15,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// chatLLMTimeout e o prazo total das chamadas de LLM de uma mensagem de chat
+// (expansao da pergunta + geracao). O cliente HTTP do LLM nao tem mais
+// Timeout global -- ele cortava o stream aos 45 s --, entao o limite total
+// precisa vir daqui; sem ele um provedor que streama devagar para sempre
+// prenderia a requisicao.
+const chatLLMTimeout = 5 * time.Minute
+
 const (
 	chatStreamEventStage   = "stage"
 	chatStreamEventDelta   = "delta"
@@ -171,11 +178,14 @@ func (u *chatUseCase) StreamCollectionChat(
 		return err
 	}
 
+	llmCtx, cancelLLM := context.WithTimeout(ctx, chatLLMTimeout)
+	defer cancelLLM()
+
 	// A expansao roda ANTES da recuperacao, porque o que ela muda e o texto da
 	// consulta. Ver docs/prds/pre-registro-expansao-consulta.md: braco E.
 	query := prompt
 	if queryExpansionEnabled() {
-		if extra := u.expander.Expand(ctx, llm, chatModelName(llm), prompt); extra != "" {
+		if extra := u.expander.Expand(llmCtx, llm, chatModelName(llm), prompt); extra != "" {
 			query = prompt + " " + extra
 		}
 	}
@@ -298,7 +308,7 @@ func (u *chatUseCase) StreamCollectionChat(
 	}
 
 	if streamer, ok := llm.(domain.LLMStreamingService); ok {
-		if err := streamer.StreamText(ctx, systemPrompt, userPrompt, func(delta string) error {
+		if err := streamer.StreamText(llmCtx, systemPrompt, userPrompt, func(delta string) error {
 			if delta == "" {
 				return nil
 			}
@@ -322,7 +332,7 @@ func (u *chatUseCase) StreamCollectionChat(
 			return err
 		}
 	} else {
-		response, err := llm.GenerateText(ctx, systemPrompt, userPrompt)
+		response, err := llm.GenerateText(llmCtx, systemPrompt, userPrompt)
 		if err != nil {
 			if ctx.Err() == nil {
 				persistFailure(err)
