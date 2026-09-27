@@ -102,7 +102,7 @@ const SourceReference = ({ source, numero, ativa = false, reindexado = false, on
                     </ul>
                 ) : null}
                 <p className="text-[10px] text-muted-foreground">
-                    {t("dashboard.chat.verifiedSource")}
+                    {t("dashboard.chat.sourceOrigin")}
                 </p>
             </div>
         </details>
