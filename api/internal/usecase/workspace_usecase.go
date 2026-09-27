@@ -40,7 +40,7 @@ func (u *workspaceUseCase) SetViewState(ctx context.Context, userID, collectionI
 	}
 	encoded, err := json.Marshal(state)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrInvalidViewState, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrInvalidViewState, err)
 	}
 	if len(encoded) > domain.MaxViewStateBytes {
 		return nil, fmt.Errorf("%w: %d bytes, maximo %d", domain.ErrInvalidViewState, len(encoded), domain.MaxViewStateBytes)

@@ -106,7 +106,7 @@ func (u *documentCatalogUseCase) ensureCategory(ctx context.Context, userID uint
 		return category, nil
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, fmt.Errorf("%w: %v", domain.ErrCategoryFind, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrCategoryFind, err)
 	}
 
 	category = &models.DocumentCategory{
@@ -117,7 +117,7 @@ func (u *documentCatalogUseCase) ensureCategory(ctx context.Context, userID uint
 	}
 
 	if err := u.categoryRepo.CreateCategory(ctx, category); err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrCategoryCreate, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrCategoryCreate, err)
 	}
 
 	return category, nil
@@ -135,7 +135,7 @@ func (u *documentCatalogUseCase) resolveCollection(ctx context.Context, userID u
 			return collection, nil
 		}
 		if findErr != nil && !errors.Is(findErr, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, findErr)
+			return nil, fmt.Errorf("%w: %w", domain.ErrCollectionFind, findErr)
 		}
 	}
 
@@ -144,7 +144,7 @@ func (u *documentCatalogUseCase) resolveCollection(ctx context.Context, userID u
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrCollectionNotFound
 		}
-		return nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrCollectionFind, err)
 	}
 
 	return collection, nil
@@ -160,7 +160,7 @@ func (u *documentCatalogUseCase) ensureCollectionForUpload(ctx context.Context, 
 	collection, err := u.collectionRepo.GetCollectionByNormalizedName(ctx, normalizedName, userID)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+			return nil, fmt.Errorf("%w: %w", domain.ErrCollectionFind, err)
 		}
 
 		collection = &models.Collection{
@@ -179,7 +179,7 @@ func (u *documentCatalogUseCase) ensureCollectionForUpload(ctx context.Context, 
 		// colecao. Com 20 uploads simultaneos isso acontecia e o usuario
 		// recebia HTTP 500 por enviar varios documentos de uma vez.
 		if err := u.collectionRepo.EnsureCollection(ctx, collection); err != nil {
-			return nil, fmt.Errorf("%w: %v", domain.ErrCollectionCreate, err)
+			return nil, fmt.Errorf("%w: %w", domain.ErrCollectionCreate, err)
 		}
 
 		return collection, nil
@@ -193,7 +193,7 @@ func (u *documentCatalogUseCase) ensureCollectionForUpload(ctx context.Context, 
 		collection.CategoryID = &category.ID
 		collection.Category = category
 		if err := u.collectionRepo.UpdateCollection(ctx, collection); err != nil {
-			return nil, fmt.Errorf("%w: %v", domain.ErrCategoryUpdate, err)
+			return nil, fmt.Errorf("%w: %w", domain.ErrCategoryUpdate, err)
 		}
 		return collection, nil
 	}
@@ -219,7 +219,7 @@ func (u *documentCatalogUseCase) CreateCategory(ctx context.Context, userID uint
 	if _, err := u.categoryRepo.GetCategoryByNormalizedName(ctx, normalizedName, userID); err == nil {
 		return nil, domain.ErrCategoryDuplicate
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, fmt.Errorf("%w: %v", domain.ErrCategoryFind, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrCategoryFind, err)
 	}
 
 	category := &models.DocumentCategory{
@@ -230,7 +230,7 @@ func (u *documentCatalogUseCase) CreateCategory(ctx context.Context, userID uint
 	}
 
 	if err := u.categoryRepo.CreateCategory(ctx, category); err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrCategoryCreate, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrCategoryCreate, err)
 	}
 
 	return category, nil
@@ -242,7 +242,7 @@ func (u *documentCatalogUseCase) UpdateCategory(ctx context.Context, userID, cat
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrCategoryNotFound
 		}
-		return nil, fmt.Errorf("%w: %v", domain.ErrCategoryFind, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrCategoryFind, err)
 	}
 
 	if name != nil {
@@ -257,7 +257,7 @@ func (u *documentCatalogUseCase) UpdateCategory(ctx context.Context, userID, cat
 			return nil, domain.ErrCategoryDuplicate
 		}
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("%w: %v", domain.ErrCategoryFind, err)
+			return nil, fmt.Errorf("%w: %w", domain.ErrCategoryFind, err)
 		}
 
 		category.Name = displayName
@@ -269,7 +269,7 @@ func (u *documentCatalogUseCase) UpdateCategory(ctx context.Context, userID, cat
 	}
 
 	if err := u.categoryRepo.UpdateCategory(ctx, category); err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrCategoryUpdate, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrCategoryUpdate, err)
 	}
 
 	return category, nil
@@ -285,7 +285,7 @@ func (u *documentCatalogUseCase) CreateCollection(ctx context.Context, userID ui
 	if _, err := u.collectionRepo.GetCollectionByNormalizedName(ctx, normalizedName, userID); err == nil {
 		return nil, domain.ErrCollectionDuplicate
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrCollectionFind, err)
 	}
 
 	var category *models.DocumentCategory
@@ -311,7 +311,7 @@ func (u *documentCatalogUseCase) CreateCollection(ctx context.Context, userID ui
 	// EnsureCollection resolve a corrida no banco: ver o comentario da
 	// interface em domain.CollectionRepository.
 	if err := u.collectionRepo.EnsureCollection(ctx, collection); err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrCollectionCreate, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrCollectionCreate, err)
 	}
 
 	return collection, nil
@@ -323,12 +323,12 @@ func (u *documentCatalogUseCase) GetCollection(ctx context.Context, userID, coll
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrCollectionNotFound
 		}
-		return nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrCollectionFind, err)
 	}
 
 	count, err := u.collectionRepo.CountDocuments(ctx, userID, collection.ID)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrCollectionFind, err)
 	}
 	collection.DocumentCount = count
 
@@ -357,12 +357,12 @@ func (u *documentCatalogUseCase) UpdateCollectionCategory(ctx context.Context, u
 	}
 
 	if err := u.collectionRepo.UpdateCollection(ctx, collection); err != nil {
-		return 0, nil, fmt.Errorf("%w: %v", domain.ErrCategoryUpdate, err)
+		return 0, nil, fmt.Errorf("%w: %w", domain.ErrCategoryUpdate, err)
 	}
 
 	count, err := u.collectionRepo.CountDocuments(ctx, userID, collection.ID)
 	if err != nil {
-		return 0, nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+		return 0, nil, fmt.Errorf("%w: %w", domain.ErrCollectionFind, err)
 	}
 	collection.DocumentCount = count
 
@@ -415,7 +415,7 @@ func (u *documentCatalogUseCase) UploadDocument(ctx context.Context, userID uint
 
 	fileURL, err := storageClient.UploadFile(ctx, validatedReader, size, resolvedContentType, objectName)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrUploadFailed, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrUploadFailed, err)
 	}
 
 	doc := &models.Document{
@@ -467,7 +467,7 @@ func (u *documentCatalogUseCase) UploadDocument(ctx context.Context, userID uint
 		if cleanupErr := storageClient.DeleteFile(context.WithoutCancel(ctx), fileURL); cleanupErr != nil {
 			log.Printf("upload cleanup failed after document insert error: user=%d file=%q err=%v", userID, fileURL, cleanupErr)
 		}
-		return nil, fmt.Errorf("%w: %v", domain.ErrInternal, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrInternal, err)
 	}
 
 	return doc, nil
@@ -504,7 +504,7 @@ func (u *documentCatalogUseCase) GetDocument(ctx context.Context, userID, docume
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrDocumentNotFound
 		}
-		return nil, fmt.Errorf("%w: %v", domain.ErrInternal, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrInternal, err)
 	}
 
 	return doc, nil
@@ -521,7 +521,7 @@ func (u *documentCatalogUseCase) RetryDocumentIndexing(ctx context.Context, user
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrDocumentNotFound
 		}
-		return nil, fmt.Errorf("%w: %v", domain.ErrInternal, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrInternal, err)
 	}
 
 	return document, nil
@@ -567,7 +567,7 @@ func (u *documentCatalogUseCase) DeleteDocument(ctx context.Context, userID, doc
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.Join(domain.ErrDocumentNotFound, orphanErr, auditErr)
 		}
-		return errors.Join(fmt.Errorf("%w: %v", domain.ErrInternal, err), orphanErr, auditErr)
+		return errors.Join(fmt.Errorf("%w: %w", domain.ErrInternal, err), orphanErr, auditErr)
 	}
 
 	log.Printf("document deleted successfully: user=%d document=%d file=%q", userID, documentID, doc.FileURL)
@@ -582,7 +582,7 @@ func (u *documentCatalogUseCase) DeleteCollectionDocuments(ctx context.Context, 
 
 	documents, err := u.documentRepo.GetDocumentsByCollectionID(ctx, collectionID, userID)
 	if err != nil {
-		return 0, nil, fmt.Errorf("%w: %v", domain.ErrInternal, err)
+		return 0, nil, fmt.Errorf("%w: %w", domain.ErrInternal, err)
 	}
 
 	successAudits := make([]models.DocumentAuditEvent, 0, len(documents))
@@ -635,7 +635,7 @@ func (u *documentCatalogUseCase) DeleteCollectionDocuments(ctx context.Context, 
 			}))
 		}
 		auditErr := u.recordDeletionFailureAudits(ctx, userID, failureAudits)
-		return 0, nil, errors.Join(append([]error{fmt.Errorf("%w: %v", domain.ErrInternal, err), auditErr}, orphanErrs...)...)
+		return 0, nil, errors.Join(append([]error{fmt.Errorf("%w: %w", domain.ErrInternal, err), auditErr}, orphanErrs...)...)
 	}
 
 	log.Printf("collection documents deleted successfully: user=%d collection=%d deleted=%d", userID, collectionID, deletedCount)
@@ -692,7 +692,7 @@ func (u *documentCatalogUseCase) openDocumentReader(ctx context.Context, userID 
 		return nil, domain.ErrDocumentSourceMissing
 	}
 
-	return nil, fmt.Errorf("%w: %v", domain.ErrUploadFailed, err)
+	return nil, fmt.Errorf("%w: %w", domain.ErrUploadFailed, err)
 }
 
 func (u *documentCatalogUseCase) shouldMarkDocumentAsOrphaned(ctx context.Context, doc *models.Document, primary domain.StorageService, secondary domain.StorageService) bool {
@@ -780,7 +780,7 @@ func (u *documentCatalogUseCase) deleteDocumentSource(ctx context.Context, userI
 		return documentDeletionSourceResult{}, fmt.Errorf("%w: custom storage delete failed: %v", domain.ErrDocumentSourceDeleteFailed, primaryErr)
 	}
 
-	return documentDeletionSourceResult{}, fmt.Errorf("%w: %v", domain.ErrDocumentSourceDeleteFailed, primaryErr)
+	return documentDeletionSourceResult{}, fmt.Errorf("%w: %w", domain.ErrDocumentSourceDeleteFailed, primaryErr)
 }
 
 func storageDeletionDetail(usedCustomStorage bool, usedFallback bool) string {
@@ -874,32 +874,32 @@ func (u *documentCatalogUseCase) GetDocumentIndex(ctx context.Context, userID, d
 	documentIDs := []uint{documentID}
 	documentPages, err := u.structuredDataRepo.GetDocumentPagesByDocumentIDs(ctx, documentIDs)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrStructuredDataStore, err)
 	}
 
 	paragraphNodes, err := u.structuredDataRepo.GetParagraphNodesByDocumentIDs(ctx, documentIDs)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrStructuredDataStore, err)
 	}
 
 	tableSections, err := u.structuredDataRepo.GetTableSectionsByDocumentIDs(ctx, documentIDs)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrStructuredDataStore, err)
 	}
 
 	metadataPairs, err := u.structuredDataRepo.GetMetadataPairsByDocumentIDs(ctx, documentIDs)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrStructuredDataStore, err)
 	}
 
 	chunks, err := u.structuredDataRepo.GetDocumentChunksByDocumentIDs(ctx, documentIDs)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrStructuredDataStore, err)
 	}
 
 	outlineNodes, err := u.structuredDataRepo.GetOutlineNodesByDocumentIDs(ctx, documentIDs)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrStructuredDataStore, err)
 	}
 
 	documentSummary := ""
@@ -942,7 +942,7 @@ func (u *documentCatalogUseCase) GetDocumentMonitoringSummary(ctx context.Contex
 
 	metadataPairs, err := u.structuredDataRepo.GetMetadataPairsByDocumentIDs(ctx, documentIDs)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrStructuredDataStore, err)
 	}
 
 	return aggregateDocumentMonitoringSummary(documents, metadataPairs), nil
@@ -1077,7 +1077,7 @@ func (u *documentCatalogUseCase) GetCollectionContext(ctx context.Context, userI
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrCollectionNotFound
 		}
-		return nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrCollectionFind, err)
 	}
 
 	if strings.TrimSpace(query) != "" {
@@ -2613,7 +2613,7 @@ func validateUploadStream(file io.Reader, declaredContentType, title string) (io
 	head := make([]byte, 512)
 	readBytes, readErr := io.ReadFull(file, head)
 	if readErr != nil && !errors.Is(readErr, io.ErrUnexpectedEOF) && !errors.Is(readErr, io.EOF) {
-		return nil, "", fmt.Errorf("%w: %v", domain.ErrUploadFailed, readErr)
+		return nil, "", fmt.Errorf("%w: %w", domain.ErrUploadFailed, readErr)
 	}
 	if readBytes == 0 {
 		return nil, "", domain.ErrFileRequired

@@ -90,7 +90,7 @@ func (u *chatUseCase) CreateConversation(ctx context.Context, userID uint, colle
 		if errors.Is(err, gorm.ErrRecordNotFound) || errors.Is(err, domain.ErrCollectionNotFound) {
 			return nil, domain.ErrCollectionNotFound
 		}
-		return nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrCollectionFind, err)
 	}
 
 	conversation := &models.ChatConversation{
@@ -99,7 +99,7 @@ func (u *chatUseCase) CreateConversation(ctx context.Context, userID uint, colle
 		Title:        buildConversationTitle(title),
 	}
 	if err := u.conversationRepo.CreateConversation(ctx, conversation); err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrChatConversationCreate, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrChatConversationCreate, err)
 	}
 
 	return conversation, nil
@@ -112,7 +112,7 @@ func (u *chatUseCase) ListConversations(ctx context.Context, userID uint, collec
 
 	conversations, err := u.conversationRepo.ListConversationsByCollection(ctx, userID, collectionID)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrChatConversationFind, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrChatConversationFind, err)
 	}
 
 	return conversations, nil
@@ -124,7 +124,7 @@ func (u *chatUseCase) GetConversationMessages(ctx context.Context, userID uint, 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil, domain.ErrChatConversationNotFound
 		}
-		return nil, nil, fmt.Errorf("%w: %v", domain.ErrChatConversationFind, err)
+		return nil, nil, fmt.Errorf("%w: %w", domain.ErrChatConversationFind, err)
 	}
 
 	messages, err := u.conversationRepo.ListMessagesByConversation(ctx, userID, conversationID)
@@ -132,7 +132,7 @@ func (u *chatUseCase) GetConversationMessages(ctx context.Context, userID uint, 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil, domain.ErrChatConversationNotFound
 		}
-		return nil, nil, fmt.Errorf("%w: %v", domain.ErrChatConversationFind, err)
+		return nil, nil, fmt.Errorf("%w: %w", domain.ErrChatConversationFind, err)
 	}
 
 	return conversation, messages, nil
@@ -149,7 +149,7 @@ func (u *chatUseCase) UpdateConversationTitle(ctx context.Context, userID uint, 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrChatConversationNotFound
 		}
-		return nil, fmt.Errorf("%w: %v", domain.ErrChatConversationFind, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrChatConversationFind, err)
 	}
 
 	return conversation, nil
@@ -160,7 +160,7 @@ func (u *chatUseCase) DeleteConversation(ctx context.Context, userID uint, conve
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return domain.ErrChatConversationNotFound
 		}
-		return fmt.Errorf("%w: %v", domain.ErrChatConversationDelete, err)
+		return fmt.Errorf("%w: %w", domain.ErrChatConversationDelete, err)
 	}
 
 	return nil
@@ -182,7 +182,7 @@ func (u *chatUseCase) StreamCollectionChat(
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return domain.ErrChatConversationNotFound
 		}
-		return fmt.Errorf("%w: %v", domain.ErrChatConversationFind, err)
+		return fmt.Errorf("%w: %w", domain.ErrChatConversationFind, err)
 	}
 	if conversation.CollectionID != request.CollectionID {
 		return domain.ErrChatConversationNotFound
@@ -201,7 +201,7 @@ func (u *chatUseCase) StreamCollectionChat(
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return domain.ErrCollectionNotFound
 		}
-		return fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+		return fmt.Errorf("%w: %w", domain.ErrCollectionFind, err)
 	}
 
 	llm, err := u.llmResolver.ResolveLLMForChat(ctx, userID)
@@ -254,7 +254,7 @@ func (u *chatUseCase) StreamCollectionChat(
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return domain.ErrChatConversationNotFound
 		}
-		return fmt.Errorf("%w: %v", domain.ErrChatConversationMessageStore, err)
+		return fmt.Errorf("%w: %w", domain.ErrChatConversationMessageStore, err)
 	}
 
 	systemPrompt, userPrompt := buildCollectionChatPrompt(collectionContext, retrieval, request, sources)
@@ -337,7 +337,7 @@ func (u *chatUseCase) StreamCollectionChat(
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return domain.ErrChatConversationNotFound
 			}
-			return fmt.Errorf("%w: %v", domain.ErrChatConversationMessageStore, err)
+			return fmt.Errorf("%w: %w", domain.ErrChatConversationMessageStore, err)
 		}
 
 		return nil
