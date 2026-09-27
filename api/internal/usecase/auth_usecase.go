@@ -235,7 +235,7 @@ func validateAvatarUpload(file io.Reader, declaredContentType string) (io.Reader
 	head := make([]byte, 512)
 	readBytes, readErr := io.ReadFull(file, head)
 	if readErr != nil && !errors.Is(readErr, io.ErrUnexpectedEOF) && !errors.Is(readErr, io.EOF) {
-		return nil, "", fmt.Errorf("%w: %v", domain.ErrUploadFailed, readErr)
+		return nil, "", fmt.Errorf("%w: %w", domain.ErrUploadFailed, readErr)
 	}
 	if readBytes == 0 {
 		return nil, "", domain.ErrFileRequired

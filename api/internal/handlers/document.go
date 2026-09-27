@@ -13,7 +13,6 @@ import (
 	"thing-index/internal/domain"
 	"thing-index/internal/dto"
 	"thing-index/internal/indexio"
-	"thing-index/internal/models"
 	"thing-index/internal/pkg/i18n"
 	"thing-index/internal/pkg/response"
 	"thing-index/internal/pkg/validation"
@@ -763,123 +762,6 @@ func (h *DocumentHandler) DeleteCollectionDocuments(c *gin.Context) {
 		"collection":        dto.ToCollectionResponse(collection),
 		"deleted_documents": deletedCount,
 	})
-}
-
-func (h *DocumentHandler) StoreParagraphNodes(c *gin.Context) {
-	lang := c.GetString("language")
-	userID := c.GetUint("user_id")
-
-	documentID, ok := parseUintParam(c, "id", i18n.T(lang, "error.invalid_document_id"))
-	if !ok {
-		return
-	}
-
-	var req dto.StoreParagraphNodesRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
-		return
-	}
-
-	nodes := make([]models.ParagraphNode, 0, len(req.Nodes))
-	for _, item := range req.Nodes {
-		nodes = append(nodes, models.ParagraphNode{
-			SequenceOrder: item.SequenceOrder,
-			PageNumber:    item.PageNumber,
-			Content:       strings.TrimSpace(item.Content),
-			Metadata:      item.Metadata,
-		})
-	}
-
-	stored, err := h.useCase.StoreParagraphNodes(c.Request.Context(), userID, documentID, nodes)
-	if err != nil {
-		switch {
-		case errors.Is(err, domain.ErrDocumentNotFound):
-			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
-		default:
-			h.respondInternalError(c, lang, err)
-		}
-		return
-	}
-
-	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_paragraph_nodes_store"), dto.ToParagraphNodeResponses(stored))
-}
-
-func (h *DocumentHandler) StoreTableSections(c *gin.Context) {
-	lang := c.GetString("language")
-	userID := c.GetUint("user_id")
-
-	documentID, ok := parseUintParam(c, "id", i18n.T(lang, "error.invalid_document_id"))
-	if !ok {
-		return
-	}
-
-	var req dto.StoreTableSectionsRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
-		return
-	}
-
-	sections := make([]models.TableSection, 0, len(req.Sections))
-	for _, item := range req.Sections {
-		sections = append(sections, models.TableSection{
-			SequenceOrder: item.SequenceOrder,
-			Title:         strings.TrimSpace(item.Title),
-			Headers:       item.Headers,
-			Rows:          item.Rows,
-			Metadata:      item.Metadata,
-		})
-	}
-
-	stored, err := h.useCase.StoreTableSections(c.Request.Context(), userID, documentID, sections)
-	if err != nil {
-		switch {
-		case errors.Is(err, domain.ErrDocumentNotFound):
-			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
-		default:
-			h.respondInternalError(c, lang, err)
-		}
-		return
-	}
-
-	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_table_sections_store"), dto.ToTableSectionResponses(stored))
-}
-
-func (h *DocumentHandler) StoreMetadataPairs(c *gin.Context) {
-	lang := c.GetString("language")
-	userID := c.GetUint("user_id")
-
-	documentID, ok := parseUintParam(c, "id", i18n.T(lang, "error.invalid_document_id"))
-	if !ok {
-		return
-	}
-
-	var req dto.StoreMetadataPairsRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "error", i18n.T(lang, "error.validation"), validation.FormatValidationErrors(c, err))
-		return
-	}
-
-	pairs := make([]models.MetadataPair, 0, len(req.Pairs))
-	for _, item := range req.Pairs {
-		pairs = append(pairs, models.MetadataPair{
-			SequenceOrder: item.SequenceOrder,
-			Key:           strings.TrimSpace(item.Key),
-			Value:         strings.TrimSpace(item.Value),
-		})
-	}
-
-	stored, err := h.useCase.StoreMetadataPairs(c.Request.Context(), userID, documentID, pairs)
-	if err != nil {
-		switch {
-		case errors.Is(err, domain.ErrDocumentNotFound):
-			response.Error(c, http.StatusNotFound, "error", i18n.T(lang, "doc.error_document_not_found"), nil)
-		default:
-			h.respondInternalError(c, lang, err)
-		}
-		return
-	}
-
-	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_metadata_pairs_store"), dto.ToMetadataPairResponses(stored))
 }
 
 func parseUintParam(c *gin.Context, paramName string, invalidMessage string) (uint, bool) {

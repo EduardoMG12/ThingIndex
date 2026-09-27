@@ -14,9 +14,14 @@ import (
 )
 
 type Config struct {
-	Environment        string
-	Port               string
-	TrustedProxies     string
+	Environment    string
+	Port           string
+	TrustedProxies string
+	// Bracos experimentais da recuperacao, lidos UMA vez na subida (antes eram
+	// os.Getenv por pagina/pergunta). Valores crus; a validacao e o aviso de
+	// valor invalido ficam em usecase.NewRetrievalOptions.
+	PageSearchFields   string
+	QueryExpansion     string
 	DBHost             string
 	DBPort             string
 	DBUser             string
@@ -32,6 +37,10 @@ type Config struct {
 	AllowPrivateStorageEndpoints bool
 	AuthRateLimitRequests        int
 	AuthRateLimitWindow          time.Duration
+	// Limite por e-mail (normalizado) em /auth/login e /auth/forgot-password,
+	// somado ao limite por IP acima.
+	AuthEmailRateLimitRequests int
+	AuthEmailRateLimitWindow   time.Duration
 
 	SMTPHost         string
 	SMTPPort         string
@@ -65,6 +74,9 @@ type Config struct {
 	DocumentIndexHandlerTimeout time.Duration
 	StuckDocumentThreshold      time.Duration
 	StuckDocumentPollInterval   time.Duration
+	// Documento em QUEUED com o ultimo evento do outbox PUBLISHED ha mais que
+	// isto e reenfileirado (mensagem perdida depois do broker). 0 desliga.
+	QueuedDocumentRequeueThreshold time.Duration
 	// ConsumerReconnectInterval e a espera entre tentativas quando o RabbitMQ
 	// fecha o canal de entregas. Sem espera, um broker fora do ar vira laco
 	// quente; espera longa demais atrasa a volta do pipeline.
@@ -112,66 +124,71 @@ func Load() {
 	}
 
 	AppConfig = &Config{
-		Environment:                  environment,
-		Port:                         getEnv("PORT", "8000"),
-		TrustedProxies:               getEnv("TRUSTED_PROXIES", ""),
-		DBHost:                       getEnv("DB_HOST", "localhost"),
-		DBPort:                       getEnv("DB_PORT", "5432"),
-		DBUser:                       getEnv("DB_USER", "postgres"),
-		DBPassword:                   getEnv("DB_PASSWORD", "postgres"),
-		DBName:                       getEnv("DB_NAME", "thingindex"),
-		DBSSLMode:                    getEnv("DB_SSLMODE", defaultDBSSLMode),
-		CORSAllowedOrigins:           getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"),
-		OpenAIKey:                    getEnv("OPENAI_API_KEY", ""),
-		AllowPrivateStorageEndpoints: getEnvBool("ALLOW_PRIVATE_STORAGE_ENDPOINTS", false),
-		JWTSecret:                    getEnv("JWT_SECRET", defaultValueForEnvironment(environment, defaultDevelopmentJWT)),
-		AuthRateLimitRequests:        getEnvInt("AUTH_RATE_LIMIT_REQUESTS", 10),
-		AuthRateLimitWindow:          getEnvDurationSeconds("AUTH_RATE_LIMIT_WINDOW_SECONDS", 60),
-		ConsumerReconnectInterval:    getEnvDurationSeconds("CONSUMER_RECONNECT_INTERVAL_SECONDS", 5),
-		UploadRateLimitRequests:      getEnvInt("UPLOAD_RATE_LIMIT_REQUESTS", 30),
-		UploadRateLimitWindow:        getEnvDurationSeconds("UPLOAD_RATE_LIMIT_WINDOW_SECONDS", 60),
-		ChatRateLimitRequests:        getEnvInt("CHAT_RATE_LIMIT_REQUESTS", 20),
-		ChatRateLimitWindow:          getEnvDurationSeconds("CHAT_RATE_LIMIT_WINDOW_SECONDS", 60),
-		SMTPHost:                     getEnv("SMTP_HOST", "localhost"),
-		SMTPPort:                     getEnv("SMTP_PORT", "1025"),
-		SMTPSecurityMode:             getEnv("SMTP_SECURITY_MODE", defaultSMTPSecurityMode(environment)),
-		SMTPUser:                     getEnv("SMTP_USER", ""),
-		SMTPPass:                     getEnv("SMTP_PASS", ""),
-		SMTPFrom:                     getEnv("SMTP_FROM", "no-reply@thingindex.com"),
-		ResetPasswordURL:             getEnv("RESET_PASSWORD_URL", "http://localhost:3000/reset-password"),
-		StorageProvider:              getEnv("STORAGE_PROVIDER", "MINIO"),
-		MinioEndpoint:                getEnv("MINIO_ENDPOINT", "localhost:9000"),
-		MinioAccessKey:               getEnv("MINIO_ACCESS_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMinioKey)),
-		MinioSecretKey:               getEnv("MINIO_SECRET_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMinioSec)),
-		MinioUseSSL:                  getEnv("MINIO_USE_SSL", "false"),
-		MinioBucketName:              getEnv("MINIO_BUCKET_NAME", "thingindex-docs"),
-		GCPStorageProjectID:          getEnv("GCP_STORAGE_PROJECT_ID", ""),
-		GCPStorageBucketName:         getEnv("GCP_STORAGE_BUCKET_NAME", "thingindex-docs"),
-		GCPStorageLocation:           getEnv("GCP_STORAGE_LOCATION", ""),
-		GCPStorageCredentialsJSON:    getEnv("GCP_STORAGE_CREDENTIALS_JSON", ""),
-		GCPStorageEmulatorHost:       getEnv("GCP_STORAGE_EMULATOR_HOST", ""),
-		RabbitMQURL:                  getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
-		DocumentIndexExchange:        getEnv("DOCUMENT_INDEX_EXCHANGE", "thingindex.document.index"),
-		DocumentIndexQueue:           getEnv("DOCUMENT_INDEX_QUEUE", "thingindex.document.index.queue"),
-		DocumentIndexRoutingKey:      getEnv("DOCUMENT_INDEX_ROUTING_KEY", "document.index.requested"),
-		DocumentIndexRetryQueue:      getEnv("DOCUMENT_INDEX_RETRY_QUEUE", "thingindex.document.index.retry"),
-		DocumentIndexDLQ:             getEnv("DOCUMENT_INDEX_DLQ", "thingindex.document.index.dlq"),
-		OutboxPollInterval:           getEnvDurationSeconds("OUTBOX_POLL_INTERVAL_SECONDS", 5),
-		OutboxBatchSize:              getEnvInt("OUTBOX_BATCH_SIZE", 20),
-		OutboxVisibilityTimeout:      getEnvDurationSeconds("OUTBOX_VISIBILITY_TIMEOUT_SECONDS", 120),
-		ConsumerPrefetchCount:        getEnvInt("CONSUMER_PREFETCH_COUNT", 10),
-		DocumentIndexRetryDelay:      getEnvDurationSeconds("DOCUMENT_INDEX_RETRY_DELAY_SECONDS", 30),
-		DocumentIndexMaxRetries:      getEnvInt("DOCUMENT_INDEX_MAX_RETRIES", 5),
-		DocumentIndexHandlerTimeout:  getEnvDurationSeconds("DOCUMENT_INDEX_HANDLER_TIMEOUT_SECONDS", 600),
-		StuckDocumentThreshold:       getEnvDurationSeconds("STUCK_DOCUMENT_THRESHOLD_SECONDS", 1800),
-		StuckDocumentPollInterval:    getEnvDurationSeconds("STUCK_DOCUMENT_POLL_INTERVAL_SECONDS", 300),
-		PricingSyncInterval:          getEnvDurationSeconds("PRICING_SYNC_INTERVAL_SECONDS", 86400),
-		ModelCatalogSyncInterval:     getEnvDurationSeconds("MODEL_CATALOG_SYNC_INTERVAL_SECONDS", 86400),
-		MaxUploadSizeBytes:           getEnvInt64("MAX_UPLOAD_SIZE_BYTES", 20*1024*1024),
-		MasterEncryptionKey:          getEnv("MASTER_ENCRYPTION_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMaster)),
-		ServerReadTimeout:            getEnvDurationSeconds("SERVER_READ_TIMEOUT_SECONDS", 15),
-		ServerWriteTimeout:           getEnvDurationSeconds("SERVER_WRITE_TIMEOUT_SECONDS", 30),
-		ServerIdleTimeout:            getEnvDurationSeconds("SERVER_IDLE_TIMEOUT_SECONDS", 60),
+		Environment:                    environment,
+		Port:                           getEnv("PORT", "8000"),
+		TrustedProxies:                 getEnv("TRUSTED_PROXIES", ""),
+		PageSearchFields:               os.Getenv("THINGINDEX_PAGE_SEARCH_FIELDS"),
+		QueryExpansion:                 os.Getenv("THINGINDEX_QUERY_EXPANSION"),
+		DBHost:                         getEnv("DB_HOST", "localhost"),
+		DBPort:                         getEnv("DB_PORT", "5432"),
+		DBUser:                         getEnv("DB_USER", "postgres"),
+		DBPassword:                     getEnv("DB_PASSWORD", "postgres"),
+		DBName:                         getEnv("DB_NAME", "thingindex"),
+		DBSSLMode:                      getEnv("DB_SSLMODE", defaultDBSSLMode),
+		CORSAllowedOrigins:             getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"),
+		OpenAIKey:                      getEnv("OPENAI_API_KEY", ""),
+		AllowPrivateStorageEndpoints:   getEnvBool("ALLOW_PRIVATE_STORAGE_ENDPOINTS", false),
+		JWTSecret:                      getEnv("JWT_SECRET", defaultValueForEnvironment(environment, defaultDevelopmentJWT)),
+		AuthRateLimitRequests:          getEnvInt("AUTH_RATE_LIMIT_REQUESTS", 10),
+		AuthRateLimitWindow:            getEnvDurationSeconds("AUTH_RATE_LIMIT_WINDOW_SECONDS", 60),
+		AuthEmailRateLimitRequests:     getEnvInt("AUTH_EMAIL_RATE_LIMIT_REQUESTS", 10),
+		AuthEmailRateLimitWindow:       getEnvDurationSeconds("AUTH_EMAIL_RATE_LIMIT_WINDOW_SECONDS", 900),
+		ConsumerReconnectInterval:      getEnvDurationSeconds("CONSUMER_RECONNECT_INTERVAL_SECONDS", 5),
+		UploadRateLimitRequests:        getEnvInt("UPLOAD_RATE_LIMIT_REQUESTS", 30),
+		UploadRateLimitWindow:          getEnvDurationSeconds("UPLOAD_RATE_LIMIT_WINDOW_SECONDS", 60),
+		ChatRateLimitRequests:          getEnvInt("CHAT_RATE_LIMIT_REQUESTS", 20),
+		ChatRateLimitWindow:            getEnvDurationSeconds("CHAT_RATE_LIMIT_WINDOW_SECONDS", 60),
+		SMTPHost:                       getEnv("SMTP_HOST", "localhost"),
+		SMTPPort:                       getEnv("SMTP_PORT", "1025"),
+		SMTPSecurityMode:               getEnv("SMTP_SECURITY_MODE", defaultSMTPSecurityMode(environment)),
+		SMTPUser:                       getEnv("SMTP_USER", ""),
+		SMTPPass:                       getEnv("SMTP_PASS", ""),
+		SMTPFrom:                       getEnv("SMTP_FROM", "no-reply@thingindex.com"),
+		ResetPasswordURL:               getEnv("RESET_PASSWORD_URL", "http://localhost:3000/reset-password"),
+		StorageProvider:                getEnv("STORAGE_PROVIDER", "MINIO"),
+		MinioEndpoint:                  getEnv("MINIO_ENDPOINT", "localhost:9000"),
+		MinioAccessKey:                 getEnv("MINIO_ACCESS_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMinioKey)),
+		MinioSecretKey:                 getEnv("MINIO_SECRET_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMinioSec)),
+		MinioUseSSL:                    getEnv("MINIO_USE_SSL", "false"),
+		MinioBucketName:                getEnv("MINIO_BUCKET_NAME", "thingindex-docs"),
+		GCPStorageProjectID:            getEnv("GCP_STORAGE_PROJECT_ID", ""),
+		GCPStorageBucketName:           getEnv("GCP_STORAGE_BUCKET_NAME", "thingindex-docs"),
+		GCPStorageLocation:             getEnv("GCP_STORAGE_LOCATION", ""),
+		GCPStorageCredentialsJSON:      getEnv("GCP_STORAGE_CREDENTIALS_JSON", ""),
+		GCPStorageEmulatorHost:         getEnv("GCP_STORAGE_EMULATOR_HOST", ""),
+		RabbitMQURL:                    getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
+		DocumentIndexExchange:          getEnv("DOCUMENT_INDEX_EXCHANGE", "thingindex.document.index"),
+		DocumentIndexQueue:             getEnv("DOCUMENT_INDEX_QUEUE", "thingindex.document.index.queue"),
+		DocumentIndexRoutingKey:        getEnv("DOCUMENT_INDEX_ROUTING_KEY", "document.index.requested"),
+		DocumentIndexRetryQueue:        getEnv("DOCUMENT_INDEX_RETRY_QUEUE", "thingindex.document.index.retry"),
+		DocumentIndexDLQ:               getEnv("DOCUMENT_INDEX_DLQ", "thingindex.document.index.dlq"),
+		OutboxPollInterval:             getEnvDurationSeconds("OUTBOX_POLL_INTERVAL_SECONDS", 5),
+		OutboxBatchSize:                getEnvInt("OUTBOX_BATCH_SIZE", 20),
+		OutboxVisibilityTimeout:        getEnvDurationSeconds("OUTBOX_VISIBILITY_TIMEOUT_SECONDS", 120),
+		ConsumerPrefetchCount:          getEnvInt("CONSUMER_PREFETCH_COUNT", 10),
+		DocumentIndexRetryDelay:        getEnvDurationSeconds("DOCUMENT_INDEX_RETRY_DELAY_SECONDS", 30),
+		DocumentIndexMaxRetries:        getEnvInt("DOCUMENT_INDEX_MAX_RETRIES", 5),
+		DocumentIndexHandlerTimeout:    getEnvDurationSeconds("DOCUMENT_INDEX_HANDLER_TIMEOUT_SECONDS", 600),
+		StuckDocumentThreshold:         getEnvDurationSeconds("STUCK_DOCUMENT_THRESHOLD_SECONDS", 1800),
+		StuckDocumentPollInterval:      getEnvDurationSeconds("STUCK_DOCUMENT_POLL_INTERVAL_SECONDS", 300),
+		QueuedDocumentRequeueThreshold: getEnvDurationSeconds("QUEUED_DOCUMENT_REQUEUE_THRESHOLD_SECONDS", 1800),
+		PricingSyncInterval:            getEnvDurationSeconds("PRICING_SYNC_INTERVAL_SECONDS", 86400),
+		ModelCatalogSyncInterval:       getEnvDurationSeconds("MODEL_CATALOG_SYNC_INTERVAL_SECONDS", 86400),
+		MaxUploadSizeBytes:             getEnvInt64("MAX_UPLOAD_SIZE_BYTES", 20*1024*1024),
+		MasterEncryptionKey:            getEnv("MASTER_ENCRYPTION_KEY", defaultValueForEnvironment(environment, defaultDevelopmentMaster)),
+		ServerReadTimeout:              getEnvDurationSeconds("SERVER_READ_TIMEOUT_SECONDS", 15),
+		ServerWriteTimeout:             getEnvDurationSeconds("SERVER_WRITE_TIMEOUT_SECONDS", 30),
+		ServerIdleTimeout:              getEnvDurationSeconds("SERVER_IDLE_TIMEOUT_SECONDS", 60),
 	}
 }
 

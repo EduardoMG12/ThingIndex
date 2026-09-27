@@ -105,9 +105,6 @@ GET    /api/v1/document-catalog/collections/:id
 GET    /api/v1/document-catalog/collections/:id/context
 POST   /api/v1/document-catalog/documents
 GET    /api/v1/document-catalog/documents/:id
-POST   /api/v1/document-catalog/documents/:id/paragraph-nodes
-POST   /api/v1/document-catalog/documents/:id/table-sections
-POST   /api/v1/document-catalog/documents/:id/metadata-pairs
 ```
 
 ## Camadas Go recomendadas

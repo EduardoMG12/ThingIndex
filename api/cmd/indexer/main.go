@@ -85,6 +85,7 @@ func main() {
 	reaper := processing.NewStuckDocumentReaper(
 		processingRepo,
 		config.AppConfig.StuckDocumentThreshold,
+		config.AppConfig.QueuedDocumentRequeueThreshold,
 		config.AppConfig.StuckDocumentPollInterval,
 	)
 

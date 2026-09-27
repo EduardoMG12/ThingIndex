@@ -57,6 +57,7 @@ type chatUseCase struct {
 	conversationRepo      domain.ChatConversationRepository
 	llmResolver           domain.UserLLMResolver
 	expander              *queryExpander
+	retrievalOptions      RetrievalOptions
 }
 
 func NewChatUseCase(
@@ -65,6 +66,7 @@ func NewChatUseCase(
 	conversationRepo domain.ChatConversationRepository,
 	llmResolver domain.UserLLMResolver,
 	expansionCache domain.EnrichmentCache,
+	retrievalOptions RetrievalOptions,
 ) domain.ChatUseCase {
 	return &chatUseCase{
 		collectionRepo:        collectionRepo,
@@ -72,6 +74,7 @@ func NewChatUseCase(
 		conversationRepo:      conversationRepo,
 		llmResolver:           llmResolver,
 		expander:              newQueryExpander(expansionCache),
+		retrievalOptions:      retrievalOptions,
 	}
 }
 
@@ -87,7 +90,7 @@ func (u *chatUseCase) CreateConversation(ctx context.Context, userID uint, colle
 		if errors.Is(err, gorm.ErrRecordNotFound) || errors.Is(err, domain.ErrCollectionNotFound) {
 			return nil, domain.ErrCollectionNotFound
 		}
-		return nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrCollectionFind, err)
 	}
 
 	conversation := &models.ChatConversation{
@@ -96,7 +99,7 @@ func (u *chatUseCase) CreateConversation(ctx context.Context, userID uint, colle
 		Title:        buildConversationTitle(title),
 	}
 	if err := u.conversationRepo.CreateConversation(ctx, conversation); err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrChatConversationCreate, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrChatConversationCreate, err)
 	}
 
 	return conversation, nil
@@ -109,7 +112,7 @@ func (u *chatUseCase) ListConversations(ctx context.Context, userID uint, collec
 
 	conversations, err := u.conversationRepo.ListConversationsByCollection(ctx, userID, collectionID)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrChatConversationFind, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrChatConversationFind, err)
 	}
 
 	return conversations, nil
@@ -121,7 +124,7 @@ func (u *chatUseCase) GetConversationMessages(ctx context.Context, userID uint, 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil, domain.ErrChatConversationNotFound
 		}
-		return nil, nil, fmt.Errorf("%w: %v", domain.ErrChatConversationFind, err)
+		return nil, nil, fmt.Errorf("%w: %w", domain.ErrChatConversationFind, err)
 	}
 
 	messages, err := u.conversationRepo.ListMessagesByConversation(ctx, userID, conversationID)
@@ -129,7 +132,7 @@ func (u *chatUseCase) GetConversationMessages(ctx context.Context, userID uint, 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil, domain.ErrChatConversationNotFound
 		}
-		return nil, nil, fmt.Errorf("%w: %v", domain.ErrChatConversationFind, err)
+		return nil, nil, fmt.Errorf("%w: %w", domain.ErrChatConversationFind, err)
 	}
 
 	return conversation, messages, nil
@@ -146,7 +149,7 @@ func (u *chatUseCase) UpdateConversationTitle(ctx context.Context, userID uint, 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrChatConversationNotFound
 		}
-		return nil, fmt.Errorf("%w: %v", domain.ErrChatConversationFind, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrChatConversationFind, err)
 	}
 
 	return conversation, nil
@@ -157,7 +160,7 @@ func (u *chatUseCase) DeleteConversation(ctx context.Context, userID uint, conve
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return domain.ErrChatConversationNotFound
 		}
-		return fmt.Errorf("%w: %v", domain.ErrChatConversationDelete, err)
+		return fmt.Errorf("%w: %w", domain.ErrChatConversationDelete, err)
 	}
 
 	return nil
@@ -179,7 +182,7 @@ func (u *chatUseCase) StreamCollectionChat(
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return domain.ErrChatConversationNotFound
 		}
-		return fmt.Errorf("%w: %v", domain.ErrChatConversationFind, err)
+		return fmt.Errorf("%w: %w", domain.ErrChatConversationFind, err)
 	}
 	if conversation.CollectionID != request.CollectionID {
 		return domain.ErrChatConversationNotFound
@@ -198,7 +201,7 @@ func (u *chatUseCase) StreamCollectionChat(
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return domain.ErrCollectionNotFound
 		}
-		return fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+		return fmt.Errorf("%w: %w", domain.ErrCollectionFind, err)
 	}
 
 	llm, err := u.llmResolver.ResolveLLMForChat(ctx, userID)
@@ -212,13 +215,14 @@ func (u *chatUseCase) StreamCollectionChat(
 	// A expansao roda ANTES da recuperacao, porque o que ela muda e o texto da
 	// consulta. Ver docs/prds/pre-registro-expansao-consulta.md: braco E.
 	query := prompt
-	if queryExpansionEnabled() {
+	if u.retrievalOptions.QueryExpansion {
 		if extra := u.expander.Expand(llmCtx, llm, domain.LLMCacheScope(userID, llm), prompt); extra != "" {
 			query = prompt + " " + extra
 		}
 	}
 
-	retrieval := buildCollectionRetrieval(
+	retrieval := buildCollectionRetrievalWith(
+		u.retrievalOptions,
 		query,
 		collectionContext.Documents,
 		collectionContext.DocumentPages,
@@ -250,7 +254,7 @@ func (u *chatUseCase) StreamCollectionChat(
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return domain.ErrChatConversationNotFound
 		}
-		return fmt.Errorf("%w: %v", domain.ErrChatConversationMessageStore, err)
+		return fmt.Errorf("%w: %w", domain.ErrChatConversationMessageStore, err)
 	}
 
 	systemPrompt, userPrompt := buildCollectionChatPrompt(collectionContext, retrieval, request, sources)
@@ -333,7 +337,7 @@ func (u *chatUseCase) StreamCollectionChat(
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return domain.ErrChatConversationNotFound
 			}
-			return fmt.Errorf("%w: %v", domain.ErrChatConversationMessageStore, err)
+			return fmt.Errorf("%w: %w", domain.ErrChatConversationMessageStore, err)
 		}
 
 		return nil
@@ -450,7 +454,9 @@ func buildConversationTitle(title string) string {
 // artigo compara custo por consulta, entao o teto tem de ser um numero
 // nomeado e travado por teste, nao um literal escondido.
 const (
-	// ChatSourceLimit e o total de fontes citadas por resposta.
+	// ChatSourceLimit e o teto de fontes de SECAO e PAGINA por resposta. As
+	// linhas de tabela contam a parte (ChatTableRowSourceLimit), entao o total
+	// citado pode chegar a ChatSourceLimit + ChatTableRowSourceLimit = 9.
 	ChatSourceLimit = 6
 	// ChatNodeSourceLimit e quantas dessas fontes vem de secoes do sumario
 	// (node hits), que entram ANTES das paginas por serem a unidade

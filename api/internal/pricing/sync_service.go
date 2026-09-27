@@ -65,13 +65,13 @@ func (s *SyncService) syncSingleSource(ctx context.Context, source *models.Prici
 
 	body, err := s.fetcher.Fetch(ctx, source.SourceURL)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %v", domain.ErrPricingFetchFailed, err)
+		return 0, fmt.Errorf("%w: %w", domain.ErrPricingFetchFailed, err)
 	}
 	defer body.Close()
 
 	parsed, err := parser.Parse(ctx, source.SourceURL, body)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %v", domain.ErrPricingParseFailed, err)
+		return 0, fmt.Errorf("%w: %w", domain.ErrPricingParseFailed, err)
 	}
 
 	now := time.Now().UTC()

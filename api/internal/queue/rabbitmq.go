@@ -54,7 +54,31 @@ type RabbitMQPublisher struct {
 	// Protege a troca de conn/channel: o dispatcher publica em lote e a
 	// reconexao nao pode acontecer no meio de outra publicacao.
 	mu sync.Mutex
+
+	// retornos recebe as mensagens que o broker devolveu por falta de rota
+	// (publicacao com mandatory=true). E trocado junto com o canal.
+	retornos chan amqp.Return
+	// publicando serializa publicar+aguardar confirmacao: o basic.return de
+	// uma mensagem sem rota chega antes do basic.ack dela, e so com uma
+	// publicacao em voo por vez da para atribuir o retorno a mensagem certa.
+	publicando sync.Mutex
+	sequencia  uint64
 }
+
+// ErrMensagemSemRota: o broker aceitou a publicacao mas nao havia fila
+// vinculada a routing key (binding apagado, fila removida). Sem mandatory=true
+// o RabbitMQ descartava a mensagem em silencio e o outbox a marcava PUBLISHED.
+var ErrMensagemSemRota = errors.New("rabbitmq devolveu a mensagem: nenhuma fila vinculada a routing key")
+
+// ErrPublicacaoNaoConfirmada: o broker respondeu basic.nack, ou o canal fechou
+// antes da confirmacao. Em ambos os casos nao ha garantia de que a mensagem foi
+// persistida, entao o evento do outbox nao pode ser marcado PUBLISHED.
+var ErrPublicacaoNaoConfirmada = errors.New("rabbitmq nao confirmou a publicacao")
+
+// publisherConfirmTimeout limita a espera pelo ack quando o contexto do chamador
+// nao tem prazo. Sem isso, um broker que aceita o frame e nunca confirma
+// prenderia o despachante do outbox para sempre.
+const publisherConfirmTimeout = 30 * time.Second
 
 type RabbitMQConsumer struct {
 	conn       *amqp.Connection
@@ -75,20 +99,8 @@ type RabbitMQConsumer struct {
 }
 
 func NewRabbitMQPublisher(cfg *config.Config) (*RabbitMQPublisher, error) {
-	conn, err := amqp.Dial(cfg.RabbitMQURL)
+	conn, channel, retornos, err := abrirConexaoPublicador(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("dial rabbitmq: %w", err)
-	}
-
-	channel, err := conn.Channel()
-	if err != nil {
-		_ = conn.Close()
-		return nil, fmt.Errorf("create rabbitmq channel: %w", err)
-	}
-
-	if err := declareTopology(channel, cfg); err != nil {
-		_ = channel.Close()
-		_ = conn.Close()
 		return nil, err
 	}
 
@@ -96,9 +108,46 @@ func NewRabbitMQPublisher(cfg *config.Config) (*RabbitMQPublisher, error) {
 		cfg:        cfg,
 		conn:       conn,
 		channel:    channel,
+		retornos:   retornos,
 		exchange:   cfg.DocumentIndexExchange,
 		routingKey: cfg.DocumentIndexRoutingKey,
 	}, nil
+}
+
+// abrirConexaoPublicador abre conexao e canal do publicador, declara a
+// topologia e liga o modo de confirmacao (publisher confirms) e o aviso de
+// mensagem devolvida. Usado na criacao e na reconexao, para que o canal novo
+// tenha exatamente as mesmas garantias do original.
+func abrirConexaoPublicador(cfg *config.Config) (*amqp.Connection, *amqp.Channel, chan amqp.Return, error) {
+	conn, err := amqp.Dial(cfg.RabbitMQURL)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("dial rabbitmq: %w", err)
+	}
+
+	channel, err := conn.Channel()
+	if err != nil {
+		_ = conn.Close()
+		return nil, nil, nil, fmt.Errorf("create rabbitmq channel: %w", err)
+	}
+
+	if err := declareTopology(channel, cfg); err != nil {
+		_ = channel.Close()
+		_ = conn.Close()
+		return nil, nil, nil, err
+	}
+
+	if err := channel.Confirm(false); err != nil {
+		_ = channel.Close()
+		_ = conn.Close()
+		return nil, nil, nil, fmt.Errorf("enable publisher confirms: %w", err)
+	}
+
+	// Com buffer: a biblioteca entrega o retorno de forma bloqueante na
+	// goroutine de leitura, e um canal sem buffer travaria a conexao ate
+	// alguem ler.
+	retornos := channel.NotifyReturn(make(chan amqp.Return, 16))
+
+	return conn, channel, retornos, nil
 }
 
 func NewRabbitMQConsumer(cfg *config.Config) (*RabbitMQConsumer, error) {
@@ -183,21 +232,98 @@ func (p *RabbitMQPublisher) PublishDocumentIndexRequested(ctx context.Context, e
 		return err
 	}
 
+	p.publicando.Lock()
+	defer p.publicando.Unlock()
+
 	return publicarComReconexao(ctx, func(ctx context.Context) error {
 		p.mu.Lock()
 		canal := p.channel
+		retornos := p.retornos
 		p.mu.Unlock()
 
-		return canal.PublishWithContext(ctx, p.exchange, p.routingKey, false, false, amqp.Publishing{
+		p.sequencia++
+		messageID := fmt.Sprintf("doc-%d-%d", event.DocumentID, p.sequencia)
+
+		return publicarConfirmado(ctx, canal, retornos, p.exchange, p.routingKey, amqp.Publishing{
 			ContentType:  "application/json",
 			DeliveryMode: amqp.Persistent,
 			Body:         body,
 			Type:         domain.OutboxEventDocumentIndexRequested,
+			MessageId:    messageID,
 			Headers: amqp.Table{
 				retryHeader: int32(0),
 			},
 		})
 	}, p.reconectar)
+}
+
+// publicarConfirmado publica com mandatory=true e so devolve nil depois do
+// basic.ack do broker, sem retorno de "sem rota" para esta mensagem.
+//
+// Antes, PublishWithContext devolvia nil assim que o frame saia pelo socket:
+// se o broker caisse antes de persistir, ou se nao houvesse fila vinculada, a
+// mensagem sumia e o outbox a marcava PUBLISHED -- documento preso em QUEUED
+// para sempre.
+func publicarConfirmado(
+	ctx context.Context,
+	canal *amqp.Channel,
+	retornos chan amqp.Return,
+	exchange, routingKey string,
+	msg amqp.Publishing,
+) error {
+	// Descarta retornos antigos (de uma publicacao que desistiu por timeout)
+	// para nao atribui-los a esta mensagem.
+	drenarRetornos(retornos)
+
+	confirmacao, err := canal.PublishWithDeferredConfirmWithContext(ctx, exchange, routingKey, true, false, msg)
+	if err != nil {
+		return err
+	}
+
+	esperaCtx := ctx
+	if _, temPrazo := ctx.Deadline(); !temPrazo {
+		var cancel context.CancelFunc
+		esperaCtx, cancel = context.WithTimeout(ctx, publisherConfirmTimeout)
+		defer cancel()
+	}
+
+	ack, err := confirmacao.WaitContext(esperaCtx)
+	if err != nil {
+		return fmt.Errorf("%w: aguardando confirmacao: %w", ErrPublicacaoNaoConfirmada, err)
+	}
+	if !ack {
+		return ErrPublicacaoNaoConfirmada
+	}
+
+	// O RabbitMQ envia o basic.return ANTES do basic.ack da mesma mensagem, e
+	// a biblioteca entrega os dois na ordem em que chegam; com o ack em maos,
+	// um eventual retorno ja esta no canal.
+	for {
+		select {
+		case retorno, ok := <-retornos:
+			if !ok {
+				return nil
+			}
+			if retorno.MessageId == msg.MessageId {
+				return fmt.Errorf("%w (exchange=%q routing_key=%q: %d %s)", ErrMensagemSemRota, retorno.Exchange, retorno.RoutingKey, retorno.ReplyCode, retorno.ReplyText)
+			}
+		default:
+			return nil
+		}
+	}
+}
+
+func drenarRetornos(retornos chan amqp.Return) {
+	for {
+		select {
+		case _, ok := <-retornos:
+			if !ok {
+				return
+			}
+		default:
+			return
+		}
+	}
 }
 
 func (p *RabbitMQPublisher) Close() error {
@@ -465,26 +591,17 @@ func (p *RabbitMQPublisher) reconectar() error {
 		_ = p.conn.Close()
 	}
 
-	conn, err := amqp.Dial(p.cfg.RabbitMQURL)
-	if err != nil {
-		return fmt.Errorf("dial rabbitmq: %w", err)
-	}
-
-	channel, err := conn.Channel()
-	if err != nil {
-		_ = conn.Close()
-		return fmt.Errorf("create rabbitmq channel: %w", err)
-	}
-
 	// A topologia e redeclarada porque o broker pode ter voltado sem estado --
-	// container recriado, volume novo. Declarar de novo e idempotente.
-	if err := declareTopology(channel, p.cfg); err != nil {
-		_ = channel.Close()
-		_ = conn.Close()
+	// container recriado, volume novo. Declarar de novo e idempotente. O modo
+	// de confirmacao tambem e religado: ele e por canal, e um canal novo sem
+	// Confirm voltaria a aceitar publicacao sem ack.
+	conn, channel, retornos, err := abrirConexaoPublicador(p.cfg)
+	if err != nil {
 		return err
 	}
 
 	p.conn = conn
 	p.channel = channel
+	p.retornos = retornos
 	return nil
 }

@@ -102,8 +102,12 @@ func TestRoutesE2ERegisterLoginUploadListAndDownloadContent(t *testing.T) {
 	if got := contentResponse.Header().Get("Content-Type"); !strings.Contains(got, "text/html") {
 		t.Fatalf("expected content type to contain text/html, got %q", got)
 	}
-	if got := contentResponse.Header().Get("Content-Disposition"); !strings.Contains(got, `filename="routes-e2e.html"`) {
-		t.Fatalf("expected content disposition with filename, got %q", got)
+	// Compara o valor interpretado, e nao a string: mime.FormatMediaType so
+	// poe aspas quando o nome exige (RFC 6266 aceita os dois), e a comparacao
+	// literal com aspas quebrava sem mudar o comportamento.
+	disposition, dispositionParams, err := mime.ParseMediaType(contentResponse.Header().Get("Content-Disposition"))
+	if err != nil || disposition != "attachment" || dispositionParams["filename"] != "routes-e2e.html" {
+		t.Fatalf("expected attachment with filename routes-e2e.html, got %q (err=%v)", contentResponse.Header().Get("Content-Disposition"), err)
 	}
 	if contentResponse.Body.String() != string(uploadedBody) {
 		t.Fatalf("expected downloaded body %q, got %q", string(uploadedBody), contentResponse.Body.String())

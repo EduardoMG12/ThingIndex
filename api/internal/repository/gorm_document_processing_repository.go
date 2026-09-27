@@ -9,6 +9,7 @@ import (
 	"thing-index/internal/models"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type gormDocumentProcessingRepository struct {
@@ -89,6 +90,95 @@ func (r *gormDocumentProcessingRepository) ReapStuckProcessingDocuments(ctx cont
 	}
 
 	return result.RowsAffected, nil
+}
+
+// RequeueStuckQueuedDocuments reenfileira documentos presos em QUEUED cuja
+// mensagem se perdeu DEPOIS do outbox.
+//
+// O outbox garante que o evento chega ao broker; publisher confirms garantem
+// que o broker o persistiu. Ainda assim a mensagem pode sumir depois disso: fila
+// apagada e recriada, purge manual, volume do RabbitMQ perdido. Nesse caso o
+// evento esta PUBLISHED, o documento segue QUEUED e nada no sistema volta a
+// olhar para ele.
+//
+// Criterio (todos juntos):
+//   - documento em QUEUED, nao excluido, sem mudanca desde antes de olderThan;
+//   - o evento MAIS RECENTE do documento no outbox esta PUBLISHED, com
+//     published_at anterior a olderThan. Se o ultimo evento ainda esta PENDING,
+//     IN_FLIGHT ou FAILED, o despachante continua responsavel por ele e nao ha
+//     o que reconciliar -- criar outro seria duplicar.
+//
+// Para cada um, na mesma transacao: um evento PENDING novo (com requested_at
+// novo, entao o consumidor nao o confunde com reentrega) e updated_at do
+// documento avancado, o que impede o proximo ciclo de reenfileira-lo de novo
+// antes do novo evento ter a chance de ser processado. FOR UPDATE SKIP LOCKED
+// evita que duas replicas do indexer reenfileirem o mesmo documento.
+func (r *gormDocumentProcessingRepository) RequeueStuckQueuedDocuments(ctx context.Context, olderThan time.Time) (int64, error) {
+	cutoff := olderThan.UTC()
+	var requeued int64
+
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var documents []models.Document
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
+			Where("documents.status = ? AND documents.updated_at < ?", domain.DocumentStatusQueued, cutoff).
+			Where(`EXISTS (
+				SELECT 1 FROM outbox_events latest
+				WHERE latest.aggregate_type = ? AND latest.aggregate_id = documents.id
+				  AND latest.id = (
+					SELECT MAX(e.id) FROM outbox_events e
+					WHERE e.aggregate_type = ? AND e.aggregate_id = documents.id
+				  )
+				  AND latest.status = ?
+				  AND latest.published_at IS NOT NULL AND latest.published_at < ?
+			)`, domain.OutboxAggregateDocument, domain.OutboxAggregateDocument, domain.OutboxEventStatusPublished, cutoff).
+			Order("documents.id ASC").
+			Find(&documents).Error; err != nil {
+			return err
+		}
+		if len(documents) == 0 {
+			return nil
+		}
+
+		now := time.Now().UTC()
+		ids := make([]uint, 0, len(documents))
+		events := make([]models.OutboxEvent, 0, len(documents))
+		for _, document := range documents {
+			ids = append(ids, document.ID)
+			events = append(events, models.OutboxEvent{
+				AggregateType: domain.OutboxAggregateDocument,
+				AggregateID:   document.ID,
+				EventType:     domain.OutboxEventDocumentIndexRequested,
+				Status:        domain.OutboxEventStatusPending,
+				Payload: map[string]any{
+					"document_id":  document.ID,
+					"user_id":      document.UserID,
+					"requested_at": now,
+				},
+				AvailableAt: now,
+			})
+		}
+
+		if err := tx.Create(&events).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Model(&models.Document{}).
+			Where("id IN ?", ids).
+			Updates(map[string]any{
+				"status_detail": "Documento reenfileirado automaticamente: a solicitacao anterior de indexacao nao foi processada.",
+				"updated_at":    now,
+			}).Error; err != nil {
+			return err
+		}
+
+		requeued = int64(len(documents))
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return requeued, nil
 }
 
 func (r *gormDocumentProcessingRepository) CreateProcessingAttempt(ctx context.Context, attempt *models.DocumentProcessingAttempt) error {
