@@ -57,3 +57,29 @@ it("fonte cuja frase quebra na virada mostra as duas paginas", () => {
     render(<SourceReference source={{ id: "1:186", docName: "PPC", page: 186, snippet: "x", continuesOnPage: 187 }} />, { wrapper: createTestWrapper("pt-BR") });
     expect(screen.getByTestId("fonte")).toHaveTextContent("186–187");
 });
+
+describe("SourceReference legivel em painel estreito", () => {
+    const nomeLongo = "Normas Complementares de Estagio Supervisionado do Curso de Sistemas de Informacao 2026.pdf";
+
+    it("o nome do documento fica numa linha com reticencias e o nome completo acessivel no title", () => {
+        render(<SourceReference source={{ id: "1:4", docName: nomeLongo, page: 4, snippet: "x", continuesOnPage: 5 }} />, {
+            wrapper: createTestWrapper("pt-BR"),
+        });
+
+        const nome = screen.getByText(nomeLongo);
+        expect(nome).toHaveAttribute("title", nomeLongo);
+        expect(nome).toHaveClass("truncate");
+        expect(nome.closest("div")).toHaveClass("min-w-0");
+    });
+
+    it("a pagina com continuacao vira um unico texto que nao quebra", () => {
+        render(<SourceReference source={{ id: "1:4", docName: nomeLongo, page: 4, snippet: "x", continuesOnPage: 5 }} />, {
+            wrapper: createTestWrapper("pt-BR"),
+        });
+
+        // O locale vem da rota (mock global em /en), entao o rotulo e "Page".
+        const pagina = screen.getByText("Page 4–5");
+        expect(pagina.childNodes).toHaveLength(1);
+        expect(pagina).toHaveClass("whitespace-nowrap");
+    });
+});

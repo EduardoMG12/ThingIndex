@@ -163,7 +163,10 @@ export function ChatMessageCard({
                                 </button>
                             </div>
                         ) : null}
-                        <div className="grid gap-2 sm:grid-cols-2">
+                        {/* Colunas pela largura do conteiner (o painel do workspace tem ~500px
+                            mesmo em tela grande): cada cartao precisa de 16rem para o nome
+                            do documento e a pagina ficarem legiveis; abaixo disso, 1 coluna. */}
+                        <div className="grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-2">
                             {fontes.map((source, indice) => (
                                 <SourceReference
                                     key={source.id}
