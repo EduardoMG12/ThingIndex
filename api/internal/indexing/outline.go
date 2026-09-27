@@ -685,32 +685,6 @@ func clampSummary(value string, maxLen int) string {
 	return strings.TrimSpace(truncated)
 }
 
-func outlineCoverageStats(pages []models.DocumentPage, nodes []models.DocumentOutlineNode) (int, int, float64) {
-	totalPages := len(pages)
-	if totalPages == 0 {
-		return 0, 0, 0
-	}
-
-	coveredPages := make(map[int]struct{}, totalPages)
-	for _, node := range nodes {
-		if node.StartPage == nil || node.EndPage == nil {
-			continue
-		}
-
-		start := *node.StartPage
-		end := *node.EndPage
-		if end < start {
-			start, end = end, start
-		}
-		for pageNumber := start; pageNumber <= end; pageNumber++ {
-			coveredPages[pageNumber] = struct{}{}
-		}
-	}
-
-	coveredCount := len(coveredPages)
-	return totalPages, coveredCount, float64(coveredCount) / float64(totalPages)
-}
-
 func outlineMaxDepth(nodes []models.DocumentOutlineNode) int {
 	depth := 0
 	for _, node := range nodes {

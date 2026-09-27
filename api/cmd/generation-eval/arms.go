@@ -248,7 +248,6 @@ type fullDocumentArm struct {
 	docs     []evalcorpus.GabaritoDocument
 	scope    string // document | collection
 	pages    map[string][]string
-	language string
 }
 
 func newFullDocumentArm(pdfDir, scope, model string, g *evalcorpus.Gabarito) (*fullDocumentArm, error) {

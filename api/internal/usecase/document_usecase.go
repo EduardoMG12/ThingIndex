@@ -2557,15 +2557,6 @@ func estimateDepthQualityBonus(maxDepth int) float64 {
 	}
 }
 
-func scoreCollectionNode(node models.DocumentOutlineNode, queryTerms []string) int {
-	score := retrievalScore(outlineNodeSearchText(node), queryTerms) * 3
-	score += metadataIntValue(node.Metadata, "confidence_score") / 25
-	if score > 0 && node.Level > 1 {
-		score++
-	}
-	return score
-}
-
 func scoreCollectionPage(page models.DocumentPage, queryTerms []string) int {
 	return retrievalScore(pageSearchText(page), queryTerms) * 2
 }

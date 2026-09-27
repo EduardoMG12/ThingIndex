@@ -19,8 +19,6 @@ import (
 )
 
 const indexingBenchmarkCorpusPath = "internal/usecase/testdata/indexing-benchmark/corpus.json"
-const indexingBenchmarkHistoryPath = "internal/usecase/testdata/indexing-benchmark/history.json"
-const indexingBenchmarkReferencePath = "internal/usecase/testdata/indexing-benchmark/reference-workspace.json"
 const indexingBenchmarkCorpusFixtureDir = "testdata/indexing-benchmark"
 
 //go:embed testdata/indexing-benchmark/*
