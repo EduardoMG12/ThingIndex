@@ -45,7 +45,14 @@ const (
 	chatStreamEventDone    = "done"
 )
 
+// chatCollectionLookup e o recorte do repositorio de colecoes que o chat usa:
+// so a checagem de posse, filtrada por user_id.
+type chatCollectionLookup interface {
+	GetCollectionByID(ctx context.Context, id uint, userID uint) (*models.Collection, error)
+}
+
 type chatUseCase struct {
+	collectionRepo        chatCollectionLookup
 	collectionContextRepo domain.CollectionContextRepository
 	conversationRepo      domain.ChatConversationRepository
 	llmResolver           domain.UserLLMResolver
@@ -53,12 +60,14 @@ type chatUseCase struct {
 }
 
 func NewChatUseCase(
+	collectionRepo chatCollectionLookup,
 	collectionContextRepo domain.CollectionContextRepository,
 	conversationRepo domain.ChatConversationRepository,
 	llmResolver domain.UserLLMResolver,
 	expansionCache domain.EnrichmentCache,
 ) domain.ChatUseCase {
 	return &chatUseCase{
+		collectionRepo:        collectionRepo,
 		collectionContextRepo: collectionContextRepo,
 		conversationRepo:      conversationRepo,
 		llmResolver:           llmResolver,
@@ -71,8 +80,11 @@ func (u *chatUseCase) CreateConversation(ctx context.Context, userID uint, colle
 		return nil, domain.ErrCollectionRequired
 	}
 
-	if _, err := u.collectionContextRepo.GetCollectionContext(ctx, userID, collectionID); err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+	// So a posse importa aqui. Antes isto materializava a colecao inteira
+	// (GetCollectionContext: 9 consultas e ate dezenas de milhares de linhas
+	// com texto integral) e descartava o resultado.
+	if _, err := u.collectionRepo.GetCollectionByID(ctx, collectionID, userID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) || errors.Is(err, domain.ErrCollectionNotFound) {
 			return nil, domain.ErrCollectionNotFound
 		}
 		return nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)

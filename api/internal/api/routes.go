@@ -95,7 +95,7 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 		cfg.MaxUploadSizeBytes,
 	)
 	docHandler := handlers.NewDocumentHandler(docUseCase, cfg.UploadRequestLimitBytes())
-	chatUseCase := usecase.NewChatUseCase(collectionContextRepo, chatConversationRepo, providerUseCase, repository.NewGormIndexingRepository(db))
+	chatUseCase := usecase.NewChatUseCase(collectionRepo, collectionContextRepo, chatConversationRepo, providerUseCase, repository.NewGormIndexingRepository(db))
 	chatHandler := handlers.NewChatHandler(chatUseCase)
 	// Anotacoes do workspace: marcas coloridas e legenda. Anotacao, nao
 	// recuperacao -- nada aqui entra no caminho de contexto ou de conexoes.
