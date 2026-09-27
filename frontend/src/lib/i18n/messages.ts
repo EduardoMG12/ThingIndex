@@ -9,6 +9,12 @@ type LocaleMessages = Record<AppLocale, TranslationTree>;
 
 export const messages: LocaleMessages = {
     "pt-BR": {
+        notFound: {
+            title: "Página não encontrada",
+            routePrefix: "A rota",
+            routeSuffix: "não existe ou foi movida.",
+            backHome: "Voltar para o início",
+        },
         workspace: {
             chat: {
                 viewInDocument: "Ver no documento",
@@ -606,6 +612,8 @@ export const messages: LocaleMessages = {
             register: {
                 strapline: "configure seu workspace em minutos",
                 name: "Nome",
+                namePlaceholder: "Seu nome",
+                passwordPlaceholder: "Mínimo 8 caracteres",
                 password: "Senha",
                 submit: "Criar conta",
                 hasAccount: "Já tem conta?",
@@ -746,6 +754,8 @@ export const messages: LocaleMessages = {
                 },
                 deleteConversationLabel: "Excluir conversa",
                 renameConversationLabel: "Renomear conversa",
+                cancelRenameConversationLabel: "Cancelar edição do título",
+                saveRenameConversationLabel: "Salvar título",
                 stepContext: "Reconstruindo contexto da collection",
                 stepSources: "Selecionando fontes mais relevantes",
                 stepAnswer: "Gerando resposta com a LLM",
@@ -1405,6 +1415,12 @@ export const messages: LocaleMessages = {
         },
     },
     en: {
+        notFound: {
+            title: "Page not found",
+            routePrefix: "The route",
+            routeSuffix: "does not exist or has been moved.",
+            backHome: "Back to home",
+        },
         workspace: {
             chat: {
                 viewInDocument: "View in document",
@@ -2002,6 +2018,8 @@ export const messages: LocaleMessages = {
             register: {
                 strapline: "configure your workspace in minutes",
                 name: "Name",
+                namePlaceholder: "Your name",
+                passwordPlaceholder: "At least 8 characters",
                 password: "Password",
                 submit: "Create account",
                 hasAccount: "Already have an account?",
@@ -2142,6 +2160,8 @@ export const messages: LocaleMessages = {
                 },
                 deleteConversationLabel: "Delete conversation",
                 renameConversationLabel: "Rename conversation",
+                cancelRenameConversationLabel: "Cancel title editing",
+                saveRenameConversationLabel: "Save title",
                 stepContext: "Rebuilding collection context",
                 stepSources: "Selecting the strongest evidence",
                 stepAnswer: "Generating the answer with the LLM",
@@ -2801,6 +2821,12 @@ export const messages: LocaleMessages = {
         },
     },
     es: {
+        notFound: {
+            title: "Página no encontrada",
+            routePrefix: "La ruta",
+            routeSuffix: "no existe o fue movida.",
+            backHome: "Volver al inicio",
+        },
         workspace: {
             chat: {
                 viewInDocument: "Ver en el documento",
@@ -3398,6 +3424,8 @@ export const messages: LocaleMessages = {
             register: {
                 strapline: "configura tu workspace en minutos",
                 name: "Nombre",
+                namePlaceholder: "Tu nombre",
+                passwordPlaceholder: "Mínimo 8 caracteres",
                 password: "Contraseña",
                 submit: "Crear cuenta",
                 hasAccount: "¿Ya tienes cuenta?",
@@ -3538,6 +3566,8 @@ export const messages: LocaleMessages = {
                 },
                 deleteConversationLabel: "Eliminar conversación",
                 renameConversationLabel: "Renombrar conversación",
+                cancelRenameConversationLabel: "Cancelar edición del título",
+                saveRenameConversationLabel: "Guardar título",
                 stepContext: "Reconstruyendo el contexto de la collection",
                 stepSources: "Seleccionando las fuentes más relevantes",
                 stepAnswer: "Generando la respuesta con la LLM",
