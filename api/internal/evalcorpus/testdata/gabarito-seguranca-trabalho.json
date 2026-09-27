@@ -4,7 +4,10 @@
       "file": "nr-01-versao-2024.pdf",
       "id": "nr-01-2024",
       "pages": 18,
-      "title": "NR 1 - versao de 2024"
+      "title": "NR 1 - versao de 2024",
+      "aliases": [
+        "NR 1 - versao de 2024 (vigencia ate 25/05/2026)"
+      ]
     },
     {
       "file": "nr-01-versao-2025.pdf",
@@ -16,7 +19,10 @@
       "file": "nr-06-epi.pdf",
       "id": "nr-06",
       "pages": 12,
-      "title": "NR 6 - EPI"
+      "title": "NR 6 - EPI",
+      "aliases": [
+        "NR 6 - Equipamentos de Protecao Individual"
+      ]
     },
     {
       "file": "nr-09-agentes.pdf",
@@ -28,7 +34,10 @@
       "file": "nr-18-construcao.pdf",
       "id": "nr-18",
       "pages": 54,
-      "title": "NR 18 - Industria da construcao"
+      "title": "NR 18 - Industria da construcao",
+      "aliases": [
+        "NR 18 - Seguranca na Industria da Construcao"
+      ]
     }
   ],
   "frozen_sha256": "8dfd376387d0064dc8ab9d11911eba15065a25883e7d9fe051caafea239e8de4",

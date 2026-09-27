@@ -16,7 +16,10 @@
       "file": "lei-10520-pregao.pdf",
       "id": "lei-10520",
       "pages": 4,
-      "title": "Lei 10.520, de 17 de julho de 2002 - Pregao"
+      "title": "Lei 10.520, de 17 de julho de 2002 - Pregao",
+      "aliases": [
+        "Lei 10.520/2002 - Pregao"
+      ]
     }
   ],
   "frozen_sha256": "6d1033608edb060e9d7efa7f404aa2083a8c94e610f35424526a9f2f6169b0c7",

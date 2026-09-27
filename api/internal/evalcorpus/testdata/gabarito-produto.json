@@ -16,7 +16,10 @@
       "file": "manual-monitor-philips.pdf",
       "id": "monitor",
       "pages": 28,
-      "title": "Manual do Monitor Philips 241V8"
+      "title": "Manual do Monitor Philips 241V8",
+      "aliases": [
+        "Manual do Usuario - Monitor Philips 241V8"
+      ]
     }
   ],
   "frozen_sha256": "4b5186d6fcb40d6857020f1211e0b8794468ae2ea86d1c0be0fa6e32a7a85b63",
