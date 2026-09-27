@@ -3,29 +3,29 @@
 \begin{longtable}{llccccl}
 \caption{Comparações pareadas: teste de aleatorização exato sobre as consultas, com correção de Holm para 15 comparações. $n$ é o número de consultas em que os dois braços diferem. Tamanho de efeito pelo $\delta$ de Cliff.}
 \label{tab:retrieval-significance-section} \\
-\hline
+\toprule
 Comparação & Métrica & $\Delta$ & $n$ & $p$ & $p$ Holm & $\delta$ de Cliff \\
-\hline
+\midrule
 \endfirsthead
-\hline
+\toprule
 Comparação & Métrica & $\Delta$ & $n$ & $p$ & $p$ Holm & $\delta$ de Cliff \\
-\hline
+\midrule
 \endhead
-A, contagem vs B, BM25 & P@1 & -0{,}188 & 3 & 0{,}250 & 1{,}000 & -0{,}188 (pequeno) \\
-A, contagem vs B, BM25 & P@3 & -0{,}062 & 3 & 0{,}250 & 1{,}000 & -0{,}156 (pequeno) \\
-A, contagem vs B, BM25 & R@5 & -0{,}094 & 2 & 0{,}500 & 1{,}000 & -0{,}125 (desprezível) \\
-A, contagem vs B, BM25 & MRR & -0{,}130 & 6 & 0{,}156 & 1{,}000 & -0{,}191 (pequeno) \\
-A, contagem vs B, BM25 & nDCG@10 & -0{,}123 & 6 & 0{,}062 & 0{,}938 & -0{,}172 (pequeno) \\
+A, contagem vs B, BM25 & P@1 & $-$0{,}188 & 3 & 0{,}250 & 1{,}000 & $-$0{,}188 (pequeno) \\
+A, contagem vs B, BM25 & P@3 & $-$0{,}062 & 3 & 0{,}250 & 1{,}000 & $-$0{,}156 (pequeno) \\
+A, contagem vs B, BM25 & R@5 & $-$0{,}094 & 2 & 0{,}500 & 1{,}000 & $-$0{,}125 (desprezível) \\
+A, contagem vs B, BM25 & MRR & $-$0{,}130 & 6 & 0{,}156 & 1{,}000 & $-$0{,}191 (pequeno) \\
+A, contagem vs B, BM25 & nDCG@10 & $-$0{,}123 & 6 & 0{,}062 & 0{,}938 & $-$0{,}172 (pequeno) \\
 A, contagem vs D, RRF(A,B) & P@1 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
-A, contagem vs D, RRF(A,B) & P@3 & -0{,}062 & 3 & 0{,}250 & 1{,}000 & -0{,}156 (pequeno) \\
-A, contagem vs D, RRF(A,B) & R@5 & -0{,}094 & 2 & 0{,}500 & 1{,}000 & -0{,}125 (desprezível) \\
-A, contagem vs D, RRF(A,B) & MRR & -0{,}019 & 5 & 0{,}312 & 1{,}000 & -0{,}031 (desprezível) \\
-A, contagem vs D, RRF(A,B) & nDCG@10 & -0{,}023 & 4 & 0{,}250 & 1{,}000 & -0{,}027 (desprezível) \\
+A, contagem vs D, RRF(A,B) & P@3 & $-$0{,}062 & 3 & 0{,}250 & 1{,}000 & $-$0{,}156 (pequeno) \\
+A, contagem vs D, RRF(A,B) & R@5 & $-$0{,}094 & 2 & 0{,}500 & 1{,}000 & $-$0{,}125 (desprezível) \\
+A, contagem vs D, RRF(A,B) & MRR & $-$0{,}019 & 5 & 0{,}312 & 1{,}000 & $-$0{,}031 (desprezível) \\
+A, contagem vs D, RRF(A,B) & nDCG@10 & $-$0{,}023 & 4 & 0{,}250 & 1{,}000 & $-$0{,}027 (desprezível) \\
 B, BM25 vs D, RRF(A,B) & P@1 & +0{,}188 & 3 & 0{,}250 & 1{,}000 & +0{,}188 (pequeno) \\
 B, BM25 vs D, RRF(A,B) & P@3 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
 B, BM25 vs D, RRF(A,B) & R@5 & +0{,}000 & 0 & 1{,}000 & 1{,}000 & +0{,}000 (desprezível) \\
 B, BM25 vs D, RRF(A,B) & MRR & +0{,}111 & 5 & 0{,}062 & 0{,}938 & +0{,}176 (pequeno) \\
 B, BM25 vs D, RRF(A,B) & nDCG@10 & +0{,}099 & 5 & 0{,}062 & 0{,}938 & +0{,}156 (pequeno) \\
-\hline
+\bottomrule
 \end{longtable}
 }

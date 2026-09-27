@@ -1,24 +1,24 @@
 % GERADO POR scripts/ann-pgvector.py a partir de docs/article/results/ann-pgvector.csv -- nao edite a mao.
 \begin{table}[htb]
 \centering
-\caption{Índices aproximados do pgvector 0.8.6 sobre corpora sintéticos (768 dimensões, 20 consultas). Revocação@10 frente à busca exata e número de consultas cujo top-10 mudou ao reconstruir o índice 5 vezes sobre os mesmos dados e ao inserir os mesmos vetores em 5 ordens.}
+\caption{Índices aproximados do pgvector 0.8.6 sobre \emph{corpora} sintéticos (768 dimensões, 20 consultas). Revocação dos 10 primeiros frente à busca exata e número de consultas cujos 10 primeiros resultados mudaram ao reconstruir o índice 5 vezes sobre os mesmos dados e ao inserir os mesmos vetores em 5 ordens.}
 \label{tab:ann-pgvector}
 \small
 \begin{tabular}{lrrrr}
-\hline
+\toprule
 Índice & $N$ & Revocação@10 & Reconstrução & Ordem \\
-\hline
+\midrule
 IVFFlat, $\sqrt{N}$ listas, 1 sonda & 1.000 & 47{,}7\% & 20/20 & 20/20 \\
 IVFFlat, recomendação do pgvector & 1.000 & 100{,}0\% & 0/20 & 0/20 \\
 HNSW, padrões do pgvector & 1.000 & 100{,}0\% & 0/20 & 0/20 \\
-\hline
+\midrule
 IVFFlat, $\sqrt{N}$ listas, 1 sonda & 5.000 & 36{,}5\% & 20/20 & 20/20 \\
 IVFFlat, recomendação do pgvector & 5.000 & 100{,}0\% & 0/20 & 0/20 \\
 HNSW, padrões do pgvector & 5.000 & 99{,}0\% & 2/20 & 4/20 \\
-\hline
+\midrule
 IVFFlat, $\sqrt{N}$ listas, 1 sonda & 20.000 & 25{,}5\% & 20/20 & 20/20 \\
 IVFFlat, recomendação do pgvector & 20.000 & 100{,}0\% & 0/20 & 0/20 \\
 HNSW, padrões do pgvector & 20.000 & 91{,}0\% & 6/20 & 17/20 \\
-\hline
+\bottomrule
 \end{tabular}
 \end{table}
