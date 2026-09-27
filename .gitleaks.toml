@@ -1,0 +1,31 @@
+# Configuracao do gitleaks para o CI (job "segredos").
+#
+# Estende as regras padrao e so libera o que foi conferido um a um em
+# 2026-09-26, quando o historico inteiro (677 commits) foi varrido:
+#
+#   - testes que usam chave FALSA de proposito: 32 bytes de exemplo como
+#     MASTER_ENCRYPTION_KEY, e mensagens de erro de provedor com chave
+#     inventada, que existem para provar que o sistema nao ecoa credencial;
+#   - o default de desenvolvimento em config.go, que tem "not-for-production"
+#     no nome e e recusado pela validacao quando APP_ENV=production;
+#   - um docker-compose antigo com a senha de um Neo4j local, servico que
+#     saiu do projeto quando o grafo virou trilha comparativa.
+#
+# Qualquer segredo novo fora disso faz o CI falhar.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "fixtures de teste e defaults de desenvolvimento, conferidos"
+paths = [
+  '''_test\.go$''',
+  '''^\.env\.example$''',
+]
+regexes = [
+  '''not-for-production''',
+]
+commits = [
+  "a087d1d4f2f23b7a77682e61939024ea0508cdbf",
+  "e63e7ea12b4601f0594f00248d63801527c4f055",
+]
