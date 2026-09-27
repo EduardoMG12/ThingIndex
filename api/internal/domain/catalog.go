@@ -272,9 +272,6 @@ type CatalogDocumentRepository interface {
 
 type StructuredDataRepository interface {
 	ReplaceDocumentPages(ctx context.Context, documentID uint, pages []models.DocumentPage) error
-	ReplaceParagraphNodes(ctx context.Context, documentID uint, nodes []models.ParagraphNode) error
-	ReplaceTableSections(ctx context.Context, documentID uint, sections []models.TableSection) error
-	ReplaceMetadataPairs(ctx context.Context, documentID uint, pairs []models.MetadataPair) error
 	ReplaceDocumentChunks(ctx context.Context, documentID uint, chunks []models.DocumentChunk) error
 	ReplaceOutlineNodes(ctx context.Context, documentID uint, nodes []models.DocumentOutlineNode) error
 	GetDocumentPagesByDocumentIDs(ctx context.Context, documentIDs []uint) ([]models.DocumentPage, error)
@@ -313,7 +310,4 @@ type DocumentCatalogUseCase interface {
 	// GetNodeConnections devolve conexoes DERIVADAS entre um no e nos de outros
 	// documentos da colecao. Nada e persistido; ver NodeConnection.
 	GetNodeConnections(ctx context.Context, userID, collectionID uint, nodeID string, minScore int) ([]NodeConnection, error)
-	StoreParagraphNodes(ctx context.Context, userID, documentID uint, nodes []models.ParagraphNode) ([]models.ParagraphNode, error)
-	StoreTableSections(ctx context.Context, userID, documentID uint, sections []models.TableSection) ([]models.TableSection, error)
-	StoreMetadataPairs(ctx context.Context, userID, documentID uint, pairs []models.MetadataPair) ([]models.MetadataPair, error)
 }

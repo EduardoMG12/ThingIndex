@@ -1132,58 +1132,6 @@ func (u *documentCatalogUseCase) GetNodeConnections(
 	return BuildNodeConnections(*origin, collectionContext.OutlineNodes, minScore), nil
 }
 
-func (u *documentCatalogUseCase) StoreParagraphNodes(ctx context.Context, userID, documentID uint, nodes []models.ParagraphNode) ([]models.ParagraphNode, error) {
-	if _, err := u.GetDocument(ctx, userID, documentID); err != nil {
-		return nil, err
-	}
-
-	for i := range nodes {
-		nodes[i].DocumentID = documentID
-		nodes[i].Metadata = cloneMetadata(nodes[i].Metadata)
-	}
-
-	if err := u.structuredDataRepo.ReplaceParagraphNodes(ctx, documentID, nodes); err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
-	}
-
-	return nodes, nil
-}
-
-func (u *documentCatalogUseCase) StoreTableSections(ctx context.Context, userID, documentID uint, sections []models.TableSection) ([]models.TableSection, error) {
-	if _, err := u.GetDocument(ctx, userID, documentID); err != nil {
-		return nil, err
-	}
-
-	for i := range sections {
-		sections[i].DocumentID = documentID
-		sections[i].Headers = append([]string(nil), sections[i].Headers...)
-		sections[i].Rows = append([][]string(nil), sections[i].Rows...)
-		sections[i].Metadata = cloneMetadata(sections[i].Metadata)
-	}
-
-	if err := u.structuredDataRepo.ReplaceTableSections(ctx, documentID, sections); err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
-	}
-
-	return sections, nil
-}
-
-func (u *documentCatalogUseCase) StoreMetadataPairs(ctx context.Context, userID, documentID uint, pairs []models.MetadataPair) ([]models.MetadataPair, error) {
-	if _, err := u.GetDocument(ctx, userID, documentID); err != nil {
-		return nil, err
-	}
-
-	for i := range pairs {
-		pairs[i].DocumentID = documentID
-	}
-
-	if err := u.structuredDataRepo.ReplaceMetadataPairs(ctx, documentID, pairs); err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrStructuredDataStore, err)
-	}
-
-	return pairs, nil
-}
-
 func buildTreeRetrieval(query string, nodes []models.DocumentOutlineNode, pages []models.DocumentPage, chunks []models.DocumentChunk) *domain.TreeRetrievalResult {
 	queryTerms := tokenizeRetrievalText(query)
 	if len(queryTerms) == 0 {
