@@ -1,0 +1,61 @@
+question_id,stratum,origin,arm,scope,repeat,model,correct,cited_pages,provenance_ok,retrieval_hit,prompt_tokens,completion_tokens,usage_reported,latency_ms,cost_usd,truncated,error,answer
+pr1L,aberta,pdf,T,,1,gemma4:31b,true,cdc:6;cdc:7;cdc:5;garantia:20;garantia:21;cdc:10;cdc:11;garantia:1;garantia:2;cdc:12;cdc:13,true,true,6731,69,true,1204,,false,,"Para produtos duráveis, o prazo para reclamar de vícios aparentes ou de fácil constatação é de **noventa dias**, conforme estabelecido no Art. 26, inciso II, da Lei 8.078/1990 - Código de Defesa do Consumidor (página 6)."
+pr1P,aberta,pdf,T,,1,gemma4:31b,true,Manual do Usuario - Monitor Philips 241V8:11;Manual do Usuario - Monitor Philips 241V8:12;cdc:6;cdc:7,true,true,2529,115,true,1265,,false,,"Com base no Código de Defesa do Consumidor (Lei 8.078/1990, página 6), o prazo para reclamar de vícios aparentes ou de fácil constatação depende da natureza do produto:
+
+*   Para **produtos duráveis** (como é o caso de uma geladeira), o prazo é de **noventa dias** (Art. 26, II).
+
+A contagem desse prazo começa a partir da entrega efetiva do produto (Art. 26, § 1°)."
+pr2L,premissa-falsa,pdf,T,,1,gemma4:31b,true,Manual do Usuario - Monitor Philips 241V8:22;garantia:16;garantia:17;garantia:20;garantia:21;garantia:19,false,false,3183,103,true,1127,,false,,"Com base nos documentos fornecidos, não há informações sobre a possibilidade de acionar 3 anos de garantia para o ar-condicionado.
+
+O **Termo de Garantia - Ar-condicionado Samsung** (páginas 19 e 20) especifica que a garantia total oferecida para produtos adquiridos em revendas autorizadas no Brasil é de **2 (dois) anos**, composta por 90 dias de garantia legal acrescidos de 21 meses de garantia adicional."
+pr2P,premissa-falsa,pdf,T,,1,gemma4:31b,true,garantia:20;garantia:21;garantia:4;garantia:5;Manual do Usuario - Monitor Philips 241V8:25;garantia:2;garantia:1;garantia:10;garantia:11,true,true,4697,458,true,2006,,false,,"Com base nos documentos fornecidos, a resposta depende de qual termo de garantia se aplica ao seu produto, pois existem informações conflitantes nos documentos do Ar-condicionado Samsung:
+
+*   **Se o seu produto estiver sob o termo de 2 anos:** De acordo com a página 20 do ""Termo de Garantia - Ar-condicionado Samsung"", a garantia total é de **2 anos** (90 dias de garantia legal acrescidos de 21 meses de garantia adicional), contados a partir da data de aquisição ou entrega. Nesse caso, se o aparelho tiver exatamente 2 anos, você estaria no limite do prazo.
+*   **Se o seu produto estiver sob o termo de 1 ano:** De acordo com a página 1 do ""Termo de Garantia - Ar-condicionado Samsung"", a garantia total é de **1 ano** (90 dias de garantia legal acrescidos de 9 meses de garantia adicional). Nesse cenário, um aparelho com 2 anos de uso já estaria fora do prazo de cobertura.
+
+**Observações importantes para o conserto gratuito:**
+Mesmo dentro do prazo, a Samsung não cobrirá o custo do reparo se o problema for causado por itens excluídos, tais como:
+*   Uso irregular, limpeza em desacordo com o Manual do Usuário ou derramamento de líquidos (pág. 20 e pág. 1).
+*   Instalação inadequada realizada por prestador não autorizado pela Samsung (pág. 20 e pág. 1).
+*   Peças que se desgastam naturalmente com o uso, como filtros e lâmpadas (pág. 2).
+*   Danos causados por agentes naturais (enchente, descarga elétrica, etc.) ou falta de limpeza (pág. 2).
+
+Para verificar a execução do reparo e a rede autorizada, o documento sugere acessar o site `https://www.samsung.com/br/business/support/` ou ligar para a central de atendimento no número **3003-0000** (pág. 2 e pág. 20)."
+pr3L,confirmacao,pdf,T,,1,gemma4:31b,true,garantia:20;garantia:21;garantia:1;garantia:2;Manual do Usuario - Monitor Philips 241V8:2;Manual do Usuario - Monitor Philips 241V8:3;Manual do Usuario - Monitor Philips 241V8:4;Manual do Usuario - Monitor Philips 241V8:5,true,true,4103,54,true,928,,false,,"Não, a garantia não cobre a instalação do equipamento ou de acessórios, nem danos decorrentes de instalação inadequada realizada por prestador de serviço não autorizado pela SAMSUNG (Termo de Garantia - Ar-condicionado Samsung, páginas 1 e 20)."
+pr3P,confirmacao,pdf,T,,1,gemma4:31b,true,cdc:3;cdc:4;cdc:5;Manual do Usuario - Monitor Philips 241V8:10;garantia:6;garantia:7;garantia:8;garantia:9,false,false,4906,364,true,2904,,false,,"Com base nos documentos fornecidos, a resposta varia conforme o produto e a situação:
+
+*   **Ar-condicionado Samsung:** O termo de garantia especifica que a instalação deve ser realizada por uma **empresa de serviços ou técnico qualificado**, alertando que a não observância disso pode resultar em ""problemas com o produto ou ferimentos"" (Termo de Garantia - Ar-condicionado Samsung, página 6). Além disso, o documento orienta que, para reinstalar o produto, o consumidor deve entrar em contato com o centro de serviços, pois a reinstalação inadequada pode causar ""problemas com o produto, vazamento de água, choque elétrico ou incêndio"" (Termo de Garantia - Ar-condicionado Samsung, página 7).
+*   **Monitor Philips 241V8:** O manual instrui o usuário a ""contate sempre o fabricante para obter informações sobre a instalação na parede"" (Manual do Usuario - Monitor Philips 241V8, página 10).
+*   **Código de Defesa do Consumidor (Lei 8.078/1990):** A lei estabelece que o fabricante não será responsabilizado quando provar a **""culpa exclusiva do consumidor ou de terceiro""** (Lei 8.078/1990 - Codigo de Defesa do Consumidor, página 4, Art. 12, § 3º, III).
+
+Portanto, se o dano for causado por quem instalou o aparelho (um terceiro ou o próprio consumidor) em desacordo com as instruções do fabricante, o fabricante pode alegar culpa exclusiva de terceiro para não assumir a responsabilidade pelo reparo gratuito."
+pr4L,aberta,pdf,T,,1,gemma4:31b,true,Manual do Usuario - Monitor Philips 241V8:17;Manual do Usuario - Monitor Philips 241V8:25;Manual do Usuario - Monitor Philips 241V8:27;Manual do Usuario - Monitor Philips 241V8:28;Manual do Usuario - Monitor Philips 241V8:2;Manual do Usuario - Monitor Philips 241V8:3;Manual do Usuario - Monitor Philips 241V8:24;Manual do Usuario - Monitor Philips 241V8:9;Manual do Usuario - Monitor Philips 241V8:10,false,false,3947,105,true,1017,,false,,"A resolução recomendada para o monitor é **1920 x 1080** (Manual do Usuario - Monitor Philips 241V8, páginas 17, 25 e 27). O manual ressalta que o monitor funciona melhor em sua resolução nativa e que esta deve ser utilizada para obter a melhor qualidade de visualização e nitidez de texto (Manual do Usuario - Monitor Philips 241V8, páginas 17 e 27)."
+pr4P,aberta,pdf,T,,1,gemma4:31b,true,Manual do Usuario - Monitor Philips 241V8:24;Manual do Usuario - Monitor Philips 241V8:25;Manual do Usuario - Monitor Philips 241V8:19;Manual do Usuario - Monitor Philips 241V8:20;Manual do Usuario - Monitor Philips 241V8:12;Manual do Usuario - Monitor Philips 241V8:10;Manual do Usuario - Monitor Philips 241V8:27;Manual do Usuario - Monitor Philips 241V8:28,false,false,3397,240,true,1166,,false,,"Com base nos documentos fornecidos, não há a menção de ""pontos"" específicos para tornar a tela mais nítida. No entanto, o manual fornece as seguintes orientações para a nitidez e qualidade da imagem:
+
+*   **Resolução:** Para que o texto seja exibido de forma nítida e para a melhor visualização, deve-se utilizar a resolução nativa de **1920 x 1080** (Manual do Usuario - Monitor Philips 241V8, páginas 24 e 27).
+*   **Ajustes de Imagem:** Caso a imagem pareça desfocada, pouco nítida ou escura, recomenda-se ajustar o **contraste e o brilho** da tela (Manual do Usuario - Monitor Philips 241V8, página 24).
+*   **Tecnologia SmartContrast:** Esta tecnologia analisa o conteúdo em tempo real e ajusta as cores e a intensidade da luz de fundo para proporcionar imagens mais claras, nítidas e brilhantes (Manual do Usuario - Monitor Philips 241V8, página 12)."
+pr5L,existencia,pdf,T,,1,gemma4:31b,true,garantia:20;garantia:21;garantia:1;garantia:2;Manual do Usuario - Monitor Philips 241V8:22;Manual do Usuario - Monitor Philips 241V8:3;Manual do Usuario - Monitor Philips 241V8:4;cdc:17;cdc:18,true,true,5110,444,true,1812,,false,,"Sim, o termo de garantia do Ar-condicionado Samsung lista os itens excluídos da cobertura na seção ""III. ITENS EXCLUÍDOS DESTA GARANTIA (LEGAL E ADICIONAL)"" (Termo de Garantia - Ar-condicionado Samsung, páginas 1, 2 e 20).
+
+Os itens excluídos incluem, entre outros:
+*   **Uso irregular:** Danos como superfícies plásticas arranhadas, trincadas ou quebradas, limpeza em desacordo com o Manual do Usuário e derramamento de líquidos ou alimentos (pág. 1 e 20).
+*   **Intervenções não autorizadas:** Defeitos decorrentes de testes, instalação, alteração, modificação ou reparos realizados por oficinas que não sejam Autorizadas SAMSUNG (pág. 1 e 20).
+*   **Estado do produto:** Quebras ou danos não constatados no ato da aquisição/recebimento, ou produtos com número de série removido, adulterado ou ilegível (pág. 1 e 20).
+*   **Componentes:** Uso de componentes não originais ou incompatíveis (pág. 1 e 20).
+*   **Agentes externos e ambiente:** Danos causados por agentes naturais (enchente, maresia, descarga elétrica), exposição excessiva a vapor, calor ou umidade, e problemas na rede elétrica local (pág. 2).
+*   **Desgaste e manutenção:** Peças de desgaste natural (filtros, lâmpadas, botões), despesas de limpeza/manutenção, e falhas decorrentes de falta de limpeza ou excesso de resíduos (pág. 2).
+*   **Instalação e Fluidos:** Falhas na instalação (incorreta ou inapropriada), uso de fluidos refrigerantes e óleos em desacordo com o manual, ou erro de projeto (pág. 2).
+*   **Acesso:** Quando não for possível o acesso ao produto para análise (pág. 2)."
+pr5P,existencia,pdf,T,,1,gemma4:31b,true,cdc:10;cdc:11;Manual do Usuario - Monitor Philips 241V8:5;cdc:9;garantia:20;garantia:21;garantia:18;garantia:19;garantia:9;garantia:10,true,true,5512,320,true,1629,,false,,"Sim, existem informações sobre o que não é coberto pela garantia (e, portanto, o que não é consertado sob esses termos) em diferentes documentos:
+
+*   **Ar-condicionado Samsung:** O Termo de Garantia (página 20) lista diversos itens excluídos, incluindo:
+    *   Danos resultantes de **uso irregular**, como superfícies plásticas arranhadas, trincadas ou quebradas, limpeza em desacordo com o Manual do Usuário e derramamento de líquidos ou alimentos.
+    *   Defeitos decorrentes de **testes, instalação, alteração ou modificação** do produto, bem como reparos feitos por oficinas que não sejam Autorizadas SAMSUNG.
+    *   Quebras ou danos não constatados no ato da aquisição ou recebimento.
+    *   Produtos com **número de série removido**, adulterado ou ilegível.
+    *   Danos causados por componentes **não compatíveis ou não originais**.
+    *   A garantia também não cobre a instalação do equipamento ou acessórios, nem danos por instalação inadequada feita por prestador não autorizado (página 20).
+
+*   **Monitor Philips 241V8:** O Manual do Usuário (página 5) afirma que problemas causados pelo aparecimento de **imagens residuais** (decorrentes da não ativação de proteção de tela ou falta de atualização periódica da tela) não podem ser reparados e **não estão cobertos pela garantia**."
+pr6,negativa,pdf,T,,1,gemma4:31b,true,,,,342,17,true,563,,false,,"Com base nos documentos fornecidos, não há informações sobre o preço do monitor."
+pr7,negativa,pdf,T,,1,gemma4:31b,false,,,,1107,76,true,832,,false,,"As informações fornecidas nos documentos não contêm endereços de centros de assistência técnica. O ""Manual do Usuario - Monitor Philips 241V8"" (página 3) orienta apenas a contatar o centro de assistência local ou consultar as informações de contato de Serviços listadas no Manual de Regulagem e Serviços caso seja necessário obter um cabo de alimentação."

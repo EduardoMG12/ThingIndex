@@ -94,7 +94,7 @@ O foco declarado do runtime atual e:
 
 Os artefatos versionados que registram esse posicionamento agora sao:
 
-- `docs/article/article-overleaf.md`
+- `docs/article/artigo.tex`
 - `docs/estado-do-projeto.md`
 - `frontend/architecture/relational-context-architecture.md`
 - `api/internal/usecase/testdata/indexing-benchmark/corpus.json`
@@ -634,9 +634,6 @@ Erros de validacao retornam `errors` com mensagens sanitizadas e localizadas.
 | `GET` | `/api/v1/documents/collections/:id` | Busca collection |
 | `GET` | `/api/v1/documents/collections/:id/context` | Recupera contexto consolidado da collection |
 | `PATCH` | `/api/v1/documents/collections/:collection/category` | Atualiza categoria da collection |
-| `POST` | `/api/v1/documents/:id/paragraph-nodes` | Persiste paragrafos estruturados |
-| `POST` | `/api/v1/documents/:id/table-sections` | Persiste tabelas estruturadas |
-| `POST` | `/api/v1/documents/:id/metadata-pairs` | Persiste pares chave/valor |
 
 ### Upload
 
@@ -752,27 +749,7 @@ curl -X POST http://localhost:8000/api/v1/documents/upload \
   -F "file=@./exemplos/peticao.pdf"
 ```
 
-### 5. Persistir dados estruturados do documento
-
-```bash
-curl -X POST http://localhost:8000/api/v1/documents/1/paragraph-nodes \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "nodes": [
-      {
-        "sequence_order": 0,
-        "page_number": 1,
-        "content": "Conteudo do primeiro paragrafo",
-        "metadata": {
-          "source": "ocr"
-        }
-      }
-    ]
-  }'
-```
-
-### 6. Recuperar o contexto consolidado da collection
+### 5. Recuperar o contexto consolidado da collection
 
 ```bash
 curl -X GET http://localhost:8000/api/v1/documents/collections/1/context \
@@ -867,7 +844,7 @@ Os materiais em `docs/` e `frontend/architecture/` registram essa evolucao e tam
 
 Os artefatos academicos versionados desta fase agora ficam em:
 
-- `docs/article/article-overleaf.md` para o texto do artigo;
+- `docs/article/artigo.tex` para o texto do artigo;
 - `docs/article/references.bib` para as referencias bibliograficas;
 - `docs/article/anexos/` para as figuras e anexos;
 - `docs/article/Apresentação de TCC ThingIndex Slides.pdf` para os slides da defesa;

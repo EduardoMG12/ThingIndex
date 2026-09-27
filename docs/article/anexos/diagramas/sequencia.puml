@@ -1,0 +1,51 @@
+@startuml
+' Sequencia real do ThingIndex (revisao de 2026-09-26), conferida no codigo:
+' api/internal/usecase/document_usecase.go (upload), processing/outbox_dispatcher.go,
+' processing/document_processor.go, usecase/chat_usecase.go (StreamCollectionChat).
+skinparam dpi 200
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 12
+skinparam sequenceMessageAlign left
+hide footbox
+
+actor "Usuário" as U
+participant "Frontend\n(Next.js)" as F
+participant "API\n(Go)" as A
+database "PostgreSQL" as P
+database "Object\nstorage" as S
+queue "RabbitMQ" as R
+participant "Indexer\n(dispatcher + worker)" as W
+participant "LLM" as L
+
+== Envio e indexação ==
+U -> F : escolhe coleção e PDF
+F -> A : POST /documents/upload
+A -> S : grava o arquivo
+A -> P : BEGIN; documento (QUEUED) + evento de outbox\n+ evento de auditoria; COMMIT
+A --> F : 201
+W -> P : reivindica eventos pendentes\n(FOR UPDATE SKIP LOCKED, a cada 5 s)
+W -> R : publica o evento
+R -> W : entrega a mensagem
+W -> S : lê o PDF
+W -> W : extrai páginas, parágrafos com caixa,\ntabelas, sumário e trechos
+opt enriquecimento ligado
+  W -> L : resumos por página e por seção
+end
+W -> P : grava as seis tabelas estruturais\nnuma transação; status INDEXED
+note over W, R : falha: fila de retry com atraso;\nesgotadas as tentativas, DLQ
+
+== Pergunta à coleção ==
+U -> F : pergunta
+F -> A : POST /chat/stream (SSE)
+A -> P : carrega a coleção\n(9 consultas, número fixo)
+A -> A : BM25 por tipo de unidade;\nseleciona até 6 fontes
+A --> F : evento "sources"\n(documento, página, caixa)
+A -> L : prompt com as fontes
+L --> A : resposta em partes
+A --> F : eventos "delta"
+A -> P : grava pergunta, resposta,\nfontes e consumo
+A --> F : evento "done" (tokens)
+U -> F : clica numa fonte
+F -> F : abre o PDF na página\ne marca a caixa
+@enduml

@@ -143,7 +143,7 @@ describe("DocumentAuditExplorer", () => {
         await user.click(screen.getByRole("button", { name: /Mostrar filtros avancados/i }));
         await user.selectOptions(screen.getByLabelText("Actor"), "USER");
         await user.type(screen.getByLabelText("Actor ID"), "9");
-        await user.click(screen.getByRole("button", { name: /Buscar no historico/i }));
+        await user.click(screen.getByRole("button", { name: /Buscar no histórico/i }));
 
         await waitFor(() => {
             expect(fetchDocumentAuditEvents).toHaveBeenLastCalledWith(
@@ -157,7 +157,7 @@ describe("DocumentAuditExplorer", () => {
         });
 
         expect(await screen.findByText("Filtros ativos")).toBeInTheDocument();
-        expect(screen.getAllByText("Usuario").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Usuário").length).toBeGreaterThan(0);
 
         await user.click(screen.getByRole("button", { name: /Carregar mais eventos/i }));
 
@@ -381,7 +381,7 @@ describe("DocumentAuditExplorer", () => {
         await userEvent.click(screen.getByRole("button", { name: /Carregar mais eventos/i }));
 
         await userEvent.type(screen.getByLabelText("Encontre um evento"), "contrato");
-        await userEvent.click(screen.getByRole("button", { name: /Buscar no historico/i }));
+        await userEvent.click(screen.getByRole("button", { name: /Buscar no histórico/i }));
 
         await screen.findByText("Novo filtro.pdf");
 

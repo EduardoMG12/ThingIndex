@@ -106,3 +106,66 @@ describe("useDocuments", () => {
         }
     });
 });
+
+describe("useDocuments preserva referencias no polling (F-07)", () => {
+    it("mantem o mesmo objeto quando o poll devolve o documento sem mudanca", async () => {
+        vi.useFakeTimers();
+
+        try {
+            vi.mocked(fetchDocuments).mockReset().mockImplementation(async () => [
+                createDocument({ id: 1, status: "COMPLETED" }),
+                createDocument({ id: 2, status: "PROCESSING" }),
+            ]);
+
+            const { result } = renderHook(() => useDocuments());
+
+            await vi.waitFor(() => {
+                expect(result.current.isLoading).toBe(false);
+            });
+            const [antes1, antes2] = result.current.documents;
+
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(3100);
+            });
+            await vi.waitFor(() => {
+                expect(fetchDocuments).toHaveBeenCalledTimes(2);
+            });
+
+            expect(result.current.documents[0]).toBe(antes1);
+            expect(result.current.documents[1]).toBe(antes2);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("troca o objeto quando o servidor muda o documento", async () => {
+        vi.useFakeTimers();
+
+        try {
+            vi.mocked(fetchDocuments)
+                .mockReset()
+                .mockResolvedValueOnce([createDocument({ id: 2, status: "PROCESSING" })])
+                .mockResolvedValue([
+                    createDocument({ id: 2, status: "COMPLETED", updated_at: "2026-03-20T00:00:00Z" }),
+                ]);
+
+            const { result } = renderHook(() => useDocuments());
+
+            await vi.waitFor(() => {
+                expect(result.current.isLoading).toBe(false);
+            });
+            const antes = result.current.documents[0];
+
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(3100);
+            });
+            await vi.waitFor(() => {
+                expect(result.current.documents[0]?.status).toBe("COMPLETED");
+            });
+
+            expect(result.current.documents[0]).not.toBe(antes);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+});

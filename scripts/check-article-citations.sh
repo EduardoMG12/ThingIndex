@@ -18,7 +18,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ARTICLE="${REPO_ROOT}/docs/article/article-overleaf.md"
+ARTICLE="${REPO_ROOT}/docs/article/artigo.tex"
 BIB="${REPO_ROOT}/docs/article/references.bib"
 
 if [[ ! -f "${ARTICLE}" ]]; then
@@ -37,7 +37,7 @@ trap 'rm -f "${CITED}" "${DEFINED}"' EXIT
 
 # Chaves citadas: \cite{a,b} e \cite{c} — ignorando linhas comentadas com %.
 grep -v '^\s*%' "${ARTICLE}" \
-    | grep -oP '\\cite\{\K[^}]+' \
+    | grep -oP '\\cite(year)?\{\K[^}]+' \
     | tr ',' '\n' \
     | tr -d ' ' \
     | grep -v '^$' \

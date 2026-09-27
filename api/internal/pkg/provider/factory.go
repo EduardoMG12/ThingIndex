@@ -258,20 +258,111 @@ var llmProviderDefinitions = map[string]llmProviderDefinition{
 	},
 }
 
-var newLLMHTTPClient = func() *http.Client {
-	return &http.Client{Timeout: 45 * time.Second}
+// LLMClientOptions carrega a politica de rede do cliente HTTP do LLM.
+//
+// EndpointValidator, quando presente, e aplicado na conexao a todo base_url
+// informado pelo usuario: o IP e resolvido de novo no dial e IP privado e
+// recusado (a menos que o validador tenha sido criado com a flag
+// ALLOW_PRIVATE_STORAGE_ENDPOINTS, caso do Ollama local em desenvolvimento).
+// Sem isso a validacao so acontecia no save, e um DNS rebinding entre a
+// validacao e a conexao levava a API a requisitar a rede interna.
+type LLMClientOptions struct {
+	EndpointValidator *netsec.StorageEndpointValidator
+
+	// responseHeaderTimeout substitui llmResponseHeaderTimeout; so os testes
+	// do pacote usam, para exercitar o prazo com relogio curto.
+	responseHeaderTimeout time.Duration
 }
 
+// llmResponseHeaderTimeout limita a espera pelo cabecalho da resposta.
+//
+// MOTIVO: o cliente tinha http.Client{Timeout: 45s}, que inclui a leitura do
+// corpo; todo stream de chat com mais de 45 s era cortado com "Client.Timeout
+// exceeded while reading body". O limite total agora vem do ctx do chamador
+// (chat: chatStreamTimeout; indexacao: prazo por mensagem do consumidor;
+// validacao e listagem de modelos: WithTimeout proprio).
+const llmResponseHeaderTimeout = 45 * time.Second
+
+// errLLMRedirectRecusado: redirect de um provedor de LLM e recusado. Seguir um
+// 302 para http://10.0.0.x/... contornaria a validacao do base_url.
+var errLLMRedirectRecusado = errors.New("llm provider redirect refused")
+
+// newLLMHTTPClient e o gancho de teste: quando nao nil, substitui o cliente
+// de producao. nil significa "cliente de producao".
+var newLLMHTTPClient func() *http.Client
+
+// NewLLMHTTPClientForTests instala factory como cliente HTTP do LLM e devolve
+// o anterior; passar o anterior de volta restaura o estado (inclusive nil).
 func NewLLMHTTPClientForTests(factory func() *http.Client) func() *http.Client {
 	previous := newLLMHTTPClient
-	if factory == nil {
-		return previous
-	}
 	newLLMHTTPClient = factory
 	return previous
 }
 
-func NewLLMProvider(providerType string, credentials map[string]string) (domain.LLMService, error) {
+func resolveLLMClientOptions(opts []LLMClientOptions) LLMClientOptions {
+	if len(opts) == 0 {
+		return LLMClientOptions{}
+	}
+	return opts[0]
+}
+
+// buildLLMHTTPClient monta o cliente HTTP para falar com rawURL.
+//
+// userSuppliedBaseURL diz se o destino veio do base_url das credenciais. O
+// endpoint padrao do provedor (inclusive o Ollama em localhost quando o
+// usuario nao informa base_url) e configuracao do servidor e nao passa pelo
+// validador -- manter isso preserva o Ollama local sem a flag de endpoints
+// privados, exatamente como a validacao no save ja fazia.
+func buildLLMHTTPClient(rawURL string, userSuppliedBaseURL bool, options LLMClientOptions) (*http.Client, error) {
+	if newLLMHTTPClient != nil {
+		return newLLMHTTPClient(), nil
+	}
+
+	headerTimeout := llmResponseHeaderTimeout
+	if options.responseHeaderTimeout > 0 {
+		headerTimeout = options.responseHeaderTimeout
+	}
+
+	dialer := &net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}
+	transport := &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		DialContext:           dialer.DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          20,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: headerTimeout,
+		ExpectContinueTimeout: time.Second,
+	}
+
+	if options.EndpointValidator != nil && userSuppliedBaseURL {
+		parsed, err := url.Parse(strings.TrimSpace(rawURL))
+		if err != nil || parsed.Host == "" {
+			return nil, fmt.Errorf("invalid llm endpoint: %q", rawURL)
+		}
+		defaultPort := "443"
+		if strings.EqualFold(parsed.Scheme, "http") {
+			defaultPort = "80"
+		}
+		dialContext, err := options.EndpointValidator.NewDialContext(parsed.Host, defaultPort, dialer.DialContext)
+		if err != nil {
+			return nil, fmt.Errorf("prepare llm dialer: %w", err)
+		}
+		transport.DialContext = dialContext
+		// Com proxy o dial iria para o proxy, nao para o host validado.
+		transport.Proxy = nil
+	}
+
+	return &http.Client{
+		Transport: transport,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return errLLMRedirectRecusado
+		},
+	}, nil
+}
+
+func NewLLMProvider(providerType string, credentials map[string]string, opts ...LLMClientOptions) (domain.LLMService, error) {
+	options := resolveLLMClientOptions(opts)
 	normalizedProvider := strings.ToUpper(strings.TrimSpace(providerType))
 	definition, ok := llmProviderDefinitions[normalizedProvider]
 	if !ok {
@@ -290,9 +381,14 @@ func NewLLMProvider(providerType string, credentials map[string]string) (domain.
 
 	pricing, hasPricing := llmPricingProfile(normalizedProvider, model, credentials)
 
+	httpClient, err := buildLLMHTTPClient(endpoint, hasUserBaseURL(credentials), options)
+	if err != nil {
+		return nil, err
+	}
+
 	if normalizedProvider == domain.ProviderOllama && isOllamaNativeEndpoint(endpoint) {
 		return &ollamaNativeLLMClient{
-			httpClient: newLLMHTTPClient(),
+			httpClient: httpClient,
 			provider:   normalizedProvider,
 			endpoint:   endpoint,
 			apiKey:     apiKey,
@@ -303,7 +399,7 @@ func NewLLMProvider(providerType string, credentials map[string]string) (domain.
 	}
 
 	return &openAICompatibleLLMClient{
-		httpClient: newLLMHTTPClient(),
+		httpClient: httpClient,
 		provider:   normalizedProvider,
 		endpoint:   endpoint,
 		apiKey:     apiKey,
@@ -460,8 +556,12 @@ func (c *openAICompatibleLLMClient) GenerateText(ctx context.Context, systemProm
 	return strings.TrimSpace(completion.Choices[0].Message.Content), nil
 }
 
-func ValidateLLMConnection(ctx context.Context, providerType string, credentials map[string]string) error {
-	service, err := NewLLMProvider(providerType, credentials)
+func hasUserBaseURL(credentials map[string]string) bool {
+	return strings.TrimSpace(credentials["base_url"]) != ""
+}
+
+func ValidateLLMConnection(ctx context.Context, providerType string, credentials map[string]string, opts ...LLMClientOptions) error {
+	service, err := NewLLMProvider(providerType, credentials, opts...)
 	if err != nil {
 		return err
 	}
@@ -517,7 +617,8 @@ func SupportsLLMModelDiscovery(providerType string) bool {
 	}
 }
 
-func ListLLMModels(ctx context.Context, providerType string, credentials map[string]string) ([]string, error) {
+func ListLLMModels(ctx context.Context, providerType string, credentials map[string]string, opts ...LLMClientOptions) ([]string, error) {
+	options := resolveLLMClientOptions(opts)
 	normalizedProvider := strings.ToUpper(strings.TrimSpace(providerType))
 
 	if !SupportsLLMModelDiscovery(normalizedProvider) {
@@ -532,9 +633,9 @@ func ListLLMModels(ctx context.Context, providerType string, credentials map[str
 	for attempt := 1; attempt <= maxLLMInfraAttempts; attempt++ {
 		switch normalizedProvider {
 		case domain.ProviderOllama:
-			models, lastErr = listOllamaModels(ctx, credentials)
+			models, lastErr = listOllamaModels(ctx, credentials, options)
 		default:
-			models, lastErr = listOpenAICompatibleModels(ctx, normalizedProvider, credentials)
+			models, lastErr = listOpenAICompatibleModels(ctx, normalizedProvider, credentials, options)
 		}
 
 		if lastErr == nil {
@@ -549,7 +650,7 @@ func ListLLMModels(ctx context.Context, providerType string, credentials map[str
 	return nil, lastErr
 }
 
-func listOllamaModels(ctx context.Context, credentials map[string]string) ([]string, error) {
+func listOllamaModels(ctx context.Context, credentials map[string]string, options LLMClientOptions) ([]string, error) {
 	baseURL := strings.TrimSpace(credentials["base_url"])
 	if baseURL == "" {
 		if strings.TrimSpace(credentials["api_key"]) != "" {
@@ -568,7 +669,11 @@ func listOllamaModels(ctx context.Context, credentials map[string]string) ([]str
 	}
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := newLLMHTTPClient().Do(req)
+	httpClient, err := buildLLMHTTPClient(req.URL.String(), hasUserBaseURL(credentials), options)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -605,7 +710,7 @@ func listOllamaModels(ctx context.Context, credentials map[string]string) ([]str
 	return models, nil
 }
 
-func listOpenAICompatibleModels(ctx context.Context, providerType string, credentials map[string]string) ([]string, error) {
+func listOpenAICompatibleModels(ctx context.Context, providerType string, credentials map[string]string, options LLMClientOptions) ([]string, error) {
 	endpoint, err := llmModelsEndpoint(providerType, credentials)
 	if err != nil {
 		return nil, err
@@ -620,7 +725,11 @@ func listOpenAICompatibleModels(ctx context.Context, providerType string, creden
 	}
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := newLLMHTTPClient().Do(req)
+	httpClient, err := buildLLMHTTPClient(req.URL.String(), hasUserBaseURL(credentials), options)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -972,6 +1081,20 @@ func (c *openAICompatibleLLMClient) ModelName() string {
 	return c.model
 }
 
+func (c *openAICompatibleLLMClient) EndpointHost() string {
+	return endpointHost(c.endpoint)
+}
+
+// endpointHost devolve o host (com porta) do endpoint, em minusculas. E a
+// identidade do provedor na chave do cache de enriquecimento.
+func endpointHost(endpoint string) string {
+	parsed, err := url.Parse(strings.TrimSpace(endpoint))
+	if err != nil {
+		return ""
+	}
+	return strings.ToLower(parsed.Host)
+}
+
 func (c *openAICompatibleLLMClient) Pricing() (domain.LLMPricing, bool) {
 	return c.pricing, c.hasPricing
 }
@@ -982,6 +1105,10 @@ func (c *ollamaNativeLLMClient) ProviderType() string {
 
 func (c *ollamaNativeLLMClient) ModelName() string {
 	return c.model
+}
+
+func (c *ollamaNativeLLMClient) EndpointHost() string {
+	return endpointHost(c.endpoint)
 }
 
 func (c *ollamaNativeLLMClient) Pricing() (domain.LLMPricing, bool) {

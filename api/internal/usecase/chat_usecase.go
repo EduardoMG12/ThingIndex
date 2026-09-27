@@ -15,6 +15,29 @@ import (
 	"gorm.io/gorm"
 )
 
+// chatLLMTimeout e o prazo total das chamadas de LLM de uma mensagem de chat
+// (expansao da pergunta + geracao). O cliente HTTP do LLM nao tem mais
+// Timeout global -- ele cortava o stream aos 45 s --, entao o limite total
+// precisa vir daqui; sem ele um provedor que streama devagar para sempre
+// prenderia a requisicao.
+const chatLLMTimeout = 5 * time.Minute
+
+// chatPersistTimeout limita a gravacao da resposta depois que o ctx da
+// requisicao ja pode estar cancelado.
+const chatPersistTimeout = 5 * time.Second
+
+// persistContext devolve um ctx para gravar a resposta que sobrevive ao
+// cancelamento da requisicao.
+//
+// MOTIVO: a persistencia usava o ctx da requisicao. O caso mais comum de
+// interrupcao e o cliente desconectar -- justamente quando esse ctx esta
+// cancelado --, entao AddMessage falhava e a resposta parcial, ja paga ao
+// LLM, sumia sem registro. WithoutCancel mantem os valores do ctx e ignora o
+// cancelamento; o timeout impede que a gravacao pendure para sempre.
+func persistContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), chatPersistTimeout)
+}
+
 const (
 	chatStreamEventStage   = "stage"
 	chatStreamEventDelta   = "delta"
@@ -22,21 +45,36 @@ const (
 	chatStreamEventDone    = "done"
 )
 
+// chatCollectionLookup e o recorte do repositorio de colecoes que o chat usa:
+// so a checagem de posse, filtrada por user_id.
+type chatCollectionLookup interface {
+	GetCollectionByID(ctx context.Context, id uint, userID uint) (*models.Collection, error)
+}
+
 type chatUseCase struct {
+	collectionRepo        chatCollectionLookup
 	collectionContextRepo domain.CollectionContextRepository
 	conversationRepo      domain.ChatConversationRepository
 	llmResolver           domain.UserLLMResolver
+	expander              *queryExpander
+	retrievalOptions      RetrievalOptions
 }
 
 func NewChatUseCase(
+	collectionRepo chatCollectionLookup,
 	collectionContextRepo domain.CollectionContextRepository,
 	conversationRepo domain.ChatConversationRepository,
 	llmResolver domain.UserLLMResolver,
+	expansionCache domain.EnrichmentCache,
+	retrievalOptions RetrievalOptions,
 ) domain.ChatUseCase {
 	return &chatUseCase{
+		collectionRepo:        collectionRepo,
 		collectionContextRepo: collectionContextRepo,
 		conversationRepo:      conversationRepo,
 		llmResolver:           llmResolver,
+		expander:              newQueryExpander(expansionCache),
+		retrievalOptions:      retrievalOptions,
 	}
 }
 
@@ -45,11 +83,14 @@ func (u *chatUseCase) CreateConversation(ctx context.Context, userID uint, colle
 		return nil, domain.ErrCollectionRequired
 	}
 
-	if _, err := u.collectionContextRepo.GetCollectionContext(ctx, userID, collectionID); err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+	// So a posse importa aqui. Antes isto materializava a colecao inteira
+	// (GetCollectionContext: 9 consultas e ate dezenas de milhares de linhas
+	// com texto integral) e descartava o resultado.
+	if _, err := u.collectionRepo.GetCollectionByID(ctx, collectionID, userID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) || errors.Is(err, domain.ErrCollectionNotFound) {
 			return nil, domain.ErrCollectionNotFound
 		}
-		return nil, fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrCollectionFind, err)
 	}
 
 	conversation := &models.ChatConversation{
@@ -58,7 +99,7 @@ func (u *chatUseCase) CreateConversation(ctx context.Context, userID uint, colle
 		Title:        buildConversationTitle(title),
 	}
 	if err := u.conversationRepo.CreateConversation(ctx, conversation); err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrChatConversationCreate, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrChatConversationCreate, err)
 	}
 
 	return conversation, nil
@@ -71,7 +112,7 @@ func (u *chatUseCase) ListConversations(ctx context.Context, userID uint, collec
 
 	conversations, err := u.conversationRepo.ListConversationsByCollection(ctx, userID, collectionID)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrChatConversationFind, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrChatConversationFind, err)
 	}
 
 	return conversations, nil
@@ -83,7 +124,7 @@ func (u *chatUseCase) GetConversationMessages(ctx context.Context, userID uint, 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil, domain.ErrChatConversationNotFound
 		}
-		return nil, nil, fmt.Errorf("%w: %v", domain.ErrChatConversationFind, err)
+		return nil, nil, fmt.Errorf("%w: %w", domain.ErrChatConversationFind, err)
 	}
 
 	messages, err := u.conversationRepo.ListMessagesByConversation(ctx, userID, conversationID)
@@ -91,7 +132,7 @@ func (u *chatUseCase) GetConversationMessages(ctx context.Context, userID uint, 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil, domain.ErrChatConversationNotFound
 		}
-		return nil, nil, fmt.Errorf("%w: %v", domain.ErrChatConversationFind, err)
+		return nil, nil, fmt.Errorf("%w: %w", domain.ErrChatConversationFind, err)
 	}
 
 	return conversation, messages, nil
@@ -108,7 +149,7 @@ func (u *chatUseCase) UpdateConversationTitle(ctx context.Context, userID uint, 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrChatConversationNotFound
 		}
-		return nil, fmt.Errorf("%w: %v", domain.ErrChatConversationFind, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrChatConversationFind, err)
 	}
 
 	return conversation, nil
@@ -119,7 +160,7 @@ func (u *chatUseCase) DeleteConversation(ctx context.Context, userID uint, conve
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return domain.ErrChatConversationNotFound
 		}
-		return fmt.Errorf("%w: %v", domain.ErrChatConversationDelete, err)
+		return fmt.Errorf("%w: %w", domain.ErrChatConversationDelete, err)
 	}
 
 	return nil
@@ -141,7 +182,7 @@ func (u *chatUseCase) StreamCollectionChat(
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return domain.ErrChatConversationNotFound
 		}
-		return fmt.Errorf("%w: %v", domain.ErrChatConversationFind, err)
+		return fmt.Errorf("%w: %w", domain.ErrChatConversationFind, err)
 	}
 	if conversation.CollectionID != request.CollectionID {
 		return domain.ErrChatConversationNotFound
@@ -160,11 +201,29 @@ func (u *chatUseCase) StreamCollectionChat(
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return domain.ErrCollectionNotFound
 		}
-		return fmt.Errorf("%w: %v", domain.ErrCollectionFind, err)
+		return fmt.Errorf("%w: %w", domain.ErrCollectionFind, err)
 	}
 
-	retrieval := buildCollectionRetrieval(
-		prompt,
+	llm, err := u.llmResolver.ResolveLLMForChat(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	llmCtx, cancelLLM := context.WithTimeout(ctx, chatLLMTimeout)
+	defer cancelLLM()
+
+	// A expansao roda ANTES da recuperacao, porque o que ela muda e o texto da
+	// consulta. Ver docs/prds/pre-registro-expansao-consulta.md: braco E.
+	query := prompt
+	if u.retrievalOptions.QueryExpansion {
+		if extra := u.expander.Expand(llmCtx, llm, domain.LLMCacheScope(userID, llm), prompt); extra != "" {
+			query = prompt + " " + extra
+		}
+	}
+
+	retrieval := buildCollectionRetrievalWith(
+		u.retrievalOptions,
+		query,
 		collectionContext.Documents,
 		collectionContext.DocumentPages,
 		collectionContext.OutlineNodes,
@@ -188,11 +247,6 @@ func (u *chatUseCase) StreamCollectionChat(
 		}
 	}
 
-	llm, err := u.llmResolver.ResolveLLMForChat(ctx, userID)
-	if err != nil {
-		return err
-	}
-
 	if err := u.conversationRepo.AddMessage(ctx, userID, conversation.ID, &models.ChatConversationEntry{
 		Role:    "user",
 		Content: prompt,
@@ -200,7 +254,7 @@ func (u *chatUseCase) StreamCollectionChat(
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return domain.ErrChatConversationNotFound
 		}
-		return fmt.Errorf("%w: %v", domain.ErrChatConversationMessageStore, err)
+		return fmt.Errorf("%w: %w", domain.ErrChatConversationMessageStore, err)
 	}
 
 	systemPrompt, userPrompt := buildCollectionChatPrompt(collectionContext, retrieval, request, sources)
@@ -251,7 +305,9 @@ func (u *chatUseCase) StreamCollectionChat(
 			return
 		}
 		entry := &models.ChatConversationEntry{Role: "assistant", Status: "error", ErrorDetail: ChatErrorDetail(cause), Sources: sourceRefs()}
-		if err := u.conversationRepo.AddMessage(ctx, userID, conversation.ID, entry); err != nil {
+		persistCtx, cancel := persistContext(ctx)
+		defer cancel()
+		if err := u.conversationRepo.AddMessage(persistCtx, userID, conversation.ID, entry); err != nil {
 			log.Printf("chat: falha da conversa %d nao pode ser persistida: %v", conversation.ID, err)
 		}
 	}
@@ -265,7 +321,9 @@ func (u *chatUseCase) StreamCollectionChat(
 		measured := chatUsageFor(llm, systemPrompt, userPrompt, answer)
 		usage = &measured
 
-		if err := u.conversationRepo.AddMessage(ctx, userID, conversation.ID, &models.ChatConversationEntry{
+		persistCtx, cancel := persistContext(ctx)
+		defer cancel()
+		if err := u.conversationRepo.AddMessage(persistCtx, userID, conversation.ID, &models.ChatConversationEntry{
 			Role:             "assistant",
 			Content:          answer,
 			Sources:          sourceRefs(),
@@ -279,14 +337,14 @@ func (u *chatUseCase) StreamCollectionChat(
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return domain.ErrChatConversationNotFound
 			}
-			return fmt.Errorf("%w: %v", domain.ErrChatConversationMessageStore, err)
+			return fmt.Errorf("%w: %w", domain.ErrChatConversationMessageStore, err)
 		}
 
 		return nil
 	}
 
 	if streamer, ok := llm.(domain.LLMStreamingService); ok {
-		if err := streamer.StreamText(ctx, systemPrompt, userPrompt, func(delta string) error {
+		if err := streamer.StreamText(llmCtx, systemPrompt, userPrompt, func(delta string) error {
 			if delta == "" {
 				return nil
 			}
@@ -296,10 +354,9 @@ func (u *chatUseCase) StreamCollectionChat(
 				Delta: delta,
 			})
 		}); err != nil {
-			// O contexto usado para persistir e o mesmo que acabou de falhar.
-			// Se ele ja estiver cancelado (cliente desconectou), a gravacao
-			// tambem falharia -- por isso o erro de persistencia so e logado,
-			// nunca substitui o erro original do stream, que e o que o handler
+			// A gravacao usa persistContext, que sobrevive ao cliente ter
+			// desconectado. O erro de persistencia so e logado, nunca
+			// substitui o erro original do stream, que e o que o handler
 			// precisa para escolher a mensagem certa ao usuario.
 			if persistErr := persistAnswer(); persistErr != nil {
 				log.Printf("chat: resposta parcial da conversa %d nao pode ser persistida: %v", conversation.ID, persistErr)
@@ -310,7 +367,7 @@ func (u *chatUseCase) StreamCollectionChat(
 			return err
 		}
 	} else {
-		response, err := llm.GenerateText(ctx, systemPrompt, userPrompt)
+		response, err := llm.GenerateText(llmCtx, systemPrompt, userPrompt)
 		if err != nil {
 			if ctx.Err() == nil {
 				persistFailure(err)
@@ -397,7 +454,9 @@ func buildConversationTitle(title string) string {
 // artigo compara custo por consulta, entao o teto tem de ser um numero
 // nomeado e travado por teste, nao um literal escondido.
 const (
-	// ChatSourceLimit e o total de fontes citadas por resposta.
+	// ChatSourceLimit e o teto de fontes de SECAO e PAGINA por resposta. As
+	// linhas de tabela contam a parte (ChatTableRowSourceLimit), entao o total
+	// citado pode chegar a ChatSourceLimit + ChatTableRowSourceLimit = 9.
 	ChatSourceLimit = 6
 	// ChatNodeSourceLimit e quantas dessas fontes vem de secoes do sumario
 	// (node hits), que entram ANTES das paginas por serem a unidade

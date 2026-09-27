@@ -191,3 +191,86 @@ func TestTCVIgnoraCitacaoOuFonteVazia(t *testing.T) {
 	}
 	aprox(t, "TCV", report.Rate(), 0)
 }
+
+// Um item de escopo de documento nao tem pagina por natureza. "paragraph_count"
+// nao esta na pagina 3: ele e uma contagem do documento inteiro. Exigir pagina
+// dele contaria como defeito uma coisa que nao tem conserto possivel, e a
+// unica forma de "consertar" seria inventar uma pagina -- que e exatamente o
+// que o principio I proibe.
+func TestEscopoDeDocumentoEhCompletoSemPagina(t *testing.T) {
+	t.Parallel()
+
+	report := Evaluate([]Item{
+		{Kind: "metadata", Scope: ScopeDocument, DocumentID: 1, PageNumber: nil, SequenceOrder: 0, Content: "paragraph_count=42"},
+	})
+
+	aprox(t, "TPC", report.Rate(), 1)
+	if report.MissingPageNumber != 0 {
+		t.Fatalf("escopo de documento nao pode acusar pagina ausente, veio %+v", report)
+	}
+	aprox(t, "TPC do escopo de documento", report.RateForScope(ScopeDocument), 1)
+}
+
+// O contrario do teste acima: classificar como escopo de pagina mantem o
+// criterio estrito. Sem isso, "escopo" viraria porta dos fundos para aprovar
+// qualquer item.
+func TestEscopoDePaginaContinuaExigindoPagina(t *testing.T) {
+	t.Parallel()
+
+	report := Evaluate([]Item{
+		{Kind: "chunk", Scope: ScopePage, DocumentID: 1, PageNumber: nil, SequenceOrder: 0, Content: "trecho"},
+	})
+
+	aprox(t, "TPC", report.Rate(), 0)
+	if report.MissingPageNumber != 1 {
+		t.Fatalf("escopo de pagina sem pagina deveria acusar pagina ausente, veio %+v", report)
+	}
+	aprox(t, "TPC do escopo de pagina", report.RateForScope(ScopePage), 0)
+}
+
+// O padrao tem que ser o criterio ESTRITO. Se alguem adicionar um tipo novo de
+// item e esquecer de classificar o escopo, o item precisa aparecer como
+// incompleto e o teste reclamar. O contrario faria um esquecimento virar
+// silenciosamente um item "completo", que e a forma mais facil de uma metrica
+// de auditabilidade comecar a mentir.
+func TestEscopoVazioEhTratadoComoPagina(t *testing.T) {
+	t.Parallel()
+
+	report := Evaluate([]Item{
+		{Kind: "desconhecido", DocumentID: 1, PageNumber: nil, SequenceOrder: 0, Content: "sem escopo declarado"},
+	})
+
+	aprox(t, "TPC", report.Rate(), 0)
+	if report.MissingPageNumber != 1 {
+		t.Fatalf("item sem escopo deveria cair no criterio estrito, veio %+v", report)
+	}
+	if _, ok := report.ByScope[ScopePage]; !ok {
+		t.Fatalf("item sem escopo deveria ser contabilizado em %q, veio %v", ScopePage, report.Scopes())
+	}
+}
+
+// Os dois recortes precisam somar o mesmo total, senao o relatorio por escopo
+// estaria escondendo item em vez de classificar.
+func TestRecortesPorTipoEPorEscopoCobremOMesmoTotal(t *testing.T) {
+	t.Parallel()
+
+	report := Evaluate([]Item{
+		{Kind: "paragraph", Scope: ScopePage, DocumentID: 1, PageNumber: ptr(1), SequenceOrder: 0, Content: "a"},
+		{Kind: "chunk", Scope: ScopePage, DocumentID: 1, PageNumber: nil, SequenceOrder: 1, Content: "b"},
+		{Kind: "metadata", Scope: ScopeDocument, DocumentID: 1, SequenceOrder: 2, Content: "c"},
+	})
+
+	somaKind, somaScope := 0, 0
+	for _, kind := range report.Kinds() {
+		somaKind += report.ByKind[kind].Total
+	}
+	for _, scope := range report.Scopes() {
+		somaScope += report.ByScope[scope].Total
+	}
+	if somaKind != report.Total || somaScope != report.Total {
+		t.Fatalf("recortes divergem do total: tipo=%d escopo=%d total=%d", somaKind, somaScope, report.Total)
+	}
+	aprox(t, "TPC do escopo de pagina", report.RateForScope(ScopePage), 0.5)
+	aprox(t, "TPC do escopo de documento", report.RateForScope(ScopeDocument), 1)
+	aprox(t, "TPC de escopo inexistente", report.RateForScope("nao-existe"), 0)
+}

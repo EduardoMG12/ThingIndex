@@ -1,0 +1,48 @@
+question_id,stratum,variant,pair_id,origin,arm,scope,repeat,model,correct,cited_pages,provenance_ok,retrieval_hit,prompt_tokens,completion_tokens,usage_reported,latency_ms,cost_usd,truncated,error,answer
+sg1L,premissa-falsa,literal,sg1,pdf,T,,1,gemma4:31b,false,nr-06:3;nr-06:4;nr-06:5;nr-01-2024:3;nr-01-2024:4;nr-01-2025:3;nr-01-2025:4;nr-01-2025:12;nr-01-2025:13;nr-01-2024:10;nr-01-2024:11,true,true,5289,113,true,1040,,false,,"Com base nos documentos fornecidos, não há nenhuma informação sobre percentuais de desconto que o empregador possa aplicar ao trabalhador em caso de EPI danificado.
+
+Os documentos mencionam apenas que:
+*   Cabe à organização substituir imediatamente o EPI quando danificado ou extraviado (NR 6 - EPI, página 3).
+*   É responsabilidade do trabalhador comunicar à organização quando o equipamento for extraviado, danificado ou apresentar qualquer alteração que o torne impróprio para uso (NR 6 - EPI, página 4)."
+sg1P,premissa-falsa,parafrase,sg1,pdf,T,,1,gemma4:31b,false,nr-01-2024:14;nr-01-2024:15;nr-01-2025:17;nr-01-2025:18,false,false,2447,57,true,808,,false,,"Com base nos documentos fornecidos, não há informações sobre descontos em pagamentos de trabalhadores devido a danos em equipamentos (como botas). Os textos limitam-se a definições de termos técnicos, conceitos de segurança e saúde no trabalho e diretrizes de gerenciamento de riscos."
+sg2L,aberta,literal,sg2,pdf,T,,1,gemma4:31b,true,nr-18:3;nr-18:4;nr-06:2;nr-06:3;nr-06:4;nr-06:5;nr-18:30;nr-18:31;nr-09:6;nr-09:7;nr-06:6,true,true,4987,171,true,1117,,false,,"Cabe à **organização** fornecer o EPI ao trabalhador (NR 6 - EPI, página 2).
+
+O fornecimento deve ocorrer sob as seguintes condições:
+*   **Gratuidade:** O EPI deve ser fornecido gratuitamente ao empregado (NR 6 - EPI, página 2).
+*   **Adequação e Estado:** Deve ser adequado ao risco e estar em perfeito estado de conservação e funcionamento (NR 6 - EPI, página 2).
+*   **Aprovação:** A organização deve adquirir somente o EPI aprovado pelo órgão de âmbito nacional competente em matéria de segurança e saúde no trabalho (NR 6 - EPI, página 2).
+*   **Hierarquia:** O fornecimento deve observar a hierarquia das medidas de prevenção (NR 6 - EPI, página 2)."
+sg2P,aberta,parafrase,sg2,pdf,T,,1,gemma4:31b,false,nr-18:13;nr-18:14;nr-06:6;nr-06:7;nr-18:40;nr-18:41;nr-18:15;nr-06:4;nr-06:5;nr-18:42;nr-18:43,false,false,4924,157,true,1067,,false,,"Com base nos documentos fornecidos, a **NR 6 - EPI** estabelece que a seleção do EPI deve ser realizada pela **organização** (item 6.5.2.2, página 4). Além disso, a norma menciona que a adaptação do EPI para uso por pessoa com deficiência deve ser feita **sem ônus para o empregado** (item 6.5.4, página 4).
+
+Embora o texto não utilize explicitamente a palavra ""pagar"", ele atribui à organização a responsabilidade pela seleção e fornecimento do equipamento, e ao trabalhador a responsabilidade de ""usar o fornecido pela organização"" (item 6.6.1, alínea 'a', página 4)."
+sg3L,aberta,literal,sg3,pdf,T,,1,gemma4:31b,true,nr-09:3;nr-09:4;nr-09:2;nr-06:9;nr-06:10;nr-01-2025:15;nr-01-2025:16;nr-01-2024:13;nr-01-2024:14;nr-09:1,true,true,5228,38,true,841,,false,,"Para agentes químicos, o nível de ação é a metade dos limites de tolerância (NR 9 - Agentes fisicos, quimicos e biologicos, página 3)."
+sg3P,aberta,parafrase,sg3,pdf,T,,1,gemma4:31b,false,nr-09:8;nr-09:9;nr-01-2024:14;nr-01-2024:15,false,false,2054,113,true,874,,false,,"Com base nos documentos fornecidos, não há a indicação de uma quantidade ou concentração específica de produto químico no ar que determine o momento em que a empresa deve tomar providências.
+
+O documento **NR 1 - versao de 2024 (página 14)** define ""Agente químico"" como uma substância que, ""em função de sua natureza, concentração e exposição, é capaz de causar lesão ou agravo à saúde do trabalhador"", mas não estabelece limites quantitativos para a tomada de medidas."
+sg4L,confirmacao,literal,sg4,pdf,T,,1,gemma4:31b,true,nr-01-2025:5;nr-01-2025:6;nr-01-2025:7;nr-01-2025:8;nr-01-2024:8;nr-01-2024:9;nr-01-2025:9;nr-01-2025:10;nr-01-2025:3;nr-01-2025:4;nr-01-2024:3;nr-01-2024:4,true,true,5192,276,true,1227,,false,,"Sim, a NR-1 exige a consideração de fatores de risco psicossociais em diferentes etapas do gerenciamento de riscos:
+
+*   **Abrangência do Gerenciamento:** O gerenciamento de riscos ocupacionais deve abranger riscos relacionados aos fatores ergonômicos, o que inclui os fatores de risco psicossociais relacionados ao trabalho (NR 1 - versao de 2025, página 5, subitem 1.5.3.1.4).
+*   **Condições de Trabalho:** A organização deve considerar as condições de trabalho, nos termos da NR-17, incluindo os fatores de risco psicossociais relacionados ao trabalho (NR 1 - versao de 2025, página 5, subitem 1.5.3.2.1).
+*   **Avaliação de Probabilidade:** Para a probabilidade de ocorrência de lesões ou agravos à saúde decorrentes de fatores ergonômicos (incluindo os riscos psicossociais relacionados ao trabalho), a avaliação de risco deve considerar a eficácia das medidas de prevenção implementadas e as exigências da atividade de trabalho (NR 1 - versao de 2025, página 7, subitem 1.5.4.4.5.3)."
+sg4P,confirmacao,parafrase,sg4,pdf,T,,1,gemma4:31b,false,nr-01-2024:3;nr-01-2024:4;nr-01-2025:3;nr-01-2025:4;nr-01-2024:2;nr-01-2025:2;nr-01-2024:13;nr-01-2024:14;nr-18:13;nr-18:14,false,false,5256,323,true,1621,,false,,"Com base nos documentos fornecidos:
+
+**Assédio no trabalho:**
+Sim, as organizações obrigadas a constituir CIPA (nos termos da NR-05) devem adotar medidas específicas para a **prevenção e o combate ao assédio sexual e a outras formas de violência no âmbito do trabalho**. Essas medidas incluem:
+*   Inclusão de regras de conduta nas normas internas da empresa, com ampla divulgação;
+*   Fixação de procedimentos para recebimento, acompanhamento e apuração de denúncias, com aplicação de sanções e garantia de anonimato ao denunciante;
+*   Realização de ações de capacitação, orientação e sensibilização sobre violência, assédio, igualdade e diversidade a cada 12 meses, para todos os níveis hierárquicos (NR 1 - versao de 2024, pág. 3; NR 1 - versao de 2025, pág. 3).
+
+**Pressão no trabalho:**
+Os documentos fornecidos **não mencionam explicitamente a ""pressão""** como um fator de risco a ser contabilizado ou gerenciado. O texto cita a necessidade de minimizar e controlar fatores de risco através de medidas de proteção coletiva, administrativas ou de organização do trabalho, mas não detalha a ""pressão"" especificamente (NR 1 - versao de 2024, pág. 3; NR 1 - versao de 2025, pág. 3)."
+sg5L,existencia,literal,sg5,pdf,T,,1,gemma4:31b,true,nr-18:4;nr-18:5;nr-18:2;nr-18:3;nr-18:49;nr-18:50;nr-18:47;nr-18:48;nr-18:23;nr-18:24;nr-18:44;nr-18:45,true,true,5211,176,true,1148,,false,,"Sim, a NR-18 trata de áreas de vivência no canteiro de obras. De acordo com o item 18.5 (página 4), as áreas de vivência devem ser projetadas para oferecer condições mínimas de segurança, conforto e privacidade aos trabalhadores, sendo mantidas em perfeito estado de conservação, higiene e limpeza.
+
+As instalações que devem ser contempladas incluem:
+*   Instalação sanitária;
+*   Vestiário;
+*   Local para refeição;
+*   Alojamento (quando houver trabalhador alojado).
+
+Além disso, o Programa de Gerenciamento de Riscos (PGR) deve conter o projeto da área de vivência do canteiro de obras e de eventual frente de trabalho, elaborado por profissional legalmente habilitado (página 2)."
+sg5P,existencia,parafrase,sg5,pdf,T,,1,gemma4:31b,true,,false,false,465,52,true,891,,false,,"Sim, a NR 18 - Industria da construcao estabelece que o Programa de Gerenciamento de Riscos (PGR) deve incluir projetos de áreas de vivência, o que abrange as instalações necessárias para a indústria da construção."
+sg6,negativa,,,pdf,T,,1,gemma4:31b,true,,,,4981,89,true,1174,,false,,"Com base nos documentos fornecidos, não há informações sobre o valor de multas aplicadas por não fornecer EPI. Os documentos detalham as responsabilidades da organização, do trabalhador, de fabricantes e importadores, bem como as definições e requisitos de comercialização e uso do EPI (NR 6 - EPI, páginas 2, 4 e 5), mas não mencionam sanções financeiras ou valores de multas."
+sg7,negativa,,,pdf,T,,1,gemma4:31b,true,,,,4877,23,true,867,,false,,"Com base nos documentos fornecidos, não há informações sobre o piso salarial do técnico de segurança do trabalho."

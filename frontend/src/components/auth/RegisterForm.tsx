@@ -65,7 +65,7 @@ export const RegisterForm = () => {
                         <Input
                             id="name"
                             name="name"
-                            placeholder="Seu nome"
+                            placeholder={t("auth.register.namePlaceholder")}
                             required
                             className="h-9 bg-background text-sm"
                         />
@@ -88,7 +88,7 @@ export const RegisterForm = () => {
                                 id="password"
                                 name="password"
                                 type={showPassword ? "text" : "password"}
-                                placeholder="Mínimo 8 caracteres"
+                                placeholder={t("auth.register.passwordPlaceholder")}
                                 required
                                 className="h-9 bg-background pr-9 text-sm"
                             />

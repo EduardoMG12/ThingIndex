@@ -46,7 +46,7 @@ func main() {
 	if *texPath == "" {
 		fmt.Print(tabela)
 	} else {
-		if err := os.WriteFile(*texPath, []byte(tabela), 0o644); err != nil {
+		if err := os.WriteFile(*texPath, []byte(evalcorpus.Tabela(tabela)), 0o644); err != nil {
 			fmt.Fprintf(os.Stderr, "threshold-eval: %v\n", err)
 			os.Exit(1)
 		}
@@ -54,6 +54,20 @@ func main() {
 	}
 
 	printSummary(os.Stderr, analises)
+}
+
+// rotuloBraco da o nome do braco como o artigo o chama. "A-relacional" era o
+// nome interno do pontuador de contagem de termos.
+func rotuloBraco(arm string) string {
+	switch arm {
+	case "A-relacional":
+		return "A, contagem"
+	case "B-bm25":
+		return "B, BM25"
+	case "C-denso":
+		return "C, denso exato"
+	}
+	return arm
 }
 
 // Separabilidade e o diagnostico de um braco.
@@ -241,7 +255,7 @@ func buildTable(analises []Separabilidade) string {
 
 	b.WriteString("% GERADO POR cmd/threshold-eval -- nao edite a mao.\n")
 	b.WriteString("\\begin{table}[htb]\n\\centering\n")
-	b.WriteString("\\caption{Separabilidade dos scores e efeito de um limiar de corte. ")
+	b.WriteString("\\caption{Separabilidade dos escores e efeito de um limiar de corte. ")
 	b.WriteString("A sobreposição é a fração de itens irrelevantes que pontuam acima do menor item relevante; ")
 	b.WriteString("$J$ é o índice de Youden no limiar ótimo, valendo 1 para separação perfeita e 0 quando o corte não supera o acaso. ")
 	b.WriteString("A taxa de falso positivo é medida sobre as consultas negativas, cuja resposta correta é não devolver nada.}\n")
@@ -257,7 +271,7 @@ func buildTable(analises []Separabilidade) string {
 			j = fmt.Sprintf("%.3f", a.J)
 		}
 		fmt.Fprintf(&b, "%s & %.3f & %s & %s & %.3f & %.3f \\\\\n",
-			a.Arm, a.Sobreposicao, limiar, j, a.FalsoPositivoSemLimiar, a.FalsoPositivoComLimiar)
+			rotuloBraco(a.Arm), a.Sobreposicao, limiar, j, a.FalsoPositivoSemLimiar, a.FalsoPositivoComLimiar)
 	}
 
 	b.WriteString("\\hline\n\\end{tabular}\n\\end{table}\n")

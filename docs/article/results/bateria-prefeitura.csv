@@ -1,0 +1,70 @@
+question_id,stratum,variant,pair_id,origin,arm,scope,repeat,model,correct,cited_pages,provenance_ok,retrieval_hit,prompt_tokens,completion_tokens,usage_reported,latency_ms,cost_usd,truncated,error,answer
+pf1L,aberta,literal,pf1,pdf,T,,1,gemma4:31b,true,edital-fm:2;edital-fm:34;edital-fm:35;edital-fm:6;edital-fm:48;edital-fm:49;edital-fm:9;edital-fm:51;edital-fm:52,true,true,6163,64,true,1664,,false,,"O valor da taxa de inscrição para os cargos de ensino superior completo é de R$ 78,00 (setenta e oito reais), conforme indicado na Tabela I do Edital 01/2026 - Concurso Publico Prefeitura de Francisco Morato (página 2)."
+pf1P,aberta,parafrase,pf1,pdf,T,,1,gemma4:31b,true,edital-fm:2;edital-fm:48;edital-fm:49;edital-fm:34;edital-fm:35;edital-fm:9;edital-fm:6;edital-fm:51;edital-fm:52,true,true,6160,68,true,1576,,false,,"Para se inscrever em uma vaga que exige ensino superior completo, a taxa de inscrição é de R$ 78,00 (setenta e oito reais), conforme consta na Tabela I do Edital 01/2026 - Concurso Publico Prefeitura de Francisco Morato (página 2)."
+pf2L,aberta,literal,pf2,pdf,T,,1,gemma4:31b,false,edital-fm:30;edital-fm:31;edital-fm:1;edital-fm:2;edital-fm:14;edital-fm:50;edital-fm:51;edital-fm:49;edital-fm:4,true,true,6156,133,true,1633,,false,,"Com base nas informações fornecidas da Tabela I (páginas 1 e 2), o documento apresenta a seguinte quantidade de vagas:
+
+*   **Auxiliar de Atendimento Educacional (Código 201):** 10 vagas (sendo 01 reservada para PcD).
+
+As demais páginas fornecidas (2, 4, 6 e 7) mencionam outros cargos (como Assistente Técnico Pedagógico), mas não especificam a quantidade total de vagas para cada um deles na Tabela I. Portanto, com as evidências disponíveis no contexto, é possível contabilizar apenas **10 vagas**."
+pf2P,aberta,parafrase,pf2,pdf,T,,1,gemma4:31b,false,edital-fm:12;edital-fm:4;edital-fm:47;edital-fm:48;edital-fm:46;edital-fm:9;edital-fm:49;edital-fm:50,true,true,5466,103,true,1451,,false,,"Com base nos documentos fornecidos, não é possível determinar o número total de pessoas que a prefeitura irá contratar, pois as páginas disponibilizadas não apresentam a tabela completa de vagas para todos os cargos do concurso.
+
+As informações disponíveis limitam-se a alguns cargos específicos, como o de **Assistente Técnico Pedagógico – Língua Portuguesa (Código 310)**, que possui **01 vaga** (Edital 01/2026, página 4)."
+pf3L,aberta,literal,pf3,pdf,T,,1,gemma4:31b,true,edital-fm:3;edital-fm:14;edital-fm:15;edital-fm:16;edital-fm:36;edital-fm:37;edital-fm:34;edital-fm:35;edital-fm:50;edital-fm:51,true,true,5639,61,true,1476,,false,,"Para o cargo de Assistente Técnico Pedagógico – Educação Física (Código 304), é exigido o **registro ativo no Conselho Regional de Educação Física** (Edital 01/2026 - Concurso Publico Prefeitura de Francisco Morato, página 3)."
+pf3P,aberta,parafrase,pf3,pdf,T,,1,gemma4:31b,true,edital-fm:16;edital-fm:3;edital-fm:34;edital-fm:35;edital-fm:36;edital-fm:37;edital-fm:43;edital-fm:48;edital-fm:49;edital-fm:50;edital-fm:51,true,true,5853,80,true,1411,,false,,"Com base nos documentos fornecidos, para o cargo de **Assistente Técnico Pedagógico – Educação Física** (código 304), o edital menciona a necessidade de o curso ser ""devidamente credenciado"" e cita a obrigatoriedade de estar ""ativo no Conselho Regional de Educação Física"" (Edital 01/2026, página 3)."
+pf4L,confirmacao,literal,pf4,pdf,T,,1,gemma4:31b,true,edital-fm:4;edital-fm:2;edital-fm:34;edital-fm:35;edital-fm:15;edital-fm:16;edital-fm:3;edital-fm:27;edital-fm:14;edital-fm:46,true,true,5384,79,true,2200,,false,,"Sim, a jornada básica pode ser ampliada. De acordo com o Edital 01/2026 - Concurso Publico Prefeitura de Francisco Morato (página 4), a jornada básica poderá ser ampliada, excepcionalmente, em até 2 (duas) horas, mediante decisão da Secretaria Municipal de Educação e diante de necessidade e conveniência administrativa."
+pf4P,confirmacao,parafrase,pf4,pdf,T,,1,gemma4:31b,true,edital-fm:4;edital-fm:30;edital-fm:31;edital-fm:15;edital-fm:16;edital-fm:29;edital-fm:8;edital-fm:3;edital-fm:50;edital-fm:51,true,true,6755,107,true,1833,,false,,"Com base nos documentos fornecidos, a jornada básica de trabalho para os cargos mencionados (como Assistente Técnico Pedagógico) é de 40 horas semanais (Edital 01/2026, páginas 3 e 4).
+
+O edital estabelece que a jornada poderá ser ampliada excepcionalmente em até **2 (duas) horas**, diante da conveniência e necessidade administrativa, por decisão da Secretaria (Edital 01/2026, página 4)."
+pf5L,aberta,literal,pf5,pdf,T,,1,gemma4:31b,true,edital-fm:15;edital-fm:16;edital-fm:51;edital-fm:52;edital-fm:31;edital-fm:14;edital-fm:23;edital-fm:18,true,true,6658,60,true,1475,,false,,"A data prevista para a aplicação das Provas Objetivas e Dissertativa é **22/03/2026** (Edital 01/2026 - Concurso Publico Prefeitura de Francisco Morato, páginas 15 e 51)."
+pf5P,aberta,parafrase,pf5,pdf,T,,1,gemma4:31b,true,edital-fm:14;edital-fm:25;edital-fm:6;edital-fm:46;edital-fm:15;edital-fm:16;edital-fm:47;edital-fm:48,true,true,5484,224,true,1843,,false,,"A data prevista para a realização das provas é **22 de março de 2026**, conforme detalhado no Edital 01/2026 (páginas 6 e 15).
+
+O período (manhã ou tarde) depende do cargo:
+
+*   **Período da Manhã:**
+    *   Assistente Técnico Pedagógico – Artes
+    *   Assistente Técnico Pedagógico – Ciências
+    *   Assistente Técnico Pedagógico – Educação Especial
+    *   Assistente Técnico Pedagógico – Educação Física
+    *   Assistente Técnico Pedagógico – História
+    *   Assistente Técnico Pedagógico – Língua Portuguesa
+
+*   **Período da Tarde:**
+    *   Auxiliar de Atendimento Educacional
+    *   Assistente Técnico Pedagógico – Educação Infantil
+    *   Assistente Técnico Pedagógico – Geografia
+    *   Assistente Técnico Pedagógico – Matemática
+    *   Assistente Técnico Pedagógico – Orientação Educacional"
+pf6L,premissa-falsa,literal,pf6,pdf,T,,1,gemma4:31b,true,edital-fm:9;edital-fm:1;edital-fm:2;edital-fm:49;edital-fm:50;edital-fm:41;edital-fm:46;edital-fm:51;edital-fm:52,true,true,6223,99,true,1490,,false,,"De acordo com o Edital 01/2026 - Concurso Publico Prefeitura de Francisco Morato (página 1, item 1.1), a informação fornecida no enunciado da sua pergunta está incorreta. O prazo de validade do Concurso Público é de **02 (dois) anos**, prorrogável uma única vez por igual período, e a contagem inicia-se a partir da **data da Homologação do Resultado Final**."
+pf6P,premissa-falsa,parafrase,pf6,pdf,T,,1,gemma4:31b,true,edital-fm:1;edital-fm:2;edital-fm:12;edital-fm:5;edital-fm:4;edital-fm:47;edital-fm:48;edital-fm:49;edital-fm:50;edital-fm:51;edital-fm:52,true,true,6442,102,true,1490,,false,,"Não, o concurso não vale cinco anos. De acordo com o Edital 01/2026 - Concurso Publico Prefeitura de Francisco Morato (página 1), o prazo de validade é de **02 (dois) anos**, podendo ser prorrogável uma única vez por igual período.
+
+Esse prazo começa a contar a partir da **data da Homologação do Resultado Final** (Edital 01/2026, página 1)."
+pf7L,negativa,literal,pf7,pdf,T,,1,gemma4:31b,true,,,,6342,58,true,1694,,false,,"O documento fornecido informa que a Prefeitura Municipal de Francisco Morato/SP concede o benefício de Vale Alimentação aos candidatos nomeados (Edital 01/2026, página 4), porém **não especifica o valor em reais** desse benefício."
+pf7P,negativa,parafrase,pf7,pdf,T,,1,gemma4:31b,true,,,,3599,93,true,1444,,false,,"O documento fornecido informa que a Prefeitura Municipal de Francisco Morato/SP concede aos candidatos nomeados o benefício de **Vale Alimentação** (conforme Lei Municipal nº 1.425 de 30 de julho de 1993), porém **não especifica o valor mensal** desse benefício (Edital 01/2026 - Concurso Publico Prefeitura de Francisco Morato, página 4)."
+pf8L,existencia,literal,pf8,pdf,T,,1,gemma4:31b,true,edital-fm:51;edital-fm:52;edital-fm:48;edital-fm:49;edital-fm:11;edital-fm:10;edital-fm:9;edital-fm:2;edital-fm:30;edital-fm:31,true,true,6807,253,true,1832,,false,,"Sim, o edital prevê a isenção do pagamento da taxa de inscrição (Edital 01/2026 - Concurso Publico Prefeitura de Francisco Morato, página 10).
+
+A isenção pode ser solicitada por candidatos que se enquadrem nas seguintes condições:
+*   **Inscritos no Cadastro Único (CadÚnico):** Amparados pelo Decreto Federal n.º 6.593/2008 (Edital 01/2026 - Concurso Publico Prefeitura de Francisco Morato, página 10).
+*   **Doadores de Sangue:** Amparados pela Lei Municipal nº 3.392, de 14 de setembro de 2023, desde que tenham efetuado, no mínimo, 03 (três) doações de sangue em um período de 12 meses retroativos ao início das inscrições (12 de janeiro de 2025 a 12 de janeiro de 2026) (Edital 01/2026 - Concurso Publico Prefeitura de Francisco Morato, página 10)."
+pf8P,existencia,parafrase,pf8,pdf,T,,1,gemma4:31b,true,edital-fm:10;edital-fm:34;edital-fm:35;edital-fm:36;edital-fm:37;edital-fm:40;edital-fm:41;edital-fm:38;edital-fm:7,true,true,5944,324,true,2289,,false,,"Sim, candidatos de baixa renda podem obter a **isenção total** do pagamento da taxa de inscrição, desde que estejam amparados pelo Decreto Federal n.º 6.593/2008 e inscritos no **Cadastro Único (CadÚnico)** (Edital 01/2026, página 10).
+
+Para ter direito a esse benefício, o candidato deve atender aos seguintes critérios (Edital 01/2026, página 10):
+*   Pertencer a uma família com renda familiar per capita de até meio salário-mínimo;
+*   Estar com o cadastro no CadÚnico atualizado (incluído ou atualizado há no máximo 24 meses);
+*   Informar o NIS e o nome completo idênticos aos que constam no Cadastro Único.
+
+**Procedimentos e Prazos:**
+*   **Solicitação:** Deve ser feita nos dias **12 e 13 de janeiro de 2026** (iniciando às 10h do dia 12 e encerrando às 17h do dia 13), no site do INSTITUTO MAIS (www.institutomais.org.br).
+*   **Informações necessárias:** No ato da inscrição, o candidato deve informar o Número de Identificação Social (NIS) válido, o nome completo da mãe e a data de emissão do seu RG (Edital 01/2026, página 10)."
+pf9L,aberta,literal,pf9,pdf,T,,1,gemma4:31b,false,edital-fm:26;edital-fm:19,false,false,2372,85,true,1477,,false,,"Com base nos documentos fornecidos, não há informações sobre o conteúdo do ""Capítulo XVI"". O contexto disponível contém apenas trechos das páginas 19 e 26 do Edital 01/2026, que tratam de eliminação do concurso (item 7.13) e de orientações para a Prova de Títulos (item 11.3 e seguintes)."
+pf9P,aberta,parafrase,pf9,pdf,T,,1,gemma4:31b,true,edital-fm:32;edital-fm:1;edital-fm:2;edital-fm:49;edital-fm:50;edital-fm:30;edital-fm:31;edital-fm:33;edital-fm:34;edital-fm:15;edital-fm:16,true,true,6112,405,true,4003,,false,,"Sobre a convocação para assumir a vaga (admissão), a parte final do edital estabelece o seguinte:
+
+*   **Forma de Convocação:** A admissão será precedida de um Edital de Convocação divulgado na imprensa escrita ou eletrônica do município de Francisco Morato-SP (Edital 01/2026, pág. 32).
+*   **Ordem de Chamada:** A convocação seguirá a ordem de classificação dos candidatos e as necessidades da Prefeitura Municipal de Francisco Morato. É responsabilidade do candidato acompanhar os editais de convocação (Edital 01/2026, pág. 32).
+*   **Requisitos para Admissão:** No momento da admissão, o candidato deve:
+    *   Comprovar que possui todos os requisitos exigidos para o cargo na data da nomeação;
+    *   Entregar uma declaração de que não acumula remuneração de cargos, conforme a Constituição Federal;
+    *   Entregar outros documentos que a Prefeitura julgar necessários (Edital 01/2026, pág. 32).
+*   **Penalidades:** 
+    *   Irregularidades ou inexatidões nos documentos podem acarretar a nulidade da inscrição (Edital 01/2026, pág. 32).
+    *   O não atendimento à convocação no prazo estipulado ou a desistência por escrito resultará na exclusão definitiva do candidato do concurso (Edital 01/2026, pág. 32).
+*   **Custos:** Todas as despesas com deslocamento, hospedagem, alimentação e exames médicos para a posse e exercício são de responsabilidade do próprio candidato (Edital 01/2026, pág. 33)."

@@ -1,0 +1,10 @@
+indice,tipo,n,parametros,revocacao_at_10,instaveis_reconstrucao,instaveis_ordem,consultas,pgvector
+"IVFFlat, $\sqrt{N}$ listas, 1 sonda",ivfflat,1000,lists=32 probes=1,0.477,20,20,20,0.8.6
+"IVFFlat, recomendação do pgvector",ivfflat,1000,lists=1 probes=1,1.0,0,0,20,0.8.6
+"HNSW, padrões do pgvector",hnsw,1000,m=16 ef_construction=64 ef_search=40,1.0,0,0,20,0.8.6
+"IVFFlat, $\sqrt{N}$ listas, 1 sonda",ivfflat,5000,lists=71 probes=1,0.365,20,20,20,0.8.6
+"IVFFlat, recomendação do pgvector",ivfflat,5000,lists=5 probes=2,1.0,0,0,20,0.8.6
+"HNSW, padrões do pgvector",hnsw,5000,m=16 ef_construction=64 ef_search=40,0.99,2,4,20,0.8.6
+"IVFFlat, $\sqrt{N}$ listas, 1 sonda",ivfflat,20000,lists=141 probes=1,0.255,20,20,20,0.8.6
+"IVFFlat, recomendação do pgvector",ivfflat,20000,lists=20 probes=4,1.0,0,0,20,0.8.6
+"HNSW, padrões do pgvector",hnsw,20000,m=16 ef_construction=64 ef_search=40,0.91,6,17,20,0.8.6

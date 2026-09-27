@@ -19,47 +19,104 @@ func carregarCorpus(t *testing.T) *evalcorpus.Corpus {
 
 // Constantes travadas: o artigo cita estes numeros, entao altera-los obriga a
 // revisar o texto (constituicao, principio III).
+//
+// # De onde vem o 1,000, sem rodar a ferramenta
+//
+// A regra do projeto e derivar o esperado da DEFINICAO, nunca copiar da saida
+// da implementacao (ver o cabecalho de internal/provenance). A derivacao:
+//
+//  1. C1 e texto puro, sem form feed. buildDocumentPages atribui pagina 1 a
+//     todo bloco que nao traz pagina (internal/indexing/outline.go). Logo todo
+//     item de escopo de pagina em C1 TEM pagina.
+//  2. Item de escopo de documento e completo por definicao quando aponta o
+//     documento, e todos apontam.
+//  3. Portanto TPC global = 1,000 e cada RateFor = 1,000.
+//
+// # O que mudou em relacao ao 0,329 anterior, item a item
+//
+// O valor antigo era 51/155. Os 104 itens contados como incompletos eram:
+//
+//	85 pares de metadado  -- estatisticas do documento inteiro, que nunca
+//	                         tiveram pagina e nunca teriam. Passaram a ser
+//	                         medidos por escopo de documento.
+//	19 chunks             -- furo REAL de auditabilidade, agora fechado: o
+//	                         chunk carrega a pagina do seu paragrafo de origem.
+//
+// Ou seja, 82% do furo publicado era problema de classificacao da metrica e
+// 18% era defeito do indice. A decomposicao precisa aparecer no artigo, porque
+// so o numero final (1,000) pareceria maquiagem.
+//
+// # Ressalva que NAO pode sumir do artigo
+//
+// 1,000 em C1 prova que o mecanismo carrega a pagina, e NAO que a pagina e a
+// certa: C1 tem uma pagina so, entao "pagina correta" e "constante 1" sao
+// indistinguiveis aqui. A prova de atribuicao correta esta em
+// internal/indexing/chunks_test.go, com paragrafos em paginas diferentes.
 const (
-	tpcGlobalC1 = 0.329
+	tpcGlobalC1 = 1.000
 	tcvC1       = 1.000
-	// Tipos com proveniencia completa por construcao do esquema.
-	tiposCompletos = 3 // paragraph, page, outline
-	// Tipos sem page_number no esquema.
-	tiposIncompletos = 2 // chunk, metadata
+	// Todos os tipos medidos em C1 tem proveniencia completa depois da
+	// mudanca de 2026-09-19: paragraph, page, outline, chunk e metadata.
+	tiposCompletos = 5
+	// Nenhum tipo incompleto. Se este numero voltar a subir, houve regressao.
+	tiposIncompletos = 0
 )
 
-// TestTPCReportaPorTipoEstruturalENaoSoAMedia e o teste central da issue #17.
+// TestTPCReportaPorTipoEstruturalENaoSoAMedia nasceu exigindo o contrario do
+// que exige hoje, e a inversao e o registro de um resultado.
 //
-// A media global de 0,329 sozinha sugere que o indice inteiro e mal auditavel.
-// A verdade medida e outra: a proveniencia e PERFEITA onde o esquema tem
-// page_number e INEXISTENTE onde nao tem. Publicar so a media esconderia
-// exatamente o achado.
+// A versao anterior falhava se NENHUM tipo estivesse incompleto, com a
+// mensagem "se o esquema ganhou page_number em tabela/metadado/chunk, o artigo
+// precisa ser atualizado e este teste tambem". Foi exatamente o que aconteceu
+// em 2026-09-19. O teste agora trava o estado novo: todo tipo completo. Se um
+// tipo voltar a ficar incompleto, houve regressao de auditabilidade e o build
+// tem que quebrar.
+//
+// O recorte por tipo continua sendo o ponto: uma media global, alta ou baixa,
+// esconde qual estrutura perdeu a coordenada.
 func TestTPCReportaPorTipoEstruturalENaoSoAMedia(t *testing.T) {
 	corpus := carregarCorpus(t)
 	report, _ := measure(corpus)
 
-	if len(report.Kinds()) < tiposCompletos+tiposIncompletos {
-		t.Fatalf("esperava ao menos %d tipos estruturais, veio %d: %v",
-			tiposCompletos+tiposIncompletos, len(report.Kinds()), report.Kinds())
+	if len(report.Kinds()) != tiposCompletos {
+		t.Fatalf("esperava %d tipos estruturais em C1, veio %d: %v",
+			tiposCompletos, len(report.Kinds()), report.Kinds())
 	}
 
-	completos := 0
-	incompletos := 0
 	for _, kind := range report.Kinds() {
-		taxa := report.RateFor(kind)
-		switch {
-		case taxa >= 0.999:
-			completos++
-		case taxa <= 0.001:
-			incompletos++
+		if taxa := report.RateFor(kind); taxa < 0.999 {
+			t.Errorf("regressao de proveniencia no tipo %q: TPC %.3f, esperava 1.000", kind, taxa)
 		}
 	}
+}
 
-	if completos == 0 {
-		t.Fatal("nenhum tipo com proveniencia completa: o indice regrediu")
+// TestEscopoNaoEscondeItemQueDeveriaTerPagina e o guarda-corpo da mudanca de
+// criterio. A objecao obvia a "medir por escopo" e que alguem passe a
+// classificar como escopo de documento qualquer item inconveniente, e o numero
+// melhore sem que a auditabilidade melhore.
+//
+// O teste fecha essa porta pelo tamanho: em C1 o escopo de documento tem que
+// conter EXATAMENTE os pares de metadado. Se um paragrafo, uma pagina, um
+// chunk, uma tabela ou um no de sumario for reclassificado para escopo de
+// documento, as contas param de bater e o build quebra.
+func TestEscopoNaoEscondeItemQueDeveriaTerPagina(t *testing.T) {
+	corpus := carregarCorpus(t)
+	report, _ := measure(corpus)
+
+	metadados := report.ByKind["metadata"].Total
+	escopoDocumento := report.ByScope[provenance.ScopeDocument].Total
+	if escopoDocumento != metadados {
+		t.Fatalf("escopo de documento tem %d itens mas so os %d pares de metadado deveriam estar la",
+			escopoDocumento, metadados)
 	}
-	if incompletos == 0 {
-		t.Fatal("nenhum tipo incompleto -- se o esquema ganhou page_number em tabela/metadado/chunk, o artigo precisa ser atualizado e este teste tambem")
+
+	escopoPagina := report.ByScope[provenance.ScopePage].Total
+	if escopoPagina+escopoDocumento != report.Total {
+		t.Fatalf("os escopos nao cobrem o total: pagina=%d documento=%d total=%d",
+			escopoPagina, escopoDocumento, report.Total)
+	}
+	if escopoPagina == 0 {
+		t.Fatal("nenhum item de escopo de pagina: a metrica deixou de exigir pagina de qualquer coisa")
 	}
 }
 
@@ -74,9 +131,11 @@ func TestTPCGlobalEstaTravadaNoValorDoArtigo(t *testing.T) {
 	}
 }
 
-// TestCausaDaIncompletudeEhPaginaAusente prova que a limitacao tem UMA causa,
-// nao varias. Isso importa para a Discussao: um defeito unico e enderecavel;
-// varios difusos sugerem problema estrutural.
+// TestCausaDaIncompletudeEhPaginaAusente provava que a limitacao tinha UMA
+// causa, nao varias. Com a incompletude zerada em C1 ele passa a provar a
+// ausencia de qualquer causa: 0 == 0. Mantido de proposito -- se uma
+// incompletude voltar a aparecer por outro motivo (document_id ausente,
+// sequence_order invalido, conteudo vazio), ele quebra e aponta qual.
 func TestCausaDaIncompletudeEhPaginaAusente(t *testing.T) {
 	corpus := carregarCorpus(t)
 	report, _ := measure(corpus)

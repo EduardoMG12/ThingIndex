@@ -15,7 +15,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-ARTIGO="docs/article/article-overleaf.md"
+ARTIGO="docs/article/artigo.tex"
 falhas=0
 
 # --- 1. Afirmacao de que o repositorio JA ESTA acessivel -------------------

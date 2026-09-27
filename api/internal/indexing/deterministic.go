@@ -381,23 +381,6 @@ func parsePlainTextStructure(raw string) ([]outlineDraft, []textBlock) {
 	return headings, paragraphs
 }
 
-func splitBlocks(text string) []string {
-	if text == "" {
-		return nil
-	}
-
-	normalized := strings.ReplaceAll(text, "\r\n", "\n")
-	rawBlocks := strings.Split(normalized, "\n\n")
-	blocks := make([]string, 0, len(rawBlocks))
-	for _, block := range rawBlocks {
-		cleaned := normalizeText(block)
-		if cleaned != "" {
-			blocks = append(blocks, cleaned)
-		}
-	}
-	return blocks
-}
-
 // tocEntryPattern casa "1.2.3 Titulo 45" e "APENDICE A - REGULAMENTO 176":
 // texto que termina com um numero de pagina solto.
 var tocEntryPattern = regexp.MustCompile(`\S\s+\d{1,3}$`)

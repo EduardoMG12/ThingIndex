@@ -332,3 +332,39 @@ func htmlPromptProfile() string {
 func genericPromptProfile() string {
 	return "Focus on section hierarchy, major topics, key entities, dates, metrics, and explicit relationships that help retrieve the document later."
 }
+
+// buildPageQuestionsPrompt gera as perguntas que cada pagina responde, em
+// linguagem de leigo.
+//
+// O texto deste prompt esta CONGELADO pelo pre-registro em
+// docs/prds/pre-registro-perguntas-geradas.md e travado por teste. Muda-lo
+// invalida a medicao: o compromisso registrado e rodar uma versao so, porque
+// rodar varias e reportar a melhor produz um numero favoravel e sem valor.
+//
+// A diferenca em relacao ao prompt de resumo e o ponto inteiro do experimento.
+// O de resumo manda dizer o que a pagina contem "with the numbers, names, dates
+// and rules present in it", ou seja, pede para REUTILIZAR o vocabulario da
+// pagina. Este pede o contrario: a palavra que a pessoa usaria, justamente
+// porque um indice lexical so consegue usar termo que ainda nao esta no texto.
+func buildPageQuestionsPrompt(contextBlock string) (string, string) {
+	systemPrompt := strings.TrimSpace(`
+You generate one stage of a structured document indexing pipeline.
+Return only valid JSON.
+Do not wrap the response in markdown fences.
+Write only questions that the supplied page text actually answers.
+Write them in the everyday Portuguese of a person who has NOT read the document.
+Do not reuse the technical vocabulary of the page when a common word exists.
+`)
+
+	var userPrompt strings.Builder
+	userPrompt.WriteString("Task: write the questions each indexed page answers, for retrieval by everyday vocabulary.\n")
+	userPrompt.WriteString("Return JSON with field pages.\n")
+	userPrompt.WriteString("pages must be an array of objects with page_number and questions.\n")
+	userPrompt.WriteString("questions must be an array of 3 to 5 short questions in Portuguese, each one a question a non-specialist would actually type.\n")
+	userPrompt.WriteString("Each question must be answerable by the page text alone.\n")
+	userPrompt.WriteString("Prefer the everyday word over the technical term: write \"quanto tempo\" instead of \"prazo decadencial\", \"quem paga\" instead of \"responsabilidade pelo custeio\".\n")
+	userPrompt.WriteString("Do not number the questions and do not answer them.\n\n")
+	userPrompt.WriteString(contextBlock)
+
+	return systemPrompt, userPrompt.String()
+}
