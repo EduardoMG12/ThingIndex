@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -89,22 +90,49 @@ type cacheFalso struct {
 	gravadas int
 }
 
-func (c *cacheFalso) LookupEnrichment(_ context.Context, kind, model string, hashes []string) (map[string]domain.EnrichmentCacheEntry, error) {
+func chaveCacheFalso(scope domain.EnrichmentCacheScope, kind, hash string) string {
+	return fmt.Sprintf("%d|%s|%s|%s|%s", scope.UserID, scope.Provider, scope.Model, kind, hash)
+}
+
+func (c *cacheFalso) LookupEnrichment(_ context.Context, scope domain.EnrichmentCacheScope, kind string, hashes []string) (map[string]domain.EnrichmentCacheEntry, error) {
 	out := map[string]domain.EnrichmentCacheEntry{}
 	for _, h := range hashes {
-		if e, ok := c.entradas[kind+"|"+model+"|"+h]; ok {
+		if e, ok := c.entradas[chaveCacheFalso(scope, kind, h)]; ok {
 			out[h] = e
 		}
 	}
 	return out, nil
 }
 
-func (c *cacheFalso) StoreEnrichment(_ context.Context, entries []domain.EnrichmentCacheEntry) error {
+func (c *cacheFalso) StoreEnrichment(_ context.Context, scope domain.EnrichmentCacheScope, entries []domain.EnrichmentCacheEntry) error {
 	for _, e := range entries {
-		c.entradas[e.Kind+"|"+e.Model+"|"+e.ContentHash] = e
+		c.entradas[chaveCacheFalso(scope, e.Kind, e.ContentHash)] = e
 		c.gravadas++
 	}
 	return nil
+}
+
+var escopoM1 = domain.EnrichmentCacheScope{UserID: 1, Provider: "OPENAI|api.openai.com", Model: "m1"}
+
+// Regressao P0-1: a expansao da pergunta usava o mesmo cache global do
+// enriquecimento. Termos gerados pelo provedor de um usuario nao podem ser
+// servidos a outro.
+func TestExpandNaoReaproveitaExpansaoDeOutroUsuario(t *testing.T) {
+	cache := &cacheFalso{entradas: map[string]domain.EnrichmentCacheEntry{}}
+	atacante := &llmFalso{resposta: "termo envenenado"}
+	vitima := &llmFalso{resposta: "epi equipamento"}
+	e := newQueryExpander(cache)
+
+	escopoAtacante := domain.EnrichmentCacheScope{UserID: 1, Provider: "OPENAI|evil.example.com", Model: "gpt-4o-mini"}
+	escopoVitima := domain.EnrichmentCacheScope{UserID: 2, Provider: "OPENAI|api.openai.com", Model: "gpt-4o-mini"}
+	e.Expand(context.Background(), atacante, escopoAtacante, "Quem paga o capacete?")
+
+	if got := e.Expand(context.Background(), vitima, escopoVitima, "Quem paga o capacete?"); got != "epi equipamento" {
+		t.Fatalf("a vitima recebeu a expansao de outro usuario: %q", got)
+	}
+	if vitima.chamadas != 1 {
+		t.Fatalf("a vitima devia chamar o proprio LLM; chamadas: %d", vitima.chamadas)
+	}
 }
 
 func TestExpandUsaCacheNaSegundaVez(t *testing.T) {
@@ -112,8 +140,8 @@ func TestExpandUsaCacheNaSegundaVez(t *testing.T) {
 	llm := &llmFalso{resposta: "epi equipamento"}
 	e := newQueryExpander(cache)
 
-	primeira := e.Expand(context.Background(), llm, "m1", "Quem paga o capacete?")
-	segunda := e.Expand(context.Background(), llm, "m1", "quem   paga o CAPACETE?")
+	primeira := e.Expand(context.Background(), llm, escopoM1, "Quem paga o capacete?")
+	segunda := e.Expand(context.Background(), llm, escopoM1, "quem   paga o CAPACETE?")
 
 	if primeira != "epi equipamento" || segunda != primeira {
 		t.Fatalf("expansoes divergiram: %q e %q", primeira, segunda)
@@ -131,8 +159,8 @@ func TestExpansaoVaziaTambemEGravada(t *testing.T) {
 	llm := &llmFalso{resposta: "\n"}
 	e := newQueryExpander(cache)
 
-	e.Expand(context.Background(), llm, "m1", "Qual o prazo decadencial?")
-	e.Expand(context.Background(), llm, "m1", "Qual o prazo decadencial?")
+	e.Expand(context.Background(), llm, escopoM1, "Qual o prazo decadencial?")
+	e.Expand(context.Background(), llm, escopoM1, "Qual o prazo decadencial?")
 
 	if llm.chamadas != 1 {
 		t.Fatalf("expansao vazia devia ficar em cache; chamadas: %d", llm.chamadas)
@@ -147,10 +175,10 @@ func TestExpansaoVaziaTambemEGravada(t *testing.T) {
 func TestExpandFalhaSilenciosaNaoQuebraABusca(t *testing.T) {
 	e := newQueryExpander(&cacheFalso{entradas: map[string]domain.EnrichmentCacheEntry{}})
 	llm := &llmFalso{err: errors.New("provedor fora do ar")}
-	if got := e.Expand(context.Background(), llm, "m1", "Quem paga o capacete?"); got != "" {
+	if got := e.Expand(context.Background(), llm, escopoM1, "Quem paga o capacete?"); got != "" {
 		t.Fatalf("esperava expansao vazia, veio %q", got)
 	}
-	if got := e.Expand(context.Background(), nil, "m1", "Quem paga o capacete?"); got != "" {
+	if got := e.Expand(context.Background(), nil, escopoM1, "Quem paga o capacete?"); got != "" {
 		t.Fatalf("sem LLM a expansao tem que ser vazia, veio %q", got)
 	}
 }

@@ -95,6 +95,13 @@ func NewProviderUseCase(repo domain.ProviderRepository, cfg *config.Config) doma
 	}
 }
 
+// llmClientOptions aplica ao cliente do LLM o mesmo validador de endpoint do
+// storage: base_url do usuario e revalidado no dial (DNS rebinding) e respeita
+// ALLOW_PRIVATE_STORAGE_ENDPOINTS.
+func (u *providerUseCase) llmClientOptions() provider.LLMClientOptions {
+	return provider.LLMClientOptions{EndpointValidator: u.endpointValidator}
+}
+
 func (u *providerUseCase) SaveCredentials(ctx context.Context, userID uint, family, providerType string, credentials map[string]string, activation domain.ProviderActivation) error {
 	normalizedFamily, normalizedProviderType, err := normalizeProviderSelection(family, providerType)
 	if err != nil {
@@ -253,7 +260,7 @@ func (u *providerUseCase) discoverProviderModels(ctx context.Context, userID uin
 	discoveryCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()
 
-	models, err := provider.ListLLMModels(discoveryCtx, providerType, credentials)
+	models, err := provider.ListLLMModels(discoveryCtx, providerType, credentials, u.llmClientOptions())
 	if err != nil {
 		if options.allowCachedAfter {
 			if cachedModels, cacheErr := u.listCachedModels(ctx, userID, providerType); cacheErr == nil && len(cachedModels) > 0 {
@@ -704,7 +711,7 @@ func (u *providerUseCase) resolveLLMByUsage(ctx context.Context, userID uint, us
 		return nil, fmt.Errorf("%w: %v", domain.ErrLLMProviderUnavailable, err)
 	}
 
-	llmService, err := provider.NewLLMProvider(config.ProviderType, creds)
+	llmService, err := provider.NewLLMProvider(config.ProviderType, creds, u.llmClientOptions())
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", domain.ErrLLMProviderUnavailable, err)
 	}
@@ -865,7 +872,7 @@ func (u *providerUseCase) validateProviderConnection(ctx context.Context, family
 			return classifyProviderConnectionError(family, providerType, err)
 		}
 	case domain.FamilyLLM:
-		if err := provider.ValidateLLMConnection(ctx, providerType, credentials); err != nil {
+		if err := provider.ValidateLLMConnection(ctx, providerType, credentials, u.llmClientOptions()); err != nil {
 			return classifyProviderConnectionError(family, providerType, err)
 		}
 	}
@@ -1110,7 +1117,7 @@ func (u *providerUseCase) syncProviderModelCatalog(ctx context.Context, userID u
 	discoveryCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()
 
-	models, err := provider.ListLLMModels(discoveryCtx, normalizedProviderType, credentials)
+	models, err := provider.ListLLMModels(discoveryCtx, normalizedProviderType, credentials, u.llmClientOptions())
 	if err != nil {
 		return err
 	}

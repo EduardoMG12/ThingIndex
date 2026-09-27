@@ -45,6 +45,7 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 	router.MaxMultipartMemory = cfg.MaxUploadSizeBytes
 	router.Use(middleware.RequestContextMiddleware())
 	router.Use(middleware.I18nMiddleware())
+	router.Use(middleware.JSONBodyLimitMiddleware(middleware.JSONBodyLimitBytes))
 
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     cfg.CorsAllowedOrigins(),
@@ -54,11 +55,9 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 		AllowCredentials: true,
 	}))
 
-	defaultStorage, err := newDefaultStorageProvider(cfg)
-	if err != nil {
-		log.Printf("warning: failed to initialize default storage provider, continuing with unavailable storage: %v", err)
-		defaultStorage = newUnavailableStorage(err)
-	}
+	defaultStorage := resolveDefaultStorage(func() (domain.StorageService, error) {
+		return newDefaultStorageProvider(cfg)
+	})
 
 	authRepo := repository.NewGormAuthRepository(db)
 	categoryRepo := repository.NewGormCategoryRepository(db)
@@ -95,7 +94,7 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 		cfg.MaxUploadSizeBytes,
 	)
 	docHandler := handlers.NewDocumentHandler(docUseCase, cfg.UploadRequestLimitBytes())
-	chatUseCase := usecase.NewChatUseCase(collectionContextRepo, chatConversationRepo, providerUseCase, repository.NewGormIndexingRepository(db))
+	chatUseCase := usecase.NewChatUseCase(collectionRepo, collectionContextRepo, chatConversationRepo, providerUseCase, repository.NewGormIndexingRepository(db))
 	chatHandler := handlers.NewChatHandler(chatUseCase)
 	// Anotacoes do workspace: marcas coloridas e legenda. Anotacao, nao
 	// recuperacao -- nada aqui entra no caminho de contexto ou de conexoes.

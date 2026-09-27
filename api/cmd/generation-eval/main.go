@@ -48,6 +48,26 @@ func defaultGabaritoPath() string {
 // experimento de formulacao: ela pertence ao dado bruto.
 var csvHeader = []string{"question_id", "stratum", "variant", "pair_id", "origin", "arm", "scope", "repeat", "model", "correct", "cited_pages", "provenance_ok", "retrieval_hit", "prompt_tokens", "completion_tokens", "usage_reported", "latency_ms", "cost_usd", "truncated", "error", "answer"}
 
+// csvColumn devolve o indice da coluna pelo nome do csvHeader.
+//
+// MOTIVO: o status impresso no terminal lia row[7] -- a coluna "repeat" --
+// como se fosse "correct" (indice 9); toda linha com repeat != "true" saia
+// "errada", ou seja, todas. Indice magico desalinha em silencio quando uma
+// coluna entra no meio; o nome nao. Coluna inexistente e erro de programa.
+func csvColumn(name string) int {
+	for i, column := range csvHeader {
+		if column == name {
+			return i
+		}
+	}
+	panic("generation-eval: coluna inexistente no csvHeader: " + name)
+}
+
+var (
+	colCorrect = csvColumn("correct")
+	colModel   = csvColumn("model")
+)
+
 type asker interface {
 	Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) answer
 }
@@ -173,13 +193,13 @@ func main() {
 				_ = w.Write(row)
 				w.Flush()
 				status := "certa"
-				if row[7] != "true" {
+				if row[colCorrect] != "true" {
 					status = "errada"
 				}
 				if a.Err != nil {
 					status = "erro: " + a.Err.Error()
 				}
-				fmt.Fprintf(os.Stderr, "%s %s r%d %-7s %6dms %s\n", armName, q.ID, r, status, a.Latency.Milliseconds(), row[8])
+				fmt.Fprintf(os.Stderr, "%s %s r%d %-7s %6dms %s\n", armName, q.ID, r, status, a.Latency.Milliseconds(), row[colModel])
 			}
 		}
 	}
