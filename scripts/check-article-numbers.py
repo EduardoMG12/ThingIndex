@@ -56,6 +56,13 @@ def _numeros_geracao():
     return mod
 
 
+def _proveniencia_geracao():
+    spec = importlib.util.spec_from_file_location("proveniencia_geracao", RAIZ / "scripts" / "proveniencia-geracao.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def _br(valor: float, casas: int = 3) -> str:
     return f"{valor:.{casas}f}".replace(".", ",")
 
@@ -78,15 +85,22 @@ def conferir_geracao(texto: str) -> int:
     def taxa(par):
         return par[0] / par[1]
 
+    def p_texto(p: float) -> str:
+        return r"p < 0{,}001" if p < 0.001 else "p = " + _br(p).replace(",", "{,}")
+
+    pg = _proveniencia_geracao()
+    prov_t = pg.resumo("generation-results-T-ordem.csv", "T")["todas"]
+    prov_f = pg.resumo("generation-results-F-document.csv", "F")["todas"]
+    ic_c = ng.ic_conglomerado("off", ("seguranca-trabalho", "produto", "licitacoes"))
+    ic_e = ng.ic_conglomerado("on", ("seguranca-trabalho", "produto", "licitacoes"))
+
     esperados = {
-        "acerto T na geracao": _br(g["T"]["todas"]["acerto"]),
-        "acerto F na geracao": _br(g["F"]["todas"]["acerto"]),
-        "proveniencia T": _br(g["T"]["todas"]["prov"]),
-        "proveniencia F": _br(g["F"]["todas"]["prov"]),
         "tokens T": _milhar(g["T"]["todas"]["tokens"]),
         "tokens F": _milhar(g["F"]["todas"]["tokens"]),
-        "prov T em respostas": f"{g['T']['todas']['pok']} de {g['T']['todas']['pn']}",
-        "prov F em respostas": f"{g['F']['todas']['pok']} de {g['F']['todas']['pn']}",
+        "pagina exibida T em respostas": f"{prov_t['exibida']} de {prov_t['respostas']}",
+        "pagina citada T": f"correta em {prov_t['prosa_com_folio']} de {prov_t['respostas']} respostas em T",
+        "pagina citada F": f"{prov_f['prosa_com_folio']} de {prov_f['respostas']} em F",
+        "pagina citada F sem folio": f"F cairia para {prov_f['prosa']}",
         "acerto da bateria": _br(taxa(c["total"])),
         "acerto seguranca": _br(taxa(c["tema"]["seguranca-trabalho"])),
         "acerto produto": _br(taxa(c["tema"]["produto"])),
@@ -100,13 +114,13 @@ def conferir_geracao(texto: str) -> int:
         "proveniencia E": _br(taxa(e["prov"])),
         "tokens C": _milhar(c["tokens"]),
         "tokens E": _milhar(e["tokens"]),
-        "sempre certa": f"{c['sempre_certa']} acertaram nas tr",
+        "sempre certa": f"{c['sempre_certa']} das 71 acertaram nas tr",
         "sempre errada": f"{c['sempre_errada']} erraram nas tr",
-        "pares a favor da literal": f"{ef['a_favor_literal']} deles a favor da literal",
-        "p da formulacao": f"p = {_br(ef['p']).replace(',', '{,}')}",
+        "pares a favor da literal": f"{ef['a_favor_literal']} discordantes, todos a favor da literal",
+        "p da formulacao": p_texto(ef["p"]),
         "expansao ganhou": f"{len(ex['ganhou'])} passaram a acertar",
-        "expansao perdeu": f"{len(ex['perdeu'])} deixou de acertar",
-        "p da expansao": f"p = {_br(ex['p']).replace(',', '{,}')}",
+        "expansao perdeu": "nenhuma deixou de acertar" if not ex["perdeu"] else f"{len(ex['perdeu'])} deixou de acertar",
+        "p da expansao": p_texto(ex["p"]),
         "enriquecimento, fontes mudam": f"em {en['fontes_mudam']} das 12 perguntas",
     }
     for braco in ("content", "content-summary", "content-questions", "max"):
@@ -121,19 +135,28 @@ def conferir_geracao(texto: str) -> int:
     t, f = g["T"], g["F"]
     for est, rot in (("prosa", "Prosa (30)"), ("tabela", "Tabela (21)"), ("calendario", "Calendário (16)")):
         esperados[f"tabela geracao {est}"] = linha(
-            f"{rot:<15}", _br(t[est]["acerto"]), _br(f[est]["acerto"]), _br(t[est]["prov"]), _br(f[est]["prov"]),
+            f"{rot:<15}", _br(t[est]["acerto"]), _br(f[est]["acerto"]), _br(t[est]["prov"]),
+            _br(pg.taxa_estrato("generation-results-T-ordem.csv", est)),
+            _br(pg.taxa_estrato("generation-results-F-document.csv", est)),
             _milhar(t[est]["tokens"]), _milhar(f[est]["tokens"]))
     esperados["tabela geracao todas"] = linha(
         f"{'Todas (72)':<15}", _br(t["todas"]["acerto"]), _br(f["todas"]["acerto"]), _br(t["todas"]["prov"]),
-        _br(f["todas"]["prov"]), _milhar(t["todas"]["tokens"]), _milhar(f["todas"]["tokens"]))
-    for nome, b in (("C, sem expansão", c), ("E, com expansão", e)):
+        _br(prov_t["prosa_com_folio"] / prov_t["respostas"]), _br(prov_f["prosa_com_folio"] / prov_f["respostas"]),
+        _milhar(t["todas"]["tokens"]), _milhar(f["todas"]["tokens"]))
+    for nome, b in (("Sem expansão", c), ("Com expansão", e)):
         esperados[f"tabela expansao {nome}"] = linha(
             nome, _br(taxa(b["variante"]["literal"])), _br(taxa(b["variante"]["parafrase"])), _br(taxa(b["total"])),
-            _br(taxa(b["prov"])), _milhar(b["tokens"]))
-    for tema, rot in (("seguranca-trabalho", "Segurança do trabalho"), ("produto", "Produto e consumidor "), ("licitacoes", "Licitações           ")):
+            _br(taxa(b["prov"])), _milhar(b["tokens"]), f"{b['sempre_certa']}/71")
+    temas = (("seguranca-trabalho", "Segurança do trabalho"), ("produto", "Produto e consumidor "), ("licitacoes", "Licitações           "))
+    for tema, rot in temas:
         k, n = c["tema"][tema]
-        lo, hi = ng.wilson(k, n)
-        esperados[f"tabela bateria {tema}"] = linha(rot, _br(k / n), f"{_br(lo)}--{_br(hi)}", str(n))
+        lo, hi = ng.ic_conglomerado("off", (tema,))
+        certas = sum(all(v) for q, v in ng.por_pergunta("off", (tema,)).items())
+        total_q = len(ng.por_pergunta("off", (tema,)))
+        esperados[f"tabela bateria {tema}"] = linha(rot, str(n), _br(k / n), f"{_br(lo)}--{_br(hi)}", f"{certas}/{total_q}")
+    esperados["tabela bateria total"] = linha(
+        f"{'Total':<21}", str(c["total"][1]), _br(taxa(c["total"])), f"{_br(ic_c[0])}--{_br(ic_c[1])}", f"{c['sempre_certa']}/71")
+    esperados["ic E (texto)"] = _br(ic_e[0])
 
     falhas = 0
     for descricao, trecho in esperados.items():
@@ -218,7 +241,7 @@ def main() -> int:
     # O texto do artigo precisa mesmo conter os numeros conferidos, senao este
     # script estaria validando afirmacoes que ninguem faz.
     texto = ARTIGO.read_text(encoding="utf-8")
-    for trecho in ("0,869", "0,844", "0,562", "0,750", "-0{,}857"):
+    for trecho in ("0,869", "0,844", "0,562", "0,750", "0,857"):
         if trecho not in texto:
             print(
                 f"FALHA  o artigo nao contem mais '{trecho}': a lista deste script esta desatualizada",

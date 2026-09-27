@@ -73,6 +73,14 @@ def resumo(arq: str, braco: str) -> dict:
     return out
 
 
+def taxa_estrato(arq: str, estrato: str) -> float:
+    """Pagina citada no texto (aceitando o folio impresso) num estrato."""
+    rows = [r for r in csv.DictReader(open(R / arq, encoding="utf-8"))
+            if Q[r["question_id"]]["targets"] and Q[r["question_id"]]["stratum"] == estrato]
+    ok = sum(bool(paginas_prosa(r["answer"]) & alvos(Q[r["question_id"]], True)) for r in rows)
+    return ok / len(rows)
+
+
 if __name__ == "__main__":
     for arq, b in (("generation-results-T-ordem.csv", "T"), ("generation-results-F-document.csv", "F")):
         print(b, json.dumps(resumo(arq, b), ensure_ascii=False))

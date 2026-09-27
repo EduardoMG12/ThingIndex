@@ -103,8 +103,16 @@ jobs:
       # label duplicado faz toda referencia apontar para a ultima tabela, e
       # tabela inserida sem ser citada e defeito de escrita academica. Todos
       # sobrevivem ate a defesa se ninguem verificar.
-      - name: referencias de tabela do artigo sao consistentes
-        run: bash scripts/check-article-tables.sh
+      - name: toda tabela e figura e chamada antes de aparecer
+        run: python3 scripts/check-article-floats.py
+
+      # A Secao de verificacao cita quantos testes existem. Numero escrito a
+      # mao envelhece a cada teste novo; o .tex e gerado e comparado aqui.
+      - name: contagem de testes citada no artigo esta em dia
+        run: |
+          cp docs/article/tables/contagem-testes.tex /tmp/contagem-versionada.tex
+          bash scripts/contagem-testes.sh > /dev/null
+          diff -u /tmp/contagem-versionada.tex docs/article/tables/contagem-testes.tex
 
       # Prosa se descola do artefato que descreve. O caso perigoso nao e o
       # numero obviamente errado -- e o que ficou desatualizado apos uma

@@ -45,10 +45,21 @@ def expandir(texto: str) -> str:
 
 def main() -> int:
     fonte = expandir(sem_comentarios(ARTIGO.read_text(encoding="utf-8")))
-    # Apendices ficam fora da regra de ordem: a tabela do apendice e chamada
-    # no corpo, paginas antes.
     falhas = 0
     vistos = 0
+    # O que o script de shell antigo cobria: \input de arquivo ausente,
+    # \ref sem \label (sai '??' no PDF) e label duplicado (toda referencia
+    # passa a apontar para o ultimo).
+    for ausente in re.findall(r"\\input\{([^}]+)\}", fonte):
+        print(f"FALHA  \\input{{{ausente}}}: arquivo nao existe", file=sys.stderr)
+        falhas += 1
+    labels = re.findall(r"\\label\{([^}]+)\}", fonte)
+    for dup in sorted({l for l in labels if labels.count(l) > 1}):
+        print(f"FALHA  \\label{{{dup}}} duplicado", file=sys.stderr)
+        falhas += 1
+    for ref in sorted(set(re.findall(r"\\ref\{([^}]+)\}", fonte)) - set(labels)):
+        print(f"FALHA  \\ref{{{ref}}} sem \\label correspondente", file=sys.stderr)
+        falhas += 1
     for amb in AMBIENTE.finditer(fonte):
         corpo = amb.group(2)
         for label in LABEL.findall(corpo):

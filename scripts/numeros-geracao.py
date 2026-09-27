@@ -11,6 +11,7 @@ from __future__ import annotations
 import csv
 import json
 import math
+import random
 from collections import defaultdict
 from pathlib import Path
 
@@ -130,6 +131,30 @@ def efeito_formulacao(b: dict) -> dict:
         else:
             conc += 1
     return {"a_favor_literal": lit, "a_favor_parafrase": par, "concordantes": conc, "p": sinais(lit, par), "por_tema": dict(por_tema)}
+
+
+def por_pergunta(arm: str, temas: tuple[str, ...]) -> dict[str, list[bool]]:
+    """Acerto de cada repeticao, agrupado por pergunta."""
+    d: dict[str, list[bool]] = {}
+    for t in temas:
+        for r in ler(RES / "expansao" / f"{arm}-{t}.csv"):
+            d.setdefault(r["question_id"], []).append(r["correct"] == "true")
+    return d
+
+
+def ic_conglomerado(arm: str, temas: tuple[str, ...], seed: int = 7, reps: int = 10000) -> tuple[float, float]:
+    """IC de 95% do acerto por resposta, reamostrando PERGUNTAS (bootstrap de
+    conglomerado). As tres repeticoes de uma pergunta nao sao independentes;
+    tratar as 213 respostas como tais estreitaria o intervalo."""
+    d = por_pergunta(arm, temas)
+    ks = list(d)
+    rng = random.Random(seed)
+    b = []
+    for _ in range(reps):
+        a = [d[rng.choice(ks)] for _ in ks]
+        b.append(sum(sum(v) for v in a) / sum(len(v) for v in a))
+    b.sort()
+    return b[int(0.025 * reps) - 1], b[int(0.975 * reps) - 1]
 
 
 def efeito_expansao(c: dict, e: dict) -> dict:
