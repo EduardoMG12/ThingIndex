@@ -41,28 +41,33 @@ func (r *GormIndexingRepository) SaveIndexingPreferences(ctx context.Context, us
 	}).Create(&row).Error
 }
 
-func (r *GormIndexingRepository) LookupEnrichment(ctx context.Context, kind, model string, hashes []string) (map[string]domain.EnrichmentCacheEntry, error) {
+// LookupEnrichment so le entradas do escopo informado: mesmo usuario, mesmo
+// provedor (tipo + host) e mesmo modelo. Escopo sem usuario nao le nada --
+// user_id 0 e o que sobrou do cache global antigo.
+func (r *GormIndexingRepository) LookupEnrichment(ctx context.Context, scope domain.EnrichmentCacheScope, kind string, hashes []string) (map[string]domain.EnrichmentCacheEntry, error) {
 	out := make(map[string]domain.EnrichmentCacheEntry, len(hashes))
-	if len(hashes) == 0 {
+	if len(hashes) == 0 || scope.UserID == 0 {
 		return out, nil
 	}
 	var rows []models.EnrichmentCacheEntry
-	if err := r.db.WithContext(ctx).Where("kind = ? AND model = ? AND content_hash IN ?", kind, model, hashes).Find(&rows).Error; err != nil {
+	if err := r.db.WithContext(ctx).
+		Where("user_id = ? AND provider = ? AND model = ? AND kind = ? AND content_hash IN ?", scope.UserID, scope.Provider, scope.Model, kind, hashes).
+		Find(&rows).Error; err != nil {
 		return out, err
 	}
 	for _, row := range rows {
-		out[row.ContentHash] = domain.EnrichmentCacheEntry{Kind: row.Kind, Model: row.Model, ContentHash: row.ContentHash, Summary: row.Summary, Topics: row.Topics}
+		out[row.ContentHash] = domain.EnrichmentCacheEntry{Kind: row.Kind, ContentHash: row.ContentHash, Summary: row.Summary, Topics: row.Topics}
 	}
 	return out, nil
 }
 
-func (r *GormIndexingRepository) StoreEnrichment(ctx context.Context, entries []domain.EnrichmentCacheEntry) error {
-	if len(entries) == 0 {
+func (r *GormIndexingRepository) StoreEnrichment(ctx context.Context, scope domain.EnrichmentCacheScope, entries []domain.EnrichmentCacheEntry) error {
+	if len(entries) == 0 || scope.UserID == 0 {
 		return nil
 	}
 	rows := make([]models.EnrichmentCacheEntry, 0, len(entries))
 	for _, e := range entries {
-		rows = append(rows, models.EnrichmentCacheEntry{Kind: e.Kind, Model: e.Model, ContentHash: e.ContentHash, Summary: e.Summary, Topics: e.Topics})
+		rows = append(rows, models.EnrichmentCacheEntry{UserID: scope.UserID, Provider: scope.Provider, Model: scope.Model, Kind: e.Kind, ContentHash: e.ContentHash, Summary: e.Summary, Topics: e.Topics})
 	}
 	return r.db.WithContext(ctx).Clauses(clause.OnConflict{DoNothing: true}).CreateInBatches(rows, 100).Error
 }

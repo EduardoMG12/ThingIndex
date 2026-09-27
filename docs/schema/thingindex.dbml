@@ -534,15 +534,17 @@ Table user_indexing_preferences {
 
 Table enrichment_cache_entries {
   id serial [pk, increment]
-  kind varchar(16) [not null]
+  user_id integer [not null, default: `0`]
+  provider varchar(255) [not null]
   model varchar(128) [not null]
+  kind varchar(16) [not null]
   content_hash varchar(64) [not null]
   summary text [not null]
   topics text
   created_at timestamptz
 
   indexes {
-    (kind, model, content_hash) [name: "idx_enrichment_cache", unique]
+    (user_id, provider, model, kind, content_hash) [name: "idx_enrichment_cache_scope", unique]
   }
 }
 

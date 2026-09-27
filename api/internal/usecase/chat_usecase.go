@@ -213,7 +213,7 @@ func (u *chatUseCase) StreamCollectionChat(
 	// consulta. Ver docs/prds/pre-registro-expansao-consulta.md: braco E.
 	query := prompt
 	if queryExpansionEnabled() {
-		if extra := u.expander.Expand(llmCtx, llm, chatModelName(llm), prompt); extra != "" {
+		if extra := u.expander.Expand(llmCtx, llm, domain.LLMCacheScope(userID, llm), prompt); extra != "" {
 			query = prompt + " " + extra
 		}
 	}

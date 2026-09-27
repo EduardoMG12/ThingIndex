@@ -252,19 +252,23 @@ type stubCache struct {
 	entries map[string]domain.EnrichmentCacheEntry
 }
 
-func (c *stubCache) LookupEnrichment(_ context.Context, kind, model string, hashes []string) (map[string]domain.EnrichmentCacheEntry, error) {
+func stubCacheKey(scope domain.EnrichmentCacheScope, kind, hash string) string {
+	return strconv.FormatUint(uint64(scope.UserID), 10) + "|" + scope.Provider + "|" + scope.Model + "|" + kind + "|" + hash
+}
+
+func (c *stubCache) LookupEnrichment(_ context.Context, scope domain.EnrichmentCacheScope, kind string, hashes []string) (map[string]domain.EnrichmentCacheEntry, error) {
 	out := map[string]domain.EnrichmentCacheEntry{}
 	for _, h := range hashes {
-		if e, ok := c.entries[kind+"|"+model+"|"+h]; ok {
+		if e, ok := c.entries[stubCacheKey(scope, kind, h)]; ok {
 			out[h] = e
 		}
 	}
 	return out, nil
 }
 
-func (c *stubCache) StoreEnrichment(_ context.Context, entries []domain.EnrichmentCacheEntry) error {
+func (c *stubCache) StoreEnrichment(_ context.Context, scope domain.EnrichmentCacheScope, entries []domain.EnrichmentCacheEntry) error {
 	for _, e := range entries {
-		c.entries[e.Kind+"|"+e.Model+"|"+e.ContentHash] = e
+		c.entries[stubCacheKey(scope, e.Kind, e.ContentHash)] = e
 	}
 	return nil
 }
@@ -345,5 +349,35 @@ func TestEscopoDesligadoNaoChamaALLM(t *testing.T) {
 		if strings.HasPrefix(page.Summary, "Resumo da pagina") {
 			t.Fatalf("pagina %d resumida com escopo desligado", page.PageNumber)
 		}
+	}
+}
+
+// Regressao P0-1: o cache era global por (tipo, modelo, hash). Um usuario com
+// base_url proprio e o mesmo nome de modelo gravava resumos que eram servidos
+// a qualquer outro usuario que indexasse o mesmo texto. Com o escopo por
+// usuario, o dono de outro documento com o mesmo texto chama o proprio LLM e
+// nao ve acerto de cache (o contador tambem deixa de vazar indexacao alheia).
+func TestCacheDeEnriquecimentoNaoCruzaUsuarios(t *testing.T) {
+	t.Parallel()
+	cache := &stubCache{entries: map[string]domain.EnrichmentCacheEntry{}}
+	enricher := NewLLMEnricher().WithCache(cache)
+
+	atacante := 0
+	pages, nodes := lotesDeTeste()
+	if _, err := enricher.Enrich(context.Background(), stubBatchLLM{calls: &atacante}, &models.Document{ID: 1, UserID: 1, Title: "ppc.pdf"}, domain.IndexingResult{DocumentPages: pages, OutlineNodes: nodes}); err != nil {
+		t.Fatal(err)
+	}
+
+	vitima := 0
+	pages2, nodes2 := lotesDeTeste()
+	r2, err := enricher.Enrich(context.Background(), stubBatchLLM{calls: &vitima}, &models.Document{ID: 1, UserID: 2, Title: "ppc.pdf"}, domain.IndexingResult{DocumentPages: pages2, OutlineNodes: nodes2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := lastMetadataValue(r2.MetadataPairs, "enrichment_cache_hits_pages"); got != "0" {
+		t.Fatalf("usuario 2 acertou o cache do usuario 1: %s paginas", got)
+	}
+	if vitima != atacante {
+		t.Fatalf("usuario 2 devia pagar as mesmas %d chamadas do usuario 1, fez %d", atacante, vitima)
 	}
 }

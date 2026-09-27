@@ -15,13 +15,22 @@ type UserIndexingPreferences struct {
 	UpdatedAt        time.Time `json:"updated_at"`
 }
 
-// EnrichmentCacheEntry guarda resumo e topicos por (tipo, modelo, hash do
-// texto). Global, nao por usuario: o texto de uma pagina e o mesmo para todos.
+// EnrichmentCacheEntry guarda resumo e topicos por (usuario, provedor, modelo,
+// tipo, hash do texto).
+//
+// Era global, chaveado so por (tipo, modelo, hash), com a premissa de que o
+// texto de uma pagina e o mesmo para todos. O texto e; o resumo nao: ele vem
+// do LLM que cada usuario configura, e nome de modelo e base_url sao texto
+// livre. Um usuario podia envenenar o cache de todos os outros (P0-1). O
+// indice unico antigo (idx_enrichment_cache) e removido na migracao; as
+// linhas antigas ficam sem user_id (0) e nunca mais sao lidas.
 type EnrichmentCacheEntry struct {
 	ID          uint      `gorm:"primarykey" json:"id"`
-	Kind        string    `gorm:"size:16;not null;uniqueIndex:idx_enrichment_cache,priority:1" json:"kind"`
-	Model       string    `gorm:"size:128;not null;uniqueIndex:idx_enrichment_cache,priority:2" json:"model"`
-	ContentHash string    `gorm:"size:64;not null;uniqueIndex:idx_enrichment_cache,priority:3" json:"content_hash"`
+	UserID      uint      `gorm:"not null;default:0;uniqueIndex:idx_enrichment_cache_scope,priority:1" json:"user_id"`
+	Provider    string    `gorm:"size:255;not null;default:'';uniqueIndex:idx_enrichment_cache_scope,priority:2" json:"provider"`
+	Model       string    `gorm:"size:128;not null;uniqueIndex:idx_enrichment_cache_scope,priority:3" json:"model"`
+	Kind        string    `gorm:"size:16;not null;uniqueIndex:idx_enrichment_cache_scope,priority:4" json:"kind"`
+	ContentHash string    `gorm:"size:64;not null;uniqueIndex:idx_enrichment_cache_scope,priority:5" json:"content_hash"`
 	Summary     string    `gorm:"type:text;not null" json:"summary"`
 	Topics      string    `gorm:"type:text" json:"topics"`
 	CreatedAt   time.Time `json:"created_at"`

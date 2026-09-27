@@ -75,6 +75,9 @@ func bootstrapSchema(db *gorm.DB) error {
 		if err := ensureProviderSchema(tx); err != nil {
 			return fmt.Errorf("fail to ensure provider schema: %w", err)
 		}
+		if err := ensureEnrichmentCacheScope(tx); err != nil {
+			return fmt.Errorf("fail to scope enrichment cache: %w", err)
+		}
 
 		return nil
 	})

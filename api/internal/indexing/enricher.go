@@ -32,13 +32,6 @@ func (e *LLMEnricher) WithCache(cache domain.EnrichmentCache) *LLMEnricher {
 // os resumos guardados.
 const enrichmentPromptVersion = "2026-09-10a"
 
-func llmModelName(llm domain.LLMService) string {
-	if m, ok := llm.(domain.LLMMetadataProvider); ok {
-		return m.ModelName()
-	}
-	return ""
-}
-
 func enrichmentHash(text string) string {
 	sum := sha256.Sum256([]byte(enrichmentPromptVersion + "\n" + strings.TrimSpace(text)))
 	return hex.EncodeToString(sum[:])
@@ -173,7 +166,7 @@ func (e *LLMEnricher) EnrichWith(ctx context.Context, llm domain.LLMService, doc
 		applyPageSummaries(&updated, pages)
 		// As perguntas de leigo saem da MESMA preferencia do resumo, para que o
 		// experimento compare os dois campos gerados sobre o mesmo conjunto de
-		// paginas. Sem cache: o cache e chaveado por (tipo, modelo, hash do
+		// paginas. Sem cache: o cache e chaveado por (escopo, tipo, hash do
 		// texto) e guarda resumo, entao reaproveita-lo aqui devolveria resumo
 		// no lugar de pergunta.
 		applyPageQuestions(updated, e.generateAllPageQuestions(ctx, llm, doc, updated, &calls))
@@ -195,6 +188,8 @@ func (e *LLMEnricher) EnrichWith(ctx context.Context, llm domain.LLMService, doc
 	appendMetadata(&updated, documentID, "enrichment_llm_calls", strconv.Itoa(calls))
 	appendMetadata(&updated, documentID, "enrichment_sections_summarized", strconv.Itoa(len(sections.Nodes)))
 	appendMetadata(&updated, documentID, "enrichment_pages_summarized", strconv.Itoa(len(pages.Pages)))
+	// Os acertos de cache so contam entradas do proprio dono do documento
+	// (escopo por user_id), entao nao revelam o que outro usuario indexou.
 	appendMetadata(&updated, documentID, "enrichment_cache_hits_pages", strconv.Itoa(hits.pages))
 	appendMetadata(&updated, documentID, "enrichment_cache_hits_sections", strconv.Itoa(hits.sections))
 
@@ -256,13 +251,23 @@ type enrichmentCacheHits struct {
 	sections int
 }
 
-// lookupCache consulta o cache por (tipo, modelo, hash); sem cache ou com
+// enrichmentCacheScope e o escopo do cache para este documento: o dono do
+// documento e o LLM que ele configurou. Ver domain.EnrichmentCacheScope.
+func enrichmentCacheScope(llm domain.LLMService, doc *models.Document) domain.EnrichmentCacheScope {
+	var userID uint
+	if doc != nil {
+		userID = doc.UserID
+	}
+	return domain.LLMCacheScope(userID, llm)
+}
+
+// lookupCache consulta o cache por (escopo, tipo, hash); sem cache ou com
 // erro, devolve mapa vazio e segue para a LLM.
-func (e *LLMEnricher) lookupCache(ctx context.Context, kind, model string, hashes []string) map[string]domain.EnrichmentCacheEntry {
+func (e *LLMEnricher) lookupCache(ctx context.Context, scope domain.EnrichmentCacheScope, kind string, hashes []string) map[string]domain.EnrichmentCacheEntry {
 	if e.cache == nil || len(hashes) == 0 {
 		return map[string]domain.EnrichmentCacheEntry{}
 	}
-	found, err := e.cache.LookupEnrichment(ctx, kind, model, hashes)
+	found, err := e.cache.LookupEnrichment(ctx, scope, kind, hashes)
 	if err != nil {
 		log.Printf("enricher: cache de %s indisponivel, seguindo sem ele: %v", kind, err)
 		return map[string]domain.EnrichmentCacheEntry{}
@@ -270,18 +275,18 @@ func (e *LLMEnricher) lookupCache(ctx context.Context, kind, model string, hashe
 	return found
 }
 
-func (e *LLMEnricher) storeCache(ctx context.Context, entries []domain.EnrichmentCacheEntry) {
+func (e *LLMEnricher) storeCache(ctx context.Context, scope domain.EnrichmentCacheScope, entries []domain.EnrichmentCacheEntry) {
 	if e.cache == nil || len(entries) == 0 {
 		return
 	}
-	if err := e.cache.StoreEnrichment(ctx, entries); err != nil {
+	if err := e.cache.StoreEnrichment(ctx, scope, entries); err != nil {
 		log.Printf("enricher: falha ao gravar cache de resumos: %v", err)
 	}
 }
 
 func (e *LLMEnricher) generateAllPageSummaries(ctx context.Context, llm domain.LLMService, doc *models.Document, result domain.IndexingResult, calls *int, hits *enrichmentCacheHits) pageSummaryResponse {
 	var all pageSummaryResponse
-	model := llmModelName(llm)
+	scope := enrichmentCacheScope(llm, doc)
 	hashByPage := make(map[int]string, len(result.DocumentPages))
 	hashes := make([]string, 0, len(result.DocumentPages))
 	for _, page := range result.DocumentPages {
@@ -292,7 +297,7 @@ func (e *LLMEnricher) generateAllPageSummaries(ctx context.Context, llm domain.L
 		hashByPage[page.PageNumber] = h
 		hashes = append(hashes, h)
 	}
-	cached := e.lookupCache(ctx, "page", model, hashes)
+	cached := e.lookupCache(ctx, scope, "page", hashes)
 	var batch []models.DocumentPage
 	flush := func() {
 		if len(batch) == 0 || *calls >= enrichmentMaxBatchCalls {
@@ -314,10 +319,10 @@ func (e *LLMEnricher) generateAllPageSummaries(ctx context.Context, llm domain.L
 			entries := make([]domain.EnrichmentCacheEntry, 0, len(items))
 			for _, item := range items {
 				if h := hashByPage[item.PageNumber]; h != "" {
-					entries = append(entries, domain.EnrichmentCacheEntry{Kind: "page", Model: model, ContentHash: h, Summary: item.Summary, Topics: strings.Join(item.Topics, ", ")})
+					entries = append(entries, domain.EnrichmentCacheEntry{Kind: "page", ContentHash: h, Summary: item.Summary, Topics: strings.Join(item.Topics, ", ")})
 				}
 			}
-			e.storeCache(ctx, entries)
+			e.storeCache(ctx, scope, entries)
 		}
 		batch = nil
 	}
@@ -427,7 +432,7 @@ func (e *LLMEnricher) generateAllSectionSummaries(ctx context.Context, llm domai
 	for _, page := range result.DocumentPages {
 		pageContent[page.PageNumber] = page.Content
 	}
-	model := llmModelName(llm)
+	scope := enrichmentCacheScope(llm, doc)
 	hashByOrder := make(map[int]string, len(result.OutlineNodes))
 	hashes := make([]string, 0, len(result.OutlineNodes))
 	for _, node := range result.OutlineNodes {
@@ -435,7 +440,7 @@ func (e *LLMEnricher) generateAllSectionSummaries(ctx context.Context, llm domai
 		hashByOrder[node.SequenceOrder] = h
 		hashes = append(hashes, h)
 	}
-	cached := e.lookupCache(ctx, "section", model, hashes)
+	cached := e.lookupCache(ctx, scope, "section", hashes)
 	var batch []models.DocumentOutlineNode
 	flush := func() {
 		if len(batch) == 0 || *calls >= enrichmentMaxBatchCalls {
@@ -457,10 +462,10 @@ func (e *LLMEnricher) generateAllSectionSummaries(ctx context.Context, llm domai
 			entries := make([]domain.EnrichmentCacheEntry, 0, len(items))
 			for _, item := range items {
 				if h := hashByOrder[item.SequenceOrder]; h != "" {
-					entries = append(entries, domain.EnrichmentCacheEntry{Kind: "section", Model: model, ContentHash: h, Summary: item.Summary})
+					entries = append(entries, domain.EnrichmentCacheEntry{Kind: "section", ContentHash: h, Summary: item.Summary})
 				}
 			}
-			e.storeCache(ctx, entries)
+			e.storeCache(ctx, scope, entries)
 		}
 		batch = nil
 	}

@@ -27,6 +27,7 @@ type llmUsageSnapshot struct {
 
 type observedLLMService struct {
 	base     domain.LLMService
+	host     string
 	usage    llmUsageSnapshot
 	pricing  domain.LLMPricing
 	hasPrice bool
@@ -37,6 +38,9 @@ func newObservedLLMService(base domain.LLMService) *observedLLMService {
 	if metadataProvider, ok := base.(domain.LLMMetadataProvider); ok {
 		observer.usage.ProviderType = metadataProvider.ProviderType()
 		observer.usage.Model = metadataProvider.ModelName()
+	}
+	if identity, ok := base.(domain.LLMEndpointIdentity); ok {
+		observer.host = identity.EndpointHost()
 	}
 	if pricingProvider, ok := base.(domain.LLMPricingProvider); ok {
 		if pricing, ok := pricingProvider.Pricing(); ok {
@@ -95,3 +99,7 @@ func estimateCostUSD(tokens int, costPerMillion float64) float64 {
 func (o *observedLLMService) ModelName() string { return o.usage.Model }
 
 func (o *observedLLMService) ProviderType() string { return o.usage.ProviderType }
+
+// EndpointHost repassa o host do cliente: entra no escopo do cache de
+// enriquecimento junto com o tipo do provedor.
+func (o *observedLLMService) EndpointHost() string { return o.host }
