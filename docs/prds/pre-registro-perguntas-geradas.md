@@ -239,3 +239,40 @@ mediu: sugestão de "talvez você queira saber". Nenhum dos dois é recuperaçã
 - O braço M é exploratório e está marcado como tal.
 - A medição foi feita sobre cópia das coleções; as coleções de demonstração não
   foram alteradas.
+
+---
+
+# Adendo (2026-09-26): a primeira execução não trocou de braço
+
+Escrito depois de uma auditoria do artigo. Nada acima foi alterado.
+
+**O defeito.** Os quatro CSV de 2026-09-19 têm as **mesmas fontes, página por
+página**, nas 12 perguntas, e o mesmo número de tokens de prompt em cada uma.
+Quatro braços que pontuam textos diferentes não produzem isso. Reproduzindo
+`buildCollectionRetrieval` direto sobre a coleção de cópia (150, 120 páginas,
+todas com perguntas geradas), o ranking de páginas difere entre os braços em
+23 das 23 perguntas do gabarito atual. A troca de braço por `.env` +
+`docker compose up --force-recreate` não chegou ao processo que respondeu, e a
+checagem por `printenv` no contêiner não bastou para detectar isso. A
+conclusão "nenhuma pergunta mudou de resultado" daquela execução mediu um
+braço só, quatro vezes.
+
+**A reexecução.** `scripts/reexecuta-bracos-enriquecimento.sh` compila a API do
+checkout e sobe um processo por braco, com a variável no ambiente do próprio
+processo, conferida em `/proc/<pid>/environ` antes de medir. Mesmo gabarito de
+12 perguntas (lido do commit 7f50f71), mesma coleção, mesmo modelo, uma
+repetição. CSV em `docs/article/results/enriquecimento-reexecucao/`.
+
+| Braço | Geral | Literal | Paráfrase | Proveniência |
+|---|---|---|---|---|
+| C, só conteúdo | 9/12 | 5/5 | 2/5 | 5/10 |
+| R, conteúdo + resumo | 9/12 | 5/5 | 2/5 | 5/10 |
+| P, conteúdo + perguntas | 9/12 | 5/5 | 2/5 | 5/10 |
+| M, máximo (exploratório) | 9/12 | 5/5 | 2/5 | 5/10 |
+
+Agora as fontes **mudam** entre os braços em 8 das 12 perguntas, e ainda assim
+nenhum veredito muda: as três paráfrases que erravam (sg2P, sg3P, sg4P)
+continuam erradas nos quatro. O resultado negativo se mantém, desta vez medido
+de fato. A leitura do mecanismo (o modelo escreve a paráfrase do documento, não
+a da pessoa) continua sendo a explicação mais simples, e segue sem teste
+próprio.
