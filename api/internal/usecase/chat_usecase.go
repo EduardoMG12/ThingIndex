@@ -22,6 +22,22 @@ import (
 // prenderia a requisicao.
 const chatLLMTimeout = 5 * time.Minute
 
+// chatPersistTimeout limita a gravacao da resposta depois que o ctx da
+// requisicao ja pode estar cancelado.
+const chatPersistTimeout = 5 * time.Second
+
+// persistContext devolve um ctx para gravar a resposta que sobrevive ao
+// cancelamento da requisicao.
+//
+// MOTIVO: a persistencia usava o ctx da requisicao. O caso mais comum de
+// interrupcao e o cliente desconectar -- justamente quando esse ctx esta
+// cancelado --, entao AddMessage falhava e a resposta parcial, ja paga ao
+// LLM, sumia sem registro. WithoutCancel mantem os valores do ctx e ignora o
+// cancelamento; o timeout impede que a gravacao pendure para sempre.
+func persistContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), chatPersistTimeout)
+}
+
 const (
 	chatStreamEventStage   = "stage"
 	chatStreamEventDelta   = "delta"
@@ -273,7 +289,9 @@ func (u *chatUseCase) StreamCollectionChat(
 			return
 		}
 		entry := &models.ChatConversationEntry{Role: "assistant", Status: "error", ErrorDetail: ChatErrorDetail(cause), Sources: sourceRefs()}
-		if err := u.conversationRepo.AddMessage(ctx, userID, conversation.ID, entry); err != nil {
+		persistCtx, cancel := persistContext(ctx)
+		defer cancel()
+		if err := u.conversationRepo.AddMessage(persistCtx, userID, conversation.ID, entry); err != nil {
 			log.Printf("chat: falha da conversa %d nao pode ser persistida: %v", conversation.ID, err)
 		}
 	}
@@ -287,7 +305,9 @@ func (u *chatUseCase) StreamCollectionChat(
 		measured := chatUsageFor(llm, systemPrompt, userPrompt, answer)
 		usage = &measured
 
-		if err := u.conversationRepo.AddMessage(ctx, userID, conversation.ID, &models.ChatConversationEntry{
+		persistCtx, cancel := persistContext(ctx)
+		defer cancel()
+		if err := u.conversationRepo.AddMessage(persistCtx, userID, conversation.ID, &models.ChatConversationEntry{
 			Role:             "assistant",
 			Content:          answer,
 			Sources:          sourceRefs(),
@@ -318,10 +338,9 @@ func (u *chatUseCase) StreamCollectionChat(
 				Delta: delta,
 			})
 		}); err != nil {
-			// O contexto usado para persistir e o mesmo que acabou de falhar.
-			// Se ele ja estiver cancelado (cliente desconectou), a gravacao
-			// tambem falharia -- por isso o erro de persistencia so e logado,
-			// nunca substitui o erro original do stream, que e o que o handler
+			// A gravacao usa persistContext, que sobrevive ao cliente ter
+			// desconectado. O erro de persistencia so e logado, nunca
+			// substitui o erro original do stream, que e o que o handler
 			// precisa para escolher a mensagem certa ao usuario.
 			if persistErr := persistAnswer(); persistErr != nil {
 				log.Printf("chat: resposta parcial da conversa %d nao pode ser persistida: %v", conversation.ID, persistErr)
