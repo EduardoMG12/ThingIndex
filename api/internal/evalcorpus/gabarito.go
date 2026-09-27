@@ -103,6 +103,12 @@ type GabaritoQuestion struct {
 	// acentos e caixa dobrados. Uma alternancia dentro da regex cobre as formas
 	// equivalentes ("sis07206|programacao de computadores i").
 	AnswerPatterns []string `json:"answer_patterns"`
+	// RejectPatterns invalida a resposta se QUALQUER uma casar, mesmo que as
+	// AnswerPatterns casem. Serve as perguntas cuja resposta certa pode conter
+	// "nao" ou "ha": sem isso, uma recusa ("nao ha informacoes sobre isso")
+	// passava como acerto de existencia ou de premissa falsa. A banca mediu
+	// que uma recusa constante acertava as 24 perguntas dessas formas.
+	RejectPatterns []string `json:"reject_patterns,omitempty"`
 	Expected       string   `json:"expected"`
 	// Variant e PairID sustentam o achado central do trabalho sobre reuso de
 	// vocabulario: a recuperacao acerta quase tudo quando a pergunta repete as

@@ -46,7 +46,7 @@ func rescoreFile(path string, g *evalcorpus.Gabarito) (int, error) {
 			continue
 		}
 		before := r[idx["correct"]] + r[idx["provenance_ok"]]
-		correct := r[idx["error"]] == "" && matchesAnswer(r[idx["answer"]], q.AnswerPatterns)
+		correct := r[idx["error"]] == "" && answerCorrect(r[idx["answer"]], q)
 		r[idx["correct"]] = strconv.FormatBool(correct)
 		if !q.IsNegative() {
 			if r[idx["arm"]] == "T" {

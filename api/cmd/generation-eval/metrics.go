@@ -25,6 +25,23 @@ func matchesAnswer(answer string, patterns []string) bool {
 	return len(patterns) > 0
 }
 
+// answerCorrect aplica o criterio completo de uma pergunta: todas as
+// AnswerPatterns casam e nenhuma RejectPattern casa. E a unica funcao que o
+// braco ao vivo e o rescore usam, para que os dois nunca divirjam.
+func answerCorrect(answer string, q evalcorpus.GabaritoQuestion) bool {
+	if !matchesAnswer(answer, q.AnswerPatterns) {
+		return false
+	}
+	folded := fold(answer)
+	for _, p := range q.RejectPatterns {
+		re, err := regexp.Compile(p)
+		if err != nil || re.MatchString(folded) {
+			return false
+		}
+	}
+	return true
+}
+
 var citedPagesRE = regexp.MustCompile(`\b(?:p\.|pp\.|pag\.|pags?\.|pagina|paginas)\s*((?:\d+\s*(?:,|e|a|-|ate)?\s*)+)`)
 var numberRE = regexp.MustCompile(`\d+`)
 

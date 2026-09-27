@@ -22,7 +22,7 @@
       ]
     }
   ],
-  "frozen_sha256": "4b5186d6fcb40d6857020f1211e0b8794468ae2ea86d1c0be0fa6e32a7a85b63",
+  "frozen_sha256": "3b9a1c7d53a4bc18247554537b5b32361c773b5bd9befdf1c4f44f0e9199a30d",
   "min_questions": 23,
   "notes": "Perguntas em PAR: a mesma necessidade de informacao aparece duas vezes, com a mesma resposta esperada e o mesmo alvo, mudando so a formulacao. LITERAL usa os termos do documento; PARAFRASE usa o vocabulario de quem pergunta no dia a dia, sem repetir as palavras do texto. O par existe porque um gabarito escrito por quem ja leu a pagina herda o vocabulario dela, e ai a medicao vira casamento lexical se passando por compreensao. Formas: aberta, confirmacao, existencia, premissa-falsa (a pergunta embute um dado errado e a resposta certa e corrigir) e negativa (nao consta). Escrito a partir dos PDF com pdftotext -layout; cada pagina-alvo foi conferida.",
   "questions": [
@@ -68,7 +68,7 @@
     },
     {
       "answer_patterns": [
-        "1 \\(um\\) ano|um ano|12 meses|nao"
+        "1 \\(um\\) ano|\\bum ano\\b|12 meses|\\b1 ano\\b|2 \\(dois\\) anos|\\bdois anos\\b|\\b2 anos\\b"
       ],
       "expected": "A premissa e falsa: o prazo de garantia do produto e de 1 (um) ano, nao 3 anos.",
       "id": "pr2L",
@@ -88,7 +88,7 @@
     },
     {
       "answer_patterns": [
-        "1 \\(um\\) ano|um ano|12 meses|nao"
+        "1 \\(um\\) ano|\\bum ano\\b|12 meses|\\b1 ano\\b|2 \\(dois\\) anos|\\bdois anos\\b|\\b2 anos\\b"
       ],
       "expected": "A premissa e falsa: o prazo de garantia do produto e de 1 (um) ano, nao 3 anos.",
       "id": "pr2P",
@@ -194,7 +194,7 @@
     },
     {
       "answer_patterns": [
-        "sim|existe|ha |consta|exclu"
+        "\\bsim\\b|existe|consta|exclu"
       ],
       "expected": "Sim, o termo traz uma secao de itens excluidos da garantia.",
       "id": "pr5L",
@@ -211,11 +211,14 @@
         }
       ],
       "text": "O termo de garantia lista os itens excluidos da cobertura?",
-      "variant": "literal"
+      "variant": "literal",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+      ]
     },
     {
       "answer_patterns": [
-        "sim|existe|ha |consta|exclu"
+        "\\bsim\\b|existe|consta|exclu"
       ],
       "expected": "Sim, o termo traz uma secao de itens excluidos da garantia.",
       "id": "pr5P",
@@ -232,7 +235,10 @@
         }
       ],
       "text": "Tem escrito em algum lugar o que eles NAO consertam?",
-      "variant": "parafrase"
+      "variant": "parafrase",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+      ]
     },
     {
       "answer_patterns": [
@@ -318,7 +324,7 @@
     },
     {
       "answer_patterns": [
-        "sim|existe|ha |consta|orient"
+        "\\bsim\\b|existe|consta|orient"
       ],
       "expected": "Sim, o manual traz orientacoes de limpeza e cuidados com o monitor.",
       "id": "pr10L",
@@ -334,11 +340,14 @@
         }
       ],
       "text": "O manual traz instrucoes de limpeza do monitor?",
-      "variant": "literal"
+      "variant": "literal",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+      ]
     },
     {
       "answer_patterns": [
-        "sim|existe|ha |consta|orient"
+        "\\bsim\\b|existe|consta|orient"
       ],
       "expected": "Sim, o manual traz orientacoes de limpeza e cuidados com o monitor.",
       "id": "pr10P",
@@ -354,7 +363,10 @@
         }
       ],
       "text": "Da pra passar pano na tela? Tem alguma recomendacao?",
-      "variant": "parafrase"
+      "variant": "parafrase",
+      "reject_patterns": [
+        "nao (ha|foram encontrad\\w*|encontrei|foi possivel|e possivel)[^.]{0,40}(informac|mencao|referenc|dados|detalhe|especific|indica)|nenhuma informac|sem informac|(os|nos) (documentos|trechos|textos)[^.]{0,40}nao (trazem|traz|mencionam|contem|tratam|abordam|especificam|informam|apresentam|indicam)"
+      ]
     },
     {
       "answer_patterns": [
@@ -398,7 +410,7 @@
     },
     {
       "answer_patterns": [
-        "nao|nao cobre|exclu|instalacao"
+        "nao (cobre|abrange|inclui)[^.]{0,80}instala|instala[^.]{0,80}(nao (e|esta) cobert|exclu|nao (cobre|abrange))|exclu[^.]{0,80}instala"
       ],
       "expected": "A premissa e falsa: a garantia nao cobre a instalacao, entao nao existe prazo de garantia para o servico de instalacao.",
       "id": "pr12L",
@@ -418,7 +430,7 @@
     },
     {
       "answer_patterns": [
-        "nao|nao cobre|exclu|instalacao"
+        "nao (cobre|abrange|inclui)[^.]{0,80}instala|instala[^.]{0,80}(nao (e|esta) cobert|exclu|nao (cobre|abrange))|exclu[^.]{0,80}instala"
       ],
       "expected": "A premissa e falsa: a garantia nao cobre a instalacao, entao nao existe prazo de garantia para o servico de instalacao.",
       "id": "pr12P",
@@ -478,5 +490,5 @@
     "negativa": 3,
     "premissa-falsa": 4
   },
-  "version": "produto-2026-09-v3"
+  "version": "produto-2026-09-v4"
 }

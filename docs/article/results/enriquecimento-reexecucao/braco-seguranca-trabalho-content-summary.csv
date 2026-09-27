@@ -4,7 +4,7 @@ sg1L,premissa-falsa,literal,sg1,pdf,T,,1,gemma4:31b,true,nr-06:3;nr-06:4;nr-06:5
 As normas citadas estabelecem que:
 *   Cabe à organização **substituir imediatamente** o EPI quando danificado ou extraviado (NR 6 - EPI, página 3).
 *   O fornecimento do EPI ao empregado deve ser **gratuito** (NR 6 - EPI, página 2)."
-sg1P,premissa-falsa,parafrase,sg1,pdf,T,,1,gemma4:31b,true,nr-01-2024:14;nr-01-2024:15;nr-01-2025:17;nr-01-2025:18,false,false,2447,50,true,708,,false,,"Com base nos documentos fornecidos, não há informações sobre descontos em pagamentos de trabalhadores devido a danos em equipamentos (como botas). Os textos limitam-se a definições de termos e diretrizes gerais de segurança e saúde no trabalho."
+sg1P,premissa-falsa,parafrase,sg1,pdf,T,,1,gemma4:31b,false,nr-01-2024:14;nr-01-2024:15;nr-01-2025:17;nr-01-2025:18,false,false,2447,50,true,708,,false,,"Com base nos documentos fornecidos, não há informações sobre descontos em pagamentos de trabalhadores devido a danos em equipamentos (como botas). Os textos limitam-se a definições de termos e diretrizes gerais de segurança e saúde no trabalho."
 sg2L,aberta,literal,sg2,pdf,T,,1,gemma4:31b,true,nr-18:3;nr-18:4;nr-06:2;nr-06:3;nr-09:7;nr-09:8;nr-06:4;nr-06:5;nr-09:6;nr-06:6,true,true,4846,171,true,1107,,false,,"Cabe à **organização** fornecer o EPI ao trabalhador (NR 6 - EPI, página 2).
 
 O fornecimento deve ocorrer sob as seguintes condições:
