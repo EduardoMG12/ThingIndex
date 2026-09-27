@@ -25,6 +25,9 @@ type documentRepoStub struct {
 	deleteDocumentErr       error
 	deleteCollectionErr     error
 	markOrphanedDocumentIDs []uint
+	createDocumentErr       error
+	auditEventsErr          error
+	markOrphanedErr         error
 }
 
 func (r *documentRepoStub) CreateDocument(context.Context, *models.Document) error {
@@ -33,6 +36,9 @@ func (r *documentRepoStub) CreateDocument(context.Context, *models.Document) err
 
 func (r *documentRepoStub) CreateDocumentWithOutbox(_ context.Context, doc *models.Document, _ *models.OutboxEvent, auditEvent *models.DocumentAuditEvent) error {
 	r.createDocumentCalled = true
+	if r.createDocumentErr != nil {
+		return r.createDocumentErr
+	}
 	if doc.ID == 0 {
 		doc.ID = 99
 	}
@@ -46,6 +52,9 @@ func (r *documentRepoStub) CreateDocumentWithOutbox(_ context.Context, doc *mode
 }
 
 func (r *documentRepoStub) CreateDocumentAuditEvents(_ context.Context, events []models.DocumentAuditEvent) error {
+	if r.auditEventsErr != nil {
+		return r.auditEventsErr
+	}
 	r.recordedAuditEvents = append(r.recordedAuditEvents, events...)
 	return nil
 }
@@ -107,6 +116,9 @@ func (r *documentRepoStub) RetryDocumentIndexing(_ context.Context, _ uint, docu
 }
 
 func (r *documentRepoStub) MarkDocumentOrphaned(_ context.Context, _ uint, documentID uint, _ string) (*models.Document, error) {
+	if r.markOrphanedErr != nil {
+		return nil, r.markOrphanedErr
+	}
 	r.markOrphanedDocumentIDs = append(r.markOrphanedDocumentIDs, documentID)
 	return r.document, nil
 }
@@ -198,6 +210,7 @@ type storageStub struct {
 	openBodyByPath  map[string]string
 	existsByPath    map[string]bool
 	existsErrByPath map[string]error
+	deletedPaths    []string
 }
 
 func (s *storageStub) UploadFile(context.Context, io.Reader, int64, string, string) (string, error) {
@@ -223,6 +236,7 @@ func (s *storageStub) OpenFile(_ context.Context, objectPath string) (io.ReadClo
 }
 
 func (s *storageStub) DeleteFile(_ context.Context, objectPath string) error {
+	s.deletedPaths = append(s.deletedPaths, objectPath)
 	if s.deleteErrByPath == nil {
 		return nil
 	}
@@ -433,4 +447,110 @@ func TestDeleteCollectionDocumentsMarksPartialRemovalsAsOrphanedAndAuditsFailure
 
 func (s *collectionRepoStub) UpdateCollectionMetadataKey(context.Context, uint, uint, string, []byte) error {
 	return nil
+}
+
+// Regressao P1-7: com o arquivo ja removido do storage, a falha ao gravar o
+// estado ORPHANED e o evento FAILED era descartada com `_ =`. O documento
+// ficava apontando para um arquivo inexistente sem nenhum rastro.
+func TestDeleteDocumentDevolveFalhasDeAuditoriaEOrfaoEmVezDeEngolir(t *testing.T) {
+	t.Parallel()
+
+	doc := &models.Document{ID: 12, UserID: 4, Title: "Parecer.pdf", FileURL: "docs/parecer.pdf"}
+	falhaLimpeza := errors.New("limpeza final falhou")
+	falhaOrfao := errors.New("update orphaned falhou")
+	falhaAuditoria := errors.New("insert audit falhou")
+	repo := &documentRepoStub{
+		document:          doc,
+		deleteDocumentErr: falhaLimpeza,
+		markOrphanedErr:   falhaOrfao,
+		auditEventsErr:    falhaAuditoria,
+	}
+	useCase := &documentCatalogUseCase{
+		documentRepo:    repo,
+		storage:         &storageStub{},
+		storageResolver: &resolverStub{err: domain.ErrStorageProviderNotConfigured},
+	}
+
+	err := useCase.DeleteDocument(context.Background(), 4, 12)
+	if !errors.Is(err, domain.ErrInternal) {
+		t.Fatalf("esperava ErrInternal para o handler, veio %v", err)
+	}
+	if !errors.Is(err, falhaOrfao) {
+		t.Fatalf("a falha ao marcar ORPHANED foi engolida: %v", err)
+	}
+	if !errors.Is(err, falhaAuditoria) {
+		t.Fatalf("a falha ao gravar a auditoria FAILED foi engolida: %v", err)
+	}
+}
+
+func TestDeleteDocumentDevolveFalhaDeAuditoriaQuandoOStorageFalha(t *testing.T) {
+	t.Parallel()
+
+	doc := &models.Document{ID: 13, UserID: 4, Title: "Nota.pdf", FileURL: "docs/nota.pdf"}
+	falhaAuditoria := errors.New("insert audit falhou")
+	repo := &documentRepoStub{document: doc, auditEventsErr: falhaAuditoria}
+	useCase := &documentCatalogUseCase{
+		documentRepo:    repo,
+		storage:         &storageStub{deleteErrByPath: map[string]error{"docs/nota.pdf": errors.New("boom")}},
+		storageResolver: &resolverStub{err: domain.ErrStorageProviderNotConfigured},
+	}
+
+	err := useCase.DeleteDocument(context.Background(), 4, 13)
+	if !errors.Is(err, domain.ErrDocumentSourceDeleteFailed) {
+		t.Fatalf("esperava a falha de storage para o handler, veio %v", err)
+	}
+	if !errors.Is(err, falhaAuditoria) {
+		t.Fatalf("a falha ao gravar a auditoria FAILED foi engolida: %v", err)
+	}
+}
+
+func TestDeleteCollectionDocumentsDevolveFalhaAoMarcarOrfao(t *testing.T) {
+	t.Parallel()
+
+	collectionID := uint(23)
+	documents := []models.Document{
+		{ID: 1, UserID: 8, Title: "A.pdf", FileURL: "docs/a.pdf", CollectionID: &collectionID},
+	}
+	falhaOrfao := errors.New("update orphaned falhou")
+	repo := &documentRepoStub{
+		documentsByCollection: documents,
+		deleteCollectionErr:   errors.New("delete em lote falhou"),
+		markOrphanedErr:       falhaOrfao,
+	}
+	useCase := &documentCatalogUseCase{
+		collectionRepo:  &collectionRepoStub{collection: &models.Collection{ID: collectionID, UserID: 8, Name: "Lote"}},
+		documentRepo:    repo,
+		storage:         &storageStub{},
+		storageResolver: &resolverStub{err: domain.ErrStorageProviderNotConfigured},
+	}
+
+	_, _, err := useCase.DeleteCollectionDocuments(context.Background(), 8, collectionID)
+	if !errors.Is(err, domain.ErrInternal) || !errors.Is(err, falhaOrfao) {
+		t.Fatalf("esperava ErrInternal junto da falha de ORPHANED, veio %v", err)
+	}
+}
+
+// Regressao P1-8: se o insert do documento falhava, o arquivo ja enviado
+// ficava no bucket sem linha no banco -- nem auditavel, nem removivel pela UI.
+func TestUploadDocumentRemoveArquivoDoStorageQuandoOInsertFalha(t *testing.T) {
+	t.Parallel()
+
+	repo := &documentRepoStub{createDocumentErr: errors.New("insert falhou")}
+	storage := &storageStub{uploadURL: "docs/contrato.pdf"}
+	useCase := &documentCatalogUseCase{
+		categoryRepo:       &categoryRepoStub{},
+		collectionRepo:     &collectionRepoStub{collectionByName: &models.Collection{ID: 13, UserID: 4, Name: "Contratos", NormalizedName: "contratos"}},
+		documentRepo:       repo,
+		storage:            storage,
+		storageResolver:    &resolverStub{err: domain.ErrStorageProviderNotConfigured},
+		maxUploadSizeBytes: 10 << 20,
+	}
+
+	_, err := useCase.UploadDocument(context.Background(), 4, "Contrato.pdf", io.NopCloser(strings.NewReader("%PDF-1.7 sample")), 15, "application/pdf", "", "", "Contratos")
+	if !errors.Is(err, domain.ErrInternal) {
+		t.Fatalf("esperava ErrInternal, veio %v", err)
+	}
+	if len(storage.deletedPaths) != 1 || storage.deletedPaths[0] != "docs/contrato.pdf" {
+		t.Fatalf("o arquivo enviado ficou orfao no storage: %#v", storage.deletedPaths)
+	}
 }
