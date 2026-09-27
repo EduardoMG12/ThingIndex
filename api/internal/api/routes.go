@@ -45,6 +45,7 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 	router.MaxMultipartMemory = cfg.MaxUploadSizeBytes
 	router.Use(middleware.RequestContextMiddleware())
 	router.Use(middleware.I18nMiddleware())
+	router.Use(middleware.JSONBodyLimitMiddleware(middleware.JSONBodyLimitBytes))
 
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     cfg.CorsAllowedOrigins(),
