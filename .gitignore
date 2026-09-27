@@ -56,3 +56,13 @@ __pycache__/
 api/tmp/
 **/tmp/
 
+
+# cache de ferramenta local
+.omo/
+
+# Estado local de ferramentas de agente/editor. Nada disso e do projeto.
+.agent-grid/
+.nodeterm/
+.mcp.json
+.claude/settings.local.json
+.specify/feature.json
