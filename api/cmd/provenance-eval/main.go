@@ -237,7 +237,7 @@ func traduzirTipo(kind string) string {
 	case "metadata":
 		return "Metadado"
 	case "chunk":
-		return "Chunk"
+		return "Trecho"
 	case "outline":
 		return "Nó de sumário"
 	default:

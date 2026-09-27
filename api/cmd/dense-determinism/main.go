@@ -286,12 +286,12 @@ func writeTeX(path string, medidas []stability, documentos, consultas int) error
 	builder.WriteString("\\begin{table}[htb]\n\\centering\n")
 	fmt.Fprintf(&builder,
 		"\\caption{Estabilidade do ranking do braço denso sob variação de fatores que não são propriedades da consulta. "+
-			"Corpus C1 (%d documentos, %d consultas). Um ranking é considerado estável quando o hash SHA-256 da lista "+
-			"completa (identificador e score) é idêntico em todas as repetições.}\n",
+			"Corpus C1 (%d documentos, %d consultas). Uma ordenação é considerada estável quando o \\emph{hash} SHA-256 da lista "+
+			"completa (identificador e escore) é idêntico em todas as repetições.}\n",
 		documentos, consultas)
 	builder.WriteString("\\label{tab:dense-determinism}\n")
 	builder.WriteString("\\small\n\\begin{tabular}{lccc}\n\\hline\n")
-	builder.WriteString("Fator variado & Estáveis & Rankings distintos & Perda de revocação \\\\\n\\hline\n")
+	builder.WriteString("Fator variado & Estáveis & Ordenações distintas & Perda de revocação \\\\\n\\hline\n")
 
 	for _, medida := range medidas {
 		perda := "--"

@@ -1,12 +1,12 @@
 % GERADO POR cmd/dense-determinism -- nao edite a mao.
 \begin{table}[htb]
 \centering
-\caption{Estabilidade do ranking do braço denso sob variação de fatores que não são propriedades da consulta. Corpus C1 (5 documentos, 18 consultas). Um ranking é considerado estável quando o hash SHA-256 da lista completa (identificador e score) é idêntico em todas as repetições.}
+\caption{Estabilidade do ranking do braço denso sob variação de fatores que não são propriedades da consulta. Corpus C1 (5 documentos, 18 consultas). Uma ordenação é considerada estável quando o \emph{hash} SHA-256 da lista completa (identificador e escore) é idêntico em todas as repetições.}
 \label{tab:dense-determinism}
 \small
 \begin{tabular}{lccc}
 \hline
-Fator variado & Estáveis & Rankings distintos & Perda de revocação \\
+Fator variado & Estáveis & Ordenações distintas & Perda de revocação \\
 \hline
 C (exato), 30 execuções & 100\% & 1 & -- \\
 C$'$ (IVF), 30 sementes & 0\% & 4 & 48{,}4\% \\
