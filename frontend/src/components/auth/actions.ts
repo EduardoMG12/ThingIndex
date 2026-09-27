@@ -6,6 +6,7 @@ import { createForwardHeaders } from "@/app/api/_utils/locale";
 import { fetchApiUpstream } from "@/app/api/_utils/upstream";
 import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, normalizeLocale } from "@/lib/i18n/config";
 import { translate } from "@/lib/i18n/translate";
+import { resolveSafeNextPath } from "@/lib/safe-next-path";
 
 export async function login(formData: FormData) {
   const cookieStore = await cookies();
@@ -54,7 +55,7 @@ export async function login(formData: FormData) {
     return { error: translate(locale, "auth.errors.connection"), type: "error" };
   }
 
-  redirect(`/${locale}/workspace`);
+  redirect(resolveSafeNextPath(formData.get("next")) ?? `/${locale}/workspace`);
 }
 
 export async function register(formData: FormData) {
