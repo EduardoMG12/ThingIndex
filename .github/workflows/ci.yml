@@ -238,6 +238,10 @@ jobs:
       # descontinuada -- o CI falhou com "manifest unknown" antes mesmo do
       # checkout.
       #
+      # Em 2026-09 a propria minio/minio deixou de ser publicada (pull com
+      # "access denied"); a imagem passou a ser a da Chainguard, a mesma do
+      # docker-compose.
+      #
       # Rodar via docker run resolve os dois problemas e usa a MESMA imagem do
       # docker-compose do projeto, o que evita a divergencia de testar contra um
       # MinIO diferente do que roda em desenvolvimento.
@@ -247,7 +251,7 @@ jobs:
             -p 9000:9000 \
             -e MINIO_ROOT_USER=thingindexminio \
             -e MINIO_ROOT_PASSWORD=thingindexminio \
-            minio/minio server /data
+            cgr.dev/chainguard/minio:latest server /data
 
           # Espera ativa em vez de sleep fixo: o endpoint de health e a unica
           # evidencia de que o servico aceita conexao. Sem o `pronto`, um
