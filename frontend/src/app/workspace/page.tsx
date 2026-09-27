@@ -13,9 +13,8 @@ import { deleteDocument, retryDocumentIndexing } from "@/lib/api/documents";
 import AppShell from "@/components/layout/AppShell";
 import { useI18n } from "@/lib/i18n/provider";
 import { WorkspaceCanvas, type WorkspaceCanvasHandle } from "@/components/workspace/WorkspaceCanvas";
-import { fetchCollectionContext, fetchCollections, fetchHighlights, fetchLegend, fetchViewState } from "@/lib/api/collections";
-import type { Highlight, Legend } from "@/lib/api/contracts/highlights";
-import type { WorkspaceViewState } from "@/lib/api/contracts/view-state";
+import { fetchCollections } from "@/lib/api/collections";
+import { useContextoDaColecao } from "@/hooks/use-contexto-da-colecao";
 import type {
     CollectionContext,
     CollectionSummary,
@@ -86,12 +85,9 @@ function WorkspacePageInner() {
         setChatAberto(window.matchMedia("(min-width: 1024px)").matches);
     }, []);
     const colecaoDaUrl = Number(searchParams.get("collection"));
-    const [context, setContext] = useState<CollectionContext | null>(null);
-    // Marcas, legenda e estado chegam junto com o contexto para o canvas abrir
-    // ja no lugar certo, sem pulo; falha neles nao impede a tela.
-    const [anexos, setAnexos] = useState<{ marcas: Highlight[]; legenda: Legend; estado: WorkspaceViewState }>({ marcas: [], legenda: {}, estado: {} });
-    const [carregando, setCarregando] = useState(true);
-    const [erro, setErro] = useState<string | null>(null);
+    // Carregamento da lista de colecoes; o do contexto fica no hook abaixo.
+    const [carregandoColecoes, setCarregandoColecoes] = useState(true);
+    const [erroColecoes, setErroColecoes] = useState<string | null>(null);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -111,11 +107,11 @@ function WorkspacePageInner() {
                 }
             } catch (falha) {
                 if (!controller.signal.aborted) {
-                    setErro(falha instanceof Error ? falha.message : t("workspace.loadCollectionsError"));
+                    setErroColecoes(falha instanceof Error ? falha.message : t("workspace.loadCollectionsError"));
                 }
             } finally {
                 if (!controller.signal.aborted) {
-                    setCarregando(false);
+                    setCarregandoColecoes(false);
                 }
             }
         }
@@ -137,52 +133,18 @@ function WorkspacePageInner() {
         [pathname, router, searchParams]
     );
 
-    // `silencioso`: recarrega sem o loader de tela cheia, para o canvas nao
-    // desmontar (posicoes, zoom e selecao ficam) depois de apagar/reindexar.
-    const carregarContexto = useCallback((collectionId: number, signal: AbortSignal, silencioso = false) => {
-        if (!silencioso) {
-            setCarregando(true);
-        }
-        setErro(null);
-
-        Promise.all([
-            fetchCollectionContext(collectionId, signal),
-            fetchHighlights(collectionId, signal).catch(() => [] as Highlight[]),
-            fetchLegend(collectionId, signal).catch(() => ({}) as Legend),
-            fetchViewState(collectionId, signal).catch(() => ({}) as WorkspaceViewState),
-        ])
-            .then(([resultado, marcas, legenda, estado]) => {
-                if (!signal.aborted) {
-                    setAnexos({ marcas, legenda, estado });
-                    setContext(resultado);
-                }
-            })
-            .catch((falha: unknown) => {
-                if (!signal.aborted) {
-                    setErro(falha instanceof Error ? falha.message : t("workspace.loadContextError"));
-                }
-            })
-            .finally(() => {
-                if (!signal.aborted) {
-                    setCarregando(false);
-                }
-            });
-    }, [t]);
-
-    useEffect(() => {
-        if (selecionada === null) {
-            return;
-        }
-        const controller = new AbortController();
-        carregarContexto(selecionada, controller.signal);
-        return () => controller.abort();
-    }, [selecionada, carregarContexto]);
-
-    const recarregarContexto = useCallback(() => {
-        if (selecionada !== null) {
-            carregarContexto(selecionada, new AbortController().signal, true);
-        }
-    }, [selecionada, carregarContexto]);
+    // Marcas, legenda e estado chegam junto com o contexto para o canvas abrir
+    // ja no lugar certo, sem pulo; falha neles nao impede a tela. A recarga e
+    // silenciosa (sem o loader de tela cheia), para o canvas nao desmontar.
+    const {
+        context,
+        anexos,
+        carregando: carregandoContexto,
+        erro: erroContexto,
+        recarregar: recarregarContexto,
+    } = useContextoDaColecao(selecionada, t("workspace.loadContextError"));
+    const carregando = carregandoColecoes || carregandoContexto;
+    const erro = erroColecoes ?? erroContexto;
 
     const contextRef = useRef(context);
     useEffect(() => {
