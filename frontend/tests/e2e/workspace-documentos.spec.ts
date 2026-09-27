@@ -89,8 +89,8 @@ test("apagar pela aba Documentos tira o quadro do canvas sem recarregar", async 
     const item = page.getByTestId("documento-item-3");
     await expect(item).toContainText("Indexado");
     await item.getByRole("button", { name: "Apagar" }).click();
-    await page.getByRole("textbox", { name: "Valor de confirmacao" }).fill("Termo assinado");
-    await page.getByRole("button", { name: "Confirmar exclusao" }).click();
+    await page.getByRole("textbox", { name: "Valor de confirmação" }).fill("Termo assinado");
+    await page.getByRole("button", { name: "Confirmar exclusão" }).click();
 
     await expect.poll(() => estado.apagados.length).toBe(1);
     await expect(page.getByTestId("pdf-frame-3")).toHaveCount(0);

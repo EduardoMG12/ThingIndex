@@ -82,7 +82,7 @@ describe("document-state", () => {
 
         expect(issue).toMatchObject({
             kind: "retrying",
-            title: "Nova tentativa automatica agendada",
+            title: "Nova tentativa automática agendada",
             detail: "temporary network failure",
             attempt: {
                 failure_kind: "TRANSIENT",

@@ -39,10 +39,10 @@ describe("DocumentosDaColecao", () => {
             { wrapper: createTestWrapper("pt-BR") }
         );
         await user.click(screen.getAllByRole("button", { name: "Apagar" })[0]);
-        const confirmar = screen.getByRole("button", { name: "Confirmar exclusao" });
+        const confirmar = screen.getByRole("button", { name: "Confirmar exclusão" });
         expect(confirmar).toBeDisabled();
         expect(onApagar).not.toHaveBeenCalled();
-        await user.type(screen.getByRole("textbox", { name: "Valor de confirmacao" }), "Termo assinado");
+        await user.type(screen.getByRole("textbox", { name: "Valor de confirmação" }), "Termo assinado");
         await user.click(confirmar);
         expect(onApagar).toHaveBeenCalledWith(3);
     });
