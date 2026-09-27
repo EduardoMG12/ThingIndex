@@ -21,7 +21,11 @@ services:
       start_period: 15s
 
   minio:
-    image: minio/minio
+    # A MinIO parou de publicar imagem no Docker Hub e no quay.io (o pull de
+    # minio/minio passou a dar "access denied" em 2026-09). A Chainguard
+    # continua compilando o mesmo binario a partir do codigo-fonte. Ela nao traz
+    # curl, entao o healthcheck fala HTTP direto pelo /dev/tcp do bash.
+    image: cgr.dev/chainguard/minio:latest
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -32,7 +36,11 @@ services:
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test:
+        - CMD
+        - bash
+        - -c
+        - 'exec 3<>/dev/tcp/127.0.0.1/9000 && printf "GET /minio/health/live HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3 && read -r l <&3 && [[ $$l == *" 200"* ]]'
       interval: 10s
       timeout: 5s
       retries: 5
