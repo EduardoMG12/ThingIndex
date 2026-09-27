@@ -103,3 +103,31 @@ describe("mensagens de erro de login e cadastro seguem o locale (F-03)", () => {
         expect(res?.error).toBe("All fields are required");
     });
 });
+
+describe("login respeita o destino ?next= (F-04)", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        cookieStore.locale = "en";
+        fetchApiUpstreamMock.mockResolvedValue(
+            new Response(JSON.stringify({ data: { token: "jwt" } }), { status: 200 })
+        );
+    });
+
+    it("redireciona para o caminho local pedido depois do login", async () => {
+        await expect(
+            login(formulario({ email: "a@b.c", password: "12345678", next: "/en/documents" }))
+        ).rejects.toThrow("NEXT_REDIRECT:/en/documents");
+    });
+
+    it("ignora destino externo e cai no workspace do locale", async () => {
+        await expect(
+            login(formulario({ email: "a@b.c", password: "12345678", next: "//evil.example" }))
+        ).rejects.toThrow("NEXT_REDIRECT:/en/workspace");
+    });
+
+    it("sem next continua indo para o workspace", async () => {
+        await expect(
+            login(formulario({ email: "a@b.c", password: "12345678" }))
+        ).rejects.toThrow("NEXT_REDIRECT:/en/workspace");
+    });
+});
