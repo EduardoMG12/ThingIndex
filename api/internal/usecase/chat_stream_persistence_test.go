@@ -14,6 +14,9 @@ type chatConversationRepoStub struct {
 	conversation *models.ChatConversation
 	added        []models.ChatConversationEntry
 	addErr       error
+	// respeitaCtx faz AddMessage falhar com ctx.Err(), como o GORM faz com
+	// um ctx cancelado.
+	respeitaCtx bool
 }
 
 func (r *chatConversationRepoStub) CreateConversation(context.Context, *models.ChatConversation) error {
@@ -40,7 +43,10 @@ func (r *chatConversationRepoStub) DeleteConversation(context.Context, uint, uin
 	return nil
 }
 
-func (r *chatConversationRepoStub) AddMessage(_ context.Context, _ uint, _ uint, message *models.ChatConversationEntry) error {
+func (r *chatConversationRepoStub) AddMessage(ctx context.Context, _ uint, _ uint, message *models.ChatConversationEntry) error {
+	if r.respeitaCtx && ctx.Err() != nil {
+		return ctx.Err()
+	}
 	if r.addErr != nil {
 		return r.addErr
 	}
@@ -248,5 +254,48 @@ func TestStreamCollectionChatPersisteQuandoAEscritaNoClienteFalha(t *testing.T) 
 	}
 	if assistentes[0].Content != "parte um parte dois" {
 		t.Fatalf("texto persistido inesperado: %q", assistentes[0].Content)
+	}
+}
+
+// Regressao P1-5: o cliente desconecta no meio do stream, o ctx da requisicao
+// e cancelado e a persistencia -- que usava esse mesmo ctx -- falhava. A
+// resposta parcial, ja paga ao LLM, sumia sem registro.
+func TestStreamCollectionChatPersisteRespostaParcialComCtxDaRequisicaoCancelado(t *testing.T) {
+	t.Parallel()
+
+	repo := &chatConversationRepoStub{
+		conversation: &models.ChatConversation{ID: 14, UserID: 1, CollectionID: 3},
+		respeitaCtx:  true,
+	}
+	llm := &chatStreamingLLMStub{deltas: []string{"parte um ", "parte dois"}}
+	useCase := newChatUseCaseForTest(repo, llm)
+
+	ctx, cancelarRequisicao := context.WithCancel(context.Background())
+	defer cancelarRequisicao()
+
+	var deltasVistos int
+	err := useCase.StreamCollectionChat(ctx, 1, domain.ChatRequest{
+		ConversationID: 14,
+		CollectionID:   3,
+		Prompt:         "pergunta",
+	}, func(event domain.ChatStreamEvent) error {
+		if event.Type != chatStreamEventDelta {
+			return nil
+		}
+		deltasVistos++
+		if deltasVistos == 2 {
+			// Cliente foi embora: o ctx da requisicao morre e a escrita falha.
+			cancelarRequisicao()
+			return context.Canceled
+		}
+		return nil
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("esperava o cancelamento da requisicao, veio %v", err)
+	}
+
+	assistentes := repo.assistantMessages()
+	if len(assistentes) != 1 || assistentes[0].Content != "parte um parte dois" {
+		t.Fatalf("resposta parcial nao foi persistida com ctx cancelado: %+v", assistentes)
 	}
 }
