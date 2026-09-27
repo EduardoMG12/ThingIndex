@@ -59,6 +59,27 @@ jobs:
       - name: cobertura de testes
         run: bash scripts/check-coverage.sh
 
+  # Varre o historico inteiro, nao so o diff: um segredo apagado num commit
+  # posterior continua legivel em quem clonar. As excecoes conferidas estao em
+  # .gitleaks.toml, cada uma com o motivo.
+  segredos:
+    name: segredos (gitleaks no historico)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: api/go.mod
+          cache-dependency-path: api/go.sum
+
+      - name: gitleaks
+        run: |
+          go install github.com/zricethezav/gitleaks/v8@v8.30.1
+          "$(go env GOPATH)/bin/gitleaks" git --config .gitleaks.toml --redact --exit-code 1 .
+
   # O artigo e um artefato versionado como qualquer outro, e ja quebrou em
   # silencio duas vezes: uma citacao (schymik2015benefits) existia no Overleaf e
   # nao no .bib versionado, e o Apendice A prometia arquivos DBML que nao
