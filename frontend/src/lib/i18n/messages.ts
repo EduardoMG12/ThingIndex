@@ -455,7 +455,7 @@ export const messages: LocaleMessages = {
                 chat: "Chat",
                 documents: "Operações",
                 workspace: "Área de trabalho",
-                futureFeature: "Feature futura",
+                futureFeature: "Custos",
                 documentation: "Documentação",
                 settings: "Configurações",
             },
@@ -742,7 +742,7 @@ export const messages: LocaleMessages = {
                 noConversations: "Nenhuma conversa salva",
                 conversationsLabel: "Conversas salvas",
                 historyDescription: "Retome uma investigação existente ou abra um chat novo sem depender da sidebar global.",
-                activeCollection: "Collection em uso:",
+                activeCollection: "Coleção em uso:",
                 activeConversationBadge: "Ativa",
                 newConversation: "Nova conversa",
                 loadingConversation: "Carregando conversa...",
@@ -878,7 +878,7 @@ export const messages: LocaleMessages = {
             },
         },
         futureFeaturePage: {
-            eyebrow: "Feature futura",
+            eyebrow: "Custos por modelo",
             description: "Esta área separa a leitura operacional de custos do dashboard principal e concentra a cobertura de pricing em uma página dedicada.",
         },
         chatPage: {
@@ -1864,7 +1864,7 @@ export const messages: LocaleMessages = {
                 chat: "Chat",
                 documents: "Operations",
                 workspace: "Workspace",
-                futureFeature: "Future feature",
+                futureFeature: "Costs",
                 documentation: "Documentation",
                 settings: "Settings",
             },
@@ -2287,7 +2287,7 @@ export const messages: LocaleMessages = {
             },
         },
         futureFeaturePage: {
-            eyebrow: "Future feature",
+            eyebrow: "Cost by model",
             description: "This area pulls operational cost reading out of the main dashboard and keeps pricing coverage in a dedicated page.",
         },
         chatPage: {
@@ -3273,7 +3273,7 @@ export const messages: LocaleMessages = {
                 chat: "Chat",
                 documents: "Operaciones",
                 workspace: "Área de trabajo",
-                futureFeature: "Feature futura",
+                futureFeature: "Costos",
                 documentation: "Documentación",
                 settings: "Configuración",
             },
@@ -3560,7 +3560,7 @@ export const messages: LocaleMessages = {
                 noConversations: "No hay conversaciones guardadas",
                 conversationsLabel: "Conversaciones guardadas",
                 historyDescription: "Retoma una investigación existente o abre un chat nuevo sin depender de la sidebar global.",
-                activeCollection: "Collection en uso:",
+                activeCollection: "Colección en uso:",
                 activeConversationBadge: "Activa",
                 newConversation: "Nueva conversación",
                 loadingConversation: "Cargando conversación...",
@@ -3696,7 +3696,7 @@ export const messages: LocaleMessages = {
             },
         },
         futureFeaturePage: {
-            eyebrow: "Feature futura",
+            eyebrow: "Costos por modelo",
             description: "Esta área separa la lectura operativa de costos del dashboard principal y concentra la cobertura de pricing en una página dedicada.",
         },
         chatPage: {
