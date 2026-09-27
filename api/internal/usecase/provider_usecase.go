@@ -95,6 +95,13 @@ func NewProviderUseCase(repo domain.ProviderRepository, cfg *config.Config) doma
 	}
 }
 
+// llmClientOptions aplica ao cliente do LLM o mesmo validador de endpoint do
+// storage: base_url do usuario e revalidado no dial (DNS rebinding) e respeita
+// ALLOW_PRIVATE_STORAGE_ENDPOINTS.
+func (u *providerUseCase) llmClientOptions() provider.LLMClientOptions {
+	return provider.LLMClientOptions{EndpointValidator: u.endpointValidator}
+}
+
 func (u *providerUseCase) SaveCredentials(ctx context.Context, userID uint, family, providerType string, credentials map[string]string, activation domain.ProviderActivation) error {
 	normalizedFamily, normalizedProviderType, err := normalizeProviderSelection(family, providerType)
 	if err != nil {
@@ -253,7 +260,7 @@ func (u *providerUseCase) discoverProviderModels(ctx context.Context, userID uin
 	discoveryCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()
 
-	models, err := provider.ListLLMModels(discoveryCtx, providerType, credentials)
+	models, err := provider.ListLLMModels(discoveryCtx, providerType, credentials, u.llmClientOptions())
 	if err != nil {
 		if options.allowCachedAfter {
 			if cachedModels, cacheErr := u.listCachedModels(ctx, userID, providerType); cacheErr == nil && len(cachedModels) > 0 {
@@ -267,7 +274,7 @@ func (u *providerUseCase) discoverProviderModels(ctx context.Context, userID uin
 		case strings.Contains(strings.ToLower(err.Error()), "not implemented"):
 			return nil, domain.ErrProviderModelsUnsupported
 		default:
-			return nil, fmt.Errorf("%w: %v", domain.ErrProviderModelsUnavailable, err)
+			return nil, fmt.Errorf("%w: %w", domain.ErrProviderModelsUnavailable, err)
 		}
 	}
 
@@ -658,22 +665,22 @@ func (u *providerUseCase) ResolveStorage(ctx context.Context, userID uint) (doma
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrStorageProviderNotConfigured
 		}
-		return nil, fmt.Errorf("%w: %v", domain.ErrStorageProviderUnavailable, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrStorageProviderUnavailable, err)
 	}
 
 	creds, err := u.decryptConfig(config, userID)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrStorageProviderUnavailable, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrStorageProviderUnavailable, err)
 	}
 	if err := u.validateCredentials(ctx, config.Family, config.ProviderType, creds); err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrStorageProviderUnavailable, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrStorageProviderUnavailable, err)
 	}
 
 	storageService, err := provider.NewStorageProvider(config.ProviderType, creds, provider.StorageProviderOptions{
 		EndpointValidator: u.endpointValidator,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrStorageProviderUnavailable, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrStorageProviderUnavailable, err)
 	}
 
 	return storageService, nil
@@ -693,20 +700,20 @@ func (u *providerUseCase) resolveLLMByUsage(ctx context.Context, userID uint, us
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrLLMProviderNotConfigured
 		}
-		return nil, fmt.Errorf("%w: %v", domain.ErrLLMProviderUnavailable, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrLLMProviderUnavailable, err)
 	}
 
 	creds, err := u.decryptConfig(config, userID)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrLLMProviderUnavailable, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrLLMProviderUnavailable, err)
 	}
 	if err := u.validateCredentials(ctx, config.Family, config.ProviderType, creds); err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrLLMProviderUnavailable, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrLLMProviderUnavailable, err)
 	}
 
-	llmService, err := provider.NewLLMProvider(config.ProviderType, creds)
+	llmService, err := provider.NewLLMProvider(config.ProviderType, creds, u.llmClientOptions())
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrLLMProviderUnavailable, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrLLMProviderUnavailable, err)
 	}
 
 	return llmService, nil
@@ -865,7 +872,7 @@ func (u *providerUseCase) validateProviderConnection(ctx context.Context, family
 			return classifyProviderConnectionError(family, providerType, err)
 		}
 	case domain.FamilyLLM:
-		if err := provider.ValidateLLMConnection(ctx, providerType, credentials); err != nil {
+		if err := provider.ValidateLLMConnection(ctx, providerType, credentials, u.llmClientOptions()); err != nil {
 			return classifyProviderConnectionError(family, providerType, err)
 		}
 	}
@@ -880,15 +887,15 @@ func classifyProviderConnectionError(family, providerType string, err error) err
 
 	switch {
 	case isProviderTimeoutError(err):
-		return fmt.Errorf("%w: %v", domain.ErrProviderConnectionTimeout, err)
+		return fmt.Errorf("%w: %w", domain.ErrProviderConnectionTimeout, err)
 	case isProviderAuthenticationError(err):
-		return fmt.Errorf("%w: %v", domain.ErrProviderAuthenticationFailed, err)
+		return fmt.Errorf("%w: %w", domain.ErrProviderAuthenticationFailed, err)
 	case family == domain.FamilyLLM && isProviderModelError(err):
-		return fmt.Errorf("%w: %v", domain.ErrProviderModelInvalid, err)
+		return fmt.Errorf("%w: %w", domain.ErrProviderModelInvalid, err)
 	case isProviderEndpointError(err):
-		return fmt.Errorf("%w: %v", domain.ErrProviderEndpointUnavailable, err)
+		return fmt.Errorf("%w: %w", domain.ErrProviderEndpointUnavailable, err)
 	default:
-		return fmt.Errorf("%w: %v", domain.ErrProviderConnectionFailed, err)
+		return fmt.Errorf("%w: %w", domain.ErrProviderConnectionFailed, err)
 	}
 }
 
@@ -1110,7 +1117,7 @@ func (u *providerUseCase) syncProviderModelCatalog(ctx context.Context, userID u
 	discoveryCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()
 
-	models, err := provider.ListLLMModels(discoveryCtx, normalizedProviderType, credentials)
+	models, err := provider.ListLLMModels(discoveryCtx, normalizedProviderType, credentials, u.llmClientOptions())
 	if err != nil {
 		return err
 	}

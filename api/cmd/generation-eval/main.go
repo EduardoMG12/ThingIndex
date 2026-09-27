@@ -42,7 +42,31 @@ func defaultGabaritoPath() string {
 	return filepath.Join(filepath.Dir(thisFile), "..", "..", "internal", "evalcorpus", "testdata", "gabarito-si.json")
 }
 
-var csvHeader = []string{"question_id", "stratum", "origin", "arm", "scope", "repeat", "model", "correct", "cited_pages", "provenance_ok", "retrieval_hit", "prompt_tokens", "completion_tokens", "usage_reported", "latency_ms", "cost_usd", "truncated", "error", "answer"}
+// variant e pair_id entram no CSV porque sem eles a comparacao literal x
+// parafrase so sai cruzando o CSV com o gabarito na mao, que foi como ela
+// precisou ser feita na primeira medicao. O par e a variavel central do
+// experimento de formulacao: ela pertence ao dado bruto.
+var csvHeader = []string{"question_id", "stratum", "variant", "pair_id", "origin", "arm", "scope", "repeat", "model", "correct", "cited_pages", "provenance_ok", "retrieval_hit", "prompt_tokens", "completion_tokens", "usage_reported", "latency_ms", "cost_usd", "truncated", "error", "answer"}
+
+// csvColumn devolve o indice da coluna pelo nome do csvHeader.
+//
+// MOTIVO: o status impresso no terminal lia row[7] -- a coluna "repeat" --
+// como se fosse "correct" (indice 9); toda linha com repeat != "true" saia
+// "errada", ou seja, todas. Indice magico desalinha em silencio quando uma
+// coluna entra no meio; o nome nao. Coluna inexistente e erro de programa.
+func csvColumn(name string) int {
+	for i, column := range csvHeader {
+		if column == name {
+			return i
+		}
+	}
+	panic("generation-eval: coluna inexistente no csvHeader: " + name)
+}
+
+var (
+	colCorrect = csvColumn("correct")
+	colModel   = csvColumn("model")
+)
 
 type asker interface {
 	Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) answer
@@ -66,6 +90,7 @@ func main() {
 	summary := flag.Bool("summary", false, "em vez de rodar, resume os CSVs de -in")
 	rescore := flag.Bool("rescore", false, "em vez de rodar, reavalia correct/provenance dos CSVs de -in com o gabarito atual (sem chamar modelo) e reescreve cada arquivo")
 	in := flag.String("in", "", "CSV(s) para -summary, separados por virgula")
+	prose := flag.Bool("prose", false, "em vez de rodar, mede nos CSVs de -in se a pagina escrita na prosa da resposta e pagina-alvo (mesmo criterio para T e F)")
 	flag.Parse()
 
 	if *summary {
@@ -80,6 +105,13 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "generation-eval: %v\n", err)
 		os.Exit(1)
+	}
+	if *prose {
+		if err := printProseProvenance(*in, g); err != nil {
+			fmt.Fprintf(os.Stderr, "generation-eval: %v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 	if *rescore {
 		for _, path := range strings.Split(*in, ",") {
@@ -169,13 +201,13 @@ func main() {
 				_ = w.Write(row)
 				w.Flush()
 				status := "certa"
-				if row[7] != "true" {
+				if row[colCorrect] != "true" {
 					status = "errada"
 				}
 				if a.Err != nil {
 					status = "erro: " + a.Err.Error()
 				}
-				fmt.Fprintf(os.Stderr, "%s %s r%d %-7s %6dms %s\n", armName, q.ID, r, status, a.Latency.Milliseconds(), row[8])
+				fmt.Fprintf(os.Stderr, "%s %s r%d %-7s %6dms %s\n", armName, q.ID, r, status, a.Latency.Milliseconds(), row[colModel])
 			}
 		}
 	}
@@ -185,7 +217,7 @@ func buildRow(q evalcorpus.GabaritoQuestion, arm, scope string, repeat int, mode
 	if a.Model != "" {
 		model = a.Model
 	}
-	correct := a.Err == nil && matchesAnswer(a.Text, q.AnswerPatterns)
+	correct := a.Err == nil && answerCorrect(a.Text, q)
 	cited, prov, hit := "", "", ""
 	if !q.IsNegative() {
 		if arm == "T" {
@@ -207,7 +239,7 @@ func buildRow(q evalcorpus.GabaritoQuestion, arm, scope string, repeat int, mode
 		errText = a.Err.Error()
 	}
 	return []string{
-		q.ID, q.Stratum, q.Origin, arm, scope, strconv.Itoa(repeat), model,
+		q.ID, q.Stratum, q.Variant, q.PairID, q.Origin, arm, scope, strconv.Itoa(repeat), model,
 		strconv.FormatBool(correct), cited, prov, hit,
 		strconv.Itoa(a.PromptTokens), strconv.Itoa(a.CompletionTokens), strconv.FormatBool(a.UsageReported),
 		strconv.FormatInt(a.Latency.Milliseconds(), 10), cost, strconv.FormatBool(a.Truncated), errText,

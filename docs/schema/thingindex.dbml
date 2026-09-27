@@ -99,6 +99,7 @@ Table documents {
     collection_id [name: "idx_documents_collection_id"]
     deleted_at [name: "idx_documents_deleted_at"]
     status [name: "idx_documents_status"]
+    (user_id, collection_id, created_at) [name: "idx_documents_user_collection_created"]
     user_id [name: "idx_documents_user_id"]
   }
 }
@@ -136,6 +137,7 @@ Table document_pages {
   page_number integer [not null]
   content text [not null]
   summary text
+  generated_questions text
   token_estimate integer [not null, default: `0`]
   metadata jsonb
   created_at timestamptz
@@ -234,6 +236,7 @@ Table document_chunks {
   content text [not null]
   source_paragraph_start integer
   source_paragraph_end integer
+  page_number integer
   token_estimate integer [not null, default: `0`]
   metadata jsonb
   created_at timestamptz
@@ -245,6 +248,7 @@ Table document_chunks {
     deleted_at [name: "idx_document_chunks_deleted_at"]
     document_id [name: "idx_document_chunks_document_id"]
     (document_id, sequence_order) [name: "idx_document_chunks_document_sequence", unique]
+    page_number [name: "idx_document_chunks_page_number"]
   }
 }
 
@@ -293,6 +297,7 @@ Table outbox_events {
   indexes {
     (aggregate_type, aggregate_id) [name: "idx_outbox_events_aggregate"]
     available_at [name: "idx_outbox_events_available_at"]
+    (status, available_at, id) [name: "idx_outbox_events_claim"]
     event_type [name: "idx_outbox_events_event_type"]
     status [name: "idx_outbox_events_status"]
   }
@@ -326,6 +331,7 @@ Table document_audit_events {
     document_id [name: "idx_document_audit_events_document_id"]
     origin [name: "idx_document_audit_events_origin"]
     status [name: "idx_document_audit_events_status"]
+    (user_id, created_at, id) [name: "idx_document_audit_events_user_created"]
     user_id [name: "idx_document_audit_events_user_id"]
   }
 }
@@ -487,6 +493,7 @@ Table chat_conversations {
     collection_id [name: "idx_chat_conversations_collection_id"]
     deleted_at [name: "idx_chat_conversations_deleted_at"]
     last_message_at [name: "idx_chat_conversations_last_message_at"]
+    (user_id, collection_id) [name: "idx_chat_conversations_user_collection"]
     user_id [name: "idx_chat_conversations_user_id"]
   }
 }
@@ -531,15 +538,17 @@ Table user_indexing_preferences {
 
 Table enrichment_cache_entries {
   id serial [pk, increment]
-  kind varchar(16) [not null]
+  user_id integer [not null, default: `0`]
+  provider varchar(255) [not null]
   model varchar(128) [not null]
+  kind varchar(16) [not null]
   content_hash varchar(64) [not null]
   summary text [not null]
   topics text
   created_at timestamptz
 
   indexes {
-    (kind, model, content_hash) [name: "idx_enrichment_cache", unique]
+    (user_id, provider, model, kind, content_hash) [name: "idx_enrichment_cache_scope", unique]
   }
 }
 
@@ -547,8 +556,14 @@ Table enrichment_cache_entries {
 
 Ref: chat_conversation_entries.conversation_id > chat_conversations.id
 Ref: collections.category_id > document_categories.id
+Ref: document_chunks.document_id > documents.id
+Ref: document_outline_nodes.document_id > documents.id
 Ref: document_outline_nodes.parent_id > document_outline_nodes.id
+Ref: document_pages.document_id > documents.id
 Ref: document_processing_attempts.document_id > documents.id
 Ref: documents.category_id > document_categories.id
 Ref: documents.collection_id > collections.id
+Ref: metadata_pairs.document_id > documents.id
 Ref: paragraph_highlights.paragraph_node_id > paragraph_nodes.id
+Ref: paragraph_nodes.document_id > documents.id
+Ref: table_sections.document_id > documents.id

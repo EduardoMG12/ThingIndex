@@ -10,7 +10,7 @@ import (
 func TestIndexingBenchmarkIntegrationUsesEmbeddedCorpusWithRealIndexer(t *testing.T) {
 	t.Parallel()
 
-	provider := NewIndexingBenchmarkProvider()
+	provider := NewIndexingBenchmarkProvider(DefaultRetrievalOptions())
 	report, err := provider.GetPublicIndexingBenchmark(context.Background())
 	if err != nil {
 		t.Fatalf("GetPublicIndexingBenchmark returned error: %v", err)

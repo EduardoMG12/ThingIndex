@@ -177,18 +177,6 @@ func (s *documentUseCaseAuditCaptureStub) GetNodeConnections(context.Context, ui
 	return nil, nil
 }
 
-func (s *documentUseCaseAuditCaptureStub) StoreParagraphNodes(context.Context, uint, uint, []models.ParagraphNode) ([]models.ParagraphNode, error) {
-	return nil, nil
-}
-
-func (s *documentUseCaseAuditCaptureStub) StoreTableSections(context.Context, uint, uint, []models.TableSection) ([]models.TableSection, error) {
-	return nil, nil
-}
-
-func (s *documentUseCaseAuditCaptureStub) StoreMetadataPairs(context.Context, uint, uint, []models.MetadataPair) ([]models.MetadataPair, error) {
-	return nil, nil
-}
-
 func TestDeleteDocumentEndpointAddsAuditContextFromRequest(t *testing.T) {
 	t.Parallel()
 

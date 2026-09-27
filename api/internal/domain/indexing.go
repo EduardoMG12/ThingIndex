@@ -84,6 +84,11 @@ type DocumentProcessingRepository interface {
 	// ReapStuckProcessingDocuments marca como FAILED os documentos presos em
 	// PROCESSING desde antes de `olderThan`. Devolve quantos foram liberados.
 	ReapStuckProcessingDocuments(ctx context.Context, olderThan time.Time) (int64, error)
+	// RequeueStuckQueuedDocuments cria um evento PENDING novo no outbox para
+	// cada documento em QUEUED cujo ultimo evento esta PUBLISHED desde antes de
+	// `olderThan` (a mensagem se perdeu depois do broker). Devolve quantos
+	// documentos foram reenfileirados.
+	RequeueStuckQueuedDocuments(ctx context.Context, olderThan time.Time) (int64, error)
 }
 
 type MessagePublisher interface {
@@ -125,14 +130,33 @@ type IndexingPreferencesRepository interface {
 // EnrichmentCacheEntry e um resumo (e topicos) de pagina ou secao guardado
 // por hash do texto: reindexar o mesmo texto nao paga a LLM de novo.
 type EnrichmentCacheEntry struct {
-	Kind        string // "page" | "section"
-	Model       string
+	Kind        string // "page" | "section" | "query"
 	ContentHash string
 	Summary     string
 	Topics      string // separados por virgula
 }
 
+// EnrichmentCacheScope e o escopo de uma entrada do cache: quem pediu e qual
+// LLM respondeu.
+//
+// MOTIVO (P0-1): a chave era (tipo, modelo, hash), global. O nome do modelo e
+// texto livre das credenciais e o base_url aponta para qualquer servidor
+// OpenAI-compativel, entao um usuario A podia servir resumos proprios sob
+// "gpt-4o-mini" e todo usuario B que indexasse o mesmo texto os recebia -- e
+// eles viravam snippet de fonte no chat. O escopo tem as duas coisas:
+//   - UserID: um usuario so le o que o LLM configurado POR ELE gerou. Isso
+//     sozinho fecha o envenenamento e o canal lateral dos contadores de hit.
+//   - Provider: tipo do provedor + host do endpoint. Dentro do mesmo usuario,
+//     trocar de provedor ou de base_url com o mesmo nome de modelo nao
+//     reaproveita resumo de outra origem (Principio I: o resumo exibido veio
+//     do LLM que esta configurado).
+type EnrichmentCacheScope struct {
+	UserID   uint
+	Provider string
+	Model    string
+}
+
 type EnrichmentCache interface {
-	LookupEnrichment(ctx context.Context, kind, model string, hashes []string) (map[string]EnrichmentCacheEntry, error)
-	StoreEnrichment(ctx context.Context, entries []EnrichmentCacheEntry) error
+	LookupEnrichment(ctx context.Context, scope EnrichmentCacheScope, kind string, hashes []string) (map[string]EnrichmentCacheEntry, error)
+	StoreEnrichment(ctx context.Context, scope EnrichmentCacheScope, entries []EnrichmentCacheEntry) error
 }

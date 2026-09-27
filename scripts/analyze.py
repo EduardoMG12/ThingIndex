@@ -38,6 +38,7 @@ Uso:
 
 from __future__ import annotations
 
+import re
 import argparse
 import csv
 import math
@@ -195,6 +196,64 @@ def wilcoxon_signed_rank(a: list[float], b: list[float]) -> tuple[float, float, 
     return (w, min(p, 1.0), n)
 
 
+def randomization_test(a: list[float], b: list[float], max_exact: int = 20, samples: int = 100_000) -> tuple[float, int]:
+    """Teste de aleatorizacao pareado, bilateral, sobre a diferenca de medias.
+
+    E o teste que Smucker, Allan e Carterette (2007) recomendam para comparar
+    sistemas de RI por consulta. Sob a hipotese nula os rotulos dos dois bracos
+    sao permutaveis dentro de cada consulta, entao cada diferenca pode trocar
+    de sinal. Com ate `max_exact` diferencas nao nulas enumeram-se as 2^n
+    combinacoes de sinais (p exato); acima disso, amostragem com semente fixa.
+
+    Substitui o valor sentinela p = 1 que o Wilcoxon por aproximacao normal
+    devolvia com menos de 10 pares nao nulos: em C1 nenhuma das 75 comparacoes
+    chegava a 10, e a tabela mostrava 1,000 em todas sem que teste algum
+    tivesse sido calculado.
+    """
+    diffs = [x - y for x, y in zip(a, b) if x != y]
+    n = len(diffs)
+    if n == 0:
+        return (1.0, 0)
+    observado = abs(sum(diffs))
+    # Tolerancia para empates de ponto flutuante na comparacao com o observado.
+    eps = 1e-12
+    if n <= max_exact:
+        extremos = 0
+        total = 1 << n
+        for mascara in range(total):
+            s = 0.0
+            for i, d in enumerate(diffs):
+                s += -d if (mascara >> i) & 1 else d
+            if abs(s) >= observado - eps:
+                extremos += 1
+        return (extremos / total, n)
+    rng = random.Random(20260926)
+    extremos = 0
+    for _ in range(samples):
+        s = sum(d if rng.random() < 0.5 else -d for d in diffs)
+        if abs(s) >= observado - eps:
+            extremos += 1
+    return ((extremos + 1) / (samples + 1), n)
+
+
+def holm(p_values: list[float]) -> list[float]:
+    """Correcao de Holm-Bonferroni (step-down). Controla a taxa de erro por
+    familia como Bonferroni e e uniformemente mais poderosa que ele."""
+    m = len(p_values)
+    ordem = sorted(range(m), key=lambda i: p_values[i])
+    ajustados = [0.0] * m
+    acumulado = 0.0
+    for posto, i in enumerate(ordem):
+        acumulado = max(acumulado, min(1.0, (m - posto) * p_values[i]))
+        ajustados[i] = acumulado
+    return ajustados
+
+
+def vitorias_pareadas(a: list[float], b: list[float]) -> tuple[int, int]:
+    """Em quantos pares a_i > b_i e em quantos b_i > a_i (empates fora)."""
+    return sum(x > y for x, y in zip(a, b)), sum(y > x for x, y in zip(a, b))
+
+
 def cliffs_delta(a: list[float], b: list[float]) -> tuple[float, str]:
     """Cliff's delta e sua interpretacao qualitativa.
 
@@ -225,7 +284,70 @@ def cliffs_delta(a: list[float], b: list[float]) -> tuple[float, str]:
     return (delta, label)
 
 
+_NUMERO_DECIMAL = re.compile(r"(^|[^0-9.])(-?[0-9]+)\.([0-9]+)($|[^0-9.])")
+
+
+def regras_booktabs(tex: str) -> str:
+    """\\hline -> \\toprule/\\midrule/\\bottomrule em cada tabular. Mesma regra de
+    evalcorpus.RegrasBooktabs (Go)."""
+    linhas = tex.split("\n")
+    abertas: list[int] = []
+    for i, linha in enumerate(linhas):
+        t = linha.strip()
+        if t == r"\hline":
+            abertas.append(i)
+        elif t.startswith(r"\end{tabular}") or t.startswith(r"\end{longtable}"):
+            for j, idx in enumerate(abertas):
+                regra = r"\toprule" if j == 0 else (r"\bottomrule" if j == len(abertas) - 1 else r"\midrule")
+                if idx > 0 and linhas[idx - 1].strip() == r"\endfirsthead":
+                    regra = r"\toprule"  # abre o cabecalho repetido da longtable
+                linhas[idx] = linhas[idx].replace(r"\hline", regra, 1)
+            abertas = []
+    return "\n".join(linhas)
+
+
+_SINAL_NUMERO = re.compile(r"(^|[ &])-([0-9])")
+
+
+def sinal_menos(tex: str) -> str:
+    """Hifen usado como sinal de numero em celula vira $-$. Mesma regra de
+    evalcorpus.SinalMenos (Go)."""
+    return _SINAL_NUMERO.sub(r"\1$-$\2", tex)
+
+
+def virgula_decimal(tex: str) -> str:
+    """Separador decimal em virgula, como pede o portugues, so na escrita do
+    .tex. Mesma regra de evalcorpus.VirgulaDecimal (Go); {,} evita o espaco
+    que o LaTeX poe depois da virgula em modo matematico."""
+    for _ in range(2):
+        tex = _NUMERO_DECIMAL.sub(r"\1\2{,}\3\4", tex)
+    return tex
+
+
+# Rotulos de magnitude acentuados so na saida para o artigo; o calculo e os
+# testes seguem com os rotulos ASCII.
+MAGNITUDE_TEX = {"desprezivel": "desprezível", "pequeno": "pequeno", "medio": "médio", "grande": "grande"}
+
+
+# Rotulos dos bracos na tabela. "A-relacional" era o nome interno do
+# pontuador de contagem de termos e confundia o leitor com o armazenamento
+# relacional, que e comum a todos os bracos lexicais.
+ARM_TEX = {
+    "A-relacional": "A, contagem",
+    "B-bm25": "B, BM25",
+    "C-denso": "C, denso exato",
+    "C-denso-ivf": "C$'$, denso IVF",
+    "D-rrf": "D, RRF(A,B)",
+    "E-rrf-denso": "E, RRF(B,C)",
+}
+
+
+UNIDADE = {"": "unidade de recuperação: documento", "-section": "unidade de recuperação: seção"}
+
+
 def latex_escape(text: str) -> str:
+    if text in ARM_TEX:
+        return ARM_TEX[text]
     return text.replace("_", r"\_").replace("&", r"\&").replace("%", r"\%")
 
 
@@ -278,7 +400,7 @@ def build_summary_table(rows: list[dict], label_suffix: str = "") -> str:
         r"% GERADO POR scripts/analyze.py -- nao edite a mao.",
         r"\begin{table}[htb]",
         r"\centering",
-        r"\caption{Desempenho de recuperação por braço. Intervalos de confiança de 95\% obtidos por bootstrap sobre as consultas (10.000 reamostragens). A última linha traz o teto alcançável de cada métrica dado o gabarito: P@k divide por $k$, então uma consulta com um único item relevante limita P@3 a $1/3$ mesmo sob ranking perfeito.}",
+        r"\caption{Desempenho de recuperação por braço em C1, " + UNIDADE[label_suffix] + r". Intervalos de confiança de 95\% por \emph{bootstrap} sobre as consultas (10 mil reamostragens). A última linha é o teto alcançável de cada métrica: P@k divide por $k$, então uma consulta com um único item relevante limita P@3 a $1/3$ mesmo sob ordenação perfeita.}",
         f"\\label{{tab:retrieval-summary{label_suffix}}}",
         r"\begin{tabular}{l" + "c" * len(METRICS) + "}",
         r"\hline",
@@ -321,7 +443,7 @@ def build_variant_table(rows: list[dict], label_suffix: str = "") -> str:
         r"% GERADO POR scripts/analyze.py -- nao edite a mao.",
         r"\begin{table}[htb]",
         r"\centering",
-        r"\caption{P@1 por variante de consulta. A queda de \emph{literal} para \emph{paraphrase} e \emph{noisy} mede a dependência de casamento lexical de cada braço.}",
+        r"\caption{P@1 por variante de consulta em C1, " + UNIDADE[label_suffix] + r". A última coluna é a queda de P@1 da consulta literal para a paráfrase, medida da dependência de casamento lexical de cada braço.}",
         f"\\label{{tab:retrieval-variants{label_suffix}}}",
         r"\begin{tabular}{lcccc}",
         r"\hline",
@@ -355,35 +477,47 @@ def build_significance_table(rows: list[dict], label_suffix: str = "") -> str:
     pairs = [(arms[i], arms[j]) for i in range(len(arms)) for j in range(i + 1, len(arms))]
     comparisons = len(pairs) * len(METRICS)
 
+    # longtable, e nao table: com 75 linhas a tabela nao cabe numa pagina e,
+    # como flutuante, saia pelo rodape. O cabecalho se repete a cada pagina.
+    # Dados pareados por consulta: o efeito e dito pelas vitorias de cada lado
+    # (o delta de Cliff e para amostras independentes e, aqui, podia ter sinal
+    # oposto ao de Delta).
+    cabecalho = r"Comparação & Métrica & $\Delta$ & $n$ & $p$ & $p$ Holm & Vitórias A/B \\"
     lines = [
         r"% GERADO POR scripts/analyze.py -- nao edite a mao.",
-        r"\begin{table}[htb]",
-        r"\centering",
-        rf"\caption{{Comparações pareadas (Wilcoxon signed-rank) com correção de Bonferroni para {comparisons} comparações. Tamanho de efeito por Cliff's $\delta$.}}",
-        f"\\label{{tab:retrieval-significance{label_suffix}}}",
-        r"\begin{tabular}{llcccl}",
+        r"{\footnotesize\setlength{\tabcolsep}{4pt}",
+        r"\begin{longtable}{llccccl}",
+        rf"\caption{{Comparações pareadas: teste de aleatorização exato sobre as consultas, com correção de Holm para {comparisons} comparações. $n$ é o número de consultas em que os dois braços diferem; a última coluna conta em quantas delas cada braço da comparação teve o valor maior.}}",
+        f"\\label{{tab:retrieval-significance{label_suffix}}} \\\\",
         r"\hline",
-        r"Comparação & Métrica & $\Delta$ média & $p$ & $p$ corrigido & Cliff's $\delta$ \\",
+        cabecalho,
         r"\hline",
+        r"\endfirsthead",
+        r"\hline",
+        cabecalho,
+        r"\hline",
+        r"\endhead",
     ]
 
+    resultados = []
     for arm_a, arm_b in pairs:
         shared = sorted(set(by_arm_query[arm_a]) & set(by_arm_query[arm_b]))
         for key, label in METRICS:
             values_a = [to_float(by_arm_query[arm_a][q][key]) for q in shared]
             values_b = [to_float(by_arm_query[arm_b][q][key]) for q in shared]
+            p_value, nonzero = randomization_test(values_a, values_b)
+            vitorias = vitorias_pareadas(values_a, values_b)
+            resultados.append((arm_a, arm_b, label, mean(values_a) - mean(values_b), nonzero, p_value, vitorias))
 
-            _, p_value, _ = wilcoxon_signed_rank(values_a, values_b)
-            p_corrected = min(p_value * comparisons, 1.0)
-            delta, magnitude = cliffs_delta(values_a, values_b)
+    ajustados = holm([r[5] for r in resultados])
+    for (arm_a, arm_b, label, diff, nonzero, p_value, (vence_a, vence_b)), p_corrected in zip(resultados, ajustados):
+        lines.append(
+            f"{latex_escape(arm_a)} vs {latex_escape(arm_b)} & {label} & "
+            f"{diff:+.3f} & {nonzero} & {p_value:.3f} & {p_corrected:.3f} & "
+            f"{vence_a}/{vence_b} \\\\"
+        )
 
-            lines.append(
-                f"{latex_escape(arm_a)} vs {latex_escape(arm_b)} & {label} & "
-                f"{mean(values_a) - mean(values_b):+.3f} & {p_value:.3f} & {p_corrected:.3f} & "
-                f"{delta:+.3f} ({magnitude}) \\\\"
-            )
-
-    lines += [r"\hline", r"\end{tabular}", r"\end{table}"]
+    lines += [r"\hline", r"\end{longtable}", r"}"]
     return "\n".join(lines)
 
 
@@ -462,7 +596,7 @@ def main() -> int:
     args.outdir.mkdir(parents=True, exist_ok=True)
     for name, content in tables.items():
         path = args.outdir / name
-        path.write_text(content + "\n", encoding="utf-8")
+        path.write_text(sinal_menos(regras_booktabs(virgula_decimal(content))) + "\n", encoding="utf-8")
         print(f"analyze: {path}")
 
     return 0

@@ -79,10 +79,3 @@ func normalizePricingProvider(providerType string) (string, error) {
 		return "", domain.ErrProviderTypeInvalid
 	}
 }
-
-func defaultString(value, fallback string) string {
-	if strings.TrimSpace(value) == "" {
-		return fallback
-	}
-	return strings.TrimSpace(value)
-}
