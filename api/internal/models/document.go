@@ -55,9 +55,21 @@ type Document struct {
 	DeletedAt           gorm.DeletedAt              `gorm:"index" json:"-"`
 }
 
+// As seis tabelas de estrutura extraida (paragrafos, paginas, tabelas, pares
+// de metadado, chunks e nos de sumario) apontam para o documento por chave
+// estrangeira. Sem o campo Document o GORM nao cria a constraint, e por muito
+// tempo document_id foi so uma coluna NOT NULL: nada impedia uma linha
+// estrutural de apontar para um documento que nao existe, que e justamente o
+// dado sem proveniencia que o principio I da constituicao proibe.
+//
+// RESTRICT, e nao CASCADE: a exclusao de documento ja apaga as linhas
+// estruturais na mesma transacao (deleteStructuredDocumentData) antes do soft
+// delete do documento, e um DELETE fisico de documento que deixasse filhas
+// para tras deve falhar, nao arrastar conteudo sem registro.
 type ParagraphNode struct {
 	ID            uint           `gorm:"primarykey" json:"id"`
 	DocumentID    uint           `gorm:"not null;index;uniqueIndex:idx_paragraph_nodes_document_sequence" json:"document_id"`
+	Document      *Document      `gorm:"foreignKey:DocumentID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	SequenceOrder int            `gorm:"not null;uniqueIndex:idx_paragraph_nodes_document_sequence" json:"sequence_order"`
 	PageNumber    *int           `json:"page_number,omitempty"`
 	Content       string         `gorm:"type:text;not null" json:"content"`
@@ -68,11 +80,12 @@ type ParagraphNode struct {
 }
 
 type DocumentPage struct {
-	ID         uint   `gorm:"primarykey" json:"id"`
-	DocumentID uint   `gorm:"not null;index;uniqueIndex:idx_document_pages_document_page" json:"document_id"`
-	PageNumber int    `gorm:"not null;uniqueIndex:idx_document_pages_document_page" json:"page_number"`
-	Content    string `gorm:"type:text;not null" json:"content"`
-	Summary    string `gorm:"type:text" json:"summary,omitempty"`
+	ID         uint      `gorm:"primarykey" json:"id"`
+	DocumentID uint      `gorm:"not null;index;uniqueIndex:idx_document_pages_document_page" json:"document_id"`
+	Document   *Document `gorm:"foreignKey:DocumentID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
+	PageNumber int       `gorm:"not null;uniqueIndex:idx_document_pages_document_page" json:"page_number"`
+	Content    string    `gorm:"type:text;not null" json:"content"`
+	Summary    string    `gorm:"type:text" json:"summary,omitempty"`
 	// GeneratedQuestions sao perguntas que esta pagina responde, escritas em
 	// linguagem de leigo pelo enriquecimento. Coluna PROPRIA, e nao concatenada
 	// ao resumo, porque o experimento pre-registrado compara os dois campos
@@ -93,10 +106,11 @@ type DocumentPage struct {
 }
 
 type TableSection struct {
-	ID            uint   `gorm:"primarykey" json:"id"`
-	DocumentID    uint   `gorm:"not null;index;uniqueIndex:idx_table_sections_document_sequence" json:"document_id"`
-	SequenceOrder int    `gorm:"not null;uniqueIndex:idx_table_sections_document_sequence" json:"sequence_order"`
-	Title         string `gorm:"size:255" json:"title,omitempty"`
+	ID            uint      `gorm:"primarykey" json:"id"`
+	DocumentID    uint      `gorm:"not null;index;uniqueIndex:idx_table_sections_document_sequence" json:"document_id"`
+	Document      *Document `gorm:"foreignKey:DocumentID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
+	SequenceOrder int       `gorm:"not null;uniqueIndex:idx_table_sections_document_sequence" json:"sequence_order"`
+	Title         string    `gorm:"size:255" json:"title,omitempty"`
 	// PageNumber e a pagina fisica onde a tabela esta. Uma tabela que atravessa
 	// paginas vira uma TableSection por pagina: sem pagina a celula nao e
 	// auditavel (constituicao I). Nulo em HTML e planilha, que nao tem pagina.
@@ -112,6 +126,7 @@ type TableSection struct {
 type MetadataPair struct {
 	ID            uint           `gorm:"primarykey" json:"id"`
 	DocumentID    uint           `gorm:"not null;index;uniqueIndex:idx_metadata_pairs_document_sequence_key,priority:1" json:"document_id"`
+	Document      *Document      `gorm:"foreignKey:DocumentID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	SequenceOrder int            `gorm:"not null;uniqueIndex:idx_metadata_pairs_document_sequence_key,priority:2" json:"sequence_order"`
 	Key           string         `gorm:"size:255;not null;uniqueIndex:idx_metadata_pairs_document_sequence_key,priority:3" json:"key"`
 	Value         string         `gorm:"type:text;not null" json:"value"`
@@ -121,14 +136,15 @@ type MetadataPair struct {
 }
 
 type DocumentChunk struct {
-	ID                   uint   `gorm:"primarykey" json:"id"`
-	DocumentID           uint   `gorm:"not null;index;uniqueIndex:idx_document_chunks_document_sequence" json:"document_id"`
-	SequenceOrder        int    `gorm:"not null;uniqueIndex:idx_document_chunks_document_sequence" json:"sequence_order"`
-	ChunkType            string `gorm:"size:64;not null;index" json:"chunk_type"`
-	Title                string `gorm:"size:255" json:"title,omitempty"`
-	Content              string `gorm:"type:text;not null" json:"content"`
-	SourceParagraphStart *int   `json:"source_paragraph_start,omitempty"`
-	SourceParagraphEnd   *int   `json:"source_paragraph_end,omitempty"`
+	ID                   uint      `gorm:"primarykey" json:"id"`
+	DocumentID           uint      `gorm:"not null;index;uniqueIndex:idx_document_chunks_document_sequence" json:"document_id"`
+	Document             *Document `gorm:"foreignKey:DocumentID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
+	SequenceOrder        int       `gorm:"not null;uniqueIndex:idx_document_chunks_document_sequence" json:"sequence_order"`
+	ChunkType            string    `gorm:"size:64;not null;index" json:"chunk_type"`
+	Title                string    `gorm:"size:255" json:"title,omitempty"`
+	Content              string    `gorm:"type:text;not null" json:"content"`
+	SourceParagraphStart *int      `json:"source_paragraph_start,omitempty"`
+	SourceParagraphEnd   *int      `json:"source_paragraph_end,omitempty"`
 	// PageNumber e a pagina onde o chunk COMECA. Chunk e evidencia citavel: ele
 	// entra na recuperacao da colecao e vira fonte da resposta do chat. Sem
 	// pagina, a fonte nao e clicavel ate o trecho, que e o que auditabilidade
@@ -149,6 +165,7 @@ type DocumentChunk struct {
 type DocumentOutlineNode struct {
 	ID            uint                 `gorm:"primarykey" json:"id"`
 	DocumentID    uint                 `gorm:"not null;index;uniqueIndex:idx_outline_nodes_document_sequence,priority:1;uniqueIndex:idx_outline_nodes_document_node,priority:1" json:"document_id"`
+	Document      *Document            `gorm:"foreignKey:DocumentID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	SequenceOrder int                  `gorm:"not null;uniqueIndex:idx_outline_nodes_document_sequence" json:"sequence_order"`
 	NodeID        string               `gorm:"size:128;not null;uniqueIndex:idx_outline_nodes_document_node,priority:2" json:"node_id"`
 	ParentID      *uint                `gorm:"index" json:"parent_id,omitempty"`
