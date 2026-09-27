@@ -35,7 +35,7 @@ func TestCreateConversationChecaPosseSemMaterializarAColecao(t *testing.T) {
 
 	colecoes := &chatColecaoPorPosse{colecao: &models.Collection{ID: 3, UserID: 7}}
 	repo := &chatConversationRepoStub{}
-	useCase := NewChatUseCase(colecoes, chatContextoProibido{}, repo, &chatLLMResolverStub{}, nil)
+	useCase := NewChatUseCase(colecoes, chatContextoProibido{}, repo, &chatLLMResolverStub{}, nil, DefaultRetrievalOptions())
 
 	conversa, err := useCase.CreateConversation(context.Background(), 7, 3, "titulo")
 	if err != nil {
@@ -53,7 +53,7 @@ func TestCreateConversationDevolveColecaoNaoEncontradaParaColecaoDeOutroUsuario(
 	t.Parallel()
 
 	colecoes := &chatColecaoPorPosse{err: gorm.ErrRecordNotFound}
-	useCase := NewChatUseCase(colecoes, chatContextoProibido{}, &chatConversationRepoStub{}, &chatLLMResolverStub{}, nil)
+	useCase := NewChatUseCase(colecoes, chatContextoProibido{}, &chatConversationRepoStub{}, &chatLLMResolverStub{}, nil, DefaultRetrievalOptions())
 
 	if _, err := useCase.CreateConversation(context.Background(), 8, 3, "titulo"); !errors.Is(err, domain.ErrCollectionNotFound) {
 		t.Fatalf("esperava ErrCollectionNotFound, veio %v", err)

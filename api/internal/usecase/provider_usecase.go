@@ -274,7 +274,7 @@ func (u *providerUseCase) discoverProviderModels(ctx context.Context, userID uin
 		case strings.Contains(strings.ToLower(err.Error()), "not implemented"):
 			return nil, domain.ErrProviderModelsUnsupported
 		default:
-			return nil, fmt.Errorf("%w: %v", domain.ErrProviderModelsUnavailable, err)
+			return nil, fmt.Errorf("%w: %w", domain.ErrProviderModelsUnavailable, err)
 		}
 	}
 
@@ -665,22 +665,22 @@ func (u *providerUseCase) ResolveStorage(ctx context.Context, userID uint) (doma
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrStorageProviderNotConfigured
 		}
-		return nil, fmt.Errorf("%w: %v", domain.ErrStorageProviderUnavailable, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrStorageProviderUnavailable, err)
 	}
 
 	creds, err := u.decryptConfig(config, userID)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrStorageProviderUnavailable, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrStorageProviderUnavailable, err)
 	}
 	if err := u.validateCredentials(ctx, config.Family, config.ProviderType, creds); err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrStorageProviderUnavailable, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrStorageProviderUnavailable, err)
 	}
 
 	storageService, err := provider.NewStorageProvider(config.ProviderType, creds, provider.StorageProviderOptions{
 		EndpointValidator: u.endpointValidator,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrStorageProviderUnavailable, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrStorageProviderUnavailable, err)
 	}
 
 	return storageService, nil
@@ -700,20 +700,20 @@ func (u *providerUseCase) resolveLLMByUsage(ctx context.Context, userID uint, us
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrLLMProviderNotConfigured
 		}
-		return nil, fmt.Errorf("%w: %v", domain.ErrLLMProviderUnavailable, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrLLMProviderUnavailable, err)
 	}
 
 	creds, err := u.decryptConfig(config, userID)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrLLMProviderUnavailable, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrLLMProviderUnavailable, err)
 	}
 	if err := u.validateCredentials(ctx, config.Family, config.ProviderType, creds); err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrLLMProviderUnavailable, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrLLMProviderUnavailable, err)
 	}
 
 	llmService, err := provider.NewLLMProvider(config.ProviderType, creds, u.llmClientOptions())
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", domain.ErrLLMProviderUnavailable, err)
+		return nil, fmt.Errorf("%w: %w", domain.ErrLLMProviderUnavailable, err)
 	}
 
 	return llmService, nil
@@ -887,15 +887,15 @@ func classifyProviderConnectionError(family, providerType string, err error) err
 
 	switch {
 	case isProviderTimeoutError(err):
-		return fmt.Errorf("%w: %v", domain.ErrProviderConnectionTimeout, err)
+		return fmt.Errorf("%w: %w", domain.ErrProviderConnectionTimeout, err)
 	case isProviderAuthenticationError(err):
-		return fmt.Errorf("%w: %v", domain.ErrProviderAuthenticationFailed, err)
+		return fmt.Errorf("%w: %w", domain.ErrProviderAuthenticationFailed, err)
 	case family == domain.FamilyLLM && isProviderModelError(err):
-		return fmt.Errorf("%w: %v", domain.ErrProviderModelInvalid, err)
+		return fmt.Errorf("%w: %w", domain.ErrProviderModelInvalid, err)
 	case isProviderEndpointError(err):
-		return fmt.Errorf("%w: %v", domain.ErrProviderEndpointUnavailable, err)
+		return fmt.Errorf("%w: %w", domain.ErrProviderEndpointUnavailable, err)
 	default:
-		return fmt.Errorf("%w: %v", domain.ErrProviderConnectionFailed, err)
+		return fmt.Errorf("%w: %w", domain.ErrProviderConnectionFailed, err)
 	}
 }
 

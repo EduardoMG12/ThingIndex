@@ -13,39 +13,6 @@ type CreateCollectionRequest struct {
 	Metadata map[string]any `json:"metadata"`
 }
 
-type ParagraphNodeInput struct {
-	SequenceOrder int            `json:"sequence_order" binding:"gte=0"`
-	PageNumber    *int           `json:"page_number,omitempty" binding:"omitempty,gte=1"`
-	Content       string         `json:"content" binding:"required"`
-	Metadata      map[string]any `json:"metadata"`
-}
-
-type StoreParagraphNodesRequest struct {
-	Nodes []ParagraphNodeInput `json:"nodes" binding:"required,dive"`
-}
-
-type TableSectionInput struct {
-	SequenceOrder int            `json:"sequence_order" binding:"gte=0"`
-	Title         string         `json:"title" binding:"omitempty,max=255"`
-	Headers       []string       `json:"headers"`
-	Rows          [][]string     `json:"rows"`
-	Metadata      map[string]any `json:"metadata"`
-}
-
-type StoreTableSectionsRequest struct {
-	Sections []TableSectionInput `json:"sections" binding:"required,dive"`
-}
-
-type MetadataPairInput struct {
-	SequenceOrder int    `json:"sequence_order" binding:"gte=0"`
-	Key           string `json:"key" binding:"required,max=255"`
-	Value         string `json:"value" binding:"required"`
-}
-
-type StoreMetadataPairsRequest struct {
-	Pairs []MetadataPairInput `json:"pairs" binding:"required,dive"`
-}
-
 type CategoryResponse struct {
 	ID          uint      `json:"id"`
 	UserID      uint      `json:"user_id"`

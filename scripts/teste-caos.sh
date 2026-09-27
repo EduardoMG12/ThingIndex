@@ -24,9 +24,6 @@ API="${THINGINDEX_CAOS_API:-http://localhost:8000/api/v1}"
 
 # Por padrao usa a stack de desenvolvimento (com hot-reload); no CI, onde a
 # imagem e compilada, THINGINDEX_CAOS_COMPOSE aponta so para o compose base.
-#
-# Importa porque o `air` do modo dev encerra o processo a cada recompilacao, e
-# isso confunde a verificacao de que o worker sobreviveu a queda.
 if [[ -n "${THINGINDEX_CAOS_COMPOSE:-}" ]]; then
   DC="docker compose $THINGINDEX_CAOS_COMPOSE"
 else
@@ -82,16 +79,36 @@ autenticar() {
 
 enviar_documento() {
   local token="$1" titulo="$2" colecao="$3"
-  printf '<html><body><h1>1 DAS OBRIGACOES</h1><p>Prestacao continuada com multa e fatura mensal.</p></body></html>' \
-    > "$TRAB/doc.html"
   curl -s -X POST "$API/documents/upload" -H "Authorization: Bearer $token" \
-    -F "file=@$TRAB/doc.html;type=text/html" \
-    -F "title=$titulo.html" -F "collection=$colecao" |
+    -F "file=@$PDF_CAOS;type=application/pdf" \
+    -F "title=$titulo.pdf" -F "collection=$colecao" |
     python3 -c 'import json,sys; print((json.load(sys.stdin).get("data") or {}).get("id",""))' 2>/dev/null
 }
 
 status_documento() {
   psql_ "SELECT status FROM documents WHERE id=$1;"
+}
+
+# PDF pequeno e valido do proprio repositorio (2 KB, texto nativo). E o mesmo
+# arquivo que TestPDFsReaisPassamPeloIndexadorCompleto passa pelo indexador
+# completo, entao sabemos que ele chega a INDEXED sem LLM nem OCR. O caos antes
+# enviava HTML, e o requisito exercitado pelo artigo e "enviar PDF".
+PDF_CAOS="$RAIZ/api/internal/usecase/testdata/indexing-benchmark/court-order.pdf"
+
+# reinicios_indexer devolve o RestartCount do container do indexer.
+#
+# Substitui a antiga busca por "Process Exit with Code [1-9]" no log, que e uma
+# linha do air (hot reload): na imagem de producao (a do CI) ela nunca aparece e
+# a verificacao passava sempre, por vacuidade. Alem disso o compose usa
+# `restart: unless-stopped`, entao um crash seria reiniciado pelo Docker sem
+# deixar rastro no log do processo novo. O contador do Docker ve os dois casos.
+#
+# Limite: com o compose de dev o air reinicia o PROCESSO dentro do container,
+# nao o container; ai o contador so pega a morte do proprio air.
+reinicios_indexer() {
+  local id; id=$($DC ps -q indexer 2>/dev/null | head -n1)
+  [[ -n "$id" ]] || { echo "?"; return; }
+  docker inspect -f '{{.RestartCount}}' "$id" 2>/dev/null || echo "?"
 }
 
 # ---------------------------------------------------------------------------
@@ -103,6 +120,7 @@ cenario_rabbitmq() {
   [[ -n "$token" ]] || { relatar "autenticacao" 0 "sem token"; return; }
 
   local colecao="Caos$(date +%s)"
+  local reinicios_antes; reinicios_antes=$(reinicios_indexer)
   local antes; antes=$(enviar_documento "$token" "AntesDaQueda" "$colecao")
   esperar_por "documento base indexado" "INDEXED" "status_documento $antes" 30 ||
     { relatar "linha de base" 0 "documento base nao indexou"; return; }
@@ -136,17 +154,16 @@ cenario_rabbitmq() {
     relatar "outbox drena ate zero pendentes" 0 "restaram eventos nao publicados"
   fi
 
-  # O processo nao pode ter MORRIDO por falha: antes da correcao o consumidor
-  # devolvia erro fatal e o binario encerrava com codigo diferente de zero.
-  #
-  # "Process Exit with Code 0" tambem aparece quando o air recompila apos uma
-  # alteracao de codigo, e isso e normal em desenvolvimento -- a primeira versao
-  # desta verificacao acusava falha por causa disso. O sinal de crash e o codigo
-  # DIFERENTE de zero.
-  if $DC logs indexer --since 3m 2>&1 | grep -qE "Process Exit with Code [1-9]"; then
-    relatar "worker sobrevive a queda" 0 "indexer encerrou com codigo de erro"
+  # O worker precisa ter sobrevivido SEM ser reiniciado: com
+  # `restart: unless-stopped` um crash seria mascarado pelo Docker, entao a
+  # prova e o RestartCount do container nao ter mudado.
+  local reinicios_depois; reinicios_depois=$(reinicios_indexer)
+  if [[ "$reinicios_antes" == "?" || "$reinicios_depois" == "?" ]]; then
+    relatar "worker sobrevive sem ser reiniciado" 0 "container do indexer nao encontrado"
+  elif [[ "$reinicios_antes" == "$reinicios_depois" ]]; then
+    relatar "worker sobrevive sem ser reiniciado" 1 "RestartCount=$reinicios_depois"
   else
-    relatar "worker sobrevive a queda" 1 "nenhuma saida por falha"
+    relatar "worker sobrevive sem ser reiniciado" 0 "RestartCount $reinicios_antes -> $reinicios_depois"
   fi
 
   # E a prova positiva: o supervisor precisa ter registrado a reconexao.
@@ -237,17 +254,17 @@ cenario_concorrencia() {
   local token; token=$(autenticar)
   local colecao="CaosConc$(date +%s)"
 
-  printf '<html><body><h1>1 DAS OBRIGACOES</h1><p>Clausula com multa e fatura.</p></body></html>' \
-    > "$TRAB/conc.html"
-
   : > "$TRAB/codigos.txt"
   for i in $(seq 1 20); do
-    curl -s -o /dev/null -w '%{http_code}\n' -X POST "$API/documents/upload" \
+    # Cada envio grava corpo e codigo HTTP no proprio arquivo: escrever todos no
+    # mesmo arquivo em paralelo intercalaria as linhas.
+    curl -s -o "$TRAB/conc-$i.json" -w '%{http_code}\n' -X POST "$API/documents/upload" \
       -H "Authorization: Bearer $token" \
-      -F "file=@$TRAB/conc.html;type=text/html" \
-      -F "title=Conc $i.html" -F "collection=$colecao" >> "$TRAB/codigos.txt" &
+      -F "file=@$PDF_CAOS;type=application/pdf" \
+      -F "title=Conc $i.pdf" -F "collection=$colecao" > "$TRAB/conc-$i.code" &
   done
   wait
+  cat "$TRAB"/conc-*.code > "$TRAB/codigos.txt"
 
   local criados; criados=$(grep -c '^201$' "$TRAB/codigos.txt")
   if [[ "$criados" == "20" ]]; then
@@ -263,6 +280,31 @@ cenario_concorrencia() {
     relatar "exatamente uma colecao criada" 1
   else
     relatar "exatamente uma colecao criada" 0 "$colecoes colecoes homonimas"
+  fi
+
+  # "Nenhum documento se perde" vale para os 20, nao so para a resposta HTTP:
+  # cada upload aceito precisa chegar a INDEXED. Timeout de ~6 min (120 x 3 s):
+  # o consumidor e sequencial e o PDF e pequeno.
+  local ids
+  ids=$(for f in "$TRAB"/conc-*.json; do
+          python3 -c 'import json,sys; print((json.load(open(sys.argv[1])).get("data") or {}).get("id",""))' "$f" 2>/dev/null
+        done | grep -E '^[0-9]+$' | paste -sd, -)
+  if [[ -z "$ids" ]]; then
+    relatar "os 20 documentos chegam a INDEXED" 0 "nenhum id devolvido pelos uploads"
+    return
+  fi
+  local total; total=$(tr ',' '\n' <<< "$ids" | grep -c .)
+  if esperar_por "20 documentos indexados" "$total" \
+      "psql_ \"SELECT count(*) FROM documents WHERE id IN ($ids) AND status='INDEXED';\"" 120; then
+    if [[ "$total" == "20" ]]; then
+      relatar "os 20 documentos chegam a INDEXED" 1 "20/20"
+    else
+      relatar "os 20 documentos chegam a INDEXED" 0 "so $total ids devolvidos"
+    fi
+  else
+    local resumo
+    resumo=$(psql_ "SELECT status || '=' || count(*) FROM documents WHERE id IN ($ids) GROUP BY status;" | tr '\n' ' ')
+    relatar "os 20 documentos chegam a INDEXED" 0 "$resumo"
   fi
 }
 

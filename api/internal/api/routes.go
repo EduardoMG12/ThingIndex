@@ -72,7 +72,10 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 	authUseCase := usecase.NewAuthUseCase(authRepo, smtpMailer, defaultStorage, cfg)
 
 	authHandler := handlers.NewAuthHandler(authUseCase, defaultStorage)
-	benchmarkProvider := usecase.NewIndexingBenchmarkProvider()
+	// Bracos experimentais da recuperacao, lidos uma vez aqui (config.Load leu
+	// o ambiente na subida). Ver usecase.RetrievalOptions.
+	retrievalOptions := usecase.NewRetrievalOptions(cfg.PageSearchFields, cfg.QueryExpansion)
+	benchmarkProvider := usecase.NewIndexingBenchmarkProvider(retrievalOptions)
 	metaHandler := handlers.NewMetaHandler(benchmarkProvider)
 
 	providerRepo := repository.NewGormProviderRepository(db)
@@ -92,9 +95,10 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 		defaultStorage,
 		providerUseCase,
 		cfg.MaxUploadSizeBytes,
+		retrievalOptions,
 	)
 	docHandler := handlers.NewDocumentHandler(docUseCase, cfg.UploadRequestLimitBytes())
-	chatUseCase := usecase.NewChatUseCase(collectionRepo, collectionContextRepo, chatConversationRepo, providerUseCase, repository.NewGormIndexingRepository(db))
+	chatUseCase := usecase.NewChatUseCase(collectionRepo, collectionContextRepo, chatConversationRepo, providerUseCase, repository.NewGormIndexingRepository(db), retrievalOptions)
 	chatHandler := handlers.NewChatHandler(chatUseCase)
 	// Anotacoes do workspace: marcas coloridas e legenda. Anotacao, nao
 	// recuperacao -- nada aqui entra no caminho de contexto ou de conexoes.
@@ -126,10 +130,13 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 
 		auth := v1.Group("/auth")
 		auth.Use(middleware.RateLimitMiddleware(cfg.AuthRateLimitRequests, cfg.AuthRateLimitWindow))
+		// Limite adicional por conta alvo: o limite por IP nao segura forca
+		// bruta distribuida contra o mesmo e-mail.
+		emailLimit := middleware.EmailRateLimitMiddleware(cfg.AuthEmailRateLimitRequests, cfg.AuthEmailRateLimitWindow)
 		{
 			auth.POST("/register", authHandler.Register)
-			auth.POST("/login", authHandler.Login)
-			auth.POST("/forgot-password", authHandler.ForgotPassword)
+			auth.POST("/login", emailLimit, authHandler.Login)
+			auth.POST("/forgot-password", emailLimit, authHandler.ForgotPassword)
 			auth.POST("/reset-password", authHandler.ResetPassword)
 		}
 
@@ -187,9 +194,6 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 			documents.GET("/categories", docHandler.ListCategories)
 			documents.PATCH("/categories/:id", docHandler.UpdateCategory)
 			documents.GET("/category/:id", docHandler.ListDocumentsByCategory)
-			documents.POST("/:id/paragraph-nodes", docHandler.StoreParagraphNodes)
-			documents.POST("/:id/table-sections", docHandler.StoreTableSections)
-			documents.POST("/:id/metadata-pairs", docHandler.StoreMetadataPairs)
 			documents.GET("/:id/content", docHandler.GetDocumentContent)
 			documents.POST("/:id/retry", docHandler.RetryIndexing)
 			documents.DELETE("/:id", docHandler.DeleteDocument)

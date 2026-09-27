@@ -142,12 +142,14 @@ type indexingBenchmarkRetrievalVariantDefinition struct {
 }
 
 type indexingBenchmarkProvider struct {
-	indexer domain.DocumentIndexer
+	indexer          domain.DocumentIndexer
+	retrievalOptions RetrievalOptions
 }
 
-func NewIndexingBenchmarkProvider() domain.IndexingBenchmarkProvider {
+func NewIndexingBenchmarkProvider(retrievalOptions RetrievalOptions) domain.IndexingBenchmarkProvider {
 	return &indexingBenchmarkProvider{
-		indexer: indexing.NewDeterministicIndexer(),
+		indexer:          indexing.NewDeterministicIndexer(),
+		retrievalOptions: retrievalOptions,
 	}
 }
 
@@ -380,7 +382,7 @@ func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Conte
 				matchedExpectedQueryNodes++
 			}
 
-			tree := buildTreeRetrieval(query.Query, result.OutlineNodes, result.DocumentPages, result.Chunks)
+			tree := buildTreeRetrievalWith(p.retrievalOptions, query.Query, result.OutlineNodes, result.DocumentPages, result.Chunks)
 
 			nodeMatched := false
 			nodeInTop3 := false
@@ -461,7 +463,7 @@ func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Conte
 
 	for _, query := range corpus.CollectionQueries {
 		totalExactCases++
-		result := buildCollectionRetrieval(query.Query, allDocuments, allPages, allNodes, allChunks, allTables)
+		result := buildCollectionRetrievalWith(p.retrievalOptions, query.Query, allDocuments, allPages, allNodes, allChunks, allTables)
 
 		expectedDocumentTitle := documentTitleByID[query.ExpectedTopDocumentID]
 		actualDocumentTitle := ""
@@ -564,6 +566,7 @@ func (p *indexingBenchmarkProvider) GetPublicIndexingBenchmark(ctx context.Conte
 	}
 	report.ReferenceComparison = buildIndexingBenchmarkReferenceComparison(referenceFixture, currentStructureStats, report.Metrics)
 	report.RetrievalComparison = buildIndexingBenchmarkRetrievalComparison(
+		p.retrievalOptions,
 		corpus,
 		documentRuntimes,
 		documentTitleByID,
@@ -713,6 +716,7 @@ func buildIndexingBenchmarkStructuralSignals(
 }
 
 func buildIndexingBenchmarkRetrievalComparison(
+	retrievalOptions RetrievalOptions,
 	corpus indexingBenchmarkCorpusFixture,
 	documentRuntimes []benchmarkDocumentRuntime,
 	documentTitleByID map[string]string,
@@ -748,7 +752,7 @@ func buildIndexingBenchmarkRetrievalComparison(
 			Category: "hybrid_control",
 			Summary:  "Experimental control that ranks nodes and pages independently without iterative tree traversal or path reinforcement.",
 			TreeBuild: func(query string, result domain.IndexingResult) *domain.TreeRetrievalResult {
-				return buildFlatHybridControlTreeRetrieval(query, result.OutlineNodes, result.DocumentPages)
+				return buildFlatHybridControlTreeRetrieval(retrievalOptions, query, result.OutlineNodes, result.DocumentPages)
 			},
 			CollectionBuild: func(
 				query string,
@@ -767,7 +771,7 @@ func buildIndexingBenchmarkRetrievalComparison(
 			Category: "flat_control",
 			Summary:  "Experimental control that flattens retrieval to page text and maps page hits back to overlapping nodes only.",
 			TreeBuild: func(query string, result domain.IndexingResult) *domain.TreeRetrievalResult {
-				return buildFlatPageControlTreeRetrieval(query, result.OutlineNodes, result.DocumentPages)
+				return buildFlatPageControlTreeRetrieval(retrievalOptions, query, result.OutlineNodes, result.DocumentPages)
 			},
 			CollectionBuild: func(
 				query string,
@@ -1024,6 +1028,7 @@ func benchmarkRetrievalVariantStatus(
 }
 
 func buildFlatHybridControlTreeRetrieval(
+	retrievalOptions RetrievalOptions,
 	query string,
 	nodes []models.DocumentOutlineNode,
 	pages []models.DocumentPage,
@@ -1040,7 +1045,7 @@ func buildFlatHybridControlTreeRetrieval(
 
 	pageHits := make([]domain.TreePageHit, 0, len(pages))
 	for _, page := range pages {
-		score := scoreTreePage(page, queryTerms)
+		score := scoreTreePage(page, queryTerms, retrievalOptions.pageSearchFields())
 		if score == 0 {
 			continue
 		}
@@ -1071,6 +1076,7 @@ func buildFlatHybridControlTreeRetrieval(
 }
 
 func buildFlatPageControlTreeRetrieval(
+	retrievalOptions RetrievalOptions,
 	query string,
 	nodes []models.DocumentOutlineNode,
 	pages []models.DocumentPage,
@@ -1083,7 +1089,7 @@ func buildFlatPageControlTreeRetrieval(
 	pageHits := make([]domain.TreePageHit, 0, len(pages))
 	pageScores := make(map[int]int, len(pages))
 	for _, page := range pages {
-		score := scoreTreePage(page, queryTerms)
+		score := scoreTreePage(page, queryTerms, retrievalOptions.pageSearchFields())
 		if score == 0 {
 			continue
 		}

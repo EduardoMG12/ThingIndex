@@ -29,42 +29,6 @@ func (r *GormStructuredDataRepository) ReplaceDocumentPages(ctx context.Context,
 	})
 }
 
-func (r *GormStructuredDataRepository) ReplaceParagraphNodes(ctx context.Context, documentID uint, nodes []models.ParagraphNode) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Unscoped().Where("document_id = ?", documentID).Delete(&models.ParagraphNode{}).Error; err != nil {
-			return err
-		}
-		if len(nodes) == 0 {
-			return nil
-		}
-		return tx.CreateInBatches(&nodes, appdb.InsertBatchSize).Error
-	})
-}
-
-func (r *GormStructuredDataRepository) ReplaceTableSections(ctx context.Context, documentID uint, sections []models.TableSection) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Unscoped().Where("document_id = ?", documentID).Delete(&models.TableSection{}).Error; err != nil {
-			return err
-		}
-		if len(sections) == 0 {
-			return nil
-		}
-		return tx.CreateInBatches(&sections, appdb.InsertBatchSize).Error
-	})
-}
-
-func (r *GormStructuredDataRepository) ReplaceMetadataPairs(ctx context.Context, documentID uint, pairs []models.MetadataPair) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Unscoped().Where("document_id = ?", documentID).Delete(&models.MetadataPair{}).Error; err != nil {
-			return err
-		}
-		if len(pairs) == 0 {
-			return nil
-		}
-		return tx.CreateInBatches(&pairs, appdb.InsertBatchSize).Error
-	})
-}
-
 func (r *GormStructuredDataRepository) ReplaceDocumentChunks(ctx context.Context, documentID uint, chunks []models.DocumentChunk) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Unscoped().Where("document_id = ?", documentID).Delete(&models.DocumentChunk{}).Error; err != nil {
