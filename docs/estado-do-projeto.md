@@ -123,9 +123,9 @@ entraram no repositório.
 sem verificar, e isso enviesou a recomendação anterior. Sem risco de exposição,
 os artefatos passam a ser versionados junto do código.
 
-O backup principal é `docs/article/thingindex-artigo.pdf`, a versão compilada de
-referência (23 páginas). Ao atualizar o artigo, commite o PDF junto: é ele que
-garante uma versão recuperável independente do estado do Overleaf.
+O PDF compilado da versão final (no máximo 30 páginas) entra em `docs/article/`
+quando for fechado no Overleaf; até lá, a fonte versionada é `artigo.tex`. Os
+anexos exigidos pelo colegiado ficam em PDF em `anexos/`.
 
 ### ~~1.3 Páginas via OCR não têm âncora posicional~~ — RESOLVIDO (PR #5)
 
