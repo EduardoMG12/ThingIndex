@@ -18,6 +18,12 @@ import {
     PROVIDERS,
     type ProviderDefinition,
 } from "@/components/settings/provider-catalog";
+import {
+    applySavedPricing,
+    getInvalidPricingFields,
+    isLLMPricingField,
+    parsePricingInput,
+} from "@/components/settings/provider-pricing";
 import AppShell from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -145,6 +151,9 @@ function FamilySection({
     const discoveredModelsForActiveProvider = discoveredModels[activeProvider.providerType] ?? [];
     const readinessReport = readinessReports[activeProvider.providerType] ?? null;
     const savedConfigCountLabel = new Intl.NumberFormat(locale).format(savedConfigs.length);
+    const credentialFields = activeProvider.fields.filter((field) => field.kind !== "price");
+    const pricingFields = activeProvider.fields.filter((field) => field.kind === "price");
+    const pricingHelpId = `${activeProvider.providerType}-pricing-help`;
 
     function getProviderStatusLine(providerType: ProviderType) {
         const items: string[] = [];
@@ -273,7 +282,7 @@ function FamilySection({
                                 </div>
                             </details>
 
-                            {activeProvider.fields.map((field) => (
+                            {credentialFields.map((field) => (
                                 field.kind === "model" ? (
                                     <ProviderModelField
                                         key={field.key}
@@ -314,6 +323,45 @@ function FamilySection({
                                     </div>
                                 )
                             ))}
+
+                            {pricingFields.length > 0 ? (
+                                <div className="space-y-4 rounded-2xl border border-border bg-background/60 p-4">
+                                    {pricingFields.map((field) => {
+                                        const fieldId = `${activeProvider.providerType}-${field.key}`;
+                                        const value = forms[activeProvider.providerType]?.[field.key] ?? "";
+                                        const invalid = !parsePricingInput(value).valid;
+                                        const errorId = `${fieldId}-error`;
+
+                                        return (
+                                            <div key={field.key} className="space-y-2">
+                                                <Label htmlFor={fieldId}>
+                                                    {field.label}
+                                                    <span className="ml-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{t("common.optional")}</span>
+                                                </Label>
+                                                <Input
+                                                    id={fieldId}
+                                                    type="text"
+                                                    inputMode="decimal"
+                                                    value={value}
+                                                    onChange={(event) => onFieldChange(activeProvider.providerType, field.key, event.target.value)}
+                                                    placeholder={field.placeholder}
+                                                    autoComplete="off"
+                                                    aria-invalid={invalid || undefined}
+                                                    aria-describedby={invalid ? `${errorId} ${pricingHelpId}` : pricingHelpId}
+                                                />
+                                                {invalid ? (
+                                                    <p id={errorId} className="text-xs text-destructive">
+                                                        {t("settings.pricingInvalid")}
+                                                    </p>
+                                                ) : null}
+                                            </div>
+                                        );
+                                    })}
+                                    <p id={pricingHelpId} className="text-xs leading-relaxed text-muted-foreground">
+                                        {t("settings.pricingHelp")}
+                                    </p>
+                                </div>
+                            ) : null}
 
                             {family === "LLM" ? (
                                 <div className="rounded-2xl border border-border bg-background/60 p-4">
@@ -638,6 +686,8 @@ export default function SettingsPage() {
         setLoadWarning(null);
         setProviders(data);
         syncLLMSelections(data);
+        // Ao editar um provedor salvo, o preco informado volta preenchido.
+        setForms((current) => applySavedPricing(current, data));
 
         const { activeStorageType, activeLLMType } = getActiveProviderTypes(data);
 
@@ -671,6 +721,7 @@ export default function SettingsPage() {
                     setLoadWarning(null);
                     setProviders(providersResult.value);
                     syncLLMSelections(providersResult.value);
+                    setForms((current) => applySavedPricing(current, providersResult.value));
 
                     const { activeStorageType, activeLLMType } = getActiveProviderTypes(providersResult.value);
                     if (activeStorageType) {
@@ -800,12 +851,21 @@ export default function SettingsPage() {
 
     function buildCredentials(providerType: ProviderType) {
         return Object.entries(forms[providerType]).reduce<Record<string, string>>((acc, [key, value]) => {
-            const trimmed = value.trim();
+            // Preco vai com ponto decimal; vazio fica de fora (sem preco).
+            const trimmed = isLLMPricingField(key) ? parsePricingInput(value).normalized : value.trim();
             if (trimmed) {
                 acc[key] = trimmed;
             }
             return acc;
         }, {});
+    }
+
+    function hasInvalidPricing(providerType: ProviderType) {
+        if (getInvalidPricingFields(forms[providerType]).length === 0) {
+            return false;
+        }
+        toast.error(t("settings.pricingInvalid"));
+        return true;
     }
 
     function handleSave(provider: ProviderDefinition) {
@@ -815,6 +875,10 @@ export default function SettingsPage() {
                 toast.error(t("settings.llmSelectionRequired"));
                 return;
             }
+        }
+
+        if (hasInvalidPricing(provider.providerType)) {
+            return;
         }
 
         const credentials = buildCredentials(provider.providerType);
@@ -839,6 +903,10 @@ export default function SettingsPage() {
     }
 
     function handleTestConnection(provider: ProviderDefinition) {
+        if (hasInvalidPricing(provider.providerType)) {
+            return;
+        }
+
         const credentials = buildCredentials(provider.providerType);
 
         setTestingProviderType(provider.providerType);

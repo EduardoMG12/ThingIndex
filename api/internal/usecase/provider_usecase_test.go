@@ -1355,3 +1355,79 @@ func TestListProviderSupportMatrixReturnsStorageEntries(t *testing.T) {
 		t.Fatalf("unexpected gcs capabilities: %#v", gcs.Capabilities)
 	}
 }
+
+func TestValidateCredentialsAcceptsInformedLLMPricing(t *testing.T) {
+	t.Parallel()
+
+	useCase := &providerUseCase{
+		cfg:               &config.Config{Environment: "development"},
+		endpointValidator: netsec.NewStorageEndpointValidator(true),
+	}
+
+	err := useCase.validateCredentials(context.Background(), domain.FamilyLLM, domain.ProviderOllama, map[string]string{
+		"model":                       "llama3.1:8b",
+		"base_url":                    "http://127.0.0.1:11434/v1",
+		"input_cost_per_million_usd":  "0,20",
+		"output_cost_per_million_usd": "0",
+	})
+	if err != nil {
+		t.Fatalf("expected informed pricing to be accepted, got %v", err)
+	}
+}
+
+func TestValidateCredentialsRejectsInvalidLLMPricing(t *testing.T) {
+	t.Parallel()
+
+	useCase := &providerUseCase{
+		cfg:               &config.Config{Environment: "development"},
+		endpointValidator: netsec.NewStorageEndpointValidator(true),
+	}
+
+	for _, value := range []string{"-1", "abc", "1e"} {
+		err := useCase.validateCredentials(context.Background(), domain.FamilyLLM, domain.ProviderOllama, map[string]string{
+			"model":                      "llama3.1:8b",
+			"base_url":                   "http://127.0.0.1:11434/v1",
+			"input_cost_per_million_usd": value,
+		})
+		if !errors.Is(err, domain.ErrProviderCredentialsInvalid) {
+			t.Fatalf("expected invalid pricing %q to be rejected, got %v", value, err)
+		}
+	}
+}
+
+func TestSaveCredentialsPreservesInformedLLMPricing(t *testing.T) {
+	t.Parallel()
+
+	repo := &providerRepoStub{}
+	useCase := &providerUseCase{
+		repo:              repo,
+		cfg:               &config.Config{Environment: "development", MasterEncryptionKey: "0123456789abcdef0123456789abcdef"},
+		endpointValidator: netsec.NewStorageEndpointValidator(true),
+	}
+
+	err := useCase.SaveCredentials(context.Background(), 7, domain.FamilyLLM, domain.ProviderOllama, map[string]string{
+		"model":                       "llama3.1:8b",
+		"base_url":                    "http://127.0.0.1:11434/v1",
+		"input_cost_per_million_usd":  "0.2",
+		"output_cost_per_million_usd": "0.8",
+	}, domain.ProviderActivation{EnabledForChat: true})
+	if err != nil {
+		t.Fatalf("expected credentials with pricing to be saved, got %v", err)
+	}
+	if len(repo.savedConfigs) != 1 {
+		t.Fatalf("expected one saved config, got %d", len(repo.savedConfigs))
+	}
+
+	saved, err := useCase.decryptConfig(repo.savedConfigs[0], 7)
+	if err != nil {
+		t.Fatalf("expected saved config to decrypt, got %v", err)
+	}
+	if saved["input_cost_per_million_usd"] != "0.2" || saved["output_cost_per_million_usd"] != "0.8" {
+		t.Fatalf("expected pricing keys to be persisted, got %#v", saved)
+	}
+
+	publicMetadata := provider.PublicMetadata(domain.FamilyLLM, saved)
+	if publicMetadata["input_cost_per_million_usd"] != "0.2" || publicMetadata["output_cost_per_million_usd"] != "0.8" {
+		t.Fatalf("expected pricing to be exposed for the edit form, got %#v", publicMetadata)
+	}
+}

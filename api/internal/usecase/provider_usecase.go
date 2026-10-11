@@ -246,6 +246,21 @@ func (u *providerUseCase) validateModelDiscoveryCredentials(ctx context.Context,
 	return nil
 }
 
+// validateLLMPricingCredentials confere o preco opcional informado no cadastro:
+// quando presente, precisa ser um numero >= 0 (ponto ou virgula decimal).
+func validateLLMPricingCredentials(credentials map[string]string) error {
+	for _, key := range provider.LLMPricingCredentialKeys {
+		value, present := credentials[key]
+		if !present {
+			continue
+		}
+		if _, ok := provider.ParsePricingValue(value); !ok {
+			return domain.ErrProviderCredentialsInvalid
+		}
+	}
+	return nil
+}
+
 func (u *providerUseCase) discoverProviderModels(ctx context.Context, userID uint, providerType string, credentials map[string]string, options providerModelDiscoveryOptions) ([]string, error) {
 	if options.allowCachedBefore && !hasModelDiscoveryOverrides(credentials) {
 		if cachedModels, err := u.listCachedModels(ctx, userID, providerType); err == nil && len(cachedModels) > 0 {
@@ -606,6 +621,11 @@ func sanitizeProviderPublicMetadata(family string, credentials map[string]string
 		if baseURL := strings.TrimSpace(credentials["base_url"]); baseURL != "" {
 			publicMetadata["base_url"] = sanitizeProviderURL(baseURL)
 		}
+		for _, key := range provider.LLMPricingCredentialKeys {
+			if value := strings.TrimSpace(credentials[key]); value != "" {
+				publicMetadata[key] = value
+			}
+		}
 	case domain.FamilyStorage:
 		if endpoint := strings.TrimSpace(credentials["endpoint"]); endpoint != "" {
 			publicMetadata["endpoint"] = endpoint
@@ -858,6 +878,10 @@ func (u *providerUseCase) validateLLMCredentials(ctx context.Context, providerTy
 
 	if err := u.validateLLMBaseURL(ctx, credentials["base_url"]); err != nil {
 		return domain.ErrProviderCredentialsInvalid
+	}
+
+	if err := validateLLMPricingCredentials(credentials); err != nil {
+		return err
 	}
 
 	return nil
