@@ -251,11 +251,27 @@ def gera_er() -> list[tuple[str, str, Path, list[str]]]:
                 seta = "-right-" if o in NUCLEO and d in NUCLEO else "--"
                 l.append(f"{d} ||{seta}o{{ {o}")
                 ligadas |= {o, d}
-        if "users" in nomes:  # posse por user_id, sem chave estrangeira declarada
-            for n in nomes:
-                if n != "users" and any(c == "user_id" for c, _, _ in tabelas[n]):
-                    seta = ".right." if n in NUCLEO else ".."
-                    l.append(f"users ||{seta}o{{ {n}")
+        # Posse por user_id, sem chave estrangeira declarada: o codigo filtra
+        # por user_id em toda consulta. Desenhada tracejada, inclusive nos
+        # grupos sem a tabela users, para nenhuma tabela parecer solta.
+        donas = [n for n in nomes if n != "users" and any(c == "user_id" for c, _, _ in tabelas[n])]
+        if donas and "users" not in nomes:
+            entidade("users", so_pk=True)
+        for n in donas:
+            seta = ".right." if n in NUCLEO else ".."
+            l.append(f"users ||{seta}o{{ {n}")
+            ligadas |= {n, "users"}
+        # Muitas tabelas penduradas no mesmo users viram uma faixa larga e
+        # ilegivel; quebra em fileiras de 4 com ligacoes invisiveis.
+        if "users" not in nomes and len(donas) > 4:
+            for a, b in zip(donas, donas[4:]):
+                l.append(f"{a} -[hidden]down- {b}")
+        # O outbox aponta o documento por aggregate_id, campo generico do padrao.
+        if "outbox_events" in nomes:
+            if "documents" not in nomes and "documents" not in externas:
+                entidade("documents", so_pk=True)
+            l.append("documents ||..o{ outbox_events : aggregate_id")
+            ligadas |= {"outbox_events", "documents"}
         if colunas_grade:  # tabelas soltas em grade, para a figura nao virar uma faixa
             soltas = [n for n in nomes if n not in ligadas]
             colunas = [soltas[i::colunas_grade] for i in range(colunas_grade)]
@@ -1050,9 +1066,10 @@ def main() -> None:
     tabelas, _ = ler_dbml()
     nota_nucleo = ("PK: chave primária; FK: chave estrangeira. Linha contínua: chave "
                    "estrangeira; linha tracejada: posse pelo usuário (user_id).")
-    nota_operacao = ("PK: chave primária; FK: chave estrangeira; linha contínua: chave "
-                     "estrangeira. As colunas user_id indicam o usuário dono do registro. "
-                     "Tabelas marcadas com (Figura 1) aparecem completas na Figura 1.")
+    nota_operacao = ("PK: chave primária; FK: chave estrangeira. Linha contínua: chave "
+                     "estrangeira; linha tracejada: posse pelo usuário (user_id), conferida "
+                     "pelo código em toda consulta, ou, no outbox, o documento a indexar "
+                     "(aggregate_id). Tabelas marcadas com (Figura 1) aparecem completas na Figura 1.")
     itens = [(svg[p.stem], f"Esquema do banco de dados: {t} ({len(ns)} tabelas).",
               nota_nucleo if "users" in ns else nota_operacao)
              for _, t, p, ns in er]

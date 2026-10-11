@@ -130,7 +130,18 @@ entity "documents (Figura 1)" as documents {
   {field} <b>PK</b> id : serial
 }
 documents ||--o{ document_processing_attempts
-outbox_events -[hidden]down- provider_audit_events
+entity "users (Figura 1)" as users {
+  {field} <b>PK</b> id : serial
+}
+users ||..o{ document_processing_attempts
+users ||..o{ document_audit_events
+users ||..o{ user_provider_configs
+users ||..o{ provider_model_catalogs
+users ||..o{ provider_audit_events
+users ||..o{ user_indexing_preferences
+users ||..o{ enrichment_cache_entries
+document_processing_attempts -[hidden]down- provider_audit_events
 document_audit_events -[hidden]down- user_indexing_preferences
 user_provider_configs -[hidden]down- enrichment_cache_entries
+documents ||..o{ outbox_events : aggregate_id
 @enduml

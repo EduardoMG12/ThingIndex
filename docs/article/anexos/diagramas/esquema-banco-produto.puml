@@ -118,4 +118,15 @@ entity "paragraph_nodes (Figura 1)" as paragraph_nodes {
 }
 chat_conversations ||--o{ chat_conversation_entries
 paragraph_nodes ||--o{ paragraph_highlights
+entity "users (Figura 1)" as users {
+  {field} <b>PK</b> id : serial
+}
+users ||..o{ pricing_sources
+users ||..o{ model_prices
+users ||..o{ model_price_histories
+users ||..o{ chat_conversations
+users ||..o{ paragraph_highlights
+users ||..o{ workspace_view_states
+pricing_sources -[hidden]down- paragraph_highlights
+model_prices -[hidden]down- workspace_view_states
 @enduml
