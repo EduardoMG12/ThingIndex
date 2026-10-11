@@ -460,12 +460,13 @@ def numeros_tex(caminho: Path) -> list[str]:
     _, _, corpo = corpo_tabular(caminho)
     corpo = re.sub(r"\\multicolumn\{\d+\}\{[^}]*\}", "", corpo)
     corpo = re.sub(r"\\[a-zA-Z]+", " ", corpo).replace("{,}", ",")
-    # "BM25" e nome de metodo, nao numero
+    # "BM25" e nome de metodo, e "P@1", "nDCG@10" sao nomes de medida: nao sao numeros
     corpo = corpo.replace("BM25", "BM")
+    corpo = re.sub(r"@\d+", "", corpo)
     return [para_cem(n) for n in re.findall(r"\d+(?:,\d+)?", corpo)]
 
 
-MARCA_DETALHES = "Detalhes completos"
+MARCA_DETALHES = "Tabelas completas"
 
 
 def confere_numeros(pdf: Path, arquivos: list[Path]) -> None:
@@ -558,20 +559,19 @@ METODOS = {
 ORDEM_METODOS = list(METODOS)
 
 COMO_FUNCIONA = {
-    "A, contagem": "Conta quantas palavras da pergunta aparecem no texto. Era a busca da "
-                   "primeira versão do sistema.",
-    "B, BM25": "Também compara palavras, mas dá mais peso às palavras raras, que dizem mais "
-               "sobre o assunto. É a busca que o sistema usa hoje.",
-    "C, denso exato": "Um modelo de IA transforma a pergunta e cada texto numa lista de "
-                      "números que representa o sentido. Textos de sentido parecido ficam com "
-                      "números parecidos, mesmo sem palavras em comum. “Exata” quer dizer que "
-                      "a pergunta é comparada com todos os textos.",
-    "C′, denso IVF": "A mesma busca, mas os textos são separados em grupos e cada busca olha "
-                     "só alguns grupos. É mais rápida com muitos textos, mas pode deixar o "
-                     "texto certo de fora.",
-    "D, RRF(A,B)": "Junta as listas da contagem e do BM25 numa só. Cada texto ganha pontos "
-                   "pela posição que teve em cada lista.",
-    "E, RRF(B,C)": "Igual à anterior, mas junta o BM25 com a busca por significado exata.",
+    "A, contagem": "Conta quantas palavras da pergunta aparecem em cada texto. Foi a busca "
+                   "da primeira versão do ThingIndex.",
+    "B, BM25": "Também compara palavras, mas pesa mais as raras, que dizem mais sobre o "
+               "assunto, e menos as que se repetem. É a busca usada hoje pelo sistema.",
+    "C, denso exato": "Um modelo de linguagem converte a pergunta e cada texto em vetores "
+                      "numéricos, de modo que textos de sentido parecido fiquem próximos, "
+                      "mesmo sem palavras em comum. A pergunta é comparada com todos os textos.",
+    "C′, denso IVF": "Os mesmos vetores, mas guardados num índice que os divide em grupos e "
+                     "consulta só parte deles. É mais rápida em acervos grandes, ao custo de "
+                     "às vezes deixar o texto certo de fora.",
+    "D, RRF(A,B)": "Combina as listas da contagem e do BM25, somando pontos pela posição "
+                   "de cada texto em cada lista.",
+    "E, RRF(B,C)": "Mesma combinação, entre o BM25 e a busca por significado exata.",
 }
 
 ROTULOS_DETALHE = dict(METODOS, **{
@@ -631,7 +631,7 @@ def tabela(cab: list[str], linhas: list[list[str]], larguras: list[int] | None =
 
 
 def resumo(txt: str) -> str:
-    return f"<p class='resumo'><strong>Em resumo:</strong> {txt}</p>"
+    return f"<p>{txt[0].upper() + txt[1:]}</p>"
 
 
 def pct(celula: str) -> str:
@@ -661,197 +661,198 @@ def a7_corpo() -> str:
     faixa_a = re.search(r"\[(.*?), (.*?)\]", doc["A, contagem"][0])
 
     c = []
-    c.append("<h2>1. O que foi testado</h2>"
-             "<p>O autor escreveu 5 textos curtos (de lei, de contrato e de norma) e 18 "
-             "perguntas sobre eles. Dessas perguntas, 16 têm resposta em um dos textos e 2 não "
-             "têm resposta em nenhum. Como o próprio autor escreveu os textos, ele sabe qual é "
-             "o texto certo de cada pergunta. Assim, dá para contar quantas vezes cada jeito de "
-             "buscar pôs o texto certo no topo da lista. Foram testados 6 jeitos de buscar, "
-             "descritos no Quadro 1. Os números são os das Seções 8.1 a 8.4 do artigo.</p>"
-             "<div class='bloco'><p class='titulo-tab'>Quadro 1 – Os 6 jeitos de buscar "
-             "testados.</p>"
+    c.append("<h2>1. Como o teste foi feito</h2>"
+             "<p>Para comparar formas de busca sem depender de documentos externos, o autor "
+             "escreveu cinco textos curtos, de temas jurídico, contratual e normativo, e 18 "
+             "perguntas sobre eles. Dezesseis perguntas têm resposta em um dos textos; duas "
+             "não têm resposta em nenhum. Como os textos foram escritos pelo autor, sabe-se de "
+             "antemão qual é o texto certo de cada pergunta, o que permite contar quantas vezes "
+             "cada método o colocou no topo da lista de resultados. Os seis métodos comparados "
+             "estão no Quadro 1, e os resultados correspondem às Seções 8.1 a 8.4 do artigo.</p>"
+             "<div class='bloco'><p class='titulo-tab'>Quadro 1 – Métodos de busca comparados.</p>"
              + tabela(["Método", "Como funciona"],
                       [[nome(k), COMO_FUNCIONA[k]] for k in ORDEM_METODOS], [30, 70],
-                      "quadro") + "</div>")
+                      "quadro") + "</div>"
+             "<p>Cada método devolve uma lista ordenada de textos. A medida usada no corpo deste "
+             "anexo é a mais intuitiva: a porcentagem de perguntas em que o primeiro resultado "
+             "da lista era o texto certo. As demais medidas estão na Seção 8.</p>")
 
-    linhas = [[nome(k), pct(doc[k][0]), pct(sec[k][0]) if k in sec else "não testado"]
+    linhas = [[nome(k), pct(doc[k][0]), pct(sec[k][0]) if k in sec else "não medido"]
               for k in ORDEM_METODOS]
-    c.append("<h2>2. Resultado principal</h2>"
-             "<p>A medida principal é simples: em quantas das 16 perguntas com resposta o 1º "
-             "resultado da lista era o texto certo. O teste foi feito de dois modos. “Por "
-             "documento”: o método escolhe entre os 5 textos inteiros; aqui, até um sorteio "
-             "acertaria cerca de 20% das vezes. “Por seção”: os textos foram divididos em 19 "
-             "seções, e o método escolhe entre elas. Por seção é mais difícil (19 opções em vez "
-             "de 5) e mais parecido com o que o sistema faz de verdade. A busca por significado "
-             "só foi testada por documento, porque os números que representam o sentido foram "
-             "calculados para o texto inteiro.</p>"
-             "<div class='bloco'><p class='titulo-tab'>Tabela 1 – Em quantas perguntas o 1º "
+    c.append("<h2>2. Qual método acertou o primeiro resultado</h2>"
+             "<p>O teste foi feito em dois níveis. No primeiro, cada método escolhia entre os "
+             "cinco textos inteiros, situação em que até um sorteio acertaria cerca de uma vez "
+             "em cinco. No segundo, os textos foram divididos em 19 seções, e o método precisava "
+             "apontar a seção certa. Esse segundo nível é mais difícil e mais próximo do "
+             "funcionamento real do sistema, que devolve trechos, e não documentos inteiros. A "
+             "busca por significado foi medida só no primeiro nível, porque os vetores foram "
+             "calculados para os textos inteiros.</p>"
+             "<div class='bloco'><p class='titulo-tab'>Tabela 1 – Perguntas em que o primeiro "
              "resultado era o texto certo.</p>"
-             + tabela(["Método", "Acertou o 1º resultado (por documento)",
-                       "Acertou o 1º resultado (por seção)"], linhas, [44, 28, 28]) + "</div>"
-             + resumo("o BM25 foi o melhor ou empatou com o melhor nos dois modos. Por "
-                      "documento, acertou 81,2%, empatado com os dois métodos combinados. Por "
-                      "seção, acertou 75,0%, contra 56,2% da contagem de palavras; por isso o "
-                      "sistema trocou a contagem pelo BM25. Mas as diferenças são pequenas: "
-                      "por documento, 81,2% contra 75,0% é só uma pergunta a mais em 16."))
+             + tabela(["Método", "Escolhendo entre 5 textos", "Escolhendo entre 19 seções"],
+                      linhas, [44, 28, 28]) + "</div>"
+             f"<p>O BM25 acertou {pct(doc['B, BM25'][0])} das perguntas entre os textos "
+             f"inteiros, empatado com as duas combinações, e {pct(sec['B, BM25'][0])} entre as "
+             f"seções, contra {pct(sec['A, contagem'][0])} da contagem de palavras. Foi essa "
+             "diferença no nível das seções que levou o sistema a trocar a contagem pelo BM25. "
+             "Entre os textos inteiros, as diferenças são pequenas: cada pergunta vale pouco mais "
+             "de seis pontos percentuais, e a distância entre o BM25 e a contagem é de uma só "
+             "pergunta.</p>")
 
-    tipos = ["Pergunta com as palavras do texto", "Pergunta com outras palavras",
-             "Pergunta com erros de digitação"]
+    tipos = ["Com as palavras do texto", "Com outras palavras", "Com erros de digitação"]
     l_doc = [[nome(k)] + [pct(x) for x in var_doc[k][:3]] for k in ORDEM_METODOS]
     l_sec = [[nome(k)] + [pct(x) for x in var_sec[k][:3]] for k in ORDEM_METODOS
              if k in var_sec]
-    c.append("<h2>3. Quando a pergunta usa outras palavras</h2>"
-             "<p>As 16 perguntas com resposta são de três tipos: 5 usam as mesmas palavras do "
-             "texto, 7 pedem a mesma coisa com outras palavras e 4 têm erros de digitação e "
-             "falta de acentos. As tabelas mostram, para cada tipo, em quantas perguntas o 1º "
-             "resultado era o texto certo.</p>"
-             "<div class='bloco'><p class='titulo-tab'>Tabela 2 – Acertou o 1º resultado, por "
-             "tipo de pergunta (por documento).</p>"
+    c.append("<h2>3. Efeito da forma de escrever a pergunta</h2>"
+             "<p>As 16 perguntas com resposta foram escritas de três formas: cinco repetem as "
+             "palavras do texto, sete pedem a mesma informação com outras palavras, como faria "
+             "quem não leu o documento, e quatro têm erros de digitação e falta de acentos. As "
+             "Tabelas 2 e 3 separam o acerto do primeiro resultado por forma de pergunta.</p>"
+             "<div class='bloco'><p class='titulo-tab'>Tabela 2 – Primeiro resultado certo, por "
+             "forma da pergunta, escolhendo entre 5 textos.</p>"
              + tabela(["Método"] + tipos, l_doc, [37, 21, 21, 21]) + "</div>"
-             "<div class='bloco'><p class='titulo-tab'>Tabela 3 – Acertou o 1º resultado, por "
-             "tipo de pergunta (por seção; só os métodos testados por seção).</p>"
+             "<div class='bloco'><p class='titulo-tab'>Tabela 3 – Primeiro resultado certo, por "
+             "forma da pergunta, escolhendo entre 19 seções.</p>"
              + tabela(["Método"] + tipos, l_sec, [37, 21, 21, 21]) + "</div>"
-             + resumo("a busca por palavras acertou todas as perguntas que usam as palavras do "
-                      "texto (100,0%), mas caiu quando a pessoa usou outras palavras: para "
-                      "57,1% na contagem e 71,4% no BM25. Por seção, a queda é maior: a contagem "
-                      "acertou só 14,3% dessas perguntas. A busca por significado quase não cai "
-                      "com outras palavras (de 60,0% para 57,1%), mas erra mais quando a pergunta "
-                      "usa as palavras do texto: 60,0%, contra 100,0% da busca por palavras."))
+             "<p>As buscas por palavras acertaram todas as perguntas que repetem o texto e "
+             f"caíram quando a pergunta usou outras palavras: para {pct(var_doc['A, contagem'][1])} "
+             f"na contagem e {pct(var_doc['B, BM25'][1])} no BM25. Entre as seções a queda é "
+             f"maior, e a contagem acertou só {pct(var_sec['A, contagem'][1])} dessas perguntas. "
+             "A busca por significado se comporta de outro modo: quase não perde com outras "
+             f"palavras ({pct(var_doc['C, denso exato'][0])} contra "
+             f"{pct(var_doc['C, denso exato'][1])}), mas acerta menos as perguntas que repetem o "
+             "texto. Os dois tipos de busca erram em perguntas diferentes, o que explica por que "
+             "a combinação do BM25 com a busca por significado ficou entre as melhores.</p>")
 
-    c.append("<h2>4. A diferença é real ou pode ser sorte?</h2>"
-             "<p>Com só 16 perguntas, cada pergunta vale cerca de 6% do resultado. Dois cálculos ajudam a separar uma diferença real de uma diferença "
-             "por sorte. O <strong>intervalo de confiança</strong> é a faixa onde o resultado "
-             "verdadeiro provavelmente está. Por exemplo: o BM25 acertou o 1º resultado em "
-             f"{pct(doc['B, BM25'][0])} das perguntas, mas o valor verdadeiro pode estar em "
-             f"qualquer ponto entre {para_cem(faixa_b[1])}% e {para_cem(faixa_b[2])}%; para a "
-             f"contagem de palavras ({pct(doc['A, contagem'][0])}), a faixa vai de "
-             f"{para_cem(faixa_a[1])}% a {para_cem(faixa_a[2])}%. Como as duas faixas se "
-             "sobrepõem, não dá para dizer qual é melhor. O <strong>teste estatístico</strong> "
-             "calcula a chance de a diferença entre dois métodos ser só sorte. Costuma-se "
-             "aceitar uma diferença como real quando essa chance fica abaixo de 5%.</p>"
-             "<p>Os métodos foram comparados de dois em dois, em várias medidas: 75 "
-             f"comparações por documento e 15 por seção. A menor chance de sorte foi "
-             f"{para_cem(p_doc)}% por documento e {para_cem(p_sec)}% por seção, as duas acima "
-             "do limite de 5%. Quando se fazem muitas comparações, alguma sempre parece "
-             "diferente por sorte; o teste então é ajustado para ficar mais exigente, e depois "
-             f"do ajuste nenhuma chance ficou abaixo de {para_cem(holm)}%. Em nenhuma "
-             f"comparação mais de {max_n} das 16 perguntas tiveram resultado diferente entre os "
-             "dois métodos.</p>"
-             + resumo("com só 16 perguntas, nenhuma diferença entre os métodos pode ser "
-                      "considerada real. Isso não mostra que a busca por palavras seja melhor "
-                      "ou igual à busca por significado; mostra só que o teste é pequeno demais "
-                      "para ver a diferença."))
+    c.append("<h2>4. As diferenças são confiáveis?</h2>"
+             "<p>Com apenas 16 perguntas, uma pergunta a mais ou a menos muda bastante a "
+             "porcentagem. Por isso, cada resultado foi acompanhado de um <strong>intervalo de "
+             "confiança</strong>, a faixa em que o valor verdadeiro provavelmente está. O BM25, "
+             f"por exemplo, acertou {pct(doc['B, BM25'][0])}, mas o valor verdadeiro pode estar "
+             f"entre {para_cem(faixa_b[1])}% e {para_cem(faixa_b[2])}%; para a contagem de "
+             f"palavras ({pct(doc['A, contagem'][0])}), a faixa vai de {para_cem(faixa_a[1])}% "
+             f"a {para_cem(faixa_a[2])}%. Como as faixas se sobrepõem, não é possível afirmar que "
+             "um método seja melhor que o outro.</p>"
+             "<p>Os métodos também foram comparados dois a dois por um teste estatístico, que "
+             "estima a chance de uma diferença ter surgido por acaso. Em geral, só se considera "
+             "a diferença real quando essa chance fica abaixo de 5%. Foram 75 comparações entre "
+             "os textos inteiros e 15 entre as seções. A menor chance de acaso foi de "
+             f"{para_cem(p_doc)}% no primeiro caso e de {para_cem(p_sec)}% no segundo. Como são "
+             "muitas comparações ao mesmo tempo, o teste é ajustado para não apontar diferenças "
+             f"por sorte, e com o ajuste nenhuma chance ficou abaixo de {para_cem(holm)}%. Em "
+             f"nenhuma comparação os dois métodos divergiram em mais de {max_n} das 16 "
+             "perguntas.</p>"
+             "<p>A conclusão é limitada pelo tamanho do teste: ele não mostra que a busca por "
+             "palavras seja melhor nem pior que a busca por significado, apenas que, com 16 "
+             "perguntas, nenhuma diferença entre os métodos pôde ser confirmada.</p>")
 
-    c.append("<h2>5. Quando não há resposta</h2>"
-             "<p>Em 2 das 18 perguntas, nenhum texto tem a resposta. O certo seria a busca não "
-             "devolver nada. Mas os 6 métodos devolveram resultados nas 2 perguntas, ou seja, "
-             "em 100,0% das vezes. Na busca por palavras, basta uma palavra em comum para o "
-             "texto ganhar alguma nota. A busca por significado, aproximada, devolveu menos "
-             "textos (2,5 em média, contra 5,0 dos outros métodos), porque olha só alguns "
-             "grupos, mas também não deixou a lista vazia.</p>"
-             "<p>Uma ideia seria descartar os resultados com nota abaixo de um mínimo. Para a "
-             "contagem de palavras e para o BM25, testou-se a melhor nota mínima possível. "
-             "Mesmo assim, os dois ainda devolveram resultados em 1 das 2 perguntas (50,0%), "
-             "porque as notas dos textos certos e dos errados se misturam. A nota mínima, "
-             "portanto, ajuda pouco.</p>"
-             "<p>No sistema completo, quem percebe que não há resposta é o LLM, o modelo de "
-             "linguagem que escreve a resposta. Ele recebe a instrução de usar só as fontes "
-             "encontradas e, em todas as 14 perguntas sem resposta dos outros testes, feitas "
-             "três vezes cada, disse que a informação não consta (Seção 8.2 do artigo).</p>"
-             + resumo("a busca sozinha não sabe dizer “não tem”; quem diz isso é o LLM, ao "
-                      "escrever a resposta."))
+    c.append("<h2>5. Perguntas sem resposta</h2>"
+             "<p>Nas duas perguntas que não têm resposta em nenhum texto, o comportamento "
+             "desejado seria não devolver nada. Todos os métodos, porém, devolveram resultados "
+             "nas duas. Na busca por palavras, basta uma palavra em comum para que um texto "
+             "receba alguma nota; a busca aproximada devolveu menos textos (2,5 em média, contra "
+             "5,0 dos demais), por consultar só parte dos grupos, mas também não deixou a lista "
+             "vazia.</p>"
+             "<p>Testou-se ainda uma nota mínima para descartar resultados fracos, escolhida da "
+             "forma mais favorável possível. Mesmo assim, a contagem e o BM25 continuaram "
+             "devolvendo resultados em uma das duas perguntas, porque as notas de textos certos "
+             "e errados se sobrepõem. No sistema completo, a ausência de resposta é reconhecida "
+             "em outra etapa: o modelo de linguagem, instruído a responder apenas com base nas "
+             "fontes, declarou que a informação não consta em todas as 14 perguntas sem resposta "
+             "dos demais acervos, nas três repetições (Seção 8.2 do artigo).</p>")
 
     est = [
         [nome("A, contagem"), "Sim"], [nome("B, BM25"), "Sim"],
         [nome("D, RRF(A,B)"), "Sim"], [nome("C, denso exato"), "Sim"],
         [nome("C′, denso IVF"),
-         f"Não. Mudando o sorteio que forma os grupos, ou a ordem em que os textos entram, "
-         f"nenhuma pergunta ({det['C′ (IVF), 30 sementes'][0]}) deu sempre a mesma lista, e "
-         f"apareceram até {det['C′ (IVF), 30 sementes'][1]} listas diferentes. Em média, "
-         f"perdeu {det['C′ (IVF), 30 sementes'][2]} dos resultados da busca exata."],
-        [nome("E, RRF(B,C)"), "Não testado à parte"],
+         f"Não. Mudando o sorteio que forma os grupos ou a ordem de entrada dos textos, "
+         f"nenhuma pergunta ({det['C′ (IVF), 30 sementes'][0]}) manteve sempre a mesma lista, "
+         f"e houve até {det['C′ (IVF), 30 sementes'][1]} listas diferentes para a mesma "
+         f"pergunta. Em média, perdeu {det['C′ (IVF), 30 sementes'][2]} dos resultados da "
+         "busca exata."],
+        [nome("E, RRF(B,C)"), "Não medido separadamente"],
     ]
-    rot_ann = {"IVFFlat, √<i>N</i> listas, 1 sonda": "IVFFlat, como no teste",
+    rot_ann = {"IVFFlat, √<i>N</i> listas, 1 sonda": "IVFFlat, configuração do teste",
                "IVFFlat, recomendação do pgvector": "IVFFlat, configuração recomendada",
                "HNSW, padrões do pgvector": "HNSW, configuração padrão"}
     l_ann = [[rot_ann[x[0]], x[1], x[2], x[3].replace("/", " de "), x[4].replace("/", " de ")]
              for x, _ in ann]
-    c.append("<h2>6. A busca dá sempre o mesmo resultado?</h2>"
-             "<p>O sistema promete que a mesma pergunta traz sempre as mesmas fontes, na mesma "
-             "ordem. Para conferir, cada método rodou as 18 perguntas 30 vezes, e as listas de "
-             "resultados foram comparadas.</p>"
+    c.append("<h2>6. Estabilidade dos resultados</h2>"
+             "<p>Um dos requisitos do ThingIndex é que a mesma pergunta traga sempre as mesmas "
+             "fontes, na mesma ordem. Para verificar isso, cada método respondeu às 18 perguntas "
+             "30 vezes, e as listas foram comparadas (Tabela 4).</p>"
              "<div class='bloco'><p class='titulo-tab'>Tabela 4 – A mesma pergunta trouxe "
              "sempre a mesma lista?</p>"
-             + tabela(["Método", "Deu o mesmo resultado nas 30 repetições?"], est, [38, 62],
-                      centro=False)
+             + tabela(["Método", "Resultado nas 30 repetições"], est, [38, 62], centro=False)
              + "</div>"
-             "<p>A busca aproximada do teste usou uma configuração ruim: muitos grupos e só 1 "
-             "consultado por busca. Para ver se o problema é da configuração, o teste foi "
-             "repetido no pgvector, a extensão do banco de dados PostgreSQL que guarda essas "
-             "listas de números, com 1.000, 5.000 e 20.000 textos artificiais e 20 "
-             "perguntas. O pgvector tem dois tipos de busca aproximada: o IVFFlat, que separa "
-             "os dados em grupos, e o HNSW, que liga cada item aos vizinhos mais parecidos. A "
-             "Tabela 5 compara os 10 primeiros resultados de cada um com os da busca exata, e "
-             "conta em quantas das 20 perguntas a lista mudou ao recriar 5 vezes o índice (a "
-             "estrutura que acelera a busca) e ao inserir os dados em 5 ordens diferentes.</p>"
+             "<p>A busca aproximada usada no teste tinha uma configuração desfavorável: muitos "
+             "grupos e apenas um consultado por busca. Para saber se a instabilidade vinha da "
+             "configuração ou do tipo de índice, o teste foi repetido no próprio pgvector, a "
+             "extensão do PostgreSQL que guarda vetores, com 1.000, 5.000 e 20.000 textos "
+             "artificiais e 20 perguntas. Foram medidos os dois índices aproximados do pgvector: "
+             "o IVFFlat, que divide os vetores em grupos, e o HNSW, que liga cada vetor aos "
+             "vizinhos mais parecidos. A Tabela 5 mostra quanto dos dez primeiros resultados "
+             "coincidiu com a busca exata e em quantas das 20 perguntas a lista mudou ao "
+             "reconstruir o índice cinco vezes e ao inserir os dados em cinco ordens "
+             "diferentes.</p>"
              "<div class='bloco'><p class='titulo-tab'>Tabela 5 – Busca aproximada no "
              "pgvector.</p>"
-             + tabela(["Tipo de busca", "Textos", "Encontrou o mesmo que a busca exata",
-                       "Mudou ao reconstruir", "Mudou ao trocar a ordem dos dados"], l_ann,
-                      [36, 10, 20, 17, 17],
+             + tabela(["Índice", "Textos", "Igual à busca exata", "Mudou ao reconstruir",
+                       "Mudou com outra ordem"], l_ann, [36, 10, 20, 17, 17],
                       regras=[r for _, r in ann]) + "</div>"
-             + resumo("a busca por palavras e a busca exata por significado deram sempre o "
-                      "mesmo resultado. A busca aproximada só mudou de resultado numa "
-                      "configuração ruim: com a configuração recomendada, o IVFFlat achou "
-                      "sempre o mesmo que a busca exata. O HNSW foi exato com 1.000 textos, mas "
-                      "com 20.000 achou 91,0% e mudou em 6 e 17 das 20 perguntas. Dar sempre o "
-                      "mesmo resultado, portanto, não é vantagem só da busca por palavras."))
+             "<p>Com a configuração recomendada, o IVFFlat devolveu sempre o mesmo que a busca "
+             "exata. O HNSW foi exato com 1.000 textos, mas com 20.000 coincidiu em 91,0% e mudou "
+             "em 6 e em 17 das 20 perguntas. A instabilidade, portanto, depende da configuração e "
+             "do tamanho do acervo, e não é exclusiva da busca por significado: nas coleções que o "
+             "ThingIndex atende, um índice bem configurado também seria estável.</p>")
 
-    c.append("<h2>7. A origem das fontes está completa no banco?</h2>"
-             "<p>Quando o sistema lê um documento, ele guarda no banco pedaços de vários tipos: "
-             "páginas, parágrafos, trechos (os pedaços citados como fonte), itens do sumário e "
-             "dados gerais do documento, como o número de parágrafos. Para cada pedaço, o banco "
-             "precisa saber de onde ele veio: o documento, a página, a posição e o conteúdo. "
-             "Nos 5 textos do teste, são 155 pedaços. A porcentagem com a origem completa "
-             "mudou assim:</p><ul>"
-             "<li><strong>32,9%</strong> (51 de 155) na primeira medição. Todos os pedaços "
-             "incompletos não tinham a página.</li>"
-             "<li><strong>45,2%</strong> (70 de 155) depois de corrigir um defeito: a tabela de "
-             "trechos não tinha a coluna da página, e ela foi criada.</li>"
-             "<li><strong>100,0%</strong> (155 de 155) depois de ajustar a regra da medida: os "
-             "85 dados gerais não estão em página nenhuma e passaram a dizer que vêm do "
+    c.append("<h2>7. Origem dos trechos no banco</h2>"
+             "<p>Ao indexar um documento, o sistema guarda no banco partes de vários tipos: "
+             "páginas, parágrafos, trechos (as partes citadas como fonte), itens do sumário e "
+             "dados gerais do documento, como o número de parágrafos. Cada parte deve registrar "
+             "de onde veio: o documento, a página, a posição e o conteúdo. Nos cinco textos do "
+             "teste são 155 partes, e a porcentagem com a origem completa evoluiu assim:</p><ul>"
+             "<li><strong>32,9%</strong> (51 de 155) na primeira medição; todas as partes "
+             "incompletas estavam sem página;</li>"
+             "<li><strong>45,2%</strong> (70 de 155) depois de criar a coluna de página na tabela "
+             "de trechos, que não existia;</li>"
+             "<li><strong>100,0%</strong> (155 de 155) depois de ajustar a regra da medida: os 85 "
+             "dados gerais não pertencem a nenhuma página e passaram a declarar que vêm do "
              "documento inteiro.</li></ul>"
-             + resumo("parte da subida veio de corrigir o sistema e parte de ajustar a medida "
-                      "(Seção 8.4 do artigo). Como os textos do teste não têm páginas, isso "
-                      "mostra que o sistema grava a origem de cada pedaço, e não que a página "
-                      "gravada esteja certa."))
+             "<p>Parte da melhora veio de corrigir o sistema, e parte de ajustar a medida (Seção "
+             "8.4 do artigo). Como os textos do teste não têm páginas, o resultado mostra que o "
+             "sistema registra a origem de cada parte, e não que a página registrada esteja "
+             "certa; isso é verificado nos PDFs reais, nas demais seções do artigo.</p>")
     return "".join(c)
 
 
 LEGENDA_DETALHES = [
-    ("Métodos", "Os mesmos 6 do Quadro 1, com os mesmos nomes."),
-    ("P@1", "Acertou o 1º resultado: % de perguntas em que o 1º resultado era o texto certo."),
-    ("P@3", "% dos 3 primeiros resultados que eram certos. Como quase toda pergunta tem um só "
-            "texto certo, nem uma busca perfeita passa do “máximo possível” da última linha."),
-    ("R@5", "O certo apareceu entre os 5 primeiros: % de perguntas."),
-    ("MRR", "Nota de 0 a 100 pela posição do texto certo: em 1º lugar vale 100, em 2º vale 50, "
-            "em 3º vale 33,3, e assim por diante; a nota é a média das perguntas."),
-    ("nDCG@10", "Nota de 0 a 100 parecida com o MRR, olhando os 10 primeiros resultados."),
-    ("(de X a Y)", "Intervalo de confiança de 95%: faixa onde o valor verdadeiro provavelmente "
-                   "está. Foi calculado sorteando as perguntas 10 mil vezes (<em>bootstrap</em>)."),
-    ("Pontos", "Diferença entre duas porcentagens: 81,2% − 75,0% = 6,2 pontos. Positiva quando o "
-               "primeiro método foi melhor."),
-    ("Valor-p", "Chance, em %, de a diferença ser só sorte (teste de aleatorização pareado). "
-                "<strong>Corrigido por Holm</strong>: a mesma chance ajustada porque foram feitas "
-                "muitas comparações."),
-    ("Falso positivo", "Devolver resultados numa pergunta que não tem resposta (100% = devolveu "
-                       "sempre)."),
-    ("Limiar", "Nota mínima da própria busca; abaixo dela o resultado é descartado. Não é "
-               "porcentagem e ficou como está."),
-    ("<i>J</i> de Youden", "Nota de 0 a 100 de quanto o limiar separa os textos certos dos "
-                           "errados (100 = separa todos, 0 = igual ao acaso)."),
-    ("Sobreposição", "% dos textos errados que tiraram nota maior que o texto certo de nota "
-                     "mais baixa."),
+    ("1º lugar", "Porcentagem de perguntas em que o primeiro resultado era o texto certo.",
+     "P@1"),
+    ("3 primeiros", "Porcentagem dos três primeiros resultados que eram certos. Como quase toda "
+                    "pergunta tem um único texto certo, nem uma busca perfeita chega perto de "
+                    "100%; o máximo possível aparece na última linha das tabelas.", "P@3"),
+    ("5 primeiros", "Porcentagem de perguntas em que o texto certo apareceu entre os cinco "
+                    "primeiros resultados.", "R@5"),
+    ("Posição", "Nota de 0 a 100 pela posição do texto certo: 100 em primeiro lugar, 50 em "
+                "segundo, 33,3 em terceiro, e assim por diante; a nota final é a média.", "MRR"),
+    ("Ordem", "Nota de 0 a 100 parecida com a anterior, considerando os dez primeiros "
+              "resultados.", "nDCG@10"),
+    ("(de X a Y)", "Intervalo de confiança de 95%, calculado sorteando as perguntas 10 mil "
+                   "vezes.", "bootstrap"),
+    ("Diferença", "Distância entre duas porcentagens, em pontos percentuais (81,2% − 75,0% = "
+                  "6,2 pontos). Positiva quando o primeiro método foi melhor.", "Δ"),
+    ("Chance de acaso", "Probabilidade de a diferença ter surgido por sorte; a coluna "
+                        "seguinte traz o mesmo valor ajustado para as muitas comparações.",
+     "valor-p; correção de Holm"),
+    ("Devolveu algo", "Porcentagem das perguntas sem resposta em que o método devolveu "
+                      "resultados.", "falso positivo"),
+    ("Nota mínima", "Nota da própria busca abaixo da qual o resultado seria descartado; não é "
+                    "porcentagem.", "limiar"),
+    ("Separação", "Nota de 0 a 100 de quanto a nota mínima separa textos certos de errados "
+                  "(100 separa todos; 0 equivale ao acaso).", "índice de Youden"),
+    ("Sobreposição", "Porcentagem dos textos errados que tiveram nota maior que a do texto "
+                     "certo de nota mais baixa.", ""),
 ]
 
 
@@ -868,6 +869,10 @@ def detalhe(n: int, arq: str, legenda: str, grupos: list[tuple[list[str], list[i
             f"{html_t}</div>")
 
 
+MEDIDAS = {"P@1": "1º lugar", "P@3": "3 primeiros", "R@5": "5 primeiros", "MRR": "Posição",
+           "nDCG@10": "Ordem"}
+
+
 def detalhe_comparacoes(n: int, arq: str, legenda: str) -> str:
     _, linhas = celulas_tex(TAB / arq)
     pares: dict[str, list[list[str]]] = {}
@@ -877,7 +882,7 @@ def detalhe_comparacoes(n: int, arq: str, legenda: str) -> str:
     for par, ls in pares.items():
         a, b = (x.strip() for x in par.split(" vs "))
         tr = "".join(
-            f"<tr><td>{m}</td><td class=n>{converte(d)}</td>"
+            f"<tr><td>{MEDIDAS.get(m.strip(), m)}</td><td class=n>{converte(d)}</td>"
             f"<td class=n>{q} ({v.replace('/', ' e ')})</td><td class=n>{converte(p)}</td>"
             f"<td class=n>{converte(h)}</td></tr>" for m, d, q, p, h, v in ls)
         blocos += (f"<table class='par'><colgroup><col style='width:20%'><col style='width:18%'>"
@@ -891,29 +896,31 @@ def detalhe_comparacoes(n: int, arq: str, legenda: str) -> str:
 def a7_detalhes() -> tuple[str, list[Path]]:
     pct_ = "(%)"
     nota = "(nota 0–100)"
-    resumo_cols = [(["Método", f"P@1 {pct_}", f"P@3 {pct_}", f"R@5 {pct_}", f"MRR {nota}",
-                     f"nDCG@10 {nota}"], [1, 2, 3, 4, 5], [25, 15, 15, 15, 15, 15])]
+    resumo_cols = [(["Método", f"1º lugar {pct_}", f"3 primeiros {pct_}",
+                     f"5 primeiros {pct_}", f"Posição {nota}", f"Ordem {nota}"],
+                    [1, 2, 3, 4, 5], [25, 15, 15, 15, 15, 15])]
     var_cols = [(["Método", "Palavras do texto (%)", "Outras palavras (%)",
                   "Erros de digitação (%)", "Queda com outras palavras (pontos)"],
                  [1, 2, 3, 4], [32, 17, 17, 17, 17])]
-    neg_cols = [(["Método", "Falso positivo (%)", "Resultados devolvidos (média)"], [1, 2],
+    neg_cols = [(["Método", "Devolveu algo (%)", "Resultados devolvidos (média)"], [1, 2],
                  [50, 25, 25])]
     itens = [
-        ("retrieval-summary.tex", "Desempenho de cada método por documento (5 opções). "
-         "Abaixo de cada número, o intervalo de confiança.", resumo_cols),
-        ("retrieval-summary-section.tex", "Desempenho por seção (19 opções). Só os métodos "
-         "testados por seção.", resumo_cols),
-        ("retrieval-variants.tex", "Acertou o 1º resultado, por tipo de pergunta (por "
-         "documento).", var_cols),
-        ("retrieval-variants-section.tex", "Acertou o 1º resultado, por tipo de pergunta (por "
-         "seção).", var_cols),
-        ("retrieval-negatives.tex", "As 2 perguntas sem resposta (por documento).", neg_cols),
-        ("retrieval-negatives-section.tex", "As 2 perguntas sem resposta (por seção).",
+        ("retrieval-summary.tex", "Todas as medidas, escolhendo entre 5 textos. Abaixo de "
+         "cada número, o intervalo de confiança.", resumo_cols),
+        ("retrieval-summary-section.tex", "Todas as medidas, escolhendo entre 19 seções "
+         "(só os métodos medidos nesse nível).", resumo_cols),
+        ("retrieval-variants.tex", "Primeiro resultado certo, por forma da pergunta, "
+         "escolhendo entre 5 textos.", var_cols),
+        ("retrieval-variants-section.tex", "Primeiro resultado certo, por forma da pergunta, "
+         "escolhendo entre 19 seções.", var_cols),
+        ("retrieval-negatives.tex", "As 2 perguntas sem resposta, escolhendo entre 5 textos.",
          neg_cols),
-        ("threshold.tex", "Tentativa de usar uma nota mínima (limiar) para descartar "
-         "resultados (por documento).",
-         [(["Método", "Sobreposição (%)", "Limiar (nota da busca)", "<i>J</i> de Youden "
-           "(nota 0–100)", "Falso positivo sem limiar (%)", "Falso positivo com limiar (%)"],
+        ("retrieval-negatives-section.tex", "As 2 perguntas sem resposta, escolhendo entre 19 "
+         "seções.", neg_cols),
+        ("threshold.tex", "Tentativa de usar uma nota mínima para descartar resultados "
+         "(escolhendo entre 5 textos).",
+         [(["Método", "Sobreposição (%)", "Nota mínima", "Separação (0–100)",
+            "Devolveu algo sem nota mínima (%)", "Devolveu algo com nota mínima (%)"],
            [1, 2, 3, 4, 5], [25, 15, 15, 15, 15, 15])]),
         ("dense-determinism.tex", "A busca por significado deu sempre a mesma lista? Uma "
          "pergunta é estável quando a lista completa, com as notas, sai idêntica em todas as "
@@ -932,27 +939,29 @@ def a7_detalhes() -> tuple[str, list[Path]]:
          [(["Tipo de pedaço", "Pedaços", "Com origem completa", "Origem completa (%)"],
            [1, 2, 3], [46, 18, 18, 18])]),
     ]
-    legenda = "".join(f"<tr><td class='id'><strong>{s}</strong></td><td>{d}</td></tr>"
-                      for s, d in LEGENDA_DETALHES)
+    legenda = "".join(f"<tr><td class='id'><strong>{s_}</strong></td><td>{d}</td>"
+                      f"<td class='lit'>{lit}</td></tr>" for s_, d, lit in LEGENDA_DETALHES)
     c = (f"<h2>8. {MARCA_DETALHES}</h2>"
-         "<p>Esta seção traz, para quem quiser conferir, todas as tabelas do teste, com todos "
-         "os números convertidos para porcentagem ou para nota de 0 a 100. Aqui aparecem as "
-         "siglas da área, explicadas no quadro abaixo.</p>"
-         "<div class='caixa'><p class='titulo-caixa'>Como ler as siglas</p>"
-         "<table class='legenda'><colgroup><col style='width:17%'><col style='width:83%'>"
-         f"</colgroup><tbody>{legenda}</tbody></table></div>")
+         "<p>Esta seção reúne, para conferência, todas as tabelas do teste, com os números "
+         "em porcentagem ou em nota de 0 a 100. O Quadro 2 explica cada medida; a última "
+         "coluna traz o nome usado na literatura de recuperação de informação.</p>"
+         "<div class='bloco'><p class='titulo-tab'>Quadro 2 – Medidas usadas nas tabelas "
+         "completas.</p>"
+         "<table class='legenda'><colgroup><col style='width:17%'><col style='width:63%'>"
+         "<col style='width:20%'></colgroup><thead><tr><th>Medida</th><th>O que mede</th>"
+         f"<th>Nome técnico</th></tr></thead><tbody>{legenda}</tbody></table></div>")
     usados = []
     for i, (arq, leg, grupos) in enumerate(itens, 1):
         usados.append(TAB / arq)
         c += detalhe(i, arq, leg, grupos)
-    for arq, leg in (("retrieval-significance.tex", "As 75 comparações de dois em dois, por "
-                      "documento. Cada bloco compara dois métodos; as colunas são: a medida; a "
-                      "diferença em pontos (primeiro menos segundo método); em quantas das 16 "
-                      "perguntas os dois tiveram resultado diferente e, entre parênteses, em "
-                      "quantas cada um foi melhor; o valor-p (%); e o valor-p corrigido por "
-                      "Holm (%)."),
-                     ("retrieval-significance-section.tex", "As 15 comparações de dois em "
-                      "dois, por seção. Mesmo formato da tabela anterior.")):
+    for arq, leg in (("retrieval-significance.tex", "As 75 comparações dois a dois, "
+                      "escolhendo entre 5 textos. Em cada bloco, as colunas são: a medida; a "
+                      "diferença em pontos (primeiro método menos o segundo); em quantas das "
+                      "16 perguntas os dois divergiram e, entre parênteses, quantas cada um "
+                      "venceu; a chance de acaso (%); e a mesma chance ajustada para muitas "
+                      "comparações (%)."),
+                     ("retrieval-significance-section.tex", "As 15 comparações dois a dois, "
+                      "escolhendo entre 19 seções, no mesmo formato.")):
         usados.append(TAB / arq)
         c += detalhe_comparacoes(len(usados), arq, leg)
     return f"<div class='detalhes'>{c}</div>", usados
