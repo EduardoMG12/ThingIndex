@@ -469,11 +469,14 @@ def numeros_tex(caminho: Path) -> list[str]:
 
 
 MARCA_DETALHES = "Tabelas completas"
+# As tabelas da secao de detalhes continuam a numeracao do corpo do A7 (Tabelas
+# 1 e 2): a primeira tabela de detalhe e a Tabela 3.
+DESLOCA_DETALHES = 2
 
 
 def confere_numeros(pdf: Path, arquivos: list[Path]) -> None:
     """Todo numero de cada .tex, convertido, precisa aparecer no PDF, no trecho da
-    sua tabela na secao de detalhes ("Tabela D<i> –" ate a proxima). A conferencia
+    sua tabela na secao de detalhes ("Tabela <i + DESLOCA_DETALHES> –" ate a proxima). A conferencia
     e por contagem (cada numero tantas vezes quanto no .tex), e nao por ordem,
     porque algumas tabelas foram divididas em duas para caber em poucas colunas."""
     texto = subprocess.run(["pdftotext", "-raw", str(pdf), "-"], check=True,
@@ -481,16 +484,16 @@ def confere_numeros(pdf: Path, arquivos: list[Path]) -> None:
     k = texto.rfind(MARCA_DETALHES)
     if k < 0:
         raise SystemExit(f"{pdf.name}: secao '{MARCA_DETALHES}' ausente")
-    partes = re.split(r"Tabela D(\d+)\s*–", texto[k:])
+    partes = re.split(r"Tabela (\d+)\s*–", texto[k:])
     trechos = {int(partes[i]): partes[i + 1] for i in range(1, len(partes), 2)}
     total = 0
     for i, a in enumerate(arquivos, 1):
-        if i not in trechos:
-            raise SystemExit(f"{pdf.name}: Tabela D{i} ({a.name}) ausente")
+        if i + DESLOCA_DETALHES not in trechos:
+            raise SystemExit(f"{pdf.name}: Tabela {i + DESLOCA_DETALHES} ({a.name}) ausente")
         esperados = numeros_tex(a)
-        faltam = Counter(esperados) - Counter(re.findall(r"\d+(?:,\d+)?", trechos[i]))
+        faltam = Counter(esperados) - Counter(re.findall(r"\d+(?:,\d+)?", trechos[i + DESLOCA_DETALHES]))
         if faltam:
-            raise SystemExit(f"{pdf.name}: Tabela D{i} sem os numeros {dict(faltam)} "
+            raise SystemExit(f"{pdf.name}: Tabela {i + DESLOCA_DETALHES} sem os numeros {dict(faltam)} "
                              f"de {a.name}")
         total += len(esperados)
     print(f"  conferidos {total} numeros de {len(arquivos)} tabelas .tex")
@@ -719,12 +722,12 @@ def a7_corpo() -> str:
 
     c.append("<h2>3. As diferenças são confiáveis?</h2>"
              "<p>Com 16 perguntas, cada pergunta vale pouco mais de seis pontos percentuais, e uma "
-             "diferença pequena pode ser sorte. Cada par de métodos passou por um teste estatístico "
+             "diferença pequena pode ser sorte. Cada dupla de métodos passou por um teste estatístico "
              "que calcula com que frequência uma diferença desse tamanho apareceria se, na verdade, "
              "os dois métodos fossem iguais (o valor-p); em geral, só se aceita a diferença como "
              "real quando esse valor fica abaixo de 5%. Entre os textos "
-             f"inteiros, o menor valor foi de {para_cem(p_doc)}% (75 comparações) e, entre as "
-             f"seções, de {para_cem(p_sec)}% (15 comparações). Nenhuma diferença pôde ser "
+             f"inteiros, o menor valor-p foi {p_doc}, em 75 comparações, e, entre as "
+             f"seções, {p_sec}, em 15 comparações. Nenhuma diferença pôde ser "
              "confirmada.</p>"
              "<p>O teste, então, não diz que a busca por palavras é melhor nem pior que a busca por "
              "significado. Diz que, nessa escala, as duas ficaram próximas. Foi por isso que o "
@@ -740,7 +743,7 @@ def a7_corpo() -> str:
              f"{det['C′ (IVF), 30 sementes'][2]} do que a busca exata encontrava.</p>"
              "<p>O teste foi repetido no pgvector, a extensão do PostgreSQL para vetores, com até "
              "20.000 textos artificiais. Com a configuração recomendada pela documentação, o "
-             "índice aproximado foi tão estável quanto a busca exata (Tabela D3, no fim do anexo). A "
+             "índice aproximado foi tão estável quanto a busca exata (Tabela 5, no fim do anexo). A "
              "instabilidade vinha da configuração usada no primeiro teste. Dar sempre o mesmo "
              "resultado, portanto, não é uma vantagem só da busca por palavras.</p>")
 
@@ -779,8 +782,8 @@ LEGENDA_DETALHES = [
                     "primeiros resultados.", "R@5"),
     ("Posição", "Nota de 0 a 100 pela posição do texto certo: 100 em primeiro lugar, 50 em "
                 "segundo, 33,3 em terceiro; a nota final é a média.", "MRR"),
-    ("Ordem", "Nota de 0 a 100 parecida com a anterior, considerando os dez primeiros "
-              "resultados.", "nDCG@10"),
+    ("Ordem", "Nota de 0 a 100 que olha os dez primeiros resultados e dá mais crédito "
+              "quando o texto certo aparece mais acima na lista.", "nDCG@10"),
     ("(de X a Y)", "Intervalo de confiança de 95%, calculado sorteando as perguntas 10 mil "
                    "vezes.", "bootstrap"),
 ]
@@ -788,14 +791,14 @@ LEGENDA_DETALHES = [
 
 def detalhe(n: int, arq: str, legenda: str, grupos: list[tuple[list[str], list[int],
             list[int]]]) -> str:
-    """Tabela D<n>: uma ou mais tabelas com colunas do .tex (indices), numeros
+    """Tabela <n + DESLOCA_DETALHES>: uma ou mais tabelas com colunas do .tex (indices), numeros
     convertidos por converte e primeira coluna traduzida."""
     _, linhas = celulas_tex(TAB / arq)
     html_t = ""
     for cab, idx, larg in grupos:
         corpo = [[rotulo_detalhe(l[0])] + [converte(l[i]) for i in idx] for l, _ in linhas]
         html_t += tabela(cab, corpo, larg, "detalhe", [r for _, r in linhas])
-    return (f"<div class='bloco'><p class='titulo-tab'>Tabela D{n} – {legenda}</p>"
+    return (f"<div class='bloco'><p class='titulo-tab'>Tabela {n + DESLOCA_DETALHES} – {legenda}</p>"
             f"{html_t}</div>")
 
 
@@ -819,7 +822,7 @@ def detalhe_comparacoes(n: int, arq: str, legenda: str) -> str:
                    f"<col style='width:24%'><col style='width:19%'><col style='width:19%'>"
                    f"</colgroup><thead><tr><th colspan=5 class='nome-par'>{METODOS[a]} × "
                    f"{METODOS[b]}</th></tr></thead><tbody>{tr}</tbody></table>")
-    return (f"<p class='titulo-tab'>Tabela D{n} – {legenda}</p>"
+    return (f"<p class='titulo-tab'>Tabela {n + DESLOCA_DETALHES} – {legenda}</p>"
             f"<div class='colunas'>{blocos}</div>")
 
 
@@ -892,7 +895,7 @@ CORRECOES_A8 = [
      "informação de algumas perguntas estava em mais de uma página.",
      [("Sistema sem mudanças", "204 de 216 respostas")],
      [("Sistema sem mudanças", "213 de 216 respostas")]),
-    ("Nas perguntas sem resposta do teste final, mais formas de recusar passaram a contar "
+    ("Nas perguntas sem resposta da bateria, mais formas de recusar passaram a contar "
      "como certas (como “não consta” e “não há”).",
      "Recusas corretas escritas de outro jeito, como “os documentos não mencionam o preço”, "
      "eram marcadas como erradas.",
@@ -903,35 +906,35 @@ CORRECOES_A8 = [
      "O sistema grava o título do documento, e a correção esperava um código. A fonte certa "
      "contava como erro quando os dois eram escritos de jeitos diferentes. Nenhuma resposta "
      "mudou de certa para errada.",
-     [("Original", "37,1%"), ("Ampliada", "53,2%")],
-     [("Original", "58,1%"), ("Ampliada", "82,3%")]),
+     [("Sem expansão", "37,1%"), ("Com expansão", "53,2%")],
+     [("Sem expansão", "58,1%"), ("Com expansão", "82,3%")]),
     ("Recusas (“não há informação sobre isso”) deixaram de contar como certas nas perguntas "
      "que têm resposta. Nas perguntas que trazem um dado errado, a resposta passou a ter de "
      "corrigir esse dado.",
      "Uma resposta fixa de recusa, igual para todas as perguntas, acertaria 24 perguntas.",
-     [("Original", "81,7%"), ("Ampliada", "93,0%"), ("Com dado errado", "35 de 36"),
-      ("Valor-p da vantagem da ampliada (McNemar)", "1,2%"),
+     [("Sem expansão", "81,7%"), ("Com expansão", "93,0%"), ("Premissa falsa", "35 de 36"),
+      ("Valor-p da vantagem da expansão (McNemar)", "0,012"),
       ("Teste da Seção 8.8 do artigo", "9 de 12")],
-     [("Original", "70,0%"), ("Ampliada", "90,1%"), ("Com dado errado", "13 de 36"),
-      ("Valor-p da vantagem da ampliada (McNemar)", "0,01%"),
-      ("Teste da Seção 8.8 do artigo", "7 a 8 de 12")]),
+     [("Sem expansão", "70,0%"), ("Com expansão", "90,1%"), ("Premissa falsa", "13 de 36"),
+      ("Valor-p da vantagem da expansão (McNemar)", "0,0001"),
+      ("Teste da Seção 8.8 do artigo", "7 ou 8 de 12, conforme o braço")]),
     ("Respostas que negam o assunto (“não existe”, “não consta”) ou que dizem o contrário da "
      "resposta certa também deixaram de contar como certas.",
      "A frase “Não existe previsão sobre isso nos documentos.” acertava as 12 perguntas que "
      "perguntam se um assunto existe, e 6 recusas a uma mesma pergunta contavam como certas.",
-     [("Original", "70,0%"), ("Ampliada", "90,1%")],
-     [("Original", "68,5%"), ("Ampliada", "88,7%")]),
+     [("Sem expansão", "70,0%"), ("Com expansão", "90,1%")],
+     [("Sem expansão", "68,5%"), ("Com expansão", "88,7%")]),
     ("Mais formas de recusa passaram a ser barradas, e uma resposta certa escrita “píxeis” "
      "(plural de pixel) passou a ser aceita.",
      "“Píxeis” sem acento não contém a palavra “pixel”, e a resposta certa era marcada como "
      "errada. As outras recusas barradas não apareciam nas respostas reais.",
-     [("Original", "68,5%"), ("Ampliada", "88,7%")],
-     [("Original", "69,5%"), ("Ampliada", "88,7%")]),
+     [("Sem expansão", "68,5%"), ("Com expansão", "88,7%")],
+     [("Sem expansão", "69,5%"), ("Com expansão", "88,7%")]),
 ]
 TOTAL_A8 = ("<strong>Efeito somado das três últimas correções</strong>",
             "Respostas que não respondem nada deixaram de contar como certas.",
-            [("Original", "81,7%"), ("Ampliada", "93,0%")],
-            [("Original", "69,5%"), ("Ampliada", "88,7%")])
+            [("Sem expansão", "81,7%"), ("Com expansão", "93,0%")],
+            [("Sem expansão", "69,5%"), ("Com expansão", "88,7%")])
 
 
 def celula_valores(vals: list[tuple[str, str]]) -> str:
@@ -971,15 +974,15 @@ def a8() -> str:
     corpo = (
         "<p>Depois de ver os resultados, algumas regras de correção das respostas foram "
         "ajustadas. Como isso poderia deixar os números artificialmente melhores, cada ajuste "
-        "foi anotado com o motivo e o efeito. O ajuste mais importante deixou o resultado do "
-        "sistema pior, e não melhor.</p>"
+        "foi anotado com o motivo e o efeito. As três correções mais importantes baixaram o "
+        "acerto do próprio sistema de 81,7% para 69,5%.</p>"
         "<p>A correção é automática: cada pergunta tem um padrão de texto que a resposta certa "
         "precisa conter e, às vezes, padrões que a tornam errada, como uma recusa. A maioria "
-        "das linhas abaixo trata do teste final, com 213 respostas sobre leis, normas e "
-        "manuais públicos, escritas depois de o sistema ficar pronto. Nele, cada número "
-        "aparece de dois modos: com a pergunta como o usuário escreveu (<em>original</em>) e "
-        "com a pergunta <em>ampliada</em> por um LLM, que acrescenta termos técnicos antes "
-        "da busca.</p>"
+        "das linhas abaixo trata da bateria (Seção 8.7 do artigo), com 213 respostas sobre leis, normas e "
+        "manuais públicos, escritas depois de o sistema ficar pronto. Nela, cada número "
+        "aparece de dois modos: com a pergunta original (<em>sem expansão</em>) e com expansão "
+        "da pergunta, em que um LLM acrescenta termos técnicos antes da busca (Seção 8.9 do "
+        "artigo).</p>"
         "<p class='titulo-tab'>Quadro 1 – Correções que mudaram números publicados, na ordem "
         "em que foram feitas.</p>"
         "<table class='quadro a8'><colgroup><col style='width:29%'><col style='width:29%'>"
@@ -990,7 +993,7 @@ def a8() -> str:
         "seguintes e os ajustes do sistema mudaram alguns deles de novo, e o artigo publica os "
         "números finais. As regras da busca também foram ajustadas olhando as 72 perguntas "
         "usadas durante o desenvolvimento. Por isso, os números dessas perguntas não valem "
-        "como teste independente; o teste de verdade é o teste final, com perguntas escritas "
+        "como teste independente; o teste de verdade é a bateria, com perguntas escritas "
         "depois.</p>"
         + resumo("as três correções mais importantes fizeram o acerto do sistema cair de 81,7% "
                  "para 69,5%, porque respostas que não respondiam nada deixaram de contar como "
