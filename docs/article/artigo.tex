@@ -208,7 +208,7 @@ Ponto percentual & Diferença entre duas porcentagens: de 40\% para 50\%, o aume
 \cmidrule(lr){1-2}
 Por resposta e por pergunta & Cada pergunta foi feita três vezes. ``Por resposta'' conta cada uma das três; ``por pergunta'' só conta acerto quando as três acertam. \\
 \cmidrule(lr){1-2}
-Página exibida e citada & Exibida: a página certa está entre as fontes que a tela mostra (vem do banco). Citada: a página certa está escrita no texto da resposta (vem do modelo). \\
+Página na fonte e página no texto & Página na fonte: a página certa está entre as fontes que a tela mostra; vem do banco e não pode ser inventada. Página no texto: a página certa está escrita no texto da resposta; vem do modelo e pode estar errada. \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -370,7 +370,7 @@ O \emph{backend} tem \testesGoArquivos{} arquivos de teste, com \testesGoFuncoes
 \section{Desenho da Avaliação}
 \label{sec:avaliacao}
 
-A avaliação responde a três perguntas, nesta ordem: a busca por palavras é competitiva com a busca densa (Seções~\ref{sec:res-recuperacao} a~\ref{sec:res-determinismo})? As fontes entregues têm origem verificável (Seção~\ref{sec:res-auditabilidade})? E o sistema completo, com o modelo redigindo a resposta, acerta, cita e custa quanto (Seções~\ref{sec:res-geracao} a~\ref{sec:res-prefeitura})? A Tabela~\ref{tab:corpora} resume os acervos usados.
+A avaliação responde a três perguntas, nesta ordem: a busca por palavras é competitiva com a busca densa (Seções~\ref{sec:res-recuperacao} a~\ref{sec:res-determinismo})? As fontes entregues têm origem verificável (Seção~\ref{sec:res-auditabilidade})? E o sistema completo, com o modelo redigindo a resposta, acerta, cita e custa quanto (Seções~\ref{sec:res-geracao} a~\ref{sec:res-prefeitura})? A Tabela~\ref{tab:corpora} resume os acervos usados. A Tabela~\ref{tab:resumo-resultados}, no início da Seção~\ref{sec:resultados}, dá a resposta curta a cada uma.
 
 \begin{table}[!htbp]
 \centering
@@ -394,15 +394,15 @@ Edital municipal & 1 edital de concurso, 52 páginas & 18 & 1 & \ref{sec:res-pre
 
 \textbf{Gabaritos.} Todas as perguntas foram escritas a partir dos PDFs, sem consultar o sistema. Cada uma declara o documento e a página onde está a resposta e um padrão de texto (expressão regular) que a resposta certa precisa conter; quando necessário, declara também padrões que invalidam a resposta, como os de uma recusa (``não há informação sobre isso''). Um teste automatizado confere que uma recusa genérica não conta como acerto em nenhuma pergunta que tenha resposta. Na bateria e no edital, a maior parte das perguntas foi escrita duas vezes: uma versão \emph{literal}, com as palavras do documento, e uma \emph{paráfrase}, com as palavras de quem não leu o documento, como ``Quem deve fornecer o EPI ao trabalhador e em que condições?'' e ``Quem paga o capacete e a luva que eu uso no serviço?''. As duas versões da mesma pergunta formam um \emph{par}. Na bateria, as 9 perguntas negativas não têm par. Os pares existem porque quem escreve a pergunta logo depois de ler a página tende a copiar as palavras dela, e isso favorece a busca por palavras; comparar as duas versões mostra o tamanho desse favorecimento.
 
-\textbf{Acerto e origem.} Uma resposta é \emph{correta} quando satisfaz o gabarito; nas perguntas \emph{negativas}, que não têm resposta no acervo, quando declara que a informação não consta. Salvo indicação, a taxa de acerto é \emph{por resposta}, e os testes estatísticos usam o acerto \emph{por pergunta} (Tabela~\ref{tab:glossario}), porque as três repetições de uma pergunta não são independentes e o teste de McNemar precisa de um único resultado, certo ou errado, por pergunta. A origem é medida de dois modos: a \emph{página exibida}, que só existe quando há busca, e a \emph{página citada}, que vale para qualquer braço e por isso permite comparar a busca com a entrega do documento inteiro. Nenhuma das duas confere se o trecho sustenta a frase da resposta.
+\textbf{Acerto e origem.} Uma resposta é \emph{correta} quando satisfaz o gabarito; nas perguntas \emph{negativas}, que não têm resposta no acervo, quando declara que a informação não consta. Salvo indicação, a taxa de acerto é \emph{por resposta}, e os testes estatísticos usam o acerto \emph{por pergunta} (Tabela~\ref{tab:glossario}), porque as três repetições de uma pergunta não são independentes e o teste de McNemar precisa de um único resultado, certo ou errado, por pergunta. A origem é medida de dois modos: a \emph{página na fonte}, que vem do banco e só existe quando há busca, e a \emph{página no texto}, escrita pelo modelo, que vale para qualquer braço e por isso permite comparar a busca com a entrega do documento inteiro. Nenhuma das duas confere se o trecho sustenta a frase da resposta.
 
-\textbf{Métrica de busca.} Em C1, cada consulta tem o texto certo conhecido, e cada método devolve uma lista ordenada. O artigo usa a medida mais simples: a porcentagem de consultas em que o primeiro resultado da lista era o certo (na literatura, P@1). As demais medidas da área estão no Anexo~A7.
+\textbf{Métrica de busca.} Em C1, cada consulta tem o texto certo conhecido, e cada método devolve uma lista ordenada. O artigo usa a medida mais simples: em quantas das 16 consultas com resposta o primeiro resultado da lista era o texto certo (na literatura, P@1). As demais medidas da área estão no Anexo~A7.
 
 \textbf{Origem no índice.} Mede-se a porcentagem de unidades indexadas com \emph{origem completa} no banco, isto é, com documento, página, posição e conteúdo preenchidos. Confere-se também se o texto de cada parágrafo extraído aparece, letra por letra (ignorando maiúsculas e espaços), no documento de onde o sistema diz que ele veio.
 
 \textbf{Custo e modelo.} O custo é medido em \emph{tokens} enviados ao modelo por pergunta. Não se usou valor em reais porque o preço muda com o provedor e com o tempo. Todos os experimentos de geração usaram o mesmo modelo aberto, \texttt{gemma4:31b}, servido pelo Ollama em nuvem. Nem a versão exata do modelo nem a sua \emph{temperatura} (o grau de variação que o modelo se permite ao escrever) foram fixadas; as três repetições medem a variação que resta.
 
-\textbf{Estatística.} Para comparar duas condições nas mesmas perguntas usou-se o teste de McNemar exato~\cite{mcnemar1947note}, que olha só as perguntas em que as condições discordam. O valor-$p$ é a chance de aparecer uma diferença pelo menos desse tamanho se as duas condições fossem, na verdade, iguais; abaixo de 0{,}05 (5\%), a diferença é tratada como real. O intervalo de confiança de 95\% é a faixa em que o resultado provavelmente ficaria com outras perguntas do mesmo tipo: quanto menos perguntas, mais larga a faixa. Ele foi calculado sorteando 10.000 vezes, com reposição, novos conjuntos das mesmas perguntas (\emph{bootstrap}); quando há repetições, as três respostas de uma pergunta são sorteadas juntas. Na busca em C1, nem todas as medidas são só certo ou errado, e por isso usou-se o teste de aleatorização pareado, que troca ao acaso, consulta a consulta, os resultados dos dois métodos e verifica com que frequência surge uma diferença tão grande quanto a real. Como ali foram feitas muitas comparações (75 entre os textos inteiros e 15 entre as seções), aplicou-se, em cada grupo, a correção de Holm, que exige valores-$p$ menores quanto mais comparações se fazem, para que nenhuma pareça significativa só por sorte.
+\textbf{Estatística.} Os resultados são dados em contagem (``13 de 16'') ou, na bateria, em porcentagem das respostas, e toda diferença de acerto que o artigo trata como real vem com o valor-$p$: a chance de aparecer uma diferença pelo menos desse tamanho se as duas condições fossem, na verdade, iguais; abaixo de 0{,}05 (5\%), a diferença é tratada como real. Para comparar duas condições nas mesmas perguntas usou-se o teste de McNemar exato~\cite{mcnemar1947note}, escolhido porque cada pergunta dá certo ou errado nas duas condições, e só as perguntas em que elas discordam dizem qual é melhor. As duas comparações principais com esse teste, a redação da pergunta e a expansão, deram $p < 0{,}001$, valor que continua abaixo de 0{,}05 mesmo corrigido pelo número de comparações. O intervalo de confiança de 95\% é a faixa em que o resultado provavelmente ficaria com outras perguntas do mesmo tipo: quanto menos perguntas, mais larga a faixa. Foi calculado sorteando 10.000 vezes, com reposição, novos conjuntos das mesmas perguntas (\emph{bootstrap}), com as três respostas de cada pergunta sorteadas juntas, o que dispensa supor uma distribuição para os dados. Em C1 usou-se o teste de aleatorização pareado, que troca ao acaso, consulta a consulta, os resultados dos dois métodos e verifica com que frequência surge uma diferença tão grande quanto a real; ele foi preciso porque nem todas as 5 medidas do Anexo~A7 são certo ou errado, e, numa medida de certo ou errado como o primeiro resultado, dá o mesmo valor-$p$ que o McNemar exato. Como ali foram feitas 90 comparações (75 entre os textos inteiros e 15 entre as seções), aplicou-se, em cada grupo, a correção de Holm, que exige valores-$p$ menores quanto mais comparações se fazem, para que nenhuma pareça significativa só por sorte.
 
 % =============================================================================
 % 8. RESULTADOS
@@ -410,36 +410,60 @@ Edital municipal & 1 edital de concurso, 52 páginas & 18 & 1 & \ref{sec:res-pre
 \section{Resultados}
 \label{sec:resultados}
 
-\subsection{Busca por palavras contra busca densa}
-\label{sec:res-recuperacao}
-
-C1 é um \emph{corpus} de controle: cinco textos curtos e fictícios, elaborados para o teste, com 18 consultas, das quais 16 têm resposta e duas não. As consultas são de três tipos: literais (palavras tiradas do documento), paráfrases (a mesma necessidade com outras palavras) e ruidosas (com erros de digitação e sem acentos). Foram comparados seis métodos nas mesmas consultas: a contagem de palavras, que era o pontuador da primeira versão do sistema; o BM25; a busca densa exata; a mesma busca densa com um índice aproximado; e duas combinações, a da contagem com o BM25 e a do BM25 com a busca densa. Mediu-se em dois níveis: escolhendo entre os 5 textos inteiros e escolhendo entre 19 seções. A Tabela~\ref{tab:retrieval-summary} traz os resultados.
+A Tabela~\ref{tab:resumo-resultados} resume o que foi medido; as subseções trazem o detalhe.
 
 \begin{table}[!htbp]
 \centering
-\caption{Busca em C1: porcentagem das 16 consultas com resposta em que o primeiro resultado era o texto certo. Entre as 19 seções, só as buscas por palavras foram medidas. As demais medidas estão no Anexo~A7.}
-\label{tab:retrieval-summary}
-\begin{tabular}{lcc}
+\caption{O que foi medido, em uma tabela. As porcentagens são da bateria e contam respostas (cada pergunta foi feita três vezes); ``x de y'' conta consultas, unidades, perguntas ou pares.}
+\label{tab:resumo-resultados}
+\small
+\begin{tabular}{p{4.2cm}p{8.4cm}c}
 \toprule
- & \multicolumn{2}{c}{Primeiro resultado certo (\%)} \\
-\cmidrule(lr){2-3}
-Método & Entre 5 textos & Entre 19 seções \\
+O que se perguntou & Resultado & Seção \\
 \midrule
-Contagem de palavras (versão anterior) & 75,0 & 56,2 \\
-BM25 (usado no sistema)               & 81,2 & 75,0 \\
-Busca densa, exata                    & 68,8 & --   \\
-Busca densa, índice aproximado        & 68,8 & --   \\
-Contagem + BM25 combinados            & 81,2 & 56,2 \\
-BM25 + busca densa combinados         & 81,2 & --   \\
+Busca por palavras ou por significado: qual acha mais? & Empate: 13 de 16 contra 11 de 16 consultas no primeiro resultado; o teste não confirma diferença & \ref{sec:res-recuperacao} \\
+\cmidrule(lr){1-3}
+Cada unidade tem a origem gravada no banco? & Sim: 155 de 155 unidades de C1 (51 na primeira medição; 85 passaram a declarar o documento inteiro como origem) & \ref{sec:res-auditabilidade} \\
+\cmidrule(lr){1-3}
+Buscar trechos custa menos que mandar o PDF inteiro? & Sim, no acervo de desenvolvimento: na mediana, cerca de 1/26 dos \emph{tokens}, com 72 de 72 perguntas certas contra 71 de 72 & \ref{sec:res-geracao} \\
+\cmidrule(lr){1-3}
+Quanto o sistema acerta em perguntas novas? & 69,5\% das respostas, cerca de 7 em 10 (intervalo de 95\%: 59,2\% a 79,3\%) & \ref{sec:res-bateria} \\
+\cmidrule(lr){1-3}
+A redação da pergunta muda o acerto? & Sim: 88,2\% com as palavras do documento e 41,9\% com outras; com o gabarito revisado, 14 pares a 0 ($p < 0{,}001$); com o original, 8 a 2 ($p = 0{,}109$) & \ref{sec:res-bateria} \\
+\cmidrule(lr){1-3}
+Expandir a pergunta corrige isso? & Em parte: de 69,5\% para 88,7\% no total, e as paráfrases chegam a 83,9\%; 14 perguntas ganhas e nenhuma perdida ($p < 0{,}001$); experimental, desligada por padrão & \ref{sec:res-expansao} \\
+\cmidrule(lr){1-3}
+Fonte certa garante resposta certa? & Não: o artigo de uma lei revogada foi citado com a página certa & \ref{sec:res-legislacao} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Entre os 5 textos, o BM25 e as duas combinações acertaram o primeiro resultado em 81,2\% das consultas, a contagem em 75,0\% e a busca densa em 68,8\%. A diferença entre o BM25 e a busca densa é de duas consultas em 16. As diferenças aparecem melhor quando se separam os tipos de consulta. As duas buscas por palavras acertam as 5 consultas literais; nas 7 paráfrases, a contagem acerta 4 (57,1\%) e o BM25, 5 (71,4\%). A busca densa acerta 4 das 7 paráfrases, mas só 3 das 5 literais (60,0\%): quase não depende das palavras usadas, mas erra consultas que repetem o texto (Anexo~A7, Tabela~2). Os dois tipos de busca erram em consultas diferentes.
+\subsection{Busca por palavras contra busca densa}
+\label{sec:res-recuperacao}
 
-Com só 5 documentos, escolher o documento certo é uma tarefa pouco exigente (até um sorteio acertaria 1 vez em 5) e deixa os métodos parecidos. Escolher entre 19 seções é mais difícil e mais próximo do que o sistema faz. Entre as seções, a contagem acertou o primeiro resultado em 56,2\% das consultas e o BM25 em 75,0\%. A dependência das palavras também cresce: a contagem continua acertando as 5 literais, mas só 1 das 7 paráfrases (14,3\%), e o BM25 acerta 3 das 7. Esse resultado motivou a troca da contagem pelo BM25, que é o pontuador de todos os experimentos seguintes.
+C1 é um \emph{corpus} de controle: cinco textos curtos e fictícios, elaborados para o teste, com 18 consultas, das quais 16 têm resposta e duas não. As consultas são de três tipos: literais (palavras tiradas do documento), paráfrases (a mesma necessidade com outras palavras) e ruidosas (com erros de digitação e sem acentos). Foram comparados seis métodos nas mesmas consultas: a contagem de palavras, que era o pontuador da primeira versão do sistema; o BM25; a busca densa exata; a mesma busca densa com um índice aproximado; e duas combinações, a da contagem com o BM25 e a do BM25 com a busca densa. Mediu-se em dois níveis: escolhendo entre os 5 textos inteiros e escolhendo entre 19 seções. A Tabela~\ref{tab:retrieval-summary} traz os resultados. A versão aproximada da busca densa acertou o primeiro resultado tantas vezes quanto a exata (11 de 16).
 
-Os métodos foram comparados dois a dois, e nenhuma diferença foi estatisticamente significativa. Entre os textos inteiros, os seis métodos formam 15 duplas, e cada dupla foi comparada nas 5 medidas do Anexo~A7 (75 testes); o menor valor-$p$, antes da correção de Holm, foi 0{,}125. Entre as seções foram 15 testes, e o menor foi 0{,}062. Em nenhuma comparação dois métodos discordaram em mais de 8 das 16 consultas, e com tão poucas discordâncias só uma diferença muito grande seria detectada. Neste \emph{corpus}, portanto, a busca por palavras e a densa ficaram próximas, e não dá para dizer que uma seja melhor.
+\begin{table}[!htbp]
+\centering
+\caption{Busca em C1: em quantas das 16 consultas com resposta o primeiro resultado era o texto certo. Entre as 19 seções, só as buscas por palavras foram medidas. Os seis métodos e as demais medidas estão no Anexo~A7.}
+\label{tab:retrieval-summary}
+\begin{tabular}{lcc}
+\toprule
+ & \multicolumn{2}{c}{Primeiro resultado certo} \\
+\cmidrule(lr){2-3}
+Método & Entre 5 textos & Entre 19 seções \\
+\midrule
+Contagem de palavras (versão anterior) & 12 de 16 & 9 de 16 \\
+BM25 (usado no sistema) & 13 de 16 & 12 de 16 \\
+Busca densa & 11 de 16 & -- \\
+BM25 + busca densa (híbrida) & 13 de 16 & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Entre os 5 textos, o BM25 acertou o primeiro resultado em 13 das 16 consultas (81,2\%) e a busca densa em 11 (68,8\%): duas consultas de diferença, numa tarefa pouco exigente, em que até um sorteio acertaria 1 vez em 5. Escolher entre 19 seções é mais difícil e mais próximo do que o sistema faz; ali, o BM25 acertou 12 (75,0\%) e a contagem, 9 (56,2\%), e por isso a contagem foi trocada pelo BM25 em todos os experimentos seguintes. Os dois tipos de busca erram em consultas diferentes: as buscas por palavras acertaram as 5 consultas literais nos dois níveis e erraram mais nas paráfrases, e a densa errou 2 das 5 literais (Anexo~A7, Tabela~2). No primeiro resultado, juntar as duas (busca híbrida) não superou o BM25 sozinho.
+
+Nenhuma diferença entre métodos foi estatisticamente significativa, nem antes da correção de Holm: o menor valor-$p$ foi 0{,}125 entre os textos e 0{,}062 entre as seções. Em nenhuma comparação dois métodos discordaram em mais de 8 das 16 consultas, e com tão poucas discordâncias só uma diferença muito grande seria detectada. Neste \emph{corpus}, portanto, a busca por palavras e a densa ficaram próximas, e não dá para dizer que uma seja melhor, nem que as duas se equivalham.
 
 \subsection{Quando não há resposta}
 \label{sec:res-ausencia}
@@ -449,63 +473,29 @@ Nas duas consultas de C1 sem resposta, todos os braços devolveram resultados: n
 \subsection{Estabilidade dos resultados}
 \label{sec:res-determinismo}
 
-Um requisito do sistema é que a mesma pergunta traga sempre as mesmas fontes. Cada método de C1 foi executado 30 vezes, e as listas completas foram comparadas. Contagem, BM25, a fusão dos dois e a busca densa exata deram listas idênticas em todas as execuções. No índice aproximado, configurado com muitas gavetas e uma só aberta por consulta, mudar o sorteio que forma as gavetas ou a ordem de inserção dos documentos produziu até quatro listas diferentes para a mesma consulta, com perda média de 48,4\% dos resultados da busca exata.
+Um requisito do sistema é que a mesma pergunta traga sempre as mesmas fontes. Cada método de C1 foi executado 30 vezes, e as listas completas foram comparadas. Contagem, BM25, a fusão dos dois e a busca densa exata deram listas idênticas em todas as execuções. No índice aproximado, configurado com muitas gavetas e uma só aberta por consulta, mudar o sorteio que forma as gavetas ou a ordem de inserção dos documentos produziu até quatro listas diferentes para a mesma consulta.
 
-Essa configuração, porém, não é a que o pgvector recomenda. As opções foram medidas no próprio pgvector, com 1.000 a 20.000 vetores sintéticos, reconstruindo cada índice cinco vezes e mudando a ordem de inserção (Anexo~A7). Com a configuração recomendada, o índice IVF deu sempre o mesmo resultado da busca exata. A configuração usada no teste perdeu de 52\% a 75\% dos resultados e mudou todas as 20 consultas. O HNSW com os parâmetros padrão foi exato com 1.000 vetores; com 20.000, encontrou 91,0\% dos resultados, e 6 das 20 consultas mudaram ao reconstruir o índice e 17 ao mudar a ordem de inserção. A instabilidade depende da configuração e da escala: nas coleções que o ThingIndex atende, de até alguns milhares de unidades, um índice de vetores bem configurado também seria estável. A estabilidade, portanto, não é uma vantagem exclusiva da busca por palavras.
+Essa configuração, porém, não é a que o pgvector recomenda. Medido no próprio pgvector, com 1.000 a 20.000 vetores sintéticos (Anexo~A7, Tabela~5), o índice IVF com a configuração recomendada deu sempre o mesmo resultado da busca exata; a configuração usada no teste mudou todas as 20 consultas, e o HNSW com os parâmetros padrão foi exato com 1.000 vetores, mas mudou algumas consultas a partir de 5.000. Nas coleções que o ThingIndex atende, de até alguns milhares de unidades, um índice de vetores bem configurado também seria estável: a estabilidade não é uma vantagem exclusiva da busca por palavras.
 
 \subsection{Origem das fontes no índice}
 \label{sec:res-auditabilidade}
 
-C1 é texto sem paginação, e nele toda unidade fica na página 1. A porcentagem de origem completa mostra que cada unidade tem a origem gravada, mas não mostra que a página gravada esteja certa; a página certa é conferida por testes unitários com parágrafos em páginas diferentes e, nos PDFs reais, pela página exibida nas seções seguintes. A caixa do parágrafo não foi avaliada em separado.
+C1 é texto sem paginação, e nele toda unidade fica na página 1. A porcentagem de origem completa mostra que cada unidade tem a origem gravada, mas não mostra que a página gravada esteja certa; a página certa é conferida por testes unitários com parágrafos em páginas diferentes e, nos PDFs reais, pela página na fonte nas seções seguintes. A caixa do parágrafo não foi avaliada em separado.
 
-Na versão atual, as 155 unidades indexadas de C1 têm a origem completa (100,0\%). A primeira medição, porém, deu 32,9\%: 104 unidades estavam incompletas, todas por falta de página. Dezenove eram um defeito de modelagem: a tabela de trechos não tinha coluna de página, e toda unidade guardada precisa apontar a página de onde veio. As outras 85 não eram defeito: eram estatísticas do documento inteiro, como o número de parágrafos, que não estão em página nenhuma, e passaram a declarar que sua origem é o documento inteiro. A Tabela~\ref{tab:provenance-evolucao} separa os dois efeitos, para que o valor final não esconda que parte dele veio de ajustar a métrica. Os 20 parágrafos extraídos de C1 aparecem todos, letra por letra, no documento de origem (100,0\%). Essa conferência avalia a extração e não verifica as páginas que o modelo escreve nas respostas.
-
-\begin{table}[!htbp]
-\centering
-\caption{Unidades de C1 (155) com origem completa no banco, a cada correção.}
-\label{tab:provenance-evolucao}
-\begin{tabular}{lccc}
-\toprule
- & Critério original & + página no trecho & + origem declarada \\
-\midrule
-Unidades completas & 51 & 70 & 155 \\
-Origem completa (\%) & 32,9 & 45,2 & 100,0 \\
-\bottomrule
-\end{tabular}
-\end{table}
+Na versão atual, as 155 unidades indexadas de C1 têm a origem completa. A primeira medição deu 51 de 155: as outras 104 não tinham página. Dezenove eram um defeito de modelagem: a tabela de trechos não tinha coluna de página, e corrigir o esquema levou a 70 de 155. As outras 85 não eram defeito: eram estatísticas do documento inteiro, como o número de parágrafos, que não estão em página nenhuma, e passaram a declarar que sua origem é o documento inteiro. Parte do 155 de 155 final, portanto, vem de ajustar a métrica, e não de corrigir o sistema (Anexo~A7). Os 20 parágrafos extraídos de C1 aparecem todos, letra por letra, no documento de origem. Essa conferência avalia a extração e não verifica as páginas que o modelo escreve nas respostas.
 
 \subsection{Trechos recuperados contra documento inteiro}
 \label{sec:res-geracao}
 
 Este experimento mede o sistema como o usuário o encontra e o compara com a alternativa de entregar o documento inteiro ao modelo. No braço \textbf{T} (de \emph{trechos}), o avaliador usa a mesma rota de \emph{chat} que a tela usa. No braço \textbf{F} (de \emph{full}, documento inteiro), o mesmo modelo recebe, sem nenhuma busca, o texto completo do documento que contém a resposta, com o número de cada página marcado; nas perguntas negativas, recebe cinco documentos. F leva vantagem, porque já recebe o documento certo, algo que um usuário não saberia de antemão; por isso, mostra o melhor resultado que a entrega do documento inteiro poderia ter. O acervo de ensino tem 10 PDFs e 72 perguntas, de quatro tipos: prosa, tabela, calendário e negativa.
 
-Como este é o acervo de desenvolvimento, o resultado é otimista. O braço T foi ajustado várias vezes com base nessas 72 perguntas, e o gabarito passou por quatro versões no mesmo período. No começo, numa única rodada, T acertava 67 das 72 perguntas; ao final, acertou as 72 nas três repetições (216 respostas). O braço F foi executado uma vez, sem ajuste. Doze perguntas tinham sido usadas diretamente para calibrar o sistema, e os resultados sem elas são dados à parte. A Tabela~\ref{tab:geracao} resume os dois braços.
+Como este é o acervo de desenvolvimento, o resultado é otimista. O braço T foi ajustado várias vezes com base nessas 72 perguntas, e o gabarito passou por quatro versões no mesmo período. No começo, numa única rodada, T acertava 67 das 72 perguntas; ao final, acertou as 72 nas três repetições (216 respostas). O braço F foi executado uma vez, sem ajuste. Doze perguntas tinham sido usadas diretamente para calibrar o sistema, e os resultados sem elas são dados à parte.
 
-\begin{table}[!htbp]
-\centering
-\caption{Acervo de ensino (desenvolvimento), 72 perguntas, três repetições: porcentagem de respostas certas e de respostas que citam a página certa no texto, com o sistema buscando trechos e com o PDF inteiro entregue ao modelo. A página citada conta as 201 respostas que têm página-alvo.}
-\label{tab:geracao}
-\begin{tabular}{lrrrr}
-\toprule
- & \multicolumn{2}{c}{Acerto (\%)} & \multicolumn{2}{c}{Página citada certa (\%)} \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}
-Tipo de pergunta & Trechos & PDF inteiro & Trechos & PDF inteiro \\
-\midrule
-Prosa (30)      & 100,0 & 100,0 & 93,3 & 88,9 \\
-Tabela (21)     & 100,0 & 100,0 & 90,5 & 96,8 \\
-Calendário (16) & 100,0 & 100,0 & 100,0 & 100,0 \\
-Negativa (5)    & 100,0 & 80,0 & -- & -- \\
-\midrule
-Todas (72)      & 100,0 & 98,6 & 94,0 & 94,0 \\
-\bottomrule
-\end{tabular}
-\end{table}
+\textbf{Acerto.} T acertou as 72 perguntas nas três repetições e F, 71: F errou a mesma negativa nas três. Sem as 12 perguntas de calibração, o resultado é o mesmo (60 de 60 e 59 de 60). A diferença é de uma pergunta, uma única discordância que nenhum teste distinguiria do acaso, e no acervo em que T foi ajustado: buscar antes de perguntar não custou acerto aqui, mas isso não autoriza afirmar que os dois se equivalem em outros acervos.
 
-\textbf{Acerto.} Por pergunta, T acertou as 72 e F, 71: F errou a mesma negativa nas três repetições. Sem as 12 perguntas de calibração, os números são 60 de 60 e 59 de 60. A diferença é de uma pergunta e no acervo em que T foi ajustado: buscar antes de perguntar não custou acerto aqui, mas isso não autoriza afirmar que os dois se equivalem em outros acervos.
+\textbf{Custo.} Comparando pergunta a pergunta, F enviou ao modelo, na mediana, 26,5 vezes mais \emph{tokens} que T; é daí que vem o ``cerca de 1/26'' do resumo. Usou-se a mediana porque poucas perguntas sobre documentos longos puxariam a média para cima. Em 22 das 72 perguntas, todas sobre documentos curtos, T gastou mais que F, porque várias páginas recuperadas somam mais que o documento inteiro. O custo de T depende do número de fontes, e o de F cresce com o documento: numa execução exploratória com outro modelo, de janela de 131 mil \emph{tokens}, a entrega da coleção inteira foi recusada pelo provedor por exceder esse limite. As médias e a faixa por pergunta estão no repositório (Apêndice~A).
 
-\textbf{Custo.} Comparando pergunta a pergunta, F enviou ao modelo, na mediana, 26,5 vezes mais \emph{tokens} que T, isto é, em metade das perguntas a razão foi maior que essa; é daí que vem o ``cerca de 1/26'' do resumo. Usou-se a mediana porque poucas perguntas sobre documentos longos puxariam a média para cima. Essa razão variou de 0{,}7 a 96 vezes. Em média, T enviou 4.215 \emph{tokens} por pergunta e F, 72.067; sem as negativas, em que F recebe cinco documentos, foram 4.288 e 58.751. T gastou mais que F em 22 das 72 perguntas, todas sobre documentos curtos, em que várias páginas recuperadas somam mais que o documento inteiro. O custo de T depende do número de fontes, e o de F cresce com o documento: numa execução exploratória com outro modelo, de janela de 131 mil \emph{tokens}, a entrega da coleção inteira foi recusada pelo provedor por exceder esse limite (227.649 \emph{tokens}).
-
-\textbf{Origem.} A página citada no texto esteve correta em 189 de 201 respostas em T e em 189 de 201 em F, 94,0\% nos dois. Contou-se como certa tanto a posição da página no arquivo PDF quanto o número impresso na própria página, que em alguns documentos é diferente; aceitando só a posição no arquivo, F cairia para 173. O que muda é de onde vem a página. Em F, a página só existe no texto escrito pelo modelo, e na pergunta que F errou a resposta afirma um dado inexistente e o atribui a uma página do documento. Em T, a página mostrada na fonte vem do banco e não pode ser inventada pelo modelo; a página-alvo esteve entre as fontes exibidas em 195 de 201 respostas. O modelo, porém, também escreve páginas no texto em T, e essas podem estar erradas.
+\textbf{Origem.} A página no texto esteve correta em 189 de 201 respostas em T e em 189 de 201 em F, aceitando também o número impresso na própria página, que em alguns documentos difere da posição no arquivo; só pela posição no arquivo, F cairia para 173. O que muda é de onde vem a página. Em F, ela só existe no texto escrito pelo modelo, e na pergunta que F errou a resposta afirma um dado inexistente e o atribui a uma página do documento. Em T, a página na fonte vem do banco e não pode ser inventada pelo modelo; a página certa esteve entre as fontes em 195 de 201 respostas. O modelo, porém, também escreve páginas no texto em T, e essas podem estar erradas.
 
 Com acerto de 100,0\%, este acervo deixou de distinguir boas e más versões do sistema, em parte porque o sistema foi ajustado nele. Os acervos seguintes têm perguntas escritas depois do desenvolvimento, e são eles que valem como resultado.
 
@@ -514,70 +504,18 @@ Com acerto de 100,0\%, este acervo deixou de distinguir boas e más versões do 
 
 O acervo de legislação tem duas leis: a 8.666/1993 e a 14.133/2021, que a revogou. Conforme a data e o contrato, a mesma pergunta pode ter respostas diferentes, e os dois textos usam quase o mesmo vocabulário, o que é difícil para qualquer busca por semelhança. É o conflito entre fontes descrito por Xu et al.~\citeyear{xu2024knowledge}. Das 19 perguntas, as \emph{divergentes} exigem distinguir as duas leis, e responder só pela revogada conta como erro.
 
-O sistema acertou 15 das 19 perguntas (78,9\%; Tabela~\ref{tab:dominio2}). Uma das quatro respostas erradas foi recusada por um erro do gabarito, que exigia ``10 (dez) anos'' quando a resposta dizia ``10 anos''; o gabarito não foi alterado depois de medir, e o número oficial continua 15 de 19. A falha que motivou este acervo apareceu nas divergentes: perguntado se a modalidade ``tomada de preços'' existe, o sistema respondeu que sim e citou corretamente o art.~22 da Lei 8.666, sem dizer que ele foi revogado. A citação e a página estão certas, e a resposta é enganosa: quem conferir a fonte vai confirmar um dispositivo que já não vale. O mesmo aconteceu com o limite de dispensa de licitação para obras. Com uma repetição e 19 perguntas, o resultado é descritivo.
-
-\begin{table}[!htbp]
-\centering
-\caption{Acervo de legislação: 19 perguntas, uma repetição. A página certa entre as fontes conta as 16 perguntas que têm página-alvo.}
-\label{tab:dominio2}
-\begin{tabular}{lrrr}
-\toprule
-Tipo de pergunta & Perguntas & Acerto (\%) & Página certa entre as fontes (\%) \\
-\midrule
-Divergente & 5 & 60,0 & 80,0 \\
-Temporal   & 3 & 100,0 & 100,0 \\
-Prosa      & 8 & 75,0 & 75,0 \\
-Negativa   & 3 & 100,0 & --    \\
-\midrule
-Total      & 19 & 78,9 & 81,2 \\
-\bottomrule
-\end{tabular}
-\end{table}
+O sistema acertou 15 das 19 perguntas; nas 5 divergentes, acertou 3. Uma das quatro respostas erradas foi recusada por um erro do gabarito, que exigia ``10 (dez) anos'' quando a resposta dizia ``10 anos''; o gabarito não foi alterado depois de medir, e o número oficial continua 15 de 19. A falha que motivou este acervo apareceu nas divergentes: perguntado se a modalidade ``tomada de preços'' existe, o sistema respondeu que sim e citou corretamente o art.~22 da Lei 8.666, sem dizer que ele foi revogado. A citação e a página estão certas, e a resposta é enganosa: quem conferir a fonte vai confirmar um dispositivo que já não vale. O mesmo aconteceu com o limite de dispensa de licitação para obras. Com uma repetição e 19 perguntas, o resultado é descritivo.
 
 \subsection{Bateria em três domínios}
 \label{sec:res-bateria}
 
 A bateria mede o sistema em três acervos de áreas diferentes (segurança do trabalho, produto e consumidor, licitações), com perguntas escritas depois do desenvolvimento. O acervo de licitações repete as duas leis do anterior e acrescenta a Lei 10.520, de modo que os dois não são independentes. As perguntas têm cinco formas: \emph{aberta} (pede um dado), \emph{confirmação} (sim ou não), \emph{existência} (o acervo trata do assunto?), \emph{premissa falsa} (a pergunta traz um dado errado, e a resposta certa é corrigi-lo) e \emph{negativa}. São 71 perguntas: 31 pares de literal e paráfrase (Seção~\ref{sec:avaliacao}) e 9 negativas sem par. Cada pergunta foi feita três vezes, num total de 213 respostas.
 
-Com a pergunta original, a taxa de acerto foi de 69,5\%, com os três acervos entre 62,3\% e 82,6\% e intervalos de confiança que se sobrepõem (Tabela~\ref{tab:bateria-tema}). O sistema acertou cerca de 7 em cada 10 respostas e, com 23 a 25 perguntas por acervo, não dá para dizer que um acervo foi mais fácil que outro. Por pergunta, 49 das 71 acertaram nas três repetições, 21 erraram nas três e só 1 oscilou: os erros se repetem entre execuções. A página-alvo esteve entre as fontes exibidas em 58,1\% das respostas, abaixo do acerto, porque uma resposta certa pode vir de outra página com a mesma informação, o que é comum em acervos com documentos sobrepostos.
+Com a pergunta original, a taxa de acerto foi de 69,5\%, com os três acervos entre 62,3\% e 82,6\% e intervalos de confiança que se sobrepõem: de 43,5\% a 81,2\% em segurança do trabalho, de 65,2\% a 95,7\% em produto e consumidor e de 44,0\% a 84,0\% em licitações. O sistema acertou cerca de 7 em cada 10 respostas (intervalo de 95\% de 59,2\% a 79,3\%) e, com 23 a 25 perguntas por acervo, não dá para dizer que um acervo foi mais fácil que outro. Por pergunta, 49 das 71 acertaram nas três repetições, 21 erraram nas três e só 1 oscilou: os erros se repetem entre execuções. A página certa esteve entre as fontes em 58,1\% das respostas, abaixo do acerto, porque uma resposta certa pode vir de outra página com a mesma informação, o que é comum em acervos com documentos sobrepostos.
 
-\begin{table}[!htbp]
-\centering
-\caption{Bateria, pergunta original: acerto por acervo, em porcentagem das respostas (cada pergunta foi feita três vezes), com o intervalo de confiança de 95\%, calculado por \emph{bootstrap}; a última coluna conta as perguntas que acertaram nas três vezes.}
-\label{tab:bateria-tema}
-\begin{tabular}{lrrr}
-\toprule
-Acervo & Acerto (\%) & Intervalo de 95\% & Certas nas 3 vezes \\
-\midrule
-Segurança do trabalho & 62,3 & 43,5--81,2 & 14 de 23 \\
-Produto e consumidor  & 82,6 & 65,2--95,7 & 19 de 23 \\
-Licitações            & 64,0 & 44,0--84,0 & 16 de 25 \\
-\midrule
-Total                 & 69,5 & 59,2--79,3 & 49 de 71 \\
-\bottomrule
-\end{tabular}
-\end{table}
+Esses números usam o gabarito revisado depois da primeira medição. Na versão original, em duas formas de pergunta bastava a resposta conter ``há'' ou ``não'' para contar como certa, e uma recusa sempre igual (``Não há informações sobre isso nos documentos fornecidos'') acertaria 24 das 71 perguntas sem responder nada. A revisão passou a exigir, na premissa falsa, o dado correto e deixou de aceitar recusas e respostas que dizem o contrário quando a pergunta tem resposta; todas as respostas que mudaram de certa para errada, ou o contrário, foram conferidas à mão. Com a revisão, o acerto caiu de 81,7\% para 69,5\% (Anexo~A8).
 
-Esses números usam o gabarito revisado depois da primeira medição. Na versão original, em duas formas de pergunta (existência e premissa falsa) bastava a resposta conter a palavra ``há'' ou ``não'' para contar como certa. Assim, uma recusa sempre igual (``Não há informações sobre isso nos documentos fornecidos'') acertaria 24 das 71 perguntas sem responder nada. A revisão mudou duas coisas: na premissa falsa, a resposta passou a ter de trazer o dado correto; e recusas ou respostas que dizem o contrário deixaram de valer quando a pergunta tem resposta. Todas as respostas que mudaram de certa para errada, ou o contrário, foram conferidas à mão. Com a revisão, o acerto caiu de 81,7\% para 69,5\%. Na forma existência, cuja resposta certa é sempre ``sim'', responder ``Sim.'' a tudo acertaria as 12 perguntas, de modo que o 91,7\% dessa forma só mostra que o sistema não negou um assunto presente. A Tabela~\ref{tab:bateria-forma} mostra o resultado por forma.
-
-\begin{table}[!htbp]
-\centering
-\caption{Bateria, pergunta original: acerto por forma da pergunta, nos três acervos (respostas certas sobre o total).}
-\label{tab:bateria-forma}
-\begin{tabular}{lrr}
-\toprule
-Forma & Acertos & Acerto (\%) \\
-\midrule
-Negativa       & 27/27 & 100,0 \\
-Existência     & 33/36 & 91,7 \\
-Confirmação    & 27/36 & 75,0 \\
-Aberta         & 48/78 & 61,5 \\
-Premissa falsa & 13/36 & 36,1 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-O sistema reconheceu a falta de informação em todas as negativas, e as perguntas que pedem um dado ficaram entre 61\% e 75\%. A premissa falsa foi a mais difícil: em só 13 de 36 respostas o sistema corrigiu o dado errado. Nas demais, disse que o acervo não trazia a informação ou respondeu dentro da premissa, como na pergunta sobre como abrir uma licitação na modalidade ``tomada de preços'', em que ensinou o procedimento da lei revogada. É a bajulação descrita por Sharma et al.~\citeyear{sharma2024sycophancy}, somada ao problema de vigência da seção anterior.
+Por forma da pergunta (tabela no repositório, Apêndice~A), o sistema reconheceu a falta de informação em todas as 27 respostas negativas, e a premissa falsa foi a mais difícil: em só 13 de 36 respostas o sistema corrigiu o dado errado. Nas demais, disse que o acervo não trazia a informação ou respondeu dentro da premissa, como na pergunta sobre como abrir uma licitação na modalidade ``tomada de preços'', em que ensinou o procedimento da lei revogada. É a bajulação descrita por Sharma et al.~\citeyear{sharma2024sycophancy}, somada ao problema de vigência da seção anterior.
 
 \textbf{Redação da pergunta.} Por resposta, o acerto foi 88,2\% nas literais e 41,9\% nas paráfrases. Como as duas versões de um par pedem a mesma coisa, a comparação é feita par a par, e cada versão conta como certa quando acertou nas três repetições. Dos 31 pares, 17 tiveram o mesmo resultado nas duas versões, e 14 foram discordantes, todos a favor da literal: a literal acertou e a paráfrase errou, sem nenhum caso contrário. Se a redação não fizesse diferença, cada um desses 14 pares teria a mesma chance de pender para um lado ou para o outro, e a chance de os 14 caírem do mesmo lado por acaso é menor que 0{,}001 ($p < 0{,}001$ no teste de McNemar). Isso aconteceu nos três acervos: 7 pares em segurança do trabalho, 4 em produto e consumidor e 3 em licitações. Esse resultado depende da revisão do gabarito: com a versão original, eram 8 pares a favor da literal e 2 a favor da paráfrase ($p = 0{,}109$). O sistema acerta muito mais quando a pergunta usa as palavras do documento, o que confirma a fraqueza da busca por palavras descrita na Seção~\ref{sec:ref-ri}: quem não conhece o termo técnico tem menos chance de achar o trecho.
 
@@ -586,7 +524,7 @@ O sistema reconheceu a falta de informação em todas as negativas, e as pergunt
 
 Se o usuário não usa as palavras do documento, uma saída é acrescentar ao índice as palavras que ele usaria. A primeira intervenção fez isso: para cada página, o LLM gerou um resumo e perguntas que a página responde, escritas como um leigo as escreveria. O pré-registro previa três braços (só o conteúdo, conteúdo mais resumo, conteúdo mais perguntas geradas), 16 pares de literal e paráfrase e os três acervos da bateria. A execução, porém, usou um só acervo, o de segurança do trabalho, com 12 perguntas: 5 pares de literal e paráfrase e 2 negativas. Também acrescentou um quarto braço, exploratório, que dá a cada página a maior entre duas notas: a do conteúdo e a das perguntas geradas. Pelo desvio em relação ao pré-registro, o resultado é exploratório.
 
-Uma primeira execução foi descartada: uma auditoria mostrou fontes idênticas nos quatro braços, o que é impossível se cada braço busca em textos diferentes. A troca de braço, feita por variável de ambiente, não tinha chegado ao processo que respondia. O experimento foi refeito com um processo da API por braço, e o pré-registro recebeu um adendo. Na reexecução, as fontes mudaram entre os braços em 8 das 12 perguntas, mas o acerto quase não mudou: o sistema acertou 7 de 12 perguntas tanto no braço só com o conteúdo quanto no braço com as perguntas geradas, e 8 de 12 tanto no braço com o resumo quanto no exploratório. A única diferença foi uma pergunta literal, e das cinco paráfrases só uma acertou em todos os braços. O braço com o resumo é a configuração padrão do sistema, usada na bateria; tirar o resumo da busca custou uma pergunta em 12. Com 5 paráfrases e uma repetição, o experimento não teria como detectar um efeito moderado. Não ter visto efeito, portanto, não quer dizer que o efeito não exista. Lendo as perguntas geradas, a explicação mais provável é que o modelo, mesmo instruído a escrever como leigo, repete o vocabulário do documento; como há muitas formas de pedir a mesma coisa, as perguntas geradas cobrem só algumas delas e dificilmente coincidem com a que o usuário escreve.
+Uma primeira execução foi descartada: as fontes eram idênticas nos quatro braços, porque a troca de braço não chegava ao processo que respondia; o experimento foi refeito com um processo da API por braço, e o pré-registro recebeu um adendo. Na reexecução, as fontes mudaram entre os braços em 8 das 12 perguntas, mas o acerto quase não mudou: 7 de 12 nos braços só com o conteúdo e com as perguntas geradas, e 8 de 12 no braço com o resumo, que é o padrão do sistema, e no exploratório. Com 5 paráfrases e uma repetição, o experimento não teria como detectar um efeito moderado; não ter visto efeito não quer dizer que ele não exista. A explicação mais provável é que o modelo, mesmo instruído a escrever como leigo, repete o vocabulário do documento.
 \subsection{Segunda tentativa: expandir a pergunta}
 \label{sec:res-expansao}
 
@@ -594,22 +532,20 @@ A segunda intervenção vai no sentido contrário: em vez de levar as palavras d
 
 O modelo recebe só o texto da pergunta e devolve termos técnicos relacionados, que são acrescentados à busca. Ele não vê o acervo nem o gabarito, e as 71 perguntas são as mesmas da bateria. O modelo que expande é o mesmo que depois responde. Para a pergunta ``Quem paga o capacete e a luva que eu uso no serviço?'', que errava nas três repetições, a expansão gerou \emph{equipamento, proteção, individual, EPI, fornecedor, empregador, custo, pagamento}, e a resposta passou a citar a página certa da NR-6.
 
-Com a expansão, o acerto das paráfrases subiu de 41,9\% para 83,9\% e ficou perto do das literais, que passou de 88,2\% para 90,3\% (Tabela~\ref{tab:expansao}). Nas mesmas 71 perguntas, 14 passaram a acertar nas três repetições e nenhuma deixou de acertar ($p < 0{,}001$ no teste de McNemar). Contando por pergunta, o ganho foi de 19,7 pontos percentuais (de 49 para 63 das 71 perguntas certas nas três repetições), com intervalo de 95\% de 10,5 a 29,0 pontos, inteiro acima de zero. Por resposta, os dois intervalos nem se encostam: com expansão, o acerto fica no intervalo de 80,3\% a 95,8\%, contra 59,2\% a 79,3\% sem ela. O resultado não depende da revisão do gabarito: com o gabarito original, o efeito já era significativo (10 ganhos e 1 perda, $p = 0{,}012$). Das perguntas que erravam sem expansão, a expansão corrigiu 13 de 18 paráfrases e 1 de 4 literais, na direção prevista, e a página-alvo passou a ser exibida em 82,3\% das respostas, contra 58,1\%. Os \emph{tokens} enviados para responder cresceram 13,4\%, e cada pergunta nova exige uma chamada a mais ao modelo.
+Com a expansão, o acerto das paráfrases subiu de 41,9\% para 83,9\% e ficou perto do das literais, que passou de 88,2\% para 90,3\% (Tabela~\ref{tab:expansao}). Nas mesmas 71 perguntas, 14 passaram a acertar nas três repetições e nenhuma deixou de acertar ($p < 0{,}001$ no teste de McNemar): de 49 para 63 das 71. O resultado não depende da revisão do gabarito: com o gabarito original, o efeito já era significativo (10 ganhos e 1 perda, $p = 0{,}012$; Anexo~A8). A expansão agiu na busca: a página certa passou a estar entre as fontes em 82,3\% das respostas, contra 58,1\%. Os \emph{tokens} enviados para responder cresceram 13,4\%, e cada pergunta nova exige uma chamada a mais ao modelo.
 
 \begin{table}[!htbp]
 \centering
-\caption{Expansão da pergunta nas 71 perguntas da bateria (213 respostas por condição). As 9 perguntas negativas, sem par, entram só na linha de todas as perguntas.}
+\caption{Expansão da pergunta nas 71 perguntas da bateria. As três primeiras linhas contam respostas (cada pergunta foi feita três vezes); a última conta perguntas. As 9 negativas, sem par, entram só nas linhas de todas as perguntas.}
 \label{tab:expansao}
 \begin{tabular}{lrr}
 \toprule
  & Sem expansão & Com expansão \\
 \midrule
-Acerto, 31 perguntas literais (\%)          & 88,2 & 90,3 \\
-Acerto, 31 paráfrases (\%)                  & 41,9 & 83,9 \\
-Acerto, todas as 71 perguntas (\%)          & 69,5 & 88,7 \\
-Página certa entre as fontes (\%)                  & 58,1 & 82,3 \\
-\emph{Tokens} enviados por pergunta                & 4.699 & 5.327 \\
-Perguntas certas nas três repetições               & 49 de 71 & 63 de 71 \\
+Literais, 31 perguntas (\% de acerto) & 88,2 & 90,3 \\
+Paráfrases, 31 perguntas (\% de acerto) & 41,9 & 83,9 \\
+Todas, 71 perguntas (\% de acerto) & 69,5 & 88,7 \\
+Perguntas certas nas três repetições & 49 de 71 & 63 de 71 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -638,22 +574,22 @@ Por fim, o sistema foi aplicado ao edital de um concurso público municipal, com
 \toprule
 Condição & Resposta & Por quê \\
 \midrule
-(a) Toda fonte mostrada tem origem lida do banco & Sim & Documento ligado por chave estrangeira, conferida por teste; página e região gravadas na indexação e lidas do banco. A página não é validada pelo banco, e um trecho que atravessa páginas aponta só a primeira. \\
+(a) Toda fonte mostrada tem origem lida do banco & Sim & Em C1, 155 de 155 unidades com origem completa no banco; no acervo de ensino, a página certa esteve entre as fontes em 195 de 201 respostas. Documento ligado por chave estrangeira, conferida por teste; página e região gravadas na indexação e lidas do banco. A página não é validada pelo banco, e um trecho que atravessa páginas aponta só a primeira. \\
 \cmidrule(lr){1-3}
 (b) A busca nas tabelas, sem vetores, acha o trecho certo em perguntas novas & Em parte & Acerto de 69,5\% (cerca de 7 em 10). Com as palavras do documento, 88,2\%; com outras palavras, 41,9\%. A expansão por LLM leva a 88,7\%, mas é experimental e foi medida só em documentos públicos. \\
 \cmidrule(lr){1-3}
-(c) Conferir a fonte confirma que a resposta está certa & Não & A lei revogada é citada com página certa, e a conferência confirma o erro. O sistema também não liga cada frase à fonte que a sustenta. \\
+(c) Conferir a fonte confirma que a resposta está certa & Não & A lei revogada é citada com a página certa: quem confere a fonte encontra o texto citado, sem aviso de que ele foi revogado. O sistema também não liga cada frase à fonte que a sustenta. \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 A resposta à pergunta de pesquisa é, portanto, afirmativa para a primeira condição e parcial para as outras duas, na escala medida (os três acervos da bateria têm de três a cinco documentos cada, e as perguntas são em português). Em resumo, foi possível construir o sistema e garantir que cada fonte possa ser conferida usando só modelagem relacional, sem banco de vetores. Conferir a fonte, porém, não garante que a resposta esteja certa nem que a norma citada ainda esteja em vigor.
 
-\textbf{O que a garantia de origem cobre.} Com o documento inteiro, o modelo citou a página certa tantas vezes quanto com a busca (94,0\%). A diferença é que, com a busca, o leitor recebe uma página que vem do banco e não pode ter sido inventada pelo modelo. Essa garantia vem de guardar cada unidade junto com a sua origem. Se a busca fosse por vetores guardados numa coluna da mesma tabela, a garantia seria a mesma, porque quem a sustenta é a forma de guardar os dados. Como as duas buscas ficaram próximas em C1 e um índice de vetores bem configurado foi estável na escala do ThingIndex, dispensar o banco de vetores foi uma escolha de simplicidade. Os dados de C1, em que os dois tipos de busca erram por razões diferentes, indicam a busca híbrida dentro do próprio PostgreSQL como o próximo passo.
+\textbf{O que a garantia de origem cobre.} Com o documento inteiro, o modelo citou a página certa tantas vezes quanto com a busca (189 de 201 respostas nos dois casos, aceitando também o número impresso na página). A diferença é que, com a busca, o leitor recebe uma página que vem do banco e não pode ter sido inventada pelo modelo. Essa garantia vem de guardar cada unidade junto com a sua origem. Se a busca fosse por vetores guardados numa coluna da mesma tabela, a garantia seria a mesma, porque quem a sustenta é a forma de guardar os dados. Como as duas buscas ficaram próximas em C1 e um índice de vetores bem configurado foi estável na escala do ThingIndex, dispensar o banco de vetores foi uma escolha de simplicidade. Os dados de C1, em que os dois tipos de busca erram por razões diferentes, indicam a busca híbrida dentro do próprio PostgreSQL como o próximo passo.
 
-\textbf{Limitações medidas.} A redação teve o maior efeito: as paráfrases acertaram 41,9\% contra 88,2\% das literais, e, com a expansão, as paráfrases chegaram a 83,9\%. A vigência foi o erro mais grave: o sistema trata como independentes documentos que se revogam e responde com fonte correta e conteúdo desatualizado. É um erro que a própria conferência confirma, e por isso, na versão atual, o sistema não é adequado para acervos com normas revogadas, a menos que a coleção contenha só as versões vigentes. Também ficaram fora: respostas que exigem somar linhas de muitas páginas, limitadas pelo número de fontes, e coleções acima do limite de carga, cujos documentos excedentes saem da busca sem aviso ao usuário.
+\textbf{Limitações medidas.} A redação teve o maior efeito: as paráfrases acertaram 41,9\% contra 88,2\% das literais, e, com a expansão, as paráfrases chegaram a 83,9\%. A vigência foi o erro mais grave: o sistema trata como independentes documentos que se revogam e responde com fonte correta e conteúdo desatualizado. É um erro que conferir a fonte não revela, e por isso, na versão atual, o sistema não é adequado para acervos com normas revogadas, a menos que a coleção contenha só as versões vigentes. Também ficaram fora: respostas que exigem somar linhas de muitas páginas, limitadas pelo número de fontes, e coleções acima do limite de carga, cujos documentos excedentes saem da busca sem aviso ao usuário.
 
-\textbf{Sobre o método.} Os controles adotados revelaram três problemas que, sem eles, teriam passado. O primeiro foi o acervo de desenvolvimento chegar a 100,0\%, resultado que não se repetiu em nenhum acervo de teste e que indica que o ajuste nele inflou o número. O segundo foi a primeira execução do enriquecimento, que deu um resultado nulo que parecia sólido, mas não tinha medido o que dizia medir. O terceiro foi a revisão do gabarito da bateria, que mostrou que recusas e até respostas opostas eram aceitas como acerto, o que inflava o resultado em 12,2 pontos percentuais. Nos três casos, a correção só foi possível porque os dados brutos estavam guardados pergunta a pergunta.
+\textbf{Sobre o método.} Os controles adotados revelaram três problemas que, sem eles, teriam passado. O primeiro foi o acervo de desenvolvimento chegar a 100,0\%, resultado que não se repetiu em nenhum acervo de teste e que indica que o ajuste nele inflou o número. O segundo foi a primeira execução do enriquecimento, que deu um resultado nulo que parecia sólido, mas não tinha medido o que dizia medir. O terceiro foi a revisão do gabarito da bateria, que mostrou que recusas e até respostas opostas eram aceitas como acerto, o que inflava o resultado em 12,2 pontos percentuais (de 81,7\% para 69,5\%; Seção~\ref{sec:res-bateria}). Nos três casos, a correção só foi possível porque os dados brutos estavam guardados pergunta a pergunta.
 
 \subsection{Ameaças à validade}
 \label{sec:ameacas}
@@ -662,7 +598,7 @@ A resposta à pergunta de pesquisa é, portanto, afirmativa para a primeira cond
 
 \textbf{Um único anotador.} O sistema foi ajustado no acervo de ensino. Todos os gabaritos foram escritos por uma só pessoa, sem um segundo anotador nem medida de concordância entre anotadores, e as paráfrases foram escritas por quem já tinha lido o documento. O critério por expressão regular pode aceitar resposta incompleta e recusar resposta certa redigida de outro modo; os dois casos foram encontrados e corrigidos onde vistos.
 
-\textbf{O que se mediu.} A página exibida e a página citada não medem se o trecho sustenta a frase da resposta. A origem no índice foi medida num \emph{corpus} sem paginação, e a caixa do parágrafo não foi avaliada em separado.
+\textbf{O que se mediu.} A página na fonte e a página no texto não medem se o trecho sustenta a frase da resposta. A origem no índice foi medida num \emph{corpus} sem paginação, e a caixa do parágrafo não foi avaliada em separado.
 
 \textbf{Generalização.} Todos os documentos estão em português, e o maior acervo tem 10 PDFs. A busca densa só foi comparada no \emph{corpus} de controle; nos acervos reais não houve um braço com vetores. Um único modelo redigiu as respostas; uma medição exploratória com outro modelo, maior, só no braço F, deu acerto de 74,2\% contra 100,0\% do modelo principal nas mesmas 66 perguntas, descontadas 6 falhas da API do provedor, o que indica que os números dependem do modelo. Os acervos de teste são públicos, e não se mediu o comportamento com documentos internos. A utilidade para usuários reais não foi avaliada.
 
@@ -675,10 +611,10 @@ A resposta à pergunta de pesquisa é, portanto, afirmativa para a primeira cond
 Este trabalho construiu o ThingIndex, um sistema que guarda a estrutura dos PDFs em tabelas relacionais e responde perguntas mostrando o documento, a página e a região de cada fonte, e o avaliou em sete acervos. Os principais resultados foram:
 
 \begin{itemize}
-  \item \textbf{A fonte pode ser conferida.} A página mostrada ao usuário vem do banco, e não do texto do modelo, e o vínculo com o documento é garantido por chave estrangeira.
-  \item \textbf{O sistema acerta cerca de 7 em cada 10 respostas em perguntas novas.} Nos acervos com perguntas escritas depois do desenvolvimento, a taxa de acerto foi de 69,5\% com a pergunta original. As paráfrases acertaram bem menos que as literais, e a expansão da pergunta elevou o acerto a 88,7\%, em configuração experimental, desligada por padrão e medida só em documentos públicos.
-  \item \textbf{Buscar trechos é muito mais barato.} Na mediana, buscar trechos usou 1/26 dos \emph{tokens} de entregar o documento inteiro ao modelo, sem perda de acerto no acervo de desenvolvimento.
-  \item \textbf{Busca por palavras e busca por significado ficaram próximas} no \emph{corpus} de controle, sem diferença que os testes estatísticos pudessem confirmar; dispensar o banco de vetores foi uma escolha de simplicidade de operação, sem ganho de qualidade demonstrado.
+  \item \textbf{A fonte pode ser conferida.} A página mostrada ao usuário vem do banco, e não do texto do modelo, e o vínculo com o documento é garantido por chave estrangeira. As 155 unidades de C1 têm a origem gravada no banco.
+  \item \textbf{O sistema acerta cerca de 7 em cada 10 respostas em perguntas novas.} Nos acervos com perguntas escritas depois do desenvolvimento, a taxa de acerto foi de 69,5\% com a pergunta original. As paráfrases acertaram 41,9\% e as literais, 88,2\%, e a expansão da pergunta elevou o acerto a 88,7\%, em configuração experimental, desligada por padrão e medida só em documentos públicos.
+  \item \textbf{Buscar trechos é muito mais barato.} Na mediana, buscar trechos usou 1/26 dos \emph{tokens} de entregar o documento inteiro ao modelo, sem perda de acerto no acervo de desenvolvimento (72 de 72 perguntas contra 71 de 72).
+  \item \textbf{Busca por palavras e busca por significado ficaram próximas} no \emph{corpus} de controle (13 de 16 consultas contra 11 de 16), sem diferença que os testes estatísticos pudessem confirmar; dispensar o banco de vetores foi uma escolha de simplicidade de operação, sem ganho de qualidade demonstrado.
   \item \textbf{O sistema se recupera de falhas.} O envio de documentos usa \emph{outbox} transacional e fila com novas tentativas; o teste de caos derrubou a fila, o banco e o armazenamento e o sistema voltou sozinho, e 20 envios simultâneos foram todos indexados. Na revisão do código, descobriu-se que faltava no banco a chave estrangeira entre as unidades e o documento; ela foi criada, e hoje dois testes de integração conferem que ela existe e funciona.
   \item \textbf{O pior erro é a norma revogada.} O sistema cita, com a página certa, uma lei que já não vale, e conferir a fonte não revela o erro.
 \end{itemize}
@@ -709,7 +645,8 @@ Conforme orientação do colegiado, os anexos estão em PDF na pasta \texttt{ane
   \item A6 -- telas do protótipo;
   \item A7 -- resultados do teste de busca (C1) explicados, com a tabela completa de medidas, os intervalos de confiança e os índices aproximados do pgvector; a lista das 90 comparações pareadas está em \texttt{docs/article/tables};
   \item A8 -- registro das alterações feitas depois de medir;
-  \item A9 -- esquema completo do banco, com as 25 tabelas.
+  \item A9 -- esquema completo do banco, com as 25 tabelas;
+  \item Tabelas de apoio dos resultados, em \path{docs/article/tables/apoio-resultados.tex}: acerto e página no texto por tipo de pergunta no acervo de ensino, com médias e faixa de \emph{tokens}; legislação por tipo de pergunta; bateria por acervo e por forma da pergunta; C1 por tipo de consulta; detalhes da expansão.
 \end{itemize}
 
 Os dados brutos, os pré-registros e os \emph{scripts} de conferência estão nas pastas indicadas no índice.
