@@ -12,6 +12,7 @@ import (
 type WorkspaceViewState struct {
 	ID           uint           `gorm:"primarykey" json:"id"`
 	UserID       uint           `gorm:"not null;index;uniqueIndex:idx_workspace_view_states_user_collection" json:"user_id"`
+	User         *User          `gorm:"foreignKey:UserID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	CollectionID uint           `gorm:"not null;uniqueIndex:idx_workspace_view_states_user_collection" json:"collection_id"`
 	State        map[string]any `gorm:"type:jsonb;serializer:json" json:"state"`
 	CreatedAt    time.Time      `json:"created_at"`
@@ -25,6 +26,7 @@ type WorkspaceViewState struct {
 type ParagraphHighlight struct {
 	ID              uint           `gorm:"primarykey" json:"id"`
 	UserID          uint           `gorm:"not null;index;uniqueIndex:idx_paragraph_highlights_user_node" json:"user_id"`
+	User            *User          `gorm:"foreignKey:UserID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	CollectionID    uint           `gorm:"not null;index" json:"collection_id"`
 	DocumentID      uint           `gorm:"not null;index" json:"document_id"`
 	ParagraphNodeID uint           `gorm:"not null;uniqueIndex:idx_paragraph_highlights_user_node" json:"paragraph_node_id"`

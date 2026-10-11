@@ -17,9 +17,13 @@ func TestCacheDeEnriquecimentoIsolaUsuarioEProvedor(t *testing.T) {
 	repo := NewGormIndexingRepository(db)
 	ctx := context.Background()
 
-	atacante := domain.EnrichmentCacheScope{UserID: 1, Provider: "OPENAI|evil.example.com", Model: "gpt-4o-mini"}
-	vitima := domain.EnrichmentCacheScope{UserID: 2, Provider: "OPENAI|api.openai.com", Model: "gpt-4o-mini"}
-	vitimaOutroHost := domain.EnrichmentCacheScope{UserID: 2, Provider: "OPENAI|gateway.example.com", Model: "gpt-4o-mini"}
+	// user_id tem FK para users: os dois donos precisam existir.
+	idAtacante := seedIntegrationUser(t, db, "atacante").ID
+	idVitima := seedIntegrationUser(t, db, "vitima").ID
+
+	atacante := domain.EnrichmentCacheScope{UserID: idAtacante, Provider: "OPENAI|evil.example.com", Model: "gpt-4o-mini"}
+	vitima := domain.EnrichmentCacheScope{UserID: idVitima, Provider: "OPENAI|api.openai.com", Model: "gpt-4o-mini"}
+	vitimaOutroHost := domain.EnrichmentCacheScope{UserID: idVitima, Provider: "OPENAI|gateway.example.com", Model: "gpt-4o-mini"}
 
 	if err := repo.StoreEnrichment(ctx, atacante, []domain.EnrichmentCacheEntry{{Kind: "page", ContentHash: "h1", Summary: "envenenado"}}); err != nil {
 		t.Fatalf("gravar do atacante: %v", err)

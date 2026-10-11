@@ -40,6 +40,7 @@ type ChatSourceReference struct {
 type ChatConversation struct {
 	ID            uint                    `gorm:"primarykey" json:"id"`
 	UserID        uint                    `gorm:"not null;index;index:idx_chat_conversations_user_collection,priority:1" json:"user_id"`
+	User          *User                   `gorm:"foreignKey:UserID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	CollectionID  uint                    `gorm:"not null;index;index:idx_chat_conversations_user_collection,priority:2" json:"collection_id"`
 	Title         string                  `gorm:"size:255;not null" json:"title"`
 	LastMessageAt *time.Time              `gorm:"index" json:"last_message_at,omitempty"`

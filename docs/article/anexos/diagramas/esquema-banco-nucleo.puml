@@ -24,7 +24,7 @@ entity "users" as users {
 entity "document_categories" as document_categories {
   {field} <b>PK</b> id : serial
   --
-  {field} user_id : integer
+  {field} <i>FK</i> user_id : integer
   {field} name : varchar(255)
   {field} normalized_name : varchar(255)
   {field} description : text
@@ -35,7 +35,7 @@ entity "document_categories" as document_categories {
 entity "collections" as collections {
   {field} <b>PK</b> id : serial
   --
-  {field} user_id : integer
+  {field} <i>FK</i> user_id : integer
   {field} <i>FK</i> category_id : integer
   {field} name : varchar(255)
   {field} normalized_name : varchar(255)
@@ -47,7 +47,7 @@ entity "collections" as collections {
 entity "documents" as documents {
   {field} <b>PK</b> id : serial
   --
-  {field} user_id : integer
+  {field} <i>FK</i> user_id : integer
   {field} title : varchar(255)
   {field} file_url : varchar(512)
   {field} size : integer
@@ -153,16 +153,16 @@ entity "metadata_pairs" as metadata_pairs {
   {field} deleted_at : timestamptz
 }
 document_categories ||-right-o{ collections
+users ||-right-o{ collections
+users ||-right-o{ document_categories
 documents ||--o{ document_chunks
 documents ||--o{ document_outline_nodes
 document_outline_nodes ||--o{ document_outline_nodes
 documents ||--o{ document_pages
 document_categories ||-right-o{ documents
 collections ||-right-o{ documents
+users ||-right-o{ documents
 documents ||--o{ metadata_pairs
 documents ||--o{ paragraph_nodes
 documents ||--o{ table_sections
-users ||.right.o{ document_categories
-users ||.right.o{ collections
-users ||.right.o{ documents
 @enduml

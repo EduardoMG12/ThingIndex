@@ -11,12 +11,12 @@ entity "users" as users {
 }
 entity "collections" as collections {
   {field} <b>PK</b> id : serial
-  {field} user_id : integer
+  {field} <i>FK</i> user_id : integer
   {field} name : varchar(255)
 }
 entity "documents" as documents {
   {field} <b>PK</b> id : serial
-  {field} user_id : integer
+  {field} <i>FK</i> user_id : integer
   {field} <i>FK</i> collection_id : integer
   {field} title : varchar(255)
   {field} status : varchar(50)
@@ -68,16 +68,16 @@ entity "metadata_pairs" as metadata_pairs {
   {field} value : text
 }
 }
+users ||-right-o{ collections
 documents ||--o{ document_chunks
 documents ||--o{ document_outline_nodes
 document_outline_nodes ||--o{ document_outline_nodes
 documents ||--o{ document_pages
 collections ||-right-o{ documents
+users ||-right-o{ documents
 documents ||--o{ metadata_pairs
 documents ||--o{ paragraph_nodes
 documents ||--o{ table_sections
-users ||.right.o{ collections
-users ||.right.o{ documents
 document_pages -[hidden]down- document_outline_nodes
 paragraph_nodes -[hidden]down- document_chunks
 table_sections -[hidden]down- metadata_pairs

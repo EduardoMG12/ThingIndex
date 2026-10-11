@@ -5,6 +5,7 @@ import "time"
 type PricingSource struct {
 	ID                 uint       `gorm:"primarykey" json:"id"`
 	UserID             uint       `gorm:"not null;index:idx_pricing_source_user_provider,priority:1" json:"user_id"`
+	User               *User      `gorm:"foreignKey:UserID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	ProviderType       string     `gorm:"size:50;not null;index:idx_pricing_source_user_provider,priority:2" json:"provider_type"`
 	Name               string     `gorm:"size:120;not null" json:"name"`
 	SourceURL          string     `gorm:"size:1024;not null" json:"source_url"`
@@ -21,6 +22,7 @@ type PricingSource struct {
 type ModelPrice struct {
 	ID                           uint      `gorm:"primarykey" json:"id"`
 	UserID                       uint      `gorm:"not null;index:idx_model_price_user_source_model,priority:1" json:"user_id"`
+	User                         *User     `gorm:"foreignKey:UserID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	PricingSourceID              uint      `gorm:"not null;index:idx_model_price_user_source_model,priority:2" json:"pricing_source_id"`
 	ProviderType                 string    `gorm:"size:50;not null;index" json:"provider_type"`
 	ModelKey                     string    `gorm:"size:120;not null;index:idx_model_price_user_source_model,priority:3" json:"model_key"`
@@ -41,6 +43,7 @@ type ModelPrice struct {
 type ModelPriceHistory struct {
 	ID                           uint      `gorm:"primarykey" json:"id"`
 	UserID                       uint      `gorm:"not null;index:idx_model_price_history_lookup,priority:1" json:"user_id"`
+	User                         *User     `gorm:"foreignKey:UserID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	PricingSourceID              uint      `gorm:"not null;index:idx_model_price_history_lookup,priority:2" json:"pricing_source_id"`
 	ProviderType                 string    `gorm:"size:50;not null;index" json:"provider_type"`
 	ModelKey                     string    `gorm:"size:120;not null;index:idx_model_price_history_lookup,priority:3" json:"model_key"`
