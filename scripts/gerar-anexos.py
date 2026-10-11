@@ -1045,13 +1045,21 @@ def main() -> None:
                      "Etapas da recuperação de contexto para uma pergunta.",
                      [(svg["recuperacao"], "Fluxo de recuperação de contexto do ThingIndex.")],
                      "portrait"), "A5-fluxo-de-recuperacao", build)
-    imprimir(figuras("A6", "Telas do protótipo", "",
-                     [(TELAS / "workspace.png", "Workspace de uma coleção: chat com as fontes "
-                       "(esquerda), PDF na página citada com o parágrafo destacado (centro) e "
-                       "resumo do documento (direita)."),
-                      (TELAS / "operacoes.png", "Tela de operações: andamento da indexação, "
-                       "tentativas, consumo de tokens e falhas.")],
-                     "landscape"), "A6-telas-do-prototipo", build)
+    # Telas numeradas na ordem de uso, com as legendas de telas/legendas.txt;
+    # a do chat com resposta (workspace.png) entra logo depois do chat vazio.
+    telas = []
+    for linha in (TELAS / "legendas.txt").read_text(encoding="utf-8").splitlines():
+        if "|" not in linha:
+            continue
+        arquivo, legenda = (x.strip() for x in linha.split("|", 1))
+        telas.append((TELAS / arquivo, legenda.rstrip(".") + "."))
+        if arquivo.startswith("05-"):
+            telas.append((TELAS / "workspace.png", "Área de trabalho com uma resposta do chat: "
+                          "fontes numeradas (esquerda), PDF na página citada com o parágrafo "
+                          "destacado (centro) e resumo do documento (direita)."))
+    imprimir(figuras("A6", "Telas do protótipo",
+                     "Telas do ThingIndex em funcionamento, na ordem em que o usuário as percorre.",
+                     telas, "landscape"), "A6-telas-do-prototipo", build)
     html_a7, usados = a7()
     pdf = imprimir(html_a7, "A7-tabelas-completas-de-recuperacao", build)
     confere_numeros(pdf, usados)
