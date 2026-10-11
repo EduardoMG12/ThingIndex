@@ -72,7 +72,7 @@ fi
 # --- 4. Metricas de auditabilidade precisam aparecer no texto --------------
 # Elas sao implementadas, testadas e citadas como contribuicao. Se sumirem do
 # texto, o artigo volta a prometer auditabilidade sem medi-la.
-for termo in "TPC" "TCV" "proveniência completa"; do
+for termo in "origem completa" "letra por letra"; do
   if ! grep -q "$termo" "$ARTIGO"; then
     echo "FALHA: '$termo' desapareceu do artigo -- a auditabilidade voltou a ser afirmada sem medicao" >&2
     falhas=$((falhas + 1))

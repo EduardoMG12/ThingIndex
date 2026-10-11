@@ -120,8 +120,10 @@ def conferir_geracao(texto: str) -> int:
         "faixa dos acervos": f"entre {_pct(min(taxa(c['tema'][t]) for t in c['tema']))}\\% e {_pct(max(taxa(c['tema'][t]) for t in c['tema']))}\\% e intervalos",
         "literal x parafrase C": f"o acerto foi {_pct(taxa(c['variante']['literal']))}\\% nas literais e {_pct(taxa(c['variante']['parafrase']))}\\% nas par",
         "literal x parafrase C (discussao)": f"as paráfrases acertaram {_pct(taxa(c['variante']['parafrase']))}\\% contra {_pct(taxa(c['variante']['literal']))}\\% das literais",
-        "lacuna literal-parafrase": f"cai de {_pct(taxa(c['variante']['literal']) - taxa(c['variante']['parafrase']))} para {_pct(taxa(e['variante']['literal']) - taxa(e['variante']['parafrase']))} pontos percentuais",
-        "lacuna E (discussao)": f"distância a {_pct(taxa(e['variante']['literal']) - taxa(e['variante']['parafrase']))} pontos percentuais",
+        # A lacuna literal-parafrase e dita pelas duas taxas, sem e com expansao.
+        "parafrase sem e com expansao": f"paráfrases subiu de {_pct(taxa(c['variante']['parafrase']))}\\% para {_pct(taxa(e['variante']['parafrase']))}\\%",
+        "literal sem e com expansao": f"literais, que passou de {_pct(taxa(c['variante']['literal']))}\\% para {_pct(taxa(e['variante']['literal']))}\\%",
+        "parafrase E (discussao)": f"as paráfrases chegaram a {_pct(taxa(e['variante']['parafrase']))}\\%",
         "proveniencia C": _pct(taxa(c["prov"])),
         "literal E": _pct(taxa(e["variante"]["literal"])),
         "parafrase E": _pct(taxa(e["variante"]["parafrase"])),
@@ -131,7 +133,7 @@ def conferir_geracao(texto: str) -> int:
         "tokens E": _milhar(e["tokens"]),
         "sempre certa": f"{c['sempre_certa']} das 71 acertaram nas tr",
         "sempre errada": f"{c['sempre_errada']} erraram nas tr",
-        "pares a favor da literal": f"{ef['a_favor_literal']} discordantes, todos a favor da literal",
+        "pares a favor da literal": f"{ef['a_favor_literal']} foram discordantes, todos a favor da literal",
         "p da formulacao": p_texto(ef["p"]),
         "expansao ganhou": f"{len(ex['ganhou'])} passaram a acertar",
         "expansao perdeu": "nenhuma deixou de acertar" if not ex["perdeu"] else f"{len(ex['perdeu'])} deixou de acertar",
@@ -209,6 +211,48 @@ def queda_literal_parafrase(rows: list[dict], gran: str, arm: str) -> float | No
     lit = sum(por_variante["literal"]) / len(por_variante["literal"])
     par = sum(por_variante["paraphrase"]) / len(por_variante["paraphrase"])
     return par - lit
+
+
+def acertos_variante(rows: list[dict], gran: str, arm: str, variante: str) -> tuple[int, int]:
+    """Consultas com o texto certo em primeiro lugar (P@1 = 1), e o total."""
+    vals = [float(r["p_at_1"]) for r in rows
+            if r["negative"] == "false" and r["granularity"] == gran and r["arm"] == arm
+            and r["variant"] == variante]
+    return round(sum(vals)), len(vals)
+
+
+def conferir_variantes(rows: list[dict], texto: str) -> int:
+    """Literais e parafrases de C1 como o texto as afirma, em contagem e em
+    porcentagem (Secao 8.1). Substitui a ancora '85,7': a queda da contagem por
+    secao (-0,857, conferida em main) aparece no texto como 5 de 5 literais e
+    1 de 7 parafrases."""
+    def kn(gran, arm, var):
+        return acertos_variante(rows, gran, arm, var)
+    lit_a, par_a = kn("document", "A-relacional", "literal"), kn("document", "A-relacional", "paraphrase")
+    lit_b, par_b = kn("document", "B-bm25", "literal"), kn("document", "B-bm25", "paraphrase")
+    lit_c, par_c = kn("document", "C-denso", "literal"), kn("document", "C-denso", "paraphrase")
+    slit_a, spar_a = kn("section", "A-relacional", "literal"), kn("section", "A-relacional", "paraphrase")
+    slit_b, spar_b = kn("section", "B-bm25", "literal"), kn("section", "B-bm25", "paraphrase")
+    falhas = 0
+    if not (lit_a[0] == lit_a[1] == lit_b[0] == lit_b[1] == slit_a[0] == slit_a[1] == slit_b[0]):
+        print("FALHA  C1: o texto diz que as buscas por palavras acertam todas as literais", file=sys.stderr)
+        falhas += 1
+    esperados = {
+        "C1 literais, palavras": f"As duas buscas por palavras acertam as {lit_a[1]} consultas literais",
+        "C1 parafrases, documento": (f"nas {par_a[1]} paráfrases, a contagem acerta {par_a[0]} "
+                                     f"({_pct(par_a[0] / par_a[1])}\\%) e o BM25, {par_b[0]} "
+                                     f"({_pct(par_b[0] / par_b[1])}\\%)"),
+        "C1 denso": (f"A busca densa acerta {par_c[0]} das {par_c[1]} paráfrases, mas só "
+                     f"{lit_c[0]} das {lit_c[1]} literais ({_pct(lit_c[0] / lit_c[1])}\\%)"),
+        "C1 secao": (f"a contagem continua acertando as {slit_a[1]} literais, mas só {spar_a[0]} das "
+                     f"{spar_a[1]} paráfrases ({_pct(spar_a[0] / spar_a[1])}\\%), e o BM25 acerta "
+                     f"{spar_b[0]} das {spar_b[1]}"),
+    }
+    for descricao, trecho in esperados.items():
+        if trecho not in texto:
+            print(f"FALHA  {descricao}: o CSV da '{trecho}', que nao aparece no artigo", file=sys.stderr)
+            falhas += 1
+    return falhas
 
 
 def redacao_com_gabarito_original() -> tuple[int, int, float]:
@@ -328,13 +372,17 @@ def main() -> int:
     # O texto do artigo precisa mesmo conter os numeros conferidos, senao este
     # script estaria validando afirmacoes que ninguem faz.
     texto = ARTIGO.read_text(encoding="utf-8")
-    for trecho in ("81,2", "68,8", "56,2", "75,0", "85,7"):
+    for trecho in ("81,2", "68,8", "56,2", "75,0"):
         if trecho not in texto:
             print(
                 f"FALHA  o artigo nao contem mais '{trecho}': a lista deste script esta desatualizada",
                 file=sys.stderr,
             )
             falhas += 1
+
+    # As quedas literal->parafrase sao ditas no texto como acertos por tipo de
+    # consulta (k de n), recalculados aqui do CSV.
+    falhas += conferir_variantes(rows, texto)
 
     falhas += conferir_geracao(texto)
 
