@@ -142,7 +142,7 @@ $\;\rightarrow\;$ a tela mostra a resposta e \textbf{abre cada fonte no PDF}, co
 
 As contribuições são:
 \begin{enumerate}
-  \item o sistema, implementado e testado, em que cada unidade recuperável é ligada ao documento por chave estrangeira e carrega página e região. A garantia só passou a existir de fato quando um teste passou a exigi-la (Seção~\ref{sec:modelo-dados});
+  \item o sistema, implementado e testado, em que cada unidade recuperável é ligada ao documento por chave estrangeira e carrega página e região, com a chave conferida por teste (Seção~\ref{sec:modelo-dados});
   \item um protocolo de avaliação que dificulta resultados favoráveis por construção: hipóteses registradas antes de medir, gabaritos travados por \emph{hash}, perguntas em pares (com as palavras do documento e com outras palavras) e registro das correções feitas depois de medir;
   \item resultados em português, em sete acervos (seis de PDFs reais e um sintético, de controle), sobre acerto, origem das fontes e custo, incluindo um erro que a fonte verificável não detecta: a resposta que cita corretamente uma norma revogada.
 \end{enumerate}
@@ -266,7 +266,7 @@ PageIndex \cite{pageindex2025} & O LLM navega a árvore de seções do PDF & A s
 \cmidrule(lr){1-3}
 Assistentes comerciais & Fechado & Referência ao documento, sem garantia que se possa inspecionar \\
 \cmidrule(lr){1-3}
-ThingIndex & BM25 sobre unidades guardadas em tabelas. Nenhum modelo escolhe as fontes; com a expansão ligada, o LLM só sugere palavras de busca & Documento ligado por chave estrangeira; página e região gravadas na indexação e lidas do banco \\
+ThingIndex & BM25 sobre unidades guardadas em tabelas. A escolha das fontes é do BM25; o LLM pode gerar resumos que entram no índice e, com a expansão ligada, sugerir palavras de busca & Documento ligado por chave estrangeira; página e região gravadas na indexação e lidas do banco \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -309,7 +309,7 @@ O desenvolvimento foi feito em ciclos: cada experimento que revelava uma limita�
 \subsection{Requisitos}
 \label{sec:requisitos}
 
-São doze requisitos funcionais, cada um ligado a rotas da API cobertas por testes automatizados: cadastro e autenticação; organização em categorias e coleções; envio de documentos PDF; indexação assíncrona; enriquecimento opcional por LLM; recuperação de contexto por API; \emph{chat} com as fontes citadas; abertura de cada fonte na página e na região de origem; configuração de provedores de LLM e de armazenamento com credencial cifrada; acompanhamento de \emph{tokens} e do custo estimado; trilha de auditoria; e reprocessamento de falhas. A lista com a rota de cada requisito está no Anexo~A1, e o diagrama de casos de uso, no Anexo~A2.
+São doze requisitos funcionais, cada um ligado a rotas da API cobertas por testes automatizados: cadastro e autenticação; organização em categorias e coleções; envio de documentos PDF; indexação assíncrona; enriquecimento opcional por LLM; recuperação de contexto por API; \emph{chat} com as fontes citadas; abertura de cada fonte na página e na região de origem; configuração de provedores de LLM e de armazenamento com credencial cifrada; acompanhamento de \emph{tokens} e do custo estimado; trilha de auditoria; e reprocessamento de falhas. A lista completa está no Anexo~A1, e o diagrama de casos de uso, no Anexo~A2.
 
 Os principais requisitos não funcionais são: integridade referencial e transações no armazenamento da estrutura extraída; separação em camadas; segurança (senha com bcrypt, sessão por \emph{token} JWT, credencial de provedor cifrada com AES-GCM e limite de requisições nas rotas de autenticação, envio e \emph{chat}); execução reproduzível por Docker Compose; e recuperação determinística, isto é, a mesma pergunta sobre o mesmo índice traz as mesmas fontes na mesma ordem. Quanto à privacidade, com um modelo rodando na própria instalação nenhum conteúdo sai dela; com um provedor externo, como o usado nos experimentos, a pergunta e os trechos recuperados são enviados a ele, e cabe à organização a base legal para isso, nos termos da Lei Geral de Proteção de Dados (LGPD). Nesta versão o sistema é de uso individual, sem compartilhamento de coleções.
 
@@ -325,21 +325,21 @@ No envio de um documento, a API grava o arquivo e, numa única transação, regi
 
 O esquema tem 25 tabelas (Anexo~A9). Quatro formam o núcleo (usuários, categorias, coleções e documentos). Seis guardam a estrutura extraída, uma por tipo de unidade: páginas, parágrafos, tabelas, nós do sumário, trechos e metadados. As demais servem à operação: \emph{outbox}, tentativas de processamento, auditoria, provedores, conversas e \emph{cache}. O recorte com o caminho da proveniência está no Anexo~A4.
 
-Cada linha de estrutura carrega sua origem: o documento, o número da página, a posição na ordem de leitura e, nos parágrafos, a caixa que o parágrafo ocupa na página, extraída do PDF junto com o texto. O que o banco garante e o que ele não garante precisa ser dito com precisão. O vínculo com o documento é uma chave estrangeira: o banco recusa um parágrafo que aponte para um documento inexistente. A página e a caixa, por outro lado, são gravadas pelo \emph{indexer} em colunas da mesma linha, e o banco não confere se a página existe no documento. Um trecho recebe a página do seu primeiro parágrafo, de modo que um trecho que atravessa duas páginas aponta só a primeira. O que fica garantido é que a página mostrada ao usuário é a que foi gravada na indexação, lida do banco, e não uma página escrita pelo modelo.
+Cada linha de estrutura carrega sua origem: o documento, o número da página, a posição na ordem de leitura e, nos parágrafos, a caixa que o parágrafo ocupa na página, extraída do PDF junto com o texto. O vínculo com o documento é uma chave estrangeira: o banco recusa um parágrafo que aponte para um documento inexistente. A página e a caixa, por outro lado, são gravadas pelo \emph{indexer} em colunas da mesma linha, e o banco não confere se a página existe no documento. Um trecho recebe a página do seu primeiro parágrafo, de modo que um trecho que atravessa duas páginas aponta só a primeira. O que fica garantido é que a página mostrada ao usuário é a que foi gravada na indexação, lida do banco, e não uma página escrita pelo modelo.
 
-A chave estrangeira tem uma história que vale relatar. Ao revisar o código para este artigo, descobriu-se que ela não existia: a biblioteca de mapeamento objeto-relacional usada, o GORM, só cria a restrição quando o modelo declara a associação, e os seis modelos de estrutura não a declaravam. A coluna existia e era obrigatória, mas o banco não conferia nada. A correção declarou a associação, removeu linhas órfãs na migração e acrescentou dois testes de integração: um confere no catálogo do PostgreSQL que as seis restrições existem, e o outro que o banco recusa um parágrafo sem documento. A garantia declarada no código só passou a existir no banco quando um teste passou a exigi-la.
+Ao revisar o código para este artigo, descobriu-se que essa chave estrangeira não existia: a biblioteca de mapeamento objeto-relacional usada, o GORM, só cria a restrição quando o modelo declara a associação, e os seis modelos de estrutura não a declaravam. A coluna existia e era obrigatória, mas o banco não conferia nada. A correção declarou a associação, removeu linhas órfãs na migração e acrescentou dois testes de integração: um confere no catálogo do PostgreSQL que as seis restrições existem, e o outro que o banco recusa um parágrafo sem documento. A garantia declarada no código só passou a existir no banco quando um teste passou a exigi-la.
 
 \subsection{Indexação}
 \label{sec:indexacao}
 
 O \emph{indexer} extrai o texto com a ferramenta \texttt{pdftotext}, que entrega cada página separada e a posição de cada bloco e linha. A partir disso, regras de posição e de fonte montam os parágrafos na ordem de leitura, detectam tabelas pelo alinhamento das colunas, reconstroem a hierarquia de seções pelos títulos e pela numeração, e agrupam os parágrafos em trechos por seção. Uma tabela que atravessa páginas vira uma parte por página, para que cada célula tenha página. As regras são determinísticas e explicáveis, ao custo de errar em diagramações incomuns. Páginas escaneadas passam por reconhecimento óptico de caracteres (OCR); nesse caso não há caixa, e o sistema registra a ausência em vez de inventar uma.
 
-Opcionalmente, um LLM gera na indexação um resumo de cada página e de cada seção e perguntas que cada página responde. Esse \emph{enriquecimento} fica em \emph{cache} pelo conteúdo, para não ser pago de novo ao reindexar. A Seção~\ref{sec:res-enriquecimento} mede se ele melhora a busca.
+Quando há um provedor de LLM configurado, o \emph{indexer} também gera um resumo de cada página e de cada seção. Esse \emph{enriquecimento} vem ligado por padrão, pode ser desligado nas preferências e fica em \emph{cache} pelo conteúdo, para não ser pago de novo ao reindexar. Na configuração padrão, o resumo da página entra na busca junto com o texto da página, como descrito a seguir; a Seção~\ref{sec:res-enriquecimento} mede o efeito disso.
 
 \subsection{Recuperação e chat}
 \label{sec:recuperacao}
 
-Quando o usuário pergunta algo sobre uma coleção, a recuperação acontece em três passos (Anexo~A5). Primeiro, o sistema carrega as unidades da coleção com um número fixo de consultas SQL, nove, qualquer que seja o número de documentos; um teste de integração conta as consultas para 1 e para 20 documentos e falha se o número mudar. Cada consulta tem um limite (5.000 páginas e 20.000 parágrafos por coleção, por exemplo), e os documentos que passam dele ficam fora da busca sem aviso ao usuário; o evento só é registrado em \emph{log}, o que é uma limitação desta versão. Segundo, as unidades recebem nota por BM25 ($k_1 = 1{,}2$; $b = 0{,}75$), com acentos e maiúsculas ignorados e singular e plural tratados como a mesma palavra. Páginas, seções, trechos e linhas de tabela recebem nota em separado, e as notas são combinadas com pesos fixos por tipo de unidade, escolhidos durante o desenvolvimento (Apêndice~B). Terceiro, o sistema seleciona até três linhas de tabela e até seis fontes entre seções e páginas, isto é, até nove fontes por resposta. Empates são desfeitos pelo identificador da unidade, de modo que a ordem é sempre a mesma para o mesmo índice.
+Quando o usuário pergunta algo sobre uma coleção, a recuperação acontece em três passos (Anexo~A5). Primeiro, o sistema carrega as unidades da coleção com um número fixo de consultas SQL, nove, qualquer que seja o número de documentos; um teste de integração conta as consultas para 1 e para 20 documentos e falha se o número mudar. Cada consulta tem um limite (5.000 páginas e 20.000 parágrafos por coleção, por exemplo), e os documentos que passam dele ficam fora da busca sem aviso ao usuário; o evento só é registrado em \emph{log}, o que é uma limitação desta versão. Segundo, as unidades recebem nota por BM25 ($k_1 = 1{,}2$; $b = 0{,}75$), com acentos e maiúsculas ignorados e singular e plural tratados como a mesma palavra. Na configuração padrão, usada em todos os experimentos, a nota da página considera o texto da página e o resumo gerado na indexação. Páginas, seções, trechos e linhas de tabela recebem nota em separado, e as notas são combinadas com pesos fixos por tipo de unidade, escolhidos durante o desenvolvimento (Apêndice~B). Terceiro, o sistema seleciona até três linhas de tabela e até seis fontes entre seções e páginas, isto é, até nove fontes por resposta. Empates são desfeitos pelo identificador da unidade, de modo que a ordem é sempre a mesma para o mesmo índice.
 
 A nota é recalculada a cada pergunta, sem um índice de busca guardado à parte. Isso evita que um índice fique desatualizado em relação às tabelas, e o custo, que cresce com o tamanho da coleção, é aceitável nas coleções medidas, de até 10 documentos. Para acervos maiores, o índice de texto do próprio PostgreSQL fica como trabalho futuro.
 
@@ -372,17 +372,17 @@ A avaliação responde a três perguntas, nesta ordem: a busca por palavras é c
 
 \begin{table}[!htbp]
 \centering
-\caption{Acervos e gabaritos usados na avaliação. Rep.: quantas vezes cada pergunta foi feita.}
+\caption{Acervos e gabaritos usados na avaliação. Repetições: quantas vezes cada pergunta foi feita.}
 \label{tab:corpora}
 \small
 \begin{tabular}{p{3.9cm}p{4.3cm}rrr}
 \toprule
-Acervo & Documentos & Perguntas & Rep. & Seção \\
+Acervo & Documentos & Perguntas & Repetições & Seção \\
 \midrule
 C1, recuperação & 5 textos fictícios elaborados para o teste, de 111 a 166 palavras (jurídico, licitação, contratual, normativo e operacional) & 18 & -- & \ref{sec:res-recuperacao} \\
 Ensino & 10 PDFs institucionais do IFPR & 72 & 3 & \ref{sec:res-geracao} \\
 Legislação & Leis 8.666/1993 e 14.133/2021 & 19 & 1 & \ref{sec:res-legislacao} \\
-Segurança do trabalho & 5 Normas Regulamentadoras, NR-1 em duas redações & 23 & 3 & \ref{sec:res-bateria} \\
+Segurança do trabalho & 5 PDFs de 4 Normas Regulamentadoras (NR-1 em duas redações) & 23 & 3 & \ref{sec:res-bateria} \\
 Produto e consumidor & Código de Defesa do Consumidor, manual de monitor, termo de garantia & 23 & 3 & \ref{sec:res-bateria} \\
 Licitações & Leis 8.666, 14.133 e 10.520 & 25 & 3 & \ref{sec:res-bateria} \\
 Edital municipal & 1 edital de concurso, 52 páginas & 18 & 1 & \ref{sec:res-prefeitura} \\
@@ -398,7 +398,7 @@ Edital municipal & 1 edital de concurso, 52 páginas & 18 & 1 & \ref{sec:res-pre
 
 \textbf{Métricas de origem no índice.} A \emph{taxa de proveniência completa} (TPC) é a fração de unidades indexadas cuja origem está inteira no banco: documento, página, posição e conteúdo. A \emph{taxa de citação verificável} (TCV) é a fração de trechos citados que existem, letra por letra, na fonte apontada.
 
-\textbf{Custo e modelo.} O custo é medido em \emph{tokens} enviados ao modelo por pergunta, e não em reais, porque o preço muda com o provedor e com o tempo. Todos os experimentos de geração usaram o mesmo modelo aberto, \texttt{gemma4:31b}, servido pelo Ollama em nuvem. Nem a versão exata do modelo nem a sua \emph{temperatura} (o grau de variação que o modelo se permite ao escrever) foram fixadas; as três repetições medem a variação que resta.
+\textbf{Custo e modelo.} O custo é medido em \emph{tokens} enviados ao modelo por pergunta. Não se usou valor em reais porque o preço muda com o provedor e com o tempo. Todos os experimentos de geração usaram o mesmo modelo aberto, \texttt{gemma4:31b}, servido pelo Ollama em nuvem. Nem a versão exata do modelo nem a sua \emph{temperatura} (o grau de variação que o modelo se permite ao escrever) foram fixadas; as três repetições medem a variação que resta.
 
 \textbf{Estatística.} Para comparar duas condições nas mesmas perguntas usou-se o teste de McNemar exato~\cite{mcnemar1947note}, que olha só as perguntas em que as condições discordam: se uma acerta muitas que a outra erra e quase nenhuma ao contrário, a diferença dificilmente é acaso. Um valor-$p$ abaixo de 0{,}05 é lido como diferença que dificilmente se deve ao acaso. Os intervalos de confiança de 95\% foram obtidos sorteando as perguntas com reposição 10.000 vezes (\emph{bootstrap}). Na busca, usou-se o teste de aleatorização pareado, com a correção de Holm, que torna o teste mais exigente quando se fazem muitas comparações ao mesmo tempo.
 
@@ -454,9 +454,9 @@ Essa configuração, porém, não é a que o pgvector recomenda. As opções for
 \subsection{Origem das fontes no índice}
 \label{sec:res-auditabilidade}
 
-Esta medição tem um limite que precisa vir antes do número: C1 é texto sem paginação, e nele toda unidade fica na página 1. A TPC mostra que o mecanismo grava a origem de cada unidade, e não que a página esteja certa; a página certa é conferida por testes unitários com parágrafos em páginas diferentes e, nos PDFs reais, pela página exibida nas seções seguintes. A caixa do parágrafo não foi avaliada em separado.
+C1 é texto sem paginação, e nele toda unidade fica na página 1. A TPC mostra que o mecanismo grava a origem de cada unidade, e não que a página esteja certa; a página certa é conferida por testes unitários com parágrafos em páginas diferentes e, nos PDFs reais, pela página exibida nas seções seguintes. A caixa do parágrafo não foi avaliada em separado.
 
-Na versão atual, as 155 unidades indexadas de C1 têm TPC de 100,0\%. A primeira medição, porém, deu 32,9\%: 104 unidades estavam incompletas, todas por falta de página. Dezenove eram um defeito de modelagem: a tabela de trechos não tinha coluna de página, e como o trecho é o que se cita como fonte, a página precisava estar nele. As outras 85 não eram defeito: eram estatísticas do documento inteiro, como o número de parágrafos, que não estão em página nenhuma, e passaram a declarar que sua origem é o documento, e não uma página. A Tabela~\ref{tab:provenance-evolucao} separa os dois efeitos, para que o valor final não esconda que parte dele veio de ajustar a métrica. A TCV foi de 100,0\% sobre 20 citações de C1: todo trecho citado existe no documento apontado.
+Na versão atual, as 155 unidades indexadas de C1 têm TPC de 100,0\%. A primeira medição, porém, deu 32,9\%: 104 unidades estavam incompletas, todas por falta de página. Dezenove eram um defeito de modelagem: a tabela de trechos não tinha coluna de página, e como o trecho é o que se cita como fonte, a página precisava estar nele. As outras 85 não eram defeito: eram estatísticas do documento inteiro, como o número de parágrafos, que não estão em página nenhuma, e passaram a declarar que sua origem é o documento inteiro. A Tabela~\ref{tab:provenance-evolucao} separa os dois efeitos, para que o valor final não esconda que parte dele veio de ajustar a métrica. A TCV foi de 100,0\% sobre 20 citações de C1: todo trecho citado existe no documento apontado.
 
 \begin{table}[!htbp]
 \centering
@@ -541,17 +541,17 @@ Com a pergunta original, a taxa de acerto foi de 69,5\%, com os três acervos en
 
 \begin{table}[!htbp]
 \centering
-\caption{Bateria, pergunta original: acerto por acervo. ``Acerto'' é a porcentagem de respostas certas; o intervalo é o intervalo de confiança de 95\%, calculado por \emph{bootstrap}; ``Perguntas'' conta as que acertaram nas três repetições.}
+\caption{Bateria, pergunta original: acerto por acervo, em porcentagem das respostas (cada pergunta foi feita três vezes), com o intervalo de confiança de 95\%, calculado por \emph{bootstrap}; a última coluna conta as perguntas que acertaram nas três vezes.}
 \label{tab:bateria-tema}
-\begin{tabular}{lrrrr}
+\begin{tabular}{lrrr}
 \toprule
-Acervo & Respostas & Acerto (\%) & Intervalo 95\% & Perguntas \\
+Acervo & Acerto (\%) & Intervalo de 95\% (\%) & Perguntas certas nas 3 vezes \\
 \midrule
-Segurança do trabalho & 69 & 62,3 & 43,5--81,2 & 14/23 \\
-Produto e consumidor  & 69 & 82,6 & 65,2--95,7 & 19/23 \\
-Licitações            & 75 & 64,0 & 44,0--84,0 & 16/25 \\
+Segurança do trabalho & 62,3 & 43,5--81,2 & 14 de 23 \\
+Produto e consumidor  & 82,6 & 65,2--95,7 & 19 de 23 \\
+Licitações            & 64,0 & 44,0--84,0 & 16 de 25 \\
 \midrule
-Total                 & 213 & 69,5 & 59,2--79,3 & 49/71 \\
+Total                 & 69,5 & 59,2--79,3 & 49 de 71 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -584,7 +584,7 @@ O sistema reconheceu a falta de informação em todas as negativas, e as pergunt
 
 Se o usuário não usa as palavras do documento, uma saída é acrescentar ao índice as palavras que ele usaria. A primeira intervenção fez isso: para cada página, o LLM gerou um resumo e perguntas que a página responde, escritas como um leigo as escreveria. O pré-registro previa três braços (só o conteúdo, conteúdo mais resumo, conteúdo mais perguntas geradas), 16 pares de perguntas e os três acervos da bateria. A execução, porém, usou 12 perguntas, 5 delas em pares, de um só acervo, o de segurança do trabalho, e acrescentou um quarto braço exploratório. Pelo desvio em relação ao pré-registro, o resultado é exploratório.
 
-Uma primeira execução foi descartada: uma auditoria mostrou fontes idênticas nos quatro braços, o que é impossível se cada braço busca em textos diferentes. A troca de braço, feita por variável de ambiente, não tinha chegado ao processo que respondia. O experimento foi refeito com um processo da API por braço, e o pré-registro recebeu um adendo. Na reexecução, as fontes mudaram entre os braços em 8 das 12 perguntas, mas o acerto quase não mudou: o sistema acertou 7 de 12 perguntas só com o conteúdo e com as perguntas geradas, e 8 de 12 com o resumo e no braço exploratório. A única diferença foi uma pergunta literal, e das cinco paráfrases só uma acertou em todos os braços. Com 5 paráfrases e uma repetição, o experimento não teria como detectar um efeito moderado, e o resultado é a ausência de efeito detectável. Lendo as perguntas geradas, a explicação mais provável é que o modelo, mesmo instruído a escrever como leigo, repete o vocabulário do documento: há muitas formas de pedir a mesma coisa, e o índice recebe uma delas, raramente a que o usuário vai usar.
+Uma primeira execução foi descartada: uma auditoria mostrou fontes idênticas nos quatro braços, o que é impossível se cada braço busca em textos diferentes. A troca de braço, feita por variável de ambiente, não tinha chegado ao processo que respondia. O experimento foi refeito com um processo da API por braço, e o pré-registro recebeu um adendo. Na reexecução, as fontes mudaram entre os braços em 8 das 12 perguntas, mas o acerto quase não mudou: o sistema acertou 7 de 12 perguntas só com o conteúdo e com as perguntas geradas, e 8 de 12 com o resumo e no braço exploratório. A única diferença foi uma pergunta literal, e das cinco paráfrases só uma acertou em todos os braços. O braço com o resumo é a configuração padrão do sistema, usada na bateria; tirar o resumo da busca custou uma pergunta em 12. Com 5 paráfrases e uma repetição, o experimento não teria como detectar um efeito moderado, e o resultado é a ausência de efeito detectável. Lendo as perguntas geradas, a explicação mais provável é que o modelo, mesmo instruído a escrever como leigo, repete o vocabulário do documento: há muitas formas de pedir a mesma coisa, e o índice recebe uma delas, raramente a que o usuário vai usar.
 \subsection{Segunda tentativa: expandir a pergunta}
 \label{sec:res-expansao}
 
@@ -592,7 +592,7 @@ A segunda intervenção vai no sentido contrário: em vez de levar as palavras d
 
 O modelo recebe só o texto da pergunta e devolve termos técnicos relacionados, que são acrescentados à busca. Ele não vê o acervo nem o gabarito, e as 71 perguntas são as mesmas da bateria. O modelo que expande é o mesmo que depois responde. Para a pergunta ``Quem paga o capacete e a luva que eu uso no serviço?'', que errava nas três repetições, a expansão gerou \emph{equipamento, proteção, individual, EPI, fornecedor, empregador, custo, pagamento}, e a resposta passou a citar a página certa da NR-6.
 
-Com a expansão, a distância entre literal e paráfrase cai de 46,2 para 6,5 pontos percentuais (Tabela~\ref{tab:expansao}). Nas mesmas 71 perguntas, 14 passaram a acertar nas três repetições e nenhuma deixou de acertar ($p < 0{,}001$ no teste de McNemar). A diferença foi de 19,7 pontos percentuais, com intervalo de 95\% de 10,5 a 29,0 pontos; por resposta, o acerto com expansão tem intervalo de 80,3\% a 95,8\%, contra 59,2\% a 79,3\% sem ela. O resultado não depende da revisão do gabarito: com o gabarito original, o efeito já era significativo (10 ganhos e 1 perda, $p = 0{,}012$). Das perguntas que erravam sem expansão, a expansão corrigiu 13 de 18 paráfrases e 1 de 4 literais, na direção prevista, e a página-alvo passou a ser exibida em 82,3\% das respostas, contra 58,1\%. Os \emph{tokens} enviados para responder cresceram 13,4\%, e cada pergunta nova exige uma chamada a mais ao modelo.
+Com a expansão, a distância entre literal e paráfrase cai de 46,2 para 6,5 pontos percentuais (Tabela~\ref{tab:expansao}). Nas mesmas 71 perguntas, 14 passaram a acertar nas três repetições e nenhuma deixou de acertar ($p < 0{,}001$ no teste de McNemar). Contando por pergunta, a diferença foi de 19,7 pontos percentuais, com intervalo de 95\% de 10,5 a 29,0 pontos; por resposta, o acerto com expansão tem intervalo de 80,3\% a 95,8\%, contra 59,2\% a 79,3\% sem ela. O resultado não depende da revisão do gabarito: com o gabarito original, o efeito já era significativo (10 ganhos e 1 perda, $p = 0{,}012$). Das perguntas que erravam sem expansão, a expansão corrigiu 13 de 18 paráfrases e 1 de 4 literais, na direção prevista, e a página-alvo passou a ser exibida em 82,3\% das respostas, contra 58,1\%. Os \emph{tokens} enviados para responder cresceram 13,4\%, e cada pergunta nova exige uma chamada a mais ao modelo.
 
 \begin{table}[!htbp]
 \centering
@@ -612,7 +612,7 @@ Perguntas certas nas três repetições               & 49 de 71 & 63 de 71 \\
 \end{tabular}
 \end{table}
 
-Três cuidados limitam esse ganho. O controle é a execução anterior da bateria, feita no mesmo dia, e não um braço sorteado junto. Os três acervos são documentos públicos, que o modelo provavelmente viu no treinamento: ``empregador'', gerado para a pergunta sobre quem paga o equipamento, é ao mesmo tempo uma ponte de vocabulário e a própria resposta, e o ganho não pode ser estendido a documentos internos de uma organização. E não houve comparação com expansão sem LLM nem com busca híbrida. Como a primeira ocorrência de cada pergunta depende do modelo, a expansão ficou desligada por padrão; a partir da segunda, o resultado sai de um \emph{cache} e a busca volta a ser determinística.
+Esse ganho tem limites. O controle é a execução anterior da bateria, feita no mesmo dia, sem sorteio entre as duas condições. Os três acervos são documentos públicos, que o modelo provavelmente viu no treinamento: ``empregador'', gerado para a pergunta sobre quem paga o equipamento, é ao mesmo tempo uma ponte de vocabulário e a própria resposta, e o ganho não pode ser estendido a documentos internos de uma organização. E não houve comparação com expansão sem LLM nem com busca híbrida. Como a primeira ocorrência de cada pergunta depende do modelo, a expansão ficou desligada por padrão; a partir da segunda, o resultado sai de um \emph{cache} e a busca volta a ser determinística.
 
 \subsection{Edital municipal (exploratório)}
 \label{sec:res-prefeitura}
@@ -645,13 +645,13 @@ Condição & Resposta & Por quê \\
 \end{tabular}
 \end{table}
 
-A resposta à pergunta de pesquisa é, portanto, afirmativa para a primeira condição e parcial para as outras duas, na escala medida (de três a cinco documentos por acervo de teste, perguntas em português). É possível sustentar o sistema e a sua auditabilidade só com modelagem relacional, sem banco de vetores: a fonte pode ser conferida; isso não basta, sozinho, para que a resposta esteja certa e atual.
+A resposta à pergunta de pesquisa é, portanto, afirmativa para a primeira condição e parcial para as outras duas, na escala medida (os três acervos da bateria têm de três a cinco documentos cada, e as perguntas são em português). É possível sustentar o sistema e a sua auditabilidade só com modelagem relacional, sem banco de vetores: a fonte pode ser conferida; isso não basta, sozinho, para que a resposta esteja certa e atual.
 
-\textbf{O que a garantia de origem cobre.} Com o documento inteiro, o modelo citou a página certa tantas vezes quanto com a busca (94,0\%). A diferença é que, com a busca, o leitor recebe uma página que vem do banco e não pode ter sido inventada pelo modelo. Essa garantia vem de guardar as unidades com origem, e não do BM25: uma coluna de vetores na mesma tabela daria a mesma garantia. Em outras palavras, a origem da fonte é um problema de armazenamento, e não de busca. Como a busca por palavras não teve diferença detectável da densa em C1 e um índice de vetores bem configurado foi estável na escala do ThingIndex, dispensar o banco de vetores fica como escolha de simplicidade, e não como vantagem de qualidade demonstrada. Os dados de C1, em que os dois tipos de busca erram por razões diferentes, indicam a busca híbrida dentro do próprio PostgreSQL como o próximo passo.
+\textbf{O que a garantia de origem cobre.} Com o documento inteiro, o modelo citou a página certa tantas vezes quanto com a busca (94,0\%). A diferença é que, com a busca, o leitor recebe uma página que vem do banco e não pode ter sido inventada pelo modelo. Essa garantia vem de guardar as unidades com origem: uma coluna de vetores na mesma tabela daria a mesma garantia. A origem da fonte é, portanto, um problema de armazenamento. Como a busca por palavras não teve diferença detectável da densa em C1 e um índice de vetores bem configurado foi estável na escala do ThingIndex, dispensar o banco de vetores fica como escolha de simplicidade, sem vantagem de qualidade demonstrada. Os dados de C1, em que os dois tipos de busca erram por razões diferentes, indicam a busca híbrida dentro do próprio PostgreSQL como o próximo passo.
 
 \textbf{Limitações medidas.} A redação teve o maior efeito: as paráfrases acertaram 41,9\% contra 88,2\% das literais, e a expansão reduziu essa distância a 6,5 pontos percentuais. A vigência foi o erro mais grave: o sistema trata como independentes documentos que se revogam e responde com fonte correta e conteúdo desatualizado. É um erro que a própria conferência confirma, e por isso, na versão atual, o sistema não é adequado para acervos com normas revogadas, a menos que a coleção contenha só as versões vigentes. Também ficaram fora: respostas que exigem somar linhas de muitas páginas, limitadas pelo número de fontes, e coleções acima do limite de carga, cujos documentos excedentes saem da busca sem aviso ao usuário.
 
-\textbf{Sobre o método.} Os controles pegaram três erros que, sem eles, teriam virado resultado. O acervo de desenvolvimento chegou a 100,0\%, número que não se repetiu em nenhum acervo de teste. A primeira execução do enriquecimento deu um resultado nulo que parecia sólido, mas não tinha medido o que dizia medir. E a revisão do gabarito da bateria mostrou que recusas e até respostas opostas eram aceitas como acerto, o que inflava o resultado em 12,2 pontos percentuais. Nos três casos, a correção só foi possível porque os dados brutos estavam guardados pergunta a pergunta.
+\textbf{Sobre o método.} Os controles pegaram três erros. O acervo de desenvolvimento chegou a 100,0\%, número que não se repetiu em nenhum acervo de teste. A primeira execução do enriquecimento deu um resultado nulo que parecia sólido, mas não tinha medido o que dizia medir. E a revisão do gabarito da bateria mostrou que recusas e até respostas opostas eram aceitas como acerto, o que inflava o resultado em 12,2 pontos percentuais. Nos três casos, a correção só foi possível porque os dados brutos estavam guardados pergunta a pergunta.
 
 \subsection{Ameaças à validade}
 \label{sec:ameacas}
@@ -670,17 +670,17 @@ A resposta à pergunta de pesquisa é, portanto, afirmativa para a primeira cond
 \section{Conclusão}
 \label{sec:conclusao}
 
-Este trabalho construiu o ThingIndex, um sistema que guarda a estrutura dos PDFs em tabelas relacionais e responde perguntas mostrando o documento, a página e a região de cada fonte, e o avaliou em sete acervos. Em linguagem simples, os resultados são estes:
+Este trabalho construiu o ThingIndex, um sistema que guarda a estrutura dos PDFs em tabelas relacionais e responde perguntas mostrando o documento, a página e a região de cada fonte, e o avaliou em sete acervos. Os principais resultados foram:
 
 \begin{itemize}
-  \item \textbf{A fonte pode ser conferida.} A página mostrada ao usuário vem do banco, e não do texto do modelo; o vínculo com o documento é garantido por chave estrangeira, e essa garantia só passou a existir quando um teste passou a exigi-la.
+  \item \textbf{A fonte pode ser conferida.} A página mostrada ao usuário vem do banco, e não do texto do modelo, e o vínculo com o documento é garantido por chave estrangeira.
   \item \textbf{O sistema acerta cerca de 7 em cada 10 respostas em perguntas novas.} Nos acervos com perguntas escritas depois do desenvolvimento, a taxa de acerto foi de 69,5\% com a pergunta original. As paráfrases acertaram bem menos que as literais, e a expansão da pergunta elevou o acerto a 88,7\%, em configuração experimental, desligada por padrão e medida só em documentos públicos.
   \item \textbf{Buscar trechos é muito mais barato.} Na mediana, buscar trechos usou 1/26 dos \emph{tokens} de entregar o documento inteiro ao modelo, sem perda de acerto no acervo de desenvolvimento.
   \item \textbf{Busca por palavras não foi pior que a busca por significado} no \emph{corpus} de controle, mas também não foi melhor; dispensar o banco de vetores é uma escolha de simplicidade.
   \item \textbf{O pior erro é a norma revogada.} O sistema cita corretamente uma lei que já não vale, e conferir a fonte não revela o erro.
 \end{itemize}
 
-Para a vigência, o modelo relacional oferece um caminho: registrar o período de validade de cada artigo do documento, e não só do documento inteiro, porque a revogação pode ser parcial, e comparar esses períodos em SQL. Os trabalhos futuros, em ordem de prioridade, são: tratar a vigência por unidade do documento; avaliar o sistema com usuários reais, medindo o tempo até a resposta e se as fontes são de fato conferidas; medir se o trecho exibido sustenta a frase da resposta; ampliar os gabaritos, com um segundo anotador e documentos que o modelo não conhece; e comparar a expansão e a busca híbrida no próprio PostgreSQL.
+Para a vigência, o modelo relacional oferece um caminho: registrar o período de validade de cada artigo do documento, porque a revogação pode ser parcial, e comparar esses períodos em SQL. Os trabalhos futuros, em ordem de prioridade, são: tratar a vigência por unidade do documento; avaliar o sistema com usuários reais, medindo o tempo até a resposta e se as fontes são de fato conferidas; medir se o trecho exibido sustenta a frase da resposta; ampliar os gabaritos, com um segundo anotador e documentos que o modelo não conhece; e comparar a expansão e a busca híbrida no próprio PostgreSQL.
 
 O código, os gabaritos, os resultados brutos, os \emph{scripts} que geram e conferem os números deste artigo e os anexos estão no repositório do projeto, \repositorio.
 

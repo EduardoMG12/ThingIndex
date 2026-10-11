@@ -172,9 +172,9 @@ def conferir_geracao(texto: str) -> int:
         lo, hi = ng.ic_conglomerado("off", (tema,))
         certas = sum(all(v) for q, v in ng.por_pergunta("off", (tema,)).items())
         total_q = len(ng.por_pergunta("off", (tema,)))
-        esperados[f"tabela bateria {tema}"] = linha(rot, str(n), _pct(k / n), f"{_pct(lo)}--{_pct(hi)}", f"{certas}/{total_q}")
+        esperados[f"tabela bateria {tema}"] = linha(rot, _pct(k / n), f"{_pct(lo)}--{_pct(hi)}", f"{certas} de {total_q}")
     esperados["tabela bateria total"] = linha(
-        f"{'Total':<21}", str(c["total"][1]), _pct(taxa(c["total"])), f"{_pct(ic_c[0])}--{_pct(ic_c[1])}", f"{c['sempre_certa']}/71")
+        f"{'Total':<21}", _pct(taxa(c["total"])), f"{_pct(ic_c[0])}--{_pct(ic_c[1])}", f"{c['sempre_certa']} de 71")
     esperados["ic E (texto)"] = f"intervalo de {_pct(ic_e[0])}\\% a {_pct(ic_e[1])}\\%, contra {_pct(ic_c[0])}\\% a {_pct(ic_c[1])}\\% sem ela"
     for forma, rot in (("negativa", "Negativa      "), ("existencia", "Existência    "), ("confirmacao", "Confirmação   "),
                        ("aberta", "Aberta        "), ("premissa-falsa", "Premissa falsa")):

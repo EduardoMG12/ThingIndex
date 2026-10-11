@@ -37,7 +37,7 @@ note over W, R : falha: fila de retry com atraso;\nesgotadas as tentativas, DLQ
 U -> F : pergunta
 F -> A : POST /chat/stream (SSE)
 A -> P : carrega a coleção\n(9 consultas, número fixo)
-A -> A : BM25 por tipo de unidade;\nseleciona até 6 fontes
+A -> A : BM25 por tipo de unidade;\nseleciona até 9 fontes (3 linhas\nde tabela + 6 seções ou páginas)
 A --> F : evento "sources"\n(documento, página, caixa)
 A -> L : prompt com as fontes
 L --> A : resposta em partes
