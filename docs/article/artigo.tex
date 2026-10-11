@@ -360,7 +360,7 @@ A tela principal é o \emph{workspace} de uma coleção (Figura~\ref{fig:workspa
 \subsection{Verificação do software}
 \label{sec:verificacao}
 
-O \emph{backend} tem \testesGoArquivos{} arquivos de teste, com \testesGoFuncoes{} funções de teste, dos quais \testesIntegracao{} são testes de integração, quase todos contra PostgreSQL, RabbitMQ ou MinIO reais; a cobertura medida foi de \coberturaBackend\% das instruções. O \emph{frontend} tem \testesFrontUnit{} arquivos de teste unitário e \testesFrontNav{} arquivos, com \testesFrontNavCasos{} casos, de teste de interface em navegador. Há ainda um teste de caos, que derruba o RabbitMQ, o PostgreSQL e o armazenamento de arquivos com o sistema em funcionamento e confere que vinte envios simultâneos de PDF terminam indexados. As versões finais dos testes foram executadas localmente, exceto o teste de caos, que não foi executado depois da última alteração.
+O \emph{backend} tem \testesGoArquivos{} arquivos de teste, com \testesGoFuncoes{} funções de teste, dos quais \testesIntegracao{} são testes de integração, quase todos contra PostgreSQL, RabbitMQ ou MinIO reais; a cobertura medida foi de \coberturaBackend\% das instruções. O \emph{frontend} tem \testesFrontUnit{} arquivos de teste unitário e \testesFrontNav{} arquivos, com \testesFrontNavCasos{} casos, de teste de interface em navegador. Há ainda um teste de caos, que derruba, um de cada vez e com o sistema em funcionamento, o RabbitMQ durante um envio, o PostgreSQL e o armazenamento de arquivos, e confere que o sistema volta a funcionar sem ser reiniciado; num cenário à parte, vinte envios simultâneos de PDF para a mesma coleção terminam indexados. As versões finais de todos os testes, inclusive o de caos (16 de 16 verificações), foram executadas localmente.
 
 % =============================================================================
 % 7. DESENHO DA AVALIACAO
@@ -545,7 +545,7 @@ Com a pergunta original, a taxa de acerto foi de 69,5\%, com os três acervos en
 \label{tab:bateria-tema}
 \begin{tabular}{lrrr}
 \toprule
-Acervo & Acerto (\%) & Intervalo de 95\% (\%) & Perguntas certas nas 3 vezes \\
+Acervo & Acerto (\%) & Intervalo de 95\% & Certas nas 3 vezes \\
 \midrule
 Segurança do trabalho & 62,3 & 43,5--81,2 & 14 de 23 \\
 Produto e consumidor  & 82,6 & 65,2--95,7 & 19 de 23 \\
@@ -602,8 +602,8 @@ Com a expansão, a distância entre literal e paráfrase cai de 46,2 para 6,5 po
 \toprule
  & Sem expansão & Com expansão \\
 \midrule
-Acerto, pergunta com as palavras do documento (\%) & 88,2 & 90,3 \\
-Acerto, pergunta com outras palavras (\%)          & 41,9 & 83,9 \\
+Acerto, com as palavras do documento (\%) & 88,2 & 90,3 \\
+Acerto, com outras palavras (\%)          & 41,9 & 83,9 \\
 Acerto, todas as perguntas (\%)                    & 69,5 & 88,7 \\
 Página certa entre as fontes (\%)                  & 58,1 & 82,3 \\
 \emph{Tokens} enviados por pergunta                & 4.699 & 5.327 \\
