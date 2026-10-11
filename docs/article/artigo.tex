@@ -121,9 +121,9 @@ Muitas perguntas de trabalho têm resposta em um documento que já existe. Um t�
 
 Os modelos de linguagem de grande escala (LLMs), que estão por trás dos assistentes de conversa, mudaram a expectativa: em vez de uma lista de arquivos, espera-se uma resposta pronta. A técnica mais usada para isso é a geração aumentada por recuperação (RAG): antes de responder, o sistema busca trechos relevantes nos documentos e os entrega ao modelo junto com a pergunta~\cite{lewis2020rag}. Para quem responde por uma decisão, porém, a resposta só tem valor se puder ser conferida no original. Uma resposta correta sem a página de origem obriga o leitor a refazer a busca, e uma resposta errada com uma citação plausível tende a passar despercebida.
 
-Neste trabalho, uma fonte é \emph{verificável} quando aponta documento, página e região de onde veio, e essa indicação vem do banco de dados, e não do texto escrito pelo modelo. Na literatura de bancos de dados, isso se chama proveniência \emph{where}~\cite{buneman2001provenance}. Chama-se de \emph{inteligência documental} a capacidade de um sistema organizar e recuperar o conteúdo dos documentos, e não só o nome e os metadados. A pergunta de pesquisa é: \emph{unidades estruturais de PDFs persistidas em modelo relacional, com a coordenada de origem garantida pelo esquema e recuperadas por um método lexical, bastam para um sistema de perguntas e respostas cujas fontes possam ser conferidas no original?}
+Neste trabalho, um sistema é \emph{auditável} quando cada fonte que ele mostra é \emph{verificável}: aponta documento, página e região de onde veio, e essa indicação vem do banco de dados, e não do texto escrito pelo modelo. Na literatura de bancos de dados, isso se chama proveniência \emph{where}~\cite{buneman2001provenance}. Chama-se de \emph{inteligência documental} a capacidade de um sistema organizar e recuperar o conteúdo dos documentos, e não só o nome e os metadados. A pergunta de pesquisa é: \emph{é possível sustentar um sistema de inteligência documental com auditabilidade utilizando exclusivamente modelagem relacional, sem depender de bancos vetoriais ou grafos como camada primária de recuperação?}
 
-Para que a resposta não fique vaga, ``bastar'' foi desdobrado em três condições, retomadas na Discussão: (a) toda fonte mostrada ao usuário tem origem lida do banco; (b) a busca por palavras encontra o trecho certo em perguntas que não foram usadas no desenvolvimento; e (c) conferir a fonte permite confirmar que a resposta está certa.
+Para que a resposta não fique vaga, ``sustentar um sistema com auditabilidade'' foi desdobrado em três condições, retomadas na Discussão: (a) toda fonte mostrada ao usuário tem origem lida do banco; (b) a busca sobre as tabelas relacionais, sem vetores, encontra o trecho certo em perguntas que não foram usadas no desenvolvimento; e (c) conferir a fonte permite confirmar que a resposta está certa.
 
 Para responder, foi construído o ThingIndex. O sistema extrai a estrutura dos PDFs (páginas, parágrafos com posição, tabelas e sumário), guarda essa estrutura em tabelas do PostgreSQL, busca os trechos por palavras, com o algoritmo BM25, e devolve com cada fonte a indicação que permite abri-la no documento. O LLM só entra no final, para redigir a resposta a partir das fontes encontradas. A Figura~\ref{fig:fluxo} resume o caminho de uma pergunta. Não usar um banco de vetores, a escolha mais comum em RAG, foi uma decisão de projeto, tomada por simplicidade de operação; a Seção~\ref{sec:resultados} mede o que ela custa.
 
@@ -295,7 +295,7 @@ O desenvolvimento foi feito em ciclos: cada experimento que revelava uma limita�
 \subsection{Requisitos}
 \label{sec:requisitos}
 
-São doze requisitos funcionais, cada um ligado a rotas da API cobertas por testes automatizados: cadastro e autenticação; organização em categorias e coleções; envio de documentos (PDF, HTML e planilha); indexação assíncrona; enriquecimento opcional por LLM; recuperação de contexto por API; \emph{chat} com as fontes citadas; abertura de cada fonte na página e na região de origem; configuração de provedores de LLM e de armazenamento com credencial cifrada; acompanhamento de \emph{tokens} e custo; trilha de auditoria; e reprocessamento de falhas. A lista com a rota de cada requisito está no Anexo~A1, e o diagrama de casos de uso, no Anexo~A2.
+São doze requisitos funcionais, cada um ligado a rotas da API cobertas por testes automatizados: cadastro e autenticação; organização em categorias e coleções; envio de documentos PDF; indexação assíncrona; enriquecimento opcional por LLM; recuperação de contexto por API; \emph{chat} com as fontes citadas; abertura de cada fonte na página e na região de origem; configuração de provedores de LLM e de armazenamento com credencial cifrada; acompanhamento de \emph{tokens} e do custo estimado; trilha de auditoria; e reprocessamento de falhas. A lista com a rota de cada requisito está no Anexo~A1, e o diagrama de casos de uso, no Anexo~A2.
 
 Os principais requisitos não funcionais são: integridade referencial e transações no armazenamento da estrutura extraída; separação em camadas; segurança (senha com bcrypt, sessão por \emph{token} JWT, credencial de provedor cifrada com AES-GCM e limite de requisições nas rotas de autenticação, envio e \emph{chat}); execução reproduzível por Docker Compose; e recuperação determinística, isto é, a mesma pergunta sobre o mesmo índice traz as mesmas fontes na mesma ordem. Quanto à privacidade, com um modelo rodando na própria instalação nenhum conteúdo sai dela; com um provedor externo, como o usado nos experimentos, a pergunta e os trechos recuperados são enviados a ele, e cabe à organização a base legal para isso, nos termos da Lei Geral de Proteção de Dados (LGPD). Nesta versão o sistema é de uso individual, sem compartilhamento de coleções.
 
@@ -625,7 +625,7 @@ Por fim, o sistema foi aplicado ao edital de um concurso público municipal, com
 \section{Discussão}
 \label{sec:discussao}
 
-\textbf{Resposta à pergunta de pesquisa.} A Introdução desdobrou ``bastar'' em três condições. A Tabela~\ref{tab:resposta} resume o que os dados dizem sobre cada uma.
+\textbf{Resposta à pergunta de pesquisa.} A Introdução desdobrou a pergunta em três condições. A Tabela~\ref{tab:resposta} resume o que os dados dizem sobre cada uma.
 
 \begin{table}[!htbp]
 \centering
@@ -637,13 +637,13 @@ Por fim, o sistema foi aplicado ao edital de um concurso público municipal, com
 Condição & Resposta & Por quê \\
 \midrule
 (a) Toda fonte mostrada tem origem lida do banco & Sim & Documento ligado por chave estrangeira, conferida por teste; página e região gravadas na indexação e lidas do banco. A página não é validada pelo banco, e um trecho que atravessa páginas aponta só a primeira. \\
-(b) A busca por palavras acha o trecho certo em perguntas novas & Em parte & Acerto de 0,695 (cerca de 7 em 10). Com as palavras do documento, 0,882; com outras palavras, 0,419. A expansão por LLM leva a 0,887, mas é experimental e foi medida só em documentos públicos. \\
+(b) A busca nas tabelas, sem vetores, acha o trecho certo em perguntas novas & Em parte & Acerto de 0,695 (cerca de 7 em 10). Com as palavras do documento, 0,882; com outras palavras, 0,419. A expansão por LLM leva a 0,887, mas é experimental e foi medida só em documentos públicos. \\
 (c) Conferir a fonte confirma que a resposta está certa & Não & A lei revogada é citada com página certa, e a conferência confirma o erro. O sistema também não liga cada frase à fonte que a sustenta. \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-A resposta à pergunta de pesquisa é, portanto, afirmativa para a primeira condição e parcial para as outras duas, na escala medida (de três a cinco documentos por acervo de teste, perguntas em português). Unidades em tabelas relacionais bastam para que a fonte possa ser conferida; não bastam, sozinhas, para que a resposta esteja certa e atual.
+A resposta à pergunta de pesquisa é, portanto, afirmativa para a primeira condição e parcial para as outras duas, na escala medida (de três a cinco documentos por acervo de teste, perguntas em português). É possível sustentar o sistema e a sua auditabilidade só com modelagem relacional, sem banco de vetores: a fonte pode ser conferida; isso não basta, sozinho, para que a resposta esteja certa e atual.
 
 \textbf{O que a garantia de origem cobre.} Com o documento inteiro, o modelo citou a página certa tantas vezes quanto com a busca (0,940). A diferença é que, com a busca, o leitor recebe uma página que vem do banco e não pode ter sido inventada pelo modelo. Essa garantia vem de guardar as unidades com origem, e não do BM25: uma coluna de vetores na mesma tabela daria a mesma garantia. Em outras palavras, a origem da fonte é um problema de armazenamento, e não de busca. Como a busca por palavras não teve diferença detectável da densa em C1 e um índice de vetores bem configurado foi estável na escala do ThingIndex, dispensar o banco de vetores fica como escolha de simplicidade, e não como vantagem de qualidade demonstrada. Os dados de C1, em que os dois tipos de busca erram por razões diferentes, indicam a busca híbrida dentro do próprio PostgreSQL como o próximo passo.
 
@@ -696,7 +696,7 @@ O ThingIndex foi projetado e desenvolvido pelo autor. Assistentes de IA generati
 Conforme orientação do colegiado, os anexos estão em PDF na pasta \texttt{anexos/} do repositório do projeto, \repositorio, com um índice em \texttt{anexos/README.md}:
 
 \begin{itemize}
-  \item A1 -- requisitos funcionais e não funcionais, com a rota da API de cada requisito;
+  \item A1 -- requisitos funcionais e não funcionais;
   \item A2 -- diagrama de casos de uso;
   \item A3 -- diagrama de sequência do envio de um documento e de uma pergunta;
   \item A4 -- recorte do esquema com o caminho da proveniência;
