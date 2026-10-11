@@ -140,7 +140,7 @@ def conferir_geracao(texto: str) -> int:
     }
     for braco in ("content", "content-summary", "content-questions", "max"):
         k, n = en[braco]["geral"]
-        esperados[f"enriquecimento {braco}"] = f"{k}/{n}"
+        esperados[f"enriquecimento {braco}"] = f"{k} de {n}"
 
     # Linhas inteiras das tabelas: um numero isolado pode reaparecer em outro
     # paragrafo e mascarar a troca; a linha da tabela, nao.
@@ -148,20 +148,24 @@ def conferir_geracao(texto: str) -> int:
         return " & ".join(celulas) + r" \\"
 
     t, f = g["T"], g["F"]
+    # Tabela de geracao: acerto e pagina citada, trechos (T) e PDF inteiro (F).
     for est, rot in (("prosa", "Prosa (30)"), ("tabela", "Tabela (21)"), ("calendario", "Calendário (16)")):
         esperados[f"tabela geracao {est}"] = linha(
-            f"{rot:<15}", _pct(t[est]["acerto"]), _pct(f[est]["acerto"]), _pct(t[est]["prov"]),
+            f"{rot:<15}", _pct(t[est]["acerto"]), _pct(f[est]["acerto"]),
             _pct(pg.taxa_estrato("generation-results-T-ordem.csv", est)),
-            _pct(pg.taxa_estrato("generation-results-F-document.csv", est)),
-            _milhar(t[est]["tokens"]), _milhar(f[est]["tokens"]))
+            _pct(pg.taxa_estrato("generation-results-F-document.csv", est)))
     esperados["tabela geracao todas"] = linha(
-        f"{'Todas (72)':<15}", _pct(t["todas"]["acerto"]), _pct(f["todas"]["acerto"]), _pct(t["todas"]["prov"]),
-        _pct(prov_t["prosa_com_folio"] / prov_t["respostas"]), _pct(prov_f["prosa_com_folio"] / prov_f["respostas"]),
-        _milhar(t["todas"]["tokens"]), _milhar(f["todas"]["tokens"]))
-    for nome, b in (("Sem expansão", c), ("Com expansão", e)):
-        esperados[f"tabela expansao {nome}"] = linha(
-            nome, _pct(taxa(b["variante"]["literal"])), _pct(taxa(b["variante"]["parafrase"])), _pct(taxa(b["total"])),
-            _pct(taxa(b["prov"])), _milhar(b["tokens"]), f"{b['sempre_certa']}/71")
+        f"{'Todas (72)':<15}", _pct(t["todas"]["acerto"]), _pct(f["todas"]["acerto"]),
+        _pct(prov_t["prosa_com_folio"] / prov_t["respostas"]), _pct(prov_f["prosa_com_folio"] / prov_f["respostas"]))
+    # Tabela da expansao, virada: cada linha compara sem e com expansao.
+    for rotulo, chave_c, chave_e in (
+            ("literal", taxa(c["variante"]["literal"]), taxa(e["variante"]["literal"])),
+            ("parafrase", taxa(c["variante"]["parafrase"]), taxa(e["variante"]["parafrase"])),
+            ("todas", taxa(c["total"]), taxa(e["total"])),
+            ("pagina", taxa(c["prov"]), taxa(e["prov"]))):
+        esperados[f"tabela expansao {rotulo}"] = f"& {_pct(chave_c)} & {_pct(chave_e)} \\\\"
+    esperados["tabela expansao tokens"] = f"& {_milhar(c['tokens'])} & {_milhar(e['tokens'])} \\\\"
+    esperados["tabela expansao perguntas"] = f"& {c['sempre_certa']} de 71 & {e['sempre_certa']} de 71 \\\\"
     temas = (("seguranca-trabalho", "Segurança do trabalho"), ("produto", "Produto e consumidor "), ("licitacoes", "Licitações           "))
     for tema, rot in temas:
         k, n = c["tema"][tema]
@@ -273,6 +277,7 @@ def main() -> int:
         ("nDCG@10 denso IVF, documento", 0.797, lambda: media(rows, "document", "C-denso-ivf", "ndcg_at_10")),
         ("P@1 relacional, documento", 0.750, lambda: media(rows, "document", "A-relacional", "p_at_1")),
         ("P@1 BM25, documento", 0.812, lambda: media(rows, "document", "B-bm25", "p_at_1")),
+        ("P@1 denso exato, documento", 0.688, lambda: media(rows, "document", "C-denso", "p_at_1")),
         ("P@1 relacional, secao", 0.562, lambda: media(rows, "section", "A-relacional", "p_at_1")),
         ("P@1 BM25, secao", 0.750, lambda: media(rows, "section", "B-bm25", "p_at_1")),
         ("R@5 relacional, secao", 0.719, lambda: media(rows, "section", "A-relacional", "r_at_5")),
@@ -323,7 +328,7 @@ def main() -> int:
     # O texto do artigo precisa mesmo conter os numeros conferidos, senao este
     # script estaria validando afirmacoes que ninguem faz.
     texto = ARTIGO.read_text(encoding="utf-8")
-    for trecho in ("86,9", "84,4", "56,2", "75,0", "85,7"):
+    for trecho in ("81,2", "68,8", "56,2", "75,0", "85,7"):
         if trecho not in texto:
             print(
                 f"FALHA  o artigo nao contem mais '{trecho}': a lista deste script esta desatualizada",
