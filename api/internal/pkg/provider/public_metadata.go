@@ -14,6 +14,13 @@ func PublicMetadata(family string, credentials map[string]string) map[string]str
 		if model := strings.TrimSpace(credentials["model"]); model != "" {
 			publicMetadata["model"] = model
 		}
+		// O preco informado pelo usuario nao e segredo: volta para o
+		// formulario mostrar os valores salvos ao editar o provedor.
+		for _, key := range LLMPricingCredentialKeys {
+			if value := strings.TrimSpace(credentials[key]); value != "" {
+				publicMetadata[key] = value
+			}
+		}
 	case domain.FamilyStorage:
 		if bucket := strings.TrimSpace(credentials["bucket_name"]); bucket != "" {
 			publicMetadata["bucket_name"] = bucket

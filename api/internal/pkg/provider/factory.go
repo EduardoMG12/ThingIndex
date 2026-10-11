@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -1364,6 +1365,8 @@ func waitForLLMInfraRetry(ctx context.Context) bool {
 	}
 }
 
+// llmPricingProfile define o preco usado para estimar custo: o informado nas
+// credenciais tem prioridade; senao, a tabela interna; senao, sem preco.
 func llmPricingProfile(providerType, model string, credentials map[string]string) (domain.LLMPricing, bool) {
 	if pricing, ok := pricingFromCredentials(credentials); ok {
 		return pricing, true
@@ -1393,33 +1396,63 @@ func llmPricingProfile(providerType, model string, credentials map[string]string
 			}, true
 		}
 	case domain.ProviderOpenRouter, domain.ProviderOllama:
+		// Sem tabela interna: so ha custo quando o usuario informa o preco.
 		return domain.LLMPricing{}, false
 	}
 
 	return domain.LLMPricing{}, false
 }
 
+// Chaves das credenciais em que o usuario informa o preco do modelo
+// (US$ por 1 milhao de tokens). Nao sao segredo: aparecem no public_metadata
+// para o formulario mostrar os valores salvos ao editar o provedor.
+const (
+	CredentialInputCostPerMillionUSD  = "input_cost_per_million_usd"
+	CredentialOutputCostPerMillionUSD = "output_cost_per_million_usd"
+)
+
+// LLMPricingCredentialKeys lista as chaves de preco aceitas nas credenciais.
+var LLMPricingCredentialKeys = []string{CredentialInputCostPerMillionUSD, CredentialOutputCostPerMillionUSD}
+
+// pricingFromCredentials le o preco informado pelo usuario. Basta um dos dois
+// valores para valer; o que ficar em branco conta como zero. Valor invalido
+// descarta o preco informado (a validacao do cadastro ja barra esse caso).
 func pricingFromCredentials(credentials map[string]string) (domain.LLMPricing, bool) {
-	input, inputOk := parsePricingValue(credentials["input_cost_per_million_usd"])
-	output, outputOk := parsePricingValue(credentials["output_cost_per_million_usd"])
-	if !inputOk || !outputOk {
+	rawInput := strings.TrimSpace(credentials[CredentialInputCostPerMillionUSD])
+	rawOutput := strings.TrimSpace(credentials[CredentialOutputCostPerMillionUSD])
+	if rawInput == "" && rawOutput == "" {
 		return domain.LLMPricing{}, false
 	}
 
-	return domain.LLMPricing{
-		InputCostPerMillionUSD:  input,
-		OutputCostPerMillionUSD: output,
-	}, true
+	var pricing domain.LLMPricing
+	if rawInput != "" {
+		input, ok := ParsePricingValue(rawInput)
+		if !ok {
+			return domain.LLMPricing{}, false
+		}
+		pricing.InputCostPerMillionUSD = input
+	}
+	if rawOutput != "" {
+		output, ok := ParsePricingValue(rawOutput)
+		if !ok {
+			return domain.LLMPricing{}, false
+		}
+		pricing.OutputCostPerMillionUSD = output
+	}
+
+	return pricing, true
 }
 
-func parsePricingValue(value string) (float64, bool) {
-	trimmed := strings.TrimSpace(value)
+// ParsePricingValue converte o preco digitado (ponto ou virgula decimal) em
+// numero. Vazio, negativo, NaN ou infinito sao rejeitados.
+func ParsePricingValue(value string) (float64, bool) {
+	trimmed := strings.ReplaceAll(strings.TrimSpace(value), ",", ".")
 	if trimmed == "" {
 		return 0, false
 	}
 
 	parsed, err := strconv.ParseFloat(trimmed, 64)
-	if err != nil || parsed < 0 {
+	if err != nil || parsed < 0 || math.IsNaN(parsed) || math.IsInf(parsed, 0) {
 		return 0, false
 	}
 

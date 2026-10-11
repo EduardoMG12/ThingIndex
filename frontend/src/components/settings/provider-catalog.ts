@@ -11,9 +11,21 @@ export type ProviderField = {
     placeholder: string;
     type?: "text" | "password" | "textarea";
     optional?: boolean;
-    kind?: "text" | "model";
+    kind?: "text" | "model" | "price";
     suggestions?: string[];
 };
+
+/**
+ * Preco opcional do modelo (US$ por 1 milhao de tokens). Vai nas credenciais
+ * do provedor e o backend usa para estimar o custo das respostas e da
+ * indexacao; sem ele, o custo aparece como indisponivel.
+ */
+export const LLM_PRICING_FIELD_KEYS = ["input_cost_per_million_usd", "output_cost_per_million_usd"] as const;
+
+const llmPricingFields: ProviderField[] = [
+    { key: "input_cost_per_million_usd", label: "Price per 1M input tokens (USD)", placeholder: "0.15", optional: true, kind: "price" },
+    { key: "output_cost_per_million_usd", label: "Price per 1M output tokens (USD)", placeholder: "0.60", optional: true, kind: "price" },
+];
 
 const openAIModelSuggestions = [
     "gpt-4o-mini",
@@ -302,6 +314,8 @@ const LOCALIZED_FIELD_LABELS: Record<AppLocale, Partial<Record<string, string>>>
         emulator_host: "Host do emulador",
         api_key: "API key",
         model: "Modelo",
+        input_cost_per_million_usd: "Preço por 1 milhão de tokens de entrada (US$)",
+        output_cost_per_million_usd: "Preço por 1 milhão de tokens de saída (US$)",
     },
     en: {
         access_key: "Access key",
@@ -316,6 +330,8 @@ const LOCALIZED_FIELD_LABELS: Record<AppLocale, Partial<Record<string, string>>>
         emulator_host: "Emulator host",
         api_key: "API key",
         model: "Model",
+        input_cost_per_million_usd: "Price per 1 million input tokens (US$)",
+        output_cost_per_million_usd: "Price per 1 million output tokens (US$)",
     },
     es: {
         access_key: "Clave de acceso",
@@ -330,6 +346,8 @@ const LOCALIZED_FIELD_LABELS: Record<AppLocale, Partial<Record<string, string>>>
         emulator_host: "Host del emulador",
         api_key: "API key",
         model: "Modelo",
+        input_cost_per_million_usd: "Precio por 1 millón de tokens de entrada (US$)",
+        output_cost_per_million_usd: "Precio por 1 millón de tokens de salida (US$)",
     },
 };
 
@@ -510,6 +528,7 @@ export const PROVIDERS: ProviderDefinition[] = [
             { key: "api_key", label: "API key", placeholder: "sk-...", type: "password" },
             { key: "model", label: "Model", placeholder: "gpt-4o-mini", optional: true, kind: "model", suggestions: openAIModelSuggestions },
             { key: "base_url", label: "Base URL", placeholder: "https://api.openai.com/v1", optional: true },
+            ...llmPricingFields,
         ],
     }),
     withBranding({
@@ -522,6 +541,7 @@ export const PROVIDERS: ProviderDefinition[] = [
             { key: "api_key", label: "API key", placeholder: "Gemini API key", type: "password" },
             { key: "model", label: "Model", placeholder: "gemini-2.5-flash", kind: "model", suggestions: geminiModelSuggestions },
             { key: "base_url", label: "Base URL", placeholder: "OpenAI-compatible endpoint" },
+            ...llmPricingFields,
         ],
     }),
     withBranding({
@@ -534,6 +554,7 @@ export const PROVIDERS: ProviderDefinition[] = [
             { key: "api_key", label: "API key", placeholder: "DeepSeek API key", type: "password" },
             { key: "model", label: "Model", placeholder: "deepseek-chat", optional: true, kind: "model", suggestions: deepSeekModelSuggestions },
             { key: "base_url", label: "Base URL", placeholder: "https://api.deepseek.com", optional: true },
+            ...llmPricingFields,
         ],
     }),
     withBranding({
@@ -546,6 +567,7 @@ export const PROVIDERS: ProviderDefinition[] = [
             { key: "api_key", label: "API key", placeholder: "xAI API key", type: "password" },
             { key: "model", label: "Model", placeholder: "grok-2-latest", optional: true, kind: "model", suggestions: grokModelSuggestions },
             { key: "base_url", label: "Base URL", placeholder: "https://api.x.ai/v1", optional: true },
+            ...llmPricingFields,
         ],
     }),
     withBranding({
@@ -558,6 +580,7 @@ export const PROVIDERS: ProviderDefinition[] = [
             { key: "api_key", label: "API key", placeholder: "Anthropic API key", type: "password" },
             { key: "model", label: "Model", placeholder: "claude-3-5-sonnet", kind: "model", suggestions: claudeModelSuggestions },
             { key: "base_url", label: "Base URL", placeholder: "OpenAI-compatible endpoint" },
+            ...llmPricingFields,
         ],
     }),
     withBranding({
@@ -570,6 +593,7 @@ export const PROVIDERS: ProviderDefinition[] = [
             { key: "api_key", label: "API key", placeholder: "Required for Ollama Cloud", type: "password", optional: true },
             { key: "model", label: "Model", placeholder: "deepseek-v3.1:671b", kind: "model", suggestions: ollamaModelSuggestions },
             { key: "base_url", label: "Base URL", placeholder: `${OLLAMA_CLOUD_BASE_URL} or http://host.docker.internal:11434/v1`, optional: true },
+            ...llmPricingFields,
         ],
     }),
     withBranding({
@@ -582,6 +606,7 @@ export const PROVIDERS: ProviderDefinition[] = [
             { key: "api_key", label: "API key", placeholder: "OpenRouter API key", type: "password" },
             { key: "model", label: "Model", placeholder: "openai/gpt-4o-mini", kind: "model", suggestions: openRouterModelSuggestions },
             { key: "base_url", label: "Base URL", placeholder: "https://openrouter.ai/api/v1", optional: true },
+            ...llmPricingFields,
         ],
     }),
 ];
