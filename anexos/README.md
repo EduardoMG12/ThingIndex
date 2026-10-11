@@ -11,8 +11,8 @@ Campus Palmas).
 | A4 | [A4-esquema-proveniencia.pdf](A4-esquema-proveniencia.pdf) | Recorte do esquema do banco com o caminho da proveniência |
 | A5 | [A5-fluxo-de-recuperacao.pdf](A5-fluxo-de-recuperacao.pdf) | Fluxo de recuperação de contexto |
 | A6 | [A6-telas-do-prototipo.pdf](A6-telas-do-prototipo.pdf) | Telas do protótipo: *workspace* de uma coleção e tela de operações |
-| A7 | [A7-tabelas-completas-de-recuperacao.pdf](A7-tabelas-completas-de-recuperacao.pdf) | Tabelas completas dos experimentos de recuperação |
-| A8 | [A8-alteracoes-pos-medicao.pdf](A8-alteracoes-pos-medicao.pdf) | Alterações de gabarito ou de critério feitas depois de medir |
+| A7 | [A7-tabelas-completas-de-recuperacao.pdf](A7-tabelas-completas-de-recuperacao.pdf) | Tabelas completas dos experimentos de recuperação, com guia de leitura e o que cada tabela mostra |
+| A8 | [A8-alteracoes-pos-medicao.pdf](A8-alteracoes-pos-medicao.pdf) | Alterações de gabarito ou de critério feitas depois de medir, com motivo e efeito nos números |
 | A9 | [A9-esquema-do-banco.pdf](A9-esquema-do-banco.pdf) | Diagrama entidade-relacionamento das 25 tabelas do banco |
 
 ## Dados e código

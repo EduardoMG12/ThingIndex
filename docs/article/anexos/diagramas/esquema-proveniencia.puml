@@ -2,7 +2,7 @@
 ' GERADO por scripts/gera-esquema-proveniencia.py a partir do DBML. Nao edite a mao.
 !include estilo.iuml
 skinparam defaultFontSize 13
-skinparam linetype ortho
+skinparam linetype polyline
 hide circle
 package "Núcleo" {
 entity "users" as users {
@@ -68,26 +68,6 @@ entity "metadata_pairs" as metadata_pairs {
   {field} value : text
 }
 }
-package "Fora do caminho da proveniência (16 tabelas, Anexo A9)" as infra {
-entity "demais tabelas" as outras {
-  chat_conversation_entries
-  chat_conversations
-  document_audit_events
-  document_categories
-  document_processing_attempts
-  enrichment_cache_entries
-  model_price_histories
-  model_prices
-  outbox_events
-  paragraph_highlights
-  pricing_sources
-  provider_audit_events
-  provider_model_catalogs
-  user_indexing_preferences
-  user_provider_configs
-  workspace_view_states
-}
-}
 documents ||--o{ document_chunks
 documents ||--o{ document_outline_nodes
 document_outline_nodes ||--o{ document_outline_nodes
@@ -98,5 +78,7 @@ documents ||--o{ paragraph_nodes
 documents ||--o{ table_sections
 users ||.right.o{ collections
 users ||.right.o{ documents
-metadata_pairs -[hidden]right- outras
+document_pages -[hidden]down- document_outline_nodes
+paragraph_nodes -[hidden]down- document_chunks
+table_sections -[hidden]down- metadata_pairs
 @enduml
