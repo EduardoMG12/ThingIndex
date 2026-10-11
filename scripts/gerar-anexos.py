@@ -694,8 +694,8 @@ def a7_corpo() -> str:
              + "</div>"
              f"<p>O BM25 acertou {pct(doc[B][0])} entre os textos inteiros, e a busca por "
              f"significado, {pct(doc[C][0])}. São duas perguntas de diferença em 16, pouco para "
-             "afirmar que um é melhor (ver a seção 3), mas o suficiente para mostrar que a busca "
-             "por palavras não ficou atrás. Entre as seções, o BM25 acertou "
+             "afirmar que um é melhor (ver a seção 3): neste teste, as duas buscas ficaram "
+             "próximas. Entre as seções, o BM25 acertou "
              f"{pct(sec[B][0])} e a contagem de palavras, {pct(sec[A][0])}. Como o sistema devolve "
              "trechos, e não documentos inteiros, foi esse resultado que levou à troca da contagem "
              "pelo BM25, usado em todos os experimentos seguintes.</p>")
@@ -760,8 +760,8 @@ def a7_corpo() -> str:
              "que vêm do documento inteiro (100%).</p>")
 
     c.append("<h2>O que o teste decidiu</h2>"
-             "<p>O teste mostrou que a busca por palavras não fica atrás da busca por significado "
-             "e levou à troca da contagem de palavras pelo BM25. Também apontou o ponto fraco da "
+             "<p>O teste não encontrou diferença confirmável entre a busca por palavras e a busca "
+             "por significado e levou à troca da contagem de palavras pelo BM25. Também apontou o ponto fraco da "
              "busca por palavras, a pergunta escrita com outras palavras, que motivou a expansão da "
              "pergunta. E encontrou a falta da página na tabela de trechos, corrigida antes dos "
              "experimentos com PDFs reais.</p>")

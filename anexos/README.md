@@ -10,7 +10,7 @@ Campus Palmas).
 | A3 | [A3-sequencia-envio-e-pergunta.pdf](A3-sequencia-envio-e-pergunta.pdf) | Diagrama de sequência do envio de um documento e de uma pergunta à coleção |
 | A4 | [A4-esquema-proveniencia.pdf](A4-esquema-proveniencia.pdf) | Recorte do esquema do banco com o caminho da proveniência |
 | A5 | [A5-fluxo-de-recuperacao.pdf](A5-fluxo-de-recuperacao.pdf) | Fluxo de recuperação de contexto |
-| A6 | [A6-telas-do-prototipo.pdf](A6-telas-do-prototipo.pdf) | Telas do protótipo: *workspace* de uma coleção e tela de operações |
+| A6 | [A6-telas-do-prototipo.pdf](A6-telas-do-prototipo.pdf) | As 17 telas do sistema, na ordem de uso: login, cadastro, página inicial, área de trabalho (documentos, chat e PDFs), operações, auditoria, custos, configurações, documentação e perfil |
 | A7 | [A7-tabelas-completas-de-recuperacao.pdf](A7-tabelas-completas-de-recuperacao.pdf) | Resultados do teste de busca: por que o teste foi feito, o que cada análise respondeu e o que ela decidiu no projeto; ao final, a tabela completa de medidas com intervalos de confiança e os índices do pgvector |
 | A8 | [A8-alteracoes-pos-medicao.pdf](A8-alteracoes-pos-medicao.pdf) | Correções feitas depois de medir: uma tabela com o que mudou, por quê e o número antes e depois, em porcentagem |
 | A9 | [A9-esquema-do-banco.pdf](A9-esquema-do-banco.pdf) | Diagrama entidade-relacionamento das 25 tabelas do banco |
