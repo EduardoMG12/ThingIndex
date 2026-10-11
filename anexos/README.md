@@ -11,15 +11,15 @@ Campus Palmas).
 | A4 | [A4-esquema-proveniencia.pdf](A4-esquema-proveniencia.pdf) | Recorte do esquema do banco com o caminho da proveniência |
 | A5 | [A5-fluxo-de-recuperacao.pdf](A5-fluxo-de-recuperacao.pdf) | Fluxo de recuperação de contexto |
 | A6 | [A6-telas-do-prototipo.pdf](A6-telas-do-prototipo.pdf) | Telas do protótipo: *workspace* de uma coleção e tela de operações |
-| A7 | [A7-tabelas-completas-de-recuperacao.pdf](A7-tabelas-completas-de-recuperacao.pdf) | Tabelas completas dos experimentos de recuperação, com guia de leitura e o que cada tabela mostra |
-| A8 | [A8-alteracoes-pos-medicao.pdf](A8-alteracoes-pos-medicao.pdf) | Alterações de gabarito ou de critério feitas depois de medir, com motivo e efeito nos números |
+| A7 | [A7-tabelas-completas-de-recuperacao.pdf](A7-tabelas-completas-de-recuperacao.pdf) | Resultados do teste de busca em linguagem simples, com os números em porcentagem (o que foi testado, resultado principal, perguntas com outras palavras, diferença real ou sorte, perguntas sem resposta, estabilidade, origem das fontes) e, ao final, os detalhes completos de todas as tabelas |
+| A8 | [A8-alteracoes-pos-medicao.pdf](A8-alteracoes-pos-medicao.pdf) | Correções feitas depois de medir: uma tabela com o que mudou, por quê e o número antes e depois, em porcentagem |
 | A9 | [A9-esquema-do-banco.pdf](A9-esquema-do-banco.pdf) | Diagrama entidade-relacionamento das 25 tabelas do banco |
 
 ## Dados e código
 
 - [`docs/article/results/`](../docs/article/results/): resultados brutos, uma linha por pergunta e repetição.
-- [`docs/article/tables/`](../docs/article/tables/): tabelas LaTeX geradas dos resultados (fonte do Anexo A7).
-- [`docs/article/results/alteracoes-pos-medicao.md`](../docs/article/results/alteracoes-pos-medicao.md): registro original do Anexo A8.
+- [`docs/article/tables/`](../docs/article/tables/): tabelas LaTeX geradas dos resultados (fonte do Anexo A7; o script confere que todo número delas, convertido para porcentagem ou nota de 0 a 100, aparece no PDF).
+- [`docs/article/results/alteracoes-pos-medicao.md`](../docs/article/results/alteracoes-pos-medicao.md): registro original do Anexo A8 (o script confere que todo número do A8 existe nele).
 - [`docs/prds/pre-registro-expansao-consulta.md`](../docs/prds/pre-registro-expansao-consulta.md): pré-registro do experimento de expansão de consulta.
 - [`docs/prds/pre-registro-perguntas-geradas.md`](../docs/prds/pre-registro-perguntas-geradas.md): pré-registro do experimento de perguntas geradas.
 - [`docs/schema/thingindex.dbml`](../docs/schema/thingindex.dbml): esquema do banco em DBML (fonte do Anexo A9).

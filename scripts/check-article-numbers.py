@@ -68,6 +68,14 @@ def _br(valor: float, casas: int = 3) -> str:
     return f"{valor:.{casas}f}".replace(".", ",")
 
 
+def _pct(valor: float) -> str:
+    """Proporcao como o artigo a publica: em porcentagem, com uma casa.
+    Parte do valor ja arredondado em 3 casas (_br), para que 0,8125 vire 81,2
+    exatamente como no texto, e nao 81,3 por arredondamento binario."""
+    milesimos = round(float(_br(valor).replace(",", ".")) * 1000)
+    return f"{milesimos / 10:.1f}".replace(".", ",")
+
+
 def _milhar(valor: float) -> str:
     return f"{round(valor):,}".replace(",", ".")
 
@@ -105,20 +113,20 @@ def conferir_geracao(texto: str) -> int:
         # Cada numero ancorado na frase em que aparece: um valor solto casaria
         # com qualquer outra ocorrencia (a banca mostrou que 0,685 -> 0,686
         # passava).
-        "acerto da bateria (resumo)": f"a taxa de acerto foi de {_br(taxa(c['total']))} com a pergunta original e de {_br(taxa(e['total']))} com expans",
-        "acerto da bateria (secao)": f"a taxa de acerto foi de {_br(taxa(c['total']))}, com os tr",
-        "acerto da bateria (conclusao)": f"a taxa de acerto foi de {_br(taxa(c['total']))} com a pergunta original. As par",
-        "acerto E (conclusao)": f"elevou o acerto a {_br(taxa(e['total']))}, em configura",
-        "faixa dos acervos": f"entre {_br(min(taxa(c['tema'][t]) for t in c['tema']))} e {_br(max(taxa(c['tema'][t]) for t in c['tema']))} e intervalos",
-        "literal x parafrase C": f"o acerto foi {_br(taxa(c['variante']['literal']))} nas literais e {_br(taxa(c['variante']['parafrase']))} nas par",
-        "literal x parafrase C (discussao)": f"as paráfrases acertaram {_br(taxa(c['variante']['parafrase']))} contra {_br(taxa(c['variante']['literal']))} das literais",
-        "lacuna literal-parafrase": f"cai de {_br(taxa(c['variante']['literal']) - taxa(c['variante']['parafrase']))} para {_br(taxa(e['variante']['literal']) - taxa(e['variante']['parafrase']))}",
-        "lacuna E (discussao)": f"distância a {_br(taxa(e['variante']['literal']) - taxa(e['variante']['parafrase']))}",
-        "proveniencia C": _br(taxa(c["prov"])),
-        "literal E": _br(taxa(e["variante"]["literal"])),
-        "parafrase E": _br(taxa(e["variante"]["parafrase"])),
-        "acerto E": _br(taxa(e["total"])),
-        "proveniencia E": _br(taxa(e["prov"])),
+        "acerto da bateria (resumo)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\% com a pergunta original e de {_pct(taxa(e['total']))}\\% com expans",
+        "acerto da bateria (secao)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\%, com os tr",
+        "acerto da bateria (conclusao)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\% com a pergunta original. As par",
+        "acerto E (conclusao)": f"elevou o acerto a {_pct(taxa(e['total']))}\\%, em configura",
+        "faixa dos acervos": f"entre {_pct(min(taxa(c['tema'][t]) for t in c['tema']))}\\% e {_pct(max(taxa(c['tema'][t]) for t in c['tema']))}\\% e intervalos",
+        "literal x parafrase C": f"o acerto foi {_pct(taxa(c['variante']['literal']))}\\% nas literais e {_pct(taxa(c['variante']['parafrase']))}\\% nas par",
+        "literal x parafrase C (discussao)": f"as paráfrases acertaram {_pct(taxa(c['variante']['parafrase']))}\\% contra {_pct(taxa(c['variante']['literal']))}\\% das literais",
+        "lacuna literal-parafrase": f"cai de {_pct(taxa(c['variante']['literal']) - taxa(c['variante']['parafrase']))} para {_pct(taxa(e['variante']['literal']) - taxa(e['variante']['parafrase']))} pontos percentuais",
+        "lacuna E (discussao)": f"distância a {_pct(taxa(e['variante']['literal']) - taxa(e['variante']['parafrase']))} pontos percentuais",
+        "proveniencia C": _pct(taxa(c["prov"])),
+        "literal E": _pct(taxa(e["variante"]["literal"])),
+        "parafrase E": _pct(taxa(e["variante"]["parafrase"])),
+        "acerto E": _pct(taxa(e["total"])),
+        "proveniencia E": _pct(taxa(e["prov"])),
         "tokens C": _milhar(c["tokens"]),
         "tokens E": _milhar(e["tokens"]),
         "sempre certa": f"{c['sempre_certa']} das 71 acertaram nas tr",
@@ -142,32 +150,32 @@ def conferir_geracao(texto: str) -> int:
     t, f = g["T"], g["F"]
     for est, rot in (("prosa", "Prosa (30)"), ("tabela", "Tabela (21)"), ("calendario", "Calendário (16)")):
         esperados[f"tabela geracao {est}"] = linha(
-            f"{rot:<15}", _br(t[est]["acerto"]), _br(f[est]["acerto"]), _br(t[est]["prov"]),
-            _br(pg.taxa_estrato("generation-results-T-ordem.csv", est)),
-            _br(pg.taxa_estrato("generation-results-F-document.csv", est)),
+            f"{rot:<15}", _pct(t[est]["acerto"]), _pct(f[est]["acerto"]), _pct(t[est]["prov"]),
+            _pct(pg.taxa_estrato("generation-results-T-ordem.csv", est)),
+            _pct(pg.taxa_estrato("generation-results-F-document.csv", est)),
             _milhar(t[est]["tokens"]), _milhar(f[est]["tokens"]))
     esperados["tabela geracao todas"] = linha(
-        f"{'Todas (72)':<15}", _br(t["todas"]["acerto"]), _br(f["todas"]["acerto"]), _br(t["todas"]["prov"]),
-        _br(prov_t["prosa_com_folio"] / prov_t["respostas"]), _br(prov_f["prosa_com_folio"] / prov_f["respostas"]),
+        f"{'Todas (72)':<15}", _pct(t["todas"]["acerto"]), _pct(f["todas"]["acerto"]), _pct(t["todas"]["prov"]),
+        _pct(prov_t["prosa_com_folio"] / prov_t["respostas"]), _pct(prov_f["prosa_com_folio"] / prov_f["respostas"]),
         _milhar(t["todas"]["tokens"]), _milhar(f["todas"]["tokens"]))
     for nome, b in (("Sem expansão", c), ("Com expansão", e)):
         esperados[f"tabela expansao {nome}"] = linha(
-            nome, _br(taxa(b["variante"]["literal"])), _br(taxa(b["variante"]["parafrase"])), _br(taxa(b["total"])),
-            _br(taxa(b["prov"])), _milhar(b["tokens"]), f"{b['sempre_certa']}/71")
+            nome, _pct(taxa(b["variante"]["literal"])), _pct(taxa(b["variante"]["parafrase"])), _pct(taxa(b["total"])),
+            _pct(taxa(b["prov"])), _milhar(b["tokens"]), f"{b['sempre_certa']}/71")
     temas = (("seguranca-trabalho", "Segurança do trabalho"), ("produto", "Produto e consumidor "), ("licitacoes", "Licitações           "))
     for tema, rot in temas:
         k, n = c["tema"][tema]
         lo, hi = ng.ic_conglomerado("off", (tema,))
         certas = sum(all(v) for q, v in ng.por_pergunta("off", (tema,)).items())
         total_q = len(ng.por_pergunta("off", (tema,)))
-        esperados[f"tabela bateria {tema}"] = linha(rot, str(n), _br(k / n), f"{_br(lo)}--{_br(hi)}", f"{certas}/{total_q}")
+        esperados[f"tabela bateria {tema}"] = linha(rot, str(n), _pct(k / n), f"{_pct(lo)}--{_pct(hi)}", f"{certas}/{total_q}")
     esperados["tabela bateria total"] = linha(
-        f"{'Total':<21}", str(c["total"][1]), _br(taxa(c["total"])), f"{_br(ic_c[0])}--{_br(ic_c[1])}", f"{c['sempre_certa']}/71")
-    esperados["ic E (texto)"] = f"intervalo de {_br(ic_e[0])} a {_br(ic_e[1])}, contra {_br(ic_c[0])} a {_br(ic_c[1])} sem ela"
+        f"{'Total':<21}", str(c["total"][1]), _pct(taxa(c["total"])), f"{_pct(ic_c[0])}--{_pct(ic_c[1])}", f"{c['sempre_certa']}/71")
+    esperados["ic E (texto)"] = f"intervalo de {_pct(ic_e[0])}\\% a {_pct(ic_e[1])}\\%, contra {_pct(ic_c[0])}\\% a {_pct(ic_c[1])}\\% sem ela"
     for forma, rot in (("negativa", "Negativa      "), ("existencia", "Existência    "), ("confirmacao", "Confirmação   "),
                        ("aberta", "Aberta        "), ("premissa-falsa", "Premissa falsa")):
         k, n = c["forma"][forma]
-        esperados[f"tabela forma {forma}"] = linha(f"{rot:<14}", f"{k}/{n}", _br(k / n))
+        esperados[f"tabela forma {forma}"] = linha(f"{rot:<14}", f"{k}/{n}", _pct(k / n))
     # O teste de redacao com o gabarito original, citado no texto e na
     # Tabela de alteracoes.
     antigo = redacao_com_gabarito_original()
@@ -234,7 +242,7 @@ def gpt_oss_sem_falhas() -> str:
     base = [r for r in csv.DictReader(open(res / "generation-results-F-document.csv", encoding="utf-8"))
             if r["question_id"] in ids]
     kb = sum(r["correct"] == "true" for r in base)
-    return (f"{_br(k / len(validas))} contra {_br(kb / len(base))} do modelo principal nas mesmas "
+    return (f"{_pct(k / len(validas))}\\% contra {_pct(kb / len(base))}\\% do modelo principal nas mesmas "
             f"{len(ids)} perguntas, descontadas {len(falha)} falhas")
 
 
@@ -315,7 +323,7 @@ def main() -> int:
     # O texto do artigo precisa mesmo conter os numeros conferidos, senao este
     # script estaria validando afirmacoes que ninguem faz.
     texto = ARTIGO.read_text(encoding="utf-8")
-    for trecho in ("0,869", "0,844", "0,562", "0,750", "0,857"):
+    for trecho in ("86,9", "84,4", "56,2", "75,0", "85,7"):
         if trecho not in texto:
             print(
                 f"FALHA  o artigo nao contem mais '{trecho}': a lista deste script esta desatualizada",
