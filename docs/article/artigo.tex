@@ -185,17 +185,27 @@ Esta seção apresenta só os conceitos de que o restante do texto depende. A Ta
 Termo & Significado \\
 \midrule
 LLM & Modelo de linguagem de grande escala: lê um texto de entrada (o \emph{prompt}) e escreve a resposta. \\
+\cmidrule(lr){1-2}
 \emph{Token} & Pedaço de palavra que o LLM processa. O custo de uma chamada cresce com os \emph{tokens} enviados, e cada modelo aceita um máximo deles (a \emph{janela}). \\
+\cmidrule(lr){1-2}
 RAG & Geração aumentada por recuperação: buscar trechos nos documentos e entregá-los ao LLM junto com a pergunta. \\
+\cmidrule(lr){1-2}
 Busca lexical & Busca por palavras: um trecho é bom se contém as palavras da pergunta. O BM25 é o algoritmo usado. \\
+\cmidrule(lr){1-2}
 Busca densa & Busca por significado: pergunta e trecho viram listas de números (vetores), e trechos de sentido parecido ficam próximos. \\
+\cmidrule(lr){1-2}
 Índice aproximado & Estrutura que acelera a busca densa olhando só parte dos vetores, ao custo de às vezes perder o mais próximo. \\
-Revocação & Fração dos itens relevantes que a busca encontrou. R@5: fração encontrada entre os 5 primeiros resultados. \\
+\cmidrule(lr){1-2}
 Unidade, trecho & Unidade é cada parte do PDF guardada numa linha de tabela (página, parágrafo, linha de tabela, seção). Trecho é um grupo de parágrafos de uma seção, citado como fonte. \\
+\cmidrule(lr){1-2}
 Braço & Cada configuração comparada num experimento (por exemplo, BM25 contra busca densa). \\
+\cmidrule(lr){1-2}
 Gabarito & Lista de perguntas, cada uma com a página onde está a resposta e o padrão que uma resposta certa precisa conter. \\
+\cmidrule(lr){1-2}
 Literal e paráfrase & As duas redações de uma pergunta: com as palavras do documento e com as palavras de quem não leu o documento. \\
+\cmidrule(lr){1-2}
 Por resposta e por pergunta & Cada pergunta foi feita três vezes. ``Por resposta'' conta cada uma das três; ``por pergunta'' só conta acerto quando as três acertam. \\
+\cmidrule(lr){1-2}
 Página exibida e citada & Exibida: a página certa está entre as fontes que a tela mostra (vem do banco). Citada: a página certa está escrita no texto da resposta (vem do modelo). \\
 \bottomrule
 \end{tabular}
@@ -249,9 +259,13 @@ A Tabela~\ref{tab:relacionados} compara o ThingIndex com os trabalhos mais próx
 Trabalho & Como escolhe as fontes & Origem da fonte \\
 \midrule
 LangChain \cite{langchain2022} e bibliotecas semelhantes & O desenvolvedor escolhe o corte em blocos e o buscador & Os metadados que o desenvolvedor anexar ao bloco \\
+\cmidrule(lr){1-3}
 GraphRAG \cite{edge2024graphrag} & Grafo de entidades e resumos construídos por LLM & Resumos gerados, e não o texto original \\
+\cmidrule(lr){1-3}
 PageIndex \cite{pageindex2025} & O LLM navega a árvore de seções do PDF & A seção escolhida pelo modelo; sem avaliação publicada \\
+\cmidrule(lr){1-3}
 Assistentes comerciais & Fechado & Referência ao documento, sem garantia que se possa inspecionar \\
+\cmidrule(lr){1-3}
 ThingIndex & BM25 sobre unidades guardadas em tabelas. Nenhum modelo escolhe as fontes; com a expansão ligada, o LLM só sugere palavras de busca & Documento ligado por chave estrangeira; página e região gravadas na indexação e lidas do banco \\
 \bottomrule
 \end{tabular}
@@ -365,7 +379,7 @@ A avaliação responde a três perguntas, nesta ordem: a busca por palavras é c
 \toprule
 Acervo & Documentos & Perguntas & Rep. & Seção \\
 \midrule
-C1, recuperação & 5 textos sintéticos escritos pelo autor, de 111 a 166 palavras (jurídico, contratual, normativo) & 18 & -- & \ref{sec:res-recuperacao} \\
+C1, recuperação & 5 textos fictícios elaborados para o teste, de 111 a 166 palavras (jurídico, licitação, contratual, normativo e operacional) & 18 & -- & \ref{sec:res-recuperacao} \\
 Ensino & 10 PDFs institucionais do IFPR & 72 & 3 & \ref{sec:res-geracao} \\
 Legislação & Leis 8.666/1993 e 14.133/2021 & 19 & 1 & \ref{sec:res-legislacao} \\
 Segurança do trabalho & 5 Normas Regulamentadoras, NR-1 em duas redações & 23 & 3 & \ref{sec:res-bateria} \\
@@ -380,7 +394,7 @@ Edital municipal & 1 edital de concurso, 52 páginas & 18 & 1 & \ref{sec:res-pre
 
 \textbf{Acerto e origem.} Uma resposta é \emph{correta} quando satisfaz o gabarito; nas perguntas \emph{negativas}, que não têm resposta no acervo, quando declara que a informação não consta. Salvo indicação, a taxa de acerto é \emph{por resposta}, e os testes estatísticos usam o acerto \emph{por pergunta} (Tabela~\ref{tab:glossario}). A origem é medida de dois modos: a \emph{página exibida}, que só existe quando há busca, e a \emph{página citada}, que vale para qualquer braço e por isso permite comparar a busca com a entrega do documento inteiro. Nenhuma das duas confere se o trecho sustenta a frase da resposta.
 
-\textbf{Métricas de busca.} Em C1, cada consulta tem documentos relevantes conhecidos, e cada braço devolve uma lista ordenada. A \emph{P@1} é a fração de consultas em que o primeiro item da lista é relevante. O \emph{MRR} dá nota 1 quando o primeiro relevante está em 1.º lugar, 1/2 quando está em 2.º, 1/3 em 3.º, e tira a média. O \emph{nDCG@10} também premia o relevante perto do topo, descontando-o pela posição entre os 10 primeiros~\cite{jarvelin2002cumulated}. Neste artigo, as três são dadas de 0 a 100 (como porcentagem), e maior é melhor.
+\textbf{Métrica de busca.} Em C1, cada consulta tem o texto certo conhecido, e cada método devolve uma lista ordenada. O artigo usa a medida mais simples: a porcentagem de consultas em que o primeiro resultado da lista era o certo (na literatura, P@1). As demais medidas da área estão no Anexo~A7.
 
 \textbf{Métricas de origem no índice.} A \emph{taxa de proveniência completa} (TPC) é a fração de unidades indexadas cuja origem está inteira no banco: documento, página, posição e conteúdo. A \emph{taxa de citação verificável} (TCV) é a fração de trechos citados que existem, letra por letra, na fonte apontada.
 
@@ -397,33 +411,33 @@ Edital municipal & 1 edital de concurso, 52 páginas & 18 & 1 & \ref{sec:res-pre
 \subsection{Busca por palavras contra busca densa}
 \label{sec:res-recuperacao}
 
-C1 é um \emph{corpus} de controle: cinco textos curtos escritos pelo autor, com 18 consultas, das quais 16 têm resposta e duas não. As consultas são de três tipos: literais (palavras tiradas do documento), paráfrases (a mesma necessidade com outras palavras) e ruidosas (com erros de digitação e sem acentos). Seis braços foram comparados nas mesmas consultas: \textbf{A}, o pontuador anterior do sistema, que só contava ocorrências; \textbf{B}, BM25; \textbf{C}, busca densa exata; \textbf{C$'$}, os mesmos vetores num índice aproximado; \textbf{D}, fusão de A e B; e \textbf{E}, fusão de B e C. Mediu-se em duas unidades: o documento inteiro (5 candidatos) e a seção (19 candidatos, só nos braços lexicais, porque os vetores foram calculados por documento). A Tabela~\ref{tab:retrieval-summary} traz os resultados, e as tabelas completas estão no Anexo~A7.
+C1 é um \emph{corpus} de controle: cinco textos curtos e fictícios, elaborados para o teste, com 18 consultas, das quais 16 têm resposta e duas não. As consultas são de três tipos: literais (palavras tiradas do documento), paráfrases (a mesma necessidade com outras palavras) e ruidosas (com erros de digitação e sem acentos). Foram comparados seis métodos nas mesmas consultas: a contagem de palavras, que era o pontuador da primeira versão do sistema; o BM25; a busca densa exata; a mesma busca densa com um índice aproximado; e duas combinações, a da contagem com o BM25 e a do BM25 com a busca densa. Mediu-se em dois níveis: escolhendo entre os 5 textos inteiros e escolhendo entre 19 seções. A Tabela~\ref{tab:retrieval-summary} traz os resultados.
 
 \begin{table}[!htbp]
 \centering
-\caption{Qualidade da busca em C1. Valores de 0 a 100 (\%), e maior é melhor: P@1 é a porcentagem de consultas em que o primeiro resultado é o certo. A coluna ``seção'' é mais difícil (19 candidatos em vez de 5) e mais próxima do que o sistema devolve; nela só os braços lexicais foram medidos.}
+\caption{Busca em C1: porcentagem das 16 consultas com resposta em que o primeiro resultado era o texto certo. Escolher entre 19 seções é mais difícil e mais próximo do que o sistema devolve; nesse nível só as buscas por palavras foram medidas. As demais medidas estão no Anexo~A7.}
 \label{tab:retrieval-summary}
-\begin{tabular}{lcccccc}
+\begin{tabular}{lcc}
 \toprule
- & \multicolumn{3}{c}{Unidade: documento} & \multicolumn{3}{c}{Unidade: seção} \\
-\cmidrule(lr){2-4}\cmidrule(lr){5-7}
-Braço & P@1 & MRR & nDCG@10 & P@1 & MRR & nDCG@10 \\
+ & \multicolumn{2}{c}{Primeiro resultado certo (\%)} \\
+\cmidrule(lr){2-3}
+Método & Entre 5 textos & Entre 19 seções \\
 \midrule
-A, contagem     & 75,0 & 83,0 & 86,9 & 56,2 & 68,9 & 70,6 \\
-B, BM25         & 81,2 & 86,1 & 89,4 & 75,0 & 81,8 & 82,9 \\
-C, denso exato  & 68,8 & 82,3 & 84,4 & --    & --    & --    \\
-C$'$, aproximado & 68,8 & 78,1 & 79,7 & --    & --    & --    \\
-D, fusão A+B    & 81,2 & 86,5 & 89,6 & 56,2 & 70,7 & 72,9 \\
-E, fusão B+C    & 81,2 & 88,0 & 89,0 & --    & --    & --    \\
+Contagem de palavras (versão anterior) & 75,0 & 56,2 \\
+BM25 (usado no sistema)               & 81,2 & 75,0 \\
+Busca densa, exata                    & 68,8 & --   \\
+Busca densa, índice aproximado        & 68,8 & --   \\
+Contagem + BM25 combinados            & 81,2 & 56,2 \\
+BM25 + busca densa combinados         & 81,2 & --   \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Por documento, o BM25 e as fusões tiveram os maiores nDCG@10, de 89,0\% a 89,6\%, seguidos da contagem (86,9\%), do denso exato (84,4\%) e do denso aproximado (79,7\%). As diferenças aparecem quando se separam os tipos de consulta. Os braços lexicais acertam todas as literais e caem nas paráfrases, e a queda é maior na contagem (42,9 pontos percentuais) que no BM25 (28,6 pontos). O denso quase não depende das palavras da consulta (queda de 2,9 pontos), mas acerta menos as literais (60,0\%). Os dois tipos de busca erram por razões diferentes, e a fusão dos dois (E) teve o maior MRR.
+Entre os 5 textos, o BM25 e as duas combinações acertaram o primeiro resultado em 81,2\% das consultas, a contagem em 75,0\% e a busca densa em 68,8\%. A diferença entre o BM25 e a busca densa é de duas consultas em 16. As diferenças aparecem melhor quando se separam os tipos de consulta. Os braços lexicais acertam todas as literais e caem nas paráfrases, e a queda é maior na contagem (42,9 pontos percentuais) que no BM25 (28,6 pontos). O denso quase não depende das palavras da consulta (queda de 2,9 pontos), mas acerta menos as literais (60,0\%). Os dois tipos de busca erram em consultas diferentes.
 
-Com só 5 documentos, a medição por documento é fácil demais: um sorteio já acertaria o primeiro lugar perto de 20\% das vezes. Na unidade seção, a P@1 fica em 56,2\% na contagem e 75,0\% no BM25, e a revocação nos cinco primeiros (R@5) em 71,9\% e 81,2\%. A dependência de vocabulário também cresce: na contagem, a queda da literal para a paráfrase passa de 42,9 pontos percentuais por documento para 85,7 por seção, e o pontuador acerta só 14\% das paráfrases. Esse resultado motivou a troca da contagem pelo BM25, que é o pontuador de todos os experimentos seguintes.
+Com só 5 documentos, a medição por documento é fácil demais: um sorteio já acertaria o primeiro lugar perto de 20\% das vezes. Entre as seções, a contagem acertou o primeiro resultado em 56,2\% das consultas e o BM25 em 75,0\%. A dependência de vocabulário também cresce: na contagem, a queda da literal para a paráfrase passa de 42,9 pontos percentuais por documento para 85,7 por seção, e o pontuador acerta só 14\% das paráfrases. Esse resultado motivou a troca da contagem pelo BM25, que é o pontuador de todos os experimentos seguintes.
 
-Nenhuma das 75 comparações entre pares de braços foi estatisticamente significativa (o menor valor-$p$ sem correção foi 0{,}125). Com 16 consultas, no máximo 8 diferem em qualquer comparação, o que é pouco para detectar diferenças dessa ordem. C1, portanto, não mostra que a busca por palavras seja igual ou melhor que a densa; mostra apenas que, neste \emph{corpus}, nenhuma diferença foi detectável.
+Nenhuma comparação entre pares de métodos foi estatisticamente significativa: nas 75 comparações entre os textos inteiros, o menor valor-$p$ sem correção foi 0{,}125, e nas 15 entre as seções, 0{,}062. Com 16 consultas, no máximo 8 diferem em qualquer comparação, o que é pouco para detectar diferenças dessa ordem. C1, portanto, não mostra que a busca por palavras seja igual ou melhor que a densa; mostra apenas que, neste \emph{corpus}, nenhuma diferença foi detectável.
 
 \subsection{Quando não há resposta}
 \label{sec:res-ausencia}
@@ -433,9 +447,9 @@ Nas duas consultas de C1 sem resposta, todos os braços devolveram resultados: n
 \subsection{Estabilidade dos resultados}
 \label{sec:res-determinismo}
 
-Um requisito do sistema é que a mesma pergunta traga sempre as mesmas fontes. Cada braço de C1 foi executado 30 vezes, e as listas completas foram comparadas. Contagem, BM25, a fusão dos dois e a busca densa exata deram listas idênticas em todas as execuções. No índice aproximado C$'$, configurado com muitas gavetas e uma só aberta por consulta, mudar o sorteio que forma as gavetas ou a ordem de inserção dos documentos produziu até quatro listas diferentes para a mesma consulta, com perda média de 48,4\% dos resultados da busca exata.
+Um requisito do sistema é que a mesma pergunta traga sempre as mesmas fontes. Cada método de C1 foi executado 30 vezes, e as listas completas foram comparadas. Contagem, BM25, a fusão dos dois e a busca densa exata deram listas idênticas em todas as execuções. No índice aproximado, configurado com muitas gavetas e uma só aberta por consulta, mudar o sorteio que forma as gavetas ou a ordem de inserção dos documentos produziu até quatro listas diferentes para a mesma consulta, com perda média de 48,4\% dos resultados da busca exata.
 
-Essa configuração, porém, não é a que o pgvector recomenda. As opções foram medidas no próprio pgvector, com 1.000 a 20.000 vetores sintéticos, reconstruindo cada índice cinco vezes e mudando a ordem de inserção (Anexo~A7). Com a configuração recomendada, o índice IVF deu sempre o mesmo resultado da busca exata. A configuração de C$'$ perdeu de 52\% a 75\% dos resultados e mudou todas as 20 consultas. O HNSW com os parâmetros padrão foi exato com 1.000 vetores; com 20.000, encontrou 91,0\% dos resultados, e 6 das 20 consultas mudaram ao reconstruir o índice e 17 ao mudar a ordem de inserção. A instabilidade depende da configuração e da escala: nas coleções que o ThingIndex atende, de até alguns milhares de unidades, um índice de vetores bem configurado também seria estável. A estabilidade, portanto, não é uma vantagem exclusiva da busca por palavras.
+Essa configuração, porém, não é a que o pgvector recomenda. As opções foram medidas no próprio pgvector, com 1.000 a 20.000 vetores sintéticos, reconstruindo cada índice cinco vezes e mudando a ordem de inserção (Anexo~A7). Com a configuração recomendada, o índice IVF deu sempre o mesmo resultado da busca exata. A configuração usada no teste perdeu de 52\% a 75\% dos resultados e mudou todas as 20 consultas. O HNSW com os parâmetros padrão foi exato com 1.000 vetores; com 20.000, encontrou 91,0\% dos resultados, e 6 das 20 consultas mudaram ao reconstruir o índice e 17 ao mudar a ordem de inserção. A instabilidade depende da configuração e da escala: nas coleções que o ThingIndex atende, de até alguns milhares de unidades, um índice de vetores bem configurado também seria estável. A estabilidade, portanto, não é uma vantagem exclusiva da busca por palavras.
 
 \subsection{Origem das fontes no índice}
 \label{sec:res-auditabilidade}
@@ -467,20 +481,20 @@ Este é o acervo de desenvolvimento, e o resultado deve ser lido assim: o braço
 
 \begin{table}[!htbp]
 \centering
-\caption{Trechos (T) contra documento inteiro (F) no acervo de ensino (desenvolvimento), 72 perguntas, três repetições. Acerto e páginas: porcentagem das respostas. \emph{Tokens}: volume médio enviado ao modelo por pergunta, que é o custo. As colunas de página contam as 201 respostas que têm página-alvo.}
+\caption{Acervo de ensino (desenvolvimento), 72 perguntas, três repetições: porcentagem de respostas certas e de respostas que citam a página certa no texto, com o sistema buscando trechos e com o PDF inteiro entregue ao modelo. A página citada conta as 201 respostas que têm página-alvo.}
 \label{tab:geracao}
-\small
-\begin{tabular}{lrrrrrrr}
+\begin{tabular}{lrrrr}
 \toprule
- & \multicolumn{2}{c}{Acerto (\%)} & Pág. exib. (\%) & \multicolumn{2}{c}{Pág. citada (\%)} & \multicolumn{2}{c}{\emph{Tokens}/pergunta} \\
-Tipo & T & F & T & T & F & T & F \\
+ & \multicolumn{2}{c}{Acerto (\%)} & \multicolumn{2}{c}{Página citada certa (\%)} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Tipo de pergunta & Trechos & PDF inteiro & Trechos & PDF inteiro \\
 \midrule
-Prosa (30)      & 100,0 & 100,0 & 93,3 & 93,3 & 88,9 & 3.629 & 100.491 \\
-Tabela (21)     & 100,0 & 100,0 & 100,0 & 90,5 & 96,8 & 3.619 & 39.691 \\
-Calendário (16) & 100,0 & 100,0 & 100,0 & 100,0 & 100,0 & 6.400 & 5.504 \\
-Negativa (5)    & 100,0 & 80,0 & -- & -- & -- & 3.241 & 250.504 \\
+Prosa (30)      & 100,0 & 100,0 & 93,3 & 88,9 \\
+Tabela (21)     & 100,0 & 100,0 & 90,5 & 96,8 \\
+Calendário (16) & 100,0 & 100,0 & 100,0 & 100,0 \\
+Negativa (5)    & 100,0 & 80,0 & -- & -- \\
 \midrule
-Todas (72)      & 100,0 & 98,6 & 97,0 & 94,0 & 94,0 & 4.215 & 72.067 \\
+Todas (72)      & 100,0 & 98,6 & 94,0 & 94,0 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -502,18 +516,18 @@ O sistema acertou 15 das 19 perguntas (78,9\%; Tabela~\ref{tab:dominio2}). Uma d
 
 \begin{table}[!htbp]
 \centering
-\caption{Acervo de legislação: 19 perguntas, uma repetição. Acerto e página exibida em porcentagem; página exibida nas 16 perguntas que têm página-alvo.}
+\caption{Acervo de legislação: 19 perguntas, uma repetição. A página certa entre as fontes conta as 16 perguntas que têm página-alvo.}
 \label{tab:dominio2}
-\begin{tabular}{lrrrr}
+\begin{tabular}{lrrr}
 \toprule
-Tipo & $n$ & Acerto (\%) & Pág. exibida (\%) & \emph{Tokens}/pergunta \\
+Tipo de pergunta & Perguntas & Acerto (\%) & Página certa entre as fontes (\%) \\
 \midrule
-Divergente & 5 & 60,0 & 80,0 & 5.406 \\
-Temporal   & 3 & 100,0 & 100,0 & 7.147 \\
-Prosa      & 8 & 75,0 & 75,0 & 6.204 \\
-Negativa   & 3 & 100,0 & --    & 5.588 \\
+Divergente & 5 & 60,0 & 80,0 \\
+Temporal   & 3 & 100,0 & 100,0 \\
+Prosa      & 8 & 75,0 & 75,0 \\
+Negativa   & 3 & 100,0 & --    \\
 \midrule
-Total      & 19 & 78,9 & 81,2 & 6.045 \\
+Total      & 19 & 78,9 & 81,2 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -527,7 +541,7 @@ Com a pergunta original, a taxa de acerto foi de 69,5\%, com os três acervos en
 
 \begin{table}[!htbp]
 \centering
-\caption{Bateria, pergunta original: acerto por acervo. ``Acerto'' é a porcentagem de respostas certas; o intervalo de 95\% mostra a faixa provável do valor real; ``Perguntas'' conta as que acertaram nas três repetições.}
+\caption{Bateria, pergunta original: acerto por acervo. ``Acerto'' é a porcentagem de respostas certas; o intervalo é o intervalo de confiança de 95\%, calculado por \emph{bootstrap}; ``Perguntas'' conta as que acertaram nas três repetições.}
 \label{tab:bateria-tema}
 \begin{tabular}{lrrrr}
 \toprule
@@ -550,7 +564,7 @@ Esses números usam o gabarito revisado depois da primeira medição. A versão 
 \label{tab:bateria-forma}
 \begin{tabular}{lrr}
 \toprule
-Forma & Acertos & Taxa (\%) \\
+Forma & Acertos & Acerto (\%) \\
 \midrule
 Negativa       & 27/27 & 100,0 \\
 Existência     & 33/36 & 91,7 \\
@@ -570,24 +584,7 @@ O sistema reconheceu a falta de informação em todas as negativas, e as pergunt
 
 Se o usuário não usa as palavras do documento, uma saída é acrescentar ao índice as palavras que ele usaria. A primeira intervenção fez isso: para cada página, o LLM gerou um resumo e perguntas que a página responde, escritas como um leigo as escreveria. O pré-registro previa três braços (só o conteúdo, conteúdo mais resumo, conteúdo mais perguntas geradas), 16 pares de perguntas e os três acervos da bateria. A execução, porém, usou 12 perguntas, 5 delas em pares, de um só acervo, o de segurança do trabalho, e acrescentou um quarto braço exploratório. Pelo desvio em relação ao pré-registro, o resultado é exploratório.
 
-Uma primeira execução foi descartada: uma auditoria mostrou fontes idênticas nos quatro braços, o que é impossível se cada braço busca em textos diferentes. A troca de braço, feita por variável de ambiente, não tinha chegado ao processo que respondia. O experimento foi refeito com um processo da API por braço, e o pré-registro recebeu um adendo. Na reexecução (Tabela~\ref{tab:enriquecimento}), as fontes mudaram entre os braços em 8 das 12 perguntas, mas o acerto quase não mudou, e as quatro paráfrases que erravam continuaram erradas em todos os braços. Com 5 paráfrases e uma repetição, o experimento não teria como detectar um efeito moderado, e o resultado é a ausência de efeito detectável. Lendo as perguntas geradas, a explicação mais provável é que o modelo, mesmo instruído a escrever como leigo, repete o vocabulário do documento: há muitas formas de pedir a mesma coisa, e o índice recebe uma delas, raramente a que o usuário vai usar.
-
-\begin{table}[!htbp]
-\centering
-\caption{Enriquecimento do índice: perguntas certas sobre o total, 12 perguntas de segurança do trabalho, uma repetição por braço (reexecução, gabarito revisado). Pág. exibida: nas 10 perguntas que têm página-alvo.}
-\label{tab:enriquecimento}
-\begin{tabular}{lrrrr}
-\toprule
-Braço & Geral & Literal & Paráfrase & Pág. exibida \\
-\midrule
-Só conteúdo               & 7/12 & 4/5 & 1/5 & 5/10 \\
-Conteúdo + resumo         & 8/12 & 5/5 & 1/5 & 5/10 \\
-Conteúdo + perguntas      & 7/12 & 4/5 & 1/5 & 5/10 \\
-Máximo (exploratório)     & 8/12 & 5/5 & 1/5 & 5/10 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
+Uma primeira execução foi descartada: uma auditoria mostrou fontes idênticas nos quatro braços, o que é impossível se cada braço busca em textos diferentes. A troca de braço, feita por variável de ambiente, não tinha chegado ao processo que respondia. O experimento foi refeito com um processo da API por braço, e o pré-registro recebeu um adendo. Na reexecução, as fontes mudaram entre os braços em 8 das 12 perguntas, mas o acerto quase não mudou: o sistema acertou 7 de 12 perguntas só com o conteúdo e com as perguntas geradas, e 8 de 12 com o resumo e no braço exploratório. A única diferença foi uma pergunta literal, e das cinco paráfrases só uma acertou em todos os braços. Com 5 paráfrases e uma repetição, o experimento não teria como detectar um efeito moderado, e o resultado é a ausência de efeito detectável. Lendo as perguntas geradas, a explicação mais provável é que o modelo, mesmo instruído a escrever como leigo, repete o vocabulário do documento: há muitas formas de pedir a mesma coisa, e o índice recebe uma delas, raramente a que o usuário vai usar.
 \subsection{Segunda tentativa: expandir a pergunta}
 \label{sec:res-expansao}
 
@@ -599,15 +596,18 @@ Com a expansão, a distância entre literal e paráfrase cai de 46,2 para 6,5 po
 
 \begin{table}[!htbp]
 \centering
-\caption{Expansão da pergunta, nas 71 perguntas da bateria, em porcentagem: respostas certas (213 por condição) nas literais, nas paráfrases e em todas, respostas com a página-alvo exibida, volume médio enviado ao modelo e perguntas que acertaram nas três repetições.}
+\caption{Expansão da pergunta nas 71 perguntas da bateria (213 respostas por condição).}
 \label{tab:expansao}
-\small
-\begin{tabular}{lrrrrrr}
+\begin{tabular}{lrr}
 \toprule
-Condição & Literal & Paráfrase & Todas & Pág. exibida & \emph{Tokens}/pergunta & Perguntas \\
+ & Sem expansão & Com expansão \\
 \midrule
-Sem expansão & 88,2 & 41,9 & 69,5 & 58,1 & 4.699 & 49/71 \\
-Com expansão & 90,3 & 83,9 & 88,7 & 82,3 & 5.327 & 63/71 \\
+Acerto, pergunta com as palavras do documento (\%) & 88,2 & 90,3 \\
+Acerto, pergunta com outras palavras (\%)          & 41,9 & 83,9 \\
+Acerto, todas as perguntas (\%)                    & 69,5 & 88,7 \\
+Página certa entre as fontes (\%)                  & 58,1 & 82,3 \\
+\emph{Tokens} enviados por pergunta                & 4.699 & 5.327 \\
+Perguntas certas nas três repetições               & 49 de 71 & 63 de 71 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -637,7 +637,9 @@ Por fim, o sistema foi aplicado ao edital de um concurso público municipal, com
 Condição & Resposta & Por quê \\
 \midrule
 (a) Toda fonte mostrada tem origem lida do banco & Sim & Documento ligado por chave estrangeira, conferida por teste; página e região gravadas na indexação e lidas do banco. A página não é validada pelo banco, e um trecho que atravessa páginas aponta só a primeira. \\
+\cmidrule(lr){1-3}
 (b) A busca nas tabelas, sem vetores, acha o trecho certo em perguntas novas & Em parte & Acerto de 69,5\% (cerca de 7 em 10). Com as palavras do documento, 88,2\%; com outras palavras, 41,9\%. A expansão por LLM leva a 88,7\%, mas é experimental e foi medida só em documentos públicos. \\
+\cmidrule(lr){1-3}
 (c) Conferir a fonte confirma que a resposta está certa & Não & A lei revogada é citada com página certa, e a conferência confirma o erro. O sistema também não liga cada frase à fonte que a sustenta. \\
 \bottomrule
 \end{tabular}
@@ -656,7 +658,7 @@ A resposta à pergunta de pesquisa é, portanto, afirmativa para a primeira cond
 
 \textbf{Amostras pequenas.} C1 tem 16 consultas com resposta, pouco para qualquer comparação de busca ser significativa. A bateria tem 71 perguntas, e as duas versões de um par não são independentes. Os acervos de legislação e do edital têm uma repetição.
 
-\textbf{Um único autor.} O sistema foi ajustado no acervo de ensino. Todos os gabaritos foram escritos pelo autor, sem um segundo anotador nem medida de concordância entre anotadores, e as paráfrases foram escritas por quem já tinha lido o documento. O critério por expressão regular pode aceitar resposta incompleta e recusar resposta certa redigida de outro modo; os dois casos foram encontrados e corrigidos onde vistos.
+\textbf{Um único anotador.} O sistema foi ajustado no acervo de ensino. Todos os gabaritos foram escritos por uma só pessoa, sem um segundo anotador nem medida de concordância entre anotadores, e as paráfrases foram escritas por quem já tinha lido o documento. O critério por expressão regular pode aceitar resposta incompleta e recusar resposta certa redigida de outro modo; os dois casos foram encontrados e corrigidos onde vistos.
 
 \textbf{O que se mediu.} A página exibida e a página citada não medem se o trecho sustenta a frase da resposta. A origem no índice foi medida num \emph{corpus} sem paginação, e a caixa do parágrafo não foi avaliada em separado.
 
@@ -702,7 +704,7 @@ Conforme orientação do colegiado, os anexos estão em PDF na pasta \texttt{ane
   \item A4 -- recorte do esquema com o caminho da proveniência;
   \item A5 -- fluxo da recuperação;
   \item A6 -- telas do protótipo;
-  \item A7 -- tabelas completas de recuperação, incluindo intervalos de confiança, as 75 comparações pareadas e os índices aproximados do pgvector;
+  \item A7 -- resultados do teste de busca (C1) explicados, com a tabela completa de medidas, os intervalos de confiança e os índices aproximados do pgvector; a lista das 90 comparações pareadas está em \texttt{docs/article/tables};
   \item A8 -- registro das alterações feitas depois de medir;
   \item A9 -- esquema completo do banco, com as 25 tabelas.
 \end{itemize}
