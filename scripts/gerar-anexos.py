@@ -251,16 +251,10 @@ def gera_er() -> list[tuple[str, str, Path, list[str]]]:
                 seta = "-right-" if o in NUCLEO and d in NUCLEO else "--"
                 l.append(f"{d} ||{seta}o{{ {o}")
                 ligadas |= {o, d}
-        # Posse por user_id, sem chave estrangeira declarada: o codigo filtra
-        # por user_id em toda consulta. Desenhada tracejada, inclusive nos
-        # grupos sem a tabela users, para nenhuma tabela parecer solta.
-        donas = [n for n in nomes if n != "users" and any(c == "user_id" for c, _, _ in tabelas[n])]
-        if donas and "users" not in nomes:
-            entidade("users", so_pk=True)
-        for n in donas:
-            seta = ".right." if n in NUCLEO else ".."
-            l.append(f"users ||{seta}o{{ {n}")
-            ligadas |= {n, "users"}
+        # Posse: user_id tem chave estrangeira para users e ja entra pelas
+        # referencias acima, inclusive nos grupos sem a tabela users (que
+        # aparece so com a PK).
+        donas = [o for o, _, d, _ in refs if o in nomes and d == "users"]
         # Muitas tabelas penduradas no mesmo users viram uma faixa larga e
         # ilegivel; quebra em fileiras de 4 com ligacoes invisiveis.
         if "users" not in nomes and len(donas) > 4:
@@ -1045,8 +1039,8 @@ def main() -> None:
                      [(svg["esquema-proveniencia"], "Recorte do esquema do banco de dados com "
                        "o caminho da proveniência.")],
                      "landscape",
-                     "Linha contínua: chave estrangeira; linha tracejada: posse pelo usuário "
-                     "(user_id)."), "A4-esquema-proveniencia", build)
+                     "PK: chave primária; FK: chave estrangeira. Cada linha é uma chave "
+                     "estrangeira."), "A4-esquema-proveniencia", build)
     imprimir(figuras("A5", "Fluxo de recuperação",
                      "Etapas da recuperação de contexto para uma pergunta.",
                      [(svg["recuperacao"], "Fluxo de recuperação de contexto do ThingIndex.")],
@@ -1064,14 +1058,19 @@ def main() -> None:
     imprimir(a8(), "A8-alteracoes-pos-medicao", build)
 
     tabelas, _ = ler_dbml()
-    nota_nucleo = ("PK: chave primária; FK: chave estrangeira. Linha contínua: chave "
-                   "estrangeira; linha tracejada: posse pelo usuário (user_id).")
-    nota_operacao = ("PK: chave primária; FK: chave estrangeira. Linha contínua: chave "
-                     "estrangeira; linha tracejada: posse pelo usuário (user_id), conferida "
-                     "pelo código em toda consulta, ou, no outbox, o documento a indexar "
-                     "(aggregate_id). Tabelas marcadas com (Figura 1) aparecem completas na Figura 1.")
-    itens = [(svg[p.stem], f"Esquema do banco de dados: {t} ({len(ns)} tabelas).",
-              nota_nucleo if "users" in ns else nota_operacao)
+    def nota(ns: list[str]) -> str:
+        texto = "PK: chave primária; FK: chave estrangeira. "
+        if "outbox_events" in ns:
+            texto += ("Linha contínua: chave estrangeira; linha tracejada: no outbox, o "
+                      "documento a indexar (aggregate_id), campo genérico do padrão, sem "
+                      "chave estrangeira.")
+        else:
+            texto += "Cada linha é uma chave estrangeira."
+        if "users" not in ns:
+            texto += " Tabelas marcadas com (Figura 1) aparecem completas na Figura 1."
+        return texto
+
+    itens = [(svg[p.stem], f"Esquema do banco de dados: {t} ({len(ns)} tabelas).", nota(ns))
              for _, t, p, ns in er]
     imprimir(figuras("A9", "Esquema do banco de dados",
                      f"Diagrama entidade-relacionamento das {len(tabelas)} tabelas do "

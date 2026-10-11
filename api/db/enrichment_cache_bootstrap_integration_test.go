@@ -75,6 +75,19 @@ func TestMigracaoDoCacheDeEnriquecimentoRemoveIndiceGlobalELinhasSemDono(t *test
 		}
 	}
 
+	// Com a FK para users, os donos precisam existir, e as linhas legadas
+	// (sem user_id) saem antes do AutoMigrate, como no bootstrap.
+	if err := db.AutoMigrate(&models.User{}); err != nil {
+		t.Fatalf("criar users: %v", err)
+	}
+	for _, usuario := range []uint{1, 2} {
+		if err := db.Create(&models.User{ID: usuario, Name: "u", Email: fmt.Sprintf("u%d@x", usuario), Password: "x"}).Error; err != nil {
+			t.Fatalf("criar usuario %d: %v", usuario, err)
+		}
+	}
+	if err := removeOrphanUserRows(db); err != nil {
+		t.Fatalf("removeOrphanUserRows: %v", err)
+	}
 	if err := db.AutoMigrate(&models.EnrichmentCacheEntry{}); err != nil {
 		t.Fatalf("AutoMigrate sobre o esquema legado: %v", err)
 	}

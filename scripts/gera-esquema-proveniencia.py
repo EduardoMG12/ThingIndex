@@ -77,8 +77,8 @@ def main() -> None:
         "skinparam linetype polyline",
         "hide circle",
     ]
-    # FK so onde o banco declara a constraint; user_id sem constraint aparece
-    # como coluna comum, para a figura nao afirmar mais do que o esquema tem.
+    # FK so onde o banco declara a constraint (Ref do DBML), para a figura nao
+    # afirmar mais do que o esquema tem. A posse (user_id -> users) e uma delas.
     com_fk = {(filho, col) for filho, col, _pai in r}
 
     def entidade(nome: str, cor: str) -> None:
@@ -108,10 +108,6 @@ def main() -> None:
             else:
                 seta = "--"
             linhas.append(f"{pai} ||{seta}o{{ {filho}")
-    # Posse por user_id: filtrada em toda consulta, sem constraint no banco.
-    # Tracejado para distinguir de chave estrangeira declarada.
-    linhas.append("users ||.right.o{ collections")
-    linhas.append("users ||.right.o{ documents")
     # cada tabela da segunda linha fica abaixo de uma da primeira
     primeira = [n for n in ESTRUTURA if n not in SEGUNDA_LINHA]
     segunda = [n for n in ESTRUTURA if n in SEGUNDA_LINHA]

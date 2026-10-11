@@ -9,6 +9,7 @@ import (
 type DocumentCategory struct {
 	ID             uint           `gorm:"primarykey" json:"id"`
 	UserID         uint           `gorm:"not null;uniqueIndex:idx_user_category_normalized" json:"user_id"`
+	User           *User          `gorm:"foreignKey:UserID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	Name           string         `gorm:"size:255;not null" json:"name"`
 	NormalizedName string         `gorm:"size:255;uniqueIndex:idx_user_category_normalized" json:"-"`
 	Description    string         `gorm:"type:text" json:"description"`
@@ -20,6 +21,7 @@ type DocumentCategory struct {
 type Collection struct {
 	ID             uint              `gorm:"primarykey" json:"id"`
 	UserID         uint              `gorm:"not null;uniqueIndex:idx_user_collection_normalized;index" json:"user_id"`
+	User           *User             `gorm:"foreignKey:UserID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	CategoryID     *uint             `json:"category_id,omitempty"`
 	Category       *DocumentCategory `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
 	Name           string            `gorm:"size:255;not null" json:"name"`
@@ -34,6 +36,7 @@ type Collection struct {
 type Document struct {
 	ID                  uint                        `gorm:"primarykey" json:"id"`
 	UserID              uint                        `gorm:"not null;index;index:idx_documents_user_collection_created,priority:1" json:"user_id"`
+	User                *User                       `gorm:"foreignKey:UserID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	Title               string                      `gorm:"size:255;not null" json:"title"`
 	FileURL             string                      `gorm:"size:512;not null" json:"file_url"`
 	Size                int64                       `json:"size"`
@@ -203,6 +206,7 @@ type DocumentProcessingAttempt struct {
 	DocumentID        uint           `gorm:"not null;index:idx_document_processing_attempts_document_created,priority:1" json:"document_id"`
 	Document          *Document      `gorm:"foreignKey:DocumentID" json:"-"`
 	UserID            uint           `gorm:"not null;index" json:"user_id"`
+	User              *User          `gorm:"foreignKey:UserID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	Stage             string         `gorm:"size:64;index" json:"stage,omitempty"`
 	FailureKind       string         `gorm:"size:32;index" json:"failure_kind,omitempty"`
 	Disposition       string         `gorm:"size:32;index" json:"disposition,omitempty"`
@@ -220,6 +224,7 @@ type DocumentProcessingAttempt struct {
 type DocumentAuditEvent struct {
 	ID            uint           `gorm:"primarykey;index:idx_document_audit_events_user_created,priority:3" json:"id"`
 	UserID        uint           `gorm:"not null;index;index:idx_document_audit_events_user_created,priority:1" json:"user_id"`
+	User          *User          `gorm:"foreignKey:UserID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	DocumentID    *uint          `gorm:"index" json:"document_id,omitempty"`
 	CollectionID  *uint          `gorm:"index" json:"collection_id,omitempty"`
 	ActorType     string         `gorm:"size:32;not null;default:'USER';index" json:"actor_type"`

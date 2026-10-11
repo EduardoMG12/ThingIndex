@@ -11,7 +11,7 @@ entity "document_processing_attempts" as document_processing_attempts {
   {field} <b>PK</b> id : serial
   --
   {field} <i>FK</i> document_id : integer
-  {field} user_id : integer
+  {field} <i>FK</i> user_id : integer
   {field} stage : varchar(64)
   {field} failure_kind : varchar(32)
   {field} disposition : varchar(32)
@@ -43,7 +43,7 @@ entity "outbox_events" as outbox_events {
 entity "document_audit_events" as document_audit_events {
   {field} <b>PK</b> id : serial
   --
-  {field} user_id : integer
+  {field} <i>FK</i> user_id : integer
   {field} document_id : integer
   {field} collection_id : integer
   {field} actor_type : varchar(32)
@@ -62,7 +62,7 @@ entity "document_audit_events" as document_audit_events {
 entity "user_provider_configs" as user_provider_configs {
   {field} <b>PK</b> id : serial
   --
-  {field} user_id : integer
+  {field} <i>FK</i> user_id : integer
   {field} family : varchar(20)
   {field} provider_type : varchar(50)
   {field} encrypted_data : text
@@ -76,7 +76,7 @@ entity "provider_model_catalogs" as provider_model_catalogs {
   {field} <b>PK</b> id : serial
   --
   {field} scope_key : varchar(64)
-  {field} user_id : integer
+  {field} <i>FK</i> user_id : integer
   {field} provider_type : varchar(50)
   {field} model_id : varchar(255)
   {field} display_name : varchar(255)
@@ -89,7 +89,7 @@ entity "provider_model_catalogs" as provider_model_catalogs {
 entity "provider_audit_events" as provider_audit_events {
   {field} <b>PK</b> id : serial
   --
-  {field} user_id : integer
+  {field} <i>FK</i> user_id : integer
   {field} provider_config_id : integer
   {field} family : varchar(20)
   {field} provider_type : varchar(50)
@@ -107,7 +107,7 @@ entity "provider_audit_events" as provider_audit_events {
 entity "user_indexing_preferences" as user_indexing_preferences {
   {field} <b>PK</b> id : serial
   --
-  {field} user_id : integer
+  {field} <i>FK</i> user_id : integer
   {field} document_synopsis : boolean
   {field} page_summaries : boolean
   {field} section_summaries : boolean
@@ -117,7 +117,7 @@ entity "user_indexing_preferences" as user_indexing_preferences {
 entity "enrichment_cache_entries" as enrichment_cache_entries {
   {field} <b>PK</b> id : serial
   --
-  {field} user_id : integer
+  {field} <i>FK</i> user_id : integer
   {field} provider : varchar(255)
   {field} model : varchar(128)
   {field} kind : varchar(16)
@@ -129,19 +129,19 @@ entity "enrichment_cache_entries" as enrichment_cache_entries {
 entity "documents (Figura 1)" as documents {
   {field} <b>PK</b> id : serial
 }
-documents ||--o{ document_processing_attempts
 entity "users (Figura 1)" as users {
   {field} <b>PK</b> id : serial
 }
-users ||..o{ document_processing_attempts
-users ||..o{ document_audit_events
-users ||..o{ user_provider_configs
-users ||..o{ provider_model_catalogs
-users ||..o{ provider_audit_events
-users ||..o{ user_indexing_preferences
-users ||..o{ enrichment_cache_entries
-document_processing_attempts -[hidden]down- provider_audit_events
-document_audit_events -[hidden]down- user_indexing_preferences
-user_provider_configs -[hidden]down- enrichment_cache_entries
+users ||--o{ document_audit_events
+documents ||--o{ document_processing_attempts
+users ||--o{ document_processing_attempts
+users ||--o{ enrichment_cache_entries
+users ||--o{ provider_audit_events
+users ||--o{ provider_model_catalogs
+users ||--o{ user_indexing_preferences
+users ||--o{ user_provider_configs
+document_audit_events -[hidden]down- provider_model_catalogs
+document_processing_attempts -[hidden]down- user_indexing_preferences
+enrichment_cache_entries -[hidden]down- user_provider_configs
 documents ||..o{ outbox_events : aggregate_id
 @enduml

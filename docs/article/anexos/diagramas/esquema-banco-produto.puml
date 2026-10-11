@@ -10,7 +10,7 @@ hide circle
 entity "pricing_sources" as pricing_sources {
   {field} <b>PK</b> id : serial
   --
-  {field} user_id : integer
+  {field} <i>FK</i> user_id : integer
   {field} provider_type : varchar(50)
   {field} name : varchar(120)
   {field} source_url : varchar(1024)
@@ -26,7 +26,7 @@ entity "pricing_sources" as pricing_sources {
 entity "model_prices" as model_prices {
   {field} <b>PK</b> id : serial
   --
-  {field} user_id : integer
+  {field} <i>FK</i> user_id : integer
   {field} pricing_source_id : integer
   {field} provider_type : varchar(50)
   {field} model_key : varchar(120)
@@ -46,7 +46,7 @@ entity "model_prices" as model_prices {
 entity "model_price_histories" as model_price_histories {
   {field} <b>PK</b> id : serial
   --
-  {field} user_id : integer
+  {field} <i>FK</i> user_id : integer
   {field} pricing_source_id : integer
   {field} provider_type : varchar(50)
   {field} model_key : varchar(120)
@@ -65,7 +65,7 @@ entity "model_price_histories" as model_price_histories {
 entity "chat_conversations" as chat_conversations {
   {field} <b>PK</b> id : serial
   --
-  {field} user_id : integer
+  {field} <i>FK</i> user_id : integer
   {field} collection_id : integer
   {field} title : varchar(255)
   {field} last_message_at : timestamptz
@@ -95,7 +95,7 @@ entity "chat_conversation_entries" as chat_conversation_entries {
 entity "paragraph_highlights" as paragraph_highlights {
   {field} <b>PK</b> id : serial
   --
-  {field} user_id : integer
+  {field} <i>FK</i> user_id : integer
   {field} collection_id : integer
   {field} document_id : integer
   {field} <i>FK</i> paragraph_node_id : integer
@@ -107,7 +107,7 @@ entity "paragraph_highlights" as paragraph_highlights {
 entity "workspace_view_states" as workspace_view_states {
   {field} <b>PK</b> id : serial
   --
-  {field} user_id : integer
+  {field} <i>FK</i> user_id : integer
   {field} collection_id : integer
   {field} state : jsonb
   {field} created_at : timestamptz
@@ -116,17 +116,17 @@ entity "workspace_view_states" as workspace_view_states {
 entity "paragraph_nodes (Figura 1)" as paragraph_nodes {
   {field} <b>PK</b> id : serial
 }
-chat_conversations ||--o{ chat_conversation_entries
-paragraph_nodes ||--o{ paragraph_highlights
 entity "users (Figura 1)" as users {
   {field} <b>PK</b> id : serial
 }
-users ||..o{ pricing_sources
-users ||..o{ model_prices
-users ||..o{ model_price_histories
-users ||..o{ chat_conversations
-users ||..o{ paragraph_highlights
-users ||..o{ workspace_view_states
-pricing_sources -[hidden]down- paragraph_highlights
-model_prices -[hidden]down- workspace_view_states
+chat_conversations ||--o{ chat_conversation_entries
+users ||--o{ chat_conversations
+users ||--o{ model_price_histories
+users ||--o{ model_prices
+paragraph_nodes ||--o{ paragraph_highlights
+users ||--o{ paragraph_highlights
+users ||--o{ pricing_sources
+users ||--o{ workspace_view_states
+chat_conversations -[hidden]down- pricing_sources
+model_price_histories -[hidden]down- workspace_view_states
 @enduml
