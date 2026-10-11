@@ -503,12 +503,12 @@ REQUISITOS = [
     ("RF02", "Organizar os documentos em categorias e coleções."),
     ("RF03", "Enviar documentos em PDF para uma coleção."),
     ("RF04", "Indexar o documento em segundo plano, extraindo páginas, parágrafos, tabelas e sumário."),
-    ("RF05", "Gerar, de forma opcional, resumos das páginas com um LLM."),
+    ("RF05", "Gerar resumos das páginas e das seções com um LLM (opcional, ligado por padrão quando há provedor configurado)."),
     ("RF06", "Disponibilizar o conteúdo indexado de uma coleção por API."),
     ("RF07", "Responder perguntas sobre uma coleção, citando as fontes."),
     ("RF08", "Abrir cada fonte no PDF, na página e no parágrafo de origem."),
     ("RF09", "Cadastrar provedores de LLM e de armazenamento, com a credencial guardada cifrada."),
-    ("RF10", "Acompanhar o andamento da indexação e o consumo de tokens."),
+    ("RF10", "Acompanhar o andamento da indexação, o consumo de tokens e o custo estimado."),
     ("RF11", "Registrar o histórico de ações sobre documentos e provedores."),
     ("RF12", "Reprocessar documentos cuja indexação falhou."),
 ]
@@ -675,7 +675,7 @@ def a7_corpo() -> str:
              "restante do artigo. São cinco textos curtos e fictícios (um acórdão, um edital de "
              "pregão, um contrato de TI, uma política de privacidade e um manual de integração) e "
              "18 perguntas sobre eles; 16 têm resposta e 2 não. Como os textos foram criados para o "
-             "teste, sabe-se qual é o texto certo de cada pergunta. Ao longo deste anexo, a medida é "
+             "teste, sabe-se qual é o texto certo de cada pergunta. No texto deste anexo, a medida é "
              "uma só: em quantas perguntas o primeiro resultado da busca era o texto certo.</p>")
 
     linhas = [[nome(k), pct(doc[k][0]), pct(sec[k][0]) if k in sec else "não medido"]
@@ -720,9 +720,10 @@ def a7_corpo() -> str:
     c.append("<h2>3. As diferenças são confiáveis?</h2>"
              "<p>Com 16 perguntas, cada pergunta vale pouco mais de seis pontos percentuais, e uma "
              "diferença pequena pode ser sorte. Cada par de métodos passou por um teste estatístico "
-             "que calcula a chance de a diferença ter aparecido por acaso; em geral, só se aceita "
-             "uma diferença como real quando essa chance fica abaixo de 5%. Entre os textos "
-             f"inteiros, a menor chance foi de {para_cem(p_doc)}% (75 comparações) e, entre as "
+             "que calcula com que frequência uma diferença desse tamanho apareceria se, na verdade, "
+             "os dois métodos fossem iguais (o valor-p); em geral, só se aceita a diferença como "
+             "real quando esse valor fica abaixo de 5%. Entre os textos "
+             f"inteiros, o menor valor foi de {para_cem(p_doc)}% (75 comparações) e, entre as "
              f"seções, de {para_cem(p_sec)}% (15 comparações). Nenhuma diferença pôde ser "
              "confirmada.</p>"
              "<p>O teste, então, não diz que a busca por palavras é melhor nem pior que a busca por "
@@ -909,10 +910,10 @@ CORRECOES_A8 = [
      "corrigir esse dado.",
      "Uma resposta fixa de recusa, igual para todas as perguntas, acertaria 24 perguntas.",
      [("Original", "81,7%"), ("Ampliada", "93,0%"), ("Com dado errado", "35 de 36"),
-      ("Chance de a vantagem da ampliada ser sorte", "1,2%"),
+      ("Valor-p da vantagem da ampliada (McNemar)", "1,2%"),
       ("Teste da Seção 8.8 do artigo", "9 de 12")],
      [("Original", "70,0%"), ("Ampliada", "90,1%"), ("Com dado errado", "13 de 36"),
-      ("Chance de a vantagem da ampliada ser sorte", "0,01%"),
+      ("Valor-p da vantagem da ampliada (McNemar)", "0,01%"),
       ("Teste da Seção 8.8 do artigo", "7 a 8 de 12")]),
     ("Respostas que negam o assunto (“não existe”, “não consta”) ou que dizem o contrário da "
      "resposta certa também deixaram de contar como certas.",
@@ -985,7 +986,9 @@ def a8() -> str:
         "<col style='width:21%'><col style='width:21%'></colgroup><thead><tr>"
         "<th>O que mudou</th><th>Por quê</th><th>Antes</th><th>Depois</th></tr></thead>"
         f"<tbody>{tr}</tbody></table>"
-        "<p class='nota-a8'>As regras da busca também foram ajustadas olhando as 72 perguntas "
+        "<p class='nota-a8'>Os valores de cada linha são os do momento daquela correção; as correções "
+        "seguintes e os ajustes do sistema mudaram alguns deles de novo, e o artigo publica os "
+        "números finais. As regras da busca também foram ajustadas olhando as 72 perguntas "
         "usadas durante o desenvolvimento. Por isso, os números dessas perguntas não valem "
         "como teste independente; o teste de verdade é o teste final, com perguntas escritas "
         "depois.</p>"
