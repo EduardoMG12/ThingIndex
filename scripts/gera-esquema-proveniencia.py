@@ -5,7 +5,7 @@ DBML versionado (docs/schema/thingindex.dbml).
 A figura mostra o caminho da proveniencia: usuario -> colecao -> documento ->
 as seis tabelas estruturais, com as colunas que dao a coordenada de origem
 (pagina, ordem, caixa). As demais tabelas aparecem so pelo nome, agrupadas,
-porque o esquema completo esta no Apendice A. Gerar a partir do DBML impede a
+porque o esquema completo esta no Anexo A9. Gerar a partir do DBML impede a
 figura de divergir do banco, que foi o que aconteceu com o diagrama de classes
 antigo (16 classes contra 25 tabelas).
 """
@@ -68,20 +68,17 @@ def main() -> None:
     linhas = [
         "@startuml",
         "' GERADO por scripts/gera-esquema-proveniencia.py a partir do DBML. Nao edite a mao.",
-        "skinparam dpi 200",
-        "skinparam shadowing false",
-        "skinparam defaultFontName Helvetica",
-        "skinparam defaultFontSize 12",
+        "!include estilo.iuml",
+        "skinparam defaultFontSize 13",
         "skinparam linetype ortho",
         "hide circle",
-        "left to right direction",
     ]
     # FK so onde o banco declara a constraint; user_id sem constraint aparece
     # como coluna comum, para a figura nao afirmar mais do que o esquema tem.
     com_fk = {(filho, col) for filho, col, _pai in r}
 
     def entidade(nome: str, cor: str) -> None:
-        linhas.append(f'entity "{nome}" as {nome} {cor} {{')
+        linhas.append(f'entity "{nome}" as {nome}{(" " + cor) if cor else ""} {{')
         for c in COLUNAS[nome]:
             tipo = t[nome][c]
             marca = "<b>PK</b> " if c == "id" else ("<i>FK</i> " if (nome, c) in com_fk else "")
@@ -91,25 +88,29 @@ def main() -> None:
         linhas.append("}")
     linhas.append('package "Núcleo" {')
     for n in NUCLEO:
-        entidade(n, "#E3F2FD")
+        entidade(n, "")
     linhas.append("}")
     linhas.append('package "Estrutura extraída (coordenada de origem)" {')
     for n in ESTRUTURA:
-        entidade(n, "#E8F5E9")
+        entidade(n, "")
     linhas.append("}")
-    linhas.append('package "Infraestrutura e produto (%d tabelas, Apêndice A)" as infra {' % len(outras))
-    linhas.append('entity "demais tabelas" as outras #F3E5F5 {')
+    linhas.append('package "Fora do caminho da proveniência (%d tabelas, Anexo A9)" as infra {' % len(outras))
+    linhas.append('entity "demais tabelas" as outras {')
     linhas.extend(f"  {n}" for n in outras)
     linhas.append("}")
     linhas.append("}")
     mostradas = set(NUCLEO + ESTRUTURA)
     for filho, _col, pai in r:
         if filho in mostradas and pai in mostradas:
-            linhas.append(f"{pai} ||--o{{ {filho}")
+            # nucleo em linha, estrutura extraida abaixo: cabe melhor em paisagem
+            seta = "-right-" if filho in NUCLEO and pai in NUCLEO else "--"
+            linhas.append(f"{pai} ||{seta}o{{ {filho}")
     # Posse por user_id: filtrada em toda consulta, sem constraint no banco.
     # Tracejado para distinguir de chave estrangeira declarada.
-    linhas.append("users ||..o{ collections")
-    linhas.append("users ||..o{ documents")
+    linhas.append("users ||.right.o{ collections")
+    linhas.append("users ||.right.o{ documents")
+    # a caixa das demais tabelas fica na linha da estrutura extraida, a direita
+    linhas.append(f"{ESTRUTURA[-1]} -[hidden]right- outras")
     linhas.append("@enduml")
     SAIDA.write_text("\n".join(linhas) + "\n", encoding="utf-8")
     print(f"{SAIDA.relative_to(RAIZ)}: {len(t)} tabelas no DBML, {len(r)} FKs, {len(outras)} fora da figura")

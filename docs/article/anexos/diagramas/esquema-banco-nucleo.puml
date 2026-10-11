@@ -1,0 +1,168 @@
+@startuml
+' GERADO por scripts/gerar-anexos.py a partir de docs/schema/thingindex.dbml.
+' Nao edite a mao.
+!include estilo.iuml
+skinparam defaultFontSize 13
+skinparam linetype ortho
+skinparam nodesep 40
+skinparam ranksep 50
+hide circle
+entity "users" as users {
+  {field} <b>PK</b> id : serial
+  --
+  {field} name : varchar(255)
+  {field} email : varchar(255)
+  {field} avatar_url : varchar(2048)
+  {field} password : varchar(255)
+  {field} reset_token : varchar(255)
+  {field} reset_token_expires_at : timestamptz
+  {field} session_invalid_after : timestamptz
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+  {field} deleted_at : timestamptz
+}
+entity "document_categories" as document_categories {
+  {field} <b>PK</b> id : serial
+  --
+  {field} user_id : integer
+  {field} name : varchar(255)
+  {field} normalized_name : varchar(255)
+  {field} description : text
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+  {field} deleted_at : timestamptz
+}
+entity "collections" as collections {
+  {field} <b>PK</b> id : serial
+  --
+  {field} user_id : integer
+  {field} <i>FK</i> category_id : integer
+  {field} name : varchar(255)
+  {field} normalized_name : varchar(255)
+  {field} metadata : jsonb
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+  {field} deleted_at : timestamptz
+}
+entity "documents" as documents {
+  {field} <b>PK</b> id : serial
+  --
+  {field} user_id : integer
+  {field} title : varchar(255)
+  {field} file_url : varchar(512)
+  {field} size : integer
+  {field} mime_type : varchar(100)
+  {field} status : varchar(50)
+  {field} processing_stage : varchar(64)
+  {field} status_detail : varchar(255)
+  {field} index_started_at : timestamptz
+  {field} indexed_at : timestamptz
+  {field} last_processing_error : text
+  {field} collection : varchar(255)
+  {field} <i>FK</i> collection_id : integer
+  {field} <i>FK</i> category_id : integer
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+  {field} deleted_at : timestamptz
+}
+entity "document_pages" as document_pages {
+  {field} <b>PK</b> id : serial
+  --
+  {field} <i>FK</i> document_id : integer
+  {field} page_number : integer
+  {field} content : text
+  {field} summary : text
+  {field} generated_questions : text
+  {field} token_estimate : integer
+  {field} metadata : jsonb
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+  {field} deleted_at : timestamptz
+}
+entity "paragraph_nodes" as paragraph_nodes {
+  {field} <b>PK</b> id : serial
+  --
+  {field} <i>FK</i> document_id : integer
+  {field} sequence_order : integer
+  {field} page_number : integer
+  {field} content : text
+  {field} metadata : jsonb
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+  {field} deleted_at : timestamptz
+}
+entity "table_sections" as table_sections {
+  {field} <b>PK</b> id : serial
+  --
+  {field} <i>FK</i> document_id : integer
+  {field} sequence_order : integer
+  {field} title : varchar(255)
+  {field} page_number : integer
+  {field} headers : jsonb
+  {field} rows : jsonb
+  {field} metadata : jsonb
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+  {field} deleted_at : timestamptz
+}
+entity "document_outline_nodes" as document_outline_nodes {
+  {field} <b>PK</b> id : serial
+  --
+  {field} <i>FK</i> document_id : integer
+  {field} sequence_order : integer
+  {field} node_id : varchar(128)
+  {field} <i>FK</i> parent_id : integer
+  {field} level : integer
+  {field} title : varchar(255)
+  {field} slug : varchar(255)
+  {field} summary : text
+  {field} start_page : integer
+  {field} end_page : integer
+  {field} node_path : varchar(1024)
+  {field} metadata : jsonb
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+  {field} deleted_at : timestamptz
+}
+entity "document_chunks" as document_chunks {
+  {field} <b>PK</b> id : serial
+  --
+  {field} <i>FK</i> document_id : integer
+  {field} sequence_order : integer
+  {field} chunk_type : varchar(64)
+  {field} title : varchar(255)
+  {field} content : text
+  {field} source_paragraph_start : integer
+  {field} source_paragraph_end : integer
+  {field} page_number : integer
+  {field} token_estimate : integer
+  {field} metadata : jsonb
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+  {field} deleted_at : timestamptz
+}
+entity "metadata_pairs" as metadata_pairs {
+  {field} <b>PK</b> id : serial
+  --
+  {field} <i>FK</i> document_id : integer
+  {field} sequence_order : integer
+  {field} key : varchar(255)
+  {field} value : text
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+  {field} deleted_at : timestamptz
+}
+document_categories ||-right-o{ collections
+documents ||--o{ document_chunks
+documents ||--o{ document_outline_nodes
+document_outline_nodes ||--o{ document_outline_nodes
+documents ||--o{ document_pages
+document_categories ||-right-o{ documents
+collections ||-right-o{ documents
+documents ||--o{ metadata_pairs
+documents ||--o{ paragraph_nodes
+documents ||--o{ table_sections
+users ||.right.o{ document_categories
+users ||.right.o{ collections
+users ||.right.o{ documents
+@enduml

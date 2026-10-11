@@ -1,23 +1,20 @@
 @startuml
 ' GERADO por scripts/gera-esquema-proveniencia.py a partir do DBML. Nao edite a mao.
-skinparam dpi 200
-skinparam shadowing false
-skinparam defaultFontName Helvetica
-skinparam defaultFontSize 12
+!include estilo.iuml
+skinparam defaultFontSize 13
 skinparam linetype ortho
 hide circle
-left to right direction
 package "Núcleo" {
-entity "users" as users #E3F2FD {
+entity "users" as users {
   {field} <b>PK</b> id : serial
   {field} email : varchar(255)
 }
-entity "collections" as collections #E3F2FD {
+entity "collections" as collections {
   {field} <b>PK</b> id : serial
   {field} user_id : integer
   {field} name : varchar(255)
 }
-entity "documents" as documents #E3F2FD {
+entity "documents" as documents {
   {field} <b>PK</b> id : serial
   {field} user_id : integer
   {field} <i>FK</i> collection_id : integer
@@ -26,13 +23,13 @@ entity "documents" as documents #E3F2FD {
 }
 }
 package "Estrutura extraída (coordenada de origem)" {
-entity "document_pages" as document_pages #E8F5E9 {
+entity "document_pages" as document_pages {
   {field} <b>PK</b> id : serial
   {field} <i>FK</i> document_id : integer
   {field} page_number : integer
   {field} content : text
 }
-entity "paragraph_nodes" as paragraph_nodes #E8F5E9 {
+entity "paragraph_nodes" as paragraph_nodes {
   {field} <b>PK</b> id : serial
   {field} <i>FK</i> document_id : integer
   {field} sequence_order : integer
@@ -40,7 +37,7 @@ entity "paragraph_nodes" as paragraph_nodes #E8F5E9 {
   {field} content : text
   {field} metadata : jsonb
 }
-entity "table_sections" as table_sections #E8F5E9 {
+entity "table_sections" as table_sections {
   {field} <b>PK</b> id : serial
   {field} <i>FK</i> document_id : integer
   {field} sequence_order : integer
@@ -48,7 +45,7 @@ entity "table_sections" as table_sections #E8F5E9 {
   {field} headers : jsonb
   {field} rows : jsonb
 }
-entity "document_outline_nodes" as document_outline_nodes #E8F5E9 {
+entity "document_outline_nodes" as document_outline_nodes {
   {field} <b>PK</b> id : serial
   {field} <i>FK</i> document_id : integer
   {field} <i>FK</i> parent_id : integer
@@ -57,22 +54,22 @@ entity "document_outline_nodes" as document_outline_nodes #E8F5E9 {
   {field} start_page : integer
   {field} end_page : integer
 }
-entity "document_chunks" as document_chunks #E8F5E9 {
+entity "document_chunks" as document_chunks {
   {field} <b>PK</b> id : serial
   {field} <i>FK</i> document_id : integer
   {field} sequence_order : integer
   {field} page_number : integer
   {field} content : text
 }
-entity "metadata_pairs" as metadata_pairs #E8F5E9 {
+entity "metadata_pairs" as metadata_pairs {
   {field} <b>PK</b> id : serial
   {field} <i>FK</i> document_id : integer
   {field} key : varchar(255)
   {field} value : text
 }
 }
-package "Infraestrutura e produto (16 tabelas, Apêndice A)" as infra {
-entity "demais tabelas" as outras #F3E5F5 {
+package "Fora do caminho da proveniência (16 tabelas, Anexo A9)" as infra {
+entity "demais tabelas" as outras {
   chat_conversation_entries
   chat_conversations
   document_audit_events
@@ -95,10 +92,11 @@ documents ||--o{ document_chunks
 documents ||--o{ document_outline_nodes
 document_outline_nodes ||--o{ document_outline_nodes
 documents ||--o{ document_pages
-collections ||--o{ documents
+collections ||-right-o{ documents
 documents ||--o{ metadata_pairs
 documents ||--o{ paragraph_nodes
 documents ||--o{ table_sections
-users ||..o{ collections
-users ||..o{ documents
+users ||.right.o{ collections
+users ||.right.o{ documents
+metadata_pairs -[hidden]right- outras
 @enduml

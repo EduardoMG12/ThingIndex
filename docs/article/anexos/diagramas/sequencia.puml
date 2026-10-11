@@ -2,10 +2,8 @@
 ' Sequencia real do ThingIndex (revisao de 2026-09-26), conferida no codigo:
 ' api/internal/usecase/document_usecase.go (upload), processing/outbox_dispatcher.go,
 ' processing/document_processor.go, usecase/chat_usecase.go (StreamCollectionChat).
-skinparam dpi 200
-skinparam shadowing false
-skinparam defaultFontName Helvetica
-skinparam defaultFontSize 12
+!include estilo.iuml
+skinparam defaultFontSize 13
 skinparam sequenceMessageAlign left
 hide footbox
 

@@ -1,20 +1,27 @@
 #!/usr/bin/env python3
 """Gera os anexos do artigo em PDF (pasta anexos/ na raiz do repositorio).
 
-Orientacao do colegiado: diagramas, prototipos e tabelas completas ficam no
-GitHub, com o link citado no artigo. Cada anexo e montado como HTML numa pasta
-temporaria e impresso em PDF A4 pelo Chromium headless. Todo conteudo vem de
-arquivos versionados: imagens de docs/article/anexos/, tabelas LaTeX de
-docs/article/tables/, o registro docs/article/results/alteracoes-pos-medicao.md
-e o esquema docs/schema/thingindex.dbml. Nada e digitado aqui alem dos textos
-de apresentacao, dos requisitos (copiados do artigo) e das legendas das telas.
+Cada anexo e montado como HTML numa pasta de trabalho e impresso em PDF A4 pelo
+Chromium headless. As fontes de cada anexo sao arquivos versionados:
 
-Uso: python3 scripts/gerar-anexos.py [pasta-temporaria]
+- diagramas: docs/article/anexos/diagramas/*.puml, renderizados pelo PlantUML
+  (imagem Docker plantuml/plantuml) em SVG; o script tambem regrava os .png de
+  alta resolucao ao lado dos .puml;
+- esquema do banco (A9): os .puml esquema-banco-*.puml sao gerados aqui a
+  partir de docs/schema/thingindex.dbml, nunca editados a mao;
+- tabelas de recuperacao (A7): convertidas de docs/article/tables/*.tex, com
+  verificacao de que todos os numeros do .tex aparecem no PDF, na mesma ordem;
+- telas (A6): docs/article/anexos/telas/*.png.
+
+Requer chromium, docker, rsvg-convert e pdftotext no PATH.
+
+Uso: python3 scripts/gerar-anexos.py [pasta-de-trabalho]
 """
 
 from __future__ import annotations
 
 import html
+import os
 import re
 import subprocess
 import sys
@@ -23,40 +30,59 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 ART = RAIZ / "docs" / "article"
-FIG = ART / "anexos"
+DIAG = ART / "anexos" / "diagramas"
+TELAS = ART / "anexos" / "telas"
 TAB = ART / "tables"
+DBML = RAIZ / "docs" / "schema" / "thingindex.dbml"
 SAIDA = RAIZ / "anexos"
-SUBTITULO = "TCC ThingIndex — Charles Eduardo Mello Guimarães — IFPR Palmas"
+
+LINHA_INSTITUCIONAL = ("ThingIndex – Trabalho de Conclusão de Curso – Sistemas de Informação – "
+                       "IFPR Campus Palmas")
+FONTE = "Fonte: elaborado pelo autor."
+FONTES_LIBERATION = "/usr/share/fonts/liberation"
+
+# Altura util da pagina (A4 menos margens), descontada uma folga de 2 mm para o
+# Chromium nao empurrar a ultima linha para uma pagina em branco.
+MARGEM = {"portrait": 20, "landscape": 14}
+ALTURA_UTIL = {"portrait": 297 - 2 * 20 - 2, "landscape": 210 - 2 * 14 - 2}
 
 CSS = """
-@page { size: A4 %(orient)s; margin: 2cm; }
-body { font-family: "Noto Sans", "Liberation Sans", sans-serif; font-size: 10pt;
-       color: #111; line-height: 1.4; margin: 0; }
-h1 { font-size: 16pt; margin: 0 0 2pt 0; }
-h2 { font-size: 12pt; margin: 14pt 0 4pt 0; break-after: avoid; }
-h3 { font-size: 10.5pt; margin: 10pt 0 3pt 0; break-after: avoid; }
-.sub { color: #555; font-size: 9pt; margin: 0 0 8pt 0;
-       border-bottom: 1px solid #999; padding-bottom: 4pt; }
-.leia { background: #f3f3f3; padding: 6pt 8pt; margin: 0 0 10pt 0; font-size: 9.5pt; }
-table { border-collapse: collapse; width: 100%%; margin: 4pt 0 10pt 0; font-size: 8.5pt; }
+@page { size: A4 %(orient)s; margin: %(margem)smm; }
+* { box-sizing: border-box; }
+html, body { background: #fff; }
+body { font-family: "Liberation Serif", "Times New Roman", "DejaVu Serif", serif;
+       font-size: 11pt; color: #000; line-height: 1.35; margin: 0; }
+header { margin: 0 0 10pt 0; }
+h1 { font-size: 14pt; font-weight: bold; margin: 0; }
+.inst { font-size: 9pt; margin: 2pt 0 0 0; }
+.desc { margin: 0 0 10pt 0; }
+h2 { font-size: 12pt; font-weight: bold; margin: 16pt 0 6pt 0; break-after: avoid; }
+p { margin: 0 0 6pt 0; text-align: justify; }
+table { border-collapse: collapse; width: 100%%; margin: 0 0 4pt 0; font-size: 10pt; }
 thead { display: table-header-group; }
 tr { break-inside: avoid; }
-th, td { padding: 2.5pt 5pt; vertical-align: top; }
-thead th { border-top: 1.5px solid #000; border-bottom: 1px solid #000; text-align: left; }
-tbody tr:last-child td { border-bottom: 1.5px solid #000; }
-tr.regra td { border-top: 1px solid #000; }
-td small { color: #555; font-size: 7.5pt; }
-caption { caption-side: top; text-align: left; font-size: 9pt; padding-bottom: 4pt; }
-.grade td, .grade th { border: 1px solid #bbb; }
-code { font-family: "Liberation Mono", monospace; font-size: 0.92em; }
-figure { margin: 0; text-align: center; break-inside: avoid; }
-figure img { max-width: 100%%; max-height: %(imgmax)s; object-fit: contain; }
-figcaption { text-align: left; font-size: 9pt; margin-top: 6pt; }
+th, td { padding: 2.5pt 6pt; vertical-align: top; text-align: left; }
+thead th { border-top: 1.2pt solid #000; border-bottom: 0.6pt solid #000; font-weight: bold; }
+tbody tr:last-child td { border-bottom: 1.2pt solid #000; }
+tr.regra td { border-top: 0.6pt solid #000; }
+td.id { white-space: nowrap; width: 1%%; }
+td small { font-size: 8.5pt; }
+table.longa { font-size: 9.5pt; }
+table.longa td { padding-top: 1.5pt; padding-bottom: 1.5pt; }
+.titulo-tab { font-size: 10pt; margin: 14pt 0 4pt 0; text-align: justify; break-after: avoid; }
+.fonte-tab { font-size: 9pt; margin: 2pt 0 10pt 0; }
+.bloco { break-inside: avoid; }
+code { font-family: "Liberation Mono", "DejaVu Sans Mono", monospace; font-size: 0.9em; }
+.folha { display: flex; flex-direction: column; overflow: hidden; }
+.folha + .folha { break-before: page; }
+figure { margin: 0; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+figure .img { flex: 1 1 auto; min-height: 0; display: flex; align-items: center;
+              justify-content: center; }
+figure img { max-width: 100%%; max-height: 100%%; width: 100%%; height: 100%%;
+             object-fit: contain; }
+figcaption { font-size: 10pt; text-align: center; margin-top: 6pt; }
+figure .fonte { font-size: 9pt; text-align: center; margin: 2pt 0 0 0; }
 .pagina { break-before: page; }
-.rotulo { font-weight: bold; font-size: 9pt; margin: 12pt 0 2pt 0; break-after: avoid; }
-caption { break-after: avoid; }
-.md td:nth-child(2) { white-space: nowrap; }
-dl dt { font-weight: bold; } dl dd { margin: 0 0 3pt 14pt; }
 """
 
 
@@ -64,29 +90,176 @@ def esc(s: str) -> str:
     return html.escape(s, quote=False)
 
 
-def pagina(n: int, titulo: str, leia: str, corpo: str, paisagem=False) -> str:
-    css = CSS % {"orient": "landscape" if paisagem else "portrait",
-                 "imgmax": "128mm" if paisagem else "215mm"}
+def documento(cod: str, titulo: str, desc: str, corpo: str, orient: str = "portrait",
+              cabecalho_na_folha: bool = False) -> str:
+    """Monta o HTML de um anexo. Com cabecalho_na_folha, o corpo e uma lista de
+    folhas de figura e o cabecalho entra na primeira delas."""
+    css = CSS % {"orient": orient, "margem": MARGEM[orient]}
+    cab = (f"<header><h1>Anexo {cod} – {esc(titulo)}</h1>"
+           f"<p class='inst'>{LINHA_INSTITUCIONAL}</p></header>"
+           + (f"<p class='desc'>{desc}</p>" if desc else ""))
+    if cabecalho_na_folha:
+        corpo = corpo.replace("<!--CABECALHO-->", cab, 1)
+        cab = ""
     return (f'<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">'
-            f"<title>Anexo {n}</title><style>{css}</style></head><body>"
-            f"<h1>Anexo {n} — {esc(titulo)}</h1><p class='sub'>{SUBTITULO}</p>"
-            f"<p class='leia'>{leia}</p>{corpo}</body></html>")
+            f"<title>Anexo {cod} – {esc(titulo)}</title><style>{css}</style></head>"
+            f"<body>{cab}{corpo}</body></html>")
 
 
-def imprimir(html_txt: str, nome: str, build: Path) -> None:
+def folha(img: Path, legenda: str, orient: str, primeira: bool, extra: str = "") -> str:
+    """Uma pagina com uma figura que ocupa toda a area util restante."""
+    altura = ALTURA_UTIL[orient]
+    return (f"<section class='folha' style='height:{altura}mm'>"
+            + ("<!--CABECALHO-->" if primeira else "")
+            + f"<figure><div class='img'><img src='{img.as_uri()}' alt=''></div>"
+            f"<figcaption>{legenda}</figcaption>"
+            + (f"<p class='fonte'>{extra}</p>" if extra else "")
+            + f"<p class='fonte'>{FONTE}</p></figure></section>")
+
+
+def imprimir(html_txt: str, nome: str, build: Path) -> Path:
     fonte = build / (nome + ".html")
     fonte.write_text(html_txt, encoding="utf-8")
     pdf = SAIDA / (nome + ".pdf")
     subprocess.run(["chromium", "--headless", "--disable-gpu", "--no-pdf-header-footer",
                     "--allow-file-access-from-files", f"--print-to-pdf={pdf}",
                     fonte.as_uri()], check=True, capture_output=True)
+    texto = subprocess.run(["pdftotext", str(pdf), "-"], check=True,
+                           capture_output=True, text=True).stdout
+    proibido = re.findall(r"(?i)html|xlsx|planilha", texto)
+    if proibido:
+        raise SystemExit(f"{pdf.name}: menciona {sorted(set(proibido))}")
     print("gerado", pdf.relative_to(RAIZ))
+    return pdf
 
 
-def figura(caminho: Path, legenda: str = "", altura: str = "") -> str:
-    leg = f"<figcaption>{legenda}</figcaption>" if legenda else ""
-    est = f' style="max-height:{altura}"' if altura else ""
-    return f'<figure><img src="{caminho.as_uri()}" alt=""{est}>{leg}</figure>'
+# ------------------------------------------------------------ PlantUML
+
+def plantuml(arquivos: list[Path], build: Path) -> dict[str, Path]:
+    """Renderiza os .puml em SVG (pasta build/svg) e regrava o .png ao lado de
+    cada .puml. Monta as fontes Liberation no conteiner para que o PlantUML
+    meça o texto com a mesma fonte usada no PDF."""
+    svg = build / "svg"
+    svg.mkdir(parents=True, exist_ok=True)
+    cmd = ["docker", "run", "--rm", "-u", f"{os.getuid()}:{os.getgid()}",
+           "-v", f"{DIAG}:/data", "-v", f"{svg}:/out"]
+    if Path(FONTES_LIBERATION).is_dir():
+        cmd += ["-v", f"{FONTES_LIBERATION}:/usr/share/fonts/truetype/liberation:ro"]
+    cmd += ["plantuml/plantuml", "-tsvg", "-o", "/out"] + [f"/data/{a.name}" for a in arquivos]
+    subprocess.run(cmd, check=True)
+    saida = {}
+    for a in arquivos:
+        s = svg / (a.stem + ".svg")
+        if not s.exists():
+            raise SystemExit(f"PlantUML nao gerou {s.name}")
+        if "Syntax Error" in s.read_text(encoding="utf-8"):
+            raise SystemExit(f"erro de sintaxe em {a.name}")
+        if not a.stem.startswith("esquema-banco-"):
+            subprocess.run(["rsvg-convert", "-z", "3", "-b", "white", str(s),
+                            "-o", str(DIAG / (a.stem + ".png"))], check=True)
+        saida[a.stem] = s
+    return saida
+
+
+# --------------------------------------------------- DBML -> diagrama ER
+
+NUCLEO = {"users", "document_categories", "collections", "documents"}
+
+GRUPOS_BANCO = [
+    ("nucleo", "núcleo do acervo e estrutura extraída dos documentos",
+     ["users", "document_categories", "collections", "documents", "document_pages",
+      "paragraph_nodes", "table_sections", "document_outline_nodes", "document_chunks",
+      "metadata_pairs"], 0),
+    ("processamento", "operação: processamento, auditoria e provedores",
+     ["document_processing_attempts", "outbox_events", "document_audit_events",
+      "user_provider_configs", "provider_model_catalogs", "provider_audit_events",
+      "user_indexing_preferences", "enrichment_cache_entries"], 4),
+    ("produto", "operação: preços de modelos, conversas e estado do workspace",
+     ["pricing_sources", "model_prices", "model_price_histories", "chat_conversations",
+      "chat_conversation_entries", "paragraph_highlights", "workspace_view_states"], 4),
+]
+
+
+def ler_dbml() -> tuple[dict[str, list[tuple[str, str, str]]], list[tuple[str, str, str, str]]]:
+    dbml = DBML.read_text(encoding="utf-8")
+    tabelas = {}
+    for nome, corpo in re.findall(r"^Table (\w+) \{\n(.*?)^\}", dbml, re.M | re.S):
+        cols = []
+        for l in corpo.split("indexes {")[0].strip().splitlines():
+            m = re.match(r"\s*(\w+)\s+(\S+)(?:\s+\[(.*)\])?", l)
+            if m:
+                cols.append((m.group(1), m.group(2), m.group(3) or ""))
+        tabelas[nome] = cols
+    refs = re.findall(r"^Ref:\s*(\w+)\.(\w+)\s*>\s*(\w+)\.(\w+)", dbml, re.M)
+    declarado = re.search(r"Total: (\d+) tabelas", dbml)
+    if declarado and int(declarado.group(1)) != len(tabelas):
+        raise SystemExit("DBML: total declarado difere das tabelas lidas")
+    return tabelas, refs
+
+
+def gera_er() -> list[tuple[str, str, Path, list[str]]]:
+    """Escreve um .puml de diagrama ER por grupo de tabelas e devolve
+    (chave, titulo, caminho, tabelas)."""
+    tabelas, refs = ler_dbml()
+    agrupadas = [t for _, _, ts, _ in GRUPOS_BANCO for t in ts]
+    if sorted(agrupadas) != sorted(tabelas):
+        raise SystemExit("grupos do A9 desatualizados frente ao DBML: "
+                         f"{sorted(set(tabelas) ^ set(agrupadas))}")
+    fks = {(o, c) for o, c, _, _ in refs}
+    saida = []
+    for chave, titulo, nomes, colunas_grade in GRUPOS_BANCO:
+        l = ["@startuml",
+             "' GERADO por scripts/gerar-anexos.py a partir de docs/schema/thingindex.dbml.",
+             "' Nao edite a mao.",
+             "!include estilo.iuml",
+             "skinparam defaultFontSize 13",
+             "skinparam linetype ortho",
+             "skinparam nodesep 40",
+             "skinparam ranksep 50",
+             "hide circle"]
+
+        def entidade(nome: str, so_pk: bool = False) -> None:
+            rotulo = nome + (" (Figura 1)" if so_pk else "")
+            l.append(f'entity "{rotulo}" as {nome} {{')
+            for c, tipo, attr in tabelas[nome]:
+                pk = "pk" in [x.strip() for x in attr.split(",")]
+                if so_pk and not pk:
+                    continue
+                marca = "<b>PK</b> " if pk else ("<i>FK</i> " if (nome, c) in fks else "")
+                l.append(f"  {{field}} {marca}{c} : {tipo}")
+                if pk and not so_pk:
+                    l.append("  --")
+            l.append("}")
+
+        for n in nomes:
+            entidade(n)
+        externas = sorted({d for o, _, d, _ in refs if o in nomes and d not in nomes})
+        for n in externas:
+            entidade(n, so_pk=True)
+        ligadas = set()
+        # As tabelas do nucleo ficam numa linha (relacoes para a direita) e as
+        # demais abaixo delas, para a figura caber numa pagina em paisagem.
+        for o, c, d, _ in refs:
+            if o in nomes:
+                seta = "-right-" if o in NUCLEO and d in NUCLEO else "--"
+                l.append(f"{d} ||{seta}o{{ {o}")
+                ligadas |= {o, d}
+        if "users" in nomes:  # posse por user_id, sem chave estrangeira declarada
+            for n in nomes:
+                if n != "users" and any(c == "user_id" for c, _, _ in tabelas[n]):
+                    seta = ".right." if n in NUCLEO else ".."
+                    l.append(f"users ||{seta}o{{ {n}")
+        if colunas_grade:  # tabelas soltas em grade, para a figura nao virar uma faixa
+            soltas = [n for n in nomes if n not in ligadas]
+            colunas = [soltas[i::colunas_grade] for i in range(colunas_grade)]
+            for col in colunas:
+                for a, b in zip(col, col[1:]):
+                    l.append(f"{a} -[hidden]down- {b}")
+        l.append("@enduml")
+        caminho = DIAG / f"esquema-banco-{chave}.puml"
+        caminho.write_text("\n".join(l) + "\n", encoding="utf-8")
+        saida.append((chave, titulo, caminho, nomes))
+    return saida
 
 
 # ---------------------------------------------------------------- LaTeX -> HTML
@@ -140,7 +313,7 @@ def comando(s: str, nome: str, ini: str, fim: str) -> str:
 
 
 def inline(s: str) -> str:
-    """Converte o LaTeX de uma celula, legenda ou item em HTML."""
+    """Converte o LaTeX de uma celula ou legenda em HTML."""
     s = s.strip().replace("{,}", ",").replace(r"\%", "%")
     s = re.sub(r"\\label\{.*?\}", "", s)
     while (k := s.find(r"\shortstack{")) >= 0:
@@ -162,19 +335,26 @@ def alinhamento(spec: str) -> list[str]:
     return [{"l": "left", "c": "center", "r": "right"}[c] for c in spec if c in "lcr"]
 
 
-def tabela_tex(caminho: Path) -> str:
-    """Converte table/tabular ou longtable de um .tex gerado em <table> HTML."""
+def corpo_tabular(caminho: Path) -> tuple[str, str]:
+    """Legenda e corpo (entre \\begin e \\end) do tabular/longtable de um .tex."""
     s = "\n".join(l for l in caminho.read_text(encoding="utf-8").splitlines()
                   if not l.lstrip().startswith("%"))
     k = s.find(r"\caption{")
     legenda, _ = chave(s, k + len(r"\caption"))
     m = re.search(r"\\begin\{(tabular|longtable)\}\{([^}]*)\}", s)
-    amb, alin = m.group(1), alinhamento(m.group(2))
+    amb = m.group(1)
     corpo = s[m.end():s.find(r"\end{" + amb + "}")]
     if amb == "longtable":  # cabecalho do primeiro trecho + corpo apos \endhead
         cab = corpo[corpo.find(r"\toprule"):corpo.find(r"\endfirsthead")]
         corpo = cab + corpo[corpo.find(r"\endhead") + len(r"\endhead"):]
     corpo = re.sub(r"\\(caption|label)\{.*?\}\s*(\\\\)?", "", corpo)
+    return legenda, m.group(2), corpo
+
+
+def tabela_tex(caminho: Path) -> tuple[str, str]:
+    """Converte table/tabular ou longtable de um .tex gerado em (legenda, <table>)."""
+    legenda, spec, corpo = corpo_tabular(caminho)
+    alin = alinhamento(spec)
     linhas, cab, regra, depois_cab = [], None, False, False
     for bruto in separa(corpo, r"\\"):
         t = bruto.replace(r"\toprule", "").replace(r"\bottomrule", "")
@@ -184,8 +364,8 @@ def tabela_tex(caminho: Path) -> str:
         t = t.strip()
         if not t:
             continue
-        cels, html_cels, col = separa(t, "&"), [], 0
-        for c in cels:
+        html_cels, col = [], 0
+        for c in separa(t, "&"):
             c = c.strip()
             span = 1
             mc = re.match(r"\\multicolumn\{(\d+)\}\{([^}]*)\}", c)
@@ -205,287 +385,304 @@ def tabela_tex(caminho: Path) -> str:
         f'<tr{" class=regra" if r else ""}>' +
         "".join(f'<td colspan="{sp}" style="text-align:{a}">{c}</td>' for c, sp, a in cels) +
         "</tr>" for cels, r in linhas)
-    return (f"<table><caption>{inline(legenda)}</caption><thead><tr>{th}</tr></thead>"
+    return inline(legenda), f"<table><thead><tr>{th}</tr></thead><tbody>{tr}</tbody></table>"
+
+
+def numeros_tex(caminho: Path) -> list[str]:
+    """Numeros das celulas de um .tex, na ordem, para conferir o PDF."""
+    _, _, corpo = corpo_tabular(caminho)
+    corpo = re.sub(r"\\multicolumn\{\d+\}\{[^}]*\}", "", corpo)
+    corpo = re.sub(r"\\[a-zA-Z]+", " ", corpo).replace("{,}", ",")
+    return re.findall(r"\d+(?:,\d+)?", corpo)
+
+
+def confere_numeros(pdf: Path, arquivos: list[Path]) -> None:
+    """Todo numero dos .tex precisa aparecer no texto do PDF, na mesma ordem."""
+    texto = subprocess.run(["pdftotext", "-raw", str(pdf), "-"], check=True,
+                           capture_output=True, text=True).stdout
+    no_pdf = re.findall(r"\d+(?:,\d+)?", texto)
+    i, total = 0, 0
+    for a in arquivos:
+        for n in numeros_tex(a):
+            total += 1
+            while i < len(no_pdf) and no_pdf[i] != n:
+                i += 1
+            if i == len(no_pdf):
+                raise SystemExit(f"{pdf.name}: numero {n} de {a.name} ausente ou fora de ordem")
+            i += 1
+    print(f"  conferidos {total} numeros de {len(arquivos)} tabelas .tex")
+
+
+# ------------------------------------------------------------------- A1
+
+REQUISITOS = [
+    ("RF01", "Cadastrar usuário, fazer login, redefinir a senha e editar o perfil."),
+    ("RF02", "Organizar os documentos em categorias e coleções."),
+    ("RF03", "Enviar documentos em PDF para uma coleção."),
+    ("RF04", "Indexar o documento em segundo plano, extraindo páginas, parágrafos, tabelas e sumário."),
+    ("RF05", "Gerar, de forma opcional, resumos das páginas com um LLM."),
+    ("RF06", "Disponibilizar o conteúdo indexado de uma coleção por API."),
+    ("RF07", "Responder perguntas sobre uma coleção, citando as fontes."),
+    ("RF08", "Abrir cada fonte no PDF, na página e no parágrafo de origem."),
+    ("RF09", "Cadastrar provedores de LLM e de armazenamento, com a credencial guardada cifrada."),
+    ("RF10", "Acompanhar o andamento da indexação e o consumo de tokens."),
+    ("RF11", "Registrar o histórico de ações sobre documentos e provedores."),
+    ("RF12", "Reprocessar documentos cuja indexação falhou."),
+]
+
+# Cada item conferido no codigo de api/ (bcrypt em usecase/auth_usecase.go, JWT em
+# api/middleware/auth.go, AES-GCM em pkg/crypto/aes.go, limites em api/routes.go,
+# teste de determinismo em retrieval/determinism_test.go, provedor OLLAMA em
+# domain/provider.go).
+NAO_FUNCIONAIS = [
+    "Armazenar as senhas com bcrypt.",
+    "Autenticar a sessão por token JWT.",
+    "Cifrar as credenciais dos provedores com AES-GCM.",
+    "Limitar o número de requisições nas rotas de autenticação, de envio de documentos e de chat.",
+    "Garantir integridade referencial e transações no banco de dados (PostgreSQL).",
+    "Organizar o código em camadas: handlers, casos de uso e repositórios.",
+    "Permitir a execução reproduzível do sistema com Docker Compose.",
+    "Recuperar de forma determinística: a mesma pergunta sobre o mesmo índice traz as mesmas "
+    "fontes, na mesma ordem.",
+    "Permitir o uso de um modelo local (Ollama), sem enviar o conteúdo a terceiros.",
+]
+
+
+def tabela_simples(cab: tuple[str, str], linhas: list[tuple[str, str]]) -> str:
+    tr = "".join(f"<tr><td class='id'>{a}</td><td>{b}</td></tr>" for a, b in linhas)
+    return (f"<table><thead><tr><th>{cab[0]}</th><th>{cab[1]}</th></tr></thead>"
             f"<tbody>{tr}</tbody></table>")
 
 
-# ------------------------------------------------------------- Markdown -> HTML
-
-def md_inline(s: str) -> str:
-    s = esc(s)
-    s = re.sub(r"`([^`]+)`", r"<code>\1</code>", s)
-    s = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s)
-    s = re.sub(r"(?<![\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])", r"<em>\1</em>", s)
-    return re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r'<a href="\2">\1</a>', s)
-
-
-def markdown(txt: str, rebaixa: int = 1) -> str:
-    """Conversor minimo: titulos, paragrafos, listas com '-' e tabelas."""
-    out, par, linhas = [], [], txt.splitlines()
-
-    def fecha():
-        if par:
-            out.append("<p>" + md_inline(" ".join(par)) + "</p>")
-            par.clear()
-
-    i = 0
-    while i < len(linhas):
-        l = linhas[i].rstrip()
-        if m := re.match(r"(#+)\s+(.*)", l):
-            fecha()
-            n = min(len(m.group(1)) + rebaixa, 6)
-            out.append(f"<h{n}>{md_inline(m.group(2))}</h{n}>")
-        elif l.startswith("|"):
-            fecha()
-            bloco = []
-            while i < len(linhas) and linhas[i].startswith("|"):
-                bloco.append([c.strip() for c in linhas[i].strip().strip("|").split("|")])
-                i += 1
-            th = "".join(f"<th>{md_inline(c)}</th>" for c in bloco[0])
-            tr = "".join("<tr>" + "".join(f"<td>{md_inline(c)}</td>" for c in r) + "</tr>"
-                         for r in bloco[2:])
-            out.append(f"<table class='grade md'><thead><tr>{th}</tr></thead><tbody>{tr}</tbody></table>")
-            continue
-        elif l.lstrip().startswith("- "):
-            fecha()
-            itens = []
-            while i < len(linhas) and linhas[i].strip():
-                x = linhas[i].strip()
-                if x.startswith("- "):
-                    itens.append(x[2:])
-                else:
-                    itens[-1] += " " + x
-                i += 1
-            out.append("<ul>" + "".join(f"<li>{md_inline(x)}</li>" for x in itens) + "</ul>")
-            continue
-        elif not l.strip():
-            fecha()
-        else:
-            par.append(l.strip())
-        i += 1
-    fecha()
-    return "\n".join(out)
-
-
-# ------------------------------------------------------------------- Anexos
-
-# Copiados de docs/article/anexos/README.md (secao "Requisitos funcionais").
-REQUISITOS = [
-    ("RF01", "Cadastro, autenticação, redefinição de senha e edição de perfil", r"rotas \texttt{/auth/*} e \texttt{/user/me}"),
-    ("RF02", "Criar, listar e renomear categorias; criar coleções e mover entre categorias", "rotas de categoria e coleção"),
-    ("RF03", "Enviar documento para uma coleção (PDF, HTML e XLSX), com validação de tipo e tamanho", r"\texttt{POST /documents/upload}"),
-    ("RF04", "Indexar de forma assíncrona páginas, parágrafos, tabelas, sumário, trechos e metadados", r"\emph{worker} \texttt{indexer}"),
-    ("RF05", "Enriquecer o índice com LLM, opcional e configurável por usuário", "preferências de indexação"),
-    ("RF06", "Recuperar o contexto de uma coleção por API", "rota de contexto da coleção"),
-    ("RF07", r"Responder perguntas sobre a coleção com as fontes citadas, em \emph{streaming}", r"\texttt{POST /chat/stream} (SSE)"),
-    ("RF08", "Abrir cada fonte no PDF, na página e na região de origem", r"\emph{workspace} do \emph{frontend}"),
-    ("RF09", "Configurar provedores de LLM e de armazenamento, com credencial cifrada", r"rotas \texttt{/user/providers}"),
-    ("RF10", r"Acompanhar status, tentativas, \emph{tokens} e custo da indexação", "painel de operações"),
-    ("RF11", "Registrar trilha de auditoria de documentos e provedores", "tabelas de eventos de auditoria"),
-    ("RF12", "Reprocessar documento com falha e marcar documento cujo arquivo sumiu", r"\texttt{POST /documents/:id/retry}"),
-]
-
-# Copiados da secao Requisitos de docs/article/artigo.tex (branch main).
-NAO_FUNCIONAIS = [
-    "integridade referencial e transações ACID no armazenamento das estruturas extraídas;",
-    "separação em camadas, com dependência em um só sentido;",
-    r"segurança: senha com bcrypt, sessão por \emph{token} JWT (\emph{JSON Web Token}), credencial de provedor cifrada com AES-GCM (cifra simétrica autenticada), limite de requisições por conexão e por e-mail nas rotas de autenticação e por usuário nas de envio e \emph{chat}; sem um proxy reverso configurado para repassar o IP, o limite por conexão é uma cota única da instalação, que terceiros podem esgotar, e o limite por e-mail permite bloquear temporariamente o acesso a uma conta conhecida; as duas escolhas são aceitáveis no uso individual e impedem que o IP seja forjado;",
-    r"privacidade: com um modelo servido na própria instalação (por exemplo, pelo Ollama local), nenhum conteúdo sai dela; com provedor externo, incluído o Ollama em nuvem, a pergunta, o histórico da conversa e os trechos recuperados, e, se o enriquecimento estiver ligado, o texto das páginas, são enviados a ele, e cabe à organização a base legal para esse tratamento, nos termos da Lei Geral de Proteção de Dados (LGPD);",
-    "execução reproduzível por Docker Compose;",
-    "recuperação determinística: a mesma pergunta sobre o mesmo índice produz as mesmas fontes na mesma ordem.",
-]
-
-# Legendas das figuras fig:workspace e fig:operacoes de docs/article/artigo.tex (main).
-LEGENDA_WORKSPACE = r"\emph{Workspace} de uma coleção de normas de segurança do trabalho: \emph{chat} com a primeira fonte expandida (à esquerda), PDF na página citada com o parágrafo destacado (ao centro) e o resumo do documento gerado pelo LLM na indexação (à direita)."
-LEGENDA_OPERACOES = r"Tela de operações, voltada à manutenção técnica: modelo ativo, cobertura da indexação, \emph{tokens} estimados da indexação (caracteres divididos por 4; custo não informado, porque não há preço cadastrado para o modelo), um escore heurístico da estrutura extraída, não validado contra o acerto, e contadores de nova tentativa, fila de mensagens mortas, falhas permanentes e órfãos. A tela não indica se o provedor configurado é local ou externo."
-
-
 def a1() -> str:
-    tr = "".join(f"<tr><td>{i}</td><td>{inline(r)}</td><td>{inline(im)}</td></tr>"
-                 for i, r, im in REQUISITOS)
-    nf = "".join(f"<li>{inline(x)}</li>" for x in NAO_FUNCIONAIS)
-    corpo = (f"<h2>Requisitos funcionais</h2><table class=grade><thead><tr><th>Id</th>"
-             f"<th>Requisito</th><th>Implementação</th></tr></thead><tbody>{tr}</tbody></table>"
-             f"<h2>Requisitos não funcionais</h2><ul>{nf}</ul>")
-    return pagina(1, "Requisitos funcionais e não funcionais",
-                  "Lista dos requisitos do sistema (Seção 6.1 do artigo). Na tabela, cada linha "
-                  "é um requisito funcional e a coluna Implementação diz onde ele está no código "
-                  "(rota da API, <em>worker</em> ou tela). Abaixo, os requisitos não funcionais, "
-                  "copiados do texto do artigo.", corpo)
+    rnf = [(f"RNF{i:02d}", r) for i, r in enumerate(NAO_FUNCIONAIS, 1)]
+    corpo = ("<p class='titulo-tab'>Quadro 1 – Requisitos funcionais.</p>"
+             + tabela_simples(("Id", "Requisito"), REQUISITOS)
+             + f"<p class='fonte-tab'>{FONTE}</p>"
+             + "<p class='titulo-tab'>Quadro 2 – Requisitos não funcionais.</p>"
+             + tabela_simples(("Id", "Requisito"), rnf)
+             + f"<p class='fonte-tab'>{FONTE}</p>")
+    return documento("A1", "Requisitos do sistema",
+                     "Requisitos funcionais e não funcionais do ThingIndex.", corpo)
 
 
-def diagrama(n, titulo, leia, arquivo, paisagem, legenda=""):
-    leia += " A imagem está em alta resolução: use o zoom do leitor de PDF para ler os detalhes."
-    return pagina(n, titulo, leia, figura(FIG / "diagramas" / arquivo, legenda), paisagem)
+# ------------------------------------------------------------------- A7
 
-
-BRACOS = [("A", "contagem de termos da pergunta que aparecem no texto"),
-          ("B", "BM25, ranqueamento lexical clássico que pondera termos raros"),
-          ("C", "denso exato: similaridade entre vetores de <em>embedding</em>, comparando com todos os itens"),
-          ("C′", "denso com índice aproximado IVF (pgvector), que compara só com parte dos itens"),
-          ("D", "fusão de A e B por RRF (soma de 1/(k + posição) em cada lista)"),
-          ("E", "fusão de B e C por RRF")]
-METRICAS = [("P@1", "o primeiro resultado é relevante? (média sobre as consultas)"),
-            ("P@3", "fração dos 3 primeiros resultados que é relevante"),
-            ("R@5", "fração dos itens relevantes que aparece entre os 5 primeiros"),
-            ("MRR", "média de 1/posição do primeiro resultado relevante (1 = sempre em 1º)"),
-            ("nDCG@10", "qualidade da ordem dos 10 primeiros, premiando relevantes no topo (1 = ordem ideal)")]
+BRACOS = [("A", "Contagem de termos da pergunta presentes no texto."),
+          ("B", "BM25."),
+          ("C", "Busca densa exata."),
+          ("C′", "Busca densa com índice aproximado."),
+          ("D", "Fusão de A e B."),
+          ("E", "Fusão de B e C.")]
+METRICAS = [("P@1", "Fração das consultas cujo primeiro resultado é relevante."),
+            ("P@3", "Fração relevante dos três primeiros resultados."),
+            ("R@5", "Fração dos itens relevantes encontrada entre os cinco primeiros resultados."),
+            ("MRR", "Média do inverso da posição do primeiro resultado relevante."),
+            ("nDCG@10", "Qualidade da ordenação dos dez primeiros resultados, com mais peso "
+                        "para os relevantes no topo (1 = ordenação ideal).")]
 
 TABELAS_A7 = [
     ("Desempenho por braço", ["retrieval-summary.tex", "retrieval-summary-section.tex"]),
     ("Variantes de consulta", ["retrieval-variants.tex", "retrieval-variants-section.tex"]),
-    ("Consultas negativas e limiar de corte", ["retrieval-negatives.tex", "retrieval-negatives-section.tex", "threshold.tex"]),
+    ("Consultas negativas e limiar de corte",
+     ["retrieval-negatives.tex", "retrieval-negatives-section.tex", "threshold.tex"]),
     ("Comparações pareadas", ["retrieval-significance.tex", "retrieval-significance-section.tex"]),
-    ("Determinismo, índices aproximados e proveniência", ["dense-determinism.tex", "ann-pgvector.tex", "provenance.tex"]),
+    ("Determinismo, índices aproximados e proveniência",
+     ["dense-determinism.tex", "ann-pgvector.tex", "provenance.tex"]),
 ]
 
 
-def a7() -> str:
-    bra = "".join(f"<dt>{b}</dt><dd>{d}</dd>" for b, d in BRACOS)
-    met = "".join(f"<dt>{b}</dt><dd>{d}</dd>" for b, d in METRICAS)
-    corpo = (f"<h2>Legenda</h2><h3>Braços (estratégias de recuperação comparadas)</h3><dl>{bra}</dl>"
-             f"<h3>Métricas (todas de 0 a 1; maior é melhor)</h3><dl>{met}</dl>"
-             "<p>Números entre colchetes são intervalos de confiança de 95%. Vírgula é o "
-             "separador decimal. Na coluna Vitórias A/B das comparações pareadas, A e B são o "
-             "primeiro e o segundo braço da comparação, não os braços A e B. A unidade de "
-             "recuperação diz o que conta como acerto: o documento certo ou a seção certa.</p>")
-    n = 0
+def a7() -> tuple[str, list[Path]]:
+    corpo = ("<p>As tabelas reproduzem integralmente os resultados de recuperação das Seções 8.1 "
+             "a 8.3 do artigo. Todas as métricas variam de 0 a 1, e maior é melhor; valores entre "
+             "colchetes são intervalos de confiança de 95%. Nas comparações pareadas, a coluna "
+             "Vitórias A/B conta as consultas em que o primeiro (A) ou o segundo (B) braço da "
+             "comparação teve o valor maior.</p>"
+             "<div class='bloco'><p class='titulo-tab'>Quadro 1 – Braços de recuperação comparados.</p>"
+             + tabela_simples(("Braço", "Descrição"), BRACOS) + "</div>"
+             "<div class='bloco'><p class='titulo-tab'>Quadro 2 – Métricas de recuperação.</p>"
+             + tabela_simples(("Métrica", "Significado"), METRICAS) + "</div>")
+    n, usados = 0, []
     for titulo, arqs in TABELAS_A7:
-        corpo += f"<h2 class=pagina>{titulo}</h2>"
-        for a in arqs:  # o sufixo -section e o mesmo de scripts/analyze.py (UNIDADE)
+        corpo += f"<h2>{titulo}</h2>"
+        for a in arqs:
             n += 1
-            unidade = ("unidade de recuperação: seção" if "-section" in a else
-                       "unidade de recuperação: documento" if a.startswith("retrieval-") else "")
-            corpo += (f"<p class=rotulo>Tabela 7.{n} — <code>{a}</code>"
-                      f"{' — ' + unidade if unidade else ''}</p>" + tabela_tex(TAB / a))
-    return pagina(7, "Tabelas completas de recuperação",
-                  "Versão integral das tabelas de recuperação das Seções 8.1 a 8.3 do artigo, "
-                  "convertidas sem alteração dos arquivos <code>docs/article/tables/*.tex</code>, "
-                  "que são gerados por script a partir dos CSV de resultados. Cada tabela traz "
-                  "acima a legenda original; leia primeiro a legenda de braços e métricas abaixo.",
-                  corpo)
+            usados.append(TAB / a)
+            legenda, tabela = tabela_tex(TAB / a)
+            if a.startswith("retrieval-") and "unidade de recuperação" not in legenda:
+                unidade = "seção" if "-section" in a else "documento"
+                legenda += f" Unidade de recuperação: {unidade}."
+            # tabelas de ate 8 linhas nao se partem entre paginas
+            longa = tabela.count("<tr") > 9
+            classe = "" if longa else " class='bloco'"
+            if longa:
+                tabela = tabela.replace("<table>", "<table class='longa'>", 1)
+            corpo += (f"<div{classe}><p class='titulo-tab'>Tabela {n} – {legenda}</p>{tabela}"
+                      f"<p class='fonte-tab'>{FONTE}</p></div>")
+    return documento("A7", "Tabelas completas de recuperação",
+                     "", corpo), usados
+
+
+# ------------------------------------------------------------------- A8
+
+# Redacao fiel de docs/article/results/alteracoes-pos-medicao.md, na mesma
+# ordem; os numeros sao os do registro.
+ALTERACOES = [
+    ("10 a 18/09/2026",
+     "Quatro versões do gabarito do acervo de ensino (v1 a v4): expressões regulares "
+     "afrouxadas em t04, t06, c08 e c13; novas páginas-alvo em p01, p20, p22 e t21.",
+     "Respostas certas eram recusadas por redação diferente; a informação estava presente "
+     "em mais de uma página.",
+     "F (sistema inalterado): 204 → 213/216 respostas. T passou de 67/72 perguntas "
+     "(1 repetição, 09/09/2026) a 216/216 respostas, somando ajustes do sistema e do "
+     "gabarito. Na prática, o acervo de ensino foi conjunto de desenvolvimento (Seção 5)."),
+    ("19/09/2026",
+     "Padrão de recusa das perguntas negativas das baterias ampliado (“não consta”, "
+     "“não há”, ...).",
+     "Recusas corretas redigidas de outro modo eram marcadas como erradas.",
+     "Produto: 0,783 → 0,841 (C)."),
+    ("27/09/2026",
+     "Variantes do título de cada documento incluídas no gabarito das baterias, fora do "
+     "hash das perguntas.",
+     "O registro das páginas citadas gravava o título da fonte, e não o identificador do "
+     "gabarito; a proveniência contava erro quando o título diferia.",
+     "Proveniência: C 0,371 → 0,581; E 0,532 → 0,823. Nenhum veredito de acerto mudou."),
+    ("27/09/2026",
+     "Gabaritos das baterias v4 e do edital v2: as perguntas de existência e lc3 passam a "
+     "vetar recusa; premissa falsa passa a exigir o dado que corrige a premissa; lc3 deixa "
+     "de exigir “não”; pr2 aceita o prazo de 2 anos que o termo de garantia também traz.",
+     "A banca simulada mostrou que uma recusa constante acertava 24 perguntas de existência "
+     "e de premissa falsa, e que lc3 no braço E, correta, era marcada como errada. Foi "
+     "criado um teste de regressão para recusas.",
+     "C 174 → 149/213 (0,817 → 0,700); E 198 → 192/213 (0,930 → 0,901). Premissa falsa: "
+     "C 35 → 13/36. Expansão: 10 ganhos e 1 perda → 15 ganhos e 0 perdas "
+     "(p 0,012 → 0,0001). Enriquecimento: 9/12 nos quatro braços → 7, 8, 7 e 8/12. "
+     "Edital: sem mudança."),
+    ("27/09/2026",
+     "Gabaritos das baterias v5 e do edital v3: existência veta o verbo negado (“não "
+     "existe”, “não consta”, “não trata”, “não prevê”); lc3 veta a resposta oposta (“não "
+     "foi revogada”, “continua em vigor”); lc4 passa a exigir o art. 190 ou a regra que "
+     "ele estabelece e veta recusa e resposta oposta.",
+     "A segunda leitura da banca simulada mostrou que “Não existe previsão sobre isso nos "
+     "documentos.” acertava as 12 perguntas de existência, que “Não, a lei não foi "
+     "revogada.” acertava lc3 e que as 6 respostas de lc4P, todas recusas, contavam como "
+     "certas. O teste de regressão passou a cobrir nove recusas e as respostas opostas.",
+     "C 149 → 146/213 (0,700 → 0,685); E 192 → 189/213 (0,901 → 0,887). Mudaram só as 6 "
+     "respostas de lc4P, conferidas uma a uma. Teste de redação: 12×0 → 13×0 pares; com o "
+     "gabarito original (v3) era 8×2, p = 0,109: o efeito da redação só é significativo "
+     "depois desta revisão e da anterior. A resposta constante “Sim.” ainda acerta as 12 "
+     "perguntas de existência, cuja resposta certa é sempre sim; o artigo declara isso."),
+    ("27/09/2026",
+     "Gabaritos das baterias v6 e do edital v4: recusa ampla (“não está previsto”, "
+     "“nenhum dos documentos trata”, “nada consta”, “não pode ser encontrada”) vetada nas "
+     "perguntas de sim ou não; nelas, a resposta que abre negando o que o gabarito afirma "
+     "(ou o contrário) é vetada; lc12 e lc13 vetam a resposta oposta; pr8 aceita o plural "
+     "“píxeis”.",
+     "A terceira leitura da banca simulada mostrou recusas e respostas opostas que o v5 "
+     "ainda aceitava (nenhuma nas respostas reais) e um falso negativo: “píxeis” não "
+     "contém “pixel” depois de retirados os acentos.",
+     "Só pr8L mudou (2 respostas de C, de errado para certo, conferidas). C 146 → 148/213 "
+     "(0,685 → 0,695); E inalterado (0,887). Expansão: 15×0 → 14×0; redação: 13×0 → 14×0. "
+     "A leitura das 30 respostas erradas restantes, uma por pergunta e braço, encontrou só "
+     "pr8 como falso negativo claro. lc1P, caso de fronteira, foi mantido: a resposta lista "
+     "as cinco modalidades da Lei 14.133, e o gabarito, escrito antes da medição, pede "
+     "também as da Lei 8.666 (“depende da lei”)."),
+    ("Durante o desenvolvimento",
+     "Heurísticas do ranqueador (cobertura mínima de 2 termos, variante de plural com 6 ou "
+     "mais letras, descarte do reforço por título, regra de continuação de página) mantidas "
+     "ou descartadas pelo efeito medido nas 72 perguntas do acervo de ensino.",
+     "Ciclos da pesquisa em ciência do design (DSR).",
+     "O acerto e a proveniência de T no acervo de ensino são resultados dentro da amostra "
+     "de desenvolvimento. As baterias, escritas depois, são o conjunto de teste."),
+]
 
 
 def a8() -> str:
-    txt = (ART / "results" / "alteracoes-pos-medicao.md").read_text(encoding="utf-8")
-    return pagina(8, "Alterações feitas depois de medir",
-                  "Registro de toda alteração de gabarito ou de critério feita depois de ver os "
-                  "resultados (Seção 5 do artigo), reproduzido de "
-                  "<code>docs/article/results/alteracoes-pos-medicao.md</code>. Cada linha da "
-                  "tabela diz o que mudou, por quê, e o efeito nos números; os números publicados "
-                  "no artigo são os da coluna Efeito.", markdown(txt), paisagem=True)
+    tr = "".join(f"<tr><td class='id'>{d}</td><td>{o}</td><td>{p}</td><td>{e}</td></tr>"
+                 for d, o, p, e in ALTERACOES)
+    corpo = ("<p class='titulo-tab'>Quadro 1 – Alterações de gabarito ou de critério feitas "
+             "depois de medir.</p>"
+             "<table style='font-size:9.5pt'><colgroup><col style='width:11%'><col style='width:32%'>"
+             "<col style='width:25%'><col style='width:32%'></colgroup><thead><tr><th>Data</th>"
+             f"<th>Alteração</th><th>Motivo</th><th>Efeito nos números</th></tr></thead>"
+             f"<tbody>{tr}</tbody></table>"
+             "<p class='fonte-tab'>Braços: T, trechos recuperados; F, documento inteiro; C, "
+             "pergunta original; E, pergunta expandida por LLM. Os números publicados no "
+             "artigo são os da coluna Efeito nos números.</p>"
+             f"<p class='fonte-tab'>{FONTE}</p>")
+    return documento("A8", "Alterações feitas depois de medir",
+                     "Registro de cada alteração de gabarito ou de critério feita depois de "
+                     "conhecidos os resultados, com o efeito nos números.", corpo, "landscape")
 
 
-GRUPOS = [
-    ("Núcleo: usuário e acervo", ["users", "document_categories", "collections", "documents"]),
-    ("Estrutura extraída dos documentos", ["document_pages", "paragraph_nodes", "table_sections",
-     "document_outline_nodes", "document_chunks", "metadata_pairs"]),
-    ("Operação: fila, auditoria, provedores, preços, conversas e preferências", ["document_processing_attempts",
-     "outbox_events", "document_audit_events", "user_provider_configs", "provider_model_catalogs",
-     "provider_audit_events", "pricing_sources", "model_prices", "model_price_histories",
-     "chat_conversations", "chat_conversation_entries", "paragraph_highlights", "workspace_view_states",
-     "user_indexing_preferences", "enrichment_cache_entries"]),
-]
+# ------------------------------------------------------------------- main
 
-
-def a9() -> str:
-    dbml = (RAIZ / "docs" / "schema" / "thingindex.dbml").read_text(encoding="utf-8")
-    refs = {}
-    for o, d in re.findall(r"^Ref:\s*(\S+)\s*>\s*(\S+)", dbml, re.M):
-        refs[o] = d
-    tabelas = {}
-    for nome, corpo in re.findall(r"^Table (\w+) \{\n(.*?)^\}", dbml, re.M | re.S):
-        cols, idx = [], []
-        partes = corpo.split("indexes {")
-        for l in partes[0].strip().splitlines():
-            m = re.match(r"\s*(\w+)\s+(\S+)(?:\s+\[(.*)\])?", l)
-            if m:
-                cols.append(m.groups())
-        if len(partes) > 1:
-            for l in partes[1].splitlines():
-                m = re.match(r"\s*(\(.*?\)|\w+)\s+\[(.*)\]", l)
-                if m:
-                    idx.append(m.group(1) + (" único" if "unique" in m.group(2) else ""))
-        tabelas[nome] = (cols, idx)
-    agrupadas = [t for _, ts in GRUPOS for t in ts]
-    assert sorted(agrupadas) == sorted(tabelas), "grupos do A9 desatualizados frente ao DBML"
-
-    def restr(a):
-        if not a:
-            return ""
-        out = []
-        for x in (y.strip() for y in a.split(",")):
-            if x == "pk":
-                out.append("chave primária")
-            elif x == "not null":
-                out.append("obrigatório")
-            elif x == "unique":
-                out.append("único")
-            elif x == "increment":
-                out.append("autoincremento")
-            elif x.startswith("default:"):
-                out.append("padrão " + x.split(":", 1)[1].strip().strip("`"))
-        return ", ".join(out)
-
-    corpo = ""
-    for titulo, nomes in GRUPOS:
-        corpo += f"<h2>{titulo} ({len(nomes)} tabelas)</h2>"
-        for t in nomes:
-            cols, idx = tabelas[t]
-            tr = "".join(
-                f"<tr><td><code>{c}</code></td><td><code>{esc(tp)}</code></td><td>{restr(a)}</td>"
-                f"<td>{('→ <code>' + refs[t + '.' + c] + '</code>') if t + '.' + c in refs else ''}</td></tr>"
-                for c, tp, a in cols)
-            ix = "; ".join(f"<code>{esc(i)}</code>" for i in idx)
-            corpo += (f"<div style='break-inside:avoid'><h3><code>{t}</code></h3><table class=grade><thead><tr><th>Coluna</th>"
-                      f"<th>Tipo</th><th>Restrições</th><th>Referência</th></tr></thead>"
-                      f"<tbody>{tr}</tbody></table>"
-                      + (f"<p style='font-size:8pt;margin-top:-6pt'>Índices: {ix}</p>" if ix else "") + "</div>")
-    return pagina(9, f"Esquema do banco de dados ({len(tabelas)} tabelas)",
-                  "Listagem das tabelas do PostgreSQL, gerada de <code>docs/schema/thingindex.dbml</code>, "
-                  "arquivo que por sua vez é gerado dos modelos da aplicação (<code>api/db/models.go</code>). "
-                  "Cada tabela mostra suas colunas, tipo, restrições e, na coluna Referência, a chave "
-                  "estrangeira declarada. As colunas <code>user_id</code> indicam o dono do registro "
-                  "(posse verificada em toda consulta, sem chave estrangeira declarada; ver Anexo 4). "
-                  "O arquivo pode ser aberto em dbdiagram.io para ver o diagrama.", corpo)
+def figuras(cod: str, titulo: str, desc: str, itens: list[tuple], orient: str,
+            extra: str = "") -> str:
+    """itens: (imagem, legenda) ou (imagem, legenda, nota propria da figura)."""
+    corpo = "".join(folha(it[0], f"Figura {i} – {it[1]}", orient, i == 1,
+                          it[2] if len(it) > 2 else extra)
+                    for i, it in enumerate(itens, 1))
+    return documento(cod, titulo, desc, corpo, orient, cabecalho_na_folha=True)
 
 
 def main() -> None:
     build = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(tempfile.mkdtemp(prefix="anexos-"))
     build.mkdir(parents=True, exist_ok=True)
     SAIDA.mkdir(exist_ok=True)
+
+    er = gera_er()
+    svg = plantuml([DIAG / "casos-de-uso.puml", DIAG / "sequencia.puml",
+                    DIAG / "esquema-proveniencia.puml", DIAG / "recuperacao.puml"]
+                   + [p for _, _, p, _ in er], build)
+
     imprimir(a1(), "A1-requisitos-funcionais", build)
-    imprimir(diagrama(2, "Diagrama de casos de uso",
-                      "Casos de uso do ThingIndex, derivados das rotas da API (Seção 6.1). Cada "
-                      "elipse é uma ação que o usuário faz no sistema; as linhas ligam o ator às ações.",
-                      "casos-de-uso.png", True), "A2-casos-de-uso", build)
-    imprimir(diagrama(3, "Sequência do envio e da pergunta",
-                      "Diagrama de sequência (Seção 6.2) dos dois fluxos principais: o envio e a "
-                      "indexação de um documento e uma pergunta à coleção. Leia de cima para baixo; "
-                      "cada coluna é um componente e cada seta, uma mensagem entre eles.",
-                      "sequencia.png", True), "A3-sequencia-envio-e-pergunta", build)
-    imprimir(diagrama(4, "Recorte do esquema com o caminho da proveniência",
-                      "Recorte do modelo de dados (Seção 6.3): do usuário até as seis tabelas de "
-                      "estrutura extraída, por onde cada fonte citada chega ao documento e à página. "
-                      "<strong>Linha contínua</strong> = chave estrangeira declarada; "
-                      "<strong>linha tracejada</strong> = posse por <code>user_id</code>, verificada "
-                      "em toda consulta. O esquema completo está no Anexo 9.",
-                      "esquema-proveniencia.png", True), "A4-esquema-proveniencia", build)
-    imprimir(diagrama(5, "Fluxo de recuperação",
-                      "Fluxo da recuperação de contexto (Seção 6.5): carga do índice em número fixo "
-                      "de consultas, ranqueamento BM25 por tipo de unidade e seleção das fontes. "
-                      "Leia de cima para baixo.", "recuperacao.png", False),
-             "A5-fluxo-de-recuperacao", build)
-    telas = (figura(FIG / "telas" / "workspace.png", "<strong>Tela 1.</strong> " + inline(LEGENDA_WORKSPACE), "112mm")
-             + "<div class=pagina></div>"
-             + figura(FIG / "telas" / "operacoes.png", "<strong>Tela 2.</strong> " + inline(LEGENDA_OPERACOES),
-                    "140mm"))
-    imprimir(pagina(6, "Telas do protótipo",
-                    "Capturas do protótipo em funcionamento (Seção 6.6), uma por página, com a "
-                    "legenda usada no artigo.", telas, True), "A6-telas-do-prototipo", build)
-    imprimir(a7(), "A7-tabelas-completas-de-recuperacao", build)
+    imprimir(figuras("A2", "Diagrama de casos de uso",
+                     "Casos de uso do ThingIndex, agrupados por área do sistema.",
+                     [(svg["casos-de-uso"], "Diagrama de casos de uso do ThingIndex.")],
+                     "landscape"), "A2-casos-de-uso", build)
+    imprimir(figuras("A3", "Diagrama de sequência",
+                     "Envio e indexação de um documento e pergunta a uma coleção.",
+                     [(svg["sequencia"], "Diagrama de sequência do envio de um documento e "
+                                         "de uma pergunta à coleção.")],
+                     "portrait"), "A3-sequencia-envio-e-pergunta", build)
+    imprimir(figuras("A4", "Recorte do esquema com o caminho da proveniência",
+                     "Tabelas que ligam cada fonte citada ao documento, à página e ao parágrafo "
+                     "de origem.",
+                     [(svg["esquema-proveniencia"], "Recorte do esquema do banco de dados com "
+                       "o caminho da proveniência.")],
+                     "landscape",
+                     "Linha contínua: chave estrangeira; linha tracejada: posse pelo usuário "
+                     "(user_id)."), "A4-esquema-proveniencia", build)
+    imprimir(figuras("A5", "Fluxo de recuperação",
+                     "Etapas da recuperação de contexto para uma pergunta.",
+                     [(svg["recuperacao"], "Fluxo de recuperação de contexto do ThingIndex.")],
+                     "portrait"), "A5-fluxo-de-recuperacao", build)
+    imprimir(figuras("A6", "Telas do protótipo", "",
+                     [(TELAS / "workspace.png", "Workspace de uma coleção: chat com as fontes "
+                       "(esquerda), PDF na página citada com o parágrafo destacado (centro) e "
+                       "resumo do documento (direita)."),
+                      (TELAS / "operacoes.png", "Tela de operações: andamento da indexação, "
+                       "tentativas, consumo de tokens e falhas.")],
+                     "landscape"), "A6-telas-do-prototipo", build)
+    html_a7, usados = a7()
+    pdf = imprimir(html_a7, "A7-tabelas-completas-de-recuperacao", build)
+    confere_numeros(pdf, usados)
     imprimir(a8(), "A8-alteracoes-pos-medicao", build)
-    imprimir(a9(), "A9-esquema-do-banco", build)
+
+    tabelas, _ = ler_dbml()
+    nota_nucleo = ("PK: chave primária; FK: chave estrangeira. Linha contínua: chave "
+                   "estrangeira; linha tracejada: posse pelo usuário (user_id).")
+    nota_operacao = ("PK: chave primária; FK: chave estrangeira; linha contínua: chave "
+                     "estrangeira. As colunas user_id indicam o usuário dono do registro. "
+                     "Tabelas marcadas com (Figura 1) aparecem completas na Figura 1.")
+    itens = [(svg[p.stem], f"Esquema do banco de dados: {t} ({len(ns)} tabelas).",
+              nota_nucleo if "users" in ns else nota_operacao)
+             for _, t, p, ns in er]
+    imprimir(figuras("A9", "Esquema do banco de dados",
+                     f"Diagrama entidade-relacionamento das {len(tabelas)} tabelas do "
+                     "banco de dados PostgreSQL.", itens, "landscape"),
+             "A9-esquema-do-banco", build)
 
 
 if __name__ == "__main__":
