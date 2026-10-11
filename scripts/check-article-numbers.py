@@ -26,6 +26,11 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 CSV = RAIZ / "docs" / "article" / "results" / "results.csv"
 ARTIGO = RAIZ / "docs" / "article" / "artigo.tex"
+# Tabelas e frases que sairam do artigo na simplificacao das metricas. O
+# arquivo e um documento LaTeX independente (nao entra no artigo por \input),
+# e os numeros dele continuam conferidos aqui contra os CSV.
+APOIO = RAIZ / "docs" / "article" / "tables" / "apoio-resultados.tex"
+PROVENIENCIA = RAIZ / "docs" / "article" / "tables" / "provenance.tex"
 
 # Tolerancia: o artigo publica 3 casas decimais.
 TOL = 0.0005
@@ -80,10 +85,12 @@ def _milhar(valor: float) -> str:
     return f"{round(valor):,}".replace(",", ".")
 
 
-def conferir_geracao(texto: str) -> int:
+def conferir_geracao(texto: str, apoio: str) -> int:
     """Recalcula dos CSV os numeros das secoes de geracao, bateria,
     enriquecimento e expansao e exige que cada um apareca no artigo como
-    esta escrito. Um numero que mude no CSV, ou que suma do texto, falha."""
+    esta escrito. Um numero que mude no CSV, ou que suma do texto, falha.
+    As chaves de NO_APOIO sao conferidas contra apoio-resultados.tex, para
+    onde as tabelas e frases correspondentes foram movidas."""
     ng = _numeros_geracao()
     g = ng.geracao()
     c, e = ng.bateria("off"), ng.bateria("on")
@@ -102,6 +109,10 @@ def conferir_geracao(texto: str) -> int:
     prov_f = pg.resumo("generation-results-F-document.csv", "F")["todas"]
     ic_c = ng.ic_conglomerado("off", ("seguranca-trabalho", "produto", "licitacoes"))
     ic_e = ng.ic_conglomerado("on", ("seguranca-trabalho", "produto", "licitacoes"))
+    # O teste de redacao com o gabarito original, citado na Secao 8.7 e na
+    # tabela-resumo.
+    antigo = redacao_com_gabarito_original()
+    p_antigo = _br(antigo[2]).replace(",", "{,}")
 
     esperados = {
         "tokens T": _milhar(g["T"]["todas"]["tokens"]),
@@ -139,6 +150,20 @@ def conferir_geracao(texto: str) -> int:
         "expansao perdeu": "nenhuma deixou de acertar" if not ex["perdeu"] else f"{len(ex['perdeu'])} deixou de acertar",
         "p da expansao": p_texto(ex["p"]),
         "enriquecimento, fontes mudam": f"em {en['fontes_mudam']} das 12 perguntas",
+        # Intervalo do total da bateria, na Secao 8.7 e na tabela-resumo.
+        "ic C (8.7)": f"intervalo de 95\\% de {_pct(ic_c[0])}\\% a {_pct(ic_c[1])}\\%",
+        "ic C (resumo)": f"intervalo de 95\\%: {_pct(ic_c[0])}\\% a {_pct(ic_c[1])}\\%",
+        "resumo acerto": f"{_pct(taxa(c['total']))}\\% das respostas, cerca de 7 em 10",
+        "resumo redacao": (f"{_pct(taxa(c['variante']['literal']))}\\% com as palavras do documento e "
+                           f"{_pct(taxa(c['variante']['parafrase']))}\\% com outras; com o gabarito revisado, "
+                           f"{ef['a_favor_literal']} pares a 0 (${p_texto(ef['p'])}$); com o original, "
+                           f"{antigo[0]} a {antigo[1]} ($p = {p_antigo}$)"),
+        "resumo expansao": (f"de {_pct(taxa(c['total']))}\\% para {_pct(taxa(e['total']))}\\% no total, e as "
+                            f"paráfrases chegam a {_pct(taxa(e['variante']['parafrase']))}\\%; "
+                            f"{len(ex['ganhou'])} perguntas ganhas"),
+        "negativas da bateria": (f"em todas as {c['forma']['negativa'][1]} respostas negativas"
+                                 if c["forma"]["negativa"][0] == c["forma"]["negativa"][1]
+                                 else "<negativas da bateria deixaram de acertar todas>"),
     }
     for braco in ("content", "content-summary", "content-questions", "max"):
         k, n = en[braco]["geral"]
@@ -175,6 +200,7 @@ def conferir_geracao(texto: str) -> int:
         certas = sum(all(v) for q, v in ng.por_pergunta("off", (tema,)).items())
         total_q = len(ng.por_pergunta("off", (tema,)))
         esperados[f"tabela bateria {tema}"] = linha(rot, _pct(k / n), f"{_pct(lo)}--{_pct(hi)}", f"{certas} de {total_q}")
+        esperados[f"ic {tema} (8.7)"] = f"de {_pct(lo)}\\% a {_pct(hi)}\\% em {NOMES_ACERVO[tema]}"
     esperados["tabela bateria total"] = linha(
         f"{'Total':<21}", _pct(taxa(c["total"])), f"{_pct(ic_c[0])}--{_pct(ic_c[1])}", f"{c['sempre_certa']} de 71")
     esperados["ic E (texto)"] = f"intervalo de {_pct(ic_e[0])}\\% a {_pct(ic_e[1])}\\%, contra {_pct(ic_c[0])}\\% a {_pct(ic_c[1])}\\% sem ela"
@@ -182,20 +208,86 @@ def conferir_geracao(texto: str) -> int:
                        ("aberta", "Aberta        "), ("premissa-falsa", "Premissa falsa")):
         k, n = c["forma"][forma]
         esperados[f"tabela forma {forma}"] = linha(f"{rot:<14}", f"{k}/{n}", _pct(k / n))
-    # O teste de redacao com o gabarito original, citado no texto e na
-    # Tabela de alteracoes.
-    antigo = redacao_com_gabarito_original()
-    p_antigo = _br(antigo[2]).replace(",", "{,}")
     esperados["redacao, gabarito original"] = f"eram {antigo[0]} pares a favor da literal e {antigo[1]} a favor da paráfrase ($p = {p_antigo}$)"
     esperados["gpt-oss sem falhas de API"] = gpt_oss_sem_falhas()
     esperados.update(expansao_por_variante())
+    esperados.update(acerto_por_pergunta_ensino())
+    esperados.update(origem_c1())
+    esperados.update(legislacao())
 
     falhas = 0
     for descricao, trecho in esperados.items():
-        if trecho not in texto:
-            print(f"FALHA  {descricao}: o CSV da '{trecho}', que nao aparece no artigo", file=sys.stderr)
+        alvo, onde = (apoio, "apoio-resultados.tex") if descricao in NO_APOIO else (texto, "artigo")
+        if trecho not in alvo:
+            print(f"FALHA  {descricao}: o CSV da '{trecho}', que nao aparece no {onde}", file=sys.stderr)
             falhas += 1
     return falhas
+
+
+# Ancoras cujas tabelas ou frases sairam do artigo e estao, palavra por
+# palavra, em docs/article/tables/apoio-resultados.tex. Continuam conferidas
+# contra o CSV, mas no arquivo de apoio. (O detalhe de C1 e as correcoes de
+# gabarito tambem estao nos anexos A7 e A8.)
+NO_APOIO = {
+    "tokens T", "tokens F", "tokens C", "tokens E", "ic E (texto)", "expansao por variante",
+    "tabela expansao pagina", "tabela expansao tokens",
+    "tabela geracao prosa", "tabela geracao tabela", "tabela geracao calendario", "tabela geracao todas",
+    "tabela bateria seguranca-trabalho", "tabela bateria produto", "tabela bateria licitacoes", "tabela bateria total",
+    "tabela forma negativa", "tabela forma existencia", "tabela forma confirmacao", "tabela forma aberta",
+    "tabela forma premissa-falsa",
+}
+
+NOMES_ACERVO = {
+    "seguranca-trabalho": "segurança do trabalho",
+    "produto": "produto e consumidor",
+    "licitacoes": "licitações",
+}
+
+
+def acerto_por_pergunta_ensino() -> dict[str, str]:
+    """Acervo de ensino: perguntas certas nas tres repeticoes, T contra F
+    (tabela-resumo e Conclusao). Pergunta certa e a que acertou em todas as
+    linhas do CSV."""
+    res = RAIZ / "docs" / "article" / "results"
+    def contar(nome):
+        d: dict[str, list[bool]] = {}
+        for r in csv.DictReader(open(res / nome, encoding="utf-8")):
+            d.setdefault(r["question_id"], []).append(r["correct"] == "true")
+        return sum(all(v) for v in d.values()), len(d)
+    kt, nt = contar("generation-results-T-ordem.csv")
+    kf, nf = contar("generation-results-F-document.csv")
+    return {
+        "ensino por pergunta (resumo)": f"com {kt} de {nt} perguntas certas contra {kf} de {nf}",
+        "ensino por pergunta (conclusao)": f"({kt} de {nt} perguntas contra {kf} de {nf})",
+    }
+
+
+def origem_c1() -> dict[str, str]:
+    """Origem completa em C1, lida da tabela que o CI regera a partir do Go
+    (provenance.tex). As contagens intermediarias da Secao 8.4 saem das linhas
+    por tipo: a primeira medicao nao tinha pagina nos trechos nem nos
+    metadados; a correcao do esquema resolveu os trechos."""
+    tab = PROVENIENCIA.read_text(encoding="utf-8")
+    m = re.search(r"\\textbf\{(\d+)\} & \\textbf\{(\d+)\}", tab)
+    total, completos = int(m.group(1)), int(m.group(2))
+    tipo = {t: int(n) for t, n in re.findall(r"^(Trecho|Metadado) & (\d+) &", tab, re.M)}
+    primeira = total - tipo["Trecho"] - tipo["Metadado"]
+    return {
+        "origem C1 (resumo)": f"{completos} de {total} unidades de C1 ({primeira} na primeira medição; {tipo['Metadado']} passaram",
+        "origem C1, primeira medicao": f"A primeira medição deu {primeira} de {total}",
+        "origem C1, trechos": f"corrigir o esquema levou a {total - tipo['Metadado']} de {total}",
+        "origem C1, metadados": f"As outras {tipo['Metadado']} não eram defeito",
+    }
+
+
+def legislacao() -> dict[str, str]:
+    """Acervo de legislacao (Secao 8.6): acerto total e nas divergentes."""
+    rows = list(csv.DictReader(open(RAIZ / "docs" / "article" / "results" / "generation-results-T-licitacoes.csv",
+                                    encoding="utf-8")))
+    div = [r for r in rows if r["stratum"] == "divergente"]
+    k = sum(r["correct"] == "true" for r in rows)
+    kd = sum(r["correct"] == "true" for r in div)
+    return {"legislacao": f"acertou {k} das {len(rows)} perguntas; nas {len(div)} divergentes, acertou {kd}"}
 
 
 def queda_literal_parafrase(rows: list[dict], gran: str, arm: str) -> float | None:
@@ -221,11 +313,16 @@ def acertos_variante(rows: list[dict], gran: str, arm: str, variante: str) -> tu
     return round(sum(vals)), len(vals)
 
 
-def conferir_variantes(rows: list[dict], texto: str) -> int:
+def conferir_variantes(rows: list[dict], texto: str, apoio: str) -> int:
     """Literais e parafrases de C1 como o texto as afirma, em contagem e em
     porcentagem (Secao 8.1). Substitui a ancora '85,7': a queda da contagem por
     secao (-0,857, conferida em main) aparece no texto como 5 de 5 literais e
-    1 de 7 parafrases."""
+    1 de 7 parafrases.
+
+    As quatro frases por tipo de consulta sairam do artigo e estao, palavra
+    por palavra, em apoio-resultados.tex (e no Anexo A7); sao conferidas la.
+    O artigo guarda o resumo (literais nos dois niveis, literais da densa) e
+    a tabela da Secao 8.1 em contagem, conferidos contra o texto."""
     def kn(gran, arm, var):
         return acertos_variante(rows, gran, arm, var)
     lit_a, par_a = kn("document", "A-relacional", "literal"), kn("document", "A-relacional", "paraphrase")
@@ -237,7 +334,23 @@ def conferir_variantes(rows: list[dict], texto: str) -> int:
     if not (lit_a[0] == lit_a[1] == lit_b[0] == lit_b[1] == slit_a[0] == slit_a[1] == slit_b[0]):
         print("FALHA  C1: o texto diz que as buscas por palavras acertam todas as literais", file=sys.stderr)
         falhas += 1
-    esperados = {
+    def n(gran, arm):
+        return round(media(rows, gran, arm, "p_at_1") * 16)
+
+    no_texto = {
+        "C1 literais, dois niveis": f"acertaram as {lit_a[1]} consultas literais nos dois níveis",
+        "C1 denso, literais erradas": f"a densa errou {lit_c[1] - lit_c[0]} das {lit_c[1]} literais",
+        "C1 tabela contagem": f"Contagem de palavras (versão anterior) & {n('document', 'A-relacional')} de 16 & {n('section', 'A-relacional')} de 16 \\\\",
+        "C1 tabela BM25": f"BM25 (usado no sistema) & {n('document', 'B-bm25')} de 16 & {n('section', 'B-bm25')} de 16 \\\\",
+        "C1 tabela densa": f"Busca densa & {n('document', 'C-denso')} de 16 & -- \\\\",
+        "C1 tabela hibrida": f"BM25 + busca densa (híbrida) & {n('document', 'E-rrf-denso')} de 16 & -- \\\\",
+        "C1 densa aproximada": f"tantas vezes quanto a exata ({n('document', 'C-denso-ivf')} de 16)",
+        "C1 resumo": f"Empate: {n('document', 'B-bm25')} de 16 contra {n('document', 'C-denso')} de 16",
+        "C1 conclusao": f"({n('document', 'B-bm25')} de 16 consultas contra {n('document', 'C-denso')} de 16)",
+        "C1 BM25 texto": f"o BM25 acertou o primeiro resultado em {n('document', 'B-bm25')} das 16 consultas",
+        "C1 secoes texto": f"o BM25 acertou {n('section', 'B-bm25')} (75,0\\%) e a contagem, {n('section', 'A-relacional')} (56,2\\%)",
+    }
+    no_apoio = {
         "C1 literais, palavras": f"As duas buscas por palavras acertam as {lit_a[1]} consultas literais",
         "C1 parafrases, documento": (f"nas {par_a[1]} paráfrases, a contagem acerta {par_a[0]} "
                                      f"({_pct(par_a[0] / par_a[1])}\\%) e o BM25, {par_b[0]} "
@@ -248,10 +361,11 @@ def conferir_variantes(rows: list[dict], texto: str) -> int:
                      f"{spar_a[1]} paráfrases ({_pct(spar_a[0] / spar_a[1])}\\%), e o BM25 acerta "
                      f"{spar_b[0]} das {spar_b[1]}"),
     }
-    for descricao, trecho in esperados.items():
-        if trecho not in texto:
-            print(f"FALHA  {descricao}: o CSV da '{trecho}', que nao aparece no artigo", file=sys.stderr)
-            falhas += 1
+    for alvo, onde, esperados in ((texto, "artigo", no_texto), (apoio, "apoio-resultados.tex", no_apoio)):
+        for descricao, trecho in esperados.items():
+            if trecho not in alvo:
+                print(f"FALHA  {descricao}: o CSV da '{trecho}', que nao aparece no {onde}", file=sys.stderr)
+                falhas += 1
     return falhas
 
 
@@ -382,9 +496,10 @@ def main() -> int:
 
     # As quedas literal->parafrase sao ditas no texto como acertos por tipo de
     # consulta (k de n), recalculados aqui do CSV.
-    falhas += conferir_variantes(rows, texto)
+    apoio = APOIO.read_text(encoding="utf-8")
+    falhas += conferir_variantes(rows, texto, apoio)
 
-    falhas += conferir_geracao(texto)
+    falhas += conferir_geracao(texto, apoio)
 
     print(f"afirmacoes conferidas: {len(afirmacoes)} de recuperacao, mais as de geracao")
 
