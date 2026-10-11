@@ -1,17 +1,11 @@
 @startuml
-' Casos de uso do ThingIndex, derivados das rotas de api/internal/api/routes.go
-' (revisao de 2026-09-26). Regerar: POST deste arquivo em https://kroki.io/plantuml/png
+' Casos de uso do ThingIndex, derivados das rotas de api/internal/api/routes.go.
+' Renderizado por scripts/gerar-anexos.py (PlantUML via Docker).
+!include estilo.iuml
 left to right direction
-skinparam dpi 200
-skinparam shadowing false
-skinparam defaultFontName Helvetica
-skinparam defaultFontSize 17
+skinparam defaultFontSize 15
 skinparam packageStyle rectangle
 skinparam linetype polyline
-skinparam usecase {
-  BackgroundColor #F7F7F7
-  BorderColor #444444
-}
 
 actor "Usuário" as U
 actor "Provedor de LLM\n<<externo>>" as L
@@ -22,7 +16,7 @@ rectangle "ThingIndex" {
   }
   package "Acervo" {
     usecase "Organizar categorias\ne coleções" as UC4
-    usecase "Enviar documento\n(PDF, HTML, XLSX)" as UC5
+    usecase "Enviar documento\n(PDF)" as UC5
     usecase "Reprocessar documento\ncom falha" as UC6
     usecase "Excluir documento" as UC7
   }
@@ -33,7 +27,7 @@ rectangle "ThingIndex" {
   }
   package "Operação" {
     usecase "Configurar provedores\n(credencial cifrada)" as UC12
-    usecase "Acompanhar indexação,\ncusto e auditoria" as UC13
+    usecase "Acompanhar indexação\ne consumo de tokens" as UC13
   }
   package "Indexação assíncrona" {
     usecase "Indexar documento\n(páginas, parágrafos,\ntabelas, seções)" as UC14

@@ -1,0 +1,46 @@
+@startuml
+' Fluxo de recuperacao de contexto (mesmo conteudo do antigo recuperacao.mmd).
+' Renderizado por scripts/gerar-anexos.py (PlantUML via Docker).
+!include estilo.iuml
+skinparam defaultFontSize 14
+
+start
+:Pergunta;
+fork
+  if (Expansão da pergunta ligada?\n(opcional, desligada por padrão)) then (sim)
+    :Expansão da pergunta por LLM,
+    com cache por hash da pergunta;
+  else (não)
+  endif
+  :Tokenização: acento e caixa dobrados,
+  variante singular/plural e numérica;
+fork again
+  :Carga da coleção no PostgreSQL
+  (9 consultas fixas por coleção);
+end fork
+partition "Unidades pontuadas por BM25 (k1 = 1,2; b = 0,75)" {
+  fork
+    :Páginas;
+  fork again
+    :Seções do sumário;
+  fork again
+    :Trechos;
+  fork again
+    :Linhas de tabela
+    (exige 2 termos significativos);
+  end fork
+}
+:Seleção de fontes: até 3 linhas de tabela
+mais até 6 seções e páginas, desempate estável;
+:Fontes com coordenada:
+documento, página, linhas e caixa;
+fork
+  :Redação pelo LLM
+  só a partir das fontes;
+  :Resposta citando as fontes;
+fork again
+  :Workspace abre o PDF
+  na página e marca a caixa;
+end fork
+stop
+@enduml
