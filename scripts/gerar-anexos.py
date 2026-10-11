@@ -9,8 +9,13 @@ Chromium headless. As fontes de cada anexo sao arquivos versionados:
   alta resolucao ao lado dos .puml;
 - esquema do banco (A9): os .puml esquema-banco-*.puml sao gerados aqui a
   partir de docs/schema/thingindex.dbml, nunca editados a mao;
-- tabelas de recuperacao (A7): convertidas de docs/article/tables/*.tex, com
-  verificacao de que todos os numeros do .tex aparecem no PDF, na mesma ordem;
+- resultados do teste de busca (A7): texto em linguagem simples com tabelas
+  montadas de docs/article/tables/*.tex e, na secao "Detalhes completos", as
+  tabelas inteiras com as proporcoes convertidas para porcentagem ou nota de 0 a
+  100; confere_numeros verifica que todo numero do .tex, convertido, aparece no
+  PDF (regra de conversao em para_cem);
+- correcoes depois de medir (A8): de docs/article/results/alteracoes-pos-medicao.md,
+  com verificacao de que todo numero citado existe no registro (confere_registro);
 - telas (A6): docs/article/anexos/telas/*.png.
 
 Requer chromium, docker, rsvg-convert e pdftotext no PATH.
@@ -26,6 +31,8 @@ import re
 import subprocess
 import sys
 import tempfile
+from collections import Counter
+from decimal import ROUND_HALF_EVEN, Decimal
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -90,6 +97,23 @@ h3 { font-size: 11pt; font-weight: bold; margin: 0 0 1pt 0; break-after: avoid; 
 .alteracao { margin: 12pt 0 0 0; padding-top: 6pt; border-top: 0.6pt solid #000; }
 .alteracao p, .alteracao li { margin-bottom: 3pt; }
 .quando { font-style: italic; font-size: 10pt; }
+th.n, td.n { text-align: center; }
+.resumo { margin: 4pt 0 6pt 0; }
+.caixa { border: 0.6pt solid #000; padding: 5pt 7pt; margin: 6pt 0 8pt 0; }
+.titulo-caixa { font-weight: bold; margin: 0 0 3pt 0; }
+table.legenda { font-size: 9pt !important; margin: 0; }
+table.legenda td { padding: 1.5pt 4pt; border: none !important; }
+table.detalhe { font-size: 8.5pt !important; margin-bottom: 4pt; }
+.detalhes .titulo-tab { margin-top: 8pt; font-size: 9.5pt; }
+table.detalhe td { padding-top: 1.5pt; padding-bottom: 1.5pt; }
+.colunas { columns: 2; column-gap: 7mm; }
+table.par { font-size: 8pt !important; break-inside: avoid; margin: 0 0 5pt 0; }
+table.par th, table.par td { padding: 1pt 3pt; }
+table.par th.nome-par { text-align: left; font-size: 8pt; padding-top: 2pt; }
+table.par thead tr + tr th { border-top: none; font-weight: normal; font-style: italic; }
+table.a8 { font-size: 9.5pt; }
+table.a8 td:nth-child(n+3) { font-size: 9pt; }
+.nota-a8 { font-size: 10pt; margin-top: 6pt; }
 """
 
 
@@ -368,15 +392,12 @@ def corpo_tabular(caminho: Path) -> tuple[str, str]:
     return legenda, m.group(2), corpo
 
 
-def tabela_tex(caminho: Path, cabecalho: list[str] | None = None,
-               rotulo=None) -> tuple[str, str]:
-    """Converte table/tabular ou longtable de um .tex gerado em (legenda, <table>).
+def celulas_tex(caminho: Path) -> tuple[list[str], list[tuple[list[str], bool]]]:
+    """Cabecalho e linhas de um table/tabular ou longtable de um .tex gerado.
 
-    cabecalho troca o texto das celulas do cabecalho (mesma quantidade); rotulo,
-    se dado, e aplicado ao texto da primeira celula de cada linha. Os numeros
-    das celulas nao mudam, e confere_numeros verifica isso no PDF."""
-    legenda, spec, corpo = corpo_tabular(caminho)
-    alin = alinhamento(spec)
+    Cada celula vem convertida para HTML (sem trocar numeros); cada linha traz
+    junto se havia um \\midrule antes dela."""
+    _, _, corpo = corpo_tabular(caminho)
     linhas, cab, regra, depois_cab = [], None, False, False
     for bruto in separa(corpo, r"\\"):
         t = bruto.replace(r"\toprule", "").replace(r"\bottomrule", "")
@@ -386,61 +407,89 @@ def tabela_tex(caminho: Path, cabecalho: list[str] | None = None,
         t = t.strip()
         if not t:
             continue
-        html_cels, col = [], 0
+        cels = []
         for c in separa(t, "&"):
             c = c.strip()
-            span = 1
             mc = re.match(r"\\multicolumn\{(\d+)\}\{([^}]*)\}", c)
             if mc:
-                span = int(mc.group(1))
                 c, _ = chave(c, mc.end())
-            a = alin[col] if col < len(alin) else "left"
-            html_cels.append((inline(c), span, a))
-            col += span
+            cels.append(inline(c))
         if cab is None:
-            if cabecalho is not None:
-                if len(cabecalho) != len(html_cels):
-                    raise SystemExit(f"{caminho.name}: cabecalho com {len(html_cels)} colunas")
-                html_cels = [(n, sp, al) for n, (_, sp, al) in zip(cabecalho, html_cels)]
-            cab, regra = html_cels, False
+            cab, regra = cels, False
             continue
-        if rotulo is not None:
-            c0, sp0, al0 = html_cels[0]
-            html_cels[0] = (rotulo(c0), sp0, al0)
-        linhas.append((html_cels, regra and depois_cab))
+        linhas.append((cels, regra and depois_cab))
         regra, depois_cab = False, True
-    th = "".join(f'<th colspan="{sp}" style="text-align:{a}">{c}</th>' for c, sp, a in cab)
-    tr = "".join(
-        f'<tr{" class=regra" if r else ""}>' +
-        "".join(f'<td colspan="{sp}" style="text-align:{a}">{c}</td>' for c, sp, a in cels) +
-        "</tr>" for cels, r in linhas)
-    return inline(legenda), f"<table><thead><tr>{th}</tr></thead><tbody>{tr}</tbody></table>"
+    return cab, linhas
+
+
+# Conversao dos numeros das tabelas .tex para o A7 (e para a conferencia):
+# - proporcao com virgula decimal entre 0 e 1 -> multiplicada por 100, com uma
+#   casa decimal e arredondamento meio-para-o-par ('0,812' e '0,8125' -> '81,2';
+#   '1,000' -> '100,0'). Vale para taxas (P@1, P@3, R@5, falso positivo,
+#   sobreposicao, origem completa), que viram porcentagem; para MRR, nDCG e o
+#   J de Youden, que viram "nota de 0 a 100"; para os valores-p, que viram a
+#   chance de sorte em %; e para as diferencas (Delta, queda), que viram pontos
+#   percentuais (o sinal fica fora do numero e nao muda);
+# - numero sem virgula (contagens, '20/20', '1.000') nao muda;
+# - numero com virgula maior que 1 nao e proporcao e nao muda: o limiar (nota
+#   da propria busca, '4,000' e '2,127'), a media de resultados devolvidos
+#   ('5,0') e os valores que o .tex ja traz em porcentagem ('48,4\%').
+# Nao ha similaridade de cosseno nas tabelas; se houvesse, entre 0 e 1, viraria
+# nota de 0 a 100 pela mesma regra.
+
+def para_cem(num: str) -> str:
+    if "," not in num:
+        return num
+    d = Decimal(num.replace(",", "."))
+    if d > 1:
+        return num
+    return str((d * 100).quantize(Decimal("0.1"), rounding=ROUND_HALF_EVEN)).replace(".", ",")
+
+
+def converte(celula: str) -> str:
+    """Aplica para_cem a cada numero da celula; o intervalo '[a, b]' vira '(de a a b)'."""
+    def f(m: re.Match) -> str:
+        if m[1]:
+            return f"(de {para_cem(m[1])} a {para_cem(m[2])})"
+        return para_cem(m[3])
+    return re.sub(r"\[(\d+,\d+), (\d+,\d+)\]|(\d+,\d+)", f, celula)
 
 
 def numeros_tex(caminho: Path) -> list[str]:
-    """Numeros das celulas de um .tex, na ordem, para conferir o PDF."""
+    """Numeros das celulas de um .tex, ja convertidos por para_cem."""
     _, _, corpo = corpo_tabular(caminho)
     corpo = re.sub(r"\\multicolumn\{\d+\}\{[^}]*\}", "", corpo)
     corpo = re.sub(r"\\[a-zA-Z]+", " ", corpo).replace("{,}", ",")
-    # "BM25" e nome de metodo, nao numero; o A7 abrevia os bracos pela letra
+    # "BM25" e nome de metodo, nao numero
     corpo = corpo.replace("BM25", "BM")
-    return re.findall(r"\d+(?:,\d+)?", corpo)
+    return [para_cem(n) for n in re.findall(r"\d+(?:,\d+)?", corpo)]
+
+
+MARCA_DETALHES = "Detalhes completos"
 
 
 def confere_numeros(pdf: Path, arquivos: list[Path]) -> None:
-    """Todo numero dos .tex precisa aparecer no texto do PDF, na mesma ordem."""
+    """Todo numero de cada .tex, convertido, precisa aparecer no PDF, no trecho da
+    sua tabela na secao de detalhes ("Tabela D<i> –" ate a proxima). A conferencia
+    e por contagem (cada numero tantas vezes quanto no .tex), e nao por ordem,
+    porque algumas tabelas foram divididas em duas para caber em poucas colunas."""
     texto = subprocess.run(["pdftotext", "-raw", str(pdf), "-"], check=True,
                            capture_output=True, text=True).stdout
-    no_pdf = re.findall(r"\d+(?:,\d+)?", texto)
-    i, total = 0, 0
-    for a in arquivos:
-        for n in numeros_tex(a):
-            total += 1
-            while i < len(no_pdf) and no_pdf[i] != n:
-                i += 1
-            if i == len(no_pdf):
-                raise SystemExit(f"{pdf.name}: numero {n} de {a.name} ausente ou fora de ordem")
-            i += 1
+    k = texto.rfind(MARCA_DETALHES)
+    if k < 0:
+        raise SystemExit(f"{pdf.name}: secao '{MARCA_DETALHES}' ausente")
+    partes = re.split(r"Tabela D(\d+)\s*–", texto[k:])
+    trechos = {int(partes[i]): partes[i + 1] for i in range(1, len(partes), 2)}
+    total = 0
+    for i, a in enumerate(arquivos, 1):
+        if i not in trechos:
+            raise SystemExit(f"{pdf.name}: Tabela D{i} ({a.name}) ausente")
+        esperados = numeros_tex(a)
+        faltam = Counter(esperados) - Counter(re.findall(r"\d+(?:,\d+)?", trechos[i]))
+        if faltam:
+            raise SystemExit(f"{pdf.name}: Tabela D{i} sem os numeros {dict(faltam)} "
+                             f"de {a.name}")
+        total += len(esperados)
     print(f"  conferidos {total} numeros de {len(arquivos)} tabelas .tex")
 
 
@@ -497,507 +546,546 @@ def a1() -> str:
 
 # ------------------------------------------------------------------- A7
 
-# Nomes simples dos bracos, usados no lugar dos rotulos tecnicos dos .tex.
-NOMES_BRACOS = {
-    "A, contagem": "A – contagem de palavras",
-    "B, BM25": "B – BM25",
-    "C, denso exato": "C – significado, exata",
-    "C′, denso IVF": "C′ – significado, aproximada",
-    "D, RRF(A,B)": "D – combinação de A e B",
-    "E, RRF(B,C)": "E – combinação de B e C",
+# Rotulo do metodo no .tex (depois de inline) -> nome por extenso usado no A7.
+METODOS = {
+    "A, contagem": "Contagem de palavras (versão antiga)",
+    "B, BM25": "BM25 (busca por palavras, usada no sistema)",
+    "C, denso exato": "Busca por significado, exata",
+    "C′, denso IVF": "Busca por significado, aproximada",
+    "D, RRF(A,B)": "Contagem + BM25 combinados",
+    "E, RRF(B,C)": "BM25 + significado combinados",
+}
+ORDEM_METODOS = list(METODOS)
+
+COMO_FUNCIONA = {
+    "A, contagem": "Conta quantas palavras da pergunta aparecem no texto. Era a busca da "
+                   "primeira versão do sistema.",
+    "B, BM25": "Também compara palavras, mas dá mais peso às palavras raras, que dizem mais "
+               "sobre o assunto. É a busca que o sistema usa hoje.",
+    "C, denso exato": "Um modelo de IA transforma a pergunta e cada texto numa lista de "
+                      "números que representa o sentido. Textos de sentido parecido ficam com "
+                      "números parecidos, mesmo sem palavras em comum. “Exata” quer dizer que "
+                      "a pergunta é comparada com todos os textos.",
+    "C′, denso IVF": "A mesma busca, mas os textos são separados em grupos e cada busca olha "
+                     "só alguns grupos. É mais rápida com muitos textos, mas pode deixar o "
+                     "texto certo de fora.",
+    "D, RRF(A,B)": "Junta as listas da contagem e do BM25 numa só. Cada texto ganha pontos "
+                   "pela posição que teve em cada lista.",
+    "E, RRF(B,C)": "Igual à anterior, mas junta o BM25 com a busca por significado exata.",
+}
+
+ROTULOS_DETALHE = dict(METODOS, **{
     "<em>Teto alcançável</em>": "<em>Máximo possível</em>",
-}
-
-
-def rotulo_braco(c: str) -> str:
-    return NOMES_BRACOS.get(c, c)
-
-
-def rotulo_comparacao(c: str) -> str:
-    """'A, contagem vs B, BM25' -> 'A × B' (as letras estao no Quadro 1)."""
-    lados = c.split(" vs ")
-    if len(lados) != 2 or any(l.strip() not in NOMES_BRACOS for l in lados):
-        raise SystemExit(f"comparacao desconhecida: {c}")
-    return " × ".join(l.strip().split(",")[0] for l in lados)
-
-
-ROTULOS_DETERMINISMO = {
-    "C (exato), 30 execuções": "C (exata), repetida 30 vezes",
-    "C′ (IVF), 30 sementes": "C′ (aproximada), 30 sorteios diferentes das gavetas",
-    "C′ (IVF), 30 ordens de inserção": "C′ (aproximada), textos inseridos em 30 ordens",
+    # dense-determinism.tex
+    "C (exato), 30 execuções": "Busca por significado, exata: repetida 30 vezes",
+    "C′ (IVF), 30 sementes": "Busca por significado, aproximada: 30 sorteios diferentes "
+                            "dos grupos",
+    "C′ (IVF), 30 ordens de inserção": "Busca por significado, aproximada: textos inseridos "
+                                      "em 30 ordens",
     "C′ (IVF), <code>probes</code> de 1 a <code>lists</code>":
-        "C′ (aproximada), abrindo de 1 gaveta até todas",
-}
-
-ROTULOS_ANN = {
-    "IVFFlat, √<i>N</i> listas, 1 sonda": "IVFFlat, √<i>N</i> gavetas, 1 aberta por busca",
+        "Busca por significado, aproximada: olhando de 1 grupo até todos",
+    # ann-pgvector.tex
+    "IVFFlat, √<i>N</i> listas, 1 sonda": "IVFFlat como no teste: muitos grupos, só 1 "
+                                          "consultado",
     "IVFFlat, recomendação do pgvector": "IVFFlat, configuração recomendada",
     "HNSW, padrões do pgvector": "HNSW, configuração padrão",
-}
+    # provenance.tex
+    "Trecho": "Trecho (o pedaço citado como fonte)",
+    "Metadado": "Dado geral do documento",
+    "Nó de sumário": "Item do sumário",
+    "Página": "Página",
+    "Parágrafo": "Parágrafo",
+    "<strong>Total</strong>": "<strong>Total</strong>",
+})
 
 
-def de_dicionario(d: dict[str, str]):
-    def f(c: str) -> str:
-        if c not in d:
-            raise SystemExit(f"rotulo sem traducao: {c}")
-        return d[c]
-    return f
+def rotulo_detalhe(c: str) -> str:
+    if c not in ROTULOS_DETALHE:
+        raise SystemExit(f"rotulo sem traducao: {c}")
+    return ROTULOS_DETALHE[c]
 
 
-CAB_DESEMPENHO = ["Braço", "P@1<br><small>1º é o certo</small>",
-                  "P@3<br><small>certos nos 3 primeiros</small>",
-                  "R@5<br><small>certo nos 5 primeiros</small>",
-                  "MRR<br><small>posição do certo</small>",
-                  "nDCG@10<br><small>ordem dos 10 primeiros</small>"]
-CAB_VARIANTES = ["Braço", "Literal", "Paráfrase", "Ruidosa",
-                 "Queda da literal para a paráfrase"]
-CAB_NEGATIVAS = ["Braço", "Taxa de falso positivo", "Resultados devolvidos (média)"]
-CAB_COMPARACAO = ["Comparação", "Medida", "Δ (diferença)", "<i>n</i>", "valor-p",
-                  "valor-p corrigido (Holm)", "Vitórias (1º/2º)"]
+def linhas_de(arq: str) -> dict[str, list[str]]:
+    """{rotulo do .tex: demais celulas} de uma tabela."""
+    _, linhas = celulas_tex(TAB / arq)
+    return {c[0]: c[1:] for c, _ in linhas}
 
-BRACOS = [
-    ("A", "contagem de palavras",
-     "Conta quantas palavras da pergunta aparecem no texto; quanto mais palavras em comum, "
-     "mais alto o texto fica na lista. Era a busca da versão antiga do ThingIndex."),
-    ("B", "BM25",
-     "Busca por palavras usada hoje pelo sistema. Também compara palavras, mas com uma "
-     "fórmula clássica que dá mais peso às palavras raras, que identificam melhor o assunto, "
-     "e impede que uma palavra repetida muitas vezes domine a nota."),
-    ("C", "busca por significado (vetores), exata",
-     "Um modelo de linguagem transforma a pergunta e cada texto numa lista de números, "
-     "chamada vetor, que representa o sentido; textos de sentido parecido ficam com vetores "
-     "próximos, mesmo sem palavras em comum. “Exata” quer dizer que a pergunta é comparada "
-     "com todos os textos."),
-    ("C′", "busca por significado com índice aproximado",
-     "Os mesmos vetores de C, guardados num índice aproximado: os vetores são separados em "
-     "grupos (gavetas) e cada busca abre só algumas delas. É mais rápido em acervos grandes, "
-     "mas pode deixar o texto certo de fora."),
-    ("D", "combinação de A e B",
-     "Junta as listas de A e de B numa só: cada texto ganha pontos conforme a posição que "
-     "ocupou em cada lista (o método se chama RRF)."),
-    ("E", "combinação de B e C",
-     "Igual a D, mas juntando a lista da busca por palavras (B) com a da busca por "
-     "significado (C)."),
+
+def valor(celula: str) -> str:
+    """Numero principal da celula (sem o intervalo), convertido."""
+    return converte(celula.split("<br>")[0]).strip()
+
+
+def tabela(cab: list[str], linhas: list[list[str]], larguras: list[int] | None = None,
+           classe: str = "", regras: list[bool] | None = None, centro: bool = True) -> str:
+    cols = ("<colgroup>" + "".join(f"<col style='width:{w}%'>" for w in larguras)
+            + "</colgroup>") if larguras else ""
+    n = (lambda i: " class=n" if i and centro else "")
+    th = "".join(f"<th{n(i)}>{c}</th>" for i, c in enumerate(cab))
+    tr = "".join(
+        f"<tr{' class=regra' if regras and regras[k] else ''}>"
+        + "".join(f"<td{n(i)}>{c}</td>" for i, c in enumerate(l))
+        + "</tr>" for k, l in enumerate(linhas))
+    return (f"<table class='{classe}'>{cols}<thead><tr>{th}</tr></thead>"
+            f"<tbody>{tr}</tbody></table>")
+
+
+def resumo(txt: str) -> str:
+    return f"<p class='resumo'><strong>Em resumo:</strong> {txt}</p>"
+
+
+def pct(celula: str) -> str:
+    return valor(celula) + "%"
+
+
+def a7_corpo() -> str:
+    doc = linhas_de("retrieval-summary.tex")
+    sec = linhas_de("retrieval-summary-section.tex")
+    var_doc = linhas_de("retrieval-variants.tex")
+    var_sec = linhas_de("retrieval-variants-section.tex")
+    det = linhas_de("dense-determinism.tex")
+    _, ann = celulas_tex(TAB / "ann-pgvector.tex")
+    _, sig_doc = celulas_tex(TAB / "retrieval-significance.tex")
+    _, sig_sec = celulas_tex(TAB / "retrieval-significance-section.tex")
+
+    def nome(k: str) -> str:
+        return METODOS[k]
+
+    # numeros do teste estatistico, tirados das tabelas
+    def minimo(linhas, col):
+        return min(linhas, key=lambda l: Decimal(l[0][col].replace(",", ".")))[0][col]
+    p_doc, p_sec = minimo(sig_doc, 4), minimo(sig_sec, 4)
+    holm = minimo(sig_doc + sig_sec, 5)
+    max_n = max(int(l[0][3]) for l in sig_doc + sig_sec)
+    faixa_b = re.search(r"\[(.*?), (.*?)\]", doc["B, BM25"][0])
+    faixa_a = re.search(r"\[(.*?), (.*?)\]", doc["A, contagem"][0])
+
+    c = []
+    c.append("<h2>1. O que foi testado</h2>"
+             "<p>O autor escreveu 5 textos curtos (de lei, de contrato e de norma) e 18 "
+             "perguntas sobre eles. Dessas perguntas, 16 têm resposta em um dos textos e 2 não "
+             "têm resposta em nenhum. Como o próprio autor escreveu os textos, ele sabe qual é "
+             "o texto certo de cada pergunta. Assim, dá para contar quantas vezes cada jeito de "
+             "buscar pôs o texto certo no topo da lista. Foram testados 6 jeitos de buscar, "
+             "descritos no Quadro 1. Os números são os das Seções 8.1 a 8.4 do artigo.</p>"
+             "<div class='bloco'><p class='titulo-tab'>Quadro 1 – Os 6 jeitos de buscar "
+             "testados.</p>"
+             + tabela(["Método", "Como funciona"],
+                      [[nome(k), COMO_FUNCIONA[k]] for k in ORDEM_METODOS], [30, 70],
+                      "quadro") + "</div>")
+
+    linhas = [[nome(k), pct(doc[k][0]), pct(sec[k][0]) if k in sec else "não testado"]
+              for k in ORDEM_METODOS]
+    c.append("<h2>2. Resultado principal</h2>"
+             "<p>A medida principal é simples: em quantas das 16 perguntas com resposta o 1º "
+             "resultado da lista era o texto certo. O teste foi feito de dois modos. “Por "
+             "documento”: o método escolhe entre os 5 textos inteiros; aqui, até um sorteio "
+             "acertaria cerca de 20% das vezes. “Por seção”: os textos foram divididos em 19 "
+             "seções, e o método escolhe entre elas. Por seção é mais difícil (19 opções em vez "
+             "de 5) e mais parecido com o que o sistema faz de verdade. A busca por significado "
+             "só foi testada por documento, porque os números que representam o sentido foram "
+             "calculados para o texto inteiro.</p>"
+             "<div class='bloco'><p class='titulo-tab'>Tabela 1 – Em quantas perguntas o 1º "
+             "resultado era o texto certo.</p>"
+             + tabela(["Método", "Acertou o 1º resultado (por documento)",
+                       "Acertou o 1º resultado (por seção)"], linhas, [44, 28, 28]) + "</div>"
+             + resumo("o BM25 foi o melhor ou empatou com o melhor nos dois modos. Por "
+                      "documento, acertou 81,2%, empatado com os dois métodos combinados. Por "
+                      "seção, acertou 75,0%, contra 56,2% da contagem de palavras; por isso o "
+                      "sistema trocou a contagem pelo BM25. Mas as diferenças são pequenas: "
+                      "por documento, 81,2% contra 75,0% é só uma pergunta a mais em 16."))
+
+    tipos = ["Pergunta com as palavras do texto", "Pergunta com outras palavras",
+             "Pergunta com erros de digitação"]
+    l_doc = [[nome(k)] + [pct(x) for x in var_doc[k][:3]] for k in ORDEM_METODOS]
+    l_sec = [[nome(k)] + [pct(x) for x in var_sec[k][:3]] for k in ORDEM_METODOS
+             if k in var_sec]
+    c.append("<h2>3. Quando a pergunta usa outras palavras</h2>"
+             "<p>As 16 perguntas com resposta são de três tipos: 5 usam as mesmas palavras do "
+             "texto, 7 pedem a mesma coisa com outras palavras e 4 têm erros de digitação e "
+             "falta de acentos. As tabelas mostram, para cada tipo, em quantas perguntas o 1º "
+             "resultado era o texto certo.</p>"
+             "<div class='bloco'><p class='titulo-tab'>Tabela 2 – Acertou o 1º resultado, por "
+             "tipo de pergunta (por documento).</p>"
+             + tabela(["Método"] + tipos, l_doc, [37, 21, 21, 21]) + "</div>"
+             "<div class='bloco'><p class='titulo-tab'>Tabela 3 – Acertou o 1º resultado, por "
+             "tipo de pergunta (por seção; só os métodos testados por seção).</p>"
+             + tabela(["Método"] + tipos, l_sec, [37, 21, 21, 21]) + "</div>"
+             + resumo("a busca por palavras acertou todas as perguntas que usam as palavras do "
+                      "texto (100,0%), mas caiu quando a pessoa usou outras palavras: para "
+                      "57,1% na contagem e 71,4% no BM25. Por seção, a queda é maior: a contagem "
+                      "acertou só 14,3% dessas perguntas. A busca por significado quase não cai "
+                      "com outras palavras (de 60,0% para 57,1%), mas erra mais quando a pergunta "
+                      "usa as palavras do texto: 60,0%, contra 100,0% da busca por palavras."))
+
+    c.append("<h2>4. A diferença é real ou pode ser sorte?</h2>"
+             "<p>Com só 16 perguntas, cada pergunta vale cerca de 6% do resultado. Dois cálculos ajudam a separar uma diferença real de uma diferença "
+             "por sorte. O <strong>intervalo de confiança</strong> é a faixa onde o resultado "
+             "verdadeiro provavelmente está. Por exemplo: o BM25 acertou o 1º resultado em "
+             f"{pct(doc['B, BM25'][0])} das perguntas, mas o valor verdadeiro pode estar em "
+             f"qualquer ponto entre {para_cem(faixa_b[1])}% e {para_cem(faixa_b[2])}%; para a "
+             f"contagem de palavras ({pct(doc['A, contagem'][0])}), a faixa vai de "
+             f"{para_cem(faixa_a[1])}% a {para_cem(faixa_a[2])}%. Como as duas faixas se "
+             "sobrepõem, não dá para dizer qual é melhor. O <strong>teste estatístico</strong> "
+             "calcula a chance de a diferença entre dois métodos ser só sorte. Costuma-se "
+             "aceitar uma diferença como real quando essa chance fica abaixo de 5%.</p>"
+             "<p>Os métodos foram comparados de dois em dois, em várias medidas: 75 "
+             f"comparações por documento e 15 por seção. A menor chance de sorte foi "
+             f"{para_cem(p_doc)}% por documento e {para_cem(p_sec)}% por seção, as duas acima "
+             "do limite de 5%. Quando se fazem muitas comparações, alguma sempre parece "
+             "diferente por sorte; o teste então é ajustado para ficar mais exigente, e depois "
+             f"do ajuste nenhuma chance ficou abaixo de {para_cem(holm)}%. Em nenhuma "
+             f"comparação mais de {max_n} das 16 perguntas tiveram resultado diferente entre os "
+             "dois métodos.</p>"
+             + resumo("com só 16 perguntas, nenhuma diferença entre os métodos pode ser "
+                      "considerada real. Isso não mostra que a busca por palavras seja melhor "
+                      "ou igual à busca por significado; mostra só que o teste é pequeno demais "
+                      "para ver a diferença."))
+
+    c.append("<h2>5. Quando não há resposta</h2>"
+             "<p>Em 2 das 18 perguntas, nenhum texto tem a resposta. O certo seria a busca não "
+             "devolver nada. Mas os 6 métodos devolveram resultados nas 2 perguntas, ou seja, "
+             "em 100,0% das vezes. Na busca por palavras, basta uma palavra em comum para o "
+             "texto ganhar alguma nota. A busca por significado, aproximada, devolveu menos "
+             "textos (2,5 em média, contra 5,0 dos outros métodos), porque olha só alguns "
+             "grupos, mas também não deixou a lista vazia.</p>"
+             "<p>Uma ideia seria descartar os resultados com nota abaixo de um mínimo. Para a "
+             "contagem de palavras e para o BM25, testou-se a melhor nota mínima possível. "
+             "Mesmo assim, os dois ainda devolveram resultados em 1 das 2 perguntas (50,0%), "
+             "porque as notas dos textos certos e dos errados se misturam. A nota mínima, "
+             "portanto, ajuda pouco.</p>"
+             "<p>No sistema completo, quem percebe que não há resposta é o LLM, o modelo de "
+             "linguagem que escreve a resposta. Ele recebe a instrução de usar só as fontes "
+             "encontradas e, em todas as 14 perguntas sem resposta dos outros testes, feitas "
+             "três vezes cada, disse que a informação não consta (Seção 8.2 do artigo).</p>"
+             + resumo("a busca sozinha não sabe dizer “não tem”; quem diz isso é o LLM, ao "
+                      "escrever a resposta."))
+
+    est = [
+        [nome("A, contagem"), "Sim"], [nome("B, BM25"), "Sim"],
+        [nome("D, RRF(A,B)"), "Sim"], [nome("C, denso exato"), "Sim"],
+        [nome("C′, denso IVF"),
+         f"Não. Mudando o sorteio que forma os grupos, ou a ordem em que os textos entram, "
+         f"nenhuma pergunta ({det['C′ (IVF), 30 sementes'][0]}) deu sempre a mesma lista, e "
+         f"apareceram até {det['C′ (IVF), 30 sementes'][1]} listas diferentes. Em média, "
+         f"perdeu {det['C′ (IVF), 30 sementes'][2]} dos resultados da busca exata."],
+        [nome("E, RRF(B,C)"), "Não testado à parte"],
+    ]
+    rot_ann = {"IVFFlat, √<i>N</i> listas, 1 sonda": "IVFFlat, como no teste",
+               "IVFFlat, recomendação do pgvector": "IVFFlat, configuração recomendada",
+               "HNSW, padrões do pgvector": "HNSW, configuração padrão"}
+    l_ann = [[rot_ann[x[0]], x[1], x[2], x[3].replace("/", " de "), x[4].replace("/", " de ")]
+             for x, _ in ann]
+    c.append("<h2>6. A busca dá sempre o mesmo resultado?</h2>"
+             "<p>O sistema promete que a mesma pergunta traz sempre as mesmas fontes, na mesma "
+             "ordem. Para conferir, cada método rodou as 18 perguntas 30 vezes, e as listas de "
+             "resultados foram comparadas.</p>"
+             "<div class='bloco'><p class='titulo-tab'>Tabela 4 – A mesma pergunta trouxe "
+             "sempre a mesma lista?</p>"
+             + tabela(["Método", "Deu o mesmo resultado nas 30 repetições?"], est, [38, 62],
+                      centro=False)
+             + "</div>"
+             "<p>A busca aproximada do teste usou uma configuração ruim: muitos grupos e só 1 "
+             "consultado por busca. Para ver se o problema é da configuração, o teste foi "
+             "repetido no pgvector, a extensão do banco de dados PostgreSQL que guarda essas "
+             "listas de números, com 1.000, 5.000 e 20.000 textos artificiais e 20 "
+             "perguntas. O pgvector tem dois tipos de busca aproximada: o IVFFlat, que separa "
+             "os dados em grupos, e o HNSW, que liga cada item aos vizinhos mais parecidos. A "
+             "Tabela 5 compara os 10 primeiros resultados de cada um com os da busca exata, e "
+             "conta em quantas das 20 perguntas a lista mudou ao recriar 5 vezes o índice (a "
+             "estrutura que acelera a busca) e ao inserir os dados em 5 ordens diferentes.</p>"
+             "<div class='bloco'><p class='titulo-tab'>Tabela 5 – Busca aproximada no "
+             "pgvector.</p>"
+             + tabela(["Tipo de busca", "Textos", "Encontrou o mesmo que a busca exata",
+                       "Mudou ao reconstruir", "Mudou ao trocar a ordem dos dados"], l_ann,
+                      [36, 10, 20, 17, 17],
+                      regras=[r for _, r in ann]) + "</div>"
+             + resumo("a busca por palavras e a busca exata por significado deram sempre o "
+                      "mesmo resultado. A busca aproximada só mudou de resultado numa "
+                      "configuração ruim: com a configuração recomendada, o IVFFlat achou "
+                      "sempre o mesmo que a busca exata. O HNSW foi exato com 1.000 textos, mas "
+                      "com 20.000 achou 91,0% e mudou em 6 e 17 das 20 perguntas. Dar sempre o "
+                      "mesmo resultado, portanto, não é vantagem só da busca por palavras."))
+
+    c.append("<h2>7. A origem das fontes está completa no banco?</h2>"
+             "<p>Quando o sistema lê um documento, ele guarda no banco pedaços de vários tipos: "
+             "páginas, parágrafos, trechos (os pedaços citados como fonte), itens do sumário e "
+             "dados gerais do documento, como o número de parágrafos. Para cada pedaço, o banco "
+             "precisa saber de onde ele veio: o documento, a página, a posição e o conteúdo. "
+             "Nos 5 textos do teste, são 155 pedaços. A porcentagem com a origem completa "
+             "mudou assim:</p><ul>"
+             "<li><strong>32,9%</strong> (51 de 155) na primeira medição. Todos os pedaços "
+             "incompletos não tinham a página.</li>"
+             "<li><strong>45,2%</strong> (70 de 155) depois de corrigir um defeito: a tabela de "
+             "trechos não tinha a coluna da página, e ela foi criada.</li>"
+             "<li><strong>100,0%</strong> (155 de 155) depois de ajustar a regra da medida: os "
+             "85 dados gerais não estão em página nenhuma e passaram a dizer que vêm do "
+             "documento inteiro.</li></ul>"
+             + resumo("parte da subida veio de corrigir o sistema e parte de ajustar a medida "
+                      "(Seção 8.4 do artigo). Como os textos do teste não têm páginas, isso "
+                      "mostra que o sistema grava a origem de cada pedaço, e não que a página "
+                      "gravada esteja certa."))
+    return "".join(c)
+
+
+LEGENDA_DETALHES = [
+    ("Métodos", "Os mesmos 6 do Quadro 1, com os mesmos nomes."),
+    ("P@1", "Acertou o 1º resultado: % de perguntas em que o 1º resultado era o texto certo."),
+    ("P@3", "% dos 3 primeiros resultados que eram certos. Como quase toda pergunta tem um só "
+            "texto certo, nem uma busca perfeita passa do “máximo possível” da última linha."),
+    ("R@5", "O certo apareceu entre os 5 primeiros: % de perguntas."),
+    ("MRR", "Nota de 0 a 100 pela posição do texto certo: em 1º lugar vale 100, em 2º vale 50, "
+            "em 3º vale 33,3, e assim por diante; a nota é a média das perguntas."),
+    ("nDCG@10", "Nota de 0 a 100 parecida com o MRR, olhando os 10 primeiros resultados."),
+    ("(de X a Y)", "Intervalo de confiança de 95%: faixa onde o valor verdadeiro provavelmente "
+                   "está. Foi calculado sorteando as perguntas 10 mil vezes (<em>bootstrap</em>)."),
+    ("Pontos", "Diferença entre duas porcentagens: 81,2% − 75,0% = 6,2 pontos. Positiva quando o "
+               "primeiro método foi melhor."),
+    ("Valor-p", "Chance, em %, de a diferença ser só sorte (teste de aleatorização pareado). "
+                "<strong>Corrigido por Holm</strong>: a mesma chance ajustada porque foram feitas "
+                "muitas comparações."),
+    ("Falso positivo", "Devolver resultados numa pergunta que não tem resposta (100% = devolveu "
+                       "sempre)."),
+    ("Limiar", "Nota mínima da própria busca; abaixo dela o resultado é descartado. Não é "
+               "porcentagem e ficou como está."),
+    ("<i>J</i> de Youden", "Nota de 0 a 100 de quanto o limiar separa os textos certos dos "
+                           "errados (100 = separa todos, 0 = igual ao acaso)."),
+    ("Sobreposição", "% dos textos errados que tiraram nota maior que o texto certo de nota "
+                     "mais baixa."),
 ]
 
-METRICAS = [
-    ("P@1", "Em que fração das perguntas o 1º resultado era o texto certo?",
-     "0,750 = em 3 de cada 4 perguntas, o 1º resultado era o certo."),
-    ("P@3", "Dos 3 primeiros resultados, que fração era certa?",
-     "Como quase toda pergunta tem um só texto certo, mesmo uma busca perfeita teria 1 certo "
-     "em 3 (0,333). Por isso as tabelas trazem a linha “máximo possível”."),
-    ("R@5", "O texto certo apareceu entre os 5 primeiros resultados?",
-     "1,000 = em todas as perguntas, o certo estava entre os 5 primeiros."),
-    ("MRR", "Quão perto do topo veio o texto certo?",
-     "1º lugar vale 1; 2º vale 0,5; 3º vale 0,33; e assim por diante. O MRR é a média dessas "
-     "notas: se numa pergunta o certo veio em 1º e noutra em 2º, o MRR é (1 + 0,5) ÷ 2 = 0,75."),
-    ("nDCG@10", "Parecido com o MRR, mas olhando os 10 primeiros resultados.",
-     "Dá mais crédito a quem põe os textos certos no topo; 1 = ordem ideal."),
-    ("Intervalo de confiança de 95%",
-     "Os números entre colchetes, abaixo de cada nota: a faixa onde o valor real provavelmente "
-     "está.",
-     "0,750 com [0,500, 0,938]: com tão poucas perguntas, o valor real pode estar em qualquer "
-     "ponto dessa faixa. Se as faixas de dois braços se sobrepõem, não dá para dizer que um é "
-     "melhor. A faixa foi calculada sorteando as perguntas 10 mil vezes (técnica chamada "
-     "<em>bootstrap</em>)."),
-    ("Valor-p", "Qual é a chance de a diferença entre dois braços ser só acaso?",
-     "Abaixo de 0,05, costuma-se dizer que a diferença não é acaso."),
-    ("Falso positivo",
-     "Devolver resultados para uma pergunta que não tem resposta em nenhum texto.",
-     "Taxa 1,000 = devolveu resultados em todas as perguntas sem resposta; 0,000 = reconheceu "
-     "todas."),
-    ("Limiar", "Nota mínima: resultados com nota abaixo dela são descartados.",
-     "Serve para tentar fazer a busca devolver “nada” quando não há resposta."),
-    ("Índice de Youden (<i>J</i>)", "Quão bem um limiar separa os textos certos dos errados.",
-     "1 = separa perfeitamente; 0 = não é melhor que o acaso."),
-]
+
+def detalhe(n: int, arq: str, legenda: str, grupos: list[tuple[list[str], list[int],
+            list[int]]]) -> str:
+    """Tabela D<n>: uma ou mais tabelas com colunas do .tex (indices), numeros
+    convertidos por converte e primeira coluna traduzida."""
+    _, linhas = celulas_tex(TAB / arq)
+    html_t = ""
+    for cab, idx, larg in grupos:
+        corpo = [[rotulo_detalhe(l[0])] + [converte(l[i]) for i in idx] for l, _ in linhas]
+        html_t += tabela(cab, corpo, larg, "detalhe", [r for _, r in linhas])
+    return (f"<div class='bloco'><p class='titulo-tab'>Tabela D{n} – {legenda}</p>"
+            f"{html_t}</div>")
 
 
-def quadro(titulo: str, cab: tuple[str, ...], linhas: list[tuple[str, ...]],
-           larguras: tuple[int, ...]) -> str:
-    cols = "".join(f"<col style='width:{w}%'>" for w in larguras)
-    th = "".join(f"<th>{c}</th>" for c in cab)
-    tr = "".join("<tr>" + "".join(f"<td{' class=id' if i == 0 else ''}>{c}</td>"
-                                  for i, c in enumerate(l)) + "</tr>" for l in linhas)
-    return (f"<p class='titulo-tab'>{titulo}</p><table class='quadro'><colgroup>{cols}"
-            f"</colgroup><thead><tr>{th}</tr></thead><tbody>{tr}</tbody></table>")
+def detalhe_comparacoes(n: int, arq: str, legenda: str) -> str:
+    _, linhas = celulas_tex(TAB / arq)
+    pares: dict[str, list[list[str]]] = {}
+    for l, _ in linhas:
+        pares.setdefault(l[0], []).append(l[1:])
+    blocos = ""
+    for par, ls in pares.items():
+        a, b = (x.strip() for x in par.split(" vs "))
+        tr = "".join(
+            f"<tr><td>{m}</td><td class=n>{converte(d)}</td>"
+            f"<td class=n>{q} ({v.replace('/', ' e ')})</td><td class=n>{converte(p)}</td>"
+            f"<td class=n>{converte(h)}</td></tr>" for m, d, q, p, h, v in ls)
+        blocos += (f"<table class='par'><colgroup><col style='width:20%'><col style='width:18%'>"
+                   f"<col style='width:24%'><col style='width:19%'><col style='width:19%'>"
+                   f"</colgroup><thead><tr><th colspan=5 class='nome-par'>{METODOS[a]} × "
+                   f"{METODOS[b]}</th></tr></thead><tbody>{tr}</tbody></table>")
+    return (f"<p class='titulo-tab'>Tabela D{n} – {legenda}</p>"
+            f"<div class='colunas'>{blocos}</div>")
 
 
-# (titulo da secao, texto antes das tabelas, tabelas, "o que mostra")
-# tabelas: (arquivo .tex, legenda, cabecalho, rotulo)
-SECOES_A7 = [
-    ("1. Desempenho de cada braço", "",
-     [("retrieval-summary.tex",
-       "Desempenho de cada braço escolhendo entre os 5 textos inteiros (unidade: documento). "
-       "Abaixo de cada nota, entre colchetes, o intervalo de confiança de 95%. A última linha "
-       "é o máximo possível de cada medida.", CAB_DESEMPENHO, rotulo_braco),
-      ("retrieval-summary-section.tex",
-       "Desempenho de cada braço escolhendo entre as 19 seções (unidade: seção). Mesmo formato "
-       "da tabela anterior. Só os braços de busca por palavras foram medidos.",
-       CAB_DESEMPENHO, rotulo_braco)],
-     "Escolhendo entre os textos inteiros, o BM25 (B) e as duas combinações (D e E) tiveram "
-     "as notas mais altas, com nDCG@10 de 0,890 a 0,896, seguidos da contagem de palavras "
-     "(0,869), da busca por significado exata (0,844) e da aproximada (0,797); a combinação E "
-     "teve o maior MRR (0,880). Mas as faixas entre colchetes se sobrepõem bastante, e com só "
-     "5 textos a tarefa é fácil demais. Escolhendo entre seções, a diferença aparece: o 1º "
-     "resultado foi o certo em 0,562 das perguntas com a contagem de palavras e em 0,750 com o "
-     "BM25, e o certo apareceu entre os 5 primeiros em 0,719 e 0,812. Esse resultado levou o "
-     "sistema a trocar a contagem de palavras pelo BM25."),
-    ("2. Perguntas com as palavras do texto ou com outras palavras",
-     "As perguntas são de três tipos: <em>literal</em> (usa as mesmas palavras do texto), "
-     "<em>paráfrase</em> (pede a mesma coisa com outras palavras) e <em>ruidosa</em> (com "
-     "erros de digitação e sem acentos). As tabelas mostram a P@1, isto é, em que fração das "
-     "perguntas de cada tipo o 1º resultado era o certo.",
-     [("retrieval-variants.tex",
-       "P@1 por tipo de pergunta (unidade: documento). A última coluna é quanto a nota cai da "
-       "pergunta literal para a paráfrase: quanto maior a queda, mais o braço depende de a "
-       "pergunta usar as mesmas palavras do texto.", CAB_VARIANTES, rotulo_braco),
-      ("retrieval-variants-section.tex",
-       "P@1 por tipo de pergunta (unidade: seção). Mesmo formato da tabela anterior.",
-       CAB_VARIANTES, rotulo_braco)],
-     "As buscas por palavras (A, B e D) acertaram todas as perguntas literais e caíram nas "
-     "paráfrases; a queda foi maior na contagem de palavras (0,429) que no BM25 (0,286). A "
-     "busca por significado quase não depende das palavras da pergunta (queda de 0,029 em C), "
-     "mas acertou menos as literais (0,600). Uma queda negativa, como a de C′, quer dizer que a "
-     "paráfrase foi melhor que a literal. Por seção, a dependência das palavras cresce: a "
-     "contagem cai 0,857 e acerta só 14% das paráfrases (0,143)."),
-    ("3. Perguntas sem resposta",
-     "Duas das 18 perguntas não têm resposta em nenhum dos 5 textos. O certo, nelas, seria a "
-     "busca não devolver nada.",
-     [("retrieval-negatives.tex",
-       "Perguntas sem resposta (unidade: documento): com que frequência cada braço devolveu "
-       "resultados mesmo assim (taxa de falso positivo) e quantos resultados devolveu, em "
-       "média. 0,000 seria reconhecer que não há resposta; 1,000 é devolver resultados sempre.",
-       CAB_NEGATIVAS, rotulo_braco),
-      ("retrieval-negatives-section.tex",
-       "Perguntas sem resposta (unidade: seção). Mesmo formato da tabela anterior.",
-       CAB_NEGATIVAS, rotulo_braco),
-      ("threshold.tex",
-       "Tentativa de usar uma nota mínima (limiar) para descartar resultados. Sobreposição: "
-       "fração dos textos errados que tiraram nota maior que o texto certo de nota mais baixa "
-       "(quanto maior, mais misturadas estão as notas de certos e errados). Limiar: a melhor "
-       "nota mínima encontrada. <i>J</i>: índice de Youden nesse limiar. As duas últimas "
-       "colunas são a taxa de falso positivo sem e com o limiar.",
-       ["Braço", "Sobreposição", "Limiar", "<i>J</i>", "Falso positivo sem limiar",
-        "Falso positivo com limiar"], rotulo_braco)],
-     "Todos os braços devolveram resultados nas duas perguntas sem resposta (taxa 1,000). Na "
-     "busca por palavras, qualquer palavra em comum já dá nota positiva, e as notas de textos "
-     "certos e errados se misturam (sobreposição de 0,782 e 0,980). C′ devolveu menos "
-     "resultados (2,5 em média) porque só procura numa parte dos textos, mas também não deixou "
-     "de responder. Mesmo com o melhor limiar, a taxa só cai para 0,500: uma das duas "
-     "perguntas continua recebendo resultados. A nota da busca, portanto, não serve para "
-     "decidir que não há resposta; no sistema completo, quem reconhece a falta de resposta é "
-     "o modelo de linguagem, ao redigir a resposta (Seção 8.2 do artigo)."),
-    ("4. Estabilidade: a mesma pergunta traz sempre a mesma lista?",
-     "Um requisito do sistema é que a mesma pergunta traga sempre as mesmas fontes, na mesma "
-     "ordem. No índice aproximado, os vetores são distribuídos em gavetas por um sorteio, e "
-     "cada busca abre algumas delas; o sorteio, a ordem em que os textos são inseridos e o "
-     "número de gavetas abertas podem mudar o resultado. O pgvector, extensão do banco "
-     "PostgreSQL usada pelo sistema para guardar vetores, oferece dois tipos de índice "
-     "aproximado: o IVFFlat, que usa gavetas, e o HNSW, que liga cada vetor aos seus vizinhos "
-     "mais próximos e procura caminhando por essas ligações.",
-     [("dense-determinism.tex",
-       "Estabilidade da busca por significado em C1 (5 textos, 18 perguntas). Uma pergunta é "
-       "estável quando a lista completa de resultados, com as notas, sai idêntica em todas as "
-       "repetições (conferido por uma impressão digital da lista, o <em>hash</em> SHA-256).",
-       ["O que foi variado", "Perguntas estáveis", "Listas diferentes obtidas",
-        "Resultados perdidos frente à busca exata"], de_dicionario(ROTULOS_DETERMINISMO)),
-      ("ann-pgvector.tex",
-       "Índices aproximados do pgvector (versão 0.8.6) com 1.000, 5.000 e 20.000 vetores "
-       "sintéticos (768 números cada) e 20 perguntas. √<i>N</i> gavetas: tantas gavetas quanto "
-       "a raiz quadrada do número de vetores. Revocação nos 10 primeiros: fração dos 10 "
-       "primeiros resultados da busca exata que o índice também encontrou. As duas últimas colunas contam em quantas "
-       "das 20 perguntas os 10 primeiros resultados mudaram ao reconstruir o índice 5 vezes "
-       "sobre os mesmos dados e ao inserir os mesmos vetores em 5 ordens diferentes.",
-       ["Índice", "Vetores (<i>N</i>)", "Revocação nos 10 primeiros",
-        "Mudaram ao reconstruir", "Mudaram ao trocar a ordem"], de_dicionario(ROTULOS_ANN))],
-     "A busca exata por significado deu a mesma lista nas 30 repetições (a contagem de "
-     "palavras, o BM25 e a combinação dos dois também, como relata a Seção 8.3 do artigo). O "
-     "índice aproximado C′, configurado com muitas gavetas e só uma aberta por busca, mudou de "
-     "resultado com o sorteio e com a ordem de inserção, e perdeu em média 48,4% dos "
-     "resultados da busca exata. A segunda tabela mostra que isso depende da configuração: na "
-     "configuração recomendada, o IVFFlat deu sempre o mesmo resultado da busca exata; o HNSW "
-     "foi exato com 1.000 vetores e, com 20.000, encontrou 91,0% dos resultados, e 6 das 20 "
-     "perguntas mudaram ao reconstruir o índice e 17 ao trocar a ordem. A estabilidade, "
-     "portanto, não é uma vantagem exclusiva da busca por palavras."),
-    ("5. Origem de cada unidade guardada no banco",
-     "Ao indexar um documento, o sistema guarda no banco unidades de vários tipos: páginas, "
-     "parágrafos, trechos (os pedaços de texto citados como fonte), itens do sumário e "
-     "metadados (estatísticas do documento inteiro, como o número de parágrafos). A taxa de "
-     "proveniência completa (TPC) é a fração dessas unidades cuja origem está inteira no "
-     "banco: documento, página, posição e conteúdo.",
-     [("provenance.tex",
-       "TPC por tipo de unidade, em C1. Os metadados não estão em página nenhuma e por isso "
-       "são avaliados sem exigência de página; os demais tipos precisam ter página.",
-       ["Tipo de unidade", "Unidades", "Com origem completa", "TPC"], None)],
-     "As 155 unidades guardadas têm origem completa (TPC 1,000). Dois cuidados: C1 é texto "
-     "sem paginação, então a tabela mostra que o sistema grava a origem, e não que a página "
-     "esteja certa; e a primeira medição deu 0,329, valor que subiu depois de acrescentar a "
-     "página aos trechos (defeito corrigido) e de declarar que os metadados pertencem ao "
-     "documento inteiro (ajuste da medida), como detalha a Seção 8.4 do artigo."),
-    ("6. Comparações de dois em dois: as diferenças são acaso?",
-     "Cada linha compara dois braços numa medida. Como as tabelas são longas, os braços "
-     "aparecem só pela letra (Quadro 1). <strong>Δ (diferença)</strong>: nota do primeiro "
-     "braço menos a do segundo; positiva, o primeiro foi melhor. <strong><i>n</i></strong>: em "
-     "quantas perguntas os dois braços tiveram resultado diferente. <strong>Valor-p</strong>: "
-     "chance de a diferença ser acaso, calculada por um teste que troca ao acaso, pergunta a "
-     "pergunta, os resultados dos dois braços e vê com que frequência surge uma diferença tão "
-     "grande. <strong>Valor-p corrigido (Holm)</strong>: o mesmo valor ajustado porque foram "
-     "feitas muitas comparações ao mesmo tempo (75 por documento e 15 por seção); quanto mais "
-     "comparações, maior a chance de alguma parecer diferente por sorte, e a correção compensa "
-     "isso. É este o valor a ler. <strong>Vitórias</strong>: em quantas das <i>n</i> perguntas "
-     "o primeiro e o segundo braço tiveram a nota maior.",
-     [("retrieval-significance.tex",
-       "Comparações entre todos os pares de braços (unidade: documento).",
-       CAB_COMPARACAO, rotulo_comparacao),
-      ("retrieval-significance-section.tex",
-       "Comparações entre os pares de braços medidos por seção (unidade: seção).",
-       CAB_COMPARACAO, rotulo_comparacao)],
-     "Nenhuma comparação ficou abaixo de 0,05: o menor valor-p sem correção foi 0,125 por "
-     "documento e 0,062 por seção, e todos os valores corrigidos ficaram entre 0,938 e 1,000. "
-     "Com 16 perguntas com resposta, no máximo 8 tiveram resultado diferente em qualquer "
-     "comparação, o que é pouco para detectar diferenças desse tamanho. C1, portanto, não "
-     "mostra que a busca por palavras seja igual ou melhor que a busca por significado; mostra "
-     "só que, neste conjunto, nenhuma diferença foi detectável."),
-]
-
-CONCLUSOES_A7 = [
-    "Escolhendo entre textos inteiros, todos os braços ficaram próximos, e nenhuma diferença "
-    "pode ser separada do acaso com só 16 perguntas com resposta.",
-    "Escolhendo entre seções, tarefa mais difícil e mais parecida com o uso real, o BM25 pôs o "
-    "texto certo em 1º lugar mais vezes que a contagem de palavras (0,750 contra 0,562); por "
-    "isso o sistema passou a usar o BM25.",
-    "A busca por palavras depende de a pergunta usar as palavras do texto: acerta todas as "
-    "literais e cai nas paráfrases. A busca por significado depende menos disso, mas acerta "
-    "menos as literais.",
-    "Nenhuma forma de busca reconhece sozinha uma pergunta sem resposta; no sistema, isso fica "
-    "a cargo do modelo de linguagem que redige a resposta.",
-    "A busca por palavras e a busca exata por significado dão sempre a mesma lista; o índice "
-    "aproximado só foi instável numa configuração fora da recomendada. As 155 unidades "
-    "guardadas têm a origem completa no banco.",
-]
+def a7_detalhes() -> tuple[str, list[Path]]:
+    pct_ = "(%)"
+    nota = "(nota 0–100)"
+    resumo_cols = [(["Método", f"P@1 {pct_}", f"P@3 {pct_}", f"R@5 {pct_}", f"MRR {nota}",
+                     f"nDCG@10 {nota}"], [1, 2, 3, 4, 5], [25, 15, 15, 15, 15, 15])]
+    var_cols = [(["Método", "Palavras do texto (%)", "Outras palavras (%)",
+                  "Erros de digitação (%)", "Queda com outras palavras (pontos)"],
+                 [1, 2, 3, 4], [32, 17, 17, 17, 17])]
+    neg_cols = [(["Método", "Falso positivo (%)", "Resultados devolvidos (média)"], [1, 2],
+                 [50, 25, 25])]
+    itens = [
+        ("retrieval-summary.tex", "Desempenho de cada método por documento (5 opções). "
+         "Abaixo de cada número, o intervalo de confiança.", resumo_cols),
+        ("retrieval-summary-section.tex", "Desempenho por seção (19 opções). Só os métodos "
+         "testados por seção.", resumo_cols),
+        ("retrieval-variants.tex", "Acertou o 1º resultado, por tipo de pergunta (por "
+         "documento).", var_cols),
+        ("retrieval-variants-section.tex", "Acertou o 1º resultado, por tipo de pergunta (por "
+         "seção).", var_cols),
+        ("retrieval-negatives.tex", "As 2 perguntas sem resposta (por documento).", neg_cols),
+        ("retrieval-negatives-section.tex", "As 2 perguntas sem resposta (por seção).",
+         neg_cols),
+        ("threshold.tex", "Tentativa de usar uma nota mínima (limiar) para descartar "
+         "resultados (por documento).",
+         [(["Método", "Sobreposição (%)", "Limiar (nota da busca)", "<i>J</i> de Youden "
+           "(nota 0–100)", "Falso positivo sem limiar (%)", "Falso positivo com limiar (%)"],
+           [1, 2, 3, 4, 5], [25, 15, 15, 15, 15, 15])]),
+        ("dense-determinism.tex", "A busca por significado deu sempre a mesma lista? Uma "
+         "pergunta é estável quando a lista completa, com as notas, sai idêntica em todas as "
+         "repetições.",
+         [(["O que foi variado", "Perguntas estáveis", "Listas diferentes",
+            "Resultados perdidos frente à busca exata"], [1, 2, 3], [46, 16, 16, 22])]),
+        ("ann-pgvector.tex", "Busca aproximada no pgvector 0.8.6, com textos artificiais "
+         "(768 números cada) e 20 perguntas. As duas últimas colunas contam as perguntas cujos "
+         "10 primeiros resultados mudaram (5 reconstruções; 5 ordens).",
+         [(["Tipo de busca", "Vetores (<i>N</i>)", "Encontrou o mesmo que a busca exata nos "
+            "10 primeiros", "Mudou ao reconstruir", "Mudou ao trocar a ordem"],
+           [1, 2, 3, 4], [36, 14, 20, 15, 15])]),
+        ("provenance.tex", "Pedaços guardados no banco com a origem completa (documento, "
+         "página, posição e conteúdo), na versão atual. Os dados gerais do documento não "
+         "exigem página.",
+         [(["Tipo de pedaço", "Pedaços", "Com origem completa", "Origem completa (%)"],
+           [1, 2, 3], [46, 18, 18, 18])]),
+    ]
+    legenda = "".join(f"<tr><td class='id'><strong>{s}</strong></td><td>{d}</td></tr>"
+                      for s, d in LEGENDA_DETALHES)
+    c = (f"<h2>8. {MARCA_DETALHES}</h2>"
+         "<p>Esta seção traz, para quem quiser conferir, todas as tabelas do teste, com todos "
+         "os números convertidos para porcentagem ou para nota de 0 a 100. Aqui aparecem as "
+         "siglas da área, explicadas no quadro abaixo.</p>"
+         "<div class='caixa'><p class='titulo-caixa'>Como ler as siglas</p>"
+         "<table class='legenda'><colgroup><col style='width:17%'><col style='width:83%'>"
+         f"</colgroup><tbody>{legenda}</tbody></table></div>")
+    usados = []
+    for i, (arq, leg, grupos) in enumerate(itens, 1):
+        usados.append(TAB / arq)
+        c += detalhe(i, arq, leg, grupos)
+    for arq, leg in (("retrieval-significance.tex", "As 75 comparações de dois em dois, por "
+                      "documento. Cada bloco compara dois métodos; as colunas são: a medida; a "
+                      "diferença em pontos (primeiro menos segundo método); em quantas das 16 "
+                      "perguntas os dois tiveram resultado diferente e, entre parênteses, em "
+                      "quantas cada um foi melhor; o valor-p (%); e o valor-p corrigido por "
+                      "Holm (%)."),
+                     ("retrieval-significance-section.tex", "As 15 comparações de dois em "
+                      "dois, por seção. Mesmo formato da tabela anterior.")):
+        usados.append(TAB / arq)
+        c += detalhe_comparacoes(len(usados), arq, leg)
+    return f"<div class='detalhes'>{c}</div>", usados
 
 
 def a7() -> tuple[str, list[Path]]:
-    corpo = (
-        "<h2>Como ler este anexo</h2>"
-        "<p>Este anexo traz todos os números do primeiro experimento do artigo (Seções 8.1 a "
-        "8.4). O experimento comparou formas diferentes de encontrar, entre vários textos, o "
-        "trecho que responde a uma pergunta. Para isso, usou um conjunto pequeno, chamado C1 "
-        "no artigo: 5 textos curtos escritos pelo autor (jurídico, contratual e normativo) e "
-        "18 perguntas, 16 com resposta num dos textos e 2 sem resposta em nenhum. Como o autor "
-        "escreveu os textos, sabe-se de antemão qual é o texto certo de cada pergunta, e dá "
-        "para contar quantas vezes cada forma de busca o encontrou. Cada forma de busca testada "
-        "é chamada de <em>braço</em> do experimento. As notas vão de 0 a 1, e maior é melhor: "
-        "0,750 quer dizer 75%. As medições foram feitas de dois jeitos: escolhendo entre os 5 "
-        "textos inteiros (unidade documento), tarefa fácil, em que um sorteio já acertaria o "
-        "1º lugar cerca de 20% das vezes; e escolhendo entre as 19 seções em que os textos "
-        "foram divididos (unidade seção), tarefa mais difícil e mais parecida com o que o "
-        "sistema faz. Por seção, só os braços de busca por palavras foram medidos, porque a "
-        "busca por significado (braços C, C′ e E do Quadro 1) foi preparada por texto "
-        "inteiro.</p>"
-        "<div class='bloco'>"
-        + quadro("Quadro 1 – Braços comparados.", ("Braço", "Nome", "Como funciona"),
-                 BRACOS, (8, 27, 65)) + "</div>"
-        "<div class='bloco'>"
-        + quadro("Quadro 2 – Medidas usadas nas tabelas.",
-                 ("Medida", "O que responde", "Como ler"), METRICAS, (17, 38, 45)) + "</div>")
-    n, usados = 0, []
-    for titulo, antes, tabelas, mostra in SECOES_A7:
-        corpo += f"<h2>{titulo}</h2>" + (f"<p>{antes}</p>" if antes else "")
-        for arq, legenda, cab, rot in tabelas:
-            n += 1
-            usados.append(TAB / arq)
-            _, tabela = tabela_tex(TAB / arq, cab, rot)
-            # tabelas de ate 15 linhas nao se partem entre paginas
-            longa = tabela.count("<tr") > 16
-            if longa:
-                tabela = tabela.replace("<table>", "<table class='longa'>", 1)
-            corpo += (f"<div{'' if longa else ' class=bloco'}><p class='titulo-tab'>Tabela {n} "
-                      f"– {legenda}</p>{tabela}</div>")
-        rotulo = "esta tabela mostra" if len(tabelas) == 1 else "estas tabelas mostram"
-        corpo += f"<p class='leitura'><strong>O que {rotulo}:</strong> {mostra}</p>"
-    corpo += ("<div class='bloco'><h2>O que concluir</h2><ul>"
-              + "".join(f"<li>{c}</li>" for c in CONCLUSOES_A7) + "</ul></div>")
-    return documento("A7", "Tabelas completas de recuperação", "", corpo), usados
+    detalhes, usados = a7_detalhes()
+    estilo = "<style>body { font-size: 10.5pt; } table { font-size: 9.5pt; }</style>"
+    return (documento("A7", "Resultados do teste de busca", "", estilo + a7_corpo() + detalhes),
+            usados)
 
 
 # ------------------------------------------------------------------- A8
 
-# Fonte: docs/article/results/alteracoes-pos-medicao.md, na ordem do registro
-# (a linha 5, sobre o desenvolvimento, vai por ultimo, como la). Os numeros
-# sao os do registro; o texto foi reescrito para quem nao conhece os termos.
-TERMOS_A8 = [
-    ("Gabarito", "Para cada pergunta, o padrão de texto que a resposta certa precisa conter "
-     "(por exemplo, o número de um artigo de lei) e, às vezes, padrões que invalidam a "
-     "resposta (por exemplo, uma recusa). A correção das respostas é automática, por esses "
-     "padrões. Cada revisão do gabarito ganhou um número de versão (v1, v2...)."),
-    ("Recusa", "Resposta que diz que a informação não está nos documentos (“não consta”, "
-     "“não há informação sobre isso”)."),
-    ("Acervo de ensino", "Os 10 PDFs institucionais do IFPR, com 72 perguntas, usados durante "
-     "o desenvolvimento do sistema. Cada pergunta foi feita três vezes, num total de 216 "
-     "respostas."),
-    ("Bateria", "O teste feito depois do desenvolvimento: 71 perguntas sobre três acervos "
-     "(segurança do trabalho, produto e consumidor, licitações), cada uma feita três vezes, "
-     "num total de 213 respostas."),
-    ("T e F", "As duas formas comparadas no acervo de ensino. T (trechos): o sistema como o "
-     "usuário o usa, que busca os trechos relevantes e envia só eles ao modelo de linguagem. "
-     "F (documento inteiro): o modelo recebe o documento inteiro, sem busca."),
-    ("C e E", "As duas formas comparadas na bateria. C: a busca usa a pergunta como o usuário "
-     "a escreveu. E: antes da busca, o modelo de linguagem acrescenta à pergunta termos "
-     "técnicos relacionados (a <em>expansão da pergunta</em>)."),
-    ("Formas de pergunta", "<em>Negativa</em>: a resposta não está no acervo, e o certo é "
-     "recusar. <em>Existência</em>: pergunta se o acervo trata de um assunto. <em>Premissa "
-     "falsa</em>: a pergunta traz um dado errado (por exemplo, uma modalidade de licitação que "
-     "já não existe), e o certo é corrigir esse dado."),
-    ("Literal e paráfrase", "Duas versões da mesma pergunta: uma com as palavras do documento "
-     "e outra com as palavras de quem não leu o documento."),
-    ("Códigos das perguntas", "Na bateria, lc = licitações e pr = produto e consumidor; a letra "
-     "final indica a versão literal (L) ou a paráfrase (P): lc4P é a paráfrase da pergunta 4 "
-     "de licitações. Sem a letra final (lc3), vale para as duas versões. No acervo de ensino, "
-     "p = prosa, t = tabela e c = calendário."),
-    ("Banca simulada", "Revisão crítica do trabalho feita antes da defesa, simulando as "
-     "perguntas de uma banca."),
-]
+REGISTRO_A8 = ART / "results" / "alteracoes-pos-medicao.md"
 
-# (quando, titulo curto, o que mudou, por que, efeito nos numeros)
-ALTERACOES = [
-    ("10 a 18/09/2026", "Gabarito do acervo de ensino",
-     "O gabarito do acervo de ensino passou por quatro versões (v1 a v4). Em quatro perguntas "
-     "(t04, t06, c08 e c13), os padrões de texto foram afrouxados para aceitar outras redações "
-     "da mesma resposta. Em outras quatro (p01, p20, p22 e t21), foram acrescentadas páginas "
-     "certas.",
-     "Respostas certas eram recusadas só porque estavam redigidas de outro modo, e a "
+# Uma linha por correcao do registro que mudou numero publicado, na ordem do
+# registro (linhas 1, 2, 3, 4, 6 e 7; a linha 5 vai no texto abaixo da tabela).
+# Antes e Depois: lista de (rotulo, valor); todo numero aqui e conferido contra
+# o registro por confere_registro.
+CORRECOES_A8 = [
+    ("Na correção das perguntas usadas durante o desenvolvimento (PDFs do IFPR), respostas "
+     "certas escritas de outro jeito passaram a ser aceitas, e algumas perguntas ganharam "
+     "mais de uma página certa.",
+     "Respostas certas eram marcadas como erradas só por usarem outras palavras, e a "
      "informação de algumas perguntas estava em mais de uma página.",
-     "<ul><li>F, que não mudou no período: 204 → 213 respostas certas de 216 "
-     "(<strong>subiu</strong>), só pela revisão do gabarito.</li>"
-     "<li>T: de 67 perguntas certas de 72 (numa só rodada, em 09/09/2026) para 216 respostas "
-     "certas de 216 (<strong>subiu</strong>), somando ajustes no sistema e no gabarito.</li>"
-     "<li>Consequência: na prática, o acervo de ensino serviu de conjunto de desenvolvimento, "
-     "e não de teste (ver a última alteração).</li></ul>"),
-    ("19/09/2026", "Recusas nas perguntas negativas da bateria",
-     "O padrão que reconhece uma recusa nas perguntas negativas da bateria foi ampliado para "
-     "aceitar outras formas, como “não consta” e “não há”.",
-     "Recusas corretas, redigidas de outro modo (por exemplo, “os documentos não mencionam o "
-     "preço”), eram marcadas como erradas.",
-     "<ul><li>Acerto no acervo de produto e consumidor, com a pergunta original (C): 0,783 → "
-     "0,841 (<strong>subiu</strong>).</li></ul>"),
-    ("27/09/2026", "Nome dos documentos na medida de origem",
-     "O gabarito da bateria passou a aceitar também as variações do título de cada documento. "
-     "Essas variações ficaram fora da impressão digital (<em>hash</em>) que garante que as "
-     "perguntas não mudaram.",
-     "A medida de origem (se a página certa estava entre as fontes mostradas) comparava o "
-     "título do documento citado com o identificador do gabarito, e contava erro quando os "
-     "dois eram escritos de modo diferente, mesmo com o documento certo.",
-     "<ul><li>Origem com a pergunta original (C): 0,371 → 0,581 (<strong>subiu</strong>).</li>"
-     "<li>Origem com a pergunta expandida (E): 0,532 → 0,823 (<strong>subiu</strong>).</li>"
-     "<li>Nenhuma resposta mudou de certa para errada ou o contrário.</li></ul>"),
-    ("27/09/2026", "Recusas não contam mais como acerto (gabarito v4 da bateria, v2 do edital)",
-     "Nas perguntas de existência e na lc3, uma recusa passou a invalidar a resposta. Nas de "
-     "premissa falsa, a resposta passou a ter de trazer o dado que corrige a premissa. A lc3 "
-     "deixou de exigir a palavra “não”. A pr2 passou a aceitar o prazo de 2 anos, que o termo "
-     "de garantia também traz.",
-     "A banca simulada mostrou que uma recusa fixa, dada a todas as perguntas, acertaria 24 "
-     "perguntas de existência e de premissa falsa, e que a resposta da lc3 com a pergunta "
-     "expandida (E), que estava correta, era marcada como errada. Foi criado um teste "
-     "automático que confere que recusas não contam como acerto.",
-     "<ul><li>Pergunta original (C): 174 → 149 respostas certas de 213, ou 0,817 → 0,700 "
-     "(<strong>caiu</strong>).</li>"
-     "<li>Pergunta expandida (E): 198 → 192 de 213, ou 0,930 → 0,901 "
-     "(<strong>caiu</strong>).</li>"
-     "<li>Premissa falsa com a pergunta original (C): 35 → 13 de 36 (<strong>caiu</strong>)."
-     "</li>"
-     "<li>Ganho da expansão da pergunta (perguntas que passaram a acertar e que deixaram de "
-     "acertar com E): de 10 ganhos e 1 perda para 15 ganhos e 0 perdas; o valor-p, chance de "
-     "a diferença ser acaso, foi de 0,012 para 0,0001 (a diferença ficou "
-     "<strong>mais clara</strong>).</li>"
-     "<li>Enriquecimento do índice (Seção 8.8 do artigo): 9 de 12 nos quatro braços → 7, 8, "
-     "7 e 8 de 12 (<strong>caiu</strong>).</li>"
-     "<li>Edital municipal (acervo exploratório com um edital de concurso): sem mudança."
-     "</li></ul>"),
-    ("27/09/2026", "Respostas que negam o assunto (gabarito v5 da bateria, v3 do edital)",
-     "Nas perguntas de existência, respostas com o verbo negado (“não existe”, “não consta”, "
-     "“não trata”, “não prevê”) passaram a ser invalidadas. Na lc3, a resposta oposta à certa "
-     "(“não foi revogada”, “continua em vigor”) passou a ser invalidada. A lc4 passou a exigir "
-     "o art. 190 da lei ou a regra que ele estabelece, e a invalidar recusa e resposta oposta.",
-     "A segunda leitura da banca simulada mostrou três brechas: a frase “Não existe previsão "
-     "sobre isso nos documentos.” acertava as 12 perguntas de existência; “Não, a lei não foi "
-     "revogada.” acertava a lc3; e as 6 respostas da lc4P, todas recusas, contavam como "
-     "certas. O teste automático passou a cobrir nove recusas e as respostas opostas.",
-     "<ul><li>Pergunta original (C): 149 → 146 de 213, ou 0,700 → 0,685 "
-     "(<strong>caiu</strong>).</li>"
-     "<li>Pergunta expandida (E): 192 → 189 de 213, ou 0,901 → 0,887 "
-     "(<strong>caiu</strong>).</li>"
-     "<li>Só mudaram as 6 respostas da lc4P, conferidas uma a uma.</li>"
-     "<li>Efeito da redação (pares literal e paráfrase em que só uma das versões acertou, a "
-     "favor da literal × a favor da paráfrase): 12×0 → 13×0. Com o gabarito original (v3) "
-     "eram 8×2, com valor-p 0,109, que não permitia descartar o acaso: a vantagem da pergunta "
-     "literal só fica clara depois desta revisão e da anterior.</li>"
-     "<li>Responder “Sim.” a tudo ainda acerta as 12 perguntas de existência, cuja resposta "
-     "certa é sempre sim; o artigo declara isso.</li></ul>"),
-    ("27/09/2026", "Últimas brechas e um falso negativo (gabarito v6 da bateria, v4 do edital)",
-     "Nas perguntas de sim ou não, recusas amplas (“não está previsto”, “nenhum dos documentos "
-     "trata”, “nada consta”, “não pode ser encontrada”) passaram a ser invalidadas, assim como "
-     "a resposta que começa negando o que o gabarito afirma, ou o contrário. A lc12 e a lc13 "
-     "passaram a invalidar a resposta oposta. A pr8 passou a aceitar o plural “píxeis”.",
-     "A terceira leitura da banca simulada encontrou recusas e respostas opostas que a versão "
-     "anterior ainda aceitava (nenhuma delas aparecia nas respostas reais) e um falso "
-     "negativo, isto é, uma resposta certa marcada como errada: “píxeis”, sem acento, não "
-     "contém a palavra “pixel”.",
-     "<ul><li>Só a pr8L mudou: 2 respostas da pergunta original (C), de erradas para certas, "
-     "conferidas.</li>"
-     "<li>Pergunta original (C): 146 → 148 de 213, ou 0,685 → 0,695 "
-     "(<strong>subiu</strong>).</li>"
-     "<li>Pergunta expandida (E): sem mudança (0,887).</li>"
-     "<li>Ganho da expansão (ganhos × perdas): 15×0 → 14×0 (<strong>caiu</strong>). Efeito "
-     "da redação: 13×0 → 14×0 (<strong>subiu</strong>).</li>"
-     "<li>Foram lidas as 30 respostas erradas restantes, uma por pergunta e braço, à procura "
-     "de outras respostas certas marcadas como erradas: só a pr8 era um caso claro. A lc1P, "
-     "caso de fronteira, foi mantida como estava: a resposta lista as cinco modalidades de "
-     "licitação da Lei 14.133, e o gabarito, escrito antes da medição, pede também as da Lei "
-     "8.666 (“depende da lei”).</li></ul>"),
-    ("Durante o desenvolvimento", "Ajustes da busca medidos no acervo de ensino",
-     "Regras da busca do sistema foram mantidas ou descartadas conforme o efeito medido nas 72 "
-     "perguntas do acervo de ensino: exigir que a fonte contenha pelo menos 2 palavras da "
-     "pergunta; procurar também a forma no plural de palavras com 6 ou mais letras; deixar de "
-     "dar pontos extras a palavras do título; e levar junto o começo da página seguinte quando "
-     "o texto da fonte continua nela.",
-     "O trabalho seguiu a pesquisa em ciência do design, em que o sistema é melhorado em ciclos "
-     "de construir, medir e ajustar.",
-     "<ul><li>O acerto e a origem de T no acervo de ensino foram medidos no mesmo conjunto "
-     "em que o sistema foi ajustado, e por isso não valem como teste independente.</li>"
-     "<li>As perguntas da bateria, escritas depois, são o conjunto de teste.</li></ul>"),
+     [("Sistema sem mudanças", "204 de 216 respostas")],
+     [("Sistema sem mudanças", "213 de 216 respostas")]),
+    ("Nas perguntas sem resposta do teste final, mais formas de recusar passaram a contar "
+     "como certas (como “não consta” e “não há”).",
+     "Recusas corretas escritas de outro jeito, como “os documentos não mencionam o preço”, "
+     "eram marcadas como erradas.",
+     [("Produto e consumidor, original", "78,3%")],
+     [("Produto e consumidor, original", "84,1%")]),
+    ("Na medida que confere se a página certa aparece entre as fontes, o nome de cada "
+     "documento passou a ser aceito em todas as suas formas.",
+     "O sistema grava o título do documento, e a correção esperava um código. A fonte certa "
+     "contava como erro quando os dois eram escritos de jeitos diferentes. Nenhuma resposta "
+     "mudou de certa para errada.",
+     [("Original", "37,1%"), ("Ampliada", "53,2%")],
+     [("Original", "58,1%"), ("Ampliada", "82,3%")]),
+    ("Recusas (“não há informação sobre isso”) deixaram de contar como certas nas perguntas "
+     "que têm resposta. Nas perguntas que trazem um dado errado, a resposta passou a ter de "
+     "corrigir esse dado.",
+     "Uma resposta fixa de recusa, igual para todas as perguntas, acertaria 24 perguntas.",
+     [("Original", "81,7%"), ("Ampliada", "93,0%"), ("Com dado errado", "35 de 36"),
+      ("Chance de a vantagem da ampliada ser sorte", "1,2%"),
+      ("Teste da Seção 8.8 do artigo", "9 de 12")],
+     [("Original", "70,0%"), ("Ampliada", "90,1%"), ("Com dado errado", "13 de 36"),
+      ("Chance de a vantagem da ampliada ser sorte", "0,01%"),
+      ("Teste da Seção 8.8 do artigo", "7 a 8 de 12")]),
+    ("Respostas que negam o assunto (“não existe”, “não consta”) ou que dizem o contrário da "
+     "resposta certa também deixaram de contar como certas.",
+     "A frase “Não existe previsão sobre isso nos documentos.” acertava as 12 perguntas que "
+     "perguntam se um assunto existe, e 6 recusas a uma mesma pergunta contavam como certas.",
+     [("Original", "70,0%"), ("Ampliada", "90,1%")],
+     [("Original", "68,5%"), ("Ampliada", "88,7%")]),
+    ("Mais formas de recusa passaram a ser barradas, e uma resposta certa escrita “píxeis” "
+     "(plural de pixel) passou a ser aceita.",
+     "“Píxeis” sem acento não contém a palavra “pixel”, e a resposta certa era marcada como "
+     "errada. As outras recusas barradas não apareciam nas respostas reais.",
+     [("Original", "68,5%"), ("Ampliada", "88,7%")],
+     [("Original", "69,5%"), ("Ampliada", "88,7%")]),
 ]
+TOTAL_A8 = ("<strong>Efeito somado das três últimas correções</strong>",
+            "Respostas que não respondem nada deixaram de contar como certas.",
+            [("Original", "81,7%"), ("Ampliada", "93,0%")],
+            [("Original", "69,5%"), ("Ampliada", "88,7%")])
+
+
+def celula_valores(vals: list[tuple[str, str]]) -> str:
+    return "<br>".join((f"{r}: " if r else "") + f"<strong>{v}</strong>" for r, v in vals)
+
+
+def confere_registro(texto_html: str) -> None:
+    """Todo numero do A8 precisa existir no registro: contagens e numeros sem %
+    como estao; porcentagens como a proporcao decimal do registro (81,7% <-
+    0,817; 0,01% <- 0,0001), com o mesmo numero de casas do texto."""
+    texto = html.unescape(re.sub(r"<[^>]+>", " ", texto_html))
+    reg = REGISTRO_A8.read_text(encoding="utf-8")
+    reg_nums = set(re.findall(r"\d+(?:,\d+)?", reg))
+    reg_dec = [Decimal(x.replace(",", ".")) for x in reg_nums if "," in x]
+    faltam = []
+    for m in re.finditer(r"(\d+(?:,\d+)?)(\s*%)?", texto):
+        num, por = m[1], m[2]
+        if por:
+            casas = len(num.split(",")[1]) if "," in num else 0
+            v = Decimal(num.replace(",", "."))
+            ok = any((d * 100).quantize(Decimal(1).scaleb(-casas)) == v for d in reg_dec)
+        else:
+            ok = num in reg_nums
+        if not ok:
+            faltam.append(m.group().strip())
+    if faltam:
+        raise SystemExit(f"A8: numeros fora do registro: {faltam}")
+    print(f"  A8: {len(re.findall(r"\d+(?:,\d+)?", texto))} numeros conferidos no registro")
 
 
 def a8() -> str:
-    termos = "".join(f"<tr><td class='id'>{t}</td><td>{d}</td></tr>" for t, d in TERMOS_A8)
+    linhas = CORRECOES_A8 + [TOTAL_A8]
+    tr = "".join(
+        f"<tr{' class=regra' if i == len(linhas) - 1 else ''}><td>{o}</td><td>{p}</td>"
+        f"<td>{celula_valores(a)}</td><td>{celula_valores(d)}</td></tr>"
+        for i, (o, p, a, d) in enumerate(linhas))
     corpo = (
-        "<h2>Por que existe este registro</h2>"
-        "<p>Para corrigir automaticamente centenas de respostas, cada pergunta dos experimentos "
-        "tem um gabarito: o padrão de texto que a resposta certa precisa conter e, às vezes, "
-        "padrões que a invalidam. Quando um gabarito ou um critério de correção é alterado "
-        "depois de ver os resultados, existe o risco de ajustá-lo, mesmo sem querer, para que o "
-        "sistema pareça melhor do que é. Por isso, cada alteração feita depois de uma medição "
-        "foi anotada com a data, o motivo e o efeito nos números, inclusive as que pioraram o "
-        "resultado do próprio sistema. Os números publicados no artigo são sempre os de depois "
-        "da última alteração.</p>"
-        "<div class='bloco'><p class='titulo-tab'>Quadro 1 – Termos usados neste anexo.</p>"
-        "<table class='quadro'><colgroup><col style='width:20%'><col style='width:80%'>"
-        f"</colgroup><thead><tr><th>Termo</th><th>Significado</th></tr></thead>"
-        f"<tbody>{termos}</tbody></table></div>"
-        "<h2>As alterações</h2>")
-    for i, (quando, titulo, oque, porque, efeito) in enumerate(ALTERACOES, 1):
-        corpo += (f"<div class='alteracao'><h3>Alteração {i} – {titulo}</h3>"
-                  f"<p class='quando'>{quando}</p>"
-                  f"<p><strong>O que mudou.</strong> {oque}</p>"
-                  f"<p><strong>Por quê.</strong> {porque}</p>"
-                  "<p><strong>Efeito nos números</strong>"
-                  + (" (antes → depois)" if "→" in efeito else "") + f":</p>{efeito}</div>")
-    return documento("A8", "Alterações feitas depois de medir",
-                     "Registro de cada alteração de gabarito ou de critério de correção feita "
-                     "depois de conhecidos os resultados, com o motivo e o efeito nos números.",
-                     corpo)
+        "<p>Depois de ver os resultados, algumas regras de correção das respostas foram "
+        "ajustadas. Como isso poderia deixar os números artificialmente melhores, cada ajuste "
+        "foi anotado com o motivo e o efeito. O ajuste mais importante deixou o resultado do "
+        "sistema pior, e não melhor.</p>"
+        "<p>A correção é automática: cada pergunta tem um padrão de texto que a resposta certa "
+        "precisa conter e, às vezes, padrões que a tornam errada, como uma recusa. A maioria "
+        "das linhas abaixo trata do teste final, com 213 respostas sobre leis, normas e "
+        "manuais públicos, escritas depois de o sistema ficar pronto. Nele, cada número "
+        "aparece de dois modos: com a pergunta como o usuário escreveu (<em>original</em>) e "
+        "com a pergunta <em>ampliada</em> por um LLM, que acrescenta termos técnicos antes "
+        "da busca.</p>"
+        "<p class='titulo-tab'>Quadro 1 – Correções que mudaram números publicados, na ordem "
+        "em que foram feitas.</p>"
+        "<table class='quadro a8'><colgroup><col style='width:29%'><col style='width:29%'>"
+        "<col style='width:21%'><col style='width:21%'></colgroup><thead><tr>"
+        "<th>O que mudou</th><th>Por quê</th><th>Antes</th><th>Depois</th></tr></thead>"
+        f"<tbody>{tr}</tbody></table>"
+        "<p class='nota-a8'>As regras da busca também foram ajustadas olhando as 72 perguntas "
+        "usadas durante o desenvolvimento. Por isso, os números dessas perguntas não valem "
+        "como teste independente; o teste de verdade é o teste final, com perguntas escritas "
+        "depois.</p>"
+        + resumo("as três correções mais importantes fizeram o acerto do sistema cair de 81,7% "
+                 "para 69,5%, porque respostas que não respondiam nada deixaram de contar como "
+                 "certas. As outras corrigiram erros da própria correção, que marcava respostas "
+                 "certas como erradas; o artigo publica sempre os números de depois da última "
+                 "correção."))
+    confere_registro(corpo)
+    return documento("A8", "Correções feitas depois de medir", "", corpo)
 
 
 # ------------------------------------------------------------------- main
