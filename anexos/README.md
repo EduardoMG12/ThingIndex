@@ -14,6 +14,7 @@ Campus Palmas).
 | A7 | [A7-tabelas-completas-de-recuperacao.pdf](A7-tabelas-completas-de-recuperacao.pdf) | Resultados do teste de busca: por que o teste foi feito, o que cada análise respondeu e o que ela decidiu no projeto; ao final, a tabela completa de medidas com intervalos de confiança e os índices do pgvector |
 | A8 | [A8-alteracoes-pos-medicao.pdf](A8-alteracoes-pos-medicao.pdf) | Correções feitas depois de medir: uma tabela com o que mudou, por quê e o número antes e depois, em porcentagem |
 | A9 | [A9-esquema-do-banco.pdf](A9-esquema-do-banco.pdf) | Diagrama entidade-relacionamento das 25 tabelas do banco |
+| A10 | [A10-acervos-e-perguntas.pdf](A10-acervos-e-perguntas.pdf) | Acervos e perguntas: os documentos de cada um dos sete acervos da avaliação (título, páginas, origem e arquivo) e todas as perguntas, com o tipo, a resposta esperada e o documento e a página da resposta |
 
 ## Dados e código
 
@@ -22,9 +23,10 @@ Campus Palmas).
 - [`docs/article/results/alteracoes-pos-medicao.md`](../docs/article/results/alteracoes-pos-medicao.md): registro original do Anexo A8 (o script confere que todo número do A8 existe nele).
 - [`docs/prds/pre-registro-expansao-consulta.md`](../docs/prds/pre-registro-expansao-consulta.md): pré-registro do experimento de expansão de consulta.
 - [`docs/prds/pre-registro-perguntas-geradas.md`](../docs/prds/pre-registro-perguntas-geradas.md): pré-registro do experimento de perguntas geradas.
+- [`api/internal/evalcorpus/testdata/`](../api/internal/evalcorpus/testdata/): gabaritos completos, com os padrões de correção (fonte do Anexo A10).
 - [`docs/schema/thingindex.dbml`](../docs/schema/thingindex.dbml): esquema do banco em DBML (fonte do Anexo A9).
 - [`docs/article/anexos/diagramas/`](../docs/article/anexos/diagramas/): fontes PlantUML dos diagramas.
 - Verificações do artigo: [`check-article-citations.sh`](../scripts/check-article-citations.sh), [`check-article-claims.sh`](../scripts/check-article-claims.sh), [`check-article-floats.py`](../scripts/check-article-floats.py), [`check-article-numbers.py`](../scripts/check-article-numbers.py).
 
 Os PDFs são gerados por [`scripts/gerar-anexos.py`](../scripts/gerar-anexos.py), que requer
-`chromium`, `docker` (imagem `plantuml/plantuml`), `rsvg-convert` e `pdftotext`.
+`chromium`, `docker` (imagem `plantuml/plantuml`), `rsvg-convert`, `pdftotext` e `pdfinfo`.

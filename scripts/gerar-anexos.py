@@ -16,16 +16,21 @@ Chromium headless. As fontes de cada anexo sao arquivos versionados:
   PDF (regra de conversao em para_cem);
 - correcoes depois de medir (A8): de docs/article/results/alteracoes-pos-medicao.md,
   com verificacao de que todo numero citado existe no registro (confere_registro);
-- telas (A6): docs/article/anexos/telas/*.png.
+- telas (A6): docs/article/anexos/telas/*.png;
+- acervos e perguntas (A10): gabaritos de api/internal/evalcorpus/testdata/ e
+  origem dos PDFs nos examples/*/FONTES.md; confere_perguntas verifica que cada
+  pergunta de cada gabarito aparece uma vez no PDF.
 
-Requer chromium, docker, rsvg-convert e pdftotext no PATH.
+Requer chromium, docker, rsvg-convert, pdftotext e pdfinfo no PATH.
 
 Uso: python3 scripts/gerar-anexos.py [pasta-de-trabalho]
 """
 
 from __future__ import annotations
 
+import csv
 import html
+import json
 import os
 import re
 import subprocess
@@ -1004,6 +1009,268 @@ def a8() -> str:
     return documento("A8", "Correções feitas depois de medir", "", corpo)
 
 
+# ------------------------------------------------------------------- A10
+
+GAB = RAIZ / "api" / "internal" / "evalcorpus" / "testdata"
+EXEMPLOS = RAIZ / "examples"
+
+# Acervos na ordem do artigo (Tabela de acervos): nome, gabarito, numero de
+# perguntas que o artigo declara. O script falha se o gabarito ou o PDF divergirem.
+ACERVOS_A10 = [
+    ("C1 (controle)", "corpus-c1.json", 18),
+    ("Ensino", "gabarito-si.json", 72),
+    ("Legislação", "gabarito-legislacao.json", 19),
+    ("Segurança do trabalho", "gabarito-seguranca-trabalho.json", 23),
+    ("Produto e consumidor", "gabarito-produto.json", 23),
+    ("Licitações", "gabarito-licitacoes.json", 25),
+    ("Edital municipal", "gabarito-prefeitura.json", 18),
+]
+
+TIPOS = {"aberta": "aberta", "confirmacao": "confirmação", "existencia": "existência",
+         "premissa-falsa": "premissa falsa", "negativa": "negativa", "prosa": "prosa",
+         "tabela": "tabela", "calendario": "calendário", "divergente": "divergente",
+         "temporal": "temporal"}
+VARIANTES = {"literal": "literal", "parafrase": "paráfrase", "paraphrase": "paráfrase",
+             "noisy": "ruidosa"}
+AREAS_C1 = {"juridico": "jurídico", "licitacao": "licitação", "contratual": "contratual",
+            "normativo": "normativo", "operacional": "operacional"}
+
+
+def paginas_pdf(pdf: Path) -> int:
+    info = subprocess.run(["pdfinfo", str(pdf)], check=True, capture_output=True,
+                          text=True).stdout
+    return int(re.search(r"(?m)^Pages:\s+(\d+)", info).group(1))
+
+
+def lista_pt(itens: list[str]) -> str:
+    return itens[0] if len(itens) == 1 else ", ".join(itens[:-1]) + " e " + itens[-1]
+
+
+def acha_exemplo(arquivo: str) -> Path | None:
+    achados = sorted(EXEMPLOS.glob(f"*/{arquivo}"))
+    if len(achados) > 1:
+        raise SystemExit(f"A10: {arquivo} aparece em mais de uma pasta de examples/")
+    return achados[0] if achados else None
+
+
+def sem_marcas(s: str) -> str:
+    return re.sub(r"\*\*|`", "", s).strip()
+
+
+def sem_paginas(s: str) -> str:
+    return re.sub(r",\s*\d+ (p\.|paginas|páginas)$", "", s.strip())
+
+
+def quebras(s: str) -> str:
+    """Texto ja escapado: permite quebrar URLs e caminhos depois de cada barra."""
+    return re.sub(r"(?<=/)(?=[^/<\s])", "<wbr>", s)
+
+
+def origem_fontes(pdf: Path) -> str:
+    """Origem do arquivo segundo o FONTES.md da pasta: a coluna Origem/Fonte da
+    tabela; numa tabela sem essa coluna, a frase que abre a tabela e a celula; num
+    paragrafo, a descricao entre parenteses depois do nome do arquivo."""
+    linhas = (pdf.parent / "FONTES.md").read_text(encoding="utf-8").splitlines()
+    for i, l in enumerate(linhas):
+        if f"`{pdf.name}`" not in l:
+            continue
+        if l.lstrip().startswith("|"):
+            j = i
+            while j > 0 and linhas[j - 1].lstrip().startswith("|"):
+                j -= 1
+            cab = [c.strip() for c in linhas[j].strip().strip("|").split("|")]
+            cel = [c.strip() for c in l.strip().strip("|").split("|")]
+            for nome in ("Origem", "Fonte"):
+                if nome in cab:
+                    return sem_marcas(cel[cab.index(nome)])
+            k = j - 1
+            while k >= 0 and not linhas[k].strip():
+                k -= 1
+            ini = k
+            while ini > 0 and linhas[ini - 1].strip():
+                ini -= 1
+            frase = sem_marcas(" ".join(x.strip() for x in linhas[ini:k + 1])).rstrip(":")
+            return f"{frase}; {cab[1].lower()}: {sem_marcas(cel[1])}"
+        k = i
+        while k + 1 < len(linhas) and linhas[k + 1].strip():
+            k += 1
+        paragrafo = " ".join(x.strip() for x in linhas[i:k + 1])
+        m = re.search(re.escape(f"`{pdf.name}`") + r" \(([^)]*)\)", paragrafo)
+        if m:
+            desc = sem_paginas(m.group(1))
+            if not re.search(r"https?://|Planalto|portal", desc):
+                desc += " (o FONTES.md não registra o endereço de origem)"
+            return desc
+    raise SystemExit(f"A10: {pdf.name} sem origem em {pdf.parent.name}/FONTES.md")
+
+
+def titulos_ensino_extras() -> dict[str, Path]:
+    """Os 5 PDFs de examples/faculdade-novos entram na colecao de ensino sem
+    document_id no gabarito; o titulo e o que o sistema citou nos resultados."""
+    titulos: set[str] = set()
+    with open(ART / "results" / "generation-results-T-final.csv", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            for c in (r["cited_pages"] or "").split(";"):
+                if ":" in c:
+                    titulos.add(c.rsplit(":", 1)[0])
+    ids = {d["id"] for d in json.loads((GAB / "gabarito-si.json").read_text())["documents"]}
+    arquivos = sorted((EXEMPLOS / "faculdade-novos").glob("*.pdf"))
+    def fichas(s: str) -> set[str]:
+        return set(re.findall(r"[a-z0-9]+", s.lower()))
+    saida = {}
+    for t in sorted(titulos - ids):
+        notas = sorted(((len(fichas(t) & fichas(a.stem)), a) for a in arquivos), reverse=True)
+        if notas[0][0] == 0 or (len(notas) > 1 and notas[0][0] == notas[1][0]):
+            raise SystemExit(f"A10: titulo {t!r} sem arquivo inequivoco em faculdade-novos")
+        saida[t] = notas[0][1]
+    if sorted(saida.values()) != arquivos:
+        raise SystemExit("A10: titulos citados nao cobrem os PDFs de faculdade-novos")
+    return saida
+
+
+def quadro(cab: list[str], larguras: list[int], linhas: list[list[str]],
+           classe: str = "quadro a10", com_id: bool = True) -> str:
+    cols = "".join(f"<col style='width:{w}%'>" for w in larguras)
+    th = "".join(f"<th>{c}</th>" for c in cab)
+    tr = "".join("<tr>" + "".join(
+        f"<td{' class=id' if i == 0 and com_id else ''}>{c}</td>" for i, c in enumerate(l)) + "</tr>"
+        for l in linhas)
+    return (f"<table class='{classe}'><colgroup>{cols}</colgroup><thead><tr>{th}</tr>"
+            f"</thead><tbody>{tr}</tbody></table>")
+
+
+def caminho(p: Path) -> str:
+    return f"<code>{quebras(esc(str(p.relative_to(RAIZ))))}</code>"
+
+
+def a10_c1(n: int, q: int) -> tuple[str, int, list[str]]:
+    d = json.loads((GAB / "corpus-c1.json").read_text(encoding="utf-8"))
+    docs = {x["id"]: x for x in d["documents"]}
+    secoes = {s["id"]: s["title"] for x in d["documents"] for s in x["sections"]}
+    arq = caminho(GAB / "corpus-c1.json")
+    ldoc = [[esc(x["id"]), esc(x["title"]), AREAS_C1[x["stratum"]],
+             esc(x["content"]).replace("\n\n", "<br>").replace("\n", "<br>")]
+            for x in d["documents"]]
+    lq = []
+    for c in d["queries"]:
+        tipo = "negativa" if c.get("negative") else VARIANTES[c["variant"]]
+        if c.get("negative"):
+            certo = "— (não há texto certo no acervo)"
+        else:
+            partes = []
+            for doc, g in sorted(c["relevance"].items(), key=lambda x: -x[1]):
+                secs = sorted(((s, gs) for s, gs in c.get("relevance_sections", {}).items()
+                               if s.startswith(doc + "#")), key=lambda x: -x[1])
+                txt = f"{esc(docs[doc]['title'])} (grau {g})"
+                if secs:
+                    txt += ("; seção " if len(secs) == 1 else "; seções ") + lista_pt(
+                        [f"{esc(secoes[s])} (grau {gs})" for s, gs in secs])
+                partes.append(txt)
+            certo = "<br>".join(partes)
+        lq.append([esc(c["id"]), esc(c["text"]), tipo, certo])
+    corpo = (f"<h2>{n}. C1 (controle)</h2>"
+             f"<p>Cinco textos curtos, sem paginação, guardados em {arq}. O grau de "
+             "relevância vai de 0 a 3.</p>"
+             f"<p class='titulo-tab'>Quadro {q} – Textos do C1.</p>"
+             + quadro(["Id", "Título", "Área", "Texto completo"], [14, 17, 10, 59], ldoc,
+                      "quadro a10 c1doc", com_id=False)
+             + f"<p class='titulo-tab'>Quadro {q + 1} – Consultas do C1.</p>"
+             + quadro(["Id", "Consulta", "Tipo", "Texto certo"], [13, 30, 11, 46], lq))
+    return corpo, q + 2, [c["id"] for c in d["queries"]]
+
+
+def a10_acervo(n: int, nome: str, arquivo: str, q: int) -> tuple[str, int, list[str]]:
+    g = json.loads((GAB / arquivo).read_text(encoding="utf-8"))
+    titulos = {x["id"]: x["title"] for x in g["documents"]}
+    ldoc = []
+    for x in g["documents"]:
+        pdf = acha_exemplo(x["file"])
+        if pdf is None:
+            m = re.search(r"\(([^)]*)\)", g["notes"])
+            origem = esc(sem_paginas(m.group(1))) if m else "—"
+            onde = f"arquivo não versionado (<code>{esc(x['file'])}</code>)"
+            NAO_VERSIONADOS.append(x["file"])
+        else:
+            if paginas_pdf(pdf) != x["pages"]:
+                raise SystemExit(f"A10: {pdf.name} tem {paginas_pdf(pdf)} paginas, "
+                                 f"gabarito diz {x['pages']}")
+            origem, onde = quebras(esc(origem_fontes(pdf))), caminho(pdf)
+        ldoc.append([esc(x["title"]), str(x["pages"]), origem, onde])
+    if arquivo == "gabarito-si.json":
+        for t, pdf in titulos_ensino_extras().items():
+            ldoc.append([esc(t), str(paginas_pdf(pdf)), quebras(esc(origem_fontes(pdf))),
+                         caminho(pdf)])
+    lq = []
+    for p in g["questions"]:
+        tipo = TIPOS[p["stratum"]]
+        if p.get("variant"):
+            tipo += f", {VARIANTES[p['variant']]} (par {esc(p['pair_id'])})"
+        if p["targets"]:
+            onde = "<br>".join(
+                f"{esc(titulos[t['document_id']])}, "
+                f"{'p.' if len(t['pages']) == 1 else 'pp.'} "
+                f"{lista_pt([str(x) for x in t['pages']])}" for t in p["targets"])
+        else:
+            onde = "— (não há resposta no acervo)"
+        lq.append([esc(p["id"]), esc(p["text"]), tipo, esc(p["expected"]), onde])
+    corpo = (f"<h2>{n}. {nome}</h2>"
+             f"<p class='titulo-tab'>Quadro {q} – Documentos do acervo {nome}.</p>"
+             + quadro(["Documento", "Páginas", "Origem", "Arquivo"], [24, 8, 40, 28], ldoc,
+                      "quadro a10 docs", com_id=False)
+             + f"<p class='titulo-tab'>Quadro {q + 1} – Perguntas do acervo {nome}.</p>"
+             + quadro(["Id", "Pergunta", "Tipo", "Resposta esperada", "Documento e página"],
+                      [6, 26, 13, 32, 23], lq))
+    return corpo, q + 2, [p["id"] for p in g["questions"]]
+
+
+NAO_VERSIONADOS: list[str] = []
+
+
+def a10() -> tuple[str, list[tuple[str, list[str], int]]]:
+    estilo = ("<style>table.a10 { font-size: 8.5pt !important; table-layout: fixed; } "
+              "table.a10 td { overflow-wrap: break-word; padding: 2pt 4pt; } "
+              "table.a10 th { padding: 2pt 4pt; } "
+              "table.a10 code { font-size: 7.5pt; } "
+              "table.c1doc td:last-child { text-align: justify; }</style>")
+    partes, conferir, q = [], [], 1
+    for i, (nome, arquivo, esperado) in enumerate(ACERVOS_A10, 1):
+        if arquivo == "corpus-c1.json":
+            corpo, q, ids = a10_c1(i, q)
+        else:
+            corpo, q, ids = a10_acervo(i, nome, arquivo, q)
+        if len(ids) != esperado or len(set(ids)) != len(ids):
+            raise SystemExit(f"A10: {arquivo} tem {len(ids)} perguntas, esperado {esperado}")
+        partes.append(corpo)
+        conferir.append((f"{i}. {nome}", ids, esperado))
+    nota = ("<p class='nota-a8' style='text-align:left; margin-top:10pt'>Os gabaritos completos, com os padrões de correção de cada "
+            f"pergunta, estão em <code>{GAB.relative_to(RAIZ)}/</code>, travados por hash.</p>")
+    desc = ("Os documentos de cada acervo usado na avaliação e todas as perguntas, com a "
+            "resposta esperada e a página onde ela está.")
+    return documento("A10", "Acervos e perguntas", desc, estilo + "".join(partes) + nota), conferir
+
+
+def confere_perguntas(pdf: Path, conferir: list[tuple[str, list[str], int]]) -> None:
+    """Cada acervo do PDF tem de mostrar cada Id do gabarito exatamente uma vez."""
+    texto = subprocess.run(["pdftotext", "-layout", str(pdf), "-"], check=True,
+                           capture_output=True, text=True).stdout
+    inicios = []
+    for titulo, _, _ in conferir:
+        m = re.search(r"(?m)^\s*" + re.escape(titulo) + r"\s*$", texto)
+        if not m:
+            raise SystemExit(f"{pdf.name}: titulo {titulo!r} nao encontrado")
+        inicios.append(m.start())
+    inicios.append(len(texto))
+    for k, (titulo, ids, esperado) in enumerate(conferir):
+        trecho = texto[inicios[k]:inicios[k + 1]]
+        vistos = [i for i in ids
+                  if len(re.findall(r"(?<![\w-])" + re.escape(i) + r"(?![\w-])", trecho)) == 1]
+        if len(vistos) != esperado:
+            faltam = sorted(set(ids) - set(vistos))
+            raise SystemExit(f"{pdf.name}: {titulo}: {len(vistos)} de {esperado} perguntas; "
+                             f"problema em {faltam}")
+        print(f"  {titulo}: {len(vistos)} perguntas conferidas")
+
+
 # ------------------------------------------------------------------- main
 
 def figuras(cod: str, titulo: str, desc: str, itens: list[tuple], orient: str,
@@ -1088,6 +1355,8 @@ def main() -> None:
                      f"Diagrama entidade-relacionamento das {len(tabelas)} tabelas do "
                      "banco de dados PostgreSQL.", itens, "landscape"),
              "A9-esquema-do-banco", build)
+    html_a10, conferir = a10()
+    confere_perguntas(imprimir(html_a10, "A10-acervos-e-perguntas", build), conferir)
 
 
 if __name__ == "__main__":
