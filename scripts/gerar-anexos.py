@@ -17,9 +17,11 @@ Chromium headless. As fontes de cada anexo sao arquivos versionados:
 - correcoes depois de medir (A8): de docs/article/results/alteracoes-pos-medicao.md,
   com verificacao de que todo numero citado existe no registro (confere_registro);
 - telas (A6): docs/article/anexos/telas/*.png;
-- acervos e perguntas (A10): gabaritos de api/internal/evalcorpus/testdata/ e
-  origem dos PDFs nos examples/*/FONTES.md; confere_perguntas verifica que cada
-  pergunta de cada gabarito aparece uma vez no PDF.
+- acervos e perguntas (A10): pasta anexos/A10-acervos/, uma subpasta por acervo
+  com copias byte a byte dos PDFs de examples/ (conferidas por sha256) e um
+  perguntas.pdf montado do gabarito de api/internal/evalcorpus/testdata/; a
+  origem vem dos examples/*/FONTES.md; confere_perguntas verifica que cada
+  pergunta do gabarito aparece uma vez no perguntas.pdf.
 
 Requer chromium, docker, rsvg-convert, pdftotext e pdfinfo no PATH.
 
@@ -1014,16 +1016,16 @@ def a8() -> str:
 GAB = RAIZ / "api" / "internal" / "evalcorpus" / "testdata"
 EXEMPLOS = RAIZ / "examples"
 
-# Acervos na ordem do artigo (Tabela de acervos): nome, gabarito, numero de
+# Acervos na ordem do artigo (Tabela de acervos): nome, pasta em anexos/A10-acervos/, gabarito, numero de
 # perguntas que o artigo declara. O script falha se o gabarito ou o PDF divergirem.
 ACERVOS_A10 = [
-    ("C1 (controle)", "corpus-c1.json", 18),
-    ("Ensino", "gabarito-si.json", 72),
-    ("Legislação", "gabarito-legislacao.json", 19),
-    ("Segurança do trabalho", "gabarito-seguranca-trabalho.json", 23),
-    ("Produto e consumidor", "gabarito-produto.json", 23),
-    ("Licitações", "gabarito-licitacoes.json", 25),
-    ("Edital municipal", "gabarito-prefeitura.json", 18),
+    ("C1 (controle)", "01-controle-c1", "corpus-c1.json", 18),
+    ("Ensino", "02-ensino", "gabarito-si.json", 72),
+    ("Legislação", "03-legislacao", "gabarito-legislacao.json", 19),
+    ("Segurança do trabalho", "04-seguranca-do-trabalho", "gabarito-seguranca-trabalho.json", 23),
+    ("Produto e consumidor", "05-produto-e-consumidor", "gabarito-produto.json", 23),
+    ("Licitações", "06-licitacoes", "gabarito-licitacoes.json", 25),
+    ("Edital municipal", "07-edital-municipal", "gabarito-prefeitura.json", 18),
 ]
 
 TIPOS = {"aberta": "aberta", "confirmacao": "confirmação", "existencia": "existência",
@@ -1059,11 +1061,6 @@ def sem_marcas(s: str) -> str:
 
 def sem_paginas(s: str) -> str:
     return re.sub(r",\s*\d+ (p\.|paginas|páginas)$", "", s.strip())
-
-
-def quebras(s: str) -> str:
-    """Texto ja escapado: permite quebrar URLs e caminhos depois de cada barra."""
-    return re.sub(r"(?<=/)(?=[^/<\s])", "<wbr>", s)
 
 
 def origem_fontes(pdf: Path) -> str:
@@ -1139,18 +1136,48 @@ def quadro(cab: list[str], larguras: list[int], linhas: list[list[str]],
             f"</thead><tbody>{tr}</tbody></table>")
 
 
-def caminho(p: Path) -> str:
-    return f"<code>{quebras(esc(str(p.relative_to(RAIZ))))}</code>"
+PASTA_A10 = SAIDA / "A10-acervos"
+ESTILO_A10 = ("<style>table.a10 { font-size: 8.5pt !important; table-layout: fixed; } "
+              "table.a10 td { overflow-wrap: break-word; padding: 2pt 4pt; } "
+              "table.a10 th { padding: 2pt 4pt; } "
+              "table.a10 code { font-size: 7.5pt; } "
+              ".nota-a10 { font-size: 10pt; text-align: left; margin-top: 10pt; } "
+              ".texto-c1 p { text-align: justify; margin: 0 0 4pt 0; } "
+              ".texto-c1 .sec { font-weight: bold; margin-top: 8pt; text-align: left; }</style>")
+LEIA_ME_EDITAL = ("O PDF do edital 01/2026 da Prefeitura de Francisco Morato (52 páginas) não "
+                  "está versionado; coloque-o nesta pasta como "
+                  "edital-01-2026-francisco-morato.pdf.\n")
 
 
-def a10_c1(n: int, q: int) -> tuple[str, int, list[str]]:
+def sha256(p: Path) -> str:
+    import hashlib
+    return hashlib.sha256(p.read_bytes()).hexdigest()
+
+
+def copia_identica(origem: Path, destino: Path) -> str:
+    """Copia o PDF byte a byte (sem symlink) e confere o sha256 da copia."""
+    import shutil
+    if destino.is_symlink():
+        destino.unlink()
+    shutil.copyfile(origem, destino)
+    a, b = sha256(origem), sha256(destino)
+    if a != b or destino.is_symlink():
+        raise SystemExit(f"A10: copia de {origem.name} difere da origem")
+    return a
+
+
+def onde_resposta(titulos: dict[str, str], targets: list[dict]) -> str:
+    if not targets:
+        return "— (não há resposta no acervo)"
+    return "<br>".join(
+        f"{esc(titulos[t['document_id']])}, {'p.' if len(t['pages']) == 1 else 'pp.'} "
+        f"{lista_pt([str(x) for x in t['pages']])}" for t in targets)
+
+
+def a10_c1() -> dict:
     d = json.loads((GAB / "corpus-c1.json").read_text(encoding="utf-8"))
     docs = {x["id"]: x for x in d["documents"]}
     secoes = {s["id"]: s["title"] for x in d["documents"] for s in x["sections"]}
-    arq = caminho(GAB / "corpus-c1.json")
-    ldoc = [[esc(x["id"]), esc(x["title"]), AREAS_C1[x["stratum"]],
-             esc(x["content"]).replace("\n\n", "<br>").replace("\n", "<br>")]
-            for x in d["documents"]]
     lq = []
     for c in d["queries"]:
         tipo = "negativa" if c.get("negative") else VARIANTES[c["variant"]]
@@ -1168,107 +1195,147 @@ def a10_c1(n: int, q: int) -> tuple[str, int, list[str]]:
                 partes.append(txt)
             certo = "<br>".join(partes)
         lq.append([esc(c["id"]), esc(c["text"]), tipo, certo])
-    corpo = (f"<h2>{n}. C1 (controle)</h2>"
-             f"<p>Cinco textos curtos, sem paginação, guardados em {arq}. O grau de "
-             "relevância vai de 0 a 3.</p>"
-             f"<p class='titulo-tab'>Quadro {q} – Textos do C1.</p>"
-             + quadro(["Id", "Título", "Área", "Texto completo"], [14, 17, 10, 59], ldoc,
-                      "quadro a10 c1doc", com_id=False)
-             + f"<p class='titulo-tab'>Quadro {q + 1} – Consultas do C1.</p>"
-             + quadro(["Id", "Consulta", "Tipo", "Texto certo"], [13, 30, 11, 46], lq))
-    return corpo, q + 2, [c["id"] for c in d["queries"]]
+    ldoc = [[esc(x["id"]), esc(x["title"]), AREAS_C1[x["stratum"]], f"textos-ficticios.pdf, p. {i}"]
+            for i, x in enumerate(d["documents"], 1)]
+    textos = []
+    for i, x in enumerate(d["documents"]):
+        anchors = {s["anchor"] for s in x["sections"]}
+        pars = "".join(
+            f"<p class='{'sec' if l.strip() in anchors else ''}'>{esc(l)}</p>"
+            for l in x["content"].split("\n") if l.strip())
+        textos.append(f"<section class='texto-c1{' pagina' if i else ''}'>"
+                      f"<h2>{i + 1}. {esc(x['title'])}</h2>"
+                      f"<p class='inst'>Id {esc(x['id'])}; área {AREAS_C1[x['stratum']]}.</p>"
+                      f"{pars}</section>")
+    return {
+        "readme_docs": [(x["title"], "textos-ficticios.pdf", f"p. {i}",
+                         f"texto fictício do `{(GAB / 'corpus-c1.json').relative_to(RAIZ)}`")
+                        for i, x in enumerate(d["documents"], 1)],
+        "quadro_docs": quadro(["Id", "Título", "Área", "Arquivo na pasta"], [20, 40, 14, 26],
+                              ldoc, "quadro a10", com_id=False),
+        "quadro_perg": quadro(["Id", "Consulta", "Tipo", "Texto certo"], [13, 30, 11, 46], lq),
+        "desc": (f"As {len(lq)} consultas do C1, com o tipo e o texto certo de cada uma; o grau "
+                 "de relevância vai de 0 a 3."),
+        "ids": [c["id"] for c in d["queries"]],
+        "copias": [],
+        "extra": {"textos-ficticios.pdf": documento(
+            "A10", "Textos fictícios do C1",
+            f"Os {len(d['documents'])} textos curtos do corpus de controle C1, completos, "
+            "como estão no gabarito.", ESTILO_A10 + "".join(textos))},
+    }
 
 
-def a10_acervo(n: int, nome: str, arquivo: str, q: int) -> tuple[str, int, list[str]]:
+def a10_acervo(arquivo: str) -> dict:
     g = json.loads((GAB / arquivo).read_text(encoding="utf-8"))
     titulos = {x["id"]: x["title"] for x in g["documents"]}
-    ldoc = []
+    docs = []  # (titulo, paginas, origem, pdf ou None, nome do arquivo)
     for x in g["documents"]:
         pdf = acha_exemplo(x["file"])
         if pdf is None:
             m = re.search(r"\(([^)]*)\)", g["notes"])
-            origem = esc(sem_paginas(m.group(1))) if m else "—"
-            onde = f"arquivo não versionado (<code>{esc(x['file'])}</code>)"
-            NAO_VERSIONADOS.append(x["file"])
-        else:
-            if paginas_pdf(pdf) != x["pages"]:
-                raise SystemExit(f"A10: {pdf.name} tem {paginas_pdf(pdf)} paginas, "
-                                 f"gabarito diz {x['pages']}")
-            origem, onde = quebras(esc(origem_fontes(pdf))), caminho(pdf)
-        ldoc.append([esc(x["title"]), str(x["pages"]), origem, onde])
+            docs.append((x["title"], x["pages"], sem_paginas(m.group(1)) if m else "—",
+                         None, x["file"]))
+            continue
+        if paginas_pdf(pdf) != x["pages"]:
+            raise SystemExit(f"A10: {pdf.name} tem {paginas_pdf(pdf)} paginas, "
+                             f"gabarito diz {x['pages']}")
+        docs.append((x["title"], x["pages"], origem_fontes(pdf), pdf, pdf.name))
     if arquivo == "gabarito-si.json":
         for t, pdf in titulos_ensino_extras().items():
-            ldoc.append([esc(t), str(paginas_pdf(pdf)), quebras(esc(origem_fontes(pdf))),
-                         caminho(pdf)])
+            docs.append((t, paginas_pdf(pdf), origem_fontes(pdf), pdf, pdf.name))
     lq = []
     for p in g["questions"]:
         tipo = TIPOS[p["stratum"]]
         if p.get("variant"):
             tipo += f", {VARIANTES[p['variant']]} (par {esc(p['pair_id'])})"
-        if p["targets"]:
-            onde = "<br>".join(
-                f"{esc(titulos[t['document_id']])}, "
-                f"{'p.' if len(t['pages']) == 1 else 'pp.'} "
-                f"{lista_pt([str(x) for x in t['pages']])}" for t in p["targets"])
-        else:
-            onde = "— (não há resposta no acervo)"
-        lq.append([esc(p["id"]), esc(p["text"]), tipo, esc(p["expected"]), onde])
-    corpo = (f"<h2>{n}. {nome}</h2>"
-             f"<p class='titulo-tab'>Quadro {q} – Documentos do acervo {nome}.</p>"
-             + quadro(["Documento", "Páginas", "Origem", "Arquivo"], [24, 8, 40, 28], ldoc,
-                      "quadro a10 docs", com_id=False)
-             + f"<p class='titulo-tab'>Quadro {q + 1} – Perguntas do acervo {nome}.</p>"
-             + quadro(["Id", "Pergunta", "Tipo", "Resposta esperada", "Documento e página"],
-                      [6, 26, 13, 32, 23], lq))
-    return corpo, q + 2, [p["id"] for p in g["questions"]]
+        lq.append([esc(p["id"]), esc(p["text"]), tipo, esc(p["expected"]),
+                   onde_resposta(titulos, p["targets"])])
+    ldoc = [[esc(t), str(n), f"<code>{esc(a)}</code>" + ("" if pdf else
+             " (não versionado; ver LEIA-ME.txt)")] for t, n, _, pdf, a in docs]
+    return {
+        "readme_docs": [(t, a if pdf else f"{a} (não versionado; ver LEIA-ME.txt)", str(n), o)
+                        for t, n, o, pdf, a in docs],
+        "quadro_docs": quadro(["Documento", "Páginas", "Arquivo na pasta"], [50, 10, 40], ldoc,
+                              "quadro a10", com_id=False),
+        "quadro_perg": quadro(["Id", "Pergunta", "Tipo", "Resposta esperada",
+                               "Documento e página"], [6, 26, 13, 32, 23], lq),
+        "desc": (f"As {len(lq)} perguntas do acervo, com o tipo, a resposta esperada e o "
+                 "documento e a página onde ela está."),
+        "ids": [p["id"] for p in g["questions"]],
+        "copias": [pdf for *_, pdf, _ in docs if pdf],
+        "extra": {},
+        "falta": [a for *_, pdf, a in docs if not pdf],
+    }
 
 
-NAO_VERSIONADOS: list[str] = []
-
-
-def a10() -> tuple[str, list[tuple[str, list[str], int]]]:
-    estilo = ("<style>table.a10 { font-size: 8.5pt !important; table-layout: fixed; } "
-              "table.a10 td { overflow-wrap: break-word; padding: 2pt 4pt; } "
-              "table.a10 th { padding: 2pt 4pt; } "
-              "table.a10 code { font-size: 7.5pt; } "
-              "table.c1doc td:last-child { text-align: justify; }</style>")
-    partes, conferir, q = [], [], 1
-    for i, (nome, arquivo, esperado) in enumerate(ACERVOS_A10, 1):
-        if arquivo == "corpus-c1.json":
-            corpo, q, ids = a10_c1(i, q)
-        else:
-            corpo, q, ids = a10_acervo(i, nome, arquivo, q)
-        if len(ids) != esperado or len(set(ids)) != len(ids):
-            raise SystemExit(f"A10: {arquivo} tem {len(ids)} perguntas, esperado {esperado}")
-        partes.append(corpo)
-        conferir.append((f"{i}. {nome}", ids, esperado))
-    nota = ("<p class='nota-a8' style='text-align:left; margin-top:10pt'>Os gabaritos completos, com os padrões de correção de cada "
-            f"pergunta, estão em <code>{GAB.relative_to(RAIZ)}/</code>, travados por hash.</p>")
-    desc = ("Os documentos de cada acervo usado na avaliação e todas as perguntas, com a "
-            "resposta esperada e a página onde ela está.")
-    return documento("A10", "Acervos e perguntas", desc, estilo + "".join(partes) + nota), conferir
-
-
-def confere_perguntas(pdf: Path, conferir: list[tuple[str, list[str], int]]) -> None:
-    """Cada acervo do PDF tem de mostrar cada Id do gabarito exatamente uma vez."""
+def confere_perguntas(pdf: Path, ids: list[str], esperado: int) -> None:
+    """Cada Id do gabarito tem de aparecer exatamente uma vez no perguntas.pdf."""
     texto = subprocess.run(["pdftotext", "-layout", str(pdf), "-"], check=True,
                            capture_output=True, text=True).stdout
-    inicios = []
-    for titulo, _, _ in conferir:
-        m = re.search(r"(?m)^\s*" + re.escape(titulo) + r"\s*$", texto)
-        if not m:
-            raise SystemExit(f"{pdf.name}: titulo {titulo!r} nao encontrado")
-        inicios.append(m.start())
-    inicios.append(len(texto))
-    for k, (titulo, ids, esperado) in enumerate(conferir):
-        trecho = texto[inicios[k]:inicios[k + 1]]
-        vistos = [i for i in ids
-                  if len(re.findall(r"(?<![\w-])" + re.escape(i) + r"(?![\w-])", trecho)) == 1]
-        if len(vistos) != esperado:
-            faltam = sorted(set(ids) - set(vistos))
-            raise SystemExit(f"{pdf.name}: {titulo}: {len(vistos)} de {esperado} perguntas; "
-                             f"problema em {faltam}")
-        print(f"  {titulo}: {len(vistos)} perguntas conferidas")
+    vistos = [i for i in ids
+              if len(re.findall(r"(?<![\w-])" + re.escape(i) + r"(?![\w-])", texto)) == 1]
+    if len(ids) != esperado or len(vistos) != esperado:
+        raise SystemExit(f"{pdf}: {len(vistos)} de {esperado} perguntas (gabarito tem "
+                         f"{len(ids)}); problema em {sorted(set(ids) - set(vistos))}")
+    print(f"  {pdf.parent.name}: {len(vistos)} perguntas conferidas")
+
+
+def md(s: str) -> str:
+    return s.replace("|", "\\|")
+
+
+def a10(build: Path) -> None:
+    antigo = SAIDA / "A10-acervos-e-perguntas.pdf"
+    if antigo.exists():
+        antigo.unlink()
+    PASTA_A10.mkdir(exist_ok=True)
+    (build / PASTA_A10.name).mkdir(exist_ok=True)
+    readme = ["# Anexo A10 – Acervos e perguntas", "",
+              LINHA_INSTITUCIONAL, "",
+              "Os documentos de cada acervo usado na avaliação, na ordem do artigo. Cada pasta "
+              "traz os PDFs que o sistema indexou (cópias idênticas, byte a byte, dos de "
+              "`examples/`) e um `perguntas.pdf` com todas as perguntas do acervo, a resposta "
+              "esperada e o documento e a página onde ela está.", ""]
+    for nome, pasta, arquivo, esperado in ACERVOS_A10:
+        dados = a10_c1() if arquivo == "corpus-c1.json" else a10_acervo(arquivo)
+        if len(dados["ids"]) != esperado or len(set(dados["ids"])) != esperado:
+            raise SystemExit(f"A10: {arquivo} tem {len(dados['ids'])} perguntas, "
+                             f"o artigo diz {esperado}")
+        dest = PASTA_A10 / pasta
+        dest.mkdir(exist_ok=True)
+        (build / PASTA_A10.name / pasta).mkdir(exist_ok=True)
+        for pdf in dados["copias"]:
+            print(f"  {pasta}/{pdf.name}: sha256 {copia_identica(pdf, dest / pdf.name)[:16]}… "
+                  "igual à origem")
+        if dados.get("falta"):
+            (dest / "LEIA-ME.txt").write_text(LEIA_ME_EDITAL, encoding="utf-8")
+        for arq, html_txt in dados["extra"].items():
+            extra = imprimir(html_txt, f"{PASTA_A10.name}/{pasta}/{Path(arq).stem}", build)
+            if paginas_pdf(extra) != len(dados["readme_docs"]):
+                raise SystemExit(f"A10: {arq} deveria ter um texto por pagina")
+        nota = ("<p class='nota-a10'>O gabarito completo, com os padrões de correção de cada "
+                f"pergunta, está em <code>{(GAB / arquivo).relative_to(RAIZ)}</code>, travado "
+                "por hash.</p>")
+        corpo = (ESTILO_A10 + "<p class='titulo-tab'>Quadro 1 – Documentos do acervo.</p>"
+                 + dados["quadro_docs"]
+                 + f"<p class='titulo-tab'>Quadro 2 – {'Consultas' if arquivo == 'corpus-c1.json' else 'Perguntas'}"
+                 " do acervo.</p>" + dados["quadro_perg"] + nota)
+        pdf = imprimir(documento("A10", f"Perguntas: {nome}", dados["desc"], corpo),
+                       f"{PASTA_A10.name}/{pasta}/perguntas", build)
+        confere_perguntas(pdf, dados["ids"], esperado)
+        readme += [f"## {nome}", "",
+                   f"Pasta [`{pasta}/`]({pasta}/); {esperado} perguntas em "
+                   f"[`{pasta}/perguntas.pdf`]({pasta}/perguntas.pdf)"
+                   f" ({paginas_pdf(pdf)} páginas).", "",
+                   "| Documento | Arquivo | Páginas | Origem |", "|---|---|---|---|"]
+        readme += [f"| {md(t)} | `{md(a)}` | {n} | {md(o)} |"
+                   for t, a, n, o in dados["readme_docs"]]
+        readme.append("")
+    readme += ["Os gabaritos completos, com os padrões de correção de cada pergunta, estão em "
+               "[`api/internal/evalcorpus/testdata/`](../../api/internal/evalcorpus/testdata/), "
+               "travados por hash.", ""]
+    (PASTA_A10 / "README.md").write_text("\n".join(readme), encoding="utf-8")
+    print("gerado", (PASTA_A10 / "README.md").relative_to(RAIZ))
 
 
 # ------------------------------------------------------------------- main
@@ -1355,8 +1422,7 @@ def main() -> None:
                      f"Diagrama entidade-relacionamento das {len(tabelas)} tabelas do "
                      "banco de dados PostgreSQL.", itens, "landscape"),
              "A9-esquema-do-banco", build)
-    html_a10, conferir = a10()
-    confere_perguntas(imprimir(html_a10, "A10-acervos-e-perguntas", build), conferir)
+    a10(build)
 
 
 if __name__ == "__main__":

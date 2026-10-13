@@ -14,7 +14,7 @@ Campus Palmas).
 | A7 | [A7-tabelas-completas-de-recuperacao.pdf](A7-tabelas-completas-de-recuperacao.pdf) | Resultados do teste de busca: por que o teste foi feito, o que cada análise respondeu e o que ela decidiu no projeto; ao final, a tabela completa de medidas com intervalos de confiança e os índices do pgvector |
 | A8 | [A8-alteracoes-pos-medicao.pdf](A8-alteracoes-pos-medicao.pdf) | Correções feitas depois de medir: uma tabela com o que mudou, por quê e o número antes e depois, em porcentagem |
 | A9 | [A9-esquema-do-banco.pdf](A9-esquema-do-banco.pdf) | Diagrama entidade-relacionamento das 25 tabelas do banco |
-| A10 | [A10-acervos-e-perguntas.pdf](A10-acervos-e-perguntas.pdf) | Acervos e perguntas: os documentos de cada um dos sete acervos da avaliação (título, páginas, origem e arquivo) e todas as perguntas, com o tipo, a resposta esperada e o documento e a página da resposta |
+| A10 | [A10-acervos/](A10-acervos/README.md) | Acervos e perguntas: uma pasta por acervo da avaliação, com os PDFs que o sistema indexou (cópias de `examples/`) e um `perguntas.pdf` com todas as perguntas, o tipo, a resposta esperada e o documento e a página da resposta |
 
 ## Dados e código
 
