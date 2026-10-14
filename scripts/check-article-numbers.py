@@ -273,7 +273,9 @@ def origem_c1() -> dict[str, str]:
     tipo = {t: int(n) for t, n in re.findall(r"^(Trecho|Metadado) & (\d+) &", tab, re.M)}
     primeira = total - tipo["Trecho"] - tipo["Metadado"]
     return {
-        "origem C1 (resumo)": f"{completos} de {total} unidades de C1 ({primeira} na primeira medição; {tipo['Metadado']} passaram",
+        "origem C1 (resumo)": (f"{completos} de {total} unidades de C1 ({primeira} na primeira medição, "
+                               f"{total - tipo['Metadado']} depois de criar a coluna de página nos trechos e "
+                               f"{completos} depois que {tipo['Metadado']} estatísticas do documento passaram"),
         "origem C1, primeira medicao": f"A primeira medição deu {primeira} de {total}",
         "origem C1, trechos": f"corrigir o esquema levou a {total - tipo['Metadado']} de {total}",
         "origem C1, metadados": f"As outras {tipo['Metadado']} não eram defeito",
@@ -345,7 +347,7 @@ def conferir_variantes(rows: list[dict], texto: str, apoio: str) -> int:
         "C1 tabela densa": f"Busca densa & {n('document', 'C-denso')} de 16 & -- \\\\",
         "C1 tabela hibrida": f"BM25 + busca densa (híbrida) & {n('document', 'E-rrf-denso')} de 16 & -- \\\\",
         "C1 densa aproximada": f"tantas vezes quanto a exata ({n('document', 'C-denso-ivf')} de 16)",
-        "C1 resumo": f"Empate: {n('document', 'B-bm25')} de 16 contra {n('document', 'C-denso')} de 16",
+        "C1 resumo": f"Sem diferença detectável: {n('document', 'B-bm25')} de 16 contra {n('document', 'C-denso')} de 16",
         "C1 conclusao": f"({n('document', 'B-bm25')} de 16 consultas contra {n('document', 'C-denso')} de 16)",
         "C1 BM25 texto": f"o BM25 acertou o primeiro resultado em {n('document', 'B-bm25')} das 16 consultas",
         "C1 secoes texto": f"o BM25 acertou {n('section', 'B-bm25')} (75,0\\%) e a contagem, {n('section', 'A-relacional')} (56,2\\%)",
