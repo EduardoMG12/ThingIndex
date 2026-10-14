@@ -1144,6 +1144,8 @@ ESTILO_A10 = ("<style>table.a10 { font-size: 8.5pt !important; table-layout: fix
               ".nota-a10 { font-size: 10pt; text-align: left; margin-top: 10pt; } "
               ".texto-c1 p { text-align: justify; margin: 0 0 4pt 0; } "
               ".texto-c1 .sec { font-weight: bold; margin-top: 8pt; text-align: left; }</style>")
+NOTA_TRANSCRICAO = ("As perguntas estão transcritas exatamente como foram enviadas ao sistema; "
+                    "parte delas foi escrita sem acentos.")
 LEIA_ME_EDITAL = ("O PDF do edital 01/2026 da Prefeitura de Francisco Morato (52 páginas) não "
                   "está versionado; coloque-o nesta pasta como "
                   "edital-01-2026-francisco-morato.pdf.\n")
@@ -1295,7 +1297,8 @@ def a10(build: Path) -> None:
               "Os documentos de cada acervo usado na avaliação, na ordem do artigo. Cada pasta "
               "traz os PDFs que o sistema indexou (cópias idênticas, byte a byte, dos de "
               "`examples/`) e um `perguntas.pdf` com todas as perguntas do acervo, a resposta "
-              "esperada e o documento e a página onde ela está.", ""]
+              "esperada e o documento e a página onde ela está.", "",
+              NOTA_TRANSCRICAO, ""]
     for nome, pasta, arquivo, esperado in ACERVOS_A10:
         dados = a10_c1() if arquivo == "corpus-c1.json" else a10_acervo(arquivo)
         if len(dados["ids"]) != esperado or len(set(dados["ids"])) != esperado:
@@ -1313,7 +1316,8 @@ def a10(build: Path) -> None:
             extra = imprimir(html_txt, f"{PASTA_A10.name}/{pasta}/{Path(arq).stem}", build)
             if paginas_pdf(extra) != len(dados["readme_docs"]):
                 raise SystemExit(f"A10: {arq} deveria ter um texto por pagina")
-        nota = ("<p class='nota-a10'>O gabarito completo, com os padrões de correção de cada "
+        nota = (f"<p class='nota-a10'>{NOTA_TRANSCRICAO}</p>"
+                "<p class='nota-a10'>O gabarito completo, com os padrões de correção de cada "
                 f"pergunta, está em <code>{(GAB / arquivo).relative_to(RAIZ)}</code>, travado "
                 "por hash.</p>")
         corpo = (ESTILO_A10 + "<p class='titulo-tab'>Quadro 1 – Documentos do acervo.</p>"

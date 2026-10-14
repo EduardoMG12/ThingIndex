@@ -4,6 +4,8 @@ ThingIndex – Trabalho de Conclusão de Curso – Sistemas de Informação – 
 
 Os documentos de cada acervo usado na avaliação, na ordem do artigo. Cada pasta traz os PDFs que o sistema indexou (cópias idênticas, byte a byte, dos de `examples/`) e um `perguntas.pdf` com todas as perguntas do acervo, a resposta esperada e o documento e a página onde ela está.
 
+As perguntas estão transcritas exatamente como foram enviadas ao sistema; parte delas foi escrita sem acentos.
+
 ## C1 (controle)
 
 Pasta [`01-controle-c1/`](01-controle-c1/); 18 perguntas em [`01-controle-c1/perguntas.pdf`](01-controle-c1/perguntas.pdf) (2 páginas).
