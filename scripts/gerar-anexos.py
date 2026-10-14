@@ -981,8 +981,8 @@ def a8() -> str:
     corpo = (
         "<p>Depois de ver os resultados, algumas regras de correção das respostas foram "
         "ajustadas. Como isso poderia deixar os números artificialmente melhores, cada ajuste "
-        "foi anotado com o motivo e o efeito. As três correções mais importantes baixaram o "
-        "acerto do próprio sistema de 81,7% para 69,5%.</p>"
+        "foi anotado com o motivo e o efeito. O efeito somado das três últimas correções baixou "
+        "o acerto do próprio sistema de 81,7% para 69,5%.</p>"
         "<p>A correção é automática: cada pergunta tem um padrão de texto que a resposta certa "
         "precisa conter e, às vezes, padrões que a tornam errada, como uma recusa. A maioria "
         "das linhas abaixo trata da bateria (Seção 8.7 do artigo), com 213 respostas sobre leis, normas e "
@@ -1002,9 +1002,9 @@ def a8() -> str:
         "usadas durante o desenvolvimento. Por isso, os números dessas perguntas não valem "
         "como teste independente; o teste de verdade é a bateria, com perguntas escritas "
         "depois.</p>"
-        + resumo("as três correções mais importantes fizeram o acerto do sistema cair de 81,7% "
+        + resumo("o efeito somado das três últimas correções baixou o acerto do sistema de 81,7% "
                  "para 69,5%, porque respostas que não respondiam nada deixaram de contar como "
-                 "certas. As outras corrigiram erros da própria correção, que marcava respostas "
+                 "certas; a última dessas três, sozinha, subiu o acerto de 68,5% para 69,5%. As outras corrigiram erros da própria correção, que marcava respostas "
                  "certas como erradas; o artigo publica sempre os números de depois da última "
                  "correção."))
     confere_registro(corpo)
@@ -1220,6 +1220,9 @@ def a10_c1() -> dict:
                  "de relevância vai de 0 a 3."),
         "ids": [c["id"] for c in d["queries"]],
         "copias": [],
+        "nota": ("O arquivo textos-ficticios.pdf foi montado só para este anexo, com um texto "
+                 "por página. No sistema e no teste, os textos de C1 são indexados como texto "
+                 "sem paginação, e toda unidade fica na página 1."),
         "extra": {"textos-ficticios.pdf": documento(
             "A10", "Textos fictícios do C1",
             f"Os {len(d['documents'])} textos curtos do corpus de controle C1, completos, "
@@ -1316,7 +1319,8 @@ def a10(build: Path) -> None:
             extra = imprimir(html_txt, f"{PASTA_A10.name}/{pasta}/{Path(arq).stem}", build)
             if paginas_pdf(extra) != len(dados["readme_docs"]):
                 raise SystemExit(f"A10: {arq} deveria ter um texto por pagina")
-        nota = (f"<p class='nota-a10'>{NOTA_TRANSCRICAO}</p>"
+        nota = (("<p class='nota-a10'>" + dados["nota"] + "</p>" if dados.get("nota") else "")
+                + f"<p class='nota-a10'>{NOTA_TRANSCRICAO}</p>"
                 "<p class='nota-a10'>O gabarito completo, com os padrões de correção de cada "
                 f"pergunta, está em <code>{(GAB / arquivo).relative_to(RAIZ)}</code>, travado "
                 "por hash.</p>")
@@ -1335,6 +1339,8 @@ def a10(build: Path) -> None:
         readme += [f"| {md(t)} | `{md(a)}` | {n} | {md(o)} |"
                    for t, a, n, o in dados["readme_docs"]]
         readme.append("")
+        if dados.get("nota"):
+            readme += [dados["nota"].replace("textos-ficticios.pdf", "`textos-ficticios.pdf`"), ""]
     readme += ["Os gabaritos completos, com os padrões de correção de cada pergunta, estão em "
                "[`api/internal/evalcorpus/testdata/`](../../api/internal/evalcorpus/testdata/), "
                "travados por hash.", ""]

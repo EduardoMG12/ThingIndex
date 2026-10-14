@@ -18,6 +18,8 @@ Pasta [`01-controle-c1/`](01-controle-c1/); 18 perguntas em [`01-controle-c1/per
 | Política de Privacidade e Tratamento de Dados Pessoais | `textos-ficticios.pdf` | p. 4 | texto fictício do `api/internal/evalcorpus/testdata/corpus-c1.json` |
 | Manual de Integração de Novos Colaboradores | `textos-ficticios.pdf` | p. 5 | texto fictício do `api/internal/evalcorpus/testdata/corpus-c1.json` |
 
+O arquivo `textos-ficticios.pdf` foi montado só para este anexo, com um texto por página. No sistema e no teste, os textos de C1 são indexados como texto sem paginação, e toda unidade fica na página 1.
+
 ## Ensino
 
 Pasta [`02-ensino/`](02-ensino/); 72 perguntas em [`02-ensino/perguntas.pdf`](02-ensino/perguntas.pdf) (5 páginas).

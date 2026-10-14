@@ -126,7 +126,7 @@ def conferir_geracao(texto: str, apoio: str) -> int:
         # passava).
         "acerto da bateria (resumo)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\% com a pergunta original e de {_pct(taxa(e['total']))}\\% com expans",
         "acerto da bateria (secao)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\%, com os tr",
-        "acerto da bateria (conclusao)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\% com a pergunta original. As par",
+        "acerto da bateria (conclusao)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\% com a pergunta original, cerca de 7 em cada 10 respostas. As par",
         "acerto E (conclusao)": f"elevou o acerto a {_pct(taxa(e['total']))}\\%, em configura",
         "faixa dos acervos": f"entre {_pct(min(taxa(c['tema'][t]) for t in c['tema']))}\\% e {_pct(max(taxa(c['tema'][t]) for t in c['tema']))}\\% e intervalos",
         "literal x parafrase C": f"o acerto foi {_pct(taxa(c['variante']['literal']))}\\% nas literais e {_pct(taxa(c['variante']['parafrase']))}\\% nas par",
@@ -273,9 +273,11 @@ def origem_c1() -> dict[str, str]:
     tipo = {t: int(n) for t, n in re.findall(r"^(Trecho|Metadado) & (\d+) &", tab, re.M)}
     primeira = total - tipo["Trecho"] - tipo["Metadado"]
     return {
-        "origem C1 (resumo)": (f"{completos} de {total} unidades de C1 ({primeira} na primeira medição, "
-                               f"{total - tipo['Metadado']} depois de criar a coluna de página nos trechos e "
-                               f"{completos} depois que {tipo['Metadado']} estatísticas do documento passaram"),
+        # A tabela-resumo so da o total; as contagens intermediarias ficam na
+        # Secao 8.4, conferidas nas ancoras abaixo.
+        "origem C1 (resumo)": f"Sim: {completos} de {total} unidades de C1; parte veio de ajustar a métrica",
+        "origem C1, versao atual": (f"Na versão atual, as {total} unidades indexadas de C1 têm a origem completa"
+                                    if completos == total else "<nem todas as unidades de C1 tem origem completa>"),
         "origem C1, primeira medicao": f"A primeira medição deu {primeira} de {total}",
         "origem C1, trechos": f"corrigir o esquema levou a {total - tipo['Metadado']} de {total}",
         "origem C1, metadados": f"As outras {tipo['Metadado']} não eram defeito",
@@ -398,16 +400,25 @@ def gpt_oss_sem_falhas() -> str:
     contra o modelo principal nas MESMAS perguntas (banca, terceira leitura)."""
     res = RAIZ / "docs" / "article" / "results"
     rows = list(csv.DictReader(open(res / "generation-results-F-document-gpt-oss-120b.csv", encoding="utf-8")))
-    falha = {r["question_id"] for r in rows
-             if re.search(r"prompt is too long|timeout|deadline", r.get("answer", "") + r.get("error", ""), re.I)}
+    def erro(r):
+        return r.get("answer", "") + r.get("error", "")
+    longas = {r["question_id"] for r in rows if re.search(r"prompt is too long", erro(r), re.I)}
+    tempo = {r["question_id"] for r in rows if re.search(r"timeout|deadline", erro(r), re.I)} - longas
+    falha = longas | tempo
+    # As recusadas por tamanho sao as negativas, em que F recebe cinco documentos.
+    negativas_longas = {r["question_id"] for r in rows if r["question_id"] in longas and r["stratum"] == "negativa"}
+    if negativas_longas != longas:
+        return "<recusas por tamanho fora das negativas>"
     validas = [r for r in rows if r["question_id"] not in falha]
     k = sum(r["correct"] == "true" for r in validas)
     ids = {r["question_id"] for r in validas}
     base = [r for r in csv.DictReader(open(res / "generation-results-F-document.csv", encoding="utf-8"))
             if r["question_id"] in ids]
     kb = sum(r["correct"] == "true" for r in base)
-    return (f"{_pct(k / len(validas))}\\% contra {_pct(kb / len(base))}\\% do modelo principal nas mesmas "
-            f"{len(ids)} perguntas, descontadas {len(falha)} falhas")
+    return (f"{_pct(k / len(validas))}\\% contra {_pct(kb / len(base))}\\% do modelo principal nas "
+            f"{len(ids)} perguntas que o outro modelo respondeu, o que indica que os números dependem do "
+            f"modelo. Das {len(falha)} restantes, {len(longas)} eram negativas cujo texto, com cinco "
+            f"documentos, passou da janela do modelo, e {len(tempo)} esgotou o tempo.")
 
 
 def expansao_por_variante() -> dict[str, str]:
