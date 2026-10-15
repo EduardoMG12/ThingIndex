@@ -170,10 +170,8 @@ func (u *documentCatalogUseCase) ensureCollectionForUpload(ctx context.Context, 
 			collection.Category = category
 		}
 
-		// EnsureCollection e nao CreateCollection: entre a busca acima que nao
-		// encontrou e esta criacao, outra requisicao pode ter criado a mesma
-		// colecao. Com 20 uploads simultaneos isso acontecia e o usuario
-		// recebia HTTP 500 por enviar varios documentos de uma vez.
+		// EnsureCollection: uploads simultaneos podem criar a mesma colecao entre a
+		// busca acima e esta criacao.
 		if err := u.collectionRepo.EnsureCollection(ctx, collection); err != nil {
 			return nil, fmt.Errorf("%w: %w", domain.ErrCollectionCreate, err)
 		}
@@ -304,8 +302,6 @@ func (u *documentCatalogUseCase) CreateCollection(ctx context.Context, userID ui
 		collection.Category = category
 	}
 
-	// EnsureCollection resolve a corrida no banco: ver o comentario da
-	// interface em domain.CollectionRepository.
 	if err := u.collectionRepo.EnsureCollection(ctx, collection); err != nil {
 		return nil, fmt.Errorf("%w: %w", domain.ErrCollectionCreate, err)
 	}
@@ -440,9 +436,7 @@ func (u *documentCatalogUseCase) UploadDocument(ctx context.Context, userID uint
 		Payload: map[string]any{
 			"document_id": doc.ID,
 			"user_id":     userID,
-			// Carimbo lido pelo consumidor para descartar reentrega do
-			// RabbitMQ de trabalho ja concluido. Ver
-			// domain.DocumentIndexRequestedEvent.
+			// O consumidor usa o carimbo para descartar reentrega do RabbitMQ.
 			"requested_at": now,
 		},
 		AvailableAt: now,
@@ -457,9 +451,8 @@ func (u *documentCatalogUseCase) UploadDocument(ctx context.Context, userID uint
 	})
 
 	if err := u.documentRepo.CreateDocumentWithOutbox(ctx, doc, event, &auditEvent); err != nil {
-		// Sem a linha no banco o objeto enviado fica no bucket sem dono: nao
-		// e auditavel nem removivel pela interface. WithoutCancel porque o
-		// erro pode ter vindo justamente do cancelamento da requisicao.
+		// Sem a linha no banco o objeto fica no bucket sem dono. WithoutCancel porque
+		// o erro pode ter vindo do cancelamento da requisicao.
 		if cleanupErr := storageClient.DeleteFile(context.WithoutCancel(ctx), fileURL); cleanupErr != nil {
 			log.Printf("upload cleanup failed after document insert error: user=%d file=%q err=%v", userID, fileURL, cleanupErr)
 		}
@@ -711,18 +704,12 @@ func (u *documentCatalogUseCase) shouldMarkDocumentAsOrphaned(ctx context.Contex
 		return false
 	}
 
-	// O erro ja sai no log; o chamador responde ErrDocumentSourceMissing de
-	// qualquer forma, porque o arquivo de fato nao esta no storage.
 	_ = u.markDocumentOrphanedLogged(ctx, doc.UserID, doc.ID, "O arquivo original nao foi encontrado no storage configurado.")
 	return true
 }
 
-// markDocumentOrphanedLogged marca o documento como ORPHANED e loga a falha
-// com contexto.
-//
-// MOTIVO: o retorno era descartado com `_, _ =`. Se a marcacao falhasse, o
-// arquivo ja tinha saido do storage e o documento continuava apontando para
-// ele sem nenhum rastro (Principio I).
+// markDocumentOrphanedLogged marca o documento como ORPHANED e loga a falha:
+// nesse ponto o arquivo ja saiu do storage.
 func (u *documentCatalogUseCase) markDocumentOrphanedLogged(ctx context.Context, userID, documentID uint, detail string) error {
 	if _, err := u.documentRepo.MarkDocumentOrphaned(ctx, userID, documentID, detail); err != nil {
 		log.Printf("document orphan marking failed: user=%d document=%d err=%v", userID, documentID, err)
@@ -731,9 +718,8 @@ func (u *documentCatalogUseCase) markDocumentOrphanedLogged(ctx context.Context,
 	return nil
 }
 
-// recordDeletionFailureAudits grava os eventos FAILED de uma exclusao e loga a
-// falha com contexto. Antes o erro era descartado com `_ =`, e uma exclusao
-// que removia o arquivo mas falhava depois nao deixava evento nenhum.
+// recordDeletionFailureAudits grava os eventos FAILED de uma exclusao e loga
+// se falhar.
 func (u *documentCatalogUseCase) recordDeletionFailureAudits(ctx context.Context, userID uint, events []models.DocumentAuditEvent) error {
 	if len(events) == 0 {
 		return nil
@@ -1091,16 +1077,8 @@ func (u *documentCatalogUseCase) GetCollectionContext(ctx context.Context, userI
 	return collectionContext, nil
 }
 
-// GetNodeConnections devolve as conexoes de um no do sumario com nos de outros
-// documentos da MESMA colecao.
-//
-// A posse e validada por GetCollectionContext, que ja filtra por userID no
-// repositorio -- um usuario nao alcanca colecao alheia nem por engano, porque
-// nao existe caminho que ignore esse filtro.
-//
-// Nada e persistido: as conexoes sao derivadas do texto do proprio no a cada
-// chamada. Ver domain.NodeConnection e BuildNodeConnections para a razao
-// (principio II da constituicao: grafo nunca como camada primaria).
+// GetNodeConnections devolve as conexoes de um no com nos de outros documentos
+// da mesma colecao. A posse vem do filtro por userID em GetCollectionContext.
 func (u *documentCatalogUseCase) GetNodeConnections(
 	ctx context.Context,
 	userID, collectionID uint,

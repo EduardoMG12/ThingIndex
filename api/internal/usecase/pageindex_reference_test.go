@@ -2,13 +2,8 @@ package usecase
 
 import "testing"
 
-// O artigo afirma, em Trabalhos Relacionados, que o benchmark de indexacao
-// compara a estrutura produzida pelo indexador contra artefatos do PageIndex --
-// citando TRES documentos e a ressalva do intervalo de pagina invertido.
-//
-// Estes testes travam essas afirmacoes na fixture. Sem eles, alguem que edite o
-// artefato de referencia deixa o texto do artigo citando um numero que nao vale
-// mais, e nada acusa.
+// Travam as propriedades da fixture de referencia do PageIndex usada no
+// benchmark de indexacao.
 
 func TestReferenciaDoPageIndexTemOsTresArtefatosCitadosNoArtigo(t *testing.T) {
 	fixture, err := loadIndexingBenchmarkReferenceFixture()
@@ -22,20 +17,14 @@ func TestReferenciaDoPageIndexTemOsTresArtefatosCitadosNoArtigo(t *testing.T) {
 			artefatosCitadosNoArtigo, len(fixture.Artifacts))
 	}
 
-	// A origem tem que continuar sendo o PageIndex: se alguem trocar a fonte, a
-	// secao de Trabalhos Relacionados passa a descrever outra ferramenta.
 	if fixture.SourcePath != "pageindex/results" {
 		t.Fatalf("origem da referencia mudou para %q; o artigo afirma pageindex/results",
 			fixture.SourcePath)
 	}
 }
 
-// TestReferenciaMantemODefeitoQueOArtigoDeclara: o texto afirma que um dos
-// artefatos tem intervalo de pagina invertido, e usa isso para justificar por
-// que a comparacao e "barra de qualidade" e nao gabarito.
-//
-// Se o artefato for corrigido, a ressalva do artigo vira afirmacao falsa sobre
-// o proprio material -- e o avaliador que abrir o JSON encontra a divergencia.
+// Um dos artefatos tem intervalo de pagina invertido; a comparacao e barra de
+// qualidade, nao gabarito.
 func TestReferenciaMantemODefeitoQueOArtigoDeclara(t *testing.T) {
 	fixture, err := loadIndexingBenchmarkReferenceFixture()
 	if err != nil {
@@ -55,9 +44,6 @@ func TestReferenciaMantemODefeitoQueOArtigoDeclara(t *testing.T) {
 	}
 }
 
-// TestArtefatosDeReferenciaTemPerfilEstrutural garante que a comparacao mede
-// algo: artefato sem nos nao serve de referencia para profundidade nem para
-// cobertura de resumo.
 func TestArtefatosDeReferenciaTemPerfilEstrutural(t *testing.T) {
 	fixture, err := loadIndexingBenchmarkReferenceFixture()
 	if err != nil {

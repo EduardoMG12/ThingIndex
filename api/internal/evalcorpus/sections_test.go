@@ -14,13 +14,6 @@ func tokenizeSimples(text string) []string {
 	return campos
 }
 
-// TestSecaoPrecisaTerAncoraQueExisteNoDocumento trava o requisito central do
-// gabarito em nivel de no: a secao e declarada PELO CORPUS, com uma ancora que
-// precisa existir no texto-fonte.
-//
-// Sem essa checagem, uma ancora com erro de digitacao nunca casaria com a saida
-// do extrator, e a consulta correspondente simplesmente nunca seria satisfeita
-// -- o braco levaria a culpa por um erro de anotacao.
 func TestSecaoPrecisaTerAncoraQueExisteNoDocumento(t *testing.T) {
 	corpus := &Corpus{
 		Version: "teste",
@@ -48,8 +41,6 @@ func TestSecaoPrecisaTerAncoraQueExisteNoDocumento(t *testing.T) {
 	}
 }
 
-// TestSecaoNaoPodeTerIDDuplicado protege a ancoragem estavel: dois nos com o
-// mesmo id tornam o gabarito ambiguo.
 func TestSecaoNaoPodeTerIDDuplicado(t *testing.T) {
 	corpus := &Corpus{
 		Version: "teste",
@@ -73,10 +64,6 @@ func TestSecaoNaoPodeTerIDDuplicado(t *testing.T) {
 	}
 }
 
-// TestRelevanciaDeSecaoPrecisaApontarSecaoExistente e o analogo, em nivel de no,
-// da checagem que ja existe para documento: gabarito apontando para alvo
-// inexistente e o erro de anotacao mais traicoeiro, porque nao falha -- apenas
-// nunca e satisfeito.
 func TestRelevanciaDeSecaoPrecisaApontarSecaoExistente(t *testing.T) {
 	corpus := &Corpus{
 		Version: "teste",
@@ -97,11 +84,6 @@ func TestRelevanciaDeSecaoPrecisaApontarSecaoExistente(t *testing.T) {
 	}
 }
 
-// TestConsultaPositivaComSecoesPrecisaJulgarSecao garante a coerencia entre os
-// dois niveis de gabarito: se o documento tem secoes declaradas e a consulta o
-// julga relevante, ela precisa dizer QUAL secao. Sem isso o gabarito de no
-// ficaria incompleto em silencio, e a metrica cairia sem que a recuperacao
-// tivesse piorado.
 func TestConsultaPositivaComSecoesPrecisaJulgarSecao(t *testing.T) {
 	corpus := &Corpus{
 		Version: "teste",
@@ -126,17 +108,6 @@ func TestConsultaPositivaComSecoesPrecisaJulgarSecao(t *testing.T) {
 	}
 }
 
-// TestCheckCircularityDeSecaoRecusaRotuloCopiadoDoExtrator e o teste mais
-// importante deste arquivo.
-//
-// O corpus antigo foi invalidado porque `expected_top_node_title` era copia
-// literal da saida do extrator estrutural: renomear a heuristica de heading
-// derrubava a metrica sem que a recuperacao tivesse mudado. O gabarito media
-// autoconsistencia, nao recuperacao.
-//
-// Ao introduzir gabarito em nivel de no existe o risco de reintroduzir
-// exatamente esse defeito. Esta checagem trava isso: a ancora precisa ser texto
-// do DOCUMENTO, e o id precisa ser autoral e estavel.
 func TestCheckCircularityDeSecaoRecusaRotuloCopiadoDoExtrator(t *testing.T) {
 	corpus := &Corpus{
 		Version: "teste",
@@ -144,8 +115,7 @@ func TestCheckCircularityDeSecaoRecusaRotuloCopiadoDoExtrator(t *testing.T) {
 			ID:      "doc-a",
 			Content: "1 RELATORIO\nO reclamante alega horas extras.",
 			Sections: []Section{
-				// Id que carrega o titulo extraido em vez de um identificador
-				// estavel: se o extrator renomear, o gabarito quebra.
+				// Id com o titulo extraido em vez de um id estavel.
 				{ID: "1 RELATORIO", Anchor: "1 RELATORIO"},
 			},
 		}},
@@ -165,8 +135,7 @@ func TestCheckCircularityDeSecaoRecusaRotuloCopiadoDoExtrator(t *testing.T) {
 	}
 }
 
-// TestCorpusValidoComSecoesPassa e o controle: sem ele os testes acima
-// passariam com uma validacao que recusa tudo.
+// Controle: sem ele os testes acima passariam com uma validacao que recusa tudo.
 func TestCorpusValidoComSecoesPassa(t *testing.T) {
 	corpus := &Corpus{
 		Version: "teste",
@@ -202,9 +171,6 @@ func TestCorpusValidoComSecoesPassa(t *testing.T) {
 	}
 }
 
-// TestDocumentoSemSecoesContinuaValido garante a degradacao exigida pelo
-// RNF-1 do spec: documento sem secoes declaradas entra como unidade unica, sem
-// quebrar o experimento.
 func TestDocumentoSemSecoesContinuaValido(t *testing.T) {
 	corpus := &Corpus{
 		Version: "teste",

@@ -57,19 +57,8 @@ func applyCommonAuditFilters(query *gorm.DB, filter domain.AuditPageFilter, incl
 	return query, nil
 }
 
-// escapeLikePattern neutraliza os coringas do LIKE no termo de busca.
-//
-// A ordem importa: a barra invertida vem PRIMEIRO porque e o proprio caractere
-// de escape. Escapar % e _ antes dela faria a barra recem-inserida ser escapada
-// de novo, dobrando o escape e quebrando a busca.
-//
-// CORRECAO: a versao anterior usava `\\` como padrao de busca, o que dentro de
-// crase sao DUAS barras literais -- entao uma barra sozinha, que e o caso real
-// de quem digita um caminho de arquivo, passava intacta para o LIKE.
-// Confirmado no Postgres: com a barra crua, "x%y" LIKE '%\%%' devolve true,
-// isto e, o coringa continua ativo. strings.NewReplacer ja aplica as regras da
-// esquerda para a direita sem reprocessar o que substituiu, entao a ordem
-// declarada basta.
+// escapeLikePattern escapa os coringas do LIKE. A barra vem primeiro porque e o
+// proprio caractere de escape; NewReplacer nao reprocessa o que ja substituiu.
 func escapeLikePattern(value string) string {
 	replacer := strings.NewReplacer(
 		`\`, `\\`,

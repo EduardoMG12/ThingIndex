@@ -10,25 +10,10 @@ import (
 	"gorm.io/gorm"
 )
 
-// Tetos de materializacao do contexto de colecao.
-//
-// O problema que eles resolvem: GetCollectionContext e chamado a CADA mensagem
-// de chat e carregava para a RAM o texto integral de todas as paginas,
-// paragrafos, tabelas, chunks e metadados da colecao inteira -- para depois o
-// prompt usar no maximo 6 fontes. Uma colecao grande derrubava o processo por
-// OOM, e o custo era pago em toda pergunta.
-//
-// Os limites nao alteram o numero de consultas: continuam sendo as mesmas 9
-// consultas de custo constante que o artigo reporta e que
-// TestCollectionContextQueryCountDoesNotGrowWithDocuments trava. O que muda e o
-// VOLUME materializado por consulta, que passa a ter teto.
-//
-// Os valores sao folgados de proposito. O objetivo e evitar que uma colecao
-// patologica derrube o processo, nao apertar o caso comum: com ~60 documentos
-// de 20 paginas, nenhum teto e alcancado. Quando um teto e atingido, o fato e
-// registrado em log -- truncar em silencio degradaria a qualidade da resposta
-// sem deixar rastro, que e exatamente o tipo de defeito invisivel que este
-// projeto vem eliminando.
+// Tetos de materializacao do contexto de colecao: GetCollectionContext roda a
+// cada mensagem e carregava a colecao inteira na RAM. Nao mudam o numero de
+// consultas, so o volume de cada uma. Folgados de proposito; quando atingidos,
+// vai para o log.
 const (
 	maxCollectionContextPages          = 5000
 	maxCollectionContextParagraphNodes = 20000
@@ -143,12 +128,7 @@ func (r *GormCollectionContextRepository) GetCollectionContext(ctx context.Conte
 	}, nil
 }
 
-// warnIfTruncated registra quando um teto foi atingido.
-//
-// Alcancar o limite significa que parte da colecao ficou de fora da
-// reconstrucao, e portanto invisivel para a recuperacao daquela consulta. Isso
-// precisa aparecer em log: para um sistema cuja tese e auditabilidade, truncar
-// evidencia em silencio e o pior resultado possivel.
+// warnIfTruncated loga quando parte da colecao ficou fora da reconstrucao.
 func warnIfTruncated(collectionID uint, table string, loaded int, limit int) {
 	if loaded < limit {
 		return

@@ -5,15 +5,8 @@ import { useEffect, useRef } from "react";
 import { putViewState } from "@/lib/api/collections";
 import type { WorkspaceViewState } from "@/lib/api/contracts/view-state";
 
-/**
- * Salva o estado de visualizacao no backend com debounce (800 ms depois da
- * ultima mudanca) e na hora ao sair da pagina (pagehide / aba escondida), com
- * keepalive para o envio sobreviver ao fechamento.
- *
- * Nao salva o que ja foi enviado: a comparacao e pela serializacao. A primeira
- * renderizacao nao dispara envio, a menos que `salvarLogo` diga que o estado
- * veio de migracao do localStorage e ainda nao existe no servidor.
- */
+// Debounce de 800 ms, e envio imediato no pagehide (keepalive). `salvarLogo`
+// forca o primeiro envio quando o estado veio da migracao do localStorage.
 
 export const DEBOUNCE_MS = 800;
 

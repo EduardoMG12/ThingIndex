@@ -19,10 +19,8 @@ func carregarCorpusDeTeste(t *testing.T) *evalcorpus.Corpus {
 	return corpus
 }
 
-// TestDocumentosComoUnidadeUnicaPreservaAGranularidadeAntiga garante que a
-// medicao em nivel de documento continua identica a de antes da issue #16.
-// Sem essa garantia, a comparacao entre as duas granularidades perderia o
-// ponto de referencia e os numeros historicos do artigo ficariam orfaos.
+// A medicao em nivel de documento tem de continuar identica a de antes da
+// issue #16.
 func TestDocumentosComoUnidadeUnicaPreservaAGranularidadeAntiga(t *testing.T) {
 	corpus := carregarCorpusDeTeste(t)
 
@@ -38,24 +36,15 @@ func TestDocumentosComoUnidadeUnicaPreservaAGranularidadeAntiga(t *testing.T) {
 		if unit.SectionID != "" {
 			t.Fatalf("unidade de documento nao pode ter SectionID, veio %q", unit.SectionID)
 		}
-		// O texto precisa ser o documento COMPLETO: se viesse recortado, a
-		// granularidade de documento estaria medindo outra coisa.
+		// Documento completo, nao recortado.
 		if !strings.Contains(unit.Text, strings.TrimSpace(corpus.Documents[i].Content)) {
 			t.Fatalf("unidade %q nao contem o conteudo completo do documento", unit.ID)
 		}
 	}
 }
 
-// TestGranularidadeDeSecaoDiscriminaMaisQueDocumento e o teste que justifica a
-// issue #16 inteira.
-//
-// Em nivel de documento, R@5 e 1,000 para todos os bracos lexicais porque
-// recuperar 5 de 5 documentos sempre acha o relevante -- a metrica nao
-// discrimina. Em nivel de secao o universo tem 19 unidades e a metrica volta a
-// separar os bracos.
-//
-// Este teste falha se alguem reduzir o corpus ou trocar a unidade de volta,
-// devolvendo o experimento ao estado em que os bracos empatavam por construcao.
+// Em nivel de documento R@5 e 1,000 para todos os lexicais (5 de 5 sempre acha
+// o relevante); em nivel de secao (19 unidades) a metrica volta a separar.
 func TestGranularidadeDeSecaoDiscriminaMaisQueDocumento(t *testing.T) {
 	corpus := carregarCorpusDeTeste(t)
 
@@ -110,9 +99,6 @@ func TestGranularidadeDeSecaoDiscriminaMaisQueDocumento(t *testing.T) {
 	}
 }
 
-// TestCSVDistingueAsDuasGranularidades garante que as duas medicoes nao se
-// confundem no arquivo de resultados. Sem a coluna, a analise somaria maca com
-// laranja e ninguem perceberia -- o numero sairia plausivel e errado.
 func TestCSVDistingueAsDuasGranularidades(t *testing.T) {
 	corpus := carregarCorpusDeTeste(t)
 
@@ -147,16 +133,8 @@ func TestCSVDistingueAsDuasGranularidades(t *testing.T) {
 	}
 }
 
-// TestBracoRelacionalDependeMaisDoCasamentoLexicalEmNivelDeSecao trava o
-// achado mais importante que a mudanca de unidade revelou.
-//
-// Em nivel de documento a queda de P@1 de literal para parafrase e de -0,429
-// no braco relacional. Em nivel de secao ela vai a -0,857: o braco acerta
-// todas as consultas que copiam os termos do alvo e quase nenhuma que
-// parafraseia. A granularidade grossa escondia metade da dependencia lexical.
-//
-// Se este teste falhar com um valor MENOR, a conclusao do artigo sobre
-// dependencia de casamento lexical precisa ser revista.
+// Queda de P@1 literal -> parafrase no relacional: -0,429 por documento,
+// -0,857 por secao.
 func TestBracoRelacionalDependeMaisDoCasamentoLexicalEmNivelDeSecao(t *testing.T) {
 	corpus := carregarCorpusDeTeste(t)
 
@@ -195,9 +173,6 @@ func TestBracoRelacionalDependeMaisDoCasamentoLexicalEmNivelDeSecao(t *testing.T
 	}
 }
 
-// TestTokenizeEhEstavel protege a comparacao entre granularidades: ambas usam
-// o mesmo tokenizador, entao uma mudanca nele desloca os dois lados ao mesmo
-// tempo e mantem a comparacao valida.
 func TestTokenizeEhEstavel(t *testing.T) {
 	entrada := "Horas Extraordinárias, adicional NOTURNO!"
 	primeira := retrieval.Tokenize(entrada)

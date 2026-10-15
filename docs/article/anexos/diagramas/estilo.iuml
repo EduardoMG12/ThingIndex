@@ -1,0 +1,73 @@
+' Estilo comum dos diagramas dos anexos: preto e branco, fonte serifada.
+skinparam monochrome true
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam defaultFontName "Liberation Serif"
+skinparam defaultFontColor black
+skinparam ArrowColor black
+skinparam BorderColor black
+skinparam roundCorner 0
+skinparam usecase {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam actor {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam package {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam rectangle {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam class {
+  BackgroundColor white
+  BorderColor black
+  HeaderBackgroundColor white
+}
+skinparam entity {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam participant {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam database {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam queue {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam note {
+  BackgroundColor white
+  BorderColor black
+}
+skinparam sequence {
+  LifeLineBorderColor black
+  LifeLineBackgroundColor white
+  GroupBackgroundColor white
+  GroupHeaderFontStyle bold
+  DividerBackgroundColor white
+  DividerBorderColor black
+  BoxBackgroundColor white
+}
+skinparam activity {
+  BackgroundColor white
+  BorderColor black
+  DiamondBackgroundColor white
+  DiamondBorderColor black
+  StartColor black
+  EndColor black
+  BarColor black
+}
+skinparam partition {
+  BackgroundColor white
+  BorderColor black
+}
+hide methods

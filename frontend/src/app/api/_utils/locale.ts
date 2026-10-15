@@ -19,15 +19,10 @@ export async function getRequestLocale(request?: Request): Promise<AppLocale> {
     return normalizeLocale(localeFromRequest ?? DEFAULT_LOCALE);
 }
 
-// Cabecalho que carrega o IP do cliente ate a API. O Next chama a API pelo
-// servidor, entao sem ele o ClientIP visto pelo Gin e sempre o do container do
-// frontend e o limite por IP de /auth vira uma cota da instalacao (10 logins
-// por minuto para todos os usuarios somados). So e enviado com
-// FRONTEND_TRUST_PROXY_HEADERS=true, e a API so confia nele quando a conexao
-// vem de TRUSTED_PROXIES (vazio por padrao). Ver resolveClientForwardedFor.
+// Sem isso o Gin ve sempre o IP do container do frontend e o limite por IP
+// de /auth vira uma cota global. A API so confia nele vindo de TRUSTED_PROXIES.
 const FORWARDED_FOR_HEADER = "X-Forwarded-For";
-// Um endereco IPv4/IPv6 por item, separados por virgula. Qualquer outra coisa
-// (texto livre, quebra de linha) e descartada em vez de repassada.
+// Lista de IPv4/IPv6 separados por virgula; qualquer outra coisa e descartada.
 const FORWARDED_FOR_PATTERN = /^[0-9A-Fa-f:.]+(\s*,\s*[0-9A-Fa-f:.]+)*$/;
 
 function sanitizeForwardedFor(value: string | null | undefined): string | null {
@@ -41,16 +36,9 @@ function sanitizeForwardedFor(value: string | null | undefined): string | null {
         .join(", ");
 }
 
-// Le o IP do cliente para repassar a API, SO quando ha um proxy reverso na
-// frente do Next que sobrescreve X-Forwarded-For (FRONTEND_TRUST_PROXY_HEADERS=true).
-// Sem esse proxy o valor vem do navegador: o Next so preenche x-forwarded-for
-// com o endereco do socket quando o cliente nao manda o cabecalho, e um valor
-// forjado passaria intacto, dando a cada tentativa de login um balde novo no
-// limite por IP da API. Nesse caso nada e repassado: a API ve o IP do container
-// do frontend e o limite por IP de /auth vira uma cota da instalacao, que
-// somado ao limite por e-mail e o comportamento seguro.
-// Em route handler a requisicao vem por parametro; em server action (login,
-// cadastro, esqueci a senha) nao ha Request, entao le de next/headers.
+// So repassa com um proxy reverso na frente sobrescrevendo X-Forwarded-For;
+// sem ele o valor vem do navegador e daria um balde novo a cada tentativa.
+// Server actions nao tem Request, dai o fallback para next/headers.
 export async function resolveClientForwardedFor(request?: Request): Promise<string | null> {
     if (process.env.FRONTEND_TRUST_PROXY_HEADERS !== "true") {
         return null;

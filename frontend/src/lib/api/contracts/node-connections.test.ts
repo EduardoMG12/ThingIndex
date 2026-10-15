@@ -36,10 +36,7 @@ describe("normalizeNodeConnections", () => {
     });
 
     it("trata lista vazia como resultado legitimo, nao como erro", () => {
-        // Lista vazia significa "nenhuma conexao supera o limiar" -- e a
-        // resposta CORRETA quando nao ha relacao real. Tratar como erro faria a
-        // interface esconder justamente o comportamento que o trabalho defende:
-        // saber dizer "nao encontrei".
+        // Vazio = nenhuma conexao acima do limiar, nao erro.
         const resultado = normalizeNodeConnections({
             node_id: "no-isolado",
             min_score: 99,
@@ -72,8 +69,7 @@ describe("normalizeNodeConnections", () => {
     });
 
     it("preserva a ordem devolvida pela API", () => {
-        // A API ja ordena por score decrescente. Reordenar no cliente poderia
-        // divergir do backend e quebrar o determinismo que o trabalho afirma.
+        // A ordem e a da API; o cliente nao reordena.
         const resultado = normalizeNodeConnections({
             node_id: "origem",
             min_score: 1,

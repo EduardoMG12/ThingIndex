@@ -11,8 +11,7 @@ function success(data: unknown) {
 }
 
 async function authenticate(context: BrowserContext, baseURL: string | undefined) {
-    // A Area de trabalho agora embute o chat: sem estes mocks as buscas de
-    // runtime e de conversas recebem 401 da API real e a pagina cai no login.
+    // Mocks do chat embutido; sem eles runtime e conversas dao 401 e cai no login.
     await context.route("**/api/user/providers/runtime", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: 200, type: "success", message: "ok", data: {} }) }));
     await context.route("**/api/chat/conversations**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: 200, type: "success", message: "ok", data: [] }) }));
     await context.route("**/api/user/me", async (route) => {
@@ -158,18 +157,14 @@ test("workspace mostra a estrutura do documento e justifica cada conexao @smoke"
     await expect(page.getByRole("button", { name: /Contrato SLA/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /Edital de Pregao/ })).toBeVisible();
 
-    // Focar o documento abre a sidebar com a estrutura JA INDEXADA -- sem
-    // nenhuma chamada de modelo de linguagem no caminho.
+    // Focar o documento abre a sidebar com a estrutura indexada.
     await page.getByRole("button", { name: /Contrato SLA/ }).click();
     await expect(page.getByText("2 PENALIDADES")).toBeVisible();
     await expect(page.getByText(/Multa de 5 por cento/)).toBeVisible();
 
     await page.getByRole("button", { name: /conex/i }).first().click();
 
-    // A conexao precisa vir acompanhada dos termos que a justificam: uma aresta
-    // sem explicacao seria tao opaca quanto a vizinhanca vetorial que este
-    // projeto evita.
-    // Escopo na sidebar: a linha SVG tambem repete titulo e termos no <title>.
+    // Escopo na sidebar: a linha SVG repete titulo e termos no <title>.
     const sidebar = page.getByLabel("Detalhes do documento");
     await expect(sidebar.getByText("2 DAS PENALIDADES")).toBeVisible();
     await expect(sidebar.getByText(/multa/)).toBeVisible();
@@ -188,9 +183,7 @@ test("workspace declara ausencia de conexao em vez de area vazia @smoke", async 
     await authenticate(context, baseURL);
     await mockarColecao(context);
 
-    // Nenhuma conexao supera o limiar. Esta e a resposta CORRETA quando nao ha
-    // relacao real -- e o oposto do falso positivo de 1,000 medido nos seis
-    // bracos do experimento, onde nenhum sabia se calar.
+    // Nenhuma conexao acima do limiar.
     await context.route("**/api/documents/collections/7/connections**", async (route) => {
         await route.fulfill({
             status: 200,
@@ -209,8 +202,7 @@ test("workspace declara ausencia de conexao em vez de area vazia @smoke", async 
     await page.getByRole("button", { name: /Contrato SLA/ }).click();
     await page.getByRole("button", { name: /conex/i }).first().click();
 
-    // Area em branco seria lida como falha de carregamento; a ausencia precisa
-    // ser dita com todas as letras.
+    // Mensagem explicita, nao area em branco.
     await expect(page.getByText(/Nenhuma conexão acima do limiar/i)).toBeVisible();
 });
 
@@ -219,9 +211,7 @@ test("workspace nao esmaga o painel em viewport estreito", async ({
     context,
     page,
 }) => {
-    // Regressao medida no navegador: com sidebar de largura fixa ao lado de um
-    // canvas flex-1, num viewport de 780px o canvas ficava com 72px e os
-    // cartoes viravam tarjas ilegiveis atras da sidebar.
+    // Em 780px a sidebar fixa espremia o canvas para 72px.
     await authenticate(context, baseURL);
     await mockarColecao(context);
     await page.setViewportSize({ width: 780, height: 900 });
@@ -233,19 +223,12 @@ test("workspace nao esmaga o painel em viewport estreito", async ({
 
     const caixa = await canvas.boundingBox();
     expect(caixa).not.toBeNull();
-    // O limite de 300px e folgado de proposito: o valor exato depende de
-    // padding do shell. O que este teste impede e o colapso para dezenas de
-    // pixels, que foi o defeito real.
+    // 300px e folgado: o valor exato depende do padding do shell.
     expect(caixa!.width).toBeGreaterThan(300);
 });
 
-// ---------------------------------------------------------------------------
-// Quadros de PDF: paginas reais, grifos por bounding box, marcadores e aviso.
-//
-// A fixture uma-pagina.pdf foi gerada por tests/e2e/fixtures/gerar.py e as
-// caixas abaixo sao as que `pdftotext -bbox-layout` mede nela. Nao sao
-// inventadas: o teste de alinhamento compara o grifo com a pagina renderizada.
-// ---------------------------------------------------------------------------
+// Quadros de PDF. uma-pagina.pdf vem de tests/e2e/fixtures/gerar.py e as
+// caixas abaixo sao as que o pdftotext -bbox-layout mede nela.
 
 const FIXTURE_UMA_PAGINA = resolve(__dirname, "fixtures/uma-pagina.pdf");
 
@@ -311,8 +294,7 @@ test("quadro de PDF abre com a pagina real, grifos alinhados ao texto e marcador
     const grifos = page.getByTestId("grifo");
     await expect(grifos).toHaveCount(4);
 
-    // "Alinhado" e medida, nao adjetivo: o grifo fica em box * (tamanho da
-    // pagina na tela / tamanho da pagina em pontos), com 1 px de tolerancia.
+    // grifo = box * (pagina na tela / pagina em pontos), 1 px de tolerancia.
     const pagina = await page.getByTestId("pdf-pagina-3-1").boundingBox();
     const grifo = await grifos.first().boundingBox();
     expect(pagina).not.toBeNull();

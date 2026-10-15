@@ -1,8 +1,3 @@
-/**
- * Rotulo e tom do status de indexacao de um documento. Vive fora da pagina
- * de Documentos porque a Area de trabalho mostra o mesmo status na lista da
- * colecao.
- */
 
 export type TranslateFn = (key: string, variables?: Record<string, string | number | boolean>) => string;
 

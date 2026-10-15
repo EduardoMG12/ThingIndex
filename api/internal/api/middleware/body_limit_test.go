@@ -33,7 +33,6 @@ func routerComLimiteDeCorpo(limite int64) *gin.Engine {
 	return router
 }
 
-// Regressao P2-5: rotas JSON decodificavam corpo de qualquer tamanho.
 func TestJSONBodyLimitRecusaCorpoJSONAcimaDoTeto(t *testing.T) {
 	router := routerComLimiteDeCorpo(64)
 

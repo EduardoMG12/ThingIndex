@@ -37,24 +37,8 @@ import { idDaLinha, montarLinhas, paragrafosSecundarios, type Linha, corPorTipo,
 import { boxParaPixels } from "@/lib/workspace/geometry";
 import { APRESENTACAO_PADRAO, limitarPagina, precisaDoBotaoIrPara, regraIrAte, type Apresentacao } from "@/lib/workspace/highlights";
 
-/**
- * Canvas navegavel dos documentos de uma colecao: pan, zoom e quadros
- * arrastaveis num "mundo" em CSS transform, mais a sidebar de estrutura.
- *
- * # Por que nao React Flow
- *
- * A spec 001 previa React Flow. Ao implementar ficou claro que a biblioteca
- * resolveria um problema que este painel nao tem: nao ha grafo persistido para
- * fazer layout automatico. Pan, zoom e arrasto cabem em ~150 linhas de CSS
- * transform (useViewport + lib/workspace/geometry), testaveis sem DOM. Se
- * minimapa ou layout automatico entrarem em escopo, revisitar.
- *
- * # O que este componente NAO faz
- *
- * Nao chama LLM. Titulos e resumos exibidos na sidebar ja estao no indice,
- * gravados na indexacao deterministica. A tela e leitura de dado existente, e
- * essa e a razao de ela ser instantanea.
- */
+// Pan/zoom/arrasto na mao com CSS transform (useViewport + lib/workspace/geometry).
+// React Flow nao compensava: nao ha grafo para layout automatico.
 
 /** Ponte minima para quem embute o canvas (o chat da Area de trabalho). */
 /** Geometria gravada numa fonte do chat (caixa do paragrafo e das linhas). */
@@ -82,11 +66,7 @@ const LARGURA_CARTAO = 260;
 const ALTURA_CARTAO = 96;
 /** Quadros de PDF tem ~612 px de largura; uma coluna por documento. */
 const PASSO_ENTRE_QUADROS = 760;
-/**
- * Linhas desenhadas por vez. Uma secao de edital devolveu 109 conexoes acima
- * do limiar: desenhar todas vira um novelo ilegivel. A API ja ordena por
- * score, entao as N primeiras sao as mais fortes; a sidebar lista todas.
- */
+/** Uma secao de edital chegou a 109 conexoes; desenha so as mais fortes (a sidebar lista todas). */
 export const LINHAS_MAXIMAS = 12;
 /** Folga para comecar a abrir o PDF um pouco antes de ele entrar na tela. */
 const FOLGA_DE_VISIBILIDADE = 240;
@@ -149,10 +129,7 @@ function lerApresentacoesSalvas(collectionId: number | string): Record<string, A
     }
 }
 
-/**
- * Posicao inicial em grade. Deterministica de proposito: a mesma colecao abre
- * sempre com o mesmo arranjo, o que torna a tela reproduzivel numa demonstracao.
- */
+/** Grade deterministica: a mesma colecao abre sempre igual. */
 function posicaoInicial(indice: number): Posicao {
     return { x: indice * PASSO_ENTRE_QUADROS, y: 0 };
 }
@@ -171,8 +148,7 @@ function lerPosicoesSalvas(collectionId: number | string): Record<string, Posica
             ? (analisado as Record<string, Posicao>)
             : {};
     } catch {
-        // localStorage corrompido nao pode impedir a tela de abrir; o custo de
-        // ignorar e reposicionar os cartoes, e nao perder o acesso.
+        // localStorage corrompido: ignora e reposiciona.
         return {};
     }
 }
@@ -194,10 +170,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
     const nosDoSumario = useMemo(() => context.outlineNodes ?? [], [context.outlineNodes]);
     const paragrafos = useMemo(() => context.paragraphNodes ?? [], [context.paragraphNodes]);
 
-    // Indices por documento: secao por slug, paragrafos por pagina (com a secao
-    // resolvida por section_key === slug), secoes por pagina de inicio, e a
-    // contagem de box para o aviso de reindexacao. Tudo derivado do contexto
-    // ja carregado -- nenhuma chamada extra.
+    // Indices por documento, derivados do contexto ja carregado.
     const indiceDoContexto = useMemo(() => {
         const secaoPorSlug = new Map<number, Map<string, OutlineNode>>();
         for (const no of nosDoSumario) {
@@ -289,10 +262,8 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
         return { secaoPorSlug, porNodeId, porPagina, ancora, porSequencia, contagem, secoesPorPagina, secaoDoParagrafo };
     }, [nosDoSumario, paragrafos]);
 
-    // Ancora de uma secao: o paragrafo em que ela comeca (paragraph_start, que
-    // a indexacao grava no no) se ele tiver box; senao o primeiro paragrafo
-    // com o section_key dela; senao nada -- um marcador em posicao inventada
-    // seria pior que nenhum.
+    // Ancora: paragraph_start se tiver box, senao o primeiro paragrafo da
+    // secao, senao nenhuma (melhor sem marcador que num lugar inventado).
     const ancoraDaSecao = useCallback(
         (secao: OutlineNode): ParagraphNode | null => {
             const inicio = secao.metadata?.paragraph_start;
@@ -310,8 +281,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
     const [paragrafoSelecionado, setParagrafoSelecionado] = useState<{ no: ParagraphNode; secao: OutlineNode | null } | null>(null);
     const [linhaRealcada, setLinhaRealcada] = useState<string | null>(null);
 
-    // Marcas coloridas e legenda: carregadas junto com a colecao, salvas de
-    // forma otimista (a cor aparece na hora; se a API falhar, volta e avisa).
+    // Marcas e legenda salvas de forma otimista.
     const [marcas, setMarcas] = useState<Map<ParagraphNode["id"], HighlightColor>>(
         () => new Map(marcasIniciais.map((m) => [m.paragraphNodeId as ParagraphNode["id"], m.color]))
     );
@@ -425,9 +395,8 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
     // (fonte do chat, destino de conexao). Fica ate o primeiro gesto no
     // canvas (clique ou roda): sem timer, o foco nao some enquanto se le.
     const [holofote, setHolofote] = useState<Rect | null>(null);
-    // Foco pedido para um documento ainda nao medido (estava fora da tela):
-    // guarda o pedido e refaz o "ir ate" quando as medidas chegarem. Antes o
-    // clique parava no quadro inteiro e o usuario nao via o paragrafo.
+    // Documento ainda nao medido: guarda o pedido e refaz o "ir ate" quando as
+    // medidas chegarem.
     const focoPendente = useRef<{ documentId: number; pagina: number | null; paragraphId?: number; geometria?: CitacaoGravada } | null>(null);
     const [carregandoConexoes, setCarregandoConexoes] = useState(false);
     const [erroConexoes, setErroConexoes] = useState<string | null>(null);
@@ -787,7 +756,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
             setNoSelecionado(secao?.nodeId ?? null);
             setConexoes(null);
             setIndiceConexao(-1);
-            // Grifo colorido ja e um "quero ver com quem isso conversa": busca na hora.
+            // Grifar ja busca as conexoes.
             if (secao && marcas.has(no.id)) {
                 void pedirConexoes(secao.nodeId);
             }
@@ -871,14 +840,11 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
         [ancoraDaSecao, rectDoParagrafo, irAte]
     );
 
-    // Sumario aninhado por nivel: capitulo (1) com as secoes (2, 3...) dentro,
-    // na ordem do documento. Lista plana com 144 cards nao e sumario.
+    // Sumario aninhado por nivel, na ordem do documento.
     const arvoreDoFocado = useMemo(() => montarArvore(nosDoDocumentoFocado), [nosDoDocumentoFocado]);
 
     const documentoAtual = documentos.find((documento) => documento.id === documentoFocado);
-    // Sinopse e topicos gravados pelo enriquecimento por LLM. So a sinopse da
-    // LLM entra (synopsis_source=llm): a de fallback e o texto cru da primeira
-    // pagina, que nao explica nada.
+    // So a sinopse da LLM; a de fallback e o texto cru da primeira pagina.
     const sobreOFocado = useMemo(() => {
         if (documentoFocado === null) {
             return null;
@@ -997,8 +963,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
             setLinhaRealcada(idDaLinha(conexao));
             const no = indiceDoContexto.porNodeId.get(conexao.nodeId);
             const a = no ? ancoraDaSecao(no) : null;
-            // As linhas do destino que contem os termos em comum ganham o
-            // grifo rosa: e o "por que a flecha chega aqui", visivel na folha.
+            // Grifo rosa nas linhas do destino com os termos em comum.
             const linhas = a ? linhasComTermos(a, conexao.matchedTerms) : [];
             setDestaque(a && linhas.length > 0 ? { paragraphId: a.id as number, lines: linhas } : null);
             irAte(conexao.documentId, a?.pageNumber ?? no?.startPage ?? conexao.startPage ?? null, a ? rectDoParagrafo(a, true) : null, { foco: true });
@@ -1059,9 +1024,7 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
     );
 
     return (
-        // Empilha em telas estreitas e divide em duas colunas a partir de lg.
-        // `min-w-0` e obrigatorio: sem ele o item flex assume a largura do
-        // conteudo e o canvas colapsa para dezenas de pixels em 780px (medido).
+        // Sem `min-w-0` o canvas colapsa para dezenas de px em 780px.
         <div className="flex h-full w-full flex-col gap-2 lg:flex-row">
             <div
                 ref={containerRef}
@@ -1578,10 +1541,8 @@ export const WorkspaceCanvas = forwardRef<WorkspaceCanvasHandle, WorkspaceCanvas
 
                         {conexoes !== null && !carregandoConexoes ? (
                             conexoes.length === 0 ? (
-                                // Ausencia DECLARADA, nunca area em branco. Uma
-                                // regiao vazia seria lida como falha de
-                                // carregamento, e o sistema perderia credito no
-                                // unico ponto em que sabe dizer "nao encontrei".
+                                // Mensagem explicita: area vazia parece erro
+                                // de carregamento.
                                 <p className="text-xs text-muted-foreground">{t("workspace.sidebar.noConnections")}</p>
                             ) : (
                                 <ul className="space-y-2 border-t border-border pt-3">

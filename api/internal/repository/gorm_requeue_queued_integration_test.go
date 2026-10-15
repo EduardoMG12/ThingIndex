@@ -13,14 +13,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// Mensagem perdida depois do broker: o evento esta PUBLISHED, o documento
-// segue QUEUED e nada volta a olhar para ele. O reconciliador cria um evento
-// PENDING novo so para esse caso; documentos cuja entrega ainda esta sob
-// responsabilidade do despachante (ultimo evento PENDING/IN_FLIGHT/FAILED) ou
-// que sairam de QUEUED nao podem ganhar evento duplicado.
-//
-// Contra Postgres real porque o que precisa estar certo e a condicao SQL do
-// "ultimo evento do documento".
+// So documentos QUEUED com o ultimo evento PUBLISHED e antigo ganham evento
+// novo; o resto nao pode ser duplicado.
 func TestRequeueStuckQueuedDocumentsReenfileiraApenasMensagensPerdidas(t *testing.T) {
 	db := openIntegrationDB(t)
 	repo := &gormDocumentProcessingRepository{db: db}
@@ -37,21 +31,17 @@ func TestRequeueStuckQueuedDocumentsReenfileiraApenasMensagensPerdidas(t *testin
 	perdido := seedQueuedDocument(t, db, user.ID, category.ID, collection.ID, "perdido.pdf", domain.DocumentStatusQueued, antigo)
 	seedOutboxEvent(t, db, perdido.ID, domain.OutboxEventStatusPublished, &antigo)
 
-	// Publicado ha pouco: o worker pode so estar atrasado.
 	publicadoRecente := seedQueuedDocument(t, db, user.ID, category.ID, collection.ID, "recente.pdf", domain.DocumentStatusQueued, antigo)
 	seedOutboxEvent(t, db, publicadoRecente.ID, domain.OutboxEventStatusPublished, &recente)
 
-	// Evento antigo PUBLISHED mas o mais recente ainda PENDING (reindexacao ja
-	// pedida): o despachante cuida dele.
+	// Ultimo evento ainda PENDING: o despachante cuida dele.
 	comPendente := seedQueuedDocument(t, db, user.ID, category.ID, collection.ID, "pendente.pdf", domain.DocumentStatusQueued, antigo)
 	seedOutboxEvent(t, db, comPendente.ID, domain.OutboxEventStatusPublished, &antigo)
 	seedOutboxEvent(t, db, comPendente.ID, domain.OutboxEventStatusPending, nil)
 
-	// Ja indexado: nao e QUEUED.
 	indexado := seedQueuedDocument(t, db, user.ID, category.ID, collection.ID, "indexado.pdf", domain.DocumentStatusIndexed, antigo)
 	seedOutboxEvent(t, db, indexado.ID, domain.OutboxEventStatusPublished, &antigo)
 
-	// QUEUED com documento atualizado ha pouco (retry agendado pelo consumidor).
 	retryRecente := seedQueuedDocument(t, db, user.ID, category.ID, collection.ID, "retry.pdf", domain.DocumentStatusQueued, recente)
 	seedOutboxEvent(t, db, retryRecente.ID, domain.OutboxEventStatusPublished, &antigo)
 
@@ -87,8 +77,7 @@ func TestRequeueStuckQueuedDocumentsReenfileiraApenasMensagensPerdidas(t *testin
 		t.Fatalf("payload sem requested_at: o consumidor trataria como evento legado")
 	}
 
-	// Segundo ciclo logo em seguida: o ultimo evento agora e PENDING, entao
-	// nada pode ser duplicado.
+	// Segundo ciclo: o ultimo evento agora e PENDING, nada pode duplicar.
 	deNovo, err := repo.RequeueStuckQueuedDocuments(ctx, cutoff)
 	if err != nil {
 		t.Fatalf("segundo ciclo retornou erro: %v", err)

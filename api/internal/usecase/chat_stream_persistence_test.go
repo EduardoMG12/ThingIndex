@@ -69,17 +69,14 @@ func (r *chatConversationRepoStub) assistantMessages() []models.ChatConversation
 type chatCollectionContextStub struct{}
 
 func (chatCollectionContextStub) GetCollectionContext(context.Context, uint, uint) (*domain.CollectionContext, error) {
-	// Collection e ponteiro e buildCollectionChatPrompt o desreferencia sem
-	// checar: um contexto "vazio" demais faz panic em vez de exercitar o
-	// caminho que interessa.
+	// buildCollectionChatPrompt desreferencia Collection sem checar.
 	return &domain.CollectionContext{
 		Collection: &models.Collection{ID: 3, Name: "Contratos"},
 	}, nil
 }
 
-// chatStreamingLLMStub emite os deltas informados e entao devolve streamErr.
-// Reproduz o cenario real: o provider entrega parte da resposta e a conexao
-// morre no meio.
+// chatStreamingLLMStub emite os deltas e devolve streamErr, como uma conexao
+// que cai no meio da resposta.
 type chatStreamingLLMStub struct {
 	deltas    []string
 	streamErr error
@@ -114,10 +111,7 @@ func newChatUseCaseForTest(repo *chatConversationRepoStub, llm domain.LLMService
 	return NewChatUseCase(&collectionRepoStub{collection: &models.Collection{ID: 3, Name: "Contratos"}}, chatCollectionContextStub{}, repo, &chatLLMResolverStub{llm: llm}, nil, DefaultRetrievalOptions())
 }
 
-// O caso que motivou a correcao: o LLM entrega parte da resposta e a conexao
-// cai. Antes, o `return err` pulava a persistencia inteira -- o usuario via o
-// texto na tela, recarregava a conversa e a resposta tinha sumido, sem nenhum
-// registro de que a chamada foi feita e paga.
+// O LLM entrega parte da resposta e a conexao cai: o parcial tem de ser salvo.
 func TestStreamCollectionChatPersisteRespostaParcialQuandoOStreamFalha(t *testing.T) {
 	t.Parallel()
 
@@ -138,8 +132,6 @@ func TestStreamCollectionChatPersisteRespostaParcialQuandoOStreamFalha(t *testin
 		Prompt:         "qual o prazo?",
 	}, func(domain.ChatStreamEvent) error { return nil })
 
-	// O erro original precisa continuar chegando ao handler, que o usa para
-	// escolher a mensagem certa ao usuario.
 	if !errors.Is(err, falhaDoProvider) {
 		t.Fatalf("esperava o erro original do provider, veio %v", err)
 	}
@@ -153,9 +145,7 @@ func TestStreamCollectionChatPersisteRespostaParcialQuandoOStreamFalha(t *testin
 	}
 }
 
-// Resposta que falha antes de qualquer texto vira uma mensagem do assistente
-// com status "error" e o detalhe do provedor: a pergunta nao fica "sem
-// resposta" na conversa, e o usuario sabe por que.
+// Falha antes de qualquer texto vira mensagem do assistente com status "error".
 func TestStreamCollectionChatPersisteFalhaComDetalhe(t *testing.T) {
 	t.Parallel()
 
@@ -215,8 +205,7 @@ func TestStreamCollectionChatPersisteRespostaCompletaNoCaminhoFeliz(t *testing.T
 	}
 }
 
-// Se a escrita no cliente falhar (conexao morta), o texto ja gerado tambem
-// precisa ser salvo: a chamada de LLM foi paga de qualquer forma.
+// Escrita no cliente falhou: o texto ja gerado tambem e salvo.
 func TestStreamCollectionChatPersisteQuandoAEscritaNoClienteFalha(t *testing.T) {
 	t.Parallel()
 
@@ -257,9 +246,8 @@ func TestStreamCollectionChatPersisteQuandoAEscritaNoClienteFalha(t *testing.T) 
 	}
 }
 
-// Regressao P1-5: o cliente desconecta no meio do stream, o ctx da requisicao
-// e cancelado e a persistencia -- que usava esse mesmo ctx -- falhava. A
-// resposta parcial, ja paga ao LLM, sumia sem registro.
+// Cliente desconecta no meio do stream e o ctx da requisicao e cancelado; a
+// persistencia nao pode depender dele.
 func TestStreamCollectionChatPersisteRespostaParcialComCtxDaRequisicaoCancelado(t *testing.T) {
 	t.Parallel()
 

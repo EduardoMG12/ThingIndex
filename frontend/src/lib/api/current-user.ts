@@ -39,10 +39,8 @@ function normalizeCurrentUser(record: CurrentUserApiRecord): CurrentUser | null 
 }
 
 export async function fetchCurrentUser(signal?: AbortSignal): Promise<CurrentUser> {
-    // Sem redirecionamento no 401: o AppShell envolve tambem paginas publicas
-    // (documentacao, por exemplo) e ja trata a ausencia de usuario renderizando
-    // o modo anonimo. Forcar o login aqui expulsava do site quem so queria ler a
-    // documentacao — que a landing linka abertamente.
+    // Sem redirect no 401: o AppShell tambem envolve paginas publicas
+    // (documentacao) e renderiza o modo anonimo.
     const response = await fetchWithAuthRedirect(
         "/api/user/me",
         {

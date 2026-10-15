@@ -8,9 +8,7 @@ import (
 	"thing-index/internal/models"
 )
 
-// A fonte citada precisa dizer QUAL documento e, quando vem de um no do
-// sumario, QUAL no -- e o que o workspace usa para ir ate o trecho. Antes so
-// havia o ID "doc:page", que o frontend teria de parsear.
+// A fonte diz qual documento e qual no; o workspace usa isso para ir ao trecho.
 func TestBuildChatSourcesCarriesDocumentAndNode(t *testing.T) {
 	page := 7
 	context := &domain.CollectionContext{
@@ -25,7 +23,6 @@ func TestBuildChatSourcesCarriesDocumentAndNode(t *testing.T) {
 	if len(sources) != 2 {
 		t.Fatalf("esperava 2 fontes, veio %d", len(sources))
 	}
-	// Secao primeiro, pagina depois.
 	if sources[0].DocumentID != 43 || sources[0].NodeID != "n-12" || sources[0].Page != 7 {
 		t.Fatalf("fonte de no errada: %+v", sources[0])
 	}
@@ -67,9 +64,7 @@ func TestBuildChatSourcesPutsSectionsFirstWithinLimits(t *testing.T) {
 	}
 }
 
-// O prompt leva o CONTEUDO da pagina citada, nao o trecho de 220 caracteres;
-// cada pagina e cortada em ChatPageCharLimit e o somatorio em
-// ChatContextCharLimit -- estourou, a fonte volta ao trecho.
+// O prompt leva o conteudo da pagina citada, com teto por pagina e teto total.
 func TestBuildCollectionChatPromptSendsPageContentWithinLimits(t *testing.T) {
 	longa := strings.Repeat("x", ChatPageCharLimit+50)
 	pages := []models.DocumentPage{

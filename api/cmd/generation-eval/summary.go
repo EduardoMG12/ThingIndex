@@ -12,7 +12,6 @@ import (
 	"strings"
 )
 
-// resultRow e uma linha do CSV ja tipada.
 type resultRow struct {
 	QuestionID, Stratum, Origin, Arm, Scope, Model string
 	Correct, ProvenanceOK, RetrievalHit            *bool
@@ -81,9 +80,8 @@ func parseBool(s string) *bool {
 	return nil
 }
 
-// perQuestion agrega as repeticoes de uma pergunta: a unidade estatistica e a
-// PERGUNTA, nao a chamada, senao as 3 repeticoes contam como 3 observacoes
-// independentes e o intervalo fica estreito demais.
+// perQuestion agrega as repeticoes: a unidade estatistica e a pergunta, senao
+// o intervalo fica estreito demais.
 type perQuestion struct {
 	ID, Stratum, Origin       string
 	Correct, Provenance, Hit  float64 // fracao das repeticoes

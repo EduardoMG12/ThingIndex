@@ -8,8 +8,6 @@ interface LogoProps {
 }
 
 export const Logo = ({ className, size = 32 }: LogoProps) => {
-    // Points for the "T" shape:
-    // 1: Top Left, 2: Top Center, 3: Top Right, 4: Bottom Center
     const points = [
         { id: 1, x: 20, y: 25 }, // Top-left
         { id: 2, x: 50, y: 25 }, // Top-center (Stem start)
@@ -32,7 +30,6 @@ export const Logo = ({ className, size = 32 }: LogoProps) => {
             xmlns="http://www.w3.org/2000/svg"
             className={className}
         >
-            {/* Connection Lines */}
             {connections.map((conn, i) => {
                 const p1 = points.find(p => p.id === conn.from)!;
                 const p2 = points.find(p => p.id === conn.to)!;
@@ -58,7 +55,6 @@ export const Logo = ({ className, size = 32 }: LogoProps) => {
                 );
             })}
 
-            {/* Nodes */}
             {points.map((p, i) => (
                 <motion.circle
                     key={`node-${i}`}

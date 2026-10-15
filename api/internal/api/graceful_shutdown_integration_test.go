@@ -14,14 +14,9 @@ import (
 	"thing-index/internal/domain"
 )
 
-// O encerramento gracioso e comportamento observavel, nao configuracao: ou a
-// requisicao em andamento termina, ou o cliente recebe conexao cortada. Estes
-// testes exercitam um servidor real com uma rota lenta, porque asserção sobre
-// codigo ("existe uma chamada a Shutdown") nao prova que ele funciona.
+// Servidor real com rota lenta: so assim da para ver se o Shutdown espera.
 
-// TestShutdownEsperaRequisicaoEmAndamento prova a razao de existir do recurso:
-// um deploy no meio de um upload nao pode cortar o cliente que ja enviou o
-// arquivo e aguarda resposta.
+// Um deploy no meio de um upload nao pode cortar o cliente.
 func TestShutdownEsperaRequisicaoEmAndamento(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -74,17 +69,13 @@ func TestShutdownEsperaRequisicaoEmAndamento(t *testing.T) {
 		t.Fatal("a requisicao nunca terminou")
 	}
 
-	// O Shutdown precisa ter ESPERADO. Retorno imediato significaria que ele
-	// nao acompanhou a requisicao -- o teste passaria por acidente de
-	// temporizacao.
+	// Retorno imediato significaria que o Shutdown nao esperou a requisicao.
 	if duracao < 200*time.Millisecond {
 		t.Fatalf("shutdown retornou em %v: nao esperou a requisicao em andamento", duracao)
 	}
 }
 
-// TestShutdownRecusaConexaoNova garante a outra metade do contrato: durante o
-// dreno o servidor para de aceitar trabalho novo. Sem isso o encerramento nunca
-// convergiria sob trafego.
+// Durante o dreno o servidor para de aceitar conexao nova.
 func TestShutdownRecusaConexaoNova(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -109,10 +100,7 @@ func TestShutdownRecusaConexaoNova(t *testing.T) {
 	}
 }
 
-// TestSetupRoutesWithContextEncerraTarefaDeFundo prova que a goroutine de sync
-// do catalogo de modelos morre com o contexto, em vez de depender do processo
-// terminar. Era o defeito registrado no handover: ela recebia
-// context.Background() e ficava fora do ciclo de vida da aplicacao.
+// A goroutine de sync do catalogo tem de morrer com o contexto.
 func TestSetupRoutesWithContextEncerraTarefaDeFundo(t *testing.T) {
 	chamadas := make(chan struct{}, 8)
 	useCase := &syncSpyProviderUseCase{chamadas: chamadas}
@@ -142,11 +130,8 @@ func TestSetupRoutesWithContextEncerraTarefaDeFundo(t *testing.T) {
 	}
 }
 
-// syncSpyProviderUseCase conta as execucoes da tarefa de fundo.
-//
-// Embute a interface em vez de implementar os catorze metodos: so
-// SyncModelCatalogs importa aqui, e stub que implementa tudo com corpo vazio
-// esconde qual metodo o teste realmente exercita.
+// syncSpyProviderUseCase conta as execucoes da tarefa de fundo. Embute a interface:
+// so SyncModelCatalogs importa.
 type syncSpyProviderUseCase struct {
 	domain.ProviderUseCase
 	chamadas chan struct{}

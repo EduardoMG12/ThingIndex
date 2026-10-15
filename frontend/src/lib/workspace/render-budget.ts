@@ -1,12 +1,5 @@
-/**
- * Orcamento de renderizacao: quantas paginas de PDF podem ter <canvas> vivo ao
- * mesmo tempo, somando todos os quadros do canvas. E o que permite varios PDFs
- * no workspace sem o navegador engasgar. Puro, sem DOM.
- *
- * ponytail: teto fixo de 12 e piso de zoom 0,35 sao chutes iniciais medidos
- * com o corpus da faculdade; se um notebook fraco sofrer, os dois viram
- * configuracao antes de virarem heuristica.
- */
+// Quantas paginas de PDF podem ter <canvas> vivo somando todos os quadros.
+// Teto 12 e piso de zoom 0,35 foram chutados com o corpus de teste.
 
 import { rectVisivel, type Rect, type Tamanho, type Viewport } from "@/lib/workspace/geometry";
 

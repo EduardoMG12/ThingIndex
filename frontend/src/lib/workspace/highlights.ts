@@ -1,16 +1,6 @@
-/**
- * Grifos coloridos do workspace: paleta fixa, rotulo de cada cor pela legenda
- * da colecao, contagem por cor e a regra de "ir ate" uma pagina nos dois
- * modos de apresentacao. Puro, sem React nem DOM.
- *
- * Cinco cores, chaves estaveis em portugues porque sao o que vai para o banco.
- * As classes Tailwind sao literais completos de proposito: classe montada por
- * template some no purge.
- *
- * Contraste de texto preto sobre cada fundo (a 40% sobre branco), calculado
- * pela formula WCAG: amarelo 15,2:1, verde 13,9:1, azul 12,6:1, vermelho
- * 11,8:1, roxo 11,1:1 -- todos acima de 4,5:1.
- */
+// As chaves das cores vao para o banco, nao renomear. Classes Tailwind
+// literais: montadas por template somem no purge.
+// Texto preto sobre o fundo a 40%: todas acima de 11:1.
 
 import { CORES, ehCor, type HighlightColor, type Legend } from "@/lib/api/contracts/highlights";
 

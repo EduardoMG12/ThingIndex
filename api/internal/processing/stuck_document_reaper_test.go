@@ -23,9 +23,7 @@ func TestReaperCalculaOCutoffAPartirDoLimiteConfigurado(t *testing.T) {
 		t.Fatalf("esperava 1 chamada ao repositorio, veio %d", len(repo.reapCutoffs))
 	}
 
-	// O cutoff precisa apontar para o PASSADO pelo tamanho da janela. Um erro
-	// de sinal aqui marcaria FAILED todo documento em processamento no
-	// instante seguinte ao upload -- exatamente o oposto do objetivo.
+	// O cutoff fica no passado; sinal trocado marcaria FAILED tudo em processamento.
 	cutoff := repo.reapCutoffs[0]
 	if !cutoff.Before(antes) {
 		t.Fatalf("o cutoff deveria estar no passado, veio %s (agora ~%s)", cutoff, antes)
@@ -50,9 +48,7 @@ func TestReaperPropagaErroDoRepositorio(t *testing.T) {
 	}
 }
 
-// O Run nao pode morrer por falha transitoria de banco: o worker continua
-// consumindo a fila normalmente, e o reaper tenta de novo no proximo tick.
-// Este teste falha (por timeout do -race/CI) se Run retornar no primeiro erro.
+// Run nao pode retornar em falha transitoria de banco; tenta de novo no proximo tick.
 func TestReaperSegueRodandoDepoisDeUmErro(t *testing.T) {
 	t.Parallel()
 

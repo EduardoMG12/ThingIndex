@@ -165,9 +165,7 @@ func (r *collectionRepoStub) CreateCollection(context.Context, *models.Collectio
 	return nil
 }
 
-// EnsureCollection espelha CreateCollection no stub: a resolucao da corrida
-// acontece no banco, e o teste de concorrencia real vive em
-// internal/repository (com a tag integration).
+// A corrida e resolvida no banco; o teste real esta em internal/repository.
 func (r *collectionRepoStub) EnsureCollection(context.Context, *models.Collection) error {
 	return nil
 }
@@ -445,9 +443,8 @@ func (s *collectionRepoStub) UpdateCollectionMetadataKey(context.Context, uint, 
 	return nil
 }
 
-// Regressao P1-7: com o arquivo ja removido do storage, a falha ao gravar o
-// estado ORPHANED e o evento FAILED era descartada com `_ =`. O documento
-// ficava apontando para um arquivo inexistente sem nenhum rastro.
+// Arquivo ja removido do storage: falha ao gravar ORPHANED/FAILED precisa
+// aparecer.
 func TestDeleteDocumentDevolveFalhasDeAuditoriaEOrfaoEmVezDeEngolir(t *testing.T) {
 	t.Parallel()
 
@@ -526,8 +523,7 @@ func TestDeleteCollectionDocumentsDevolveFalhaAoMarcarOrfao(t *testing.T) {
 	}
 }
 
-// Regressao P1-8: se o insert do documento falhava, o arquivo ja enviado
-// ficava no bucket sem linha no banco -- nem auditavel, nem removivel pela UI.
+// Insert do documento falhou: o arquivo enviado nao pode ficar no bucket.
 func TestUploadDocumentRemoveArquivoDoStorageQuandoOInsertFalha(t *testing.T) {
 	t.Parallel()
 

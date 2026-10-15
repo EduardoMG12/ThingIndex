@@ -42,8 +42,8 @@ func streamAndCollect(t *testing.T, repo *chatConversationRepoStub, llm domain.L
 	return usage, err
 }
 
-// O artigo compara custo por consulta: cada resposta grava tokens, modelo,
-// provedor e custo -- os numeros do provedor quando ele informa.
+// Cada resposta grava tokens, modelo, provedor e custo, com os numeros do
+// provedor quando ele informa.
 func TestStreamCollectionChatPersisteConsumoReportadoComCusto(t *testing.T) {
 	t.Parallel()
 	repo := &chatConversationRepoStub{conversation: &models.ChatConversation{ID: 11, UserID: 1, CollectionID: 3}}

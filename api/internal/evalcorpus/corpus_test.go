@@ -30,9 +30,6 @@ func TestCorpusC1CarregaEValida(t *testing.T) {
 	t.Logf("corpus C1: %d documentos, %d consultas, %d pares julgados, %.1f tokens/consulta",
 		stats.Documents, stats.Queries, stats.JudgedPairs, stats.AvgQueryTokens)
 
-	// As tres propriedades que o corpus antigo nao tinha e cuja ausencia
-	// invalidava o benchmark. Se alguem editar o JSON e derrubar qualquer uma,
-	// o experimento volta a ser tautologico -- por isso viram teste.
 	if stats.NegativeCases == 0 {
 		t.Error("sem casos negativos nao se mede falso positivo: um sistema que sempre responde algo pontua igual a um que sabe dizer 'nao encontrei'")
 	}
@@ -43,14 +40,7 @@ func TestCorpusC1CarregaEValida(t *testing.T) {
 	}
 }
 
-// O defeito que invalidou o benchmark anterior: consultas cujo texto e copia
-// literal de um trecho do documento-alvo. O teste vira "um matcher de substring
-// encontra o paragrafo cujas palavras eu copiei" -- tautologico, e um grep
-// acerta 100%.
-//
-// Consultas marcadas como "literal" sao permitidas de proposito: elas existem
-// como CONTROLE, para medir o teto. O que nao pode e uma paraphrase ou noisy
-// ser literal na pratica.
+// Paraphrase/noisy nao pode ser literal na pratica; "literal" pode.
 func TestCorpusC1NaoTemCircularidadeNasVariantesNaoLiterais(t *testing.T) {
 	t.Parallel()
 
@@ -67,8 +57,6 @@ func TestCorpusC1NaoTemCircularidadeNasVariantesNaoLiterais(t *testing.T) {
 func TestValidateRecusaGabaritoApontandoParaDocumentoInexistente(t *testing.T) {
 	t.Parallel()
 
-	// O erro mais comum na anotacao manual e o mais traicoeiro: a consulta
-	// nunca e satisfeita e o braco leva a culpa por um erro de digitacao.
 	corpus := &Corpus{
 		Documents: []Document{{ID: "d1", Content: "texto"}},
 		Queries: []Query{{
@@ -102,8 +90,6 @@ func TestValidateRecusaGrauForaDaEscala(t *testing.T) {
 	}
 }
 
-// Distinguir "sem gabarito porque ninguem anotou" de "sem gabarito porque nada
-// e relevante" evita contar erro de anotacao como acerto do sistema.
 func TestValidateExigeMarcacaoExplicitaDeCasoNegativo(t *testing.T) {
 	t.Parallel()
 
@@ -157,8 +143,6 @@ func TestValidateRecusaVarianteDesconhecida(t *testing.T) {
 	}
 }
 
-// Prova de que CheckCircularity de fato pega o defeito: uma paraphrase cujos
-// termos estao todos no documento-alvo.
 func TestCheckCircularityDetectaParaphraseQueEhLiteral(t *testing.T) {
 	t.Parallel()
 
@@ -179,8 +163,7 @@ func TestCheckCircularityDetectaParaphraseQueEhLiteral(t *testing.T) {
 func TestCheckCircularityIgnoraVarianteLiteral(t *testing.T) {
 	t.Parallel()
 
-	// Consultas "literal" existem justamente para copiar termos do alvo e
-	// medir o teto. Avisar sobre elas seria ruido.
+	// "literal" copia termos do alvo de proposito.
 	corpus := &Corpus{
 		Documents: []Document{{ID: "d1", Content: "o prazo de pagamento e de quinze dias"}},
 		Queries: []Query{{

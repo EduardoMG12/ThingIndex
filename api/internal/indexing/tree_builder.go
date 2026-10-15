@@ -87,12 +87,9 @@ func (e *LLMEnricher) buildTree(ctx context.Context, llm domain.LLMService, doc 
 		stats = mergeTreeVerificationStats(stats, expandedStats)
 	}
 
-	// A LLM so le as primeiras llmTreePageLimit paginas. Num PPC de 209
-	// paginas ela devolveu 7 nos de ate 130 paginas cada, com start_page
-	// apontando para a pagina do sumario onde leu o titulo -- e a verificacao
-	// por cobertura de paginas aceitou, porque intervalos largos cobrem tudo.
-	// No que continua maior que maxPagesPerNode depois das expansoes e chute,
-	// nao estrutura: o sumario deterministico (com paginas reais) fica.
+	// A LLM so le as primeiras llmTreePageLimit paginas e em documento longo
+	// devolve nos enormes que passam na checagem de cobertura. No maior que
+	// maxPagesPerNode depois das expansoes e chute: fica o sumario deterministico.
 	if stats.OversizedNodes > 0 {
 		return result, fmt.Errorf("tree not grounded: %d nodes span more than %d pages after %d expansions", stats.OversizedNodes, maxPagesPerNode, maxRecursiveExpansions)
 	}

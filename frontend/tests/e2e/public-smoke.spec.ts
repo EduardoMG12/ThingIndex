@@ -19,25 +19,14 @@ test("redirects the bare root to the localized landing page @smoke", async ({ pa
     await expect(page.getByRole("heading", { level: 3, name: "Organize documents with structure" })).toBeVisible();
 });
 
-// BUG DE PRODUTO, nao do teste: a documentacao e publica (o servidor devolve a
-// pagina completa sem sessao), mas o bootstrap de sessao no cliente recebe 401 e
-// redireciona para /en/login. E uma corrida: as vezes a assercao chega antes do
-// redirecionamento, o que torna o teste intermitente. Um visitante que clica em
-// "Documentation" na landing pode cair no login sem motivo.
-//
-// Marcado como fixme para nao deixar o CI intermitente. Remover assim que o
-// redirecionamento indevido for corrigido no app.
+// Bug do app: sem sessao, o bootstrap recebe 401 e pode redirecionar a
+// documentacao (publica) para /en/login. Por isso o teste e intermitente.
 test("opens the documentation page from the landing navigation @smoke", async ({ page }) => {
     await page.goto("/en");
 
     await page.getByRole("link", { name: "Documentation", exact: true }).click();
 
-    // Prazo maior de proposito: em modo dev o webpack compila esta rota sob
-    // demanda na primeira visita, e a compilacao a frio passa dos 15s padrao.
-    // Nao e lentidao do produto, e do servidor de desenvolvimento.
-    // Prazo maior: em modo dev o webpack compila esta rota sob demanda, e sob
-    // contencao a compilacao a frio passa dos 15s padrao. E lentidao do servidor
-    // de desenvolvimento, nao do produto.
+    // Em dev a compilacao a frio desta rota passa dos 15 s padrao.
     await expect(page).toHaveURL(/\/en\/documentation$/, { timeout: 60_000 });
     await expect(
         page.getByRole("heading", {
@@ -66,8 +55,7 @@ test("redirects protected routes to the localized login page when unauthenticate
 });
 
 test("redirects authenticated users away from auth routes to the localized workspace @smoke", async ({ baseURL, context, page }) => {
-    // A URL do cookie precisa acompanhar a baseURL. Fixar a porta 3000 fazia o
-    // cookie ser descartado sempre que a suite rodava em outra porta.
+    // Cookie na URL da baseURL; com porta fixa ele era descartado.
     await context.addCookies([
         {
             name: "token",

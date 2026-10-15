@@ -5,10 +5,7 @@ import (
 	"testing"
 )
 
-// Uma metrica errada nao quebra nada: ela devolve um numero plausivel e
-// invalida o experimento inteiro em silencio. Por isso os testes abaixo usam
-// valores calculados A MAO a partir da definicao publicada, e nao a saida da
-// propria implementacao.
+// Valores esperados calculados a mao pela definicao, nao copiados da saida.
 
 const tolerance = 1e-9
 
@@ -30,9 +27,7 @@ func TestPrecisionAtKUsaKNoDenominador(t *testing.T) {
 	aproximadamente(t, "P@3", PrecisionAtK(results, relevant, 3), 2.0/3.0)
 }
 
-// Recuperar menos de k itens e falha do braco. Dividir pelo que foi devolvido
-// premiaria um sistema que entrega um unico resultado certo e nada mais --
-// P@5 = 1.0 com um resultado seria uma mentira conveniente.
+// Devolver menos de k itens nao pode dar P@5 = 1.0.
 func TestPrecisionAtKNaoPremiaBracoQueDevolvePoucosResultados(t *testing.T) {
 	t.Parallel()
 
@@ -122,9 +117,7 @@ func TestNDCGDoRankingPerfeitoEUm(t *testing.T) {
 	aproximadamente(t, "nDCG@10 do ranking perfeito", NDCGAtK(perfeito, relevant, 10), 1.0)
 }
 
-// A propriedade que justifica usar nDCG em vez de acerto binario: trazer o
-// item MAIS relevante primeiro tem que pontuar mais que trazer o menos
-// relevante primeiro. Com metrica binaria os dois casos empatam.
+// Relevante de grau maior em primeiro tem de pontuar mais.
 func TestNDCGDistingueOrdemEntreItensRelevantes(t *testing.T) {
 	t.Parallel()
 
@@ -150,10 +143,7 @@ func TestFalsePositiveRateMedeCasoNegativo(t *testing.T) {
 	}
 }
 
-// O RRF opera sobre POSICOES, nao sobre scores -- e por isso que funde
-// rankings de escalas incomparaveis (BM25 em [0, inf) e cosseno em [-1, 1])
-// sem normalizacao. Este teste fixa essa propriedade: os scores de entrada sao
-// absurdamente diferentes de proposito.
+// Scores de entrada em escalas absurdamente diferentes: o RRF so olha posicao.
 func TestReciprocalRankFusionIgnoraAEscalaDosScores(t *testing.T) {
 	t.Parallel()
 
@@ -188,10 +178,7 @@ func TestReciprocalRankFusionPremiaConsensoEntreBracos(t *testing.T) {
 	aproximadamente(t, "score do consenso", fundido[0].Score, 2*(1/61.0))
 }
 
-// Determinismo e uma das propriedades que o trabalho afirma ter. A iteracao de
-// mapa em Go e aleatoria, entao sem desempate explicito duas execucoes
-// identicas poderiam devolver ordens diferentes -- e o experimento nao seria
-// reproduzivel.
+// Iteracao de map e aleatoria; sem desempate a ordem varia.
 func TestReciprocalRankFusionEDeterministicoNoEmpate(t *testing.T) {
 	t.Parallel()
 

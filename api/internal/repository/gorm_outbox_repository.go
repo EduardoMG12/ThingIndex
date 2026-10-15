@@ -19,23 +19,11 @@ func NewGormOutboxRepository(db *gorm.DB) domain.OutboxRepository {
 	return &gormOutboxRepository{db: db}
 }
 
-// ClaimPendingEvents reivindica eventos de fato: alem de incrementar a
-// tentativa, move o evento para IN_FLIGHT e empurra available_at para frente
-// pelo visibilityTimeout, tudo na mesma transacao da selecao.
-//
-// Antes disso a funcao so incrementava `attempts`: o status seguia PENDING e o
-// available_at nao avancava. Como o `FOR UPDATE SKIP LOCKED` solta o lock no
-// commit — e a publicacao no broker acontece DEPOIS, ja fora da transacao —
-// existia uma janela em que o mesmo evento era visivel para qualquer outro
-// dispatcher. Efeitos reais:
-//
-//   - com duas replicas do indexer, o mesmo documento era publicado 2x e
-//     indexado 2x: custo de LLM dobrado e ReplaceIndexingResult concorrente;
-//   - com uma replica, se MarkEventPublished falhasse, o evento ja publicado
-//     seguia PENDING e era republicado a cada poll, indefinidamente.
-//
-// O visibilityTimeout tambem serve de rede: se o processo morrer entre o claim
-// e a publicacao, o evento volta a ficar elegivel sozinho, sem intervencao.
+// ClaimPendingEvents marca os eventos como IN_FLIGHT e empurra available_at
+// pelo visibilityTimeout na mesma transacao da selecao. So incrementar attempts
+// nao basta: o SKIP LOCKED solta o lock no commit e a publicacao vem depois,
+// entao outro dispatcher pegaria o mesmo evento. Se o processo morrer antes de
+// publicar, o evento volta sozinho apos o timeout.
 func (r *gormOutboxRepository) ClaimPendingEvents(ctx context.Context, limit int, now time.Time, visibilityTimeout time.Duration) ([]models.OutboxEvent, error) {
 	events := make([]models.OutboxEvent, 0, limit)
 
@@ -46,9 +34,7 @@ func (r *gormOutboxRepository) ClaimPendingEvents(ctx context.Context, limit int
 				[]string{
 					domain.OutboxEventStatusPending,
 					domain.OutboxEventStatusFailed,
-					// IN_FLIGHT entra aqui de proposito: se available_at ja
-					// venceu, o worker que reivindicou morreu antes de publicar
-					// e o evento precisa voltar para a fila.
+					// IN_FLIGHT vencido: o worker morreu antes de publicar.
 					domain.OutboxEventStatusInFlight,
 				},
 				now,
@@ -78,8 +64,7 @@ func (r *gormOutboxRepository) ClaimPendingEvents(ctx context.Context, limit int
 			return err
 		}
 
-		// Os eventos devolvidos ao chamador precisam refletir o que foi
-		// gravado: quem consome usa Attempts para calcular o backoff.
+		// Quem consome usa Attempts para o backoff.
 		for index := range events {
 			events[index].Status = domain.OutboxEventStatusInFlight
 			events[index].Attempts++

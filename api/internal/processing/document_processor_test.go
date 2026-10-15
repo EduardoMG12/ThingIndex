@@ -459,11 +459,8 @@ func TestProcessFailsWhenIndexerReturnsParsingError(t *testing.T) {
 	}
 }
 
-// Os testes abaixo cobrem a idempotencia do consumidor. O claim do outbox
-// impede que o mesmo evento seja PUBLICADO duas vezes, mas nao impede que o
-// RabbitMQ REENTREGUE a mesma mensagem -- cenario normal quando o worker morre
-// entre concluir o trabalho e dar o ack. Sem esta defesa, a reentrega paga uma
-// rodada inteira de LLM de novo e reescreve o indice de um documento pronto.
+// Idempotencia do consumidor: o RabbitMQ reentrega quando o worker morre
+// antes do ack, e o outbox nao impede isso.
 
 func TestProcessDescartaReentregaDeDocumentoJaIndexado(t *testing.T) {
 	t.Parallel()
@@ -501,9 +498,7 @@ func TestProcessDescartaReentregaDeDocumentoJaIndexado(t *testing.T) {
 	if repo.replaceCalls != 0 {
 		t.Fatalf("o indice nao deveria ser reescrito numa reentrega, foi %d vez(es)", repo.replaceCalls)
 	}
-	// A verificacao que pega o bug sutil: se o guard rodasse DEPOIS de marcar
-	// PROCESSING, um documento pronto apareceria como "processando" para o
-	// usuario ate a proxima escrita.
+	// O guard tem que rodar antes de marcar PROCESSING.
 	if len(repo.updatedStates) != 0 {
 		t.Fatalf("nenhum estado deveria ser escrito numa reentrega, foram %d: %+v", len(repo.updatedStates), repo.updatedStates)
 	}

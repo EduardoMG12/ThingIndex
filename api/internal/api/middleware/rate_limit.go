@@ -73,13 +73,9 @@ func (l *fixedWindowRateLimiter) cleanup(now time.Time) {
 	}
 }
 
-// RateLimitMiddleware limita por IP + rota. Serve para as rotas ANONIMAS
-// (/auth), onde nao existe usuario autenticado para chavear.
-//
-// Nao use em rota autenticada: o frontend chama a API server-side, entao o
-// ClientIP e sempre o do container do Next. Todos os usuarios cairiam no mesmo
-// balde e um unico usuario ativo derrubaria os demais. Para essas rotas use
-// UserRateLimitMiddleware.
+// RateLimitMiddleware limita por IP + rota, para as rotas anonimas (/auth).
+// Em rota autenticada use UserRateLimitMiddleware: o frontend chama a API
+// server-side e o ClientIP seria o mesmo para todos.
 func RateLimitMiddleware(limit int, window time.Duration) gin.HandlerFunc {
 	limiter := NewFixedWindowRateLimiter(limit, window)
 
@@ -96,20 +92,9 @@ func RateLimitMiddleware(limit int, window time.Duration) gin.HandlerFunc {
 	}
 }
 
-// UserRateLimitMiddleware limita por usuario autenticado, e nao por IP.
-//
-// Motivo: o frontend chama a API server-side (Next em container), entao o
-// ClientIP e sempre o mesmo endereco para TODOS os usuarios. Um limite por IP
-// numa rota autenticada e, na pratica, um limite global compartilhado -- o
-// usuario A esgota a cota e o usuario B leva 429 sem ter feito nada.
-//
-// Precisa vir DEPOIS do AuthMiddleware na cadeia, que e quem popula user_id.
-// Se o user_id nao estiver no contexto (middleware fora de ordem), o pedido
-// passa sem limite em vez de ser barrado: rejeitar aqui transformaria um erro
-// de configuracao em indisponibilidade total da rota.
-//
-// A rota entra na chave para que upload e chat tenham baldes separados. Sem
-// isso, enviar documentos consumiria a cota de conversar sobre eles.
+// UserRateLimitMiddleware limita por usuario + rota. Tem de vir depois do
+// AuthMiddleware; sem user_id no contexto o pedido passa sem limite, para que
+// um erro de ordem nao derrube a rota inteira.
 func UserRateLimitMiddleware(limit int, window time.Duration) gin.HandlerFunc {
 	limiter := NewFixedWindowRateLimiter(limit, window)
 
@@ -132,22 +117,9 @@ func UserRateLimitMiddleware(limit int, window time.Duration) gin.HandlerFunc {
 	}
 }
 
-// EmailRateLimitMiddleware limita por e-mail informado no corpo JSON, alem do
-// limite por IP de RateLimitMiddleware.
-//
-// Motivo (parecer A3): o limite por IP nao protege uma conta contra forca bruta
-// distribuida -- cada IP de uma botnet tem a propria cota. Chavear pelo e-mail
-// alvo limita as tentativas contra a MESMA conta, venham de onde vierem. Usado
-// em /auth/register, /auth/login e /auth/forgot-password.
-//
-// O e-mail e normalizado como no caso de uso (trim + minusculas), senao
-// "Alice@x.com" e "alice@x.com " teriam baldes separados para a mesma conta.
-// Corpo sem e-mail (ou invalido) passa: o handler devolve 400 na validacao, e
-// o limite por IP continua valendo. O corpo e restaurado para o handler.
-//
-// Assim como os demais limitadores, e um mapa em memoria por processo.
-// limit ou window <= 0 desliga este limite (o por IP continua valendo); assim
-// um Config montado a mao, sem os campos novos, nao bloqueia todo login.
+// EmailRateLimitMiddleware limita por e-mail do corpo JSON, contra forca bruta
+// distribuida em varios IPs. O e-mail e normalizado como no caso de uso; corpo
+// sem e-mail passa (o handler responde 400). limit ou window <= 0 desliga.
 func EmailRateLimitMiddleware(limit int, window time.Duration) gin.HandlerFunc {
 	if limit <= 0 || window <= 0 {
 		return func(c *gin.Context) { c.Next() }
@@ -195,7 +167,6 @@ func readNormalizedEmail(c *gin.Context) string {
 	return NormalizeEmail(payload.Email)
 }
 
-// NormalizeEmail aplica a mesma normalizacao do caso de uso de autenticacao.
 func NormalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }

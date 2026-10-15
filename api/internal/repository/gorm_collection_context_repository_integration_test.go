@@ -12,16 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// Este arquivo cobre GetCollectionContext, que e a traducao em SQL da tese do
-// trabalho: contexto documental preservado e reconstituido por modelagem
-// relacional, com chave estrangeira, sequence_order e agregacao linear.
-//
-// Ate aqui essas propriedades eram sustentadas apenas por leitura de codigo.
-
-// A ordem de leitura precisa sair por sequence_order, nao pela ordem de
-// insercao. O teste grava os nos embaralhados de proposito: se alguem trocar o
-// Order por ordenacao implicita do Postgres, o resultado passa a depender do
-// plano de execucao e este teste quebra.
+// Nos gravados embaralhados: a ordem tem de vir de sequence_order, nao do plano do Postgres.
 func TestCollectionContextReconstructsStableReadingOrder(t *testing.T) {
 	db := openIntegrationDB(t)
 	repo := &GormCollectionContextRepository{db: db}
@@ -61,10 +52,7 @@ func TestCollectionContextReconstructsStableReadingOrder(t *testing.T) {
 	}
 }
 
-// Com varios documentos na mesma collection, a ordenacao e composta:
-// primeiro document_id, depois sequence_order. Sem a primeira chave, os
-// paragrafos de documentos diferentes se intercalam e o contexto entregue ao
-// LLM vira uma mistura de duas pecas processuais.
+// Ordenacao composta: document_id e depois sequence_order, senao os documentos se intercalam.
 func TestCollectionContextGroupsNodesByDocumentBeforeSequence(t *testing.T) {
 	db := openIntegrationDB(t)
 	repo := &GormCollectionContextRepository{db: db}
@@ -77,8 +65,6 @@ func TestCollectionContextGroupsNodesByDocumentBeforeSequence(t *testing.T) {
 	first := seedIntegrationDocument(t, db, user.ID, category.ID, collection.ID, "peticao-inicial.pdf")
 	second := seedIntegrationDocument(t, db, user.ID, category.ID, collection.ID, "contestacao.pdf")
 
-	// Grava o segundo documento antes do primeiro, e dentro de cada um grava a
-	// ordem invertida.
 	for _, documentID := range []uint{second.ID, first.ID} {
 		for _, order := range []int{2, 1} {
 			mustCreateRecord(t, db, &models.ParagraphNode{
@@ -115,11 +101,8 @@ func TestCollectionContextGroupsNodesByDocumentBeforeSequence(t *testing.T) {
 	}
 }
 
-// Isolamento entre usuarios. As consultas das tabelas derivadas filtram apenas
-// por document_id, sem user_id — a protecao vem de os IDs terem sido obtidos
-// numa consulta ja escopada por usuario. E uma garantia transitiva, e portanto
-// fragil a refatoracao: basta alguem trocar a origem da lista de IDs para o
-// vazamento aparecer sem nenhum erro de compilacao.
+// As tabelas derivadas filtram so por document_id; o isolamento depende de os
+// IDs virem de uma consulta ja escopada por usuario.
 func TestCollectionContextRejectsCollectionOfAnotherUser(t *testing.T) {
 	db := openIntegrationDB(t)
 	repo := &GormCollectionContextRepository{db: db}
@@ -142,8 +125,6 @@ func TestCollectionContextRejectsCollectionOfAnotherUser(t *testing.T) {
 	}
 }
 
-// Um documento de outro usuario nunca pode entrar no contexto, mesmo quando o
-// solicitante e dono da collection.
 func TestCollectionContextExcludesDocumentsOfAnotherUser(t *testing.T) {
 	db := openIntegrationDB(t)
 	repo := &GormCollectionContextRepository{db: db}
@@ -158,7 +139,6 @@ func TestCollectionContextExcludesDocumentsOfAnotherUser(t *testing.T) {
 	ownDocument := seedIntegrationDocument(t, db, owner.ID, category.ID, collection.ID, "meu.pdf")
 	seedIntegrationDerivedData(t, db, ownDocument.ID)
 
-	// Documento de outro usuario apontando para a mesma collection.
 	foreignCategory := seedIntegrationCategory(t, db, intruder.ID, "Alheia")
 	foreignDocument := seedIntegrationDocument(t, db, intruder.ID, foreignCategory.ID, collection.ID, "alheio.pdf")
 	seedIntegrationDerivedData(t, db, foreignDocument.ID)
@@ -189,9 +169,7 @@ func TestCollectionContextExcludesDocumentsOfAnotherUser(t *testing.T) {
 	}
 }
 
-// A reconstrucao precisa devolver tudo que foi indexado, sem perder nem
-// duplicar no. Duplicacao e o risco real aqui: um JOIN mal escrito no lugar das
-// consultas por tabela multiplicaria linhas em produto cartesiano.
+// Nada perdido nem duplicado (um JOIN mal feito multiplicaria linhas).
 func TestCollectionContextReconstructionIsFaithful(t *testing.T) {
 	db := openIntegrationDB(t)
 	repo := &GormCollectionContextRepository{db: db}
@@ -239,21 +217,9 @@ func TestCollectionContextReconstructionIsFaithful(t *testing.T) {
 	}
 }
 
-// A afirmacao de agregacao linear do artigo: o custo de consulta nao cresce com
-// o numero de documentos. GetCollectionContext faz um numero FIXO de consultas,
-// entao 1 documento e 20 documentos custam a mesma quantidade de round trips.
-//
-// Sao 9 no total:
-//
-//	1 collection + 1 preload da categoria + 1 documentos + 6 tabelas derivadas
-//	  (pages, paragraph_nodes, table_sections, chunks, metadata_pairs, outline)
-//
-// Este e o teste que separa a arquitetura relacional de uma implementacao
-// ingenua com N+1: sem ele, "agregacao linear" e so uma frase no texto.
-//
-// O limite superior e proposital. Se alguem adicionar uma consulta por
-// documento, a primeira assercao pega; se adicionar uma consulta fixa nova, a
-// segunda obriga a revisar este comentario e o numero citado no artigo.
+// Numero fixo de consultas, independente do numero de documentos:
+// 1 collection + 1 preload da categoria + 1 documentos + 6 tabelas derivadas
+// (pages, paragraph_nodes, table_sections, chunks, metadata_pairs, outline).
 const collectionContextQueryBudget = 9
 
 func TestCollectionContextQueryCountDoesNotGrowWithDocuments(t *testing.T) {
@@ -295,7 +261,6 @@ func TestCollectionContextQueryCountDoesNotGrowWithDocuments(t *testing.T) {
 	t.Logf("agregacao linear confirmada: %d consultas para 1 documento e %d para 20", small, large)
 }
 
-// newQueryCountingDB devolve uma sessao do gorm que conta cada SQL emitido.
 func newQueryCountingDB(t *testing.T, db *gorm.DB) (*gorm.DB, *int) {
 	t.Helper()
 
@@ -324,14 +289,8 @@ func documentTitleFor(index int) string {
 	return "documento-" + strconv.Itoa(index) + ".pdf"
 }
 
-// GetCollectionContext e chamado a CADA mensagem de chat e carregava para a RAM
-// o texto integral de toda a colecao, para depois o prompt usar no maximo 6
-// fontes. Uma colecao grande derrubava o processo por OOM, e o custo era pago
-// em toda pergunta.
-//
-// Este teste usa um teto artificialmente baixo (via consulta direta com o mesmo
-// Limit) para provar que a clausula LIMIT chega ao SQL. Os tetos reais sao
-// folgados demais para semear em teste de integracao.
+// Teto artificialmente baixo, via consulta direta com o mesmo Limit, para
+// provar que o LIMIT chega ao SQL; os tetos reais sao altos demais para semear.
 func TestCollectionContextAplicaTetoDeMaterializacao(t *testing.T) {
 	db := openIntegrationDB(t)
 	ctx := context.Background()
@@ -356,14 +315,11 @@ func TestCollectionContextAplicaTetoDeMaterializacao(t *testing.T) {
 		t.Fatalf("GetCollectionContext: %v", err)
 	}
 
-	// Com 50 paragrafos e teto de 20000, nada deve ser cortado: o caso comum
-	// nao pode ser penalizado pela protecao contra o caso patologico.
+	// Com 50 paragrafos nada pode ser cortado.
 	if len(context1.ParagraphNodes) != totalParagrafos {
 		t.Fatalf("esperava os %d paragrafos completos abaixo do teto, veio %d", totalParagrafos, len(context1.ParagraphNodes))
 	}
 
-	// Agora a prova de que o LIMIT chega ao SQL: a mesma consulta com teto de
-	// 10 precisa devolver exatamente 10, na ordem de sequence_order.
 	var limitados []models.ParagraphNode
 	if err := db.WithContext(ctx).
 		Where("document_id IN ?", []uint{document.ID}).

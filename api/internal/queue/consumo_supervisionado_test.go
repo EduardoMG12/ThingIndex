@@ -30,8 +30,6 @@ func (c *consumidorComCallbacksFalso) Close() error {
 	return nil
 }
 
-// Regressao P1-1: as callbacks de falha iam para um consumidor ocioso do
-// bootstrap, e o consumidor que o supervisor recriava consumia sem elas.
 func TestConsumoComCallbacksInstalaCallbacksEmCadaConsumidorRecriado(t *testing.T) {
 	t.Parallel()
 

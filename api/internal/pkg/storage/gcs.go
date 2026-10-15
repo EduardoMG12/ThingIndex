@@ -22,11 +22,8 @@ type GCSStorage struct {
 
 var gcsClientEnvMutex sync.Mutex
 
-// defaultGCSSetupTimeout limita a inicializacao do storage quando o chamador nao
-// traz contexto proprio. Sem esse limite, endpoint inalcancavel fazia
-// bucket.Attrs bloquear indefinidamente: o host do emulador e da configuracao do
-// usuario, entao um endereco que engole pacotes prendia uma goroutine para
-// sempre em vez de devolver erro.
+// defaultGCSSetupTimeout: sem limite, um endpoint que engole pacotes deixava
+// bucket.Attrs bloqueado para sempre.
 const defaultGCSSetupTimeout = 30 * time.Second
 
 func NewGCSStorage(projectID, bucketName, location, credentialsJSON, emulatorHost string) (*GCSStorage, error) {

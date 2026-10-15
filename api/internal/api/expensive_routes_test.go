@@ -6,19 +6,9 @@ import (
 	"testing"
 )
 
-// As rotas mais caras do sistema precisam de limite POR USUARIO. O middleware
-// tem teste proprio, mas nada garantia que ele estivesse efetivamente montado
-// nas rotas que importam -- e limite que existe e nao e aplicado da a mesma
-// falsa seguranca de um teste que passa sem detectar nada.
-//
-// A sonda contra a API viva mostrou que o limite FUNCIONA (30 uploads passam,
-// do 31 em diante vem 429). Este teste evita que uma refatoracao futura remova
-// o middleware da cadeia sem ninguem perceber, o que so apareceria em producao
-// como conta inesperada de provedor.
-//
-// Verifica o codigo-fonte porque o gin nao expoe a cadeia de middlewares por
-// rota: Routes() devolve apenas o nome do handler final. Ler o registro da rota
-// e a unica forma de afirmar que o limite esta ali sem subir Postgres.
+// Garante que o limite por usuario continua montado nas rotas caras. Le o fonte
+// porque o gin nao expoe a cadeia de middlewares por rota e montar o roteador
+// exigiria Postgres.
 
 func TestRotasCarasRegistramLimitePorUsuario(t *testing.T) {
 	fonte := lerFonteDeRotas(t)
@@ -63,10 +53,7 @@ func TestRotasCarasRegistramLimitePorUsuario(t *testing.T) {
 	}
 }
 
-// TestLimiteEhPorUsuarioNaoPorIP protege a decisao registrada no proprio
-// codigo: o frontend chama a API server-side, entao o ClientIP e sempre o do
-// container do Next. Um limite por IP viraria cota GLOBAL compartilhada entre
-// todos os usuarios -- e o primeiro a enviar documentos bloquearia os demais.
+// O frontend chama a API server-side: limite por IP viraria cota global.
 func TestLimiteEhPorUsuarioNaoPorIP(t *testing.T) {
 	fonte := lerFonteDeRotas(t)
 
@@ -80,11 +67,6 @@ func TestLimiteEhPorUsuarioNaoPorIP(t *testing.T) {
 	}
 }
 
-// lerFonteDeRotas devolve o conteudo de routes.go.
-//
-// Ler o fonte e deliberado: o gin nao expoe a cadeia de middlewares por rota, e
-// montar o roteador exigiria Postgres. O teste vale como guarda de regressao --
-// a prova de que o limite FUNCIONA vem da sonda contra a API viva.
 func lerFonteDeRotas(t *testing.T) string {
 	t.Helper()
 

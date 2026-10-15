@@ -51,9 +51,7 @@ func TestParsePDFBBoxLayoutSeparatesPages(t *testing.T) {
 		t.Fatalf("parse: %v", err)
 	}
 
-	// Regressao: o parser antigo dividia paginas por linha de tracos, que
-	// pdftotext nunca emite (ele usa form feed). Todo bloco caia na pagina 1 e
-	// PageCount vinha 1, o que tambem limitava o fallback de OCR a primeira pagina.
+	// Regressao: todo bloco caia na pagina 1 e PageCount vinha 1.
 	if extraction.PageCount != 3 {
 		t.Fatalf("PageCount = %d, quero 3", extraction.PageCount)
 	}
@@ -102,9 +100,8 @@ func TestParsePDFBBoxLayoutKeepsBoxAndText(t *testing.T) {
 	}
 }
 
-// O poppler quebra uma linha visual em varios blocos quando encontra folga
-// horizontal grande. Sem remontar, o primeiro fragmento ("Critical") virava
-// heading e o corpo do texto virava tres paragrafos soltos.
+// O poppler quebra uma linha visual em varios blocos na folga horizontal;
+// sem remontar, "Critical" virava heading.
 func TestMergeBlocksOnSameRow(t *testing.T) {
 	t.Parallel()
 

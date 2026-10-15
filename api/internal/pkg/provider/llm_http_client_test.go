@@ -29,10 +29,8 @@ func streamDeltasDoProvider(t *testing.T, llm domain.LLMService) (string, error)
 	return recebido.String(), err
 }
 
-// Regressao P1-2: http.Client{Timeout: 45s} inclui a leitura do corpo, entao
-// todo stream de chat mais longo que o prazo era cortado no meio. O prazo do
-// cliente agora cobre so a espera pelo cabecalho; aqui o stream dura varias
-// vezes esse prazo e precisa chegar inteiro.
+// http.Client.Timeout incluia a leitura do corpo e cortava streams longos; o
+// prazo agora cobre so o cabecalho.
 func TestStreamDoLLMMaisLongoQueOPrazoDeCabecalhoNaoECortado(t *testing.T) {
 	t.Parallel()
 
@@ -108,8 +106,7 @@ func TestClienteHTTPDoLLMCortaProvedorQueNaoMandaCabecalho(t *testing.T) {
 	}
 }
 
-// Regressao P1-3: o cliente seguia redirect, entao um base_url publico que
-// responde 302 para a rede interna levava a API a requisitar o destino.
+// Seguir redirect deixaria um base_url publico apontar para a rede interna (302).
 func TestClienteHTTPDoLLMRecusaRedirect(t *testing.T) {
 	t.Parallel()
 
@@ -137,9 +134,8 @@ func TestClienteHTTPDoLLMRecusaRedirect(t *testing.T) {
 	}
 }
 
-// Regressao P1-3: o base_url so era validado no save. Com o validador no dial,
-// um host que resolve para IP privado e recusado na conexao; com a flag de
-// endpoints privados (desenvolvimento, Ollama local) continua funcionando.
+// O base_url e validado no dial, nao so no save; a flag de endpoints privados
+// continua liberando o Ollama local.
 func TestClienteHTTPDoLLMValidaDestinoNoDialRespeitandoAFlagDePrivados(t *testing.T) {
 	t.Parallel()
 

@@ -1,13 +1,7 @@
-/**
- * Matematica do canvas do workspace. Funcoes puras, sem React nem DOM, para
- * que a conversao de coordenadas seja testavel isoladamente -- e a mesma
- * tanto no grifo sobre a pagina quanto na linha de conexao.
- *
- * Tres espacos de coordenadas:
- *  - PDF: pontos, origem no topo esquerdo, dimensao da pagina no proprio box.
- *  - mundo: pixels do canvas em zoom 1, onde os quadros vivem.
- *  - tela: pixels do viewport, resultado de translate(x, y) scale(escala).
- */
+// Coordenadas:
+//  - PDF: pontos, origem no topo esquerdo.
+//  - mundo: px do canvas em zoom 1.
+//  - tela: px do viewport, depois de translate(x, y) scale(escala).
 
 import type { ParagraphBox } from "@/lib/api/contracts/document-context";
 
@@ -52,11 +46,7 @@ export function mundoParaTela(ponto: Ponto, viewport: Viewport): Ponto {
     };
 }
 
-/**
- * Zoom ao redor de um ponto da tela: o ponto de mundo que estava sob o cursor
- * continua sob o cursor depois. E o que faz Ctrl+roda parecer "puxar" o canvas
- * em vez de escapar para o canto.
- */
+/** Zoom mantendo sob o cursor o mesmo ponto do mundo. */
 export function aplicarZoom(
     viewport: Viewport,
     fator: number,
@@ -97,12 +87,9 @@ export function uniaoDeRects(rects: Rect[]): Rect | null {
 }
 
 /**
- * "Ajustar a tela": todos os quadros lado a lado cabem na largura, com margem.
- * Quadros de PDF sao altissimos (um edital de 24 paginas tem ~19 mil px), entao
- * caber na altura tambem jogaria o zoom no minimo e ninguem leria nada; o topo
- * dos quadros fica alinhado ao topo da tela e o resto se alcanca rolando.
- * Se a uniao couber inteira, centraliza na vertical tambem.
- */
+* "Ajustar a tela" so pela largura: quadros de PDF sao altos demais (~19 mil px
+* num edital de 24 paginas). Centraliza na vertical se couber.
+*/
 export function enquadrar(quadros: Rect[], tela: Tamanho, margem = 48): Viewport {
     const caixa = uniaoDeRects(quadros);
     if (!caixa || caixa.largura <= 0 || caixa.altura <= 0) {

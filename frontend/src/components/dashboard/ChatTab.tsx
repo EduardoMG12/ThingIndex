@@ -121,9 +121,7 @@ const ChatTab = ({ className, collectionId = null, compacto = false, onVerNoDocu
                         <p className="truncate text-sm font-medium text-foreground">
                             {conversationTitle}
                         </p>
-                        {/* Sem o callout na tela, este aviso e a unica pista de
-                            que o chat nao tem LLM. Com ele, seria a mesma frase
-                            tres vezes na mesma tela. */}
+                        {/* Com o callout na tela o aviso seria repetido. */}
                         {!hasChatRuntime && !isProviderRuntimeLoading && !showsRuntimeCallout ? (
                             <p className="mt-1 text-sm text-destructive">
                                 {providerRuntimeError || t("providerRuntime.chat.missing")}
@@ -208,12 +206,7 @@ const ChatTab = ({ className, collectionId = null, compacto = false, onVerNoDocu
 
             <ScrollArea ref={scrollAreaRef} className={cn("flex-1", compacto ? "px-3 py-3" : "px-4 py-6 sm:px-6")}>
                 <div className={cn("mx-auto space-y-6", compacto ? "" : "max-w-3xl")}>
-                    {/* Ate aqui a tela de documentos mostrava qual LLM estava
-                        ativo e o chat nao — o usuario nao tinha como saber quem
-                        estava respondendo. O componente, a copia e o teste
-                        unitario do papel "chat" ja existiam; so a pagina nunca
-                        renderizava. So aparece com a conversa vazia para nao
-                        empurrar as mensagens para baixo o tempo todo. */}
+                    {/* So com a conversa vazia, para nao empurrar as mensagens. */}
                     {showsRuntimeCallout ? (
                         <>
                             <ProviderRuntimeCallout

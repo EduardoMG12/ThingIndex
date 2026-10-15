@@ -34,9 +34,8 @@ func postJSON(router *gin.Engine, path, body, remoteAddr string) int {
 	return rec.Code
 }
 
-// Forca bruta distribuida: cada tentativa vem de um IP diferente, entao o
-// limite por IP nunca dispara. O limite por e-mail precisa barrar a partir da
-// tentativa limit+1 contra a mesma conta, mesmo com variacao de caixa e espaco.
+// Cada tentativa vem de um IP diferente; o limite por e-mail tem de barrar a
+// tentativa limit+1 mesmo com variacao de caixa e espaco.
 func TestEmailRateLimitBarraMesmaContaDeIPsDiferentes(t *testing.T) {
 	var bodies []string
 	router := newEmailLimitedRouter(3, time.Minute, &bodies)
@@ -59,8 +58,7 @@ func TestEmailRateLimitBarraMesmaContaDeIPsDiferentes(t *testing.T) {
 		t.Fatalf("outra conta foi barrada pelo balde da primeira: %d", code)
 	}
 
-	// Rotas diferentes tem baldes diferentes: esgotar o login nao impede o
-	// pedido de recuperacao de senha.
+	// Esgotar o login nao bloqueia a recuperacao de senha.
 	if code := postJSON(router, "/auth/forgot-password", `{"email":"alice@example.com"}`, "198.51.100.9:1"); code != 200 {
 		t.Fatalf("forgot-password barrado pelo balde do login: %d", code)
 	}

@@ -16,9 +16,7 @@ func carregarCorpus(t *testing.T) *evalcorpus.Corpus {
 	return corpus
 }
 
-// TestDistribuicoesSeparaveisProduzemLimiar prova que o diagnostico ACHA um
-// corte quando ele existe. Sem este caso, um bug que sempre devolvesse
-// "nao separavel" passaria despercebido e a conclusao do artigo seria falsa.
+// O diagnostico tem de achar o corte quando ele existe.
 func TestDistribuicoesSeparaveisProduzemLimiar(t *testing.T) {
 	relevantes := []float64{8, 9, 10, 11, 12}
 	irrelevantes := []float64{1, 2, 3, 4, 5}
@@ -36,12 +34,8 @@ func TestDistribuicoesSeparaveisProduzemLimiar(t *testing.T) {
 	}
 }
 
-// TestDistribuicoesIdenticasNaoProduzemLimiar e o teste de honestidade: quando
-// os dois conjuntos ocupam exatamente a mesma faixa, NAO existe corte util, e o
-// diagnostico precisa dizer isso em vez de inventar um numero plausivel.
-//
-// O piso de similaridade do braco denso ja foi refutado por medicao uma vez
-// neste projeto. Este teste impede repetir o erro.
+// Distribuicoes identicas: nao existe corte util e o diagnostico nao pode
+// inventar um.
 func TestDistribuicoesIdenticasNaoProduzemLimiar(t *testing.T) {
 	valores := []float64{1, 2, 3, 4, 5}
 
@@ -52,7 +46,6 @@ func TestDistribuicoesIdenticasNaoProduzemLimiar(t *testing.T) {
 	}
 }
 
-// TestSobreposicaoTotalEhDetectada cobre a metrica intuitiva do diagnostico.
 func TestSobreposicaoTotalEhDetectada(t *testing.T) {
 	// Todo irrelevante pontua acima do menor relevante.
 	relevantes := []float64{1, 10}
@@ -68,12 +61,7 @@ func TestSobreposicaoTotalEhDetectada(t *testing.T) {
 	}
 }
 
-// TestLimiarReduzOFalsoPositivoNoCorpusReal trava o achado da issue #18.
-//
-// A taxa de falso positivo e 1,000 sem limiar: os bracos SEMPRE devolvem algo,
-// inclusive para consultas cuja resposta correta e o silencio. Com o corte, ela
-// precisa cair -- se nao cair, o limiar nao serve para nada e a conclusao do
-// artigo muda.
+// Sem limiar o falso positivo e 1,000; com o corte tem de cair (issue #18).
 func TestLimiarReduzOFalsoPositivoNoCorpusReal(t *testing.T) {
 	corpus := carregarCorpus(t)
 	analises := analisarBracos(corpus)
@@ -94,9 +82,7 @@ func TestLimiarReduzOFalsoPositivoNoCorpusReal(t *testing.T) {
 	}
 }
 
-// TestDiagnosticoUsaScoresDeVerdadeENaoAmostraVazia protege contra o caso em
-// que uma mudanca no corpus ou no scorer esvazia uma das distribuicoes: sem
-// dados, qualquer conclusao sobre limiar seria vacuidade.
+// Nenhuma das distribuicoes pode vir vazia.
 func TestDiagnosticoUsaScoresDeVerdadeENaoAmostraVazia(t *testing.T) {
 	corpus := carregarCorpus(t)
 
@@ -107,8 +93,7 @@ func TestDiagnosticoUsaScoresDeVerdadeENaoAmostraVazia(t *testing.T) {
 		if len(a.Irrelevantes) == 0 {
 			t.Fatalf("%s: nenhum score irrelevante coletado", a.Arm)
 		}
-		// Os irrelevantes precisam ser bem mais numerosos: e o desbalanceamento
-		// que justifica usar o indice de Youden em vez de acuracia.
+		// O desbalanceamento e o que justifica Youden em vez de acuracia.
 		if len(a.Irrelevantes) <= len(a.Relevantes) {
 			t.Fatalf("%s: esperava mais irrelevantes que relevantes (%d vs %d)",
 				a.Arm, len(a.Irrelevantes), len(a.Relevantes))
@@ -116,9 +101,7 @@ func TestDiagnosticoUsaScoresDeVerdadeENaoAmostraVazia(t *testing.T) {
 	}
 }
 
-// TestTabelaDeclaraAusenciaDeLimiarComTraco garante que um braco inseparavel
-// aparece como "---" na tabela, e nao com um numero que sugeriria corte
-// utilizavel.
+// Braco inseparavel aparece como "---" na tabela.
 func TestTabelaDeclaraAusenciaDeLimiarComTraco(t *testing.T) {
 	tabela := buildTable([]Separabilidade{{
 		Arm:                    "X-inseparavel",

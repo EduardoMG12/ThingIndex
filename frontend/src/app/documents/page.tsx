@@ -1339,9 +1339,7 @@ export default function DocumentsPage() {
                         </div>
 
 
-                        {/* O mesmo callout de runtime ja fica fixo no topo da
-                            pagina, acima das abas. Repeti-lo aqui mostrava o
-                            bloco duas vezes na mesma tela. */}
+                        {/* O callout de runtime ja fica no topo da pagina. */}
                         <TabsContent value="operations" className="mt-0 space-y-6">
                             {monitoringError && (
                                 <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">

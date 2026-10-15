@@ -8,12 +8,7 @@ import (
 	"thing-index/internal/models"
 )
 
-// Conversores da feature de Workspace e conexoes derivadas. Sao os mais novos
-// do pacote e nao tinham cobertura nenhuma.
-
 func TestConexaoDerivadaPreservaAJustificativa(t *testing.T) {
-	// MatchedTerms e o que torna a aresta auditavel: sem os termos, a flecha na
-	// tela fica tao opaca quanto a vizinhanca vetorial que o trabalho critica.
 	resposta := ToNodeConnectionsResponse("node-001-2-penalidades", 2, []domain.NodeConnection{
 		{
 			DocumentID:   9,
@@ -47,9 +42,7 @@ func TestConexaoDerivadaPreservaAJustificativa(t *testing.T) {
 }
 
 func TestListaDeConexoesVaziaNaoViraNula(t *testing.T) {
-	// A ausencia de conexao e resultado legitimo e a tela precisa dizer
-	// "nenhuma conexao acima do limiar" com todas as letras. `null` faria o
-	// componente quebrar antes de chegar nessa mensagem.
+	// Sem conexao a tela mostra "nenhuma conexao acima do limiar"; `null` quebraria antes.
 	resposta := ToNodeConnectionsResponse("node-001", 99, nil)
 
 	if resposta.Connections == nil {
@@ -75,9 +68,7 @@ func TestContextoDaColecaoNuloDevolveNulo(t *testing.T) {
 }
 
 func TestContextoDaColecaoVazioNaoQuebraATela(t *testing.T) {
-	// Colecao recem-criada, sem documento indexado: todas as listas vem vazias.
-	// O Workspace monta a partir deste payload, entao null em qualquer campo
-	// quebra a aba inteira.
+	// Colecao sem documento indexado: null em qualquer lista quebra o Workspace.
 	resposta := ToCollectionContextResponse(&domain.CollectionContext{
 		Collection: &models.Collection{ID: 1, UserID: 2, Name: "Vazia"},
 	})
@@ -109,8 +100,6 @@ func TestContextoDaColecaoVazioNaoQuebraATela(t *testing.T) {
 }
 
 func TestContextoDaColecaoPreservaOsNosDoSumario(t *testing.T) {
-	// E daqui que a sidebar do Workspace tira a estrutura, e o node_id de cada
-	// no e o que permite pedir conexoes.
 	resposta := ToCollectionContextResponse(&domain.CollectionContext{
 		Collection: &models.Collection{ID: 1, UserID: 2, Name: "Contratos"},
 		OutlineNodes: []models.DocumentOutlineNode{

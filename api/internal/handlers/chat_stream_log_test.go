@@ -8,8 +8,7 @@ import (
 	"thing-index/internal/domain"
 )
 
-// Regressao P2-9: o handler logava cada delta do SSE, centenas de linhas por
-// resposta. Deltas agora viram uma unica linha de resumo.
+// Deltas do SSE viram uma unica linha de resumo, nao uma linha cada.
 func TestChatStreamEventLogNaoLogaCadaDelta(t *testing.T) {
 	var linhas []string
 	registro := newChatStreamEventLog(func(format string, args ...any) {

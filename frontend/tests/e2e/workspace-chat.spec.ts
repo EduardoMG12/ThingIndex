@@ -154,7 +154,7 @@ test("perguntar no painel e clicar em 'Ver no documento' leva o Edital a pagina 
     await painel.getByRole("textbox", { name: "Mensagem do chat" }).fill("Qual e o prazo?");
     await painel.getByRole("textbox", { name: "Mensagem do chat" }).press("Enter");
     await expect(painel.getByText("O prazo e de 30 dias.")).toBeVisible();
-    // Tokens, modelo e custo embaixo da resposta (o artigo compara custo por consulta).
+    // Tokens, modelo e custo embaixo da resposta.
     await expect(painel.getByTestId("consumo-da-resposta").first()).toContainText("1.290 tokens · gemma4:31b · US$ 0,00027");
     // So a fonte com documentId tem o botao (a do Termo, sem document_id, nao).
     const botao = painel.getByTestId("ver-no-documento").first();

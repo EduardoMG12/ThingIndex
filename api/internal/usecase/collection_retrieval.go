@@ -1,9 +1,7 @@
 package usecase
 
-// Motor de recuperacao da colecao e do documento (parecer B1): tokenizacao,
-// expansao numerica, BM25 e pesos por tipo de fonte. Movido de
-// document_usecase.go sem alteracao de codigo; o comportamento e travado pelos
-// testes do pacote e pela saida de cmd/indexing-benchmark.
+// Recuperacao da colecao e do documento: tokenizacao, expansao numerica, BM25
+// e pesos por tipo de fonte.
 
 import (
 	"log"
@@ -315,33 +313,18 @@ func buildTraversalSteps(
 	return steps
 }
 
-// bm25Scores pontua cada texto pela consulta com BM25 (Robertson & Zaragoza,
-// k1=1,2, b=0,75), com acentos dobrados nos dois lados. Devolve o score de
-// cada posicao, ja multiplicado por 100 e arredondado, para caber nos ints
-// dos hits e manter os pesos relativos (no x3, pagina x2, tabela x5) que o
-// scorer de substring usava.
-//
-// Por que BM25 e nao a contagem de substring: o experimento do artigo
-// (internal/retrieval, bracos A e B) mediu P@1 de 0,56 contra 0,75 sobre o
-// mesmo corpus. Na colecao da faculdade a contagem de substring fazia paginas
-// longas do PPC vencerem a linha curta da matriz que tinha a resposta, porque
-// a consulta carrega "em", "que", "de" e toda pagina longa contem todas. O
-// IDF do BM25 e a normalizacao por comprimento resolvem exatamente isso.
-// O braco A do experimento continua sendo a contagem de substring: ele mede o
-// sistema como foi publicado; a producao passa a ser o braco B com dobra de
-// acentos.
+// bm25Scores pontua cada texto com BM25 (k1=1,2, b=0,75), acentos dobrados nos
+// dois lados. Score x100 e arredondado para caber nos ints dos hits e manter
+// os pesos relativos (no x3, pagina x2, tabela x5).
+// A contagem de substring fazia paginas longas vencerem a linha curta com a
+// resposta; o IDF e a normalizacao por comprimento resolvem isso.
 func bm25Scores(query string, texts []string) []int {
 	docs := make([]retrieval.Document, len(texts))
 	for i, text := range texts {
 		docs[i] = retrieval.Document{ID: strconv.Itoa(i), Text: retrieval.FoldDiacritics(text)}
 	}
-	// A consulta passa pelo tokenizador de producao antes do BM25 para manter
-	// a expansao numerica ("seven" tambem vira "7"), que o benchmark publico
-	// exercita e o tokenizador do experimento nao faz.
-	// A consulta ganha a variante singular/plural de cada termo: "estagio
-	// extracurricular" tambem casa "estagios extracurriculares" (p. 199 do
-	// PPC). So a consulta muda; o indice fica como esta, entao um termo a mais
-	// nunca tira uma pagina, so soma quando a variante existe nela.
+	// Tokenizador de producao para manter a expansao numerica ("seven" -> "7").
+	// A variante singular/plural so entra na consulta, entao nunca tira pagina.
 	queryText := retrieval.FoldDiacritics(strings.Join(expandNumberVariants(tokenizeRetrievalText(query)), " "))
 	scores := make([]int, len(texts))
 	for _, result := range retrieval.NewBM25Index(docs, retrieval.DefaultBM25Params()).Search(queryText) {
@@ -353,9 +336,8 @@ func bm25Scores(query string, texts []string) []int {
 	return scores
 }
 
-// significantQueryTokens sao os tokens da pergunta que contam como evidencia:
-// acento e caixa dobrados, pontuacao das pontas fora ("operacionais?" e
-// "operacionais"), sem conectivos nem numeros soltos.
+// significantQueryTokens: tokens da pergunta sem pontuacao nas pontas, sem
+// conectivos nem numeros soltos.
 func significantQueryTokens(query string) []string {
 	tokens := connectionTokens(query)
 	out := make([]string, 0, len(tokens))
@@ -367,8 +349,6 @@ func significantQueryTokens(query string) []string {
 	return out
 }
 
-// queryTermCoverage conta quantos dos termos (ja normalizados por
-// significantQueryTokens) aparecem no texto como token inteiro.
 func queryTermCoverage(text string, terms []string) int {
 	tokens := tokenSet(text)
 	n := 0
@@ -380,9 +360,7 @@ func queryTermCoverage(text string, terms []string) int {
 	return n
 }
 
-// expandNumberVariants acrescenta a cada termo alfabetico de 4+ letras a sua
-// forma no outro numero gramatical (regras de plural do portugues, so as
-// regulares). Termos ja presentes nao se repetem.
+// expandNumberVariants acrescenta a forma singular/plural (so regras regulares).
 func expandNumberVariants(tokens []string) []string {
 	seen := make(map[string]bool, len(tokens)*2)
 	out := make([]string, 0, len(tokens)*2)
@@ -394,14 +372,11 @@ func expandNumberVariants(tokens []string) []string {
 	}
 	for _, token := range tokens {
 		add(token)
-		// So termos de 6+ letras: "curso"/"forma"/"eixo" ganhavam a variante
-		// e puxavam paginas genericas (p24 do gabarito saiu das fontes);
-		// "estagio", "extracurricular", "resolucao" sao os que precisam.
+		// So 6+ letras: termos curtos como "curso" puxavam paginas genericas.
 		if len(token) < 6 || isNumericToken(token) {
 			continue
 		}
-		// Hifen conta como letra: "pre-requisitos" precisa da variante
-		// "pre-requisito", que e o cabecalho da coluna da Matriz.
+		// Hifen conta como letra ("pre-requisitos" -> "pre-requisito").
 		for _, r := range token {
 			if !unicode.IsLetter(r) && r != '-' {
 				token = ""
@@ -438,33 +413,19 @@ func expandNumberVariants(tokens []string) []string {
 	return out
 }
 
-// Bracos do experimento pre-registrado de enriquecimento
-// (docs/prds/pre-registro-perguntas-geradas.md). Selecionados por variavel de
-// ambiente para que os tres possam ser medidos sobre o MESMO indice, sem
-// reindexar entre eles: reindexar entre bracos trocaria duas coisas ao mesmo
-// tempo e a comparacao perderia o sentido.
-//
-// O padrao preserva o comportamento historico (conteudo + resumo), entao quem
-// nao conhece a variavel nao muda de regime sem saber.
+// Campos da pagina usados no BM25, escolhidos por variavel de ambiente para
+// medir sobre o mesmo indice sem reindexar. O padrao e conteudo + resumo.
 const (
 	pageFieldsContent          = "content"
 	pageFieldsContentSummary   = "content+summary"
 	pageFieldsContentQuestions = "content+questions"
-	// pageFieldsMaxQuestions pontua conteudo e perguntas SEPARADAMENTE e fica
-	// com o maior dos dois: a pagina e relevante se o conteudo dela casa a
-	// pergunta OU se uma das perguntas geradas casa.
-	//
-	// Maximo, e nao soma ponderada, de proposito: peso e um botao de ajuste, e
-	// ajustar o peso ate o numero melhorar e a mesma armadilha de rodar varios
-	// prompts e reportar o melhor. O maximo nao tem parametro para girar.
+	// pageFieldsMaxQuestions pontua conteudo e perguntas separadamente e fica com
+	// o maior. Maximo em vez de soma ponderada para nao ter peso a ajustar.
 	pageFieldsMaxQuestions = "max(content,questions)"
 )
 
-// normalizePageSearchFields valida o braco configurado. Valor desconhecido cai
-// no padrao e avisa: um erro de digitacao na variavel mediria silenciosamente o
-// braco errado, que e o pior resultado possivel numa comparacao. Chamada UMA vez,
-// na construcao de RetrievalOptions (antes era por pagina de cada pergunta, e o
-// aviso inundava o log).
+// normalizePageSearchFields cai no padrao e avisa quando o valor e
+// desconhecido. Chamada uma vez, na construcao de RetrievalOptions.
 func normalizePageSearchFields(raw string) string {
 	switch v := strings.TrimSpace(raw); v {
 	case "":
@@ -477,7 +438,6 @@ func normalizePageSearchFields(raw string) string {
 	}
 }
 
-// pageSearchText monta o texto da pagina que vai ao BM25, conforme o braco.
 func pageSearchText(page models.DocumentPage, fields string) string {
 	switch fields {
 	case pageFieldsContent:
@@ -489,9 +449,7 @@ func pageSearchText(page models.DocumentPage, fields string) string {
 	}
 }
 
-// buildCollectionRetrieval usa as opcoes padrao (content+summary). Mantida para
-// os testes; o caminho de producao usa buildCollectionRetrievalWith com as
-// opcoes lidas uma vez na subida do processo.
+// buildCollectionRetrieval usa as opcoes padrao; so os testes chamam.
 func buildCollectionRetrieval(
 	query string,
 	documents []models.Document,
@@ -520,14 +478,10 @@ func buildCollectionRetrievalWith(
 
 	documentScores := make(map[uint]int, len(documents))
 	documentTitles := make(map[uint]string, len(documents))
-	// Termos significativos da pergunta (sem conectivos), por token inteiro:
-	// e o que uma linha de tabela precisa casar para ser fonte, e o que o
-	// titulo do documento precisa casar para reforcar as paginas dele.
+	// Termos significativos da pergunta, por token inteiro.
 	significant := significantQueryTokens(query)
-	// Reforco por titulo foi testado e descartado (2026-09-09): "Sistemas de
-	// Informacao" esta em quase toda pergunta e no titulo do PPC, e o reforco
-	// puxava as tabelas do PPC na frente da linha certa da Matriz (perdeu 3
-	// perguntas de tabela, ganhou nenhuma). O titulo so pontua o documento.
+	// Reforcar paginas pelo titulo do documento puxava tabelas erradas; o titulo
+	// so pontua o documento.
 	for _, doc := range documents {
 		documentTitles[doc.ID] = doc.Title
 		if score := retrievalScore(doc.Title, queryTerms); score > 0 {
@@ -540,9 +494,8 @@ func buildCollectionRetrievalWith(
 		nodeTexts[i] = outlineNodeSearchText(node)
 	}
 	nodeScores := bm25Scores(query, nodeTexts)
-	// Ranking de documentos por MELHOR evidencia de cada tipo (no, pagina,
-	// chunk, tabela), nao pela soma de todas: com a soma, um documento longo
-	// com muitas paginas fracas vencia o documento com a tabela certa.
+	// Documento ranqueado pela melhor evidencia de cada tipo, nao pela soma: com
+	// soma, documento longo com muitas paginas fracas vencia.
 	best := make(map[uint]map[string]int, len(documents))
 	keep := func(documentID uint, kind string, score int) {
 		if best[documentID] == nil {
@@ -558,7 +511,6 @@ func buildCollectionRetrievalWith(
 		if score == 0 {
 			continue
 		}
-		// Mesmos bonus do scorer anterior, na mesma escala (x100).
 		score += metadataIntValue(node.Metadata, "confidence_score") / 25 * 100
 		if node.Level > 1 {
 			score += 100
@@ -594,10 +546,8 @@ func buildCollectionRetrievalWith(
 		pageTexts[i] = pageSearchText(page, pageFields)
 	}
 	pageScores := bm25Scores(query, pageTexts)
-	// Braco de maximo: o campo de perguntas e pontuado no seu PROPRIO corpus,
-	// e nao colado ao conteudo. Colar dilui, porque o BM25 normaliza por
-	// comprimento e 40 palavras de pergunta somem em 400 de conteudo; pontuar
-	// a parte deixa o casamento curto e exato valer o que ele vale.
+	// Perguntas pontuadas no proprio corpus: coladas ao conteudo, a normalizacao
+	// por comprimento do BM25 as diluia.
 	if pageFields == pageFieldsMaxQuestions {
 		perguntaTexts := make([]string, len(pages))
 		for i, page := range pages {
@@ -647,9 +597,7 @@ func buildCollectionRetrievalWith(
 			keep(chunks[i].DocumentID, "chunk", score*2)
 		}
 	}
-	// Cada LINHA de tabela e uma unidade, com o cabecalho colado em cada
-	// celula. Antes so as 3 primeiras linhas entravam, e a tabela so pontuava
-	// o documento: "pre-requisito de X" caia numa pagina de prosa.
+	// Cada linha de tabela e uma unidade, com o cabecalho colado em cada celula.
 	type rowRef struct {
 		table int
 		row   int
@@ -667,10 +615,8 @@ func buildCollectionRetrievalWith(
 		if score == 0 {
 			continue
 		}
-		// Linha curta com UM termo da pergunta pontua alto no BM25 por ser
-		// curta ("Descricao: Equivalencia de Estagio" para qualquer pergunta
-		// com "estagio"); so linha que casa dois termos significativos e
-		// fonte. Pergunta de um termo so exige esse um.
+		// Linha curta com um so termo pontua alto por ser curta; exige dois termos
+		// significativos (ou o unico, se a pergunta so tem um).
 		if need := min(2, len(significant)); queryTermCoverage(rowTexts[i], significant) < need {
 			continue
 		}
@@ -742,9 +688,7 @@ func tokenizeRetrievalText(value string) []string {
 		return nil
 	}
 
-	// Letra maiuscula sozinha ("conceito D", "TCC I") e termo: sem ela a
-	// pergunta sobre o conceito D achava qualquer pagina com "conceito". Letra
-	// minuscula sozinha continua fora (artigo, preposicao).
+	// Letra maiuscula sozinha ("conceito D") e termo; minuscula continua fora.
 	replacer := strings.NewReplacer(",", " ", ".", " ", ";", " ", ":", " ", "\n", " ", "\t", " ", "?", " ", "!", " ")
 	rawParts := strings.Fields(replacer.Replace(trimmed))
 	parts := make([]string, 0, len(rawParts))

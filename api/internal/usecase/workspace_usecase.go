@@ -31,9 +31,7 @@ func (u *workspaceUseCase) GetViewState(ctx context.Context, userID, collectionI
 	return u.viewStates.GetViewState(ctx, userID, collectionID)
 }
 
-// SetViewState guarda o objeto como veio, dentro do limite de tamanho. O
-// formato interno e do frontend; o backend so garante que e um objeto
-// pequeno e que a colecao e do usuario.
+// SetViewState guarda o objeto como veio; o formato e do frontend.
 func (u *workspaceUseCase) SetViewState(ctx context.Context, userID, collectionID uint, state map[string]any) (map[string]any, error) {
 	if state == nil {
 		return nil, domain.ErrInvalidViewState

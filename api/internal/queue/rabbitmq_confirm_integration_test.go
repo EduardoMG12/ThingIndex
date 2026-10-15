@@ -11,15 +11,8 @@ import (
 	"thing-index/internal/domain"
 )
 
-// TestPublisherRecusaMensagemSemRota prova que publicar para uma routing key
-// sem fila vinculada devolve erro, em vez de nil.
-//
-// Antes (mandatory=false, sem publisher confirms) o broker descartava a
-// mensagem em silencio, PublishDocumentIndexRequested devolvia nil e o outbox
-// marcava o evento PUBLISHED: o documento ficava QUEUED para sempre.
-//
-// Verificado RED -> GREEN: com o PublishWithContext antigo este teste falha em
-// "esperava ErrMensagemSemRota, veio <nil>".
+// Sem mandatory e confirms o broker descartava a mensagem sem rota e o
+// outbox marcava PUBLISHED.
 func TestPublisherRecusaMensagemSemRota(t *testing.T) {
 	cfg := newIntegrationRabbitMQConfig(t)
 	publisher := newIntegrationPublisher(t, cfg)
@@ -35,8 +28,7 @@ func TestPublisherRecusaMensagemSemRota(t *testing.T) {
 		t.Fatalf("esperava ErrMensagemSemRota, veio %v", err)
 	}
 
-	// Depois de uma devolucao, a proxima publicacao com rota valida precisa
-	// voltar a funcionar: o retorno antigo nao pode contaminar a seguinte.
+	// O retorno anterior nao pode contaminar a proxima publicacao.
 	publisher.routingKey = cfg.DocumentIndexRoutingKey
 	expected := domain.DocumentIndexRequestedEvent{DocumentID: 502, UserID: 7}
 	if err := publisher.PublishDocumentIndexRequested(ctx, expected); err != nil {
@@ -49,16 +41,13 @@ func TestPublisherRecusaMensagemSemRota(t *testing.T) {
 	assertRabbitEventEquals(t, delivery.Body, expected)
 }
 
-// TestPublisherReconectadoMantemConfirmacao garante que a reconexao religa o
-// modo de confirmacao e o aviso de devolucao: um canal novo sem Confirm
-// voltaria a aceitar mensagem sem rota como sucesso.
+// A reconexao precisa religar confirm e NotifyReturn.
 func TestPublisherReconectadoMantemConfirmacao(t *testing.T) {
 	cfg := newIntegrationRabbitMQConfig(t)
 	publisher := newIntegrationPublisher(t, cfg)
 	defer publisher.Close()
 
-	// Simula a queda: fecha o canal por baixo do publicador. A proxima
-	// publicacao falha com "channel/connection is not open" e reconecta.
+	// Fecha o canal por baixo; a proxima publicacao falha e reconecta.
 	if err := publisher.channel.Close(); err != nil {
 		t.Fatalf("fechar canal: %v", err)
 	}

@@ -1,0 +1,147 @@
+@startuml
+' GERADO por scripts/gerar-anexos.py a partir de docs/schema/thingindex.dbml.
+' Nao edite a mao.
+!include estilo.iuml
+skinparam defaultFontSize 13
+skinparam linetype ortho
+skinparam nodesep 40
+skinparam ranksep 50
+hide circle
+entity "document_processing_attempts" as document_processing_attempts {
+  {field} <b>PK</b> id : serial
+  --
+  {field} <i>FK</i> document_id : integer
+  {field} <i>FK</i> user_id : integer
+  {field} stage : varchar(64)
+  {field} failure_kind : varchar(32)
+  {field} disposition : varchar(32)
+  {field} detail : text
+  {field} error_message : text
+  {field} retry_count : integer
+  {field} next_retry_attempt : integer
+  {field} max_retry_attempts : integer
+  {field} retry_delay_seconds : integer
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+  {field} deleted_at : timestamptz
+}
+entity "outbox_events" as outbox_events {
+  {field} <b>PK</b> id : serial
+  --
+  {field} aggregate_type : varchar(64)
+  {field} aggregate_id : integer
+  {field} event_type : varchar(128)
+  {field} status : varchar(32)
+  {field} payload : jsonb
+  {field} attempts : integer
+  {field} available_at : timestamptz
+  {field} published_at : timestamptz
+  {field} last_error : text
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+}
+entity "document_audit_events" as document_audit_events {
+  {field} <b>PK</b> id : serial
+  --
+  {field} <i>FK</i> user_id : integer
+  {field} document_id : integer
+  {field} collection_id : integer
+  {field} actor_type : varchar(32)
+  {field} actor_id : integer
+  {field} action : varchar(64)
+  {field} status : varchar(32)
+  {field} correlation_id : varchar(64)
+  {field} origin : varchar(255)
+  {field} title : varchar(255)
+  {field} detail : text
+  {field} metadata : jsonb
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+  {field} deleted_at : timestamptz
+}
+entity "user_provider_configs" as user_provider_configs {
+  {field} <b>PK</b> id : serial
+  --
+  {field} <i>FK</i> user_id : integer
+  {field} family : varchar(20)
+  {field} provider_type : varchar(50)
+  {field} encrypted_data : text
+  {field} is_enabled : boolean
+  {field} enabled_for_indexing : boolean
+  {field} enabled_for_chat : boolean
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+}
+entity "provider_model_catalogs" as provider_model_catalogs {
+  {field} <b>PK</b> id : serial
+  --
+  {field} scope_key : varchar(64)
+  {field} <i>FK</i> user_id : integer
+  {field} provider_type : varchar(50)
+  {field} model_id : varchar(255)
+  {field} display_name : varchar(255)
+  {field} metadata_json : text
+  {field} fetched_at : timestamptz
+  {field} is_active : boolean
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+}
+entity "provider_audit_events" as provider_audit_events {
+  {field} <b>PK</b> id : serial
+  --
+  {field} <i>FK</i> user_id : integer
+  {field} provider_config_id : integer
+  {field} family : varchar(20)
+  {field} provider_type : varchar(50)
+  {field} actor_type : varchar(32)
+  {field} actor_id : integer
+  {field} action : varchar(64)
+  {field} status : varchar(32)
+  {field} correlation_id : varchar(64)
+  {field} origin : varchar(255)
+  {field} detail : text
+  {field} metadata : jsonb
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+}
+entity "user_indexing_preferences" as user_indexing_preferences {
+  {field} <b>PK</b> id : serial
+  --
+  {field} <i>FK</i> user_id : integer
+  {field} document_synopsis : boolean
+  {field} page_summaries : boolean
+  {field} section_summaries : boolean
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+}
+entity "enrichment_cache_entries" as enrichment_cache_entries {
+  {field} <b>PK</b> id : serial
+  --
+  {field} <i>FK</i> user_id : integer
+  {field} provider : varchar(255)
+  {field} model : varchar(128)
+  {field} kind : varchar(16)
+  {field} content_hash : varchar(64)
+  {field} summary : text
+  {field} topics : text
+  {field} created_at : timestamptz
+}
+entity "documents (Figura 1)" as documents {
+  {field} <b>PK</b> id : serial
+}
+entity "users (Figura 1)" as users {
+  {field} <b>PK</b> id : serial
+}
+users ||--o{ document_audit_events
+documents ||--o{ document_processing_attempts
+users ||--o{ document_processing_attempts
+users ||--o{ enrichment_cache_entries
+users ||--o{ provider_audit_events
+users ||--o{ provider_model_catalogs
+users ||--o{ user_indexing_preferences
+users ||--o{ user_provider_configs
+document_audit_events -[hidden]down- provider_model_catalogs
+document_processing_attempts -[hidden]down- user_indexing_preferences
+enrichment_cache_entries -[hidden]down- user_provider_configs
+documents ||..o{ outbox_events : aggregate_id
+@enduml

@@ -2,15 +2,8 @@ package retrieval
 
 import "testing"
 
-// O teto de uma metrica e o valor maximo ALCANCAVEL dado o gabarito, nao 1,000.
-//
-// P@3 com um unico item relevante tem teto 1/3: mesmo um sistema perfeito, que
-// coloca o unico alvo em primeiro lugar, so pode acertar 1 dos 3 primeiros. Sem
-// declarar isso, a tabela do artigo reporta "precisao de 31%" quando o real e
-// "83% do maximo possivel" -- e o leitor conclui que o sistema e ruim.
-//
-// Este e o mesmo defeito de construto que o trabalho denuncia no benchmark
-// antigo: metrica que nao discrimina, reportada como se discriminasse.
+// O teto e o maximo alcancavel dado o gabarito, nao 1,000: P@3 com um unico
+// relevante tem teto 1/3.
 
 func TestTetoDePrecisaoRefleteOsRelevantesDisponiveis(t *testing.T) {
 	casos := []struct {
@@ -37,8 +30,7 @@ func TestTetoDePrecisaoRefleteOsRelevantesDisponiveis(t *testing.T) {
 	}
 }
 
-// Grau 0 significa "julgado e considerado irrelevante" -- diferente de ausente.
-// Contar como relevante inflaria o teto e faria o sistema parecer pior do que e.
+// Grau 0 (julgado irrelevante) nao conta para o teto.
 func TestTetoIgnoraGrauZero(t *testing.T) {
 	relevant := map[string]int{"a": 3, "b": 0, "c": 0}
 	if got := PrecisionCeiling(relevant, 3); abs(got-1.0/3.0) > 1e-9 {
@@ -46,8 +38,8 @@ func TestTetoIgnoraGrauZero(t *testing.T) {
 	}
 }
 
-// O teto de recall e 1,000 sempre que o corte alcanca todos os relevantes.
-// Quando ha mais relevantes que o corte, o teto cai proporcionalmente.
+// R@k tem teto 1 quando o corte alcanca todos os relevantes; senao cai
+// proporcionalmente.
 func TestTetoDeRecall(t *testing.T) {
 	casos := []struct {
 		nome     string
@@ -70,11 +62,10 @@ func TestTetoDeRecall(t *testing.T) {
 	}
 }
 
-// O sistema NUNCA pode superar o proprio teto. Se isso acontecer, ou a metrica
-// esta errada ou o teto esta -- e os dois casos invalidam a tabela.
+// A metrica nunca pode passar do teto, e o ranking perfeito tem de atingi-lo.
 func TestMetricaNuncaSuperaOTeto(t *testing.T) {
 	relevant := map[string]int{"a": 3}
-	// Ranking perfeito: o unico relevante em primeiro.
+	// o unico relevante em primeiro
 	results := []Result{{DocID: "a", Score: 1}, {DocID: "b", Score: 0.5}, {DocID: "c", Score: 0.1}}
 
 	metrics := Evaluate("q", "braco", results, relevant)
@@ -86,17 +77,13 @@ func TestMetricaNuncaSuperaOTeto(t *testing.T) {
 		t.Fatalf("R@5 %.4f superou o teto %.4f", metrics.RecallAt5, RecallCeiling(relevant, 5))
 	}
 
-	// E o ranking perfeito precisa ATINGIR o teto: se nao atingir, o teto esta
-	// alto demais e a tabela subestimaria o desempenho.
 	if abs(metrics.PrecisionAt3-PrecisionCeiling(relevant, 3)) > 1e-9 {
 		t.Fatalf("ranking perfeito nao atingiu o teto de P@3: %.4f vs %.4f",
 			metrics.PrecisionAt3, PrecisionCeiling(relevant, 3))
 	}
 }
 
-// Evaluate precisa carregar os tetos junto das metricas, senao a analise
-// precisaria reabrir o corpus para calcula-los -- e um CSV que nao se explica
-// sozinho e um CSV que alguem vai interpretar errado.
+// Evaluate leva os tetos junto das metricas.
 func TestEvaluateCarregaOsTetos(t *testing.T) {
 	relevant := map[string]int{"a": 3}
 	metrics := Evaluate("q", "braco", []Result{{DocID: "a", Score: 1}}, relevant)

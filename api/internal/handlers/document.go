@@ -90,9 +90,7 @@ func (h *DocumentHandler) Upload(c *gin.Context) {
 		case errors.Is(err, domain.ErrStorageProviderUnavailable):
 			response.Error(c, http.StatusConflict, "error", i18n.T(lang, "doc.error_storage_provider"), nil)
 		case errors.Is(err, domain.ErrUploadFailed):
-			// Este 500 tambem precisa registrar a causa: e justamente o
-			// caminho de storage indisponivel, o mais dificil de diagnosticar
-			// sem log.
+			// Storage indisponivel cai aqui; a causa tem de ir para o log.
 			log.Printf("erro interno em %s %s: %v", c.Request.Method, c.Request.URL.Path, err)
 			response.Error(c, http.StatusInternalServerError, "error", i18n.T(lang, "doc.error_upload"), nil)
 		default:
@@ -189,21 +187,13 @@ func (h *DocumentHandler) GetCollectionContext(c *gin.Context) {
 	response.Success(c, http.StatusOK, "success", i18n.T(lang, "doc.success_collection_context_get"), dto.ToCollectionContextResponse(collectionContext))
 }
 
-// defaultNodeConnectionMinScore e o limiar padrao das conexoes derivadas.
-//
-// O valor 2 exige que ao menos dois termos da origem apareçam no destino. Um
-// unico termo em comum e ruido: "contrato" liga qualquer par de documentos
-// juridicos sem que exista relacao de conteudo. E o mesmo raciocinio da Secao
-// de Limiar do artigo, onde a taxa de falso positivo de 1,000 mostrou que
-// devolver "o menos ruim" e pior do que devolver nada.
+// defaultNodeConnectionMinScore exige ao menos dois termos em comum: um termo
+// so ("contrato") liga quase qualquer par de documentos juridicos.
 const defaultNodeConnectionMinScore = 2
 
 // GetNodeConnections devolve as conexoes de um no do sumario com nos de outros
-// documentos da mesma colecao.
-//
-// As conexoes sao DERIVADAS a cada chamada e nunca persistidas: nao existe
-// tabela de arestas no esquema, e essa ausencia e deliberada (principio II da
-// constituicao -- grafo jamais como camada primaria de recuperacao).
+// documentos da mesma colecao. Sao recalculadas a cada chamada; nao ha tabela
+// de arestas.
 //
 // @Summary      List derived connections for an outline node
 // @Description  Returns outline nodes from OTHER documents in the same collection whose text overlaps the given node. Connections are recomputed on every request and never stored; each one carries the terms that justify it.
@@ -775,19 +765,8 @@ func parseUintParam(c *gin.Context, paramName string, invalidMessage string) (ui
 	return uint(parsed), true
 }
 
-// respondInternalError devolve 500 ao cliente e REGISTRA a causa no log do
-// servidor.
-//
-// A versao anterior nao recebia o erro: toda falha 5xx virava um 500 generico
-// e a causa real morria ali. Na pratica isso significava que um upload
-// quebrado por storage fora do ar aparecia no log de acesso apenas como
-// `500 | POST /api/v1/documents/upload`, sem uma linha sequer explicando o
-// motivo -- o operador ficava cego justamente no momento em que mais precisa
-// enxergar. Para um sistema cuja tese e auditabilidade, engolir a causa do
-// erro e o comportamento errado.
-//
-// A mensagem devolvida ao cliente continua generica de proposito: detalhe de
-// infraestrutura nao vaza para fora, so vai para o log.
+// respondInternalError loga a causa e devolve um 500 generico; detalhe de
+// infraestrutura nao vai para o cliente.
 func (h *DocumentHandler) respondInternalError(c *gin.Context, lang string, err error) {
 	if err != nil {
 		log.Printf("erro interno em %s %s: %v", c.Request.Method, c.Request.URL.Path, err)

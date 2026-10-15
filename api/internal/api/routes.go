@@ -26,12 +26,8 @@ import (
 
 var newDefaultStorageProvider = providerpkg.NewDefaultStorageProvider
 
-// SetupRoutes registra as rotas com um contexto de fundo desvinculado.
-//
-// Mantida para os testes, que nao precisam controlar o ciclo de vida das
-// tarefas de fundo. Producao usa SetupRoutesWithContext, para que a goroutine
-// de sync do catalogo encerre junto com o processo em vez de depender dele
-// morrer.
+// SetupRoutes usa um contexto de fundo; so os testes chamam. Producao usa
+// SetupRoutesWithContext para encerrar a goroutine de sync do catalogo.
 func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) error {
 	return SetupRoutesWithContext(context.Background(), router, db, cfg)
 }
@@ -72,8 +68,6 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 	authUseCase := usecase.NewAuthUseCase(authRepo, smtpMailer, defaultStorage, cfg)
 
 	authHandler := handlers.NewAuthHandler(authUseCase, defaultStorage)
-	// Bracos experimentais da recuperacao, lidos uma vez aqui (config.Load leu
-	// o ambiente na subida). Ver usecase.RetrievalOptions.
 	retrievalOptions := usecase.NewRetrievalOptions(cfg.PageSearchFields, cfg.QueryExpansion)
 	benchmarkProvider := usecase.NewIndexingBenchmarkProvider(retrievalOptions)
 	metaHandler := handlers.NewMetaHandler(benchmarkProvider)
@@ -100,8 +94,6 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 	docHandler := handlers.NewDocumentHandler(docUseCase, cfg.UploadRequestLimitBytes())
 	chatUseCase := usecase.NewChatUseCase(collectionRepo, collectionContextRepo, chatConversationRepo, providerUseCase, repository.NewGormIndexingRepository(db), retrievalOptions)
 	chatHandler := handlers.NewChatHandler(chatUseCase)
-	// Anotacoes do workspace: marcas coloridas e legenda. Anotacao, nao
-	// recuperacao -- nada aqui entra no caminho de contexto ou de conexoes.
 	highlightRepo := repository.NewGormParagraphHighlightRepository(db)
 	viewStateRepo := repository.NewGormWorkspaceViewStateRepository(db)
 	workspaceHandler := handlers.NewWorkspaceHandler(usecase.NewWorkspaceUseCase(highlightRepo, collectionRepo, viewStateRepo))
@@ -120,9 +112,6 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 
 	v1 := router.Group("/api/v1")
 	{
-		// O health checa a dependencia critica em vez de devolver texto fixo:
-		// sem isso um orquestrador mantem no balanceador uma instancia que nao
-		// consegue servir requisicao nenhuma.
 		v1.GET("/health", healthHandler(sqlDBParaHealth(db)))
 		v1.GET("/meta/runtime-profile", metaHandler.GetRuntimeProfile)
 		v1.GET("/meta/indexing-benchmark", metaHandler.GetIndexingBenchmark)
@@ -166,11 +155,8 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 		documents := v1.Group("/documents")
 		documents.Use(middleware.AuthMiddleware(cfg, authRepo))
 		{
-			// Limite POR USUARIO, e nao por IP: o frontend chama a API
-			// server-side, entao o ClientIP e sempre o do container do Next e
-			// um limite por IP viraria uma cota global compartilhada. Upload e
-			// a rota mais cara do sistema (storage + fila + LLM no worker) e
-			// ate agora nao tinha limite nenhum.
+			// Limite por usuario, nao por IP: o frontend chama a API server-side, entao o
+			// ClientIP e sempre o do container do Next.
 			documents.POST("/upload",
 				middleware.UserRateLimitMiddleware(cfg.UploadRateLimitRequests, cfg.UploadRateLimitWindow),
 				docHandler.Upload,
@@ -179,8 +165,6 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 			documents.POST("/collections", docHandler.CreateCollection)
 			documents.GET("/collections", docHandler.ListCollections)
 			documents.GET("/collections/:id/context", docHandler.GetCollectionContext)
-			// Conexoes derivadas entre nos de documentos distintos da colecao.
-			// Recalculadas a cada chamada; nenhuma aresta e persistida.
 			documents.GET("/collections/:id/connections", docHandler.GetNodeConnections)
 			documents.GET("/collections/:id", docHandler.GetCollection)
 			documents.GET("/collections/:id/highlights", workspaceHandler.ListHighlights)
@@ -214,9 +198,7 @@ func SetupRoutesWithContext(ctx context.Context, router *gin.Engine, db *gorm.DB
 			chat.GET("/conversations/:id", chatHandler.GetConversation)
 			chat.PATCH("/conversations/:id", chatHandler.UpdateConversation)
 			chat.DELETE("/conversations/:id", chatHandler.DeleteConversation)
-			// Cada mensagem aqui vira chamada paga de LLM. Balde separado do
-			// upload de proposito: enviar documentos nao pode consumir a cota
-			// de conversar sobre eles.
+			// Balde separado do upload: enviar documentos nao consome a cota do chat.
 			chat.POST("/stream",
 				middleware.UserRateLimitMiddleware(cfg.ChatRateLimitRequests, cfg.ChatRateLimitWindow),
 				chatHandler.StreamCollectionChat,

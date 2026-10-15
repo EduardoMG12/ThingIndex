@@ -7,10 +7,7 @@ import (
 	"testing"
 )
 
-// O valor deste gerador esta em o .dbml nao poder mentir sobre o esquema. Os
-// testes abaixo travam as tres formas de ele mentir em silencio: perder uma
-// tabela, inventar uma relacao que nao existe, e ficar defasado no repositorio
-// depois de alguem mexer nos modelos.
+// O .dbml nao pode perder tabela, inventar relacao nem ficar defasado.
 
 func TestRenderCobreTodosOsModelosGerenciados(t *testing.T) {
 	rendered, err := render()
@@ -20,10 +17,7 @@ func TestRenderCobreTodosOsModelosGerenciados(t *testing.T) {
 
 	tables := regexp.MustCompile(`(?m)^Table (\w+) \{`).FindAllStringSubmatch(rendered, -1)
 
-	// 21 e o numero verificado contra um Postgres 16 real: subindo o
-	// AutoMigrate num container limpo, information_schema.tables devolve
-	// exatamente estas 21 tabelas e 253 colunas (22 com paragraph_highlights, 2026-09-08; 25 com user_indexing_preferences e enrichment_cache_entries, 2026-09-10). O artigo afirmava 20 --
-	// era esse o erro que o Apendice A carregava.
+	// Conferido contra um Postgres 16 limpo via information_schema.tables.
 	const esperado = 25
 	if len(tables) != esperado {
 		t.Fatalf("esperava %d tabelas no DBML, obtive %d", esperado, len(tables))
@@ -42,16 +36,10 @@ func TestRenderNaoInventaAutoReferencia(t *testing.T) {
 		t.Fatalf("render: %v", err)
 	}
 
-	// Regressao real: o GORM registra a relacao HasMany nos dois schemas, e a
-	// primeira versao do gerador deduzia a tabela pelo lado errado. O
-	// resultado eram refs falsas do tipo
-	// `chat_conversation_entries.conversation_id > chat_conversation_entries.id`,
-	// que num diagrama de banco viram uma FK que nao existe.
-	//
-	// document_outline_nodes.parent_id -> document_outline_nodes.id e uma
-	// auto-referencia legitima (a arvore de outline), entao a regra nao pode
-	// ser "nenhuma auto-referencia": e "nenhuma coluna apontando para a
-	// propria tabela sem ser a hierarquia declarada".
+	// O GORM registra HasMany nos dois schemas e a primeira versao gerava refs
+	// falsas como chat_conversation_entries.conversation_id >
+	// chat_conversation_entries.id. document_outline_nodes.parent_id e
+	// auto-referencia legitima (arvore de outline).
 	refs := regexp.MustCompile(`(?m)^Ref: (\w+)\.(\w+) > (\w+)\.(\w+)$`).FindAllStringSubmatch(rendered, -1)
 	if len(refs) == 0 {
 		t.Fatal("nenhuma relacao emitida; o gerador deixou de ler as chaves estrangeiras")
@@ -69,10 +57,8 @@ func TestRenderNaoInventaAutoReferencia(t *testing.T) {
 	}
 }
 
-// Pegadinha do cache do Go: o .dbml e lido em runtime, entao o test cache nao
-// o enxerga como entrada. Editar o arquivo e rodar `go test ./...` devolve
-// "(cached)" e o teste parece passar. Para verificar de verdade use
-// `go test -count=1`. No CI nao ha cache, entao a protecao vale.
+// O .dbml e lido em runtime, entao o test cache nao o ve como entrada: use
+// `go test -count=1` para conferir localmente.
 func TestArquivoVersionadoEstaEmDia(t *testing.T) {
 	rendered, err := render()
 	if err != nil {

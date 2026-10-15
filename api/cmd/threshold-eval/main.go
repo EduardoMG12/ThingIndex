@@ -1,18 +1,6 @@
 // Command threshold-eval mede se existe um limiar de score capaz de separar
-// resultado relevante de irrelevante.
-//
-// Existe por causa do achado mais grave do trabalho: a taxa de falso positivo e
-// 1,000 nos SEIS bracos. Nenhum deles sabe responder "nao encontrei". Todos
-// sempre devolvem alguma coisa, com confianca, inclusive para consultas cuja
-// resposta correta e o silencio.
-//
-// Ate aqui isso era uma constatacao. Este comando transforma em pergunta de
-// pesquisa: A PARTIR DE QUE SCORE UMA CORRESPONDENCIA E REAL?
-//
-// A resposta pode ser "nao existe limiar". Isso tambem e resultado, e e
-// reportado como tal -- inventar um corte plausivel quando as distribuicoes se
-// sobrepoem seria fabricar evidencia. O piso de similaridade do braco denso ja
-// foi refutado por medicao uma vez neste projeto; nao se repete o erro.
+// resultado relevante de irrelevante, ja que todos os bracos devolvem algo
+// mesmo nas consultas negativas. "Nao existe limiar" tambem e resultado.
 package main
 
 import (
@@ -56,8 +44,8 @@ func main() {
 	printSummary(os.Stderr, analises)
 }
 
-// rotuloBraco da o nome do braco como o artigo o chama. "A-relacional" era o
-// nome interno do pontuador de contagem de termos.
+// rotuloBraco traduz o nome interno do braco ("A-relacional" era o pontuador
+// de contagem de termos).
 func rotuloBraco(arm string) string {
 	switch arm {
 	case "A-relacional":
@@ -70,30 +58,20 @@ func rotuloBraco(arm string) string {
 	return arm
 }
 
-// Separabilidade e o diagnostico de um braco.
 type Separabilidade struct {
-	Arm string
-	// Relevantes e Irrelevantes sao as distribuicoes de score.
+	Arm          string
 	Relevantes   []float64
 	Irrelevantes []float64
-	// LimiarOtimo e o corte que maximiza a separacao (Youden's J). So tem
-	// sentido quando Separavel e verdadeiro.
+	// Corte que maximiza o J de Youden. So vale com Separavel.
 	LimiarOtimo float64
-	// J e o indice de Youden no limiar otimo: sensibilidade + especificidade - 1.
-	// Vale 1 para separacao perfeita e 0 quando o corte nao e melhor que o acaso.
-	J float64
-	// Separavel indica se ha algum corte que classifica melhor que o acaso.
+	// sensibilidade + especificidade - 1 no limiar otimo.
+	J         float64
 	Separavel bool
-	// FalsoPositivoComLimiar e a taxa de falso positivo APOS aplicar o limiar,
-	// medida sobre as consultas negativas. E o numero que responde se o limiar
-	// resolve o problema na pratica.
+	// medido sobre as consultas negativas
 	FalsoPositivoComLimiar float64
-	// FalsoPositivoSemLimiar e sempre 1,000 -- o estado atual, reportado ao
-	// lado para a comparacao ser direta.
+	// sempre 1,000; vai ao lado para comparacao
 	FalsoPositivoSemLimiar float64
-	// Sobreposicao e a fracao de scores irrelevantes acima do menor score
-	// relevante. Zero significa separacao limpa; 1,000 significa que os dois
-	// conjuntos ocupam a mesma faixa.
+	// fracao de irrelevantes acima do menor score relevante
 	Sobreposicao float64
 }
 
@@ -124,9 +102,7 @@ func analisarBracos(corpus *evalcorpus.Corpus) []Separabilidade {
 func analisarBraco(corpus *evalcorpus.Corpus, nome string, buscar func(string) []retrieval.Result) Separabilidade {
 	sep := Separabilidade{Arm: nome, FalsoPositivoSemLimiar: 1.0}
 
-	// Scores de itens RELEVANTES vem das consultas positivas; scores de itens
-	// IRRELEVANTES vem tanto dos nao-julgados das positivas quanto de TUDO que
-	// as consultas negativas devolvem -- nelas, por definicao, nada e relevante.
+	// Irrelevantes: nao-julgados das positivas + tudo que as negativas devolvem.
 	for _, query := range corpus.Queries {
 		results := buscar(query.Text)
 
@@ -147,16 +123,9 @@ func analisarBraco(corpus *evalcorpus.Corpus, nome string, buscar func(string) [
 	return sep
 }
 
-// melhorLimiar procura o corte que maximiza o indice de Youden (J).
-//
-// J = sensibilidade + especificidade - 1. Vale 1 na separacao perfeita e 0
-// quando o corte nao classifica melhor que o acaso. Usa-se J, e nao acuracia,
-// porque as classes sao desbalanceadas: com muito mais irrelevantes que
-// relevantes, um classificador que rejeita tudo teria acuracia alta e utilidade
-// zero.
-//
-// Devolve separavel=false quando nenhum corte alcanca J > 0 -- ou seja, quando
-// as distribuicoes se sobrepoem a ponto de o limiar nao ajudar.
+// melhorLimiar procura o corte que maximiza o J de Youden. J e nao acuracia
+// porque as classes sao desbalanceadas: rejeitar tudo daria acuracia alta.
+// separavel=false quando nenhum corte alcanca J > 0.
 func melhorLimiar(relevantes, irrelevantes []float64) (float64, float64, bool) {
 	if len(relevantes) == 0 || len(irrelevantes) == 0 {
 		return 0, 0, false
@@ -197,9 +166,8 @@ func melhorLimiar(relevantes, irrelevantes []float64) (float64, float64, bool) {
 	return melhorCorte, melhorJ, encontrou
 }
 
-// calcularSobreposicao mede a fracao de irrelevantes que pontuam acima do menor
-// relevante. E a leitura mais intuitiva do problema: se vale 1,000, todo
-// irrelevante pontua tao alto quanto o pior relevante, e nenhum corte separa.
+// calcularSobreposicao: fracao de irrelevantes que pontuam acima do menor
+// relevante.
 func calcularSobreposicao(relevantes, irrelevantes []float64) float64 {
 	if len(relevantes) == 0 || len(irrelevantes) == 0 {
 		return 0
@@ -221,11 +189,8 @@ func calcularSobreposicao(relevantes, irrelevantes []float64) float64 {
 	return float64(acima) / float64(len(irrelevantes))
 }
 
-// falsoPositivoComLimiar mede a taxa de falso positivo DEPOIS de aplicar o
-// corte, sobre as consultas negativas -- aquelas cuja resposta correta e nao
-// devolver nada.
-//
-// E o numero que responde a pergunta pratica: o limiar resolve o problema?
+// falsoPositivoComLimiar mede o falso positivo depois do corte, sobre as
+// consultas negativas.
 func falsoPositivoComLimiar(corpus *evalcorpus.Corpus, buscar func(string) []retrieval.Result, limiar float64) float64 {
 	negativas := 0
 	comResposta := 0

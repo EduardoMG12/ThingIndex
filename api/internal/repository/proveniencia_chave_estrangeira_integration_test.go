@@ -12,11 +12,8 @@ import (
 	"thing-index/internal/models"
 )
 
-// Bug de 2026-09-26: as seis tabelas de estrutura extraida tinham document_id
-// NOT NULL mas nenhuma chave estrangeira, porque os modelos nao declaravam a
-// associacao com Document e o GORM so cria constraint a partir dela. O artigo
-// afirma que a proveniencia e garantida por chave estrangeira; este teste
-// trava a afirmacao (constituicao, principio III).
+// O GORM so cria a FK para documents se o modelo declara a associacao com
+// Document; confere no catalogo que as seis tabelas estruturais a tem.
 func TestTabelasEstruturaisTemChaveEstrangeiraParaDocumento(t *testing.T) {
 	db := openIntegrationDB(t)
 

@@ -17,9 +17,7 @@ type Config struct {
 	Environment    string
 	Port           string
 	TrustedProxies string
-	// Bracos experimentais da recuperacao, lidos UMA vez na subida (antes eram
-	// os.Getenv por pagina/pergunta). Valores crus; a validacao e o aviso de
-	// valor invalido ficam em usecase.NewRetrievalOptions.
+	// Bracos experimentais da recuperacao, crus; validados em usecase.NewRetrievalOptions.
 	PageSearchFields   string
 	QueryExpansion     string
 	DBHost             string
@@ -50,7 +48,6 @@ type Config struct {
 	SMTPFrom         string
 	ResetPasswordURL string
 
-	// Storage config
 	StorageProvider             string
 	MinioEndpoint               string
 	MinioAccessKey              string
@@ -77,9 +74,8 @@ type Config struct {
 	// Documento em QUEUED com o ultimo evento do outbox PUBLISHED ha mais que
 	// isto e reenfileirado (mensagem perdida depois do broker). 0 desliga.
 	QueuedDocumentRequeueThreshold time.Duration
-	// ConsumerReconnectInterval e a espera entre tentativas quando o RabbitMQ
-	// fecha o canal de entregas. Sem espera, um broker fora do ar vira laco
-	// quente; espera longa demais atrasa a volta do pipeline.
+	// ConsumerReconnectInterval: espera entre reconexoes quando o RabbitMQ fecha o
+	// canal de entregas (evita laco quente).
 	ConsumerReconnectInterval time.Duration
 	UploadRateLimitRequests   int
 	UploadRateLimitWindow     time.Duration
@@ -285,8 +281,7 @@ func (c *Config) Validate() error {
 	if c.UploadRateLimitRequests <= 0 {
 		return errors.New("UPLOAD_RATE_LIMIT_REQUESTS must be greater than zero")
 	}
-	// Zero ou negativo viraria laco quente de reconexao contra um broker fora
-	// do ar: falhar na subida e melhor do que consumir CPU em silencio.
+	// Zero ou negativo vira laco quente de reconexao.
 	if c.ConsumerReconnectInterval <= 0 {
 		return errors.New("CONSUMER_RECONNECT_INTERVAL_SECONDS must be greater than zero")
 	}
@@ -321,9 +316,7 @@ func (c *Config) Validate() error {
 		return errors.New("OUTBOX_VISIBILITY_TIMEOUT_SECONDS must be greater than zero")
 	}
 	if c.OutboxVisibilityTimeout <= c.OutboxPollInterval {
-		// Se a janela de invisibilidade for menor que o intervalo de poll, o
-		// evento reaparece antes de o dispatcher terminar de publicar — que e
-		// exatamente a duplicacao que o claim existe para evitar.
+		// Janela menor que o poll faz o evento reaparecer antes de publicar.
 		return errors.New("OUTBOX_VISIBILITY_TIMEOUT_SECONDS must be greater than OUTBOX_POLL_INTERVAL_SECONDS")
 	}
 	if c.ConsumerPrefetchCount <= 0 {
@@ -345,10 +338,7 @@ func (c *Config) Validate() error {
 		return errors.New("STUCK_DOCUMENT_POLL_INTERVAL_SECONDS must be greater than zero")
 	}
 	if c.StuckDocumentThreshold <= c.DocumentIndexHandlerTimeout {
-		// O reaper existe para documentos abandonados por um worker morto. Se
-		// o limite for menor que o prazo de uma mensagem, ele marca FAILED
-		// documentos que o worker ainda esta processando legitimamente --
-		// transformando lentidao em erro.
+		// Limite menor que o prazo da mensagem marcaria FAILED documentos ainda em processamento.
 		return errors.New("STUCK_DOCUMENT_THRESHOLD_SECONDS must be greater than DOCUMENT_INDEX_HANDLER_TIMEOUT_SECONDS")
 	}
 	if c.ServerReadTimeout <= 0 || c.ServerWriteTimeout <= 0 || c.ServerIdleTimeout <= 0 {

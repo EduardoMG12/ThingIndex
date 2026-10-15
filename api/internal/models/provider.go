@@ -5,6 +5,7 @@ import "time"
 type UserProviderConfig struct {
 	ID                 uint      `gorm:"primarykey" json:"id"`
 	UserID             uint      `gorm:"not null;uniqueIndex:idx_user_provider,priority:1" json:"user_id"`
+	User               *User     `gorm:"foreignKey:UserID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	Family             string    `gorm:"size:20;not null;index" json:"family"`                                           // e.g., 'STORAGE', 'LLM'
 	ProviderType       string    `gorm:"size:50;not null;uniqueIndex:idx_user_provider,priority:2" json:"provider_type"` // e.g., 'OPENAI', 'AWS_S3'
 	EncryptedData      string    `gorm:"type:text;not null" json:"encrypted_data"`                                       // JSON encrypted with AES
@@ -19,6 +20,7 @@ type ProviderModelCatalog struct {
 	ID           uint      `gorm:"primarykey" json:"id"`
 	ScopeKey     string    `gorm:"size:64;not null;uniqueIndex:idx_provider_model_catalog_scope,priority:1;index" json:"scope_key"`
 	UserID       *uint     `gorm:"index" json:"user_id,omitempty"`
+	User         *User     `gorm:"foreignKey:UserID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	ProviderType string    `gorm:"size:50;not null;uniqueIndex:idx_provider_model_catalog_scope,priority:2;index" json:"provider_type"`
 	ModelID      string    `gorm:"size:255;not null;uniqueIndex:idx_provider_model_catalog_scope,priority:3" json:"model_id"`
 	DisplayName  string    `gorm:"size:255;not null" json:"display_name"`
@@ -32,6 +34,7 @@ type ProviderModelCatalog struct {
 type ProviderAuditEvent struct {
 	ID               uint           `gorm:"primarykey" json:"id"`
 	UserID           uint           `gorm:"not null;index" json:"user_id"`
+	User             *User          `gorm:"foreignKey:UserID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	ProviderConfigID *uint          `gorm:"index" json:"provider_config_id,omitempty"`
 	Family           string         `gorm:"size:20;not null;index" json:"family"`
 	ProviderType     string         `gorm:"size:50;not null;index" json:"provider_type"`

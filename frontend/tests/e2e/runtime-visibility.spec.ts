@@ -9,13 +9,8 @@ function success(data: unknown) {
     };
 }
 
-// A URL do cookie acompanha a baseURL. Fixar a porta 3000 fazia o cookie ser
-// descartado sempre que a suite rodava em outra porta, e todo teste autenticado
-// caia na tela de login sem explicar o motivo.
-// Alem do cookie, o bootstrap do app busca /api/user/me. Sem esse mock a
-// chamada ia para a API real com um token falso, recebia 401 e a pagina
-// redirecionava para o login — todo teste autenticado falhava com "elemento nao
-// encontrado", escondendo a causa real.
+// Cookie na URL da baseURL (porta fixa fazia o cookie ser descartado) e mock
+// de /api/user/me, senao o 401 do token falso joga para o login.
 async function authenticateRoutes(context: BrowserContext) {
     await context.route("**/api/user/me", async (route) => {
         await route.fulfill({
@@ -50,11 +45,7 @@ async function authenticate(context: BrowserContext, baseURL: string | undefined
 
 test.use({ locale: "en-US" });
 
-// Este teste ficou vermelho por falta da feature, nao por texto desatualizado: o
-// ProviderRuntimeCallout so era usado na tela de documentos, entao o usuario do
-// chat nao via qual LLM respondia. O callout foi reintroduzido em ChatTab e so
-// aparece com a conversa vazia — por isso o mock de conversas devolve lista
-// vazia.
+// O callout so aparece com a conversa vazia, dai a lista vazia no mock.
 test("shows the active chat runtime in the main chat flow @smoke", async ({ baseURL, context, page }) => {
     await authenticate(context, baseURL);
 

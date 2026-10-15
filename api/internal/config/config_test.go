@@ -19,9 +19,7 @@ func TestValidateAllowsDevelopmentSecurityShortcuts(t *testing.T) {
 	}
 }
 
-// A janela de invisibilidade precisa ser maior que o intervalo de poll. Se for
-// menor, o evento reivindicado reaparece antes de o dispatcher terminar de
-// publicar — que e exatamente a duplicacao que o claim existe para evitar.
+// Janela menor que o poll faz o evento reivindicado reaparecer antes de publicar.
 func TestValidateRejectsOutboxVisibilityTimeoutShorterThanPollInterval(t *testing.T) {
 	t.Parallel()
 
@@ -183,11 +181,7 @@ func validConfig() *Config {
 	}
 }
 
-// O reaper marca FAILED documentos presos em PROCESSING. Se o limite dele for
-// menor ou igual ao prazo de uma mensagem, ele passa a matar documentos que o
-// worker ainda esta processando legitimamente -- transformando lentidao em
-// erro, e com um sintoma dificil de diagnosticar (o documento falha sozinho,
-// sem nenhum erro real). A regra e barrada no boot, nao em producao.
+// Limite do reaper menor que o prazo da mensagem mataria documentos em processamento.
 func TestValidateRejectsStuckThresholdShorterThanHandlerTimeout(t *testing.T) {
 	t.Parallel()
 

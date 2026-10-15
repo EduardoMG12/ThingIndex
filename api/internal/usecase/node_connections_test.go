@@ -7,20 +7,6 @@ import (
 	"thing-index/internal/models"
 )
 
-// Conexoes entre trechos de documentos diferentes.
-//
-// A regra que governa este arquivo vem do principio II da constituicao:
-// "embeddings, vetores e GRAFOS sao permitidos apenas como trilha comparativa
-// ou enriquecimento opcional -- nunca como dependencia do caminho principal".
-//
-// Uma aresta ARMAZENADA (tabela de links percorrida para recuperar) e um grafo
-// e refuta a tese do trabalho. Uma aresta DERIVADA -- recalculada a cada
-// chamada, a partir do texto do proprio no, pelo mesmo scorer relacional que ja
-// existe -- e apenas a saida do recuperador desenhada na tela.
-//
-// Por isso a funcao nao recebe repositorio, nao escreve nada e e pura: a
-// assinatura torna a violacao dificil de cometer sem perceber.
-
 func noDeTeste(docID uint, nodeID, titulo, resumo string) models.DocumentOutlineNode {
 	return models.DocumentOutlineNode{
 		DocumentID: docID,
@@ -30,9 +16,6 @@ func noDeTeste(docID uint, nodeID, titulo, resumo string) models.DocumentOutline
 	}
 }
 
-// TestConexoesNaoApontamParaOProprioDocumento trava a regra mais basica: uma
-// conexao util liga documentos DIFERENTES. Trechos do mesmo arquivo compartilham
-// vocabulario por construcao e produziriam ruido que afogaria o sinal real.
 func TestConexoesNaoApontamParaOProprioDocumento(t *testing.T) {
 	origem := noDeTeste(1, "doc1#s1", "Penalidades por atraso", "multa de 2 por cento sobre o valor da fatura em caso de atraso")
 	nos := []models.DocumentOutlineNode{
@@ -53,9 +36,6 @@ func TestConexoesNaoApontamParaOProprioDocumento(t *testing.T) {
 	}
 }
 
-// TestConexoesSaoDeterministicas e exigencia direta da tese: o trabalho denuncia
-// o nao-determinismo do indice vetorial aproximado. Uma feature propria que
-// devolvesse ordem instavel seria autorrefutacao.
 func TestConexoesSaoDeterministicas(t *testing.T) {
 	origem := noDeTeste(1, "doc1#s1", "Prazo de pagamento", "pagamento em ate trinta dias apos o aceite")
 	nos := []models.DocumentOutlineNode{
@@ -80,13 +60,7 @@ func TestConexoesSaoDeterministicas(t *testing.T) {
 	}
 }
 
-// TestSemConexaoAcimaDoLimiarDevolveVazio e a tarefa 4.5 da spec, e responde ao
-// achado mais grave do trabalho: taxa de falso positivo 1,000, nenhum braco sabe
-// dizer "nao encontrei".
-//
-// Sem limiar, TODO no teria conexao com algum outro, e o canvas desenharia
-// flecha em todo par. No ranking o falso positivo se esconde na quarta posicao;
-// no canvas ele vira artefato visual apontado no projetor.
+// Sem limiar todo no teria conexao com algum outro.
 func TestSemConexaoAcimaDoLimiarDevolveVazio(t *testing.T) {
 	origem := noDeTeste(1, "doc1#s1", "Cronograma de manutencao da frota", "revisao periodica dos veiculos da frota")
 	nos := []models.DocumentOutlineNode{
@@ -104,8 +78,6 @@ func TestSemConexaoAcimaDoLimiarDevolveVazio(t *testing.T) {
 	}
 }
 
-// TestLimiarZeroNaoLiberaTudo protege contra o erro classico de limiar: aceitar
-// score zero devolveria todo par do acervo como conexao.
 func TestLimiarZeroNaoLiberaTudo(t *testing.T) {
 	origem := noDeTeste(1, "doc1#s1", "Alfa", "conteudo totalmente distinto")
 	nos := []models.DocumentOutlineNode{
@@ -118,8 +90,6 @@ func TestLimiarZeroNaoLiberaTudo(t *testing.T) {
 	}
 }
 
-// TestConexoesRespeitamOrdemDeScore garante que a mais forte vem primeiro: e o
-// que o usuario le como "a flecha mais grossa".
 func TestConexoesRespeitamOrdemDeScore(t *testing.T) {
 	origem := noDeTeste(1, "doc1#s1", "Multa por atraso na entrega", "multa por atraso na entrega do servico contratado")
 	nos := []models.DocumentOutlineNode{
@@ -141,9 +111,6 @@ func TestConexoesRespeitamOrdemDeScore(t *testing.T) {
 	}
 }
 
-// TestConexaoExplicaSeMesma trava a exigencia de auditabilidade: a aresta
-// precisa dizer POR QUE existe. Uma flecha sem justificativa e exatamente o
-// tipo de resposta nao auditavel que este trabalho critica no RAG denso.
 func TestConexaoExplicaSeMesma(t *testing.T) {
 	origem := noDeTeste(1, "doc1#s1", "Penalidades", "multa de dois por cento sobre a fatura")
 	nos := []models.DocumentOutlineNode{
@@ -163,8 +130,7 @@ func TestConexaoExplicaSeMesma(t *testing.T) {
 	if c.Score <= 0 {
 		t.Fatalf("conexao com score nao positivo: %d", c.Score)
 	}
-	// Os termos precisam existir de fato na origem -- senao a justificativa
-	// seria decorativa.
+	// Os termos precisam existir na origem.
 	origemTermos := map[string]bool{}
 	for _, termo := range tokenizeRetrievalText(origem.Title + " " + origem.Summary) {
 		origemTermos[termo] = true
@@ -176,17 +142,9 @@ func TestConexaoExplicaSeMesma(t *testing.T) {
 	}
 }
 
-// TestPalavrasVaziasNaoSustentamConexao trava o defeito visto no navegador: a
-// tela exibiu uma conexao justificada por "1, de, do, servico" -- artigos e
-// preposicoes que ligam qualquer par de documentos em portugues.
-//
-// Isto e o falso positivo de 1,000 se manifestando na camada visual. No ranking
-// ele se esconde na quarta posicao; numa aresta desenhada vira artefato que o
-// avaliador aponta no projetor. Termo vazio nao e evidencia de relacao.
+// Conectivos e numeracao ("1, de, do") ligavam qualquer par de documentos.
 func TestPalavrasVaziasNaoSustentamConexao(t *testing.T) {
-	// A origem compartilha com o candidato APENAS conectivos e a numeracao de
-	// secao. Nenhum substantivo em comum -- se houvesse, a conexao seria
-	// legitima e o teste nao provaria nada sobre o filtro.
+	// So conectivos e numeracao em comum, nenhum substantivo.
 	origem := noDeTeste(1, "doc1#s1", "1 DA GARANTIA", "o prazo e de trinta dias para a entrega")
 	nos := []models.DocumentOutlineNode{
 		origem,
@@ -195,14 +153,11 @@ func TestPalavrasVaziasNaoSustentamConexao(t *testing.T) {
 
 	conexoes := BuildNodeConnections(origem, nos, 2)
 
-	// Sem termos significativos em comum, nao pode haver conexao nenhuma.
 	if len(conexoes) != 0 {
 		t.Fatalf("conexao criada apenas por conectivos: %+v", conexoes[0].MatchedTerms)
 	}
 }
 
-// TestTermoSubstantivoAindaSustentaConexao garante que o filtro nao esvaziou o
-// sinal legitimo -- remover palavras vazias nao pode matar a feature.
 func TestTermoSubstantivoAindaSustentaConexao(t *testing.T) {
 	origem := noDeTeste(1, "doc1#s1", "2 PENALIDADES", "multa de 5 por cento sobre a fatura mensal")
 	nos := []models.DocumentOutlineNode{
@@ -238,9 +193,7 @@ func TestOrigemSemTextoNaoProduzConexao(t *testing.T) {
 	}
 }
 
-// Termo presente em quase todas as secoes do acervo ("curso", "edital") nao
-// e evidencia de relacao: e o vocabulario do acervo. Com ele contando, duas
-// declaracoes de formulario sem nada em comum apareciam ligadas por "2 termos".
+// Termo presente em quase todas as secoes nao e evidencia de relacao.
 func TestTermoOnipresenteNaoSustentaConexao(t *testing.T) {
 	origem := noDeTeste(1, "doc1#anexo-c", "ANEXO C DECLARACAO DE RENDA", "declaracao do curso do edital para o campus")
 	nos := []models.DocumentOutlineNode{origem}
@@ -248,7 +201,7 @@ func TestTermoOnipresenteNaoSustentaConexao(t *testing.T) {
 	for i := 0; i < 30; i++ {
 		nos = append(nos, noDeTeste(2, "doc2#s"+string(rune('a'+i%26))+string(rune('a'+i/26)), "SECAO", "o curso do edital no campus trata de outro assunto"))
 	}
-	// So esta compartilha um termo raro ("renda") -- e apenas um, abaixo do limiar 2.
+	// So um termo raro ("renda"), abaixo do limiar 2.
 	nos = append(nos, noDeTeste(3, "doc3#renda", "COMPROVANTE DE RENDA", "renda familiar"))
 	conexoes := BuildNodeConnections(origem, nos, 2)
 	if len(conexoes) != 0 {
@@ -318,8 +271,8 @@ func TestTetoDeGrauCortaOHub(t *testing.T) {
 	for i := 0; i < 30; i++ {
 		nos = append(nos, noDeTeste(uint(2+i), "doc#"+string(rune('a'+i%26))+string(rune('a'+i/26)), "S", "zebra quokka aqui"))
 	}
-	// 30 candidatos: 2% = 0,6 -> piso 2... entao "zebra" e "quokka" nao seriam
-	// raros. Sobe o piso com candidatos suficientes para os termos contarem.
+	// Com 30 candidatos o piso seria 2; sobe o numero para os termos contarem
+	// como raros.
 	for i := 0; i < 1500; i++ {
 		nos = append(nos, noDeTeste(9999, "enche#"+strconv.Itoa(i), "E", "assunto qualquer"))
 	}

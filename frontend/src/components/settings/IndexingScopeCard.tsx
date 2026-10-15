@@ -8,10 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { fetchIndexingPreferences, saveIndexingPreferences, type IndexingPreferences } from "@/lib/api/indexing-preferences";
 import { useI18n } from "@/lib/i18n/provider";
 
-/**
- * Escopo do enriquecimento por LLM: o que a IA gera ao indexar. Cada switch
- * salva na hora; o indexador le as preferencias do dono do documento.
- */
+// Cada switch salva na hora; o indexador usa as preferencias do dono do documento.
 export default function IndexingScopeCard() {
     const { t } = useI18n();
     const [prefs, setPrefs] = useState<IndexingPreferences | null>(null);

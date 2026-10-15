@@ -22,20 +22,13 @@ import (
 // Provider de OCR baseado no baidu/Unlimited-OCR, servido por vLLM ou SGLang
 // atras de uma API compativel com OpenAI.
 //
-// Diferenca central para o tesseract: alem do texto, o modelo devolve a regiao
-// de cada bloco no formato `<|det|>tipo [x1, y1, x2, y2]<|/det|>conteudo`, o que
-// permite ancorar posicionalmente tambem as paginas digitalizadas — que sao
-// justamente as que o pdftotext nao consegue ancorar.
-//
-// O modelo exige GPU. Quando o endpoint nao esta configurado ou nao responde, a
-// indexacao continua com o tesseract, que roda em qualquer lugar. Ver
-// newPDFOCRExtractor.
+// Alem do texto, o modelo devolve a regiao de cada bloco
+// (`<|det|>tipo [x1, y1, x2, y2]<|/det|>conteudo`), o que ancora tambem as
+// paginas digitalizadas. Exige GPU; sem endpoint cai para o tesseract.
 
 const (
 	defaultUnlimitedOCRModel = "Unlimited-OCR"
-	// unlimitedOCREngineName e gravado como ocr_engine no indice e e a unica
-	// evidencia de qual motor processou o documento. Constante para o teste
-	// afirmar o mesmo valor que a producao grava, em vez de repetir a string.
+	// unlimitedOCREngineName e gravado como ocr_engine no indice.
 	unlimitedOCREngineName     = "unlimited_ocr"
 	defaultUnlimitedOCRPrompt  = "<image>document parsing."
 	defaultUnlimitedOCRTimeout = 120 * time.Second
@@ -50,10 +43,8 @@ type unlimitedOCRExtractor struct {
 	dpi          int
 	rendererPath string
 	client       *http.Client
-	// boxScale e o denominador das coordenadas devolvidas pelo modelo. Modelos
-	// desta familia costumam normalizar em 0..1000; alguns emitem pixel bruto da
-	// imagem. Configuravel porque errar a escala desalinha o grifo em silencio,
-	// e a conferencia so pode ser feita contra uma execucao real.
+	// boxScale e o denominador das coordenadas do modelo (em geral 0..1000;
+	// alguns emitem pixel bruto). Escala errada desalinha o grifo em silencio.
 	boxScale float64
 }
 
@@ -278,8 +269,7 @@ func (e *unlimitedOCRExtractor) parseDocument(ctx context.Context, imageBytes []
 //
 //	<|det|>text [12, 34, 560, 78]<|/det|>Juizo de Direito da Vara Civel
 //
-// A caixa e opcional: quando ausente, o bloco entra sem ancora em vez de ser
-// descartado — texto sem posicao ainda serve para busca e para o contexto.
+// Sem caixa, o bloco entra sem ancora em vez de ser descartado.
 var unlimitedOCRDetectionPattern = regexp.MustCompile(`<\|det\|>([^\[<]*?)(?:\s*\[([^\]]*)\])?\s*<\|/det\|>`)
 
 func (e *unlimitedOCRExtractor) blocksFromResponse(raw string, pageNumber, imageWidth, imageHeight int) []textBlock {
@@ -321,10 +311,8 @@ func (e *unlimitedOCRExtractor) blocksFromResponse(raw string, pageNumber, image
 	return blocks
 }
 
-// boxFromCoordinates converte a caixa do modelo para pontos PDF com origem no
-// canto superior esquerdo, que e o mesmo espaco usado pelas caixas do
-// `pdftotext -bbox-layout`. Sem essa conversao, blocos nativos e blocos de OCR
-// ficariam em sistemas diferentes e o grifo sairia deslocado.
+// boxFromCoordinates converte para pontos PDF com origem no canto superior
+// esquerdo, o mesmo espaco do `pdftotext -bbox-layout`.
 func (e *unlimitedOCRExtractor) boxFromCoordinates(raw string, imageWidth, imageHeight int) *textBox {
 	fields := strings.FieldsFunc(raw, func(r rune) bool {
 		return r == ',' || r == ' ' || r == '\t'

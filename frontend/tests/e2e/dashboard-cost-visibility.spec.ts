@@ -9,13 +9,8 @@ function success(data: unknown) {
     };
 }
 
-// A URL do cookie acompanha a baseURL. Fixar a porta 3000 fazia o cookie ser
-// descartado sempre que a suite rodava em outra porta, e todo teste autenticado
-// caia na tela de login sem explicar o motivo.
-// Alem do cookie, o bootstrap do app busca /api/user/me. Sem esse mock a
-// chamada ia para a API real com um token falso, recebia 401 e a pagina
-// redirecionava para o login — todo teste autenticado falhava com "elemento nao
-// encontrado", escondendo a causa real.
+// Cookie na URL da baseURL (porta fixa fazia o cookie ser descartado) e mock
+// de /api/user/me, senao o 401 do token falso joga para o login.
 async function authenticateRoutes(context: BrowserContext) {
     await context.route("**/api/user/me", async (route) => {
         await route.fulfill({

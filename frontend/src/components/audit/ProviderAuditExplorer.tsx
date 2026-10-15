@@ -130,17 +130,13 @@ export default function ProviderAuditExplorer({
     const [filters, setFilters] = useState<ProviderFilters>(initialFilters);
     const [appliedFilters, setAppliedFilters] = useState<ProviderFilters>(initialFilters);
     const [result, setResult] = useState<ProviderAuditQueryResult>(emptyResult);
-    // Mesmo defeito e mesma correcao do DocumentAuditExplorer: uma pagina em
-    // voo disparada antes da troca de filtro chega depois e sobrescreveria
-    // summary/page_info com os da consulta abandonada.
+    // Mesmo esquema do DocumentAuditExplorer para descartar pagina em voo.
     const consultaAtivaRef = useRef(0);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-    // Mesmo defeito corrigido em DocumentAuditExplorer: com
-    // `...appliedFilters` depois de `...filters`, o clique num filtro rapido
-    // descartava o texto que o usuario estava digitando e ainda nao submetera.
+    // Parte de `filters` para nao perder o texto ainda nao submetido.
     function applyImmediateFilters(partial: Partial<ProviderFilters>) {
         const nextFilters = {
             ...filters,

@@ -7,14 +7,8 @@ import (
 	"thing-index/internal/models"
 )
 
-// Estes testes existem por uma razao especifica e vale registrar: a TPC medida
-// sobre o corpus C1 NAO consegue provar atribuicao correta de pagina, porque
-// C1 e texto puro e `buildDocumentPages` joga todo bloco sem pagina na pagina 1
-// (outline.go). Ali, "a pagina certa" e "a constante 1" sao indistinguiveis.
-//
-// A prova de que o chunk recebe a pagina CERTA, e nao apenas alguma pagina,
-// tem que vir daqui: paragrafos espalhados por paginas diferentes, e cada
-// chunk conferido contra a pagina do seu proprio conteudo.
+// Paragrafos espalhados por paginas diferentes, cada chunk conferido contra a
+// pagina do seu conteudo (em texto puro toda pagina e 1 e nao prova nada).
 
 func paragrafoNaPagina(seq int, pagina *int, conteudo string) models.ParagraphNode {
 	return models.ParagraphNode{
@@ -79,9 +73,7 @@ func TestChunkRecebeAPaginaDoSeuPrimeiroParagrafo(t *testing.T) {
 	}
 }
 
-// Se a pagina viesse do StartPage do no em vez do paragrafo, este teste
-// passaria errado: aqui os dois DIVERGEM de proposito. O paragrafo e a origem
-// mais proxima da evidencia, entao ele ganha.
+// Paragrafo e StartPage do no divergem de proposito: o paragrafo ganha.
 func TestPaginaDoParagrafoVenceOStartPageDoNo(t *testing.T) {
 	t.Parallel()
 
@@ -125,10 +117,7 @@ func TestParagrafoVazioNaoDefineAPaginaDoChunk(t *testing.T) {
 	}
 }
 
-// Sem pagina em lugar nenhum, o chunk fica NULO e nao zero. Zero seria uma
-// pagina inexistente apresentada como se fosse coordenada valida, que e pior
-// que a ausencia: a metrica contaria como completo um item que nao da para
-// conferir no documento.
+// Sem pagina em lugar nenhum, o chunk fica nil, nao zero.
 func TestChunkSemOrigemDePaginaFicaNuloENaoZero(t *testing.T) {
 	t.Parallel()
 
@@ -147,8 +136,7 @@ func TestChunkSemOrigemDePaginaFicaNuloENaoZero(t *testing.T) {
 	}
 }
 
-// O caminho de fallback (documento sem sumario) tambem precisa carregar a
-// pagina, senao um documento sem estrutura vira um indice inauditavel inteiro.
+// O fallback (documento sem sumario) tambem carrega a pagina.
 func TestChunkDeFallbackRecebeAPaginaDaPropriaPagina(t *testing.T) {
 	t.Parallel()
 
@@ -170,9 +158,7 @@ func TestChunkDeFallbackRecebeAPaginaDaPropriaPagina(t *testing.T) {
 	}
 }
 
-// Um no grande demais vira varias partes. Todas tem que apontar a mesma pagina
-// de inicio: partes do mesmo trecho divergindo entre si seria proveniencia
-// inconsistente dentro do proprio documento.
+// As partes de um no grande demais apontam todas a mesma pagina de inicio.
 func TestPartesDeUmChunkGrandeCompartilhamAPagina(t *testing.T) {
 	t.Parallel()
 
@@ -193,10 +179,7 @@ func TestPartesDeUmChunkGrandeCompartilhamAPagina(t *testing.T) {
 	}
 }
 
-// O chunk nao pode compartilhar o ponteiro de pagina com o paragrafo que o
-// gerou. Se compartilhasse, alterar o paragrafo depois mudaria a proveniencia
-// ja publicada do chunk, sem ninguem ter escrito nele. Proveniencia que muda
-// sozinha contradiz o principio II (mesma entrada, mesma saida).
+// O chunk nao compartilha o ponteiro de pagina com o paragrafo que o gerou.
 func TestChunkNaoCompartilhaPonteiroDePaginaComOParagrafo(t *testing.T) {
 	t.Parallel()
 
@@ -218,7 +201,7 @@ func TestChunkNaoCompartilhaPonteiroDePaginaComOParagrafo(t *testing.T) {
 	}
 }
 
-// Mesmo raciocinio para o StartPage do no, que e a segunda opcao de origem.
+// Idem para o StartPage do no.
 func TestChunkNaoCompartilhaPonteiroDePaginaComONo(t *testing.T) {
 	t.Parallel()
 
