@@ -26,7 +26,7 @@ W -> P : reivindica eventos pendentes\n(FOR UPDATE SKIP LOCKED, a cada 5 s)
 W -> R : publica o evento
 R -> W : entrega a mensagem
 W -> S : lê o PDF
-W -> W : extrai páginas, parágrafos com caixa,\ntabelas, sumário e trechos
+W -> W : extrai páginas, parágrafos com região,\ntabelas, sumário e trechos
 opt enriquecimento ligado
   W -> L : resumos por página e por seção
 end
@@ -38,12 +38,12 @@ U -> F : pergunta
 F -> A : POST /chat/stream (SSE)
 A -> P : carrega a coleção\n(9 consultas, número fixo)
 A -> A : BM25 por tipo de unidade;\nseleciona até 9 fontes (3 linhas\nde tabela + 6 seções ou páginas)
-A --> F : evento "sources"\n(documento, página, caixa)
+A --> F : evento "sources"\n(documento, página, região)
 A -> L : prompt com as fontes
 L --> A : resposta em partes
 A --> F : eventos "delta"
 A -> P : grava pergunta, resposta,\nfontes e consumo
 A --> F : evento "done" (tokens)
 U -> F : clica numa fonte
-F -> F : abre o PDF na página\ne marca a caixa
+F -> F : abre o PDF na página\ne destaca a região
 @enduml

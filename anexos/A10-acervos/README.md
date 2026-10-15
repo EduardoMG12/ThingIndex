@@ -2,9 +2,9 @@
 
 ThingIndex – Trabalho de Conclusão de Curso – Sistemas de Informação – IFPR Campus Palmas
 
-Os documentos de cada acervo usado na avaliação, na ordem do artigo. Cada pasta traz os PDFs que o sistema indexou (cópias idênticas, byte a byte, dos de `examples/`) e um `perguntas.pdf` com todas as perguntas do acervo, a resposta esperada e o documento e a página onde ela está.
+Os documentos de cada acervo usado na avaliação, na ordem do artigo. Cada pasta traz os PDFs que o sistema indexou (cópias dos arquivos de `examples/`) e um `perguntas.pdf` com todas as perguntas do acervo, a resposta esperada e o documento e a página onde ela está.
 
-As perguntas estão transcritas exatamente como foram enviadas ao sistema; parte delas foi escrita sem acentos.
+As perguntas estão escritas como foram feitas ao sistema, inclusive as que estão sem acento.
 
 ## C1 (controle)
 
@@ -18,7 +18,7 @@ Pasta [`01-controle-c1/`](01-controle-c1/); 18 perguntas em [`01-controle-c1/per
 | Política de Privacidade e Tratamento de Dados Pessoais | `textos-ficticios.pdf` | p. 4 | texto fictício do `api/internal/evalcorpus/testdata/corpus-c1.json` |
 | Manual de Integração de Novos Colaboradores | `textos-ficticios.pdf` | p. 5 | texto fictício do `api/internal/evalcorpus/testdata/corpus-c1.json` |
 
-O arquivo `textos-ficticios.pdf` foi montado só para este anexo, com um texto por página. No sistema e no teste, os textos de C1 são indexados como texto sem paginação, e toda unidade fica na página 1.
+No teste, os cinco textos foram enviados ao sistema como texto simples, sem divisão em páginas. No arquivo `textos-ficticios.pdf`, cada texto ocupa uma página só para facilitar a leitura.
 
 ## Ensino
 
@@ -55,7 +55,7 @@ Pasta [`04-seguranca-do-trabalho/`](04-seguranca-do-trabalho/); 23 perguntas em 
 | NR 1 - versao de 2024 | `nr-01-versao-2024.pdf` | 18 | O portal do MTE publica duas versões da NR-1 ao mesmo tempo, e as duas estão listadas como vigentes; situação declarada no portal: vigência até 25 de maio de 2026 |
 | NR 1 - versao de 2025 | `nr-01-versao-2025.pdf` | 21 | O portal do MTE publica duas versões da NR-1 ao mesmo tempo, e as duas estão listadas como vigentes; situação declarada no portal: versão atual |
 | NR 6 - EPI | `nr-06-epi.pdf` | 12 | NR 6 (Equipamentos de Proteção Individual), texto atualizado 2022, portal gov.br |
-| NR 9 - Agentes fisicos, quimicos e biologicos | `nr-09-agentes.pdf` | 15 | Avaliação e Controle das Exposições Ocupacionais (o FONTES.md não registra o endereço de origem) |
+| NR 9 - Agentes fisicos, quimicos e biologicos | `nr-09-agentes.pdf` | 15 | Avaliação e Controle das Exposições Ocupacionais (endereço de origem não anotado) |
 | NR 18 - Industria da construcao | `nr-18-construcao.pdf` | 54 | NR 18 (Segurança na Indústria da Construção), texto atualizado 2025, portal gov.br |
 
 ## Produto e consumidor
@@ -76,7 +76,7 @@ Pasta [`06-licitacoes/`](06-licitacoes/); 25 perguntas em [`06-licitacoes/pergun
 |---|---|---|---|
 | Lei 8.666, de 21 de junho de 1993 | `lei-8666-1993-licitacoes.pdf` | 52 | Planalto, texto compilado: https://www.planalto.gov.br/ccivil_03/leis/l8666cons.htm |
 | Lei 14.133, de 1 de abril de 2021 | `lei-14133-2021-licitacoes.pdf` | 77 | Planalto, texto compilado: https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm |
-| Lei 10.520, de 17 de julho de 2002 - Pregao | `lei-10520-pregao.pdf` | 4 | Lei do Pregão (o FONTES.md não registra o endereço de origem) |
+| Lei 10.520, de 17 de julho de 2002 - Pregao | `lei-10520-pregao.pdf` | 4 | Lei do Pregão (endereço de origem não anotado) |
 
 ## Edital municipal
 
@@ -86,4 +86,4 @@ Pasta [`07-edital-municipal/`](07-edital-municipal/); 18 perguntas em [`07-edita
 |---|---|---|---|
 | Edital 01/2026 - Concurso Publico Prefeitura de Francisco Morato | `edital-01-2026-francisco-morato.pdf (não versionado; ver LEIA-ME.txt)` | 52 | edital de concurso publico, Prefeitura de Francisco Morato/SP |
 
-Os gabaritos completos, com os padrões de correção de cada pergunta, estão em [`api/internal/evalcorpus/testdata/`](../../api/internal/evalcorpus/testdata/), travados por hash.
+As regras usadas para corrigir as respostas de cada acervo estão em [`api/internal/evalcorpus/testdata/`](../../api/internal/evalcorpus/testdata/).
