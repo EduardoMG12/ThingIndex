@@ -4,8 +4,6 @@ ThingIndex – Trabalho de Conclusão de Curso – Sistemas de Informação – 
 
 Os documentos de cada acervo usado na avaliação, na ordem do artigo. Cada pasta traz os PDFs que o sistema indexou (cópias dos arquivos de `examples/`) e um `perguntas.pdf` com todas as perguntas do acervo, a resposta esperada e o documento e a página onde ela está.
 
-As perguntas estão escritas como foram feitas ao sistema, inclusive as que estão sem acento.
-
 ## C1 (controle)
 
 Pasta [`01-controle-c1/`](01-controle-c1/); 18 perguntas em [`01-controle-c1/perguntas.pdf`](01-controle-c1/perguntas.pdf) (2 páginas).
@@ -17,8 +15,6 @@ Pasta [`01-controle-c1/`](01-controle-c1/); 18 perguntas em [`01-controle-c1/per
 | Contrato de Prestação de Serviços de TI — Anexo de Níveis de Serviço | `textos-ficticios.pdf` | p. 3 | texto fictício do `api/internal/evalcorpus/testdata/corpus-c1.json` |
 | Política de Privacidade e Tratamento de Dados Pessoais | `textos-ficticios.pdf` | p. 4 | texto fictício do `api/internal/evalcorpus/testdata/corpus-c1.json` |
 | Manual de Integração de Novos Colaboradores | `textos-ficticios.pdf` | p. 5 | texto fictício do `api/internal/evalcorpus/testdata/corpus-c1.json` |
-
-No teste, os cinco textos foram enviados ao sistema como texto simples, sem divisão em páginas. No arquivo `textos-ficticios.pdf`, cada texto ocupa uma página só para facilitar a leitura.
 
 ## Ensino
 
@@ -70,7 +66,7 @@ Pasta [`05-produto-e-consumidor/`](05-produto-e-consumidor/); 23 perguntas em [`
 
 ## Licitações
 
-Pasta [`06-licitacoes/`](06-licitacoes/); 25 perguntas em [`06-licitacoes/perguntas.pdf`](06-licitacoes/perguntas.pdf) (3 páginas).
+Pasta [`06-licitacoes/`](06-licitacoes/); 25 perguntas em [`06-licitacoes/perguntas.pdf`](06-licitacoes/perguntas.pdf) (2 páginas).
 
 | Documento | Arquivo | Páginas | Origem |
 |---|---|---|---|
