@@ -871,11 +871,6 @@ def a7_detalhes() -> tuple[str, list[Path]]:
     for i, (arq, leg, grupos) in enumerate(itens, 1):
         usados.append(TAB / arq)
         c += detalhe(i, arq, leg, grupos)
-    c += ("<p>As demais tabelas do teste (por jeito de escrever a pergunta, perguntas sem "
-          "resposta, nota mínima de corte, estabilidade, origem completa e as 90 comparações "
-          "estatísticas, 75 entre textos e 15 entre seções) estão no repositório do projeto, em "
-          "<code>docs/article/tables</code>, e os dados brutos em <code>docs/article/results"
-          "</code>.</p>")
     return f"<div class='detalhes'>{c}</div>", usados
 
 
