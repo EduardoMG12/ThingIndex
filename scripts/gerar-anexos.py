@@ -1146,8 +1146,6 @@ ESTILO_A10 = ("<style>table.a10 { font-size: 8.5pt !important; table-layout: fix
               ".nota-a10 { font-size: 10pt; text-align: left; margin-top: 10pt; } "
               ".texto-c1 p { text-align: justify; margin: 0 0 4pt 0; } "
               ".texto-c1 .sec { font-weight: bold; margin-top: 8pt; text-align: left; }</style>")
-NOTA_TRANSCRICAO = ("As perguntas estão escritas como foram feitas ao sistema, inclusive as que "
-                    "estão sem acento.")
 LEIA_ME_EDITAL = ("O PDF do edital 01/2026 da Prefeitura de Francisco Morato (52 páginas) não "
                   "foi incluído no repositório.\n")
 
@@ -1221,9 +1219,6 @@ def a10_c1() -> dict:
                  "de relevância vai de 0 a 3."),
         "ids": [c["id"] for c in d["queries"]],
         "copias": [],
-        "nota": ("No teste, os cinco textos foram enviados ao sistema como texto simples, sem "
-                 "divisão em páginas. No arquivo textos-ficticios.pdf, cada texto ocupa uma "
-                 "página só para facilitar a leitura."),
         "extra": {"textos-ficticios.pdf": documento(
             "A10", "Textos fictícios do C1",
             f"Os {len(d['documents'])} textos curtos do corpus de controle C1, completos, "
@@ -1301,8 +1296,7 @@ def a10(build: Path) -> None:
               "Os documentos de cada acervo usado na avaliação, na ordem do artigo. Cada pasta "
               "traz os PDFs que o sistema indexou (cópias dos arquivos de "
               "`examples/`) e um `perguntas.pdf` com todas as perguntas do acervo, a resposta "
-              "esperada e o documento e a página onde ela está.", "",
-              NOTA_TRANSCRICAO, ""]
+              "esperada e o documento e a página onde ela está.", ""]
     for nome, pasta, arquivo, esperado in ACERVOS_A10:
         dados = a10_c1() if arquivo == "corpus-c1.json" else a10_acervo(arquivo)
         if len(dados["ids"]) != esperado or len(set(dados["ids"])) != esperado:
@@ -1320,14 +1314,10 @@ def a10(build: Path) -> None:
             extra = imprimir(html_txt, f"{PASTA_A10.name}/{pasta}/{Path(arq).stem}", build)
             if paginas_pdf(extra) != len(dados["readme_docs"]):
                 raise SystemExit(f"A10: {arq} deveria ter um texto por pagina")
-        nota = (("<p class='nota-a10'>" + dados["nota"] + "</p>" if dados.get("nota") else "")
-                + f"<p class='nota-a10'>{NOTA_TRANSCRICAO}</p>"
-                "<p class='nota-a10'>As regras usadas para corrigir cada resposta estão em "
-                f"<code>{(GAB / arquivo).relative_to(RAIZ)}</code>.</p>")
         corpo = (ESTILO_A10 + "<p class='titulo-tab'>Quadro 1 – Documentos do acervo.</p>"
                  + dados["quadro_docs"]
                  + f"<p class='titulo-tab'>Quadro 2 – {'Consultas' if arquivo == 'corpus-c1.json' else 'Perguntas'}"
-                 " do acervo.</p>" + dados["quadro_perg"] + nota)
+                 " do acervo.</p>" + dados["quadro_perg"])
         pdf = imprimir(documento("A10", f"Perguntas: {nome}", dados["desc"], corpo),
                        f"{PASTA_A10.name}/{pasta}/perguntas", build)
         confere_perguntas(pdf, dados["ids"], esperado)
@@ -1339,8 +1329,6 @@ def a10(build: Path) -> None:
         readme += [f"| {md(t)} | `{md(a)}` | {n} | {md(o)} |"
                    for t, a, n, o in dados["readme_docs"]]
         readme.append("")
-        if dados.get("nota"):
-            readme += [dados["nota"].replace("textos-ficticios.pdf", "`textos-ficticios.pdf`"), ""]
     readme += ["As regras usadas para corrigir as respostas de cada acervo estão em "
                "[`api/internal/evalcorpus/testdata/`](../../api/internal/evalcorpus/testdata/).",
                ""]
