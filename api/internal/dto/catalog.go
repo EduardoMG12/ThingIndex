@@ -806,12 +806,7 @@ func ToCollectionRetrievalResponse(result *domain.CollectionRetrievalResult) *Co
 	}
 }
 
-// NodeConnectionResponse e uma conexao derivada entre nos de documentos
-// diferentes.
-//
-// O campo matched_terms nao e decorativo: e ele que torna a aresta auditavel.
-// Uma conexao que nao consegue dizer por que existe e tao opaca quanto a
-// vizinhanca vetorial que este projeto evita.
+// NodeConnectionResponse e uma conexao derivada entre nos de documentos diferentes.
 type NodeConnectionResponse struct {
 	DocumentID   uint     `json:"document_id"`
 	NodeID       string   `json:"node_id"`
@@ -823,12 +818,7 @@ type NodeConnectionResponse struct {
 	Kind         string   `json:"kind,omitempty"`
 }
 
-// NodeConnectionsResponse envelopa a lista e declara o limiar aplicado.
-//
-// Devolver o limiar junto e deliberado: sem ele o cliente nao consegue
-// distinguir "nao ha conexao" de "o corte estava alto demais", e essa
-// diferenca e exatamente o que a taxa de falso positivo de 1,000 torna
-// relevante neste trabalho.
+// O limiar volta junto para o cliente distinguir "nao ha conexao" de "corte alto demais".
 type NodeConnectionsResponse struct {
 	NodeID      string                   `json:"node_id"`
 	MinScore    int                      `json:"min_score"`

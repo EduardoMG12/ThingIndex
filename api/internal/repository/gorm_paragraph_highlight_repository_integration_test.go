@@ -11,9 +11,7 @@ import (
 	"thing-index/internal/models"
 )
 
-// Cenario: dois usuarios, cada um com sua colecao e seu documento com um
-// paragrafo. O que se prova aqui e o escopo transitivo -- a constituicao exige
-// teste para ele -- mais o upsert e o cascade.
+// Dois usuarios, cada um com colecao e documento: escopo transitivo, upsert e cascade.
 func TestParagraphHighlightIsolamentoEntreUsuarios(t *testing.T) {
 	db := openIntegrationDB(t)
 	repo := NewGormParagraphHighlightRepository(db)
@@ -30,7 +28,6 @@ func TestParagraphHighlightIsolamentoEntreUsuarios(t *testing.T) {
 	catB := seedIntegrationCategory(t, db, userB.ID, "Normas")
 	colB := seedIntegrationCollection(t, db, userB.ID, catB.ID, "Regimento")
 
-	// A marca o proprio paragrafo.
 	marca, err := repo.UpsertHighlight(ctx, userA.ID, colA.ID, paraA.ID, "amarelo")
 	if err != nil {
 		t.Fatalf("UpsertHighlight: %v", err)
@@ -39,8 +36,6 @@ func TestParagraphHighlightIsolamentoEntreUsuarios(t *testing.T) {
 		t.Fatalf("marca = %+v", marca)
 	}
 
-	// B nao consegue marcar o paragrafo de A, nem via a propria colecao, nem
-	// via a colecao de A.
 	if _, err := repo.UpsertHighlight(ctx, userB.ID, colB.ID, paraA.ID, "verde"); !errors.Is(err, domain.ErrParagraphNotInCollection) {
 		t.Fatalf("B marcando paragrafo de A pela propria colecao: quero ErrParagraphNotInCollection, veio %v", err)
 	}
@@ -48,7 +43,6 @@ func TestParagraphHighlightIsolamentoEntreUsuarios(t *testing.T) {
 		t.Fatalf("B marcando paragrafo de A pela colecao de A: quero ErrParagraphNotInCollection, veio %v", err)
 	}
 
-	// B nao lista nem apaga a marca de A.
 	lista, err := repo.ListHighlights(ctx, userB.ID, colA.ID)
 	if err != nil || len(lista) != 0 {
 		t.Fatalf("B listando a colecao de A: %v, %d itens", err, len(lista))
@@ -90,7 +84,7 @@ func TestParagraphHighlightUpsertTrocaACorSemDuplicar(t *testing.T) {
 		t.Fatalf("linhas = %d, quero 1", total)
 	}
 
-	// Apagar e marcar de novo nao pode esbarrar no indice unico.
+	// Apagar e marcar de novo nao pode bater no indice unico.
 	if err := repo.DeleteHighlight(ctx, user.ID, col.ID, para.ID); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
@@ -114,8 +108,7 @@ func TestParagraphHighlightCascadeAoApagarParagrafo(t *testing.T) {
 		t.Fatalf("upsert: %v", err)
 	}
 
-	// Reindexar substitui os paragrafos (delete fisico): a marca vai junto,
-	// pela FK com ON DELETE CASCADE, em vez de virar linha orfa.
+	// Delete fisico do paragrafo (reindexacao) leva a marca junto pela FK com cascade.
 	if err := db.Unscoped().Delete(&models.ParagraphNode{}, para.ID).Error; err != nil {
 		t.Fatalf("apagar paragrafo: %v", err)
 	}

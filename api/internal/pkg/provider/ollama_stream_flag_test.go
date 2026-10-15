@@ -10,11 +10,8 @@ import (
 	"testing"
 )
 
-// O /api/chat do Ollama tem stream=true como padrao. Se o pedido nao disser
-// "stream":false por escrito, a resposta vem em NDJSON, um pedaco por token,
-// e o decoder de resposta unica le so o primeiro. Foi assim que o
-// enriquecimento por LLM devolveu um token por chamada e caiu em fallback
-// sem erro nenhum.
+// Sem "stream":false explicito o Ollama responde em NDJSON e o decoder le so o
+// primeiro pedaco.
 func TestOllamaNativeGenerateTextEnviaStreamFalsePorEscrito(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)

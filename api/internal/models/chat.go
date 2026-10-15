@@ -6,10 +6,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// SourceBox e a caixa citada no espaco da pagina do PDF (origem no canto
-// superior esquerdo, pontos), a mesma de metadata.box dos paragrafos. Vai
-// gravada na fonte para o grifo sobreviver a uma reindexacao: paragrafo e
-// secao ganham ids novos, a caixa na pagina nao muda.
+// SourceBox e a caixa citada na pagina do PDF (pontos, origem no canto superior
+// esquerdo). Gravada na fonte porque sobrevive a reindexacao; ids nao.
 type SourceBox struct {
 	XMin       float64 `json:"x_min"`
 	YMin       float64 `json:"y_min"`
@@ -51,20 +49,18 @@ type ChatConversation struct {
 }
 
 type ChatConversationEntry struct {
-	ID             uint                  `gorm:"primarykey" json:"id"`
-	ConversationID uint                  `gorm:"not null;index" json:"conversation_id"`
-	Role           string                `gorm:"size:16;not null" json:"role"`
-	Content        string                `gorm:"type:text;not null" json:"content"`
-	Sources        []ChatSourceReference `gorm:"type:jsonb;serializer:json" json:"sources,omitempty"`
-	// Consumo da resposta, em colunas proprias (nada polimorfico no jsonb).
-	PromptTokens     int      `gorm:"not null;default:0" json:"prompt_tokens"`
-	CompletionTokens int      `gorm:"not null;default:0" json:"completion_tokens"`
-	UsageReported    bool     `gorm:"not null;default:false" json:"usage_reported"`
-	ProviderType     string   `gorm:"size:32" json:"provider_type,omitempty"`
-	Model            string   `gorm:"size:128" json:"model,omitempty"`
-	EstimatedCostUSD *float64 `json:"estimated_cost_usd,omitempty"`
-	// Status "error": a resposta falhou (provedor fora, limite de uso); a
-	// mensagem fica na conversa com o detalhe e as fontes, em vez de sumir.
+	ID               uint                  `gorm:"primarykey" json:"id"`
+	ConversationID   uint                  `gorm:"not null;index" json:"conversation_id"`
+	Role             string                `gorm:"size:16;not null" json:"role"`
+	Content          string                `gorm:"type:text;not null" json:"content"`
+	Sources          []ChatSourceReference `gorm:"type:jsonb;serializer:json" json:"sources,omitempty"`
+	PromptTokens     int                   `gorm:"not null;default:0" json:"prompt_tokens"`
+	CompletionTokens int                   `gorm:"not null;default:0" json:"completion_tokens"`
+	UsageReported    bool                  `gorm:"not null;default:false" json:"usage_reported"`
+	ProviderType     string                `gorm:"size:32" json:"provider_type,omitempty"`
+	Model            string                `gorm:"size:128" json:"model,omitempty"`
+	EstimatedCostUSD *float64              `json:"estimated_cost_usd,omitempty"`
+	// Status "error": a resposta falhou e fica na conversa com o detalhe e as fontes.
 	Status      string         `gorm:"size:16" json:"status,omitempty"`
 	ErrorDetail string         `gorm:"type:text" json:"error_detail,omitempty"`
 	CreatedAt   time.Time      `json:"created_at"`

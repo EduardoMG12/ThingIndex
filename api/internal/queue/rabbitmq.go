@@ -46,38 +46,26 @@ type RabbitMQPublisher struct {
 	exchange   string
 	routingKey string
 
-	// Guardada para reabrir a conexao quando o broker cai e volta. Sem isso,
-	// todo Publish apos uma queda falhava com "channel/connection is not open"
-	// para sempre, e os eventos do outbox iam para FAILED mesmo com o RabbitMQ
-	// ja no ar.
+	// Usada para reabrir a conexao quando o broker cai e volta.
 	cfg *config.Config
-	// Protege a troca de conn/channel: o dispatcher publica em lote e a
-	// reconexao nao pode acontecer no meio de outra publicacao.
+	// Reconexao nao pode acontecer no meio de outra publicacao.
 	mu sync.Mutex
 
-	// retornos recebe as mensagens que o broker devolveu por falta de rota
-	// (publicacao com mandatory=true). E trocado junto com o canal.
+	// Mensagens devolvidas por falta de rota (mandatory=true).
 	retornos chan amqp.Return
-	// publicando serializa publicar+aguardar confirmacao: o basic.return de
-	// uma mensagem sem rota chega antes do basic.ack dela, e so com uma
-	// publicacao em voo por vez da para atribuir o retorno a mensagem certa.
+	// Uma publicacao em voo por vez: o basic.return chega antes do basic.ack,
+	// e so assim da para saber de qual mensagem ele e.
 	publicando sync.Mutex
 	sequencia  uint64
 }
 
-// ErrMensagemSemRota: o broker aceitou a publicacao mas nao havia fila
-// vinculada a routing key (binding apagado, fila removida). Sem mandatory=true
-// o RabbitMQ descartava a mensagem em silencio e o outbox a marcava PUBLISHED.
+// ErrMensagemSemRota: o broker aceitou, mas nenhuma fila esta vinculada a routing key.
 var ErrMensagemSemRota = errors.New("rabbitmq devolveu a mensagem: nenhuma fila vinculada a routing key")
 
-// ErrPublicacaoNaoConfirmada: o broker respondeu basic.nack, ou o canal fechou
-// antes da confirmacao. Em ambos os casos nao ha garantia de que a mensagem foi
-// persistida, entao o evento do outbox nao pode ser marcado PUBLISHED.
+// ErrPublicacaoNaoConfirmada: basic.nack ou canal fechado antes da confirmacao.
 var ErrPublicacaoNaoConfirmada = errors.New("rabbitmq nao confirmou a publicacao")
 
-// publisherConfirmTimeout limita a espera pelo ack quando o contexto do chamador
-// nao tem prazo. Sem isso, um broker que aceita o frame e nunca confirma
-// prenderia o despachante do outbox para sempre.
+// Limite de espera pelo ack quando o ctx do chamador nao tem prazo.
 const publisherConfirmTimeout = 30 * time.Second
 
 type RabbitMQConsumer struct {
@@ -90,9 +78,7 @@ type RabbitMQConsumer struct {
 	dlq        string
 	retryDelay time.Duration
 	maxRetries int
-	// Prazo maximo de uma unica mensagem. O consumidor e sequencial, entao
-	// sem isso um PDF gigante ou um LLM que nao responde trava a fila inteira
-	// -- e o ctx do handler era o do processo, sem deadline nenhum.
+	// Prazo por mensagem; o consumidor e sequencial e uma mensagem travada para a fila toda.
 	handlerTimeout time.Duration
 
 	failureCallbacks DocumentIndexFailureCallbacks
@@ -114,10 +100,8 @@ func NewRabbitMQPublisher(cfg *config.Config) (*RabbitMQPublisher, error) {
 	}, nil
 }
 
-// abrirConexaoPublicador abre conexao e canal do publicador, declara a
-// topologia e liga o modo de confirmacao (publisher confirms) e o aviso de
-// mensagem devolvida. Usado na criacao e na reconexao, para que o canal novo
-// tenha exatamente as mesmas garantias do original.
+// abrirConexaoPublicador abre conexao e canal, declara a topologia e liga
+// publisher confirms e NotifyReturn. Usado tambem na reconexao.
 func abrirConexaoPublicador(cfg *config.Config) (*amqp.Connection, *amqp.Channel, chan amqp.Return, error) {
 	conn, err := amqp.Dial(cfg.RabbitMQURL)
 	if err != nil {
@@ -142,9 +126,7 @@ func abrirConexaoPublicador(cfg *config.Config) (*amqp.Connection, *amqp.Channel
 		return nil, nil, nil, fmt.Errorf("enable publisher confirms: %w", err)
 	}
 
-	// Com buffer: a biblioteca entrega o retorno de forma bloqueante na
-	// goroutine de leitura, e um canal sem buffer travaria a conexao ate
-	// alguem ler.
+	// Com buffer: a lib entrega o retorno bloqueando a goroutine de leitura.
 	retornos := channel.NotifyReturn(make(chan amqp.Return, 16))
 
 	return conn, channel, retornos, nil
@@ -257,13 +239,8 @@ func (p *RabbitMQPublisher) PublishDocumentIndexRequested(ctx context.Context, e
 	}, p.reconectar)
 }
 
-// publicarConfirmado publica com mandatory=true e so devolve nil depois do
-// basic.ack do broker, sem retorno de "sem rota" para esta mensagem.
-//
-// Antes, PublishWithContext devolvia nil assim que o frame saia pelo socket:
-// se o broker caisse antes de persistir, ou se nao houvesse fila vinculada, a
-// mensagem sumia e o outbox a marcava PUBLISHED -- documento preso em QUEUED
-// para sempre.
+// publicarConfirmado publica com mandatory=true e so devolve nil apos o
+// basic.ack, sem basic.return para a mensagem.
 func publicarConfirmado(
 	ctx context.Context,
 	canal *amqp.Channel,
@@ -271,8 +248,7 @@ func publicarConfirmado(
 	exchange, routingKey string,
 	msg amqp.Publishing,
 ) error {
-	// Descarta retornos antigos (de uma publicacao que desistiu por timeout)
-	// para nao atribui-los a esta mensagem.
+	// Descarta retornos de uma publicacao anterior que desistiu por timeout.
 	drenarRetornos(retornos)
 
 	confirmacao, err := canal.PublishWithDeferredConfirmWithContext(ctx, exchange, routingKey, true, false, msg)
@@ -295,9 +271,7 @@ func publicarConfirmado(
 		return ErrPublicacaoNaoConfirmada
 	}
 
-	// O RabbitMQ envia o basic.return ANTES do basic.ack da mesma mensagem, e
-	// a biblioteca entrega os dois na ordem em que chegam; com o ack em maos,
-	// um eventual retorno ja esta no canal.
+	// O basic.return chega antes do basic.ack; com o ack em maos, um retorno ja esta no canal.
 	for {
 		select {
 		case retorno, ok := <-retornos:
@@ -343,23 +317,9 @@ func (c *RabbitMQConsumer) SetFailureCallbacks(callbacks DocumentIndexFailureCal
 	c.failureCallbacks = callbacks
 }
 
-// ErrDeliveriesChannelClosed sinaliza que o RabbitMQ fechou o canal de
-// entregas por conta propria -- queda do broker, restart, corte de rede ou
-// channel.Close() remoto.
-//
-// Antes desta distincao o consumidor devolvia `nil` nesse caso, exatamente
-// como no encerramento limpo por cancelamento de contexto. O efeito era grave
-// e silencioso: `cmd/indexer/main.go` so chama log.Fatalf quando o erro nao e
-// nil, entao o processo saia com codigo 0. Para o supervisor (Docker,
-// Kubernetes, systemd) isso e uma parada bem-sucedida, e a politica
-// `restart: unless-stopped` NAO reinicia o container. O worker sumia, a fila
-// parava de ser consumida e nenhum documento era indexado -- sem alarme, sem
-// log de erro e sem sintoma ate alguem reparar que os uploads ficam eternamente
-// em QUEUED.
-//
-// Devolver um erro distinto faz o processo morrer com codigo diferente de zero
-// e o supervisor reinicia, que e o comportamento correto para uma dependencia
-// que caiu.
+// ErrDeliveriesChannelClosed: o broker fechou o canal de entregas (queda, restart,
+// rede). Precisa ser erro para o processo sair com codigo != 0 e o supervisor
+// reiniciar o container; com nil, restart: unless-stopped nao reinicia.
 var ErrDeliveriesChannelClosed = errors.New("rabbitmq fechou o canal de entregas")
 
 func (c *RabbitMQConsumer) ConsumeDocumentIndexRequested(ctx context.Context, handler func(context.Context, domain.DocumentIndexRequestedEvent) error) error {
@@ -374,8 +334,7 @@ func (c *RabbitMQConsumer) ConsumeDocumentIndexRequested(ctx context.Context, ha
 			return ctx.Err()
 		case delivery, ok := <-deliveries:
 			if !ok {
-				// O canal so fecha por iniciativa do broker: encerramento
-				// limpo chega por ctx.Done() no case acima.
+				// Encerramento limpo chega por ctx.Done(); aqui foi o broker.
 				return ErrDeliveriesChannelClosed
 			}
 
@@ -391,12 +350,8 @@ func (c *RabbitMQConsumer) ConsumeDocumentIndexRequested(ctx context.Context, ha
 			}
 
 			if err := c.handleDelivery(ctx, handler, event); err != nil {
-				// Distinguir "o processo esta encerrando" de "esta mensagem
-				// estourou o prazo" e essencial: no primeiro caso devolvemos o
-				// controle sem ack, e o RabbitMQ reentrega para outro worker;
-				// no segundo a mensagem precisa seguir o fluxo normal de
-				// retry/DLQ. Consultar ctx.Err() do contexto PAI (nao o do
-				// handler, que ja expirou) faz essa separacao.
+				// ctx do pai cancelado = shutdown: sai sem ack e o broker reentrega.
+				// Senao a mensagem estourou o prazo e segue o fluxo de retry/DLQ.
 				if ctx.Err() != nil {
 					return ctx.Err()
 				}
@@ -437,17 +392,8 @@ func (c *RabbitMQConsumer) ConsumeDocumentIndexRequested(ctx context.Context, ha
 	}
 }
 
-// handleDelivery roda o handler com prazo maximo por mensagem.
-//
-// O consumidor processa uma mensagem por vez. Sem deadline, um PDF gigante ou
-// um provider de LLM que aceita a conexao e nunca responde prende a goroutine
-// para sempre -- e como o ctx do handler era o do processo, nada alem de um
-// restart resolvia. A fila inteira parava atras de um unico documento.
-//
-// O erro de timeout e envolvido em ErrDocumentIndexing de proposito: e uma
-// falha transiente (o proximo retry pode pegar um provider saudavel), entao
-// precisa ser classificada como retry e nao como falha permanente. Ver
-// classifyDocumentIndexFailure.
+// handleDelivery roda o handler com prazo por mensagem. O timeout vira
+// ErrDocumentIndexing para ser tratado como falha transiente (retry).
 func (c *RabbitMQConsumer) handleDelivery(
 	ctx context.Context,
 	handler func(context.Context, domain.DocumentIndexRequestedEvent) error,
@@ -462,9 +408,7 @@ func (c *RabbitMQConsumer) handleDelivery(
 
 	err := handler(handlerCtx, event)
 
-	// A checagem do contexto PAI vem primeiro: se o processo esta encerrando,
-	// o handlerCtx tambem expirou por heranca, e reportar "timeout da mensagem"
-	// mandaria para a DLQ um documento que so foi interrompido pelo shutdown.
+	// Checa o ctx pai antes: no shutdown o handlerCtx tambem expira, e nao e timeout da mensagem.
 	if ctx.Err() != nil {
 		return err
 	}
@@ -575,11 +519,7 @@ func (c *RabbitMQConsumer) Close() error {
 	return nil
 }
 
-// reconectar reabre conexao e canal do publicador.
-//
-// Fecha o que sobrou antes de abrir o novo: sem isso, cada queda do broker
-// deixaria um socket orfao para tras, e um dia de instabilidade esgotaria os
-// descritores do processo.
+// reconectar fecha o que sobrou antes de abrir de novo, para nao vazar sockets.
 func (p *RabbitMQPublisher) reconectar() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -591,10 +531,8 @@ func (p *RabbitMQPublisher) reconectar() error {
 		_ = p.conn.Close()
 	}
 
-	// A topologia e redeclarada porque o broker pode ter voltado sem estado --
-	// container recriado, volume novo. Declarar de novo e idempotente. O modo
-	// de confirmacao tambem e religado: ele e por canal, e um canal novo sem
-	// Confirm voltaria a aceitar publicacao sem ack.
+	// Redeclara a topologia (o broker pode ter voltado sem estado) e religa o
+	// modo confirm, que e por canal.
 	conn, channel, retornos, err := abrirConexaoPublicador(p.cfg)
 	if err != nil {
 		return err

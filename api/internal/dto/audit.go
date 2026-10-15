@@ -113,10 +113,7 @@ func ToDocumentAuditEventResponse(event *models.DocumentAuditEvent) *DocumentAud
 }
 
 func ToDocumentAuditEventResponses(events []models.DocumentAuditEvent) []DocumentAuditEventResponse {
-	// Sem retorno antecipado com nil: lista vazia precisa serializar como [] e
-	// nao como null. O frontend atual se protege com Array.isArray, mas um
-	// cliente novo (script, app) faria .map direto e quebraria -- e o resto do
-	// pacote (ToCategoriesResponse, ToCollectionsResponse) ja devolve [].
+	// Lista vazia tem de serializar como [], nao null.
 	items := make([]DocumentAuditEventResponse, 0, len(events))
 	for i := range events {
 		if item := ToDocumentAuditEventResponse(&events[i]); item != nil {
@@ -156,10 +153,7 @@ func ToProviderAuditEventResponse(event *models.ProviderAuditEvent) *ProviderAud
 }
 
 func ToProviderAuditEventResponses(events []models.ProviderAuditEvent) []ProviderAuditEventResponse {
-	// Sem retorno antecipado com nil: lista vazia precisa serializar como [] e
-	// nao como null. O frontend atual se protege com Array.isArray, mas um
-	// cliente novo (script, app) faria .map direto e quebraria -- e o resto do
-	// pacote (ToCategoriesResponse, ToCollectionsResponse) ja devolve [].
+	// Lista vazia tem de serializar como [], nao null.
 	items := make([]ProviderAuditEventResponse, 0, len(events))
 	for i := range events {
 		if item := ToProviderAuditEventResponse(&events[i]); item != nil {

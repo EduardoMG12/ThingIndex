@@ -17,13 +17,8 @@ import (
 
 const schemaMigrationLockID int64 = 8452314179902
 
-// InsertBatchSize e o numero maximo de linhas por INSERT multi-linha.
-//
-// MOTIVO: sem lote, o GORM gera um unico INSERT para o slice inteiro e o pgx
-// recusa acima de 65535 parametros. ParagraphNode tem 8 colunas, entao um
-// documento com mais de ~8 mil paragrafos (um PDF de ~400 paginas) falhava em
-// FAILED_PERSISTING_INDEX e nunca indexava. 500 linhas x a tabela mais larga
-// fica muito abaixo do teto; o teste trava essa conta.
+// InsertBatchSize limita linhas por INSERT: sem lote o pgx recusa acima de 65535
+// parametros (ParagraphNode tem 8 colunas, ~8 mil paragrafos ja estoura).
 const InsertBatchSize = 500
 
 func newGormConfig() *gorm.Config {
@@ -101,14 +96,8 @@ var structuralTables = []string{
 	"document_outline_nodes",
 }
 
-// removeOrphanStructuralRows roda ANTES do AutoMigrate, porque criar a chave
-// estrangeira falha se ja existir linha apontando para documento inexistente.
-// Apagar e a unica saida coerente: linha estrutural sem documento nao tem
-// proveniencia, e inventar um documento para ela seria pior. O numero de
-// linhas removidas vai para o log por tabela, para a remocao ficar auditavel.
-//
-// Idempotente: numa base que ja tem as FKs nao ha orfao e nada e apagado. Numa
-// base nova as tabelas ainda nao existem e o passo e pulado.
+// removeOrphanStructuralRows roda antes do AutoMigrate: criar a FK falha se ja
+// existir linha apontando para documento inexistente. Idempotente.
 func removeOrphanStructuralRows(tx *gorm.DB) error {
 	if !tx.Migrator().HasTable("documents") {
 		return nil
@@ -128,11 +117,8 @@ func removeOrphanStructuralRows(tx *gorm.DB) error {
 	return nil
 }
 
-// userOwnedTables sao as tabelas com coluna user_id, cada uma com chave
-// estrangeira para users. A ordem importa: as folhas vem antes de quem elas
-// referenciam, para que apagar uma linha sem dono nunca esbarre numa chave
-// estrangeira RESTRICT de outra tabela. dependentes lista o que precisa sair
-// antes da propria linha (filhos sem coluna user_id).
+// userOwnedTables: a ordem importa, folhas antes de quem elas referenciam, para
+// nao esbarrar em FK RESTRICT. dependentes sao filhos sem coluna user_id.
 var userOwnedTables = []struct {
 	tabela      string
 	dependentes []string
@@ -163,22 +149,10 @@ func structuralColumns(column string) []string {
 	return out
 }
 
-// removeOrphanUserRows roda ANTES do AutoMigrate pelo mesmo motivo de
-// removeOrphanStructuralRows: criar a chave estrangeira para users falha se ja
-// existir linha com user_id de usuario inexistente. O sistema nao exclui conta
-// (users so tem exclusao logica, e a linha continua la), entao numa base
-// coerente nao ha nada a apagar; a limpeza cobre bases montadas a mao ou
-// restauradas pela metade. Linha sem dono nao e de ninguem: nenhuma consulta a
-// le, porque todas filtram por user_id. O numero de linhas removidas vai para o
-// log por tabela.
-//
-// user_id NULL (provider_model_catalogs, catalogo global) nao e orfao: a chave
-// estrangeira aceita NULL e a linha fica. O cache de enriquecimento anterior
-// ao escopo por usuario nao tem a coluna user_id; o AutoMigrate a criaria com 0
-// e a chave estrangeira falharia, entao essas linhas saem antes (o bootstrap
-// ja as apagava depois, em ensureEnrichmentCacheScope).
-//
-// Idempotente: numa base que ja tem as FKs nao ha orfao e nada e apagado.
+// removeOrphanUserRows roda antes do AutoMigrate pelo mesmo motivo: a FK para
+// users falha se houver user_id inexistente. user_id NULL (catalogo global) nao e
+// orfao. O cache de enriquecimento antigo, sem user_id, sai aqui porque o
+// AutoMigrate criaria a coluna com 0 e a FK falharia. Idempotente.
 func removeOrphanUserRows(tx *gorm.DB) error {
 	if !tx.Migrator().HasTable("users") {
 		return nil

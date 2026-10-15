@@ -12,38 +12,9 @@ import (
 	"thing-index/internal/retrieval"
 )
 
-// BuildNodeConnections deriva as conexoes de um no do sumario com nos de OUTROS
-// documentos do acervo.
-//
-// # Por que a aresta e derivada e nao armazenada
-//
-// O principio II da constituicao do projeto permite grafos "apenas como trilha
-// comparativa ou enriquecimento opcional -- nunca como dependencia do caminho
-// principal". Uma tabela de arestas percorrida para recuperar seria um grafo e
-// refutaria a tese do trabalho, que defende recuperacao relacional sem grafo
-// como camada primaria.
-//
-// A saida desta funcao e recalculada a cada chamada, a partir do texto do
-// proprio no, pelo mesmo scorer que ja atende as consultas de producao. Nada e
-// persistido. A assinatura reflete isso de proposito: sem repositorio, sem
-// contexto, sem erro -- e uma funcao pura, e violar a regra exigiria mudar a
-// assinatura, o que nao passa despercebido em revisao.
-//
-// # Por que existe limiar
-//
-// A taxa de falso positivo medida nos seis bracos do experimento e 1,000:
-// nenhum sabe responder "nao encontrei". Sem limiar, todo no teria conexao com
-// algum outro e o canvas desenharia flecha em todo par. No ranking o falso
-// positivo se esconde na quarta posicao e ninguem ve; numa aresta desenhada ele
-// vira artefato visual apontado no projetor. `minScore` e o parametro que
-// separa "existe evidencia" de "devolvi o menos ruim".
-//
-// # Por que a conexao carrega os termos
-//
-// Uma flecha sem justificativa e o mesmo tipo de resposta nao auditavel que
-// este trabalho critica no RAG denso. MatchedTerms permite responder "esta
-// conexao existe porque estes termos casaram", que e a versao da proveniencia
-// aplicada a relacao entre trechos.
+// BuildNodeConnections deriva as conexoes de um no com nos de outros
+// documentos. As arestas sao recalculadas a cada chamada, nada e persistido.
+// minScore evita que todo no ganhe conexao com o "menos ruim".
 func BuildNodeConnections(
 	origin models.DocumentOutlineNode,
 	candidates []models.DocumentOutlineNode,
@@ -61,8 +32,7 @@ func BuildNodeConnections(
 		tokens    map[string]struct{}
 		citations map[string]struct{}
 	}
-	// Conexao util liga documentos DIFERENTES. Trechos do mesmo arquivo
-	// compartilham vocabulario por construcao e afogariam o sinal real.
+	// So documentos diferentes: trechos do mesmo arquivo compartilham vocabulario.
 	indexed := make([]candidateIndex, 0, len(candidates))
 	for _, candidate := range candidates {
 		if candidate.DocumentID == origin.DocumentID {
@@ -72,11 +42,8 @@ func BuildNodeConnections(
 		indexed = append(indexed, candidateIndex{node: candidate, tokens: tokenSet(text), citations: toSet(normCitations(text))})
 	}
 
-	// So termo RARO no acervo sustenta uma aresta. "curso", "edital", "campus"
-	// nao sao conectivos, mas aparecem em centenas de secoes da mesma colecao
-	// e ligavam anexos sem relacao nenhuma. A raridade e medida aqui mesmo,
-	// sobre os candidatos, por TOKEN INTEIRO: por substring "lei" casava
-	// "leitura" e "estagio" casava "estagiario".
+	// So termo raro no acervo sustenta aresta. Raridade por token inteiro: por
+	// substring "lei" casava "leitura".
 	limit := int(math.Ceil(float64(len(indexed)) * NodeConnectionMaxTermShare))
 	if limit < 2 {
 		limit = 2
@@ -97,8 +64,7 @@ func BuildNodeConnections(
 		}
 	}
 
-	// Score zero nunca vira conexao, mesmo com minScore <= 0: aceitar zero
-	// devolveria todo par do acervo como relacionado.
+	// Score zero nunca vira conexao, mesmo com minScore <= 0.
 	threshold := minScore
 	if threshold < 1 {
 		threshold = 1
@@ -118,8 +84,7 @@ func BuildNodeConnections(
 				sameNorm = append(sameNorm, citation)
 			}
 		}
-		// Citar a mesma norma e relacao por si so ("Lei 9.394/1996" nos dois),
-		// mesmo sem termo raro em comum; vale por dois termos.
+		// Citar a mesma norma ja e relacao; vale por dois termos.
 		score := len(matched) + 2*len(sameNorm)
 		if score < threshold || (len(matched) == 0 && len(sameNorm) == 0) {
 			continue
@@ -144,18 +109,14 @@ func BuildNodeConnections(
 		})
 	}
 
-	// Ordem estavel e exigencia da tese: o trabalho denuncia o nao-determinismo
-	// do indice aproximado, entao uma feature propria com ordem instavel seria
-	// autorrefutacao. Score desc, depois NodeID asc para desempatar sem
-	// depender da ordem de iteracao da entrada.
+	// Score desc, NodeID asc para a ordem nao depender da entrada.
 	sort.SliceStable(connections, func(i, j int) bool {
 		if connections[i].Score != connections[j].Score {
 			return connections[i].Score > connections[j].Score
 		}
 		return connections[i].NodeID < connections[j].NodeID
 	})
-	// Um no com 200 arestas nao esta "muito conectado": e um hub de vocabulario,
-	// e no canvas vira um novelo. Ficam as mais fortes.
+	// No com centenas de arestas e hub de vocabulario; ficam as mais fortes.
 	if len(connections) > NodeConnectionMaxDegree {
 		connections = connections[:NodeConnectionMaxDegree]
 	}
@@ -171,15 +132,10 @@ const (
 	NodeConnectionMaxDegree = 20
 )
 
-// NodeConnectionMaxTermShare e a fracao maxima de secoes do acervo em que um
-// termo pode aparecer e ainda contar como evidencia de conexao. Com 1.076
-// secoes na colecao de SI, 2% sao 22 secoes: acima disso e vocabulario do
-// acervo ("objetivos", "conceitos"), nao relacao. Piso de 2 para conjuntos
-// pequenos. Era 5% quando o casamento era por substring; por token o df
-// cai e o teto precisou apertar junto.
+// NodeConnectionMaxTermShare: fracao maxima de secoes em que um termo pode
+// aparecer e ainda contar como evidencia. Piso de 2 para acervos pequenos.
 const NodeConnectionMaxTermShare = 0.02
 
-// tokenSet dobra acento e caixa e devolve os tokens do texto como conjunto.
 func tokenSet(text string) map[string]struct{} {
 	tokens := connectionTokens(text)
 	set := make(map[string]struct{}, len(tokens))
@@ -189,9 +145,8 @@ func tokenSet(text string) map[string]struct{} {
 	return set
 }
 
-// connectionTokens dobra acento e caixa e tira pontuacao das pontas: "a)" e
-// "(b" sao marcadores de lista, nao termos, e por token inteiro eles casavam
-// entre quaisquer duas listas.
+// connectionTokens tira pontuacao das pontas: "a)" e "(b" casavam entre
+// quaisquer duas listas.
 func connectionTokens(text string) []string {
 	raw := tokenizeRetrievalText(retrieval.FoldDiacritics(text))
 	tokens := make([]string, 0, len(raw))
@@ -212,8 +167,6 @@ func toSet(values []string) map[string]struct{} {
 	return set
 }
 
-// connectionTerms devolve os termos da origem que podem sustentar uma aresta:
-// tokens inteiros, sem conectivos, sem numeros e sem nome proprio.
 func connectionTerms(text string) []string {
 	properNouns := titleCaseOnlyWords(text)
 	tokens := connectionTokens(text)
@@ -232,11 +185,8 @@ func connectionTerms(text string) []string {
 
 var wordEdgePunct = strings.NewReplacer(",", "", ".", "", ";", "", ":", "", "(", "", ")", "", "\"", "", "'", "")
 
-// titleCaseOnlyWords devolve as palavras que no texto so aparecem com inicial
-// maiuscula e resto minusculo ("Andreia", "Marini", "Paulo"): nome proprio,
-// que liga secoes por quem assinou, nao pelo assunto. Palavra em CAIXA ALTA
-// (titulo) ou em minusculas em algum lugar continua valendo. A primeira
-// palavra do texto nao conta: comeca maiuscula por ser inicio de frase.
+// titleCaseOnlyWords devolve palavras que so aparecem capitalizadas (nome
+// proprio). A primeira palavra do texto nao conta.
 func titleCaseOnlyWords(text string) map[string]struct{} {
 	titleCase := map[string]bool{}
 	otherCase := map[string]bool{}
@@ -264,19 +214,14 @@ func titleCaseOnlyWords(text string) map[string]struct{} {
 	return names
 }
 
-// normCitationRE reconhece "Lei nº 9.394/1996", "Resolução CONSUP 82/2022",
-// "Decreto 7.824/2012", "Portaria 18/2012", "Parecer CNE/CES 136/2012".
 var normCitationRE = regexp.MustCompile(`(?i)\b(lei|resolu[cç][aã]o|decreto|portaria|parecer|instru[cç][aã]o normativa)\b[^\d\n]{0,24}?(n[º°o.]?\s*)?(\d[\d.]*)(?:/(\d{2,4}))?`)
 
-// disciplineCodeRE reconhece codigos de componente curricular como
-// "SIS07302" ou "INF0123": sigla em maiusculas seguida do numero. Dois
-// trechos com o mesmo codigo falam da mesma disciplina (ementa, matriz,
-// pre-requisito), e isso e relacao por si so, como citar a mesma norma.
+// disciplineCodeRE: codigos como "SIS07302". Mesmo codigo e relacao, como
+// citar a mesma norma.
 var disciplineCodeRE = regexp.MustCompile(`\b[A-Z]{2,4}\d{4,6}\b`)
 
-// normCitations devolve as citacoes de norma do texto normalizadas para
-// "tipo numero/ano" (numero sem pontos), em ordem estavel e sem repeticao,
-// mais os codigos de disciplina como "disciplina SIS07302".
+// normCitations normaliza para "tipo numero/ano", sem repeticao, mais os
+// codigos de disciplina.
 func normCitations(text string) []string {
 	seen := map[string]struct{}{}
 	var out []string
@@ -309,19 +254,8 @@ func normCitations(text string) []string {
 	return out
 }
 
-// palavrasVaziasPT sao termos que ligam qualquer par de documentos em portugues
-// sem indicar relacao de conteudo.
-//
-// Existe por causa de um defeito observado no navegador: a tela exibiu uma
-// conexao justificada por "1, de, do, servico". Artigos, preposicoes e
-// numeracao de secao nao sao evidencia -- sao ruido que a contagem simples de
-// termos promove a sinal.
-//
-// E a manifestacao visual do falso positivo de 1,000 medido nos seis bracos: no
-// ranking o erro se esconde na quarta posicao, numa aresta desenhada ele fica
-// exposto. A lista e curta e conservadora de proposito; ampliar demais correria
-// o risco oposto, o de descartar termo com carga semantica no dominio
-// (por exemplo "prazo", "valor", "parte").
+// palavrasVaziasPT ligam qualquer par de documentos sem indicar relacao.
+// Lista curta de proposito, para nao descartar termo com carga no dominio.
 var palavrasVaziasPT = map[string]struct{}{
 	"a": {}, "ao": {}, "aos": {}, "as": {}, "com": {}, "como": {}, "da": {},
 	"das": {}, "de": {}, "do": {}, "dos": {}, "e": {}, "em": {}, "entre": {},
@@ -340,12 +274,8 @@ var palavrasVaziasPT = map[string]struct{}{
 	"porque": {}, "existe": {}, "existem": {}, "tem": {}, "ha": {}, "diz": {}, "significa": {}, "esta": {}, "estao": {},
 }
 
-// ehPalavraVazia diz se o termo e conectivo ou numeracao de secao.
-//
-// Numeros isolados ("1", "2") entram porque sao numeracao de titulo --
-// "1 DO OBJETO" e "1 DA DISPONIBILIDADE" casariam pelo "1" sem qualquer
-// relacao de conteudo. Numeros com mais de um digito ficam de fora: "99,5",
-// "30" e "2025" costumam ser valores contratuais com significado real.
+// ehPalavraVazia: numero de um digito e numeracao de titulo; numeros maiores
+// costumam ser valores com significado.
 func ehPalavraVazia(termo string) bool {
 	if len(termo) == 1 || numericTokenRE.MatchString(termo) || romanNumeralRE.MatchString(termo) {
 		return true
@@ -357,6 +287,6 @@ func ehPalavraVazia(termo string) bool {
 // romanNumeralRE: "vi", "xii" sao numeracao de capitulo e titulo, nao assunto.
 var romanNumeralRE = regexp.MustCompile(`^(i|ii|iii|iv|v|vi|vii|viii|ix|x|xi|xii|xiii|xiv|xv|xvi|xvii|xviii|xix|xx)$`)
 
-// numericTokenRE: anos, numeros de resolucao, valores. Sozinhos nao dizem de
-// que assunto uma secao trata; como citacao de norma entram por normCitations.
+// numericTokenRE: anos, numeros de resolucao, valores. Citacao de norma entra
+// por normCitations.
 var numericTokenRE = regexp.MustCompile(`^[\d.,/º°-]+$`)

@@ -8,24 +8,10 @@ import (
 	"testing"
 )
 
-// O criterio central da issue #22: um teste que falha se um filtro user_id for
-// removido de uma query de leitura.
-//
-// A auditoria de IDOR desta rodada percorreu 40 rotas MANUALMENTE. Isso nao
-// escala e depende de alguem lembrar de olhar -- e a consequencia de esquecer e
-// um usuario lendo documento de outro.
-//
-// A verificacao e estrutural, lendo o fonte, porque exercitar cada metodo
-// exigiria Postgres (medido: sem banco o pacote so alcanca ~2% de cobertura,
-// com banco chega a 31,6%). Um teste que roda em qualquer maquina e cobre os 47
-// filtros de uma vez vale mais que um que cobre um metodo e precisa de
-// infraestrutura.
+// Falha se um filtro user_id sumir de uma query de leitura. Verificacao
+// estrutural, lendo o fonte, para rodar sem Postgres.
 
-// metodosQuePrecisamDeDono lista os metodos de leitura cuja query PRECISA
-// filtrar por dono.
-//
-// Cada entrada existe porque o recurso e acessivel por id vindo da URL: sem o
-// filtro, trocar o numero na barra de enderecos devolve o dado de outra conta.
+// Recursos acessiveis por id vindo da URL: sem o filtro, trocar o id expoe outra conta.
 var metodosQuePrecisamDeDono = []struct {
 	arquivo string
 	metodo  string
@@ -93,8 +79,7 @@ func TestNenhumaQueryUsaFirstSemCondicao(t *testing.T) {
 		t.Fatalf("glob falhou: %v", err)
 	}
 
-	// .First(&x) precedido de Where ou de outra clausula e legitimo; o padrao
-	// perigoso e o First logo apos WithContext.
+	// O perigoso e First logo apos WithContext, sem Where.
 	perigoso := regexp.MustCompile(`WithContext\(ctx\)\.\s*First\(`)
 
 	for _, arquivo := range arquivos {
@@ -110,7 +95,6 @@ func TestNenhumaQueryUsaFirstSemCondicao(t *testing.T) {
 	}
 }
 
-// TestDelecaoExigeDono: apagar o registro de outra pessoa e pior que ler.
 func TestDelecaoExigeDono(t *testing.T) {
 	arquivos, err := filepath.Glob("gorm_*.go")
 	if err != nil {

@@ -9,10 +9,8 @@ import (
 	"thing-index/internal/domain"
 )
 
-// Parecer B7: fmt.Errorf("%w: %v", sentinela, err) preservava a sentinela mas
-// convertia a causa em texto; errors.Is/As sobre a causa deixavam de
-// funcionar acima do caso de uso. Com "%w: %w" os dois lados continuam na
-// cadeia, e a mensagem e a mesma.
+// Com "%w: %w" sentinela e causa ficam na cadeia; com "%v" errors.Is/As sobre
+// a causa deixava de funcionar.
 func TestErroEmbrulhadoPreservaSentinelaECausa(t *testing.T) {
 	causa := &net.OpError{Op: "dial", Net: "tcp", Err: context.DeadlineExceeded}
 

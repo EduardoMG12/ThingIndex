@@ -58,20 +58,9 @@ func (r *gormDocumentProcessingRepository) UpdateDocumentProcessingState(ctx con
 		Updates(updates).Error
 }
 
-// ReapStuckProcessingDocuments libera documentos que ficaram presos em
-// PROCESSING.
-//
-// O timeout por mensagem resolve o worker VIVO que demora demais. Nao resolve o
-// worker que MORREU no meio do trabalho (OOM kill, SIGKILL, queda do no): nesse
-// caso ninguem executa o codigo que marcaria FAILED, e o documento fica
-// PROCESSING para sempre. Do lado do usuario e o pior estado possivel -- a
-// interface mostra "processando" indefinidamente, sem erro e sem opcao de
-// reenviar.
-//
-// A condicao usa index_started_at, gravado por UpdateDocumentProcessingState no
-// inicio do Process. Documentos sem esse campo sao ignorados de proposito: sem
-// referencia temporal nao da para afirmar que estao presos, e marcar FAILED por
-// engano um documento que acabou de entrar seria pior que esperar.
+// ReapStuckProcessingDocuments marca FAILED documentos presos em PROCESSING
+// (worker morto no meio). Sem index_started_at o documento e ignorado: nao da
+// para afirmar que esta preso.
 func (r *gormDocumentProcessingRepository) ReapStuckProcessingDocuments(ctx context.Context, olderThan time.Time) (int64, error) {
 	result := r.db.WithContext(ctx).
 		Model(&models.Document{}).
@@ -92,27 +81,12 @@ func (r *gormDocumentProcessingRepository) ReapStuckProcessingDocuments(ctx cont
 	return result.RowsAffected, nil
 }
 
-// RequeueStuckQueuedDocuments reenfileira documentos presos em QUEUED cuja
-// mensagem se perdeu DEPOIS do outbox.
-//
-// O outbox garante que o evento chega ao broker; publisher confirms garantem
-// que o broker o persistiu. Ainda assim a mensagem pode sumir depois disso: fila
-// apagada e recriada, purge manual, volume do RabbitMQ perdido. Nesse caso o
-// evento esta PUBLISHED, o documento segue QUEUED e nada no sistema volta a
-// olhar para ele.
-//
-// Criterio (todos juntos):
-//   - documento em QUEUED, nao excluido, sem mudanca desde antes de olderThan;
-//   - o evento MAIS RECENTE do documento no outbox esta PUBLISHED, com
-//     published_at anterior a olderThan. Se o ultimo evento ainda esta PENDING,
-//     IN_FLIGHT ou FAILED, o despachante continua responsavel por ele e nao ha
-//     o que reconciliar -- criar outro seria duplicar.
-//
-// Para cada um, na mesma transacao: um evento PENDING novo (com requested_at
-// novo, entao o consumidor nao o confunde com reentrega) e updated_at do
-// documento avancado, o que impede o proximo ciclo de reenfileira-lo de novo
-// antes do novo evento ter a chance de ser processado. FOR UPDATE SKIP LOCKED
-// evita que duas replicas do indexer reenfileirem o mesmo documento.
+// RequeueStuckQueuedDocuments reenfileira documentos QUEUED cujo ultimo evento
+// do outbox esta PUBLISHED ha mais de olderThan (mensagem perdida no broker:
+// purge, fila recriada). Se o ultimo evento ainda esta PENDING/IN_FLIGHT/FAILED,
+// o despachante cuida dele. Cria um evento PENDING novo e avanca updated_at na
+// mesma transacao, para o proximo ciclo nao reenfileirar de novo.
+// FOR UPDATE SKIP LOCKED evita duas replicas pegarem o mesmo documento.
 func (r *gormDocumentProcessingRepository) RequeueStuckQueuedDocuments(ctx context.Context, olderThan time.Time) (int64, error) {
 	cutoff := olderThan.UTC()
 	var requeued int64

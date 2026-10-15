@@ -11,10 +11,7 @@ import (
 )
 
 // rescoreFile reavalia correct/provenance_ok/retrieval_hit de um CSV com o
-// gabarito atual, a partir das respostas e fontes gravadas. Serve para uma
-// versao nova do gabarito (regex mais tolerante, pagina-alvo a mais) valer
-// para resultados ja pagos, sem chamar o modelo de novo. As colunas de
-// resposta, fontes, tokens e latencia nao mudam.
+// gabarito atual, sem chamar o modelo de novo.
 func rescoreFile(path string, g *evalcorpus.Gabarito) (int, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -73,8 +70,7 @@ func rescoreFile(path string, g *evalcorpus.Gabarito) (int, error) {
 	return changed, nil
 }
 
-// parseCitations le "documento:pagina;..." e normaliza o documento pelo
-// resolvedor do gabarito. O corte e no ULTIMO ':', porque titulo de documento
+// parseCitations le "documento:pagina;...". Corta no ultimo ':' porque titulo
 // pode ter dois-pontos.
 func parseCitations(s string, resolve func(string) string) []citation {
 	var out []citation

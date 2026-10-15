@@ -36,10 +36,7 @@ func TestTPCContaApenasItensComProvenienciaCompleta(t *testing.T) {
 	}
 }
 
-// O furo concreto que a metrica existe para expor: ParagraphNode.PageNumber e
-// *int, portanto nulavel, e blocos vindos do tesseract entram sem caixa. Um
-// item sem pagina nao pode ser apontado no documento original -- e "aponte onde
-// voce leu isso" e exatamente o que auditabilidade significa.
+// ParagraphNode.PageNumber e nulavel (blocos do tesseract entram sem caixa).
 func TestTPCReprovaItemSemNumeroDePagina(t *testing.T) {
 	t.Parallel()
 
@@ -53,9 +50,6 @@ func TestTPCReprovaItemSemNumeroDePagina(t *testing.T) {
 	}
 }
 
-// Criterio deliberadamente rigido: proveniencia PARCIAL nao permite apontar o
-// trecho no original. Saber que algo veio do documento 7 sem saber a pagina nao
-// e, na pratica, melhor que nao saber nada.
 func TestTPCNaoAceitaProvenienciaParcial(t *testing.T) {
 	t.Parallel()
 
@@ -78,9 +72,7 @@ func TestTPCNaoAceitaProvenienciaParcial(t *testing.T) {
 	}
 }
 
-// sequence_order = 0 e o valor LEGITIMO do primeiro item. Se a validacao o
-// rejeitasse, todo primeiro paragrafo de todo documento seria contado como
-// inauditavel -- exatamente o erro que ja apareceu nas tags de binding.
+// sequence_order = 0 e valido (primeiro item); ja deu problema nas tags de binding.
 func TestTPCAceitaSequenceOrderZero(t *testing.T) {
 	t.Parallel()
 
@@ -91,8 +83,6 @@ func TestTPCAceitaSequenceOrderZero(t *testing.T) {
 	aprox(t, "TPC", report.Rate(), 1.0)
 }
 
-// Um indice vazio nao e "perfeitamente auditavel". Reportar 100% para o vazio
-// seria a pior falha possivel numa metrica de auditabilidade.
 func TestTPCDeIndiceVazioEZeroENaoUm(t *testing.T) {
 	t.Parallel()
 
@@ -101,8 +91,6 @@ func TestTPCDeIndiceVazioEZeroENaoUm(t *testing.T) {
 	}
 }
 
-// Media global esconde desigualdade entre tipos: se so os paragrafos tem pagina
-// e as tabelas nao, metade da evidencia e inauditavel e a media nao mostra.
 func TestTPCPorTipoRevelaDesigualdadeQueAMediaEsconde(t *testing.T) {
 	t.Parallel()
 
@@ -136,8 +124,7 @@ func TestTCVAceitaCitacaoPresenteNaFonte(t *testing.T) {
 	aprox(t, "TCV", report.Rate(), 1.0)
 }
 
-// O modo de falha mais perigoso: apontar o documento certo e exibir um trecho
-// que nao existe ali. Alucinacao com aparencia de fundamentacao.
+// Documento certo, trecho que nao existe nele.
 func TestTCVReprovaCitacaoQueNaoExisteNaFonte(t *testing.T) {
 	t.Parallel()
 
@@ -149,8 +136,6 @@ func TestTCVReprovaCitacaoQueNaoExisteNaFonte(t *testing.T) {
 	aprox(t, "TCV", report.Rate(), 0)
 }
 
-// Quebra de linha e espaco duplo sao introduzidos na renderizacao, nao pelo
-// modelo. Ignora-los evita falso negativo.
 func TestTCVToleraDiferencaDeEspacoEmBrancoEDeCaixa(t *testing.T) {
 	t.Parallel()
 
@@ -162,9 +147,7 @@ func TestTCVToleraDiferencaDeEspacoEmBrancoEDeCaixa(t *testing.T) {
 	aprox(t, "TCV", report.Rate(), 1.0)
 }
 
-// Relaxar a comparacao ate ignorar acento produziria falso POSITIVO, que numa
-// metrica de auditabilidade e o erro mais grave: daria por verificada uma
-// citacao que o leitor humano nao encontraria no documento.
+// Acento nao e normalizado: daria por verificada uma citacao que nao esta no texto.
 func TestTCVNaoIgnoraAcento(t *testing.T) {
 	t.Parallel()
 
@@ -192,11 +175,7 @@ func TestTCVIgnoraCitacaoOuFonteVazia(t *testing.T) {
 	aprox(t, "TCV", report.Rate(), 0)
 }
 
-// Um item de escopo de documento nao tem pagina por natureza. "paragraph_count"
-// nao esta na pagina 3: ele e uma contagem do documento inteiro. Exigir pagina
-// dele contaria como defeito uma coisa que nao tem conserto possivel, e a
-// unica forma de "consertar" seria inventar uma pagina -- que e exatamente o
-// que o principio I proibe.
+// Item de escopo de documento ("paragraph_count") nao tem pagina.
 func TestEscopoDeDocumentoEhCompletoSemPagina(t *testing.T) {
 	t.Parallel()
 
@@ -211,9 +190,6 @@ func TestEscopoDeDocumentoEhCompletoSemPagina(t *testing.T) {
 	aprox(t, "TPC do escopo de documento", report.RateForScope(ScopeDocument), 1)
 }
 
-// O contrario do teste acima: classificar como escopo de pagina mantem o
-// criterio estrito. Sem isso, "escopo" viraria porta dos fundos para aprovar
-// qualquer item.
 func TestEscopoDePaginaContinuaExigindoPagina(t *testing.T) {
 	t.Parallel()
 
@@ -228,11 +204,7 @@ func TestEscopoDePaginaContinuaExigindoPagina(t *testing.T) {
 	aprox(t, "TPC do escopo de pagina", report.RateForScope(ScopePage), 0)
 }
 
-// O padrao tem que ser o criterio ESTRITO. Se alguem adicionar um tipo novo de
-// item e esquecer de classificar o escopo, o item precisa aparecer como
-// incompleto e o teste reclamar. O contrario faria um esquecimento virar
-// silenciosamente um item "completo", que e a forma mais facil de uma metrica
-// de auditabilidade comecar a mentir.
+// Escopo vazio cai no criterio estrito.
 func TestEscopoVazioEhTratadoComoPagina(t *testing.T) {
 	t.Parallel()
 
@@ -249,8 +221,7 @@ func TestEscopoVazioEhTratadoComoPagina(t *testing.T) {
 	}
 }
 
-// Os dois recortes precisam somar o mesmo total, senao o relatorio por escopo
-// estaria escondendo item em vez de classificar.
+// Os dois recortes precisam somar o mesmo total.
 func TestRecortesPorTipoEPorEscopoCobremOMesmoTotal(t *testing.T) {
 	t.Parallel()
 

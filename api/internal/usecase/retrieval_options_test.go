@@ -9,9 +9,7 @@ import (
 	"thing-index/internal/models"
 )
 
-// Parecer B5: o braco de paginas era lido por os.Getenv para cada pagina de
-// cada pergunta, e um valor invalido gerava um aviso POR PAGINA. Agora a
-// leitura e a validacao acontecem uma vez, em NewRetrievalOptions.
+// Leitura e validacao acontecem uma vez, em NewRetrievalOptions.
 func TestValorInvalidoDePageSearchFieldsAvisaUmaVezSo(t *testing.T) {
 	var saida bytes.Buffer
 	anterior := log.Writer()
@@ -67,9 +65,8 @@ func TestRetrievalOptionsZeroEquivaleAoPadrao(t *testing.T) {
 	}
 }
 
-// A opcao injetada precisa de fato mudar o texto pontuado: termo que so existe
-// no resumo acha a pagina no padrao (content+summary) e nao acha com "content".
-// Sem isso, uma opcao ignorada passaria nos testes acima.
+// A opcao precisa mudar o texto pontuado: termo so do resumo acha a pagina no
+// padrao e nao com "content".
 func TestRetrievalOptionsControlaOCampoPontuado(t *testing.T) {
 	docs := []models.Document{{ID: 1, Title: "Contrato"}}
 	pages := []models.DocumentPage{

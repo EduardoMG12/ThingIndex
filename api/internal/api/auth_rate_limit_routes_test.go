@@ -5,11 +5,8 @@ import (
 	"testing"
 )
 
-// Toda rota de /auth que recebe e-mail no corpo passa pelo limite por conta.
-// O limite por IP sozinho nao segura tentativas distribuidas contra a mesma
-// conta, e /register tambem aceita e-mail (enumeracao de contas por cadastro).
-// Le o fonte pelo mesmo motivo de removed_routes_test.go: registrar rotas
-// exige Postgres.
+// Toda rota de /auth que recebe e-mail no corpo passa pelo limite por conta
+// (inclusive /register, por enumeracao). Le o fonte porque registrar rotas exige Postgres.
 func TestRotasDeAuthComEmailPassamPeloLimitePorConta(t *testing.T) {
 	fonte := lerFonteDeRotas(t)
 

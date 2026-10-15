@@ -57,13 +57,11 @@ func (f *fabricaQueFalha) build() (domain.StorageService, error) {
 	return storageReal{}, nil
 }
 
-// Regressao: MinIO fora do ar no boot congelava o erro para sempre; a API
-// devolvia 500 em todo download mesmo com o MinIO de volta, ate reiniciar.
+// MinIO fora no boot congelava o erro ate reiniciar a API.
 func TestStorageQueFalhouNoBootPassaAFuncionarQuandoOProvedorVolta(t *testing.T) {
 	relogio := &relogioFalso{agora: time.Unix(1_000, 0)}
 	fabrica := &fabricaQueFalha{falhas: 3}
 
-	// A primeira falha e a do boot.
 	_, bootErr := fabrica.build()
 	storage := newRetryingStorage(fabrica.build, bootErr, 5*time.Second, relogio.Now)
 

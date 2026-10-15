@@ -9,11 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Com TRUSTED_PROXIES apontando para a sub-rede do frontend (e um proxy
-// reverso que sobrescreve X-Forwarded-For na frente dele), o limite por IP de
-// /auth separa os clientes. Com a lista vazia, o padrao seguro, o cabecalho e
-// ignorado e todos caem no balde de quem conecta: um cliente nao consegue
-// forjar um IP novo a cada tentativa.
+// Com TRUSTED_PROXIES configurado o limite por IP separa os clientes; com a
+// lista vazia X-Forwarded-For e ignorado e ninguem forja um IP novo.
 func TestRateLimitPorIPUsaXForwardedForDeProxyConfiavel(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

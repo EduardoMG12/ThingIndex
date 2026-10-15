@@ -43,11 +43,8 @@ func TestProvenanciaEstruturadaEPorPagina(t *testing.T) {
 	}
 }
 
-// Bug de 2026-09: as fontes do chat trazem o titulo gravado na colecao, e ele
-// nem sempre e o do gabarito. "NR 6 - Equipamentos de Protecao Individual" nao
-// casava com o id nr-06 (titulo no gabarito: "NR 6 - EPI"), e toda citacao
-// correta dessa norma contava como proveniencia errada. Na bateria isso
-// derrubava a proveniencia de 0,581 para 0,371.
+// O titulo gravado na colecao nem sempre e o do gabarito ("NR 6 - Equipamentos
+// de Protecao Individual" vs "NR 6 - EPI"); tem de resolver pelo id.
 func TestCitacaoPeloTituloDaColecaoCasaComOAlvoViaAlias(t *testing.T) {
 	g := &evalcorpus.Gabarito{Documents: []evalcorpus.GabaritoDocument{
 		{ID: "nr-06", Title: "NR 6 - EPI", Aliases: []string{"NR 6 - Equipamentos de Protecao Individual"}},

@@ -10,19 +10,8 @@ import (
 	"thing-index/internal/models"
 )
 
-// Vinte uploads simultaneos com o MESMO nome de colecao devolveram um HTTP 500:
-// "failed to create collection: duplicated key not allowed".
-//
-// A causa e um check-then-act classico no usecase: busca a colecao, nao
-// encontra, cria. Entre a busca e a criacao, outra requisicao criou a mesma --
-// e a constraint de unicidade (correta) rejeita a segunda.
-//
-// O usuario que perde a corrida ve um erro de servidor por ter feito algo
-// legitimo: enviar varios documentos de uma vez para a mesma colecao. E o caso
-// mais comum de uso real do sistema.
-//
-// A correcao certa e no repositorio, nao no usecase: so o banco pode decidir
-// quem ganha a corrida. Reexecutar a busca no usecase apenas moveria a janela.
+// Uploads simultaneos com o mesmo nome de colecao davam 500 por duplicated key
+// (check-then-act no usecase).
 
 func TestCriarColecaoConcorrenteNaoDuplicaNemFalha(t *testing.T) {
 	db := openIntegrationDB(t)
@@ -39,8 +28,7 @@ func TestCriarColecaoConcorrenteNaoDuplicaNemFalha(t *testing.T) {
 	resultados := make([]error, concorrentes)
 	ids := make([]uint, concorrentes)
 
-	// Todas as goroutines largam juntas: sem a barreira, elas serializariam
-	// naturalmente e a corrida nunca aconteceria.
+	// Barreira para todas largarem juntas e a corrida acontecer de fato.
 	largada := make(chan struct{})
 
 	for i := 0; i < concorrentes; i++ {
@@ -73,8 +61,6 @@ func TestCriarColecaoConcorrenteNaoDuplicaNemFalha(t *testing.T) {
 		}
 	}
 
-	// Todas precisam ter recebido o MESMO id: ids diferentes significariam
-	// colecoes duplicadas, e o usuario veria o acervo dividido em duas.
 	primeiro := ids[0]
 	for i, id := range ids {
 		if id == 0 {
@@ -96,8 +82,6 @@ func TestCriarColecaoConcorrenteNaoDuplicaNemFalha(t *testing.T) {
 	}
 }
 
-// TestEnsureColecaoDevolveAExistenteSemDuplicar cobre o caminho simples: chamar
-// duas vezes em sequencia nao pode criar duas.
 func TestEnsureColecaoDevolveAExistenteSemDuplicar(t *testing.T) {
 	db := openIntegrationDB(t)
 	repo := NewGormCollectionRepository(db)
@@ -131,8 +115,6 @@ func TestEnsureColecaoDevolveAExistenteSemDuplicar(t *testing.T) {
 	}
 }
 
-// TestColecoesDeUsuariosDiferentesNaoColidem: a unicidade e por usuario, entao
-// dois usuarios podem ter "Contratos" sem um enxergar o outro.
 func TestColecoesDeUsuariosDiferentesNaoColidem(t *testing.T) {
 	db := openIntegrationDB(t)
 	repo := NewGormCollectionRepository(db)

@@ -17,63 +17,24 @@ func carregarCorpus(t *testing.T) *evalcorpus.Corpus {
 	return corpus
 }
 
-// Constantes travadas: o artigo cita estes numeros, entao altera-los obriga a
-// revisar o texto (constituicao, principio III).
+// TPC = 1,000 em C1: texto puro sem form feed, entao buildDocumentPages poe
+// todo bloco na pagina 1, e itens de escopo de documento apontam o documento.
+// Isso nao prova que a pagina e a certa (C1 tem uma pagina so); isso esta em
+// internal/indexing/chunks_test.go.
 //
-// # De onde vem o 1,000, sem rodar a ferramenta
-//
-// A regra do projeto e derivar o esperado da DEFINICAO, nunca copiar da saida
-// da implementacao (ver o cabecalho de internal/provenance). A derivacao:
-//
-//  1. C1 e texto puro, sem form feed. buildDocumentPages atribui pagina 1 a
-//     todo bloco que nao traz pagina (internal/indexing/outline.go). Logo todo
-//     item de escopo de pagina em C1 TEM pagina.
-//  2. Item de escopo de documento e completo por definicao quando aponta o
-//     documento, e todos apontam.
-//  3. Portanto TPC global = 1,000 e cada RateFor = 1,000.
-//
-// # O que mudou em relacao ao 0,329 anterior, item a item
-//
-// O valor antigo era 51/155. Os 104 itens contados como incompletos eram:
-//
-//	85 pares de metadado  -- estatisticas do documento inteiro, que nunca
-//	                         tiveram pagina e nunca teriam. Passaram a ser
-//	                         medidos por escopo de documento.
-//	19 chunks             -- furo REAL de auditabilidade, agora fechado: o
-//	                         chunk carrega a pagina do seu paragrafo de origem.
-//
-// Ou seja, 82% do furo publicado era problema de classificacao da metrica e
-// 18% era defeito do indice. A decomposicao precisa aparecer no artigo, porque
-// so o numero final (1,000) pareceria maquiagem.
-//
-// # Ressalva que NAO pode sumir do artigo
-//
-// 1,000 em C1 prova que o mecanismo carrega a pagina, e NAO que a pagina e a
-// certa: C1 tem uma pagina so, entao "pagina correta" e "constante 1" sao
-// indistinguiveis aqui. A prova de atribuicao correta esta em
-// internal/indexing/chunks_test.go, com paragrafos em paginas diferentes.
+// O valor antigo era 51/155: 85 pares de metadado (hoje escopo de documento)
+// e 19 chunks sem pagina (hoje herdam a do paragrafo de origem).
 const (
 	tpcGlobalC1 = 1.000
 	tcvC1       = 1.000
-	// Todos os tipos medidos em C1 tem proveniencia completa depois da
-	// mudanca de 2026-09-19: paragraph, page, outline, chunk e metadata.
+	// paragraph, page, outline, chunk e metadata.
 	tiposCompletos = 5
-	// Nenhum tipo incompleto. Se este numero voltar a subir, houve regressao.
+	// Nenhum tipo incompleto.
 	tiposIncompletos = 0
 )
 
-// TestTPCReportaPorTipoEstruturalENaoSoAMedia nasceu exigindo o contrario do
-// que exige hoje, e a inversao e o registro de um resultado.
-//
-// A versao anterior falhava se NENHUM tipo estivesse incompleto, com a
-// mensagem "se o esquema ganhou page_number em tabela/metadado/chunk, o artigo
-// precisa ser atualizado e este teste tambem". Foi exatamente o que aconteceu
-// em 2026-09-19. O teste agora trava o estado novo: todo tipo completo. Se um
-// tipo voltar a ficar incompleto, houve regressao de auditabilidade e o build
-// tem que quebrar.
-//
-// O recorte por tipo continua sendo o ponto: uma media global, alta ou baixa,
-// esconde qual estrutura perdeu a coordenada.
+// Todo tipo estrutural tem de estar completo; antes de 2026-09-19 este teste
+// exigia o contrario.
 func TestTPCReportaPorTipoEstruturalENaoSoAMedia(t *testing.T) {
 	corpus := carregarCorpus(t)
 	report, _ := measure(corpus)
@@ -90,15 +51,8 @@ func TestTPCReportaPorTipoEstruturalENaoSoAMedia(t *testing.T) {
 	}
 }
 
-// TestEscopoNaoEscondeItemQueDeveriaTerPagina e o guarda-corpo da mudanca de
-// criterio. A objecao obvia a "medir por escopo" e que alguem passe a
-// classificar como escopo de documento qualquer item inconveniente, e o numero
-// melhore sem que a auditabilidade melhore.
-//
-// O teste fecha essa porta pelo tamanho: em C1 o escopo de documento tem que
-// conter EXATAMENTE os pares de metadado. Se um paragrafo, uma pagina, um
-// chunk, uma tabela ou um no de sumario for reclassificado para escopo de
-// documento, as contas param de bater e o build quebra.
+// Em C1 o escopo de documento contem exatamente os pares de metadado; qualquer
+// outro item reclassificado faz as contas nao baterem.
 func TestEscopoNaoEscondeItemQueDeveriaTerPagina(t *testing.T) {
 	corpus := carregarCorpus(t)
 	report, _ := measure(corpus)
@@ -120,7 +74,6 @@ func TestEscopoNaoEscondeItemQueDeveriaTerPagina(t *testing.T) {
 	}
 }
 
-// TestTPCGlobalEstaTravadaNoValorDoArtigo protege o numero citado no texto.
 func TestTPCGlobalEstaTravadaNoValorDoArtigo(t *testing.T) {
 	corpus := carregarCorpus(t)
 	report, _ := measure(corpus)
@@ -131,11 +84,7 @@ func TestTPCGlobalEstaTravadaNoValorDoArtigo(t *testing.T) {
 	}
 }
 
-// TestCausaDaIncompletudeEhPaginaAusente provava que a limitacao tinha UMA
-// causa, nao varias. Com a incompletude zerada em C1 ele passa a provar a
-// ausencia de qualquer causa: 0 == 0. Mantido de proposito -- se uma
-// incompletude voltar a aparecer por outro motivo (document_id ausente,
-// sequence_order invalido, conteudo vazio), ele quebra e aponta qual.
+// Hoje e 0 == 0, mas se voltar a haver incompletude ele aponta a causa.
 func TestCausaDaIncompletudeEhPaginaAusente(t *testing.T) {
 	corpus := carregarCorpus(t)
 	report, _ := measure(corpus)
@@ -148,11 +97,7 @@ func TestCausaDaIncompletudeEhPaginaAusente(t *testing.T) {
 	}
 }
 
-// TestTCVProvaQueAFragmentacaoNaoCorrompeConteudo trava a segunda metrica.
-//
-// TCV = 1,000 significa que todo trecho indexado existe LITERALMENTE no
-// documento original. E o que separa "citou" de "citou corretamente", e e a
-// evidencia de que a fragmentacao em tabelas tipadas preserva o texto.
+// TCV = 1,000: todo trecho indexado existe literalmente no documento original.
 func TestTCVProvaQueAFragmentacaoNaoCorrompeConteudo(t *testing.T) {
 	corpus := carregarCorpus(t)
 	_, citations := measure(corpus)
@@ -165,7 +110,6 @@ func TestTCVProvaQueAFragmentacaoNaoCorrompeConteudo(t *testing.T) {
 	}
 }
 
-// TestTabelaGeradaEhLatexValido evita quebrar a compilacao do artigo.
 func TestTabelaGeradaEhLatexValido(t *testing.T) {
 	corpus := carregarCorpus(t)
 	report, citations := measure(corpus)
@@ -181,7 +125,6 @@ func TestTabelaGeradaEhLatexValido(t *testing.T) {
 	if !strings.Contains(tabela, "GERADO POR") {
 		t.Fatal("falta o aviso de arquivo gerado: alguem vai editar a mao")
 	}
-	// Toda linha de tipo precisa aparecer na tabela.
 	for _, kind := range report.Kinds() {
 		if !strings.Contains(tabela, traduzirTipo(kind)) {
 			t.Fatalf("tipo %q ausente da tabela", kind)
@@ -189,8 +132,6 @@ func TestTabelaGeradaEhLatexValido(t *testing.T) {
 	}
 }
 
-// TestItemSemPaginaContaComoIncompleto e o teste de poder de deteccao da
-// propria metrica: se a TPC aceitasse pagina nula, ela nao mediria nada.
 func TestItemSemPaginaContaComoIncompleto(t *testing.T) {
 	pagina := 3
 	items := []provenance.Item{

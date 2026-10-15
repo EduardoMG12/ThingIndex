@@ -44,15 +44,8 @@ func isPlausibleText(text string) bool {
 	return garbageRatio < 0.1
 }
 
-// newPDFOCRExtractor escolhe o provider de OCR.
-//
-// O Unlimited-OCR entrega qualidade melhor e, principalmente, a caixa de cada
-// bloco — o que estende o grifo posicional para paginas digitalizadas. Em
-// troca, exige GPU e um servidor separado.
-//
-// O tesseract permanece como fallback de proposito: roda em qualquer maquina,
-// ja esta na imagem do worker e nao depende de servico externo. Sem ele, clonar
-// o repositorio sem GPU deixaria o projeto sem OCR nenhum.
+// newPDFOCRExtractor usa o Unlimited-OCR (traz caixa por bloco, exige GPU)
+// quando configurado e cai para o tesseract local, que roda em qualquer maquina.
 func newPDFOCRExtractor() pdfOCRExtractor {
 	if extractor := newUnlimitedOCRExtractor(); extractor != nil {
 		return extractor

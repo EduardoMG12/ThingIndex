@@ -13,9 +13,7 @@ func init() {
 	gin.SetMode(gin.TestMode)
 }
 
-// buildUserRateLimitRouter monta uma rota protegida por limite por usuario.
-// O userID vem por header apenas para o teste conseguir simular usuarios
-// diferentes sem depender do AuthMiddleware real.
+// O userID vem por header para simular usuarios sem o AuthMiddleware real.
 func buildUserRateLimitRouter(limit int, window time.Duration) *gin.Engine {
 	router := gin.New()
 	router.POST("/upload", func(c *gin.Context) {
@@ -44,9 +42,8 @@ func doRequest(router *gin.Engine, path string, userID string) int {
 	return rec.Code
 }
 
-// O ponto central do item: um usuario esgotando a cota NAO pode derrubar outro.
-// Com o limite por IP essa separacao nao existia -- o frontend chama a API
-// server-side, entao o ClientIP e o mesmo para todo mundo e o balde era global.
+// Um usuario esgotando a cota nao pode derrubar outro (o ClientIP e o mesmo
+// para todos atras do frontend).
 func TestUserRateLimitIsolaUsuariosDiferentes(t *testing.T) {
 	t.Parallel()
 
@@ -62,8 +59,7 @@ func TestUserRateLimitIsolaUsuariosDiferentes(t *testing.T) {
 		t.Fatalf("3a requisicao do usuario 1 deveria estourar a cota, veio %d", code)
 	}
 
-	// Usuario 2 nunca enviou nada. Se levar 429 aqui, o limite continua
-	// global e o bug nao foi corrigido.
+	// Usuario 2 nunca enviou nada; 429 aqui significa balde global.
 	if code := doRequest(router, "/upload", "2"); code != http.StatusOK {
 		t.Fatalf("usuario 2 foi punido pela cota do usuario 1 (veio %d); o limite ainda e global", code)
 	}
@@ -88,9 +84,7 @@ func TestUserRateLimitLiberaAposAJanela(t *testing.T) {
 	}
 }
 
-// Sem user_id no contexto (middleware fora de ordem), o pedido passa em vez de
-// ser barrado. Rejeitar transformaria um erro de configuracao em
-// indisponibilidade total da rota -- pior que a falta de limite.
+// Sem user_id no contexto (middleware fora de ordem), o pedido passa.
 func TestUserRateLimitDeixaPassarQuandoNaoHaUsuarioNoContexto(t *testing.T) {
 	t.Parallel()
 

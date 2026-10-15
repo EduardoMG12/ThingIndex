@@ -21,9 +21,7 @@ func TestTokenizeNormalizaEPreservaAcento(t *testing.T) {
 	}
 }
 
-// Remover acento introduziria colisoes que favoreceriam artificialmente o
-// casamento lexical -- exatamente o efeito que o experimento quer medir sem
-// vies. Este teste trava a decisao.
+// Tokenize nao remove acentos.
 func TestTokenizeNaoColapsaPalavrasDiferentesPorAcento(t *testing.T) {
 	t.Parallel()
 
@@ -32,9 +30,7 @@ func TestTokenizeNaoColapsaPalavrasDiferentesPorAcento(t *testing.T) {
 	}
 }
 
-// O braco A e uma reproducao FIEL do scorer de producao, defeitos inclusive.
-// Este teste documenta o defeito mais visivel: por comparar substring e nao
-// token, "pag" casa dentro de "pagamento" e de "pagina".
+// O braco A compara substring, entao "pag" casa em "pagamento" e "pagina".
 func TestSubstringScorerCasaDentroDePalavra(t *testing.T) {
 	t.Parallel()
 
@@ -50,10 +46,7 @@ func TestSubstringScorerCasaDentroDePalavra(t *testing.T) {
 	}
 }
 
-// O defeito que mais compromete a metrica: sem IDF, um termo comum pesa igual
-// a um termo discriminativo. Aqui a consulta tem um termo inutil ("de") e um
-// util ("rescisao"); o scorer de substring da 2 pontos ao documento errado
-// so porque ele contem "de".
+// Sem IDF, "de" pesa igual a "rescisao".
 func TestSubstringScorerNaoDistingueTermoComumDeTermoDiscriminativo(t *testing.T) {
 	t.Parallel()
 
@@ -64,9 +57,7 @@ func TestSubstringScorerNaoDistingueTermoComumDeTermoDiscriminativo(t *testing.T
 
 	results := SubstringScorer(docs, "de rescisao")
 
-	// O documento irrelevante casa apenas "de" (score 1); o relevante casa os
-	// dois termos (score 2). Ate aqui o scorer acerta -- o problema aparece
-	// quando o termo comum e o UNICO em comum, o que o BM25 resolve com IDF.
+	// irrelevante casa so "de" (1); relevante casa os dois (2)
 	if results[0].DocID != "relevante" {
 		t.Fatalf("esperava o documento relevante em 1o, veio %q", results[0].DocID)
 	}
@@ -80,9 +71,7 @@ func TestSubstringScorerNaoDistingueTermoComumDeTermoDiscriminativo(t *testing.T
 	}
 }
 
-// A diferenca central entre os bracos A e B: o BM25 usa IDF, entao um termo
-// raro discrimina muito mais que um termo comum. Este teste mostra o BM25
-// acertando onde a contagem de substring empata.
+// Com IDF o termo raro decide onde a contagem de substring empata.
 func TestBM25UsaIDFParaPriorizarTermoRaro(t *testing.T) {
 	t.Parallel()
 
@@ -98,21 +87,17 @@ func TestBM25UsaIDFParaPriorizarTermoRaro(t *testing.T) {
 	if len(results) == 0 {
 		t.Fatal("o BM25 nao devolveu nenhum resultado")
 	}
-	// "contrato" aparece nos 3 documentos (IDF baixo); "rescisao" so em d3
-	// (IDF alto). O d3 tem que vencer.
+	// "contrato" esta nos 3 (IDF baixo); "rescisao" so em d3
 	if results[0].DocID != "d3" {
 		t.Fatalf("o termo raro deveria dominar o ranking: esperava d3 em 1o, veio %q", results[0].DocID)
 	}
 }
 
-// Sem o `1 +` na formula do IDF, um termo presente em mais da metade do corpus
-// recebe IDF negativo e passa a PUNIR quem o contem: um documento que casa com
-// todos os termos da consulta pode ficar atras de um que nao casa com nenhum.
+// Sem o `1 +` no IDF, termo em mais da metade do corpus daria IDF negativo.
 func TestBM25NuncaAtribuiScoreNegativo(t *testing.T) {
 	t.Parallel()
 
-	// "comum" aparece em 4 de 5 documentos -- df/N = 0.8, a faixa em que o
-	// IDF sem suavizacao fica negativo.
+	// df/N = 0.8
 	docs := []Document{
 		{ID: "d1", Text: "comum comum comum"},
 		{ID: "d2", Text: "comum texto"},
@@ -134,9 +119,7 @@ func TestBM25NuncaAtribuiScoreNegativo(t *testing.T) {
 	}
 }
 
-// Normalizacao por comprimento (parametro b): sem ela, documento longo vence
-// por ser longo. Os dois documentos abaixo casam o termo o mesmo numero de
-// vezes, mas um esta afogado em texto irrelevante.
+// Parametro b: mesmo numero de ocorrencias, um documento afogado em texto.
 func TestBM25NormalizaPeloComprimentoDoDocumento(t *testing.T) {
 	t.Parallel()
 
@@ -153,9 +136,7 @@ func TestBM25NormalizaPeloComprimentoDoDocumento(t *testing.T) {
 	}
 }
 
-// Saturacao de frequencia (parametro k1): repetir o termo 100 vezes nao pode
-// valer 100 vezes mais que repetir 2 vezes, senao keyword stuffing domina o
-// ranking. O ganho tem que ser sublinear.
+// Parametro k1: o ganho por repeticao tem de ser sublinear.
 func TestBM25SaturaAFrequenciaDoTermo(t *testing.T) {
 	t.Parallel()
 
@@ -196,8 +177,6 @@ func TestBM25IgnoraConsultaVaziaECorpusVazio(t *testing.T) {
 	}
 }
 
-// Reprodutibilidade: mesma entrada, mesma saida, sempre. Sem desempate
-// explicito a ordem de itens com score igual varia entre execucoes.
 func TestBM25EDeterministico(t *testing.T) {
 	t.Parallel()
 

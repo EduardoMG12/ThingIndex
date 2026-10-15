@@ -21,9 +21,7 @@ func (s *stubLLMService) GenerateText(_ context.Context, _, _ string) (string, e
 	return "resposta do modelo", nil
 }
 
-// Regressao: chamadas que falham precisam aparecer na telemetria. Antes,
-// GenerateText retornava no erro sem contar nada, entao "provider fora do ar" e
-// "nenhuma chamada foi feita" produziam exatamente o mesmo registro.
+// Regressao: chamadas que falham tambem sao contadas.
 func TestObservedLLMCountsFailedRequests(t *testing.T) {
 	t.Parallel()
 

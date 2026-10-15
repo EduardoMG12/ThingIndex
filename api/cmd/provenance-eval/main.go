@@ -1,17 +1,5 @@
-// Command provenance-eval mede a auditabilidade do indice sobre o corpus C1 e
-// emite a tabela do artigo.
-//
-// Existe porque a Metodologia promete avaliar TRES dimensoes -- precisao,
-// auditabilidade e custo operacional -- e os Resultados so entregavam precisao
-// e determinismo. As metricas de auditabilidade (TPC e TCV) ja estavam
-// implementadas e testadas em internal/provenance, mas nenhum numero delas
-// aparecia no texto.
-//
-// A tabela e reportada POR TIPO ESTRUTURAL, nao so na media global. A razao e
-// concreta: `ParagraphNode.PageNumber` e nulavel e blocos de OCR entram sem
-// caixa delimitadora, entao um tipo pode ter proveniencia muito pior que os
-// outros. A media esconderia isso; a quebra por tipo expoe -- e expor uma
-// limitacao medida vale mais que publicar uma media favoravel.
+// Command provenance-eval mede TPC e TCV do indice sobre o corpus C1 e gera a
+// tabela LaTeX, quebrada por tipo estrutural e por escopo.
 package main
 
 import (
@@ -59,11 +47,7 @@ func main() {
 	printSummary(os.Stderr, report, citations)
 }
 
-// measure indexa o corpus e avalia a proveniencia do resultado.
-//
-// Usa o indexador REAL (DeterministicIndexer), nao uma simulacao: medir uma
-// reimplementacao mediria a reimplementacao. O corpus e texto puro, entao passa
-// pelo mesmo caminho de um .txt enviado pelo usuario.
+// measure indexa o corpus com o DeterministicIndexer real e avalia o resultado.
 func measure(corpus *evalcorpus.Corpus) (provenance.Report, provenance.CitationReport) {
 	indexer := indexing.NewDeterministicIndexer()
 
@@ -73,8 +57,7 @@ func measure(corpus *evalcorpus.Corpus) (provenance.Report, provenance.CitationR
 	for i, doc := range corpus.Documents {
 		documentID := uint(i + 1)
 
-		// Passa pelo caminho publico do indexador, o mesmo de um .txt enviado
-		// pelo usuario. Medir uma reimplementacao mediria a reimplementacao.
+		// Mesmo caminho de um .txt enviado pelo usuario.
 		modelo := &models.Document{ID: documentID, MimeType: "text/plain"}
 		result, err := indexer.Index(context.Background(), modelo, strings.NewReader(doc.Content))
 		if err != nil {
@@ -89,7 +72,6 @@ func measure(corpus *evalcorpus.Corpus) (provenance.Report, provenance.CitationR
 	return provenance.Evaluate(items), provenance.VerifyCitations(citations)
 }
 
-// itemsFromResult converte o indice em itens avaliaveis, um por estrutura.
 func itemsFromResult(documentID uint, result domain.IndexingResult) []provenance.Item {
 	var items []provenance.Item
 
@@ -115,14 +97,8 @@ func itemsFromResult(documentID uint, result domain.IndexingResult) []provenance
 		})
 	}
 	for _, table := range result.TableSections {
-		// Historia desta linha, porque ela explica um erro de medicao: durante
-		// um periodo TableSection de fato nao tinha PageNumber, e passar nil
-		// aqui era a leitura honesta do esquema. A coluna passou a existir
-		// quando as tabelas de PDF viraram fonte do chat, e o nil ficou para
-		// tras -- o instrumento seguiu reportando um furo que o sistema ja
-		// tinha fechado. Ressalva para quem for ler o artigo: isso NAO muda o
-		// numero do corpus C1, que e texto puro e nao produz tabela nenhuma;
-		// muda a medicao de qualquer corpus com tabela daqui para frente.
+		// TableSection ganhou PageNumber quando tabelas de PDF viraram fonte do chat;
+		// antes aqui ia nil.
 		items = append(items, provenance.Item{
 			Kind:          "table",
 			Scope:         provenance.ScopePage,
@@ -133,14 +109,8 @@ func itemsFromResult(documentID uint, result domain.IndexingResult) []provenance
 		})
 	}
 	for _, pair := range result.MetadataPairs {
-		// MetadataPair nao carrega pagina, e aqui isso NAO e furo: os pares que
-		// o indexador gera sao estatisticas do documento inteiro
-		// ("paragraph_count", "tree_builder", "tree_coverage_ratio"). Elas nao
-		// estao na pagina 3 nem em nenhuma outra. Dar pagina a elas seria
-		// fabricar proveniencia, que o principio I proibe; conta-las como
-		// falha permanente afundaria a media com um defeito inexistente. Por
-		// isso entram com escopo de documento: continuam visiveis na conta,
-		// com o criterio que cabe a elas.
+		// Metadados sao estatisticas do documento inteiro ("paragraph_count",
+		// "tree_builder"): escopo de documento, sem pagina.
 		items = append(items, provenance.Item{
 			Kind:          "metadata",
 			Scope:         provenance.ScopeDocument,
@@ -151,13 +121,8 @@ func itemsFromResult(documentID uint, result domain.IndexingResult) []provenance
 		})
 	}
 	for _, chunk := range result.Chunks {
-		// Chunk e evidencia citavel: entra na recuperacao da colecao e vira
-		// fonte da resposta. Ate 2026-09-19 ele so apontava os paragrafos de
-		// origem, e a proveniencia era indireta -- resolvia-se via paragrafo,
-		// num passo a mais. A TPC contava isso como incompleto com razao,
-		// porque auditoria e apontar a pagina sem intermediario. A coluna
-		// passou a existir e a ser preenchida a partir do paragrafo de origem
-		// (ver internal/indexing/chunks.go, chunkPageFor).
+		// A pagina do chunk vem do paragrafo de origem (chunkPageFor em
+		// internal/indexing/chunks.go).
 		items = append(items, provenance.Item{
 			Kind:          "chunk",
 			Scope:         provenance.ScopePage,
@@ -181,12 +146,8 @@ func itemsFromResult(documentID uint, result domain.IndexingResult) []provenance
 	return items
 }
 
-// citationsFromResult monta as citacoes verificaveis.
-//
-// Cada paragrafo indexado e tratado como um trecho que uma resposta poderia
-// citar, e a fonte e o documento original. A TCV mede quantos desses trechos
-// REALMENTE existem no texto-fonte -- ou seja, se a fragmentacao preservou o
-// conteudo ou o corrompeu.
+// citationsFromResult trata cada paragrafo indexado como citacao do documento
+// original, para checar se a fragmentacao preservou o texto.
 func citationsFromResult(doc evalcorpus.Document, result domain.IndexingResult) []provenance.Citation {
 	citations := make([]provenance.Citation, 0, len(result.ParagraphNodes))
 	for _, node := range result.ParagraphNodes {
@@ -255,12 +216,7 @@ func printSummary(w *os.File, report provenance.Report, citations provenance.Cit
 		fmt.Fprintf(w, "  %-14s %.3f (%d/%d)\n", kind, report.RateFor(kind), entry.Complete, entry.Total)
 	}
 
-	// O recorte por escopo vem DEPOIS do recorte por tipo, e nao no lugar dele.
-	// A ordem e deliberada: o leitor ve primeiro o numero sem nenhuma
-	// qualificacao, depois a decomposicao por estrutura, e so entao a
-	// separacao entre "item que deveria ter pagina" e "item que nunca teria".
-	// Publicar so o recorte por escopo seria o caminho facil para um numero
-	// bonito; publicar os tres deixa a distincao conferivel.
+	// Escopo vem depois do recorte por tipo, nao no lugar dele.
 	fmt.Fprintf(w, "\npor escopo de origem:\n")
 	for _, scope := range report.Scopes() {
 		entry := report.ByScope[scope]

@@ -8,23 +8,8 @@ import (
 	"testing"
 )
 
-// DETERMINISMO E A AFIRMACAO MAIS FORTE E MAIS BARATA DO TRABALHO.
-//
-// O artigo afirma determinismo como vantagem da abordagem relacional sobre a
-// densa, e ate agora isso era sustentado apenas por leitura de codigo. E uma
-// vitoria que estava sendo deixada na mesa: o relacional entrega 100% por
-// construcao, enquanto um indice HNSW varia com ef_search e com a ordem de
-// insercao.
-//
-// "Determinismo" aqui tem definicao operacional precisa, e nao retorica:
-//
-//	a mesma consulta, sobre o mesmo corpus, produz o MESMO ranking --
-//	byte a byte, incluindo a ordem dos empates -- em execucoes repetidas.
-//
-// A verificacao e por hash do ranking serializado. Comparar so o primeiro
-// colocado esconderia instabilidade no resto da lista; comparar os scores com
-// tolerancia esconderia reordenacao de empates. O hash nao perdoa nenhum dos
-// dois.
+// Determinismo = mesmo ranking byte a byte, incluindo a ordem dos empates.
+// Compara por hash do ranking serializado, que pega reordenacao de empates.
 
 const determinismRepetitions = 30
 
@@ -47,10 +32,7 @@ func corpusDeterminismo() []Document {
 	}
 }
 
-// Tres documentos com texto IDENTICO existem de proposito no corpus: eles
-// produzem empate perfeito de score, que e exatamente onde uma implementacao
-// nao deterministica se revela (a ordem passaria a depender da iteracao de
-// mapa ou da estabilidade do sort).
+// Os tres documentos identicos forcam empate de score.
 func TestBracoRelacionalEDeterministicoEm30Execucoes(t *testing.T) {
 	t.Parallel()
 
@@ -96,9 +78,6 @@ func TestBracoBM25EDeterministicoEm30Execucoes(t *testing.T) {
 	}
 }
 
-// Reconstruir o indice do zero tem que produzir o mesmo ranking. Se nao
-// produzir, o resultado depende de estado acumulado -- e o experimento deixa de
-// ser reproduzivel entre execucoes do harness.
 func TestBM25EDeterministicoEntreReconstrucoesDoIndice(t *testing.T) {
 	t.Parallel()
 
@@ -126,15 +105,7 @@ func TestFusaoRRFEDeterministicaEm30Execucoes(t *testing.T) {
 		}, 60)
 	}
 
-	// O RRF e o braco de maior risco: ele agrega scores num MAPA, e a ordem de
-	// iteracao de mapa em Go e deliberadamente aleatoria. Sem o desempate
-	// explicito por DocID, este teste falharia.
-	//
-	// Nota de metodo: o corpus precisa ter empates SUFICIENTES para revelar a
-	// instabilidade. Com 2 ou 3 itens empatados o sort.Slice frequentemente
-	// devolve a mesma ordem por acaso, e o teste passaria mesmo sem o
-	// desempate -- verificado na pratica. Por isso a consulta abaixo casa com
-	// os tres documentos identicos E o teste tambem cobre um corpus maior.
+	// O RRF agrega num map; sem o desempate por DocID este teste falharia.
 	referencia := hashRanking(fundir("rescisao contratual"))
 	for execucao := 2; execucao <= determinismRepetitions; execucao++ {
 		if atual := hashRanking(fundir("rescisao contratual")); atual != referencia {
@@ -143,22 +114,9 @@ func TestFusaoRRFEDeterministicaEm30Execucoes(t *testing.T) {
 	}
 }
 
-// Este teste expoe a instabilidade que o desempate por DocID corrige.
-//
-// Detalhe que so aparece investigando: alimentar o RRF com documentos de texto
-// identico NAO produz empate. O RRF pontua por POSICAO, e as posicoes sao
-// distintas (1o, 2o, 3o...), entao os scores fundidos saem todos diferentes --
-// verifiquei isso na pratica, e por isso a primeira versao deste teste passava
-// mesmo com o desempate removido.
-//
-// O empate real acontece quando o mesmo documento ocupa a MESMA posicao nos
-// dois rankings de entrada. Aqui isso e construido diretamente: dois rankings
-// com a ordem invertida fazem os pares (i, n-1-i) somarem exatamente o mesmo
-// score.
-//
-// Verificado por mutacao: removendo o desempate por DocID de
-// ReciprocalRankFusion, este teste falha; com o desempate, passa nas 30
-// execucoes.
+// Texto identico nao empata no RRF (pontua por posicao). O empate real vem do
+// mesmo documento na mesma posicao: com rankings invertidos, os pares
+// (i, n-1-i) somam o mesmo score. Sem o desempate por DocID, falha.
 func TestFusaoRRFEDeterministicaComScoresEmpatados(t *testing.T) {
 	t.Parallel()
 
@@ -170,8 +128,7 @@ func TestFusaoRRFEDeterministicaComScoresEmpatados(t *testing.T) {
 		inverso = append(inverso, Result{DocID: fmt.Sprintf("doc-%02d", n-1-i)})
 	}
 
-	// Confirmacao de que o cenario realmente empata: se os scores saissem
-	// distintos, o teste nao exercitaria o desempate e passaria por engano.
+	// garante que o cenario empata de fato
 	fundido := ReciprocalRankFusion([][]Result{direto, inverso}, 60)
 	distintos := map[float64]bool{}
 	for _, result := range fundido {
@@ -191,9 +148,6 @@ func TestFusaoRRFEDeterministicaComScoresEmpatados(t *testing.T) {
 	}
 }
 
-// Prova de que o teste tem poder de deteccao: um ranking com ordem trocada
-// PRECISA gerar hash diferente. Sem isso, os testes acima poderiam estar
-// passando por comparar sempre a mesma coisa.
 func TestHashDeRankingDetectaReordenacao(t *testing.T) {
 	t.Parallel()
 

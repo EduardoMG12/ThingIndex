@@ -28,8 +28,7 @@ func (c *chatColecaoPorPosse) GetCollectionByID(_ context.Context, _ uint, userI
 	return c.colecao, c.err
 }
 
-// Regressao P2-1: CreateConversation chamava GetCollectionContext (9 consultas,
-// texto integral de toda a colecao) so para checar posse e jogava fora.
+// CreateConversation so checa posse; nao deve carregar a colecao inteira.
 func TestCreateConversationChecaPosseSemMaterializarAColecao(t *testing.T) {
 	t.Parallel()
 

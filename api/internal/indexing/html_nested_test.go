@@ -8,10 +8,7 @@ import (
 	"thing-index/internal/models"
 )
 
-// Regressao: o texto de um <li>/<p> aninhado era emitido duas vezes, uma
-// embutida no bloco pai e outra como paragrafo proprio. Isso inflava
-// paragraph_nodes, duplicava conteudo nos chunks enviados ao LLM e distorcia o
-// benchmark de recuperacao.
+// Regressao: o texto de um <li>/<p> aninhado era emitido duas vezes.
 func TestIndexHTMLDoesNotDuplicateNestedBlocks(t *testing.T) {
 	t.Parallel()
 

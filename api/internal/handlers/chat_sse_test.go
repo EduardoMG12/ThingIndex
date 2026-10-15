@@ -11,15 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// O ServerWriteTimeout do http.Server e um deadline ABSOLUTO contado do inicio
-// da requisicao, nao um limite de ociosidade. Com 30s configurados em producao,
-// qualquer resposta de chat mais longa era cortada no meio: o texto parava de
-// aparecer, sem erro e sem explicacao.
-//
-// Este teste sobe um servidor HTTP de verdade com WriteTimeout deliberadamente
-// curto e emite eventos espacados que ultrapassam esse limite. Se writeChatEvent
-// nao empurrar o deadline, a conexao morre e o cliente recebe menos eventos do
-// que os emitidos.
+// Servidor real com WriteTimeout curto e eventos espacados alem dele: se
+// writeChatEvent nao empurrar o deadline, o cliente recebe menos eventos.
 func TestWriteChatEventEstendeOPrazoEEvitaCorteDoStream(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -43,8 +36,7 @@ func TestWriteChatEventEstendeOPrazoEEvitaCorteDoStream(t *testing.T) {
 		}
 	})
 
-	// A duracao total (6 x 50ms = 300ms) e o DOBRO do WriteTimeout. Sem a
-	// renovacao do deadline o stream e cortado antes do fim.
+	// 6 x 50ms = 300ms, o dobro do WriteTimeout.
 	server := httptest.NewUnstartedServer(router)
 	server.Config.WriteTimeout = writeTimeout
 	server.Start()

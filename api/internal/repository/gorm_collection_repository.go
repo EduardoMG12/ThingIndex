@@ -21,20 +21,9 @@ func (r *GormCollectionRepository) CreateCollection(ctx context.Context, collect
 	return r.db.WithContext(ctx).Create(collection).Error
 }
 
-// EnsureCollection cria a colecao ou devolve a existente, numa unica ida ao
-// banco.
-//
-// MOTIVO: o usecase fazia buscar-e-criar, um check-then-act. Com 20 uploads
-// simultaneos para a mesma colecao, um deles caia em
-// "duplicated key not allowed" e o usuario recebia HTTP 500 por ter feito algo
-// legitimo -- enviar varios documentos de uma vez.
-//
-// ON CONFLICT DO NOTHING + busca no mesmo fluxo: so o banco pode arbitrar quem
-// ganha a corrida. Reexecutar a busca no usecase apenas moveria a janela.
-//
-// O DoNothing e deliberado, em vez de DoUpdates: quem perde a corrida quer a
-// colecao existente como ela esta, nao sobrescrever metadados de quem chegou
-// primeiro.
+// EnsureCollection cria a colecao ou devolve a existente. ON CONFLICT DO
+// NOTHING e depois busca: so o banco arbitra a corrida entre uploads
+// simultaneos. DoNothing para nao sobrescrever quem chegou primeiro.
 func (r *GormCollectionRepository) EnsureCollection(ctx context.Context, collection *models.Collection) error {
 	db := r.db.WithContext(ctx)
 
@@ -47,14 +36,11 @@ func (r *GormCollectionRepository) EnsureCollection(ctx context.Context, collect
 		return resultado.Error
 	}
 
-	// Insercao efetiva: o id ja veio preenchido.
 	if resultado.RowsAffected > 0 && collection.ID != 0 {
 		return nil
 	}
 
-	// Conflito: outra requisicao criou primeiro. Busca a vencedora para
-	// devolver o mesmo id a todos os chamadores -- ids diferentes dividiriam o
-	// acervo do usuario em duas colecoes com o mesmo nome.
+	// Conflito: busca a vencedora para todos receberem o mesmo id.
 	var existente models.Collection
 	if err := db.
 		Where("user_id = ? AND normalized_name = ?", collection.UserID, collection.NormalizedName).

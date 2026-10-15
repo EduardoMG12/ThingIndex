@@ -13,8 +13,7 @@ import (
 )
 
 // IndexingPreferencesHandler expoe os toggles do enriquecimento por usuario.
-// Tres booleanos sem regra de negocio: o handler fala direto com o
-// repositorio, sem caso de uso no meio.
+// Sem regra de negocio, entao fala direto com o repositorio.
 type IndexingPreferencesHandler struct {
 	repo domain.IndexingPreferencesRepository
 }

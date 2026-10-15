@@ -9,11 +9,8 @@ import (
 	"thing-index/internal/evalcorpus"
 )
 
-// proseProvenance mede, para os dois bracos com o MESMO criterio, se a
-// pagina escrita na prosa da resposta pertence as paginas-alvo. A banca
-// apontou que a proveniencia reportada para T (pagina-alvo entre as fontes
-// exibidas) e para F (pagina escrita pelo modelo) medem coisas diferentes;
-// esta medida e a comparavel. Nao altera os CSV: le e resume.
+// proseProvenance mede, com o mesmo criterio para os dois bracos, se a pagina
+// escrita na prosa da resposta pertence as paginas-alvo. So le os CSV.
 //
 // Devolve, por arquivo: respostas com alvo, respostas que citam alguma
 // pagina na prosa, e respostas cuja pagina citada na prosa e alvo.

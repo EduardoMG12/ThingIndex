@@ -2,14 +2,7 @@ package evalcorpus
 
 import "testing"
 
-// TestRetrievalUnitsFatiaPorSecao prova a conversao central da issue #16: um
-// documento com secoes declaradas vira N unidades recuperaveis, cada uma com o
-// texto da PROPRIA secao -- nao o documento inteiro repetido.
-//
-// Se o texto de cada unidade fosse o documento completo, todos os nos de um
-// mesmo documento teriam score identico e o ranking em nivel de secao seria
-// indistinguivel do ranking em nivel de documento: a mudanca de unidade seria
-// cosmetica.
+// Cada unidade tem o texto da propria secao, nao o documento inteiro.
 func TestRetrievalUnitsFatiaPorSecao(t *testing.T) {
 	doc := Document{
 		ID:      "doc-a",
@@ -30,7 +23,6 @@ func TestRetrievalUnitsFatiaPorSecao(t *testing.T) {
 		t.Fatalf("ids fora de ordem ou errados: %q, %q", units[0].ID, units[1].ID)
 	}
 
-	// A primeira unidade termina onde a segunda comeca.
 	if !contains(units[0].Text, "uptime de 99,5") {
 		t.Fatalf("unidade 1 nao contem o proprio conteudo: %q", units[0].Text)
 	}
@@ -41,8 +33,7 @@ func TestRetrievalUnitsFatiaPorSecao(t *testing.T) {
 		t.Fatalf("unidade 2 nao contem o proprio conteudo: %q", units[1].Text)
 	}
 
-	// O texto anterior a primeira ancora (capa) nao pertence a nenhuma secao
-	// julgavel e nao deve poluir a unidade seguinte.
+	// Texto antes da primeira ancora (capa) nao entra em nenhuma secao.
 	if contains(units[0].Text, "texto de capa") {
 		t.Fatalf("a capa vazou para dentro da primeira secao: %q", units[0].Text)
 	}
@@ -54,9 +45,6 @@ func TestRetrievalUnitsFatiaPorSecao(t *testing.T) {
 	}
 }
 
-// TestRetrievalUnitsDegradaParaDocumentoInteiro trava o RNF-1 da spec 001:
-// documento sem secoes declaradas continua sendo uma unidade recuperavel, e o
-// experimento nao quebra por causa dele.
 func TestRetrievalUnitsDegradaParaDocumentoInteiro(t *testing.T) {
 	docs := []Document{
 		{ID: "com-secao", Content: "1 UM\nalfa\n\n2 DOIS\nbeta", Sections: []Section{
@@ -83,10 +71,6 @@ func TestRetrievalUnitsDegradaParaDocumentoInteiro(t *testing.T) {
 	}
 }
 
-// TestRetrievalUnitsEhDeterministica trava o RNF-3: duas chamadas produzem a
-// mesma ordem. Sem isso o ranking herdaria a ordem de iteracao de mapa e o
-// experimento deixaria de ser reproduzivel -- exatamente o defeito que o
-// trabalho denuncia no indice vetorial aproximado.
 func TestRetrievalUnitsEhDeterministica(t *testing.T) {
 	docs := []Document{
 		{ID: "b", Content: "1 UM\nalfa", Sections: []Section{{ID: "b#s1", Anchor: "1 UM"}}},
@@ -107,8 +91,6 @@ func TestRetrievalUnitsEhDeterministica(t *testing.T) {
 	}
 }
 
-// TestRetrievalUnitsUsaCharStartParaDesempatar cobre o caso em que a mesma
-// ancora aparece mais de uma vez no documento.
 func TestRetrievalUnitsUsaCharStartParaDesempatar(t *testing.T) {
 	content := "1 ITEM\nprimeira ocorrencia\n\n1 ITEM\nsegunda ocorrencia"
 	segundaPos := len("1 ITEM\nprimeira ocorrencia\n\n")

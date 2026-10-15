@@ -25,23 +25,9 @@ const (
 	OutboxEventDocumentIndexRequested = "document.index.requested"
 )
 
-// DocumentIndexRequestedEvent e o payload que trafega do outbox ate o worker.
-//
-// RequestedAt existe para tornar o consumidor idempotente. O claim do outbox
-// impede que o mesmo evento seja PUBLICADO duas vezes, mas nao impede que o
-// RabbitMQ REENTREGUE a mesma mensagem -- o que acontece normalmente quando o
-// worker morre depois de processar e antes do ack. Sem uma referencia temporal
-// o consumidor nao tem como distinguir "reentrega do trabalho que ja fiz" de
-// "pedido novo de reindexacao", e reprocessar custa uma rodada inteira de LLM.
-//
-// Comparando RequestedAt com Document.IndexedAt a distincao fica trivial: se o
-// documento foi indexado DEPOIS de o evento ser criado, o trabalho ja foi feito.
-// A reindexacao manual zera indexed_at (ver ReindexDocument), entao ela nunca e
-// confundida com duplicata.
-//
-// O campo tem `omitempty` e e opcional de proposito: eventos gravados antes
-// desta mudanca chegam com RequestedAt zero e caem no comportamento antigo
-// (processar), em vez de serem descartados por engano.
+// RequestedAt torna o consumidor idempotente: o RabbitMQ pode reentregar a
+// mensagem se o worker morrer antes do ack. Se Document.IndexedAt for posterior
+// a RequestedAt, o trabalho ja foi feito. Zero (eventos antigos) = processar.
 type DocumentIndexRequestedEvent struct {
 	DocumentID  uint      `json:"document_id"`
 	UserID      uint      `json:"user_id"`
@@ -84,10 +70,9 @@ type DocumentProcessingRepository interface {
 	// ReapStuckProcessingDocuments marca como FAILED os documentos presos em
 	// PROCESSING desde antes de `olderThan`. Devolve quantos foram liberados.
 	ReapStuckProcessingDocuments(ctx context.Context, olderThan time.Time) (int64, error)
-	// RequeueStuckQueuedDocuments cria um evento PENDING novo no outbox para
-	// cada documento em QUEUED cujo ultimo evento esta PUBLISHED desde antes de
-	// `olderThan` (a mensagem se perdeu depois do broker). Devolve quantos
-	// documentos foram reenfileirados.
+	// RequeueStuckQueuedDocuments cria um evento PENDING novo para cada documento em
+	// QUEUED cujo ultimo evento esta PUBLISHED desde antes de `olderThan` (mensagem
+	// perdida depois do broker).
 	RequeueStuckQueuedDocuments(ctx context.Context, olderThan time.Time) (int64, error)
 }
 
@@ -136,20 +121,10 @@ type EnrichmentCacheEntry struct {
 	Topics      string // separados por virgula
 }
 
-// EnrichmentCacheScope e o escopo de uma entrada do cache: quem pediu e qual
-// LLM respondeu.
-//
-// MOTIVO (P0-1): a chave era (tipo, modelo, hash), global. O nome do modelo e
-// texto livre das credenciais e o base_url aponta para qualquer servidor
-// OpenAI-compativel, entao um usuario A podia servir resumos proprios sob
-// "gpt-4o-mini" e todo usuario B que indexasse o mesmo texto os recebia -- e
-// eles viravam snippet de fonte no chat. O escopo tem as duas coisas:
-//   - UserID: um usuario so le o que o LLM configurado POR ELE gerou. Isso
-//     sozinho fecha o envenenamento e o canal lateral dos contadores de hit.
-//   - Provider: tipo do provedor + host do endpoint. Dentro do mesmo usuario,
-//     trocar de provedor ou de base_url com o mesmo nome de modelo nao
-//     reaproveita resumo de outra origem (Principio I: o resumo exibido veio
-//     do LLM que esta configurado).
+// EnrichmentCacheScope e o escopo de uma entrada do cache. O nome do modelo e
+// texto livre e o base_url aponta para qualquer servidor, entao uma chave global
+// deixava um usuario envenenar os resumos de outro. UserID isola por usuario;
+// Provider (tipo + host) evita reaproveitar resumo de outra origem.
 type EnrichmentCacheScope struct {
 	UserID   uint
 	Provider string

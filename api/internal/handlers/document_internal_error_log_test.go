@@ -15,18 +15,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Antes desta correcao, todo caminho 5xx do DocumentHandler respondia um 500
-// generico e DESCARTAVA a causa: `respondInternalError(c, lang)` nao recebia o
-// erro. Na pratica, um upload que falhava por storage fora do ar aparecia no
-// log apenas como `500 | POST /api/v1/documents/upload`, sem uma linha
-// explicando o motivo -- exatamente o cenario que este teste trava.
-//
-// Verificado RED -> GREEN: revertendo a assinatura de respondInternalError
-// para descartar o erro, este teste falha com "o log do servidor ficou vazio".
+// Upload com storage fora do ar: o 500 tem de deixar a causa no log.
 func TestUploadDocumentLogaCausaDoErroInterno(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	// A causa real que precisa aparecer no log do operador.
 	causaReal := errors.New("minio: connection refused em minio:9000")
 	useCase := &documentUseCaseAuditCaptureStub{
 		uploadErr: errors.Join(domain.ErrUploadFailed, causaReal),
@@ -42,7 +34,6 @@ func TestUploadDocumentLogaCausaDoErroInterno(t *testing.T) {
 	})
 	router.POST("/api/v1/documents/upload", handler.Upload)
 
-	// Captura o log padrao do servidor durante a requisicao.
 	var logBuffer bytes.Buffer
 	originalOutput := log.Writer()
 	originalFlags := log.Flags()

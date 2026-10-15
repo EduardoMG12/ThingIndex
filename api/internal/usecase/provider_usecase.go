@@ -95,9 +95,8 @@ func NewProviderUseCase(repo domain.ProviderRepository, cfg *config.Config) doma
 	}
 }
 
-// llmClientOptions aplica ao cliente do LLM o mesmo validador de endpoint do
-// storage: base_url do usuario e revalidado no dial (DNS rebinding) e respeita
-// ALLOW_PRIVATE_STORAGE_ENDPOINTS.
+// llmClientOptions aplica ao LLM o mesmo validador de endpoint do storage:
+// base_url do usuario e revalidado no dial (DNS rebinding).
 func (u *providerUseCase) llmClientOptions() provider.LLMClientOptions {
 	return provider.LLMClientOptions{EndpointValidator: u.endpointValidator}
 }
@@ -246,8 +245,7 @@ func (u *providerUseCase) validateModelDiscoveryCredentials(ctx context.Context,
 	return nil
 }
 
-// validateLLMPricingCredentials confere o preco opcional informado no cadastro:
-// quando presente, precisa ser um numero >= 0 (ponto ou virgula decimal).
+// validateLLMPricingCredentials: preco opcional, numero >= 0 (ponto ou virgula).
 func validateLLMPricingCredentials(credentials map[string]string) error {
 	for _, key := range provider.LLMPricingCredentialKeys {
 		value, present := credentials[key]
@@ -294,9 +292,7 @@ func (u *providerUseCase) discoverProviderModels(ctx context.Context, userID uin
 	}
 
 	if options.persistCatalog {
-		// Esta descoberta nasceu de uma requisicao HTTP: `credentials` e o
-		// `base_url` dentro dele vieram do cliente. Nunca confiavel para
-		// escrever no escopo GLOBAL, so no do proprio usuario.
+		// credentials e base_url vieram do cliente: nunca gravar no escopo GLOBAL.
 		if err := u.saveModelCatalog(ctx, userID, providerType, models, false); err != nil {
 			log.Printf("provider model catalog save skipped for provider=%s user=%d: %v", providerType, userID, err)
 		}
@@ -1146,9 +1142,7 @@ func (u *providerUseCase) syncProviderModelCatalog(ctx context.Context, userID u
 		return err
 	}
 
-	// Chamado exclusivamente pelo worker SyncModelCatalogs, com o endpoint
-	// publico padrao do provider -- nada aqui vem do cliente, entao esta e a
-	// unica origem autorizada a escrever no escopo GLOBAL.
+	// So o worker de sync, com o endpoint publico padrao, escreve no escopo GLOBAL.
 	return u.saveModelCatalog(ctx, userID, normalizedProviderType, models, true)
 }
 
@@ -1172,29 +1166,10 @@ func publicProviderDefaultBaseURL(providerType string) string {
 	}
 }
 
-// modelCatalogScope decide em qual escopo o catalogo descoberto sera gravado.
-//
-// `trusted` distingue quem pode escrever no escopo GLOBAL, que e cache
-// compartilhado por TODOS os usuarios da instalacao:
-//
-//   - true  -> a descoberta partiu do worker de sync (SyncModelCatalogs), que
-//     usa o endpoint publico padrao do provider e nao aceita nada vindo do
-//     cliente. E o dono legitimo do GLOBAL.
-//   - false -> a descoberta partiu de uma requisicao HTTP autenticada, com
-//     credenciais e `base_url` FORNECIDOS PELO CLIENTE.
-//
-// Antes dessa distincao, qualquer usuario autenticado escrevia no GLOBAL:
-// bastava um POST /user/providers/models com providerType=OLLAMA (isento de
-// api_key por a descoberta ser publica) apontando base_url para um servidor
-// proprio. O ReplaceModelCatalog desativa tudo no escopo antes de inserir e,
-// com lista vazia, retorna cedo -- entao um atacante podia tanto envenenar o
-// seletor de modelos de terceiros com strings arbitrarias quanto zerar o
-// catalogo global de todo mundo. Nao vazava documento nem credencial, mas
-// quebrava o isolamento por usuario que o resto do backend mantem.
-//
-// A descoberta continua funcionando normalmente para quem pediu: o retorno da
-// rota nao muda, so o destino da GRAVACAO passa a ser o escopo do proprio
-// usuario.
+// modelCatalogScope decide onde gravar o catalogo descoberto. O GLOBAL e
+// compartilhado por todos os usuarios, entao so a descoberta trusted (worker
+// de sync) grava nele; descoberta via HTTP usa base_url do cliente e grava no
+// escopo do proprio usuario, senao qualquer um envenenava ou zerava o catalogo.
 func modelCatalogScope(userID uint, providerType string, trusted bool) (string, *uint) {
 	if trusted && isPublicModelCatalogProvider(providerType) {
 		return globalModelCatalogScope, nil

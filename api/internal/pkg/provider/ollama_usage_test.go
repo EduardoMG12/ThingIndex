@@ -10,8 +10,7 @@ import (
 	"thing-index/internal/domain"
 )
 
-// O /api/chat do Ollama devolve prompt_eval_count e eval_count. Antes o cliente
-// nativo nao os lia e todo consumo do Ollama (local ou Cloud) virava estimativa.
+// O /api/chat do Ollama devolve prompt_eval_count e eval_count.
 func TestOllamaNativoReportaConsumoNoGenerateText(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

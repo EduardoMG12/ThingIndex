@@ -8,20 +8,10 @@ import (
 	"thing-index/internal/domain"
 )
 
-// Provedores ecoam a credencial na mensagem de erro. A OpenAI devolve
-// "Incorrect API key provided: sk-abc123...", a AWS devolve o access key id na
-// falha de assinatura, e o Ollama repete a URL completa.
-//
-// classifyProviderConnectionError embute essa mensagem crua com %v. Medi contra
-// a API viva com uma chave falsa marcada: o handler traduz para mensagem fixa
-// por i18n, entao NAO chega ao usuario, nao aparece nos logs e nao e persistida.
-//
-// A protecao existe mas nada a garantia. Estes testes travam a propriedade: se
-// alguem trocar a mensagem traduzida pelo err.Error() -- que e o atalho natural
-// para "melhorar o diagnostico" -- a credencial passa a vazar na resposta HTTP.
+// Provedores ecoam a credencial na mensagem de erro (chave da OpenAI, access
+// key da AWS, URL do Ollama). O erro classificado carrega a mensagem crua para
+// o log; o handler e quem traduz para mensagem fixa antes de responder.
 
-// credenciaisQueProvedoresEcoam reproduz mensagens reais de erro que carregam
-// segredo.
 var credenciaisQueProvedoresEcoam = []struct {
 	nome     string
 	mensagem string
@@ -45,8 +35,7 @@ var credenciaisQueProvedoresEcoam = []struct {
 }
 
 func TestClassificacaoPreservaOTipoDoErroSemPerderACausa(t *testing.T) {
-	// A causa PRECISA continuar embrulhada: e ela que vai para o log do
-	// servidor, onde o operador diagnostica. O que nao pode e chegar ao cliente.
+	// A causa continua embrulhada para o log do servidor.
 	erroOriginal := errors.New("Incorrect API key provided: sk-proj-ABC123")
 
 	classificado := classifyProviderConnectionError(domain.FamilyLLM, domain.ProviderOpenAI, erroOriginal)
@@ -57,9 +46,7 @@ func TestClassificacaoPreservaOTipoDoErroSemPerderACausa(t *testing.T) {
 }
 
 func TestClassificacaoDistingueOsTiposDeFalha(t *testing.T) {
-	// Cada tipo vira um status HTTP diferente no handler. Classificar errado
-	// faria o usuario ver "tempo esgotado" quando a chave e que esta errada --
-	// e ele mexeria na rede em vez da credencial.
+	// Classificar errado mostraria "tempo esgotado" com a chave errada.
 	casos := []struct {
 		nome     string
 		erro     error
@@ -84,27 +71,19 @@ func TestClassificacaoDistingueOsTiposDeFalha(t *testing.T) {
 }
 
 func TestErroClassificadoNaoEhUsadoDiretamenteComoMensagem(t *testing.T) {
-	// O ponto central: o erro classificado CARREGA o segredo de proposito, para
-	// o log. Este teste documenta isso e existe para que a decisao seja
-	// consciente -- quem for exibir esse erro ao usuario precisa traduzir.
-	//
-	// A prova de que a traducao acontece esta no handler
-	// (providerConnectionFailureResponse) e foi confirmada contra a API viva:
-	// chave falsa marcada devolveu 401 com mensagem generica, sem o segredo.
+	// O erro classificado carrega o segredo de proposito, para o log. Quem exibir
+	// ao usuario precisa traduzir (ver providerConnectionFailureResponse).
 	for _, caso := range credenciaisQueProvedoresEcoam {
 		t.Run(caso.nome, func(t *testing.T) {
 			classificado := classifyProviderConnectionError(
 				domain.FamilyLLM, domain.ProviderOpenAI, errors.New(caso.mensagem))
 
-			// Confirma que o segredo esta ali: se um dia a classificacao passar
-			// a sanitizar, este teste avisa que o log perdeu diagnostico.
+			// Se a classificacao passar a sanitizar, o log perde diagnostico.
 			if !strings.Contains(classificado.Error(), caso.segredo) {
 				t.Skipf("a classificacao passou a sanitizar %q -- confirme que o log "+
 					"ainda permite diagnosticar a falha", caso.nome)
 			}
 
-			// E confirma que o erro tipado continua reconhecivel, que e o que
-			// permite ao handler escolher a mensagem traduzida.
 			temTipo := errors.Is(classificado, domain.ErrProviderAuthenticationFailed) ||
 				errors.Is(classificado, domain.ErrProviderEndpointUnavailable) ||
 				errors.Is(classificado, domain.ErrProviderConnectionFailed) ||

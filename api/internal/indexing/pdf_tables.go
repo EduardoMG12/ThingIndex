@@ -14,24 +14,18 @@ import (
 
 // Deteccao de tabelas em PDF a partir das caixas de palavra do pdftotext.
 //
-// O pipeline de PDF nunca emitia TableSection: a matriz curricular virava prosa
-// embaralhada de pagina, e "qual o pre-requisito de X?" caia numa pagina do
-// PPC. O experimento de geracao mostrou que o mesmo texto, lido como tabela,
-// responde 90% das perguntas tabulares. A deteccao aqui e geometrica e
-// deterministica (constituicao II):
-//
 //  1. palavras viram linhas visuais (mesmo Y) e celulas (folga horizontal);
 //  2. um registro comeca numa linha com celula-ancora (numero, faixa de dias,
 //     codigo de disciplina); a tabela e a sequencia de registros cujas bordas
 //     esquerdas se alinham nas mesmas colunas;
 //  3. linhas sem ancora sao celulas multilinha; a tabela decide por votacao
-//     se elas continuam o registro anterior (celula alinhada no topo, SAGRES)
+//     se elas continuam o registro anterior (alinhada no topo, SAGRES)
 //     ou abrem o proximo (alinhada na base, tabelas do PPC);
 //  4. o cabecalho sao as linhas sem ancora coladas acima do primeiro registro;
 //     o titulo, a linha solta logo acima do cabecalho.
 //
-// ponytail: tolerancias fixas em pontos, ajustadas nos PDFs reais do demo.
-// Se outro gerador quebrar, derivar as tolerancias da altura media da fonte.
+// Tolerancias fixas em pontos, ajustadas nos PDFs do demo. Se outro gerador
+// quebrar, derivar da altura media da fonte.
 const (
 	pdfTableRowTolerance    = 2.5  // pt: palavras na mesma linha visual
 	pdfTableMinCellGap      = 12.0 // pt: folga minima entre celulas
@@ -127,7 +121,6 @@ func pdfPageWords(page pdfBBoxPage) []pdfWord {
 	return words
 }
 
-// pdfVisualRows agrupa palavras por linha visual e cada linha em celulas.
 func pdfVisualRows(words []pdfWord) []pdfVisualRow {
 	var rows []pdfVisualRow
 	var current []pdfWord
@@ -206,7 +199,6 @@ func pdfColumnsFromRows(rows []pdfVisualRow) []float64 {
 	return columns
 }
 
-// pdfColumnIndex mapeia uma borda esquerda a coluna cujo intervalo a contem.
 func pdfColumnIndex(columns []float64, x float64) int {
 	idx := 0
 	for i, left := range columns {
@@ -425,10 +417,8 @@ func pdfWrapsForward(wrapped, next pdfVisualRow) bool {
 	return pdfEndsWithConnective(wrapped) || pdfStartsLowercase(next)
 }
 
-// pdfTableFromRows monta cabecalho e registros. As linhas sem ancora entre
-// registros sao celulas multilinha; a direcao (continua o anterior ou abre o
-// proximo) e decidida por votacao para a tabela inteira, porque cada gerador
-// alinha as celulas de um jeito so.
+// pdfTableFromRows monta cabecalho e registros. A direcao das celulas
+// multilinha e votada para a tabela inteira: cada gerador alinha de um jeito so.
 func pdfTableFromRows(headerRows, dataRows []pdfVisualRow, title string, pageNumber int, page pdfBBoxPage) (models.TableSection, bool) {
 	columns := pdfColumnsFromRows(dataRows)
 	if len(columns) < pdfTableMinColumns {
@@ -536,7 +526,6 @@ func pdfTableFromRows(headerRows, dataRows []pdfVisualRow, title string, pageNum
 	}, true
 }
 
-// pdfTableBoxes devolve as caixas das tabelas de uma pagina.
 func pdfTableBoxes(tables []models.TableSection) []textBox {
 	boxes := make([]textBox, 0, len(tables))
 	for _, table := range tables {
@@ -566,8 +555,7 @@ func blockInsideTable(block textBlock, boxes []textBox) bool {
 	return false
 }
 
-// flattenPageTables devolve as tabelas na ordem das paginas com SequenceOrder
-// unico por documento.
+// flattenPageTables numera SequenceOrder por documento, nao por pagina.
 func flattenPageTables(documentID uint, pageTables map[int][]models.TableSection, pageCount int) []models.TableSection {
 	var out []models.TableSection
 	for page := 1; page <= pageCount; page++ {
@@ -576,8 +564,7 @@ func flattenPageTables(documentID uint, pageTables map[int][]models.TableSection
 			table.SequenceOrder = len(out)
 			// Tabela que continua da pagina anterior vem sem cabecalho (o
 			// cabecalho so esta na primeira pagina): herda o da anterior
-			// quando o numero de colunas bate. 57 das 80 tabelas do demo
-			// estavam com "coluna N" por isso.
+			// quando o numero de colunas bate.
 			if n := len(out); n > 0 && allSyntheticHeaders(table.Headers) && !allSyntheticHeaders(out[n-1].Headers) && len(out[n-1].Headers) == len(table.Headers) && out[n-1].PageNumber != nil && *out[n-1].PageNumber+1 == page {
 				table.Headers = append([]string(nil), out[n-1].Headers...)
 				if table.Metadata == nil {

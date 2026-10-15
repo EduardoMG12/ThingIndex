@@ -45,9 +45,8 @@ type textLine struct {
 	Box  textBox
 }
 
-// textBox ancora um bloco na coordenada original da pagina, em pontos PDF com
-// origem no canto superior esquerdo. PageWidth/PageHeight acompanham a caixa
-// para que o consumidor normalize sem precisar reabrir o documento.
+// textBox: pontos PDF, origem no canto superior esquerdo. PageWidth/PageHeight
+// vao junto para normalizar sem reabrir o documento.
 type textBox struct {
 	XMin       float64 `json:"x_min"`
 	YMin       float64 `json:"y_min"`
@@ -60,7 +59,6 @@ type textBox struct {
 type pdfTextExtraction struct {
 	PageCount  int
 	PageBlocks map[int][]textBlock
-	// PageTables sao as tabelas detectadas pelas caixas de palavra, por pagina.
 	PageTables map[int][]models.TableSection
 }
 
@@ -68,10 +66,8 @@ type pdfTextExtractor interface {
 	Extract(data []byte) (pdfTextExtraction, error)
 }
 
-// pdfOCRExtractor devolve blocos, nao texto puro, porque um provider capaz de
-// layout (como o Unlimited-OCR) sabe a caixa de cada regiao. Providers que so
-// entregam texto devolvem blocos com Box nil, e o grifo posicional
-// simplesmente nao existe para aquelas paginas.
+// pdfOCRExtractor devolve blocos porque providers de layout sabem a caixa de
+// cada regiao; os que so entregam texto devolvem Box nil.
 type pdfOCRExtractor interface {
 	Name() string
 	Extract(ctx context.Context, data []byte, pageNumbers []int) (map[int][]textBlock, error)
@@ -95,9 +91,7 @@ type pdfOCRFallbackStats struct {
 	Engine      string
 	Reason      string
 	PageNumbers []int
-	// AnchoredBlocks conta quantos blocos vindos do OCR trouxeram caixa. Com
-	// tesseract e sempre zero; com um provider de layout mede a cobertura de
-	// ancoragem posicional em documento digitalizado.
+	// AnchoredBlocks: blocos do OCR com caixa (sempre zero com tesseract).
 	AnchoredBlocks int
 }
 
@@ -109,14 +103,8 @@ func NewDeterministicIndexer() *DeterministicIndexer {
 
 	return &DeterministicIndexer{
 		pdfTextExtractor: pdfExtractor,
-		// newPDFOCRExtractor, e nao newCommandPDFOCRExtractor: a primeira tenta
-		// o provider remoto (THINGINDEX_OCR_ENDPOINT) e cai para o tesseract
-		// local quando ele nao esta configurado.
-		//
-		// Chamar o construtor local direto tornava o provider remoto codigo
-		// morto: configurar o endpoint nao mudava nada, o indice sempre gravava
-		// ocr_engine='local_tesseract' e o servico `ocr` do compose ficava
-		// inalcancavel -- sem erro e sem log, so a funcionalidade ausente.
+		// newPDFOCRExtractor tenta o provider remoto (THINGINDEX_OCR_ENDPOINT)
+		// e cai para o tesseract local; o construtor local direto ignoraria o endpoint.
 		pdfOCRExtractor: newPDFOCRExtractor(),
 	}
 }
@@ -184,8 +172,7 @@ const numberedOutlineMinHeadings = 8
 // hasNumberedOutline diz se o documento tem sumario numerado (PPC, edital):
 // nesse caso capa ("MINISTERIO DA EDUCACAO"), valor de campo ("40 vagas") e
 // fragmento de titulo quebrado ("EDUCACAO" / "DEMOCRATICA") nao viram secao,
-// ficam como paragrafo. O PPC de SI tinha 131 secoes de nivel 1 e so uma
-// dezena eram capitulos. Rebaixar de nivel nao bastava: a normalizacao da
+// ficam como paragrafo. Rebaixar de nivel nao basta: a normalizacao da
 // arvore devolve o primeiro titulo ao nivel 1.
 func hasNumberedOutline(pageBlocks map[int][]textBlock, pageCount int) bool {
 	numbered := 0
@@ -219,9 +206,7 @@ func numberedOrArchetypeHeading(content string) bool {
 		return true
 	}
 	// Titulo sem numero num documento numerado so passa pelo arquetipo
-	// (SUMARIO, ANEXO...), e arquetipo nao e frase: "decisao junto as/aos
-	// discentes, baseadas nas normas deste PPC." comecava com minuscula,
-	// casava "decisao" e virava capitulo do PPC do Tecnico.
+	// (SUMARIO, ANEXO...), e arquetipo nao e frase.
 	if sentenceLikeFragment(content) {
 		return false
 	}
@@ -258,8 +243,7 @@ func buildPDFStructure(pageBlocks map[int][]textBlock, pageTables map[int][]mode
 	numberedOutline := hasNumberedOutline(pageBlocks, pageCount)
 	for pageNumber := 1; pageNumber <= pageCount; pageNumber++ {
 		// Pagina de sumario: as linhas "1.1.1 Denominacao do Curso 9" parecem
-		// titulos e duplicavam cada secao do PPC (124 de 861). Nela, nada vira
-		// titulo; o texto fica como paragrafo.
+		// titulos e duplicavam as secoes. Nela, nada vira titulo.
 		tocPage := isPDFTableOfContentsPage(pageBlocks[pageNumber])
 		tableBoxes := pdfTableBoxes(pageTables[pageNumber])
 		for _, block := range pageBlocks[pageNumber] {
@@ -401,11 +385,8 @@ func isPDFTableOfContentsPage(blocks []textBlock) bool {
 		numberedLines := 0
 		for _, line := range block.Lines {
 			text := strings.TrimSpace(line.Text)
-			// Entrada de sumario e curta e nao termina em ponto. Uma
-			// bibliografia numerada ("1. DEITEL, Paul J. ... 2016.") tambem
-			// tem 5+ linhas comecando por numero, e fazia a p. 107 do PPC do
-			// Tecnico passar por sumario: o capitulo "8 INFRAESTRUTURA"
-			// daquela pagina sumia.
+			// Entrada de sumario e curta e nao termina em ponto; bibliografia
+			// numerada ("1. DEITEL, Paul J. ... 2016.") tambem tem 5+ linhas numeradas.
 			if outlineNumberPattern.MatchString(text) && utf8.RuneCountInString(text) <= 90 && !strings.HasSuffix(text, ".") {
 				numberedLines++
 			}
@@ -414,8 +395,7 @@ func isPDFTableOfContentsPage(blocks []textBlock) bool {
 			return true
 		}
 		// O poppler as vezes cola varias entradas do sumario num bloco so
-		// ("1 APRESENTAÇÃO 7" / "1.1 IDENTIFICAÇÃO 7" ...); contar por linha,
-		// senao a pagina de sumario do PPC do Tecnico virava 6 secoes coladas.
+		// ("1 APRESENTAÇÃO 7" / "1.1 IDENTIFICAÇÃO 7" ...); por isso conta por linha.
 		lines := []string{strings.TrimSpace(block.Content)}
 		if len(block.Lines) > 1 {
 			lines = lines[:0]

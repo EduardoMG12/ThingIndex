@@ -13,11 +13,8 @@ import (
 	gormlogger "gorm.io/gorm/logger"
 )
 
-// A primeira subida com as chaves estrangeiras novas encontra bases antigas
-// com linhas estruturais orfas; sem a limpeza previa o AutoMigrate falha ao
-// criar a constraint e a API nao sobe. Este teste monta essa base antiga (as
-// tabelas sem FK, com um paragrafo orfao) e prova que o bootstrap limpa o
-// orfao, cria a FK e preserva a linha que tem documento.
+// Base antiga sem FK e com um paragrafo orfao: o bootstrap tem de limpar o orfao,
+// criar a FK e manter a linha que tem documento.
 func TestBootstrapRemoveOrfaoEstruturalAntesDeCriarAChaveEstrangeira(t *testing.T) {
 	host := os.Getenv("THINGINDEX_TEST_DB_HOST")
 	if host == "" {
@@ -70,12 +67,8 @@ func TestBootstrapRemoveOrfaoEstruturalAntesDeCriarAChaveEstrangeira(t *testing.
 	}
 }
 
-// O mesmo cenario para a posse: base antiga sem FK para users, com um
-// documento de usuario inexistente (e um paragrafo pendurado nele, que ja tem
-// FK para documents), uma colecao sem dono, um catalogo global (user_id NULL)
-// e um cache de enriquecimento sem dono. O bootstrap tem de apagar o
-// documento sem esbarrar na FK do paragrafo, manter o catalogo global e as
-// linhas do usuario que existe, e deixar a FK para users criavel.
+// Mesmo cenario para users: documento de usuario inexistente (com paragrafo
+// pendurado), colecao sem dono, catalogo global (user_id NULL) e cache sem dono.
 func TestBootstrapRemoveLinhaSemDonoAntesDeCriarAChaveEstrangeiraParaUsuario(t *testing.T) {
 	host := os.Getenv("THINGINDEX_TEST_DB_HOST")
 	if host == "" {

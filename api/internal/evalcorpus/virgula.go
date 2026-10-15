@@ -10,14 +10,8 @@ import (
 // ("0.5.0") so quando o numero tem exatamente um ponto entre digitos.
 var numeroDecimal = regexp.MustCompile(`(^|[^0-9.])(-?[0-9]+)\.([0-9]+)($|[^0-9.])`)
 
-// VirgulaDecimal troca o separador decimal de ponto para virgula, como pede a
-// norma do portugues, nas tabelas que os avaliadores geram para o artigo. A
-// virgula vai entre chaves ({,}) porque, em modo matematico, o LaTeX poe
-// espaco depois da virgula e "0,5" viraria "0, 5".
-//
-// Um unico ponto de conversao, aplicado na escrita do .tex, evita espalhar a
-// formatacao por cada Fprintf e mantem o calculo e a saida de terminal com o
-// ponto de sempre.
+// VirgulaDecimal troca ponto por virgula decimal no .tex. A virgula vai entre
+// chaves ({,}) porque em modo matematico o LaTeX poe espaco depois dela.
 func VirgulaDecimal(tex string) string {
 	// Duas passadas: numeros adjacentes ("0.1 0.2") dividem o separador, e a
 	// primeira passada consome o caractere entre eles.
@@ -27,10 +21,8 @@ func VirgulaDecimal(tex string) string {
 	return tex
 }
 
-// RegrasBooktabs troca os \hline de cada tabular pelas regras do pacote
-// booktabs (\toprule, \midrule, \bottomrule), que as tabelas escritas a
-// mao no artigo ja usam: a primeira regra de cada tabular vira \toprule, a
-// ultima \bottomrule e as do meio \midrule.
+// RegrasBooktabs troca os \hline de cada tabular por \toprule, \midrule e
+// \bottomrule (primeira, meio e ultima).
 func RegrasBooktabs(tex string) string {
 	linhas := strings.Split(tex, "\n")
 	var abertas []int
@@ -59,15 +51,13 @@ func RegrasBooktabs(tex string) string {
 // (precedido de espaco ou '&', seguido de digito), fora de modo matematico.
 var sinalNumero = regexp.MustCompile(`(^|[ &])-([0-9])`)
 
-// SinalMenos troca o hifen usado como sinal negativo nas celulas pelo sinal de
-// menos tipografico ($-$). Numero ja em modo matematico ($-0{,}1$) e palavras
-// com hifen (top-10) nao casam.
+// SinalMenos troca o hifen de sinal negativo por $-$. Numero ja em modo
+// matematico e palavras com hifen (top-10) nao casam.
 func SinalMenos(tex string) string {
 	return sinalNumero.ReplaceAllString(tex, "${1}$$-$$${2}")
 }
 
-// Tabela aplica as convencoes do artigo a um .tex gerado: virgula decimal,
-// regras do booktabs e sinal de menos.
+// Tabela aplica virgula decimal, booktabs e sinal de menos a um .tex gerado.
 func Tabela(tex string) string {
 	return SinalMenos(RegrasBooktabs(VirgulaDecimal(tex)))
 }

@@ -6,22 +6,9 @@ import (
 	"thing-index/internal/domain"
 )
 
-// A rota autenticada POST /user/providers/models aceita `credentials` do corpo
-// da requisicao, e a descoberta de modelos do Ollama e explicitamente isenta de
-// api_key (o /api/tags e publico). Isso significa que qualquer usuario logado
-// consegue apontar `base_url` para um servidor sob seu controle e fazer o
-// backend persistir a lista devolvida por ele.
-//
-// O defeito estava no destino dessa gravacao: modelCatalogScope descartava o
-// userID para providers "publicos" e escrevia no escopo GLOBAL, que e cache
-// compartilhado por todos os usuarios da instalacao. Como ReplaceModelCatalog
-// desativa todo o escopo antes de inserir, dava para envenenar o seletor de
-// modelos de terceiros ou -- devolvendo lista vazia -- zerar o catalogo global
-// de todo mundo.
-//
-// Verificado RED -> GREEN: removendo o parametro `trusted` da condicao (ou seja,
-// voltando ao `if isPublicModelCatalogProvider(providerType)`), o primeiro
-// subteste falha com escopo "GLOBAL" e userID nil.
+// POST /user/providers/models aceita credentials do corpo e a descoberta do
+// Ollama dispensa api_key, entao qualquer usuario aponta base_url para um
+// servidor proprio. Essa gravacao nao pode cair no escopo GLOBAL.
 func TestModelCatalogScopeNaoDeixaRequisicaoDoClienteEscreverNoEscopoGlobal(t *testing.T) {
 	t.Parallel()
 
@@ -63,8 +50,8 @@ func TestModelCatalogScopeNaoDeixaRequisicaoDoClienteEscreverNoEscopoGlobal(t *t
 	t.Run("provider privado nunca cai no escopo global, nem vindo do worker", func(t *testing.T) {
 		t.Parallel()
 
-		// Provider com credencial propria: mesmo no caminho confiavel, o
-		// catalogo e por usuario -- cada um ve os modelos da sua conta.
+		// Provider com credencial propria: catalogo por usuario mesmo no caminho
+		// confiavel.
 		scope, scopedUserID := modelCatalogScope(atacante, domain.ProviderOpenAI, true)
 
 		if scope != "USER:42" {

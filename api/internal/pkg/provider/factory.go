@@ -31,15 +31,12 @@ type openAICompatibleLLMClient struct {
 	pricing    domain.LLMPricing
 	hasPricing bool
 
-	// Consumo da ultima chamada. Protegido por mutex porque o mesmo cliente e
-	// compartilhado entre as goroutines do enriquecimento -- sem isso o
-	// go test -race acusaria, e a metrica de custo sairia corrompida sob carga.
+	// Mutex: o cliente e compartilhado entre as goroutines do enriquecimento.
 	usageMu       sync.Mutex
 	lastUsage     tokenUsage
 	usageReported bool
 }
 
-// LastTokenUsage implementa domain.TokenUsageReporter.
 func (c *openAICompatibleLLMClient) LastTokenUsage() (int, int, int, bool) {
 	c.usageMu.Lock()
 	defer c.usageMu.Unlock()
@@ -50,11 +47,8 @@ func (c *openAICompatibleLLMClient) LastTokenUsage() (int, int, int, bool) {
 	return c.lastUsage.PromptTokens, c.lastUsage.CompletionTokens, c.lastUsage.Total(), true
 }
 
-// registrarConsumo guarda o que o provedor reportou.
-//
-// Resposta sem `usage` NAO apaga o registro anterior nem marca como reportado:
-// distinguir "nao informou" de "informou zero" e o que impede a metrica de
-// custo mentir por omissao do provedor.
+// Resposta sem `usage` nao apaga o registro anterior: "nao informou" e diferente
+// de "informou zero".
 func (c *openAICompatibleLLMClient) registrarConsumo(usage *tokenUsage) {
 	if usage == nil {
 		return
@@ -80,10 +74,7 @@ type ollamaNativeLLMClient struct {
 	usageReported bool
 }
 
-// LastTokenUsage implementa domain.TokenUsageReporter. O /api/chat do Ollama
-// devolve prompt_eval_count e eval_count no pedaco final; sem le-los, o
-// consumo virava estimativa por runas/4 e um prompt truncado pelo contexto do
-// modelo ficava invisivel.
+// O /api/chat do Ollama devolve prompt_eval_count e eval_count no pedaco final.
 func (c *ollamaNativeLLMClient) LastTokenUsage() (int, int, int, bool) {
 	c.usageMu.Lock()
 	defer c.usageMu.Unlock()
@@ -116,30 +107,16 @@ type chatCompletionMessage struct {
 	Content string `json:"content"`
 }
 
-// tokenUsage e o consumo reportado pelo provedor numa chamada.
-//
-// Existe porque a Metodologia do artigo promete avaliar custo operacional e o
-// parser descartava o campo `usage` da resposta em silencio -- o dado chegava
-// pela rede e sumia no unmarshal. Sem ele, qualquer afirmacao de custo seria
-// estimativa por contagem local de caracteres, o tipo de numero que este
-// trabalho critica.
-//
-// Ponteiro, e nao valor: provedor que nao reporta consumo (Ollama local, por
-// exemplo) precisa ser distinguivel de provedor que reportou zero.
+// tokenUsage e o consumo reportado pelo provedor numa chamada. Ponteiro para
+// distinguir provedor que nao reporta (Ollama local) de provedor que reportou zero.
 type tokenUsage struct {
 	PromptTokens     int `json:"prompt_tokens"`
 	CompletionTokens int `json:"completion_tokens"`
 	TotalTokens      int `json:"total_tokens"`
 }
 
-// Total devolve o consumo somado, tolerando as duas omissoes comuns.
-//
-// Alguns provedores compativeis mandam as partes sem o total; somar no cliente
-// evita metrica agregada zerada por omissao alheia. Quando o provedor informa o
-// total, ele manda -- pode incluir tokens de sistema que as partes nao mostram.
-//
-// Receptor nulo devolve zero para o chamador nao precisar checar nil antes de
-// somar.
+// Total soma as partes quando o provedor nao manda o total; se manda, usa o
+// total (pode incluir tokens de sistema). Receptor nulo devolve zero.
 func (u *tokenUsage) Total() int {
 	if u == nil {
 		return 0
@@ -174,10 +151,8 @@ type chatCompletionStreamResponse struct {
 type ollamaChatRequest struct {
 	Model    string                  `json:"model"`
 	Messages []chatCompletionMessage `json:"messages"`
-	// SEM omitempty: o padrao do /api/chat do Ollama e stream=true. Com
-	// omitempty, `false` sumia do JSON, o servidor respondia em NDJSON e o
-	// decoder lia so o primeiro pedaco -- cada resumo do enriquecimento virava
-	// um token, e o pipeline caia em fallback sem nenhum erro registrado.
+	// Sem omitempty: o padrao do Ollama e stream=true, e `false` omitido fazia a
+	// resposta vir em NDJSON.
 	Stream  bool               `json:"stream"`
 	Options *ollamaChatOptions `json:"options,omitempty"`
 }
@@ -259,37 +234,24 @@ var llmProviderDefinitions = map[string]llmProviderDefinition{
 	},
 }
 
-// LLMClientOptions carrega a politica de rede do cliente HTTP do LLM.
-//
-// EndpointValidator, quando presente, e aplicado na conexao a todo base_url
-// informado pelo usuario: o IP e resolvido de novo no dial e IP privado e
-// recusado (a menos que o validador tenha sido criado com a flag
-// ALLOW_PRIVATE_STORAGE_ENDPOINTS, caso do Ollama local em desenvolvimento).
-// Sem isso a validacao so acontecia no save, e um DNS rebinding entre a
-// validacao e a conexao levava a API a requisitar a rede interna.
+// EndpointValidator, se presente, revalida o IP de todo base_url do usuario no
+// dial (protege contra DNS rebinding entre o save e a conexao).
 type LLMClientOptions struct {
 	EndpointValidator *netsec.StorageEndpointValidator
 
-	// responseHeaderTimeout substitui llmResponseHeaderTimeout; so os testes
-	// do pacote usam, para exercitar o prazo com relogio curto.
+	// So para testes.
 	responseHeaderTimeout time.Duration
 }
 
-// llmResponseHeaderTimeout limita a espera pelo cabecalho da resposta.
-//
-// MOTIVO: o cliente tinha http.Client{Timeout: 45s}, que inclui a leitura do
-// corpo; todo stream de chat com mais de 45 s era cortado com "Client.Timeout
-// exceeded while reading body". O limite total agora vem do ctx do chamador
-// (chat: chatStreamTimeout; indexacao: prazo por mensagem do consumidor;
-// validacao e listagem de modelos: WithTimeout proprio).
+// Limita so a espera pelo cabecalho: http.Client.Timeout cortava streams longos.
+// O prazo total vem do ctx do chamador.
 const llmResponseHeaderTimeout = 45 * time.Second
 
 // errLLMRedirectRecusado: redirect de um provedor de LLM e recusado. Seguir um
 // 302 para http://10.0.0.x/... contornaria a validacao do base_url.
 var errLLMRedirectRecusado = errors.New("llm provider redirect refused")
 
-// newLLMHTTPClient e o gancho de teste: quando nao nil, substitui o cliente
-// de producao. nil significa "cliente de producao".
+// Gancho de teste; nil = cliente de producao.
 var newLLMHTTPClient func() *http.Client
 
 // NewLLMHTTPClientForTests instala factory como cliente HTTP do LLM e devolve
@@ -307,13 +269,8 @@ func resolveLLMClientOptions(opts []LLMClientOptions) LLMClientOptions {
 	return opts[0]
 }
 
-// buildLLMHTTPClient monta o cliente HTTP para falar com rawURL.
-//
 // userSuppliedBaseURL diz se o destino veio do base_url das credenciais. O
-// endpoint padrao do provedor (inclusive o Ollama em localhost quando o
-// usuario nao informa base_url) e configuracao do servidor e nao passa pelo
-// validador -- manter isso preserva o Ollama local sem a flag de endpoints
-// privados, exatamente como a validacao no save ja fazia.
+// endpoint padrao do provedor e config do servidor e nao passa pelo validador.
 func buildLLMHTTPClient(rawURL string, userSuppliedBaseURL bool, options LLMClientOptions) (*http.Client, error) {
 	if newLLMHTTPClient != nil {
 		return newLLMHTTPClient(), nil
@@ -1086,8 +1043,8 @@ func (c *openAICompatibleLLMClient) EndpointHost() string {
 	return endpointHost(c.endpoint)
 }
 
-// endpointHost devolve o host (com porta) do endpoint, em minusculas. E a
-// identidade do provedor na chave do cache de enriquecimento.
+// endpointHost devolve host:porta em minusculas; identifica o provedor na chave
+// do cache de enriquecimento.
 func endpointHost(endpoint string) string {
 	parsed, err := url.Parse(strings.TrimSpace(endpoint))
 	if err != nil {
@@ -1411,7 +1368,6 @@ const (
 	CredentialOutputCostPerMillionUSD = "output_cost_per_million_usd"
 )
 
-// LLMPricingCredentialKeys lista as chaves de preco aceitas nas credenciais.
 var LLMPricingCredentialKeys = []string{CredentialInputCostPerMillionUSD, CredentialOutputCostPerMillionUSD}
 
 // pricingFromCredentials le o preco informado pelo usuario. Basta um dos dois

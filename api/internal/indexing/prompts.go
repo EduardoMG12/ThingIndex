@@ -334,18 +334,8 @@ func genericPromptProfile() string {
 }
 
 // buildPageQuestionsPrompt gera as perguntas que cada pagina responde, em
-// linguagem de leigo.
-//
-// O texto deste prompt esta CONGELADO pelo pre-registro em
-// docs/prds/pre-registro-perguntas-geradas.md e travado por teste. Muda-lo
-// invalida a medicao: o compromisso registrado e rodar uma versao so, porque
-// rodar varias e reportar a melhor produz um numero favoravel e sem valor.
-//
-// A diferenca em relacao ao prompt de resumo e o ponto inteiro do experimento.
-// O de resumo manda dizer o que a pagina contem "with the numbers, names, dates
-// and rules present in it", ou seja, pede para REUTILIZAR o vocabulario da
-// pagina. Este pede o contrario: a palavra que a pessoa usaria, justamente
-// porque um indice lexical so consegue usar termo que ainda nao esta no texto.
+// linguagem de leigo. Ao contrario do resumo, pede o vocabulario de quem
+// pergunta, nao o da pagina. Texto travado por teste (prompt_congelado_test.go).
 func buildPageQuestionsPrompt(contextBlock string) (string, string) {
 	systemPrompt := strings.TrimSpace(`
 You generate one stage of a structured document indexing pipeline.

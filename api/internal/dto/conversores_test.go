@@ -9,23 +9,12 @@ import (
 	"thing-index/internal/models"
 )
 
-// internal/dto tinha 0,0% de cobertura -- e e a fronteira entre a API e o
-// dominio, onde o modo de falha e o mais silencioso que existe: um campo
-// esquecido no mapeamento NAO quebra build nem teste, ele simplesmente some da
-// resposta.
-//
-// Ja aconteceu neste projeto: o backend enviava node_id nos nos do sumario e o
-// normalizador do frontend descartava o campo. A interface exibia a estrutura
-// mas nao conseguia perguntar "com o que este trecho se relaciona" -- e o
-// defeito so apareceu quando a feature de conexoes precisou do campo.
-//
-// Os testes cobrem o que quebra tela, nao todos os campos por completude:
-// ponteiro nulo, slice vazio virando null, e campo consumido pelo frontend.
+// Campo esquecido no mapeamento nao quebra build, so some da resposta. Os testes
+// cobrem o que quebra tela: ponteiro nulo, slice vazio virando null e campos
+// consumidos pelo frontend.
 
 func TestSliceVazioSerializaComoListaNaoComoNulo(t *testing.T) {
-	// O frontend faz .map() direto no resultado. `null` em vez de `[]` estoura
-	// com "Cannot read properties of null" -- erro que aparece no navegador do
-	// usuario, nao no teste do backend.
+	// O frontend faz .map() direto; `null` em vez de `[]` quebra no navegador.
 	casos := map[string]any{
 		"categorias":                        ToCategoriesResponse(nil),
 		"colecoes":                          ToCollectionsResponse(nil),
@@ -50,9 +39,7 @@ func TestSliceVazioSerializaComoListaNaoComoNulo(t *testing.T) {
 }
 
 func TestConversoresDevolvemNuloParaEntradaNula(t *testing.T) {
-	// Entrada nula acontece em relacionamento nao carregado pelo GORM. O
-	// conversor precisa devolver nil, nunca entrar em panico -- panico no
-	// handler vira 500 para o usuario.
+	// Entrada nula vem de relacionamento nao carregado; nao pode dar panico.
 	defer func() {
 		if r := recover(); r != nil {
 			t.Fatalf("conversor entrou em panico com entrada nula: %v", r)
@@ -143,8 +130,6 @@ func TestDocumentoSemColecaoNaoQuebraAConversao(t *testing.T) {
 }
 
 func TestCamposQueOFrontendConsomeSobrevivemAConversao(t *testing.T) {
-	// Cada campo aqui e lido por alguma tela. Remover um do mapeamento nao
-	// quebraria build nem teste sem esta asserção -- so sumiria da interface.
 	criadoEm := time.Date(2026, 3, 20, 12, 0, 0, 0, time.UTC)
 
 	doc := &models.Document{
@@ -182,8 +167,7 @@ func TestCamposQueOFrontendConsomeSobrevivemAConversao(t *testing.T) {
 		}
 	}
 
-	// FilePath e FileURL apontam para o mesmo valor de proposito (compatibilidade
-	// entre versoes do cliente); se divergirem, uma das telas quebra.
+	// FilePath e FileURL tem o mesmo valor (compatibilidade entre clientes).
 	if resposta.FilePath != resposta.FileURL {
 		t.Errorf("FilePath (%q) divergiu de FileURL (%q)", resposta.FilePath, resposta.FileURL)
 	}
@@ -205,9 +189,7 @@ func TestResultadoDeAuditoriaVazioNaoViraNulo(t *testing.T) {
 }
 
 func TestConversaoEmLotePreservaAOrdem(t *testing.T) {
-	// A ordenacao vem do banco e carrega significado (mais recente primeiro).
-	// Embaralhar na conversao mostraria eventos fora de ordem cronologica sem
-	// nenhum erro visivel.
+	// A ordem vem do banco (mais recente primeiro) e nao pode ser alterada.
 	categorias := []models.DocumentCategory{
 		{ID: 1, Name: "Primeira"},
 		{ID: 2, Name: "Segunda"},
