@@ -40,9 +40,8 @@ export async function POST(request: Request) {
             return NextResponse.json(errorPayload, { status: response.status });
         }
 
-        // Devolve o body do upstream direto: quando o cliente aborta, o cancel
-        // chega ao upstream e o LLM para de gerar (antes, o pipe manual travava
-        // o body num reader e o cancel era engolido).
+        // Body do upstream direto, para o abort do cliente chegar ate o LLM
+        // (com pipe manual o cancel se perdia).
         return new NextResponse(response.body, {
             status: response.status,
             headers: {

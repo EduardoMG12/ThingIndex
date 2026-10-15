@@ -10,17 +10,8 @@ import type { TamanhoDePagina } from "@/components/workspace/pdf";
 import { HighlightToolbar, type NavegadorDeConexoes } from "@/components/workspace/HighlightToolbar";
 import { classesDaCor, rotuloDaCor, type HighlightColor, type Legend } from "@/lib/workspace/highlights";
 
-/**
- * Camada desenhada sobre uma pagina do PDF: um grifo por paragrafo com
- * bounding box, um marcador na margem por secao que comeca nesta pagina e um
- * cabecalho discreto com numero e origem do texto. E a prova visual da tese --
- * cada trecho recuperado sabe de que pagina e de que posicao veio.
- *
- * As coordenadas vem em pontos PDF e a pagina e desenhada em pontos (1 ponto
- * = 1 px do mundo em zoom 1), entao a conversao e a identidade; boxParaPixels
- * fica aqui mesmo assim para o dia em que a pagina for renderizada em outro
- * tamanho.
- */
+// Hoje 1 ponto PDF = 1 px do mundo, entao boxParaPixels e a identidade;
+// fica para quando a pagina for renderizada em outro tamanho.
 
 export type ParagrafoNaPagina = {
     no: ParagraphNode;
@@ -66,7 +57,7 @@ export type PageOverlayProps = {
     navegador?: NavegadorDeConexoes | null;
 };
 
-/** Marcadores so ate o nivel 2: um edital tem 300+ nos de sumario, e cada "1.1" virando etiqueta e ruido, nao mapa. */
+/** So ate o nivel 2: um edital tem 300+ nos de sumario. */
 export const NIVEL_MAXIMO_DO_MARCADOR = 2;
 const ALTURA_DO_MARCADOR = 14;
 
@@ -161,11 +152,8 @@ export function PageOverlay({
                     })
                     .filter((m): m is { item: OutlineNode; top: number } => m !== null)
             ).map(({ item: secao, top }) => (
-                // Dentro da margem esquerda da pagina (72 pt num A4/carta), para
-                // nunca invadir o quadro vizinho nem o texto.
-                // Uma barra de 3 px na margem; o titulo so aparece ao passar o
-                // mouse. As pilulas com texto truncado nao se liam e brigavam
-                // com o texto da pagina.
+                // Barra de 3 px dentro da margem (72 pt); titulo so no hover, pilula
+                // com texto brigava com a pagina.
                 <span
                     key={secao.nodeId}
                     className="group pointer-events-auto absolute left-0.5 flex h-[14px] items-center"
@@ -227,7 +215,7 @@ export function PageOverlay({
                                   return (
                                       <div
                                           key={`linha-${String(no.id)}-${indice}`}
-                                          // Cor propria (rosa), diferente do ambar da selecao e do azul das marcas: e "isto foi citado".
+                                          // Rosa para nao confundir com a selecao (ambar) nem com as marcas.
                                           className="pointer-events-none absolute rounded-[2px] bg-rose-500/55 ring-2 ring-rose-600 mix-blend-multiply dark:mix-blend-screen"
                                           style={{ left: px.left - 2, top: px.top - 1, width: px.width + 4, height: px.height + 2 }}
                                           title={linhas[indice].text}
@@ -300,11 +288,7 @@ type AvisoSemPosicaoProps = {
     totalParagrafos: number;
 };
 
-/**
- * PDF indexado antes de a bounding box existir (ou por um caminho que nao a
- * produz). Nunca reindexa sozinho: com LLM configurado, reindexar custa
- * dinheiro, e a decisao e de quem esta olhando.
- */
+// PDF sem bounding box. Nao reindexa sozinho: com LLM isso custa dinheiro.
 export function AvisoSemPosicao({ documentId, totalParagrafos }: AvisoSemPosicaoProps) {
     const { t } = useI18n();
     const [estado, setEstado] = useState<"parado" | "enviando" | "na-fila" | "erro">("parado");

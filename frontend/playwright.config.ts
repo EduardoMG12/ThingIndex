@@ -1,10 +1,8 @@
 import { existsSync } from "node:fs";
 import { defineConfig } from "@playwright/test";
 
-// A porta e configuravel de proposito. Com ela fixa, rodar a suite numa maquina
-// que ja tem outro projeto na 3000 fazia o Playwright REAPROVEITAR aquele
-// servidor (reuseExistingServer) e testar a aplicacao errada — as assercoes
-// falhavam sem qualquer relacao com este projeto.
+// Porta configuravel: fixa em 3000, o reuseExistingServer pegava o servidor
+// de outro projeto rodando na maquina.
 const e2ePort = process.env.THINGINDEX_E2E_PORT ?? "3000";
 const frontendBaseURL = process.env.THINGINDEX_FRONTEND_BASE_URL ?? `http://127.0.0.1:${e2ePort}`;
 const apiBaseURL = process.env.NEXT_PUBLIC_API_URL ?? process.env.THINGINDEX_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
@@ -23,10 +21,8 @@ export default defineConfig({
         timeout: 15_000,
     },
     retries: process.env.CI ? 1 : 0,
-    // Um worker sempre, nao so no CI. Todos os workers compartilham o mesmo
-    // servidor de dev, entao rodar em paralelo enfileirava a compilacao das
-    // rotas e estourava o timeout — a suite inteira falhava em 3 testes que
-    // passavam sozinhos. Serial demora ~1min30 e da o mesmo resultado do CI.
+    // Um worker so: em paralelo o dev server enfileira a compilacao das rotas e
+    // estoura o timeout.
     workers: 1,
     reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
     use: {

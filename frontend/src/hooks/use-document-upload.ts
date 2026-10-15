@@ -322,9 +322,7 @@ export function useDocumentUpload() {
         [isProcessing, mapDocumentStatus, monitorIndexing, updateFileState]
     );
 
-    // Mesmo predicado do processQueue: e o que o botao "enviar" pode contar.
-    // Contar files.length fazia o botao anunciar "Upload 1 document" com o
-    // documento ja indexado -- e o clique nao fazia nada.
+    // Mesmo predicado do processQueue (files.length contava ja indexados).
     const queuedCount = files.filter(isQueued).length;
 
     return { files, isProcessing, queuedCount, addFiles, removeFile, processQueue };

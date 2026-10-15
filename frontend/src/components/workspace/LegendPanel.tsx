@@ -6,12 +6,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { useI18n } from "@/lib/i18n/provider";
 import { classesDaCor, CORES, type HighlightColor, type Legend } from "@/lib/workspace/highlights";
 
-/**
- * Legenda das cores no canto inferior esquerdo do canvas (o superior cobria
- * o cabecalho do ultimo quadro): um chip e um campo de rotulo por cor.
- * O rotulo e salvo ao sair do campo ou com Enter; o painel recolhe e lembra
- * o estado no localStorage (preferencia de tela).
- */
+// Canto inferior esquerdo: no superior cobria o cabecalho do ultimo quadro.
 
 export type LegendPanelProps = {
     legenda: Legend;

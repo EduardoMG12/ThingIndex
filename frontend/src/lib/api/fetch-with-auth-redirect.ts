@@ -41,13 +41,9 @@ function redirectToLogin() {
 
 interface FetchWithAuthRedirectOptions {
     /**
-     * Quando false, um 401 apenas lanca UnauthorizedRequestError, sem mandar o
-     * navegador para o login. Usado em telas que tambem existem para visitante
-     * anonimo: a pagina publica ainda renderiza, so nao mostra dados de sessao.
-     *
-     * A protecao de rota nao depende disso — quem barra acesso e o proxy no
-     * servidor, com a lista PROTECTED_PATHS.
-     */
+    * false: 401 so lanca UnauthorizedRequestError, sem ir para o login (telas
+    * publicas). Quem protege rota e o proxy, via PROTECTED_PATHS.
+    */
     redirectOnUnauthorized?: boolean;
 }
 

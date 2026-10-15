@@ -6,9 +6,7 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
-    // eslint-config-next 16.2 promoveu tres regras do React Compiler a erro.
-    // Elas apontam 20 pontos que funcionam hoje (lint, build, unit e E2E
-    // verdes antes do upgrade). Ficam como aviso ate o refactor dedicado.
+    // Regras do React Compiler (erro no next 16.2) como aviso ate o refactor.
     rules: {
       "react-hooks/set-state-in-effect": "warn",
       "react-hooks/refs": "warn",

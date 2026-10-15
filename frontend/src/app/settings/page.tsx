@@ -1102,11 +1102,6 @@ export default function SettingsPage() {
                                 providerSupportByType={providerSupportByType}
                             />
 
-                            {/* A trilha de auditoria de providers existia so como
-                                componente: endpoint, copia e explorador prontos,
-                                mas nenhuma pagina o montava. Sem isso nao havia
-                                como ver quem trocou credencial ou ativou qual
-                                provider. */}
                             <div className="mt-6">
                                 <ProviderAuditExplorer
                                     locale={locale}

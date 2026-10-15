@@ -2,14 +2,8 @@
 
 import type { PDFDocumentLoadingTask, PDFDocumentProxy } from "pdfjs-dist";
 
-/**
- * Acesso ao pdf.js: carregamento preguicoso da biblioteca (fica fora do bundle
- * inicial), um unico worker para a aplicacao e um cache de documentos abertos
- * por id, para varios quadros do canvas compartilharem o mesmo PDFDocumentProxy.
- *
- * O arquivo vem de /api/documents/{id}/preview, mesma origem: o cookie de
- * sessao vai sozinho e o BFF faz o proxy autenticado ate a API.
- */
+// pdf.js carregado sob demanda, um worker so e cache de documentos por id.
+// O PDF vem de /api/documents/{id}/preview (mesma origem, cookie vai junto).
 
 export type TamanhoDePagina = { largura: number; altura: number };
 
@@ -19,10 +13,8 @@ type Entrada = {
     tarefa: PDFDocumentLoadingTask | null;
 };
 
-// Build "legacy" de proposito: o build padrao do pdf.js 6 usa recursos de
-// JavaScript recem-chegados (Map.prototype.getOrInsertComputed, entre outros)
-// que navegadores de poucos meses atras nao tem -- a pagina ficava branca com
-// um TypeError. O legacy traz os polyfills e tem a mesma API.
+// Build legacy: o padrao do pdf.js 6 usa Map.prototype.getOrInsertComputed
+// e quebrava (TypeError) em navegadores de poucos meses atras.
 let biblioteca: Promise<typeof import("pdfjs-dist/legacy/build/pdf.mjs")> | null = null;
 const abertos = new Map<number, Entrada>();
 

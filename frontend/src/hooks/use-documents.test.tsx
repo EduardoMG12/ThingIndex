@@ -70,9 +70,7 @@ describe("useDocuments", () => {
     });
 
     it("remove da lista o documento que o polling nao devolve mais", async () => {
-        // Cenario: dois documentos, um deles ainda processando (por isso o
-        // polling liga). O documento 1 e excluido em outra aba/dispositivo, e
-        // a rodada seguinte do polling devolve apenas o documento 2.
+        // Um processando para o polling ligar; o 1 e excluido em outra aba.
         vi.useFakeTimers();
 
         try {

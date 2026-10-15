@@ -1,18 +1,7 @@
 import { expect, test, type BrowserContext } from "@playwright/test";
 
-/**
- * Varredura de fumaca das telas autenticadas.
- *
- * Nasceu de uma caçada manual no Chromium: as telas foram percorridas uma a uma
- * procurando erro de console, requisição falhando em silêncio e conteúdo vazio.
- * A varredura manual não achou defeito de aplicação, mas o custo de repeti-la a
- * cada mudança é alto -- então virou teste.
- *
- * O que este teste pega que os outros não pegam: os testes E2E existentes
- * exercitam uma tela por vez com rotas mockadas. Aqui a questão é outra --
- * *toda* tela do menu ainda monta sem explodir depois de uma mudança
- * transversal (i18n, AppShell, contrato de API).
- */
+// Fumaca: toda tela do menu monta sem erro de console nem corpo vazio.
+// Pega quebra transversal (i18n, AppShell, contrato de API).
 
 const TELAS = [
     { nome: "operacoes", caminho: "/pt-BR/documents", titulo: /opera/i },
@@ -26,9 +15,7 @@ function sucesso(data: unknown) {
 }
 
 test.describe("varredura das telas autenticadas", () => {
-    // O cookie precisa acompanhar a baseURL: fixar host/porta faz o cookie ser
-    // descartado quando a suite roda em outra porta, e todo teste autenticado
-    // cai na tela de login sem dizer por que.
+    // Cookie na URL da baseURL; com host/porta fixos ele era descartado.
     async function autenticar(context: BrowserContext, baseURL: string | undefined) {
         await context.addCookies([
             {
@@ -79,9 +66,7 @@ test.describe("varredura das telas autenticadas", () => {
 
             await page.goto(tela.caminho, { waitUntil: "domcontentloaded" });
 
-            // A tela precisa renderizar conteúdo de verdade. O limiar existe
-            // porque uma página que falha ao montar ainda devolve 200 com o
-            // esqueleto do layout -- só o corpo vem vazio.
+            // Pagina que falha ao montar ainda devolve 200 com o layout, so o corpo vazio.
             const texto = await page.locator("body").innerText();
             expect(texto.trim().length, `${tela.nome} renderizou praticamente nada`).toBeGreaterThan(200);
 
@@ -93,9 +78,7 @@ test.describe("varredura das telas autenticadas", () => {
     }
 
     test("o menu lateral leva a todas as telas registradas", async ({ page }) => {
-        // Rota adicionada ao AppShell mas sem página, ou página sem entrada no
-        // menu, são os dois lados do mesmo defeito -- e nenhum aparece em teste
-        // de componente isolado.
+        // Menu e paginas tem de bater nos dois sentidos.
         await page.goto("/pt-BR/workspace", { waitUntil: "domcontentloaded" });
 
         const destinos = await page

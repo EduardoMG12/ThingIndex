@@ -9,13 +9,8 @@ function success(data: unknown) {
     };
 }
 
-// A URL do cookie acompanha a baseURL. Fixar a porta 3000 fazia o cookie ser
-// descartado sempre que a suite rodava em outra porta, e todo teste autenticado
-// caia na tela de login sem explicar o motivo.
-// Alem do cookie, o bootstrap do app busca /api/user/me. Sem esse mock a
-// chamada ia para a API real com um token falso, recebia 401 e a pagina
-// redirecionava para o login — todo teste autenticado falhava com "elemento nao
-// encontrado", escondendo a causa real.
+// Cookie na URL da baseURL (porta fixa fazia o cookie ser descartado) e mock
+// de /api/user/me, senao o 401 do token falso joga para o login.
 async function authenticateRoutes(context: BrowserContext) {
     await context.route("**/api/user/me", async (route) => {
         await route.fulfill({
@@ -50,11 +45,8 @@ async function authenticate(context: BrowserContext, baseURL: string | undefined
 
 test.use({ locale: "en-US" });
 
-// A tela de settings hoje esconde diagnostico atras de tres camadas: a aba da
-// familia (STORAGE e a padrao), o <details> "Advanced runtime profile" e o
-// <details> "Diagnostics and models". O teste antigo assumia tudo aberto de
-// cara. Aqui o fluxo e percorrido clique a clique, que e tambem o que o usuario
-// faz — se alguma dessas camadas sumir ou trocar de rotulo, o teste acusa.
+// Diagnostico fica atras da aba da familia (STORAGE e a padrao) e de dois
+// <details>; o teste abre cada um.
 test("shows provider readiness details after a successful connection test", async ({ baseURL, context, page }) => {
     await authenticate(context, baseURL);
 

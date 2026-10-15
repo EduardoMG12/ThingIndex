@@ -9,19 +9,14 @@ function success(data: unknown) {
     };
 }
 
-// A pagina monta esses enderecos a partir de NEXT_PUBLIC_API_URL. Fixar a porta
-// 8000 amarrava o teste a um unico ambiente: rodar a API em outra porta fazia a
-// assercao falhar sem que nada estivesse errado.
+// Enderecos montados a partir de NEXT_PUBLIC_API_URL, sem porta fixa.
 const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api/v1";
 const apiOrigin = apiBase.replace(/\/api\/v1\/?$/, "");
 
 test.use({ locale: "en-US" });
 
 test("documentation page exposes the open-source onboarding flow", async ({ page }) => {
-    // A pagina e publica, mas o app faz o bootstrap de sessao mesmo assim. Sem
-    // este mock a chamada recebe 401 no meio do teste e a navegacao pula para o
-    // login — as primeiras assercoes passam e as seguintes falham com "elemento
-    // nao encontrado", escondendo o redirecionamento.
+    // Pagina publica, mas o bootstrap de sessao roda igual; sem o mock o 401 leva ao login.
     await page.route("**/api/user/me", async (route) => {
         await route.fulfill({
             status: 200,
@@ -255,8 +250,7 @@ test("documentation page exposes the open-source onboarding flow", async ({ page
     await expect(page.getByText("examples/http/thingindex-api.http", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("api/cmd/index-import", { exact: true })).toBeVisible();
     await expect(page.getByText("api/docs/swagger.yaml", { exact: true }).first()).toBeVisible();
-    // A secao de roadmap nao renderiza mais mensagem de backlog vazio; a string
-    // que este teste esperava nao existe em nenhum dicionario.
+    // O roadmap nao tem mais mensagem de backlog vazio.
     await expect(page.getByText("Ready", { exact: true })).toHaveCount(2);
     await expect(page.getByText("Experimental", { exact: true })).toHaveCount(2);
     await expect(page.getByText("Google Gemini", { exact: true }).first()).toBeVisible();

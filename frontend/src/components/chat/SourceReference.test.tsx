@@ -24,16 +24,13 @@ describe("SourceReference", () => {
         await user.click(screen.getByText("Master Service Agreement"));
 
         expect(screen.getByText(/Invoices must be paid within 15 days/i)).toBeInTheDocument();
-        // O cartao diz de onde veio o trecho, nao que ele foi verificado: o
-        // sistema nao confere atribuicao nem vigencia, e um selo "verificada"
-        // numa fonte de lei revogada induz a falsa confianca.
+        // Nada de selo "verificada": o sistema nao confere vigencia da fonte.
         expect(screen.queryByText(/verified/i)).not.toBeInTheDocument();
         expect(screen.getByText("Location recorded in the index: document, page and region")).toBeInTheDocument();
     });
 
     it("em nenhum idioma o rodape diz que a fonte foi verificada", () => {
-        // O provider de teste segue o pathname simulado (en); o texto dos
-        // outros idiomas e conferido direto nas mensagens.
+        // Provider segue o pathname mockado (en); outros idiomas direto nas mensagens.
         for (const locale of ["pt-BR", "en", "es"] as const) {
             const rodape = translate(locale, "dashboard.chat.sourceOrigin");
             expect(rodape).not.toMatch(/verifi/i);

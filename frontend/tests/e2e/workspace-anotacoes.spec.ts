@@ -45,8 +45,7 @@ type Gravado = { metodo: string; url: string; corpo: unknown };
 
 async function mockar(context: BrowserContext, opcoes: { marcas?: unknown[]; legenda?: Record<string, string>; gravados?: Gravado[] } = {}) {
     const gravados = opcoes.gravados ?? [];
-    // A Area de trabalho agora embute o chat: sem estes mocks as buscas de
-    // runtime e de conversas recebem 401 da API real e a pagina cai no login.
+    // Mocks do chat embutido; sem eles runtime e conversas dao 401 e cai no login.
     await context.route("**/api/user/providers/runtime", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: 200, type: "success", message: "ok", data: {} }) }));
     await context.route("**/api/chat/conversations**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: 200, type: "success", message: "ok", data: [] }) }));
     await context.route("**/api/user/me", (route) =>

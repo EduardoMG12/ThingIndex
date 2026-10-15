@@ -63,12 +63,7 @@ export type MetadataPair = {
 
 export type OutlineNode = {
     id: number | string;
-    /**
-     * Identificador estavel do no dentro do documento, produzido pela indexacao
-     * deterministica. E a chave usada para pedir conexoes derivadas -- sem ele a
-     * interface consegue exibir a estrutura, mas nao consegue perguntar "com o
-     * que este trecho se relaciona".
-     */
+    /** Id estavel do no; necessario para pedir conexoes. */
     nodeId: string;
     documentId: number;
     sequenceOrder: number;
@@ -82,11 +77,9 @@ export type OutlineNode = {
 };
 
 /**
- * Caixa de um paragrafo na pagina, em pontos PDF com origem no topo esquerdo.
- * So existe para texto vindo de `pdftotext -bbox-layout` ou do OCR com layout;
- * tesseract, HTML e XLSX nao a produzem. `pageWidth`/`pageHeight` vem junto
- * para a conversao em pixels ser linear e nao depender de mais nada.
- */
+* Caixa em pontos PDF, origem no topo esquerdo. So vem do pdftotext -bbox-layout
+* ou do OCR com layout (tesseract, HTML e XLSX nao tem).
+*/
 export type ParagraphBox = {
     xMin: number;
     xMax: number;
