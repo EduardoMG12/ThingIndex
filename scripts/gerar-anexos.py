@@ -1098,7 +1098,7 @@ def origem_fontes(pdf: Path) -> str:
         if m:
             desc = sem_paginas(m.group(1))
             if not re.search(r"https?://|Planalto|portal", desc):
-                desc += " (o FONTES.md não registra o endereço de origem)"
+                desc += " (endereço de origem não anotado)"
             return desc
     raise SystemExit(f"A10: {pdf.name} sem origem em {pdf.parent.name}/FONTES.md")
 
@@ -1146,11 +1146,10 @@ ESTILO_A10 = ("<style>table.a10 { font-size: 8.5pt !important; table-layout: fix
               ".nota-a10 { font-size: 10pt; text-align: left; margin-top: 10pt; } "
               ".texto-c1 p { text-align: justify; margin: 0 0 4pt 0; } "
               ".texto-c1 .sec { font-weight: bold; margin-top: 8pt; text-align: left; }</style>")
-NOTA_TRANSCRICAO = ("As perguntas estão transcritas exatamente como foram enviadas ao sistema; "
-                    "parte delas foi escrita sem acentos.")
+NOTA_TRANSCRICAO = ("As perguntas estão escritas como foram feitas ao sistema, inclusive as que "
+                    "estão sem acento.")
 LEIA_ME_EDITAL = ("O PDF do edital 01/2026 da Prefeitura de Francisco Morato (52 páginas) não "
-                  "está versionado; coloque-o nesta pasta como "
-                  "edital-01-2026-francisco-morato.pdf.\n")
+                  "foi incluído no repositório.\n")
 
 
 def sha256(p: Path) -> str:
@@ -1222,9 +1221,9 @@ def a10_c1() -> dict:
                  "de relevância vai de 0 a 3."),
         "ids": [c["id"] for c in d["queries"]],
         "copias": [],
-        "nota": ("O arquivo textos-ficticios.pdf foi montado só para este anexo, com um texto "
-                 "por página. No sistema e no teste, os textos de C1 são indexados como texto "
-                 "sem paginação, e toda unidade fica na página 1."),
+        "nota": ("No teste, os cinco textos foram enviados ao sistema como texto simples, sem "
+                 "divisão em páginas. No arquivo textos-ficticios.pdf, cada texto ocupa uma "
+                 "página só para facilitar a leitura."),
         "extra": {"textos-ficticios.pdf": documento(
             "A10", "Textos fictícios do C1",
             f"Os {len(d['documents'])} textos curtos do corpus de controle C1, completos, "
@@ -1300,7 +1299,7 @@ def a10(build: Path) -> None:
     readme = ["# Anexo A10 – Acervos e perguntas", "",
               LINHA_INSTITUCIONAL, "",
               "Os documentos de cada acervo usado na avaliação, na ordem do artigo. Cada pasta "
-              "traz os PDFs que o sistema indexou (cópias idênticas, byte a byte, dos de "
+              "traz os PDFs que o sistema indexou (cópias dos arquivos de "
               "`examples/`) e um `perguntas.pdf` com todas as perguntas do acervo, a resposta "
               "esperada e o documento e a página onde ela está.", "",
               NOTA_TRANSCRICAO, ""]
@@ -1323,9 +1322,8 @@ def a10(build: Path) -> None:
                 raise SystemExit(f"A10: {arq} deveria ter um texto por pagina")
         nota = (("<p class='nota-a10'>" + dados["nota"] + "</p>" if dados.get("nota") else "")
                 + f"<p class='nota-a10'>{NOTA_TRANSCRICAO}</p>"
-                "<p class='nota-a10'>O gabarito completo, com os padrões de correção de cada "
-                f"pergunta, está em <code>{(GAB / arquivo).relative_to(RAIZ)}</code>, travado "
-                "por hash.</p>")
+                "<p class='nota-a10'>As regras usadas para corrigir cada resposta estão em "
+                f"<code>{(GAB / arquivo).relative_to(RAIZ)}</code>.</p>")
         corpo = (ESTILO_A10 + "<p class='titulo-tab'>Quadro 1 – Documentos do acervo.</p>"
                  + dados["quadro_docs"]
                  + f"<p class='titulo-tab'>Quadro 2 – {'Consultas' if arquivo == 'corpus-c1.json' else 'Perguntas'}"
@@ -1343,9 +1341,9 @@ def a10(build: Path) -> None:
         readme.append("")
         if dados.get("nota"):
             readme += [dados["nota"].replace("textos-ficticios.pdf", "`textos-ficticios.pdf`"), ""]
-    readme += ["Os gabaritos completos, com os padrões de correção de cada pergunta, estão em "
-               "[`api/internal/evalcorpus/testdata/`](../../api/internal/evalcorpus/testdata/), "
-               "travados por hash.", ""]
+    readme += ["As regras usadas para corrigir as respostas de cada acervo estão em "
+               "[`api/internal/evalcorpus/testdata/`](../../api/internal/evalcorpus/testdata/).",
+               ""]
     (PASTA_A10 / "README.md").write_text("\n".join(readme), encoding="utf-8")
     print("gerado", (PASTA_A10 / "README.md").relative_to(RAIZ))
 

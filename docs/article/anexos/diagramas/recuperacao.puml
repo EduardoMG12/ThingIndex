@@ -12,7 +12,7 @@ fork
     com cache por hash da pergunta;
   else (não)
   endif
-  :Tokenização: acento e caixa dobrados,
+  :Tokenização: acentos removidos e letras minúsculas,
   variante singular/plural e numérica;
 fork again
   :Carga da coleção no PostgreSQL
@@ -33,14 +33,14 @@ partition "Unidades pontuadas por BM25 (k1 = 1,2; b = 0,75)" {
 :Seleção de fontes: até 3 linhas de tabela
 mais até 6 seções e páginas, desempate estável;
 :Fontes com coordenada:
-documento, página, linhas e caixa;
+documento, página, linhas e região;
 fork
   :Redação pelo LLM
   só a partir das fontes;
   :Resposta citando as fontes;
 fork again
   :Workspace abre o PDF
-  na página e marca a caixa;
+  na página e destaca a região do parágrafo;
 end fork
 stop
 @enduml
