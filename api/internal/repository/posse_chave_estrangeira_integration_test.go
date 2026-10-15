@@ -12,12 +12,8 @@ import (
 	"thing-index/internal/models"
 )
 
-// Mesmo defeito de 2026-09-26, agora na posse: as tabelas tinham user_id NOT
-// NULL mas nenhuma chave estrangeira para users, porque os modelos nao
-// declaravam a associacao com User e o GORM so cria constraint a partir dela.
-// A posse era conferida so pelo codigo (toda consulta filtra por user_id) e o
-// banco aceitava user_id de usuario inexistente. Este teste trava que cada
-// tabela com dono tem a constraint no catalogo do PostgreSQL.
+// O GORM so cria a FK para users se o modelo declara a associacao com User;
+// sem ela o banco aceitava user_id inexistente. Confere no catalogo do Postgres.
 func TestTabelasComDonoTemChaveEstrangeiraParaUsuario(t *testing.T) {
 	db := openIntegrationDB(t)
 

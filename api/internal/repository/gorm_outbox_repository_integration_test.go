@@ -90,12 +90,8 @@ func TestOutboxRepositoryClaimPendingEventsFiltersAndIncrementsAttempts(t *testi
 	}
 }
 
-// O bug: ClaimPendingEvents so incrementava `attempts`. O status seguia PENDING
-// e available_at nao avancava, entao o mesmo evento era reivindicado de novo no
-// poll seguinte — publicado e indexado 2x, com custo de LLM dobrado.
-//
-// O `FOR UPDATE SKIP LOCKED` nao protegia: o lock morre no commit da transacao,
-// e a publicacao no broker acontece depois, ja fora dela.
+// O claim precisa tirar o evento de PENDING: o FOR UPDATE SKIP LOCKED solta o
+// lock no commit, antes da publicacao.
 func TestOutboxRepositoryClaimMarksEventsInFlightAndHidesThem(t *testing.T) {
 	db := openIntegrationDB(t)
 	repo := &gormOutboxRepository{db: db}
@@ -121,8 +117,7 @@ func TestOutboxRepositoryClaimMarksEventsInFlightAndHidesThem(t *testing.T) {
 		t.Fatalf("esperava 1 evento reivindicado, veio %d", len(claimed))
 	}
 
-	// O evento devolvido tem de refletir o que foi gravado: o dispatcher usa
-	// Attempts para calcular o backoff.
+	// O dispatcher usa Attempts para o backoff.
 	if claimed[0].Status != domain.OutboxEventStatusInFlight {
 		t.Fatalf("evento devolvido deveria vir como IN_FLIGHT, veio %q", claimed[0].Status)
 	}
@@ -141,8 +136,6 @@ func TestOutboxRepositoryClaimMarksEventsInFlightAndHidesThem(t *testing.T) {
 		t.Fatalf("available_at deveria ter avancado para o futuro, esta %s (now=%s)", stored.AvailableAt, now)
 	}
 
-	// O ponto central: um segundo dispatcher, no mesmo instante, NAO pode
-	// reivindicar o mesmo evento.
 	second, err := repo.ClaimPendingEvents(ctx, 10, now, testVisibilityTimeout)
 	if err != nil {
 		t.Fatalf("segundo claim retornou erro: %v", err)
@@ -152,9 +145,8 @@ func TestOutboxRepositoryClaimMarksEventsInFlightAndHidesThem(t *testing.T) {
 	}
 }
 
-// Rede de seguranca: se o worker morrer entre reivindicar e publicar, ninguem
-// marca o evento como PUBLISHED nem FAILED. Vencido o visibility timeout, ele
-// precisa voltar a ficar elegivel sozinho — senao o documento nunca indexa.
+// Worker morreu entre o claim e a publicacao: vencido o visibility timeout,
+// o evento volta a ser elegivel.
 func TestOutboxRepositoryReclaimsExpiredInFlightEvents(t *testing.T) {
 	db := openIntegrationDB(t)
 	repo := &gormOutboxRepository{db: db}
@@ -208,8 +200,6 @@ func TestOutboxRepositoryReclaimsExpiredInFlightEvents(t *testing.T) {
 	}
 }
 
-// Evento ja publicado nunca mais pode ser reivindicado, mesmo com available_at
-// no passado — senao o documento reindexaria a cada poll.
 func TestOutboxRepositoryNeverReclaimsPublishedEvents(t *testing.T) {
 	db := openIntegrationDB(t)
 	repo := &gormOutboxRepository{db: db}
@@ -234,7 +224,6 @@ func TestOutboxRepositoryNeverReclaimsPublishedEvents(t *testing.T) {
 		t.Fatalf("MarkEventPublished retornou erro: %v", err)
 	}
 
-	// Bem depois de qualquer visibility timeout plausivel.
 	future := now.Add(24 * time.Hour)
 	claimed, err := repo.ClaimPendingEvents(ctx, 10, future, testVisibilityTimeout)
 	if err != nil {
@@ -245,8 +234,6 @@ func TestOutboxRepositoryNeverReclaimsPublishedEvents(t *testing.T) {
 	}
 }
 
-// Um evento marcado FAILED volta a ser elegivel quando o backoff vence — e o
-// contador de tentativas continua crescendo, para o backoff progredir.
 func TestOutboxRepositoryReclaimsFailedEventAfterBackoff(t *testing.T) {
 	db := openIntegrationDB(t)
 	repo := &gormOutboxRepository{db: db}
@@ -273,7 +260,6 @@ func TestOutboxRepositoryReclaimsFailedEventAfterBackoff(t *testing.T) {
 		t.Fatalf("MarkEventFailed retornou erro: %v", err)
 	}
 
-	// Antes do backoff vencer: invisivel.
 	early, err := repo.ClaimPendingEvents(ctx, 10, now.Add(10*time.Second), testVisibilityTimeout)
 	if err != nil {
 		t.Fatalf("claim antecipado retornou erro: %v", err)
@@ -282,7 +268,6 @@ func TestOutboxRepositoryReclaimsFailedEventAfterBackoff(t *testing.T) {
 		t.Fatalf("evento em backoff foi reivindicado cedo demais")
 	}
 
-	// Depois: elegivel de novo, com attempts crescendo.
 	late, err := repo.ClaimPendingEvents(ctx, 10, backoffUntil.Add(time.Second), testVisibilityTimeout)
 	if err != nil {
 		t.Fatalf("claim posterior retornou erro: %v", err)

@@ -79,9 +79,8 @@ func main() {
 		}
 	}()
 
-	// O timeout por mensagem cobre o worker vivo que demora demais; este reaper
-	// cobre o worker que morreu no meio do trabalho e nunca marcou FAILED.
-	// Sem ele o documento fica PROCESSING para sempre na tela do usuario.
+	// O timeout por mensagem cobre worker lento; o reaper cobre worker que
+	// morreu sem marcar FAILED (documento preso em PROCESSING).
 	reaper := processing.NewStuckDocumentReaper(
 		processingRepo,
 		config.AppConfig.StuckDocumentThreshold,
@@ -95,23 +94,11 @@ func main() {
 		}
 	}()
 
-	// O consumidor roda sob supervisao em vez de derrubar o processo.
-	//
-	// A funcao RECRIA o consumidor a cada tentativa, e isso e o ponto central:
-	// o RabbitMQConsumer guarda conexao e canal, e ambos morrem junto com o
-	// broker. Rechamar Consume no mesmo objeto devolve
-	// "Exception (504) channel/connection is not open" -- foi exatamente o que
-	// aconteceu na primeira versao desta correcao, e o processo morreu na
-	// segunda tentativa.
-	//
-	// Motivo de existir: numa queda real do broker o container seguiu
-	// "running" com o consumidor morto, os eventos ficaram PENDING no outbox e
-	// dois documentos travaram em QUEUED. Reiniciar so o consumidor tambem
-	// preserva o dispatcher de outbox e o reaper, que rodam neste binario e tem
-	// trabalho a fazer enquanto o RabbitMQ volta.
-	//
-	// As callbacks de falha sao instaladas em CADA consumidor recriado; antes
-	// iam para um consumidor ocioso do bootstrap e nunca rodavam.
+	// Consumidor supervisionado em vez de derrubar o processo. Recria o
+	// consumidor a cada tentativa: conexao e canal morrem com o broker e
+	// rechamar Consume no mesmo objeto da "Exception (504) channel/connection
+	// is not open". Reiniciar so o consumidor preserva o dispatcher de outbox e
+	// o reaper. As callbacks de falha vao em cada consumidor recriado.
 	supervisor := queue.NewConsumerSupervisor(
 		queue.ConsumoComCallbacks(
 			func() (queue.ConsumidorDeIndexacao, error) {

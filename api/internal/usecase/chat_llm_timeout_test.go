@@ -23,9 +23,8 @@ func (s *chatLLMPrazoStub) StreamText(ctx context.Context, _ string, _ string, o
 	return onDelta("ok")
 }
 
-// O cliente HTTP do LLM perdeu o Timeout global (P1-2), entao o chat precisa
-// entregar ao provedor um ctx com prazo explicito, mesmo quando o ctx da
-// requisicao nao tem nenhum.
+// O cliente HTTP do LLM nao tem Timeout global, entao o chat entrega um ctx
+// com prazo mesmo quando o da requisicao nao tem.
 func TestStreamCollectionChatEntregaCtxComPrazoAoLLM(t *testing.T) {
 	t.Parallel()
 

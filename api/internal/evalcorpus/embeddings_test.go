@@ -9,28 +9,9 @@ import (
 	"testing"
 )
 
-// Este teste e o GUARD do braco denso do experimento.
-//
-// O PROBLEMA QUE ELE RESOLVE
-//
-// Os embeddings do braco C sao gerados fora do processo Go, por
-// scripts/embed-corpus.py, e versionados como artefato. Isso mantem o harness
-// hermetico, mas cria um risco especifico: alguem edita o corpus -- corrige um
-// tipo, acrescenta uma consulta, reescreve um documento -- e ESQUECE de
-// regerar os embeddings.
-//
-// A falha resultante e a pior classe possivel: nada quebra. O experimento roda,
-// o CSV e escrito, as tabelas LaTeX sao geradas, e o artigo publica numeros do
-// braco denso calculados sobre uma versao ANTERIOR do corpus. Ninguem percebe,
-// porque o sintoma e um numero plausivel.
-//
-// Este teste transforma esse silencio numa falha de CI.
-//
-// POR QUE POR HASH DO TEXTO, E NAO POR CONTAGEM DE ITENS
-//
-// Conferir so a quantidade pegaria insercao e remocao, mas nao EDICAO -- que e
-// justamente o caso mais provavel (ajustar a redacao de uma consulta). O hash
-// do texto exato enviado ao modelo pega os tres casos.
+// Os embeddings do braco denso sao gerados fora do Go (scripts/embed-corpus.py)
+// e versionados. Estes testes falham se o corpus mudar sem regerar o artefato.
+// Compara hash do texto, nao contagem, para pegar edicao.
 
 func hashText(text string) string {
 	sum := sha256.Sum256([]byte(text))
@@ -101,10 +82,7 @@ func TestEmbeddingsCobremTodoOCorpus(t *testing.T) {
 		}
 	}
 
-	// A direcao inversa tambem importa: um embedding orfao significa que um
-	// item foi REMOVIDO do corpus sem o artefato ser regerado. Nao afeta o
-	// resultado, mas indica que o artefato esta velho -- e se esta velho para
-	// remocao, pode estar velho para edicao.
+	// Embedding orfao: item removido do corpus sem regerar o artefato.
 	if len(artifact.Documents) != len(corpus.Documents) {
 		t.Errorf("artefato tem %d documentos, corpus tem %d",
 			len(artifact.Documents), len(corpus.Documents))
@@ -116,10 +94,7 @@ func TestEmbeddingsCobremTodoOCorpus(t *testing.T) {
 }
 
 func TestEmbeddingsCorrespondemAoTextoAtualDoCorpus(t *testing.T) {
-	// O TESTE MAIS IMPORTANTE DESTE ARQUIVO.
-	//
-	// Ele detecta a edicao silenciosa: o item continua existindo, com o mesmo
-	// ID, mas o TEXTO mudou depois que o vetor foi gerado.
+	// Mesmo ID, texto alterado depois que o vetor foi gerado.
 	corpus, artifact := loadArtifact(t)
 
 	hashDocumento := map[string]string{}
@@ -132,11 +107,8 @@ func TestEmbeddingsCorrespondemAoTextoAtualDoCorpus(t *testing.T) {
 	}
 
 	for _, doc := range corpus.Documents {
-		// A montagem TEM de ser identica a de scripts/embed-corpus.py
-		// (build_passage) e a de cmd/retrieval-eval (buildArms). As tres
-		// concordarem e o que garante que todos os bracos indexam a mesma
-		// unidade -- se divergissem, a comparacao mediria diferenca de campo
-		// indexado em vez de diferenca de modelo de recuperacao.
+		// Tem de bater com build_passage (scripts/embed-corpus.py) e buildArms
+		// (cmd/retrieval-eval), senao os bracos indexam textos diferentes.
 		esperado := hashText(doc.Title + "\n" + doc.Content)
 		if hashDocumento[doc.ID] != esperado {
 			t.Errorf("documento %q mudou depois da geracao dos embeddings\n"+
@@ -158,9 +130,7 @@ func TestEmbeddingsCorrespondemAoTextoAtualDoCorpus(t *testing.T) {
 }
 
 func TestManifestoDosEmbeddingsDeclaraOModeloReportadoNoArtigo(t *testing.T) {
-	// O artigo nomeia o modelo e a dimensao. Se o artefato fosse regerado com
-	// outro modelo, o artigo passaria a descrever um experimento que nao foi o
-	// executado -- e a banca nao teria como perceber.
+	// Trava modelo e dimensao do artefato.
 	_, artifact := loadArtifact(t)
 
 	const modeloEsperado = "intfloat/multilingual-e5-base"
@@ -181,10 +151,8 @@ func TestManifestoDosEmbeddingsDeclaraOModeloReportadoNoArtigo(t *testing.T) {
 }
 
 func TestVetoresTemADimensaoDeclarada(t *testing.T) {
-	// Dimensao errada nao causa panic no codigo de busca (dotProduct devolve 0
-	// para tamanhos diferentes) -- causa um ranking em que TODOS os scores sao
-	// zero e a ordem sai do desempate por ID. Um resultado perfeitamente
-	// plausivel e completamente sem sentido.
+	// Dimensao errada nao da panic: dotProduct devolve 0 e o ranking sai so do
+	// desempate por ID.
 	_, artifact := loadArtifact(t)
 
 	for _, grupo := range []struct {

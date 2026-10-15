@@ -68,7 +68,6 @@ OAB/SP nº 123.456`
 		fmt.Printf("%s[%d] %s\n", indent, node.Level, node.Title)
 	}
 
-	// Verificar se boilerplate foi filtrado
 	hasBoilerplate := false
 	for _, node := range result.OutlineNodes {
 		title := strings.ToLower(node.Title)
@@ -83,7 +82,6 @@ OAB/SP nº 123.456`
 		t.Error("Boilerplate não foi filtrado corretamente")
 	}
 
-	// Verificar se field lines foram filtrados
 	hasFieldLine := false
 	for _, node := range result.OutlineNodes {
 		title := strings.ToLower(node.Title)

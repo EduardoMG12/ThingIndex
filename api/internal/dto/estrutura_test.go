@@ -7,18 +7,12 @@ import (
 	"thing-index/internal/models"
 )
 
-// Conversores da estrutura extraida: sao os que alimentam a aba Workspace e a
-// metrica de proveniencia do trabalho. Um campo perdido aqui nao quebra nada
-// visivel no backend -- some da tela e da citacao.
+// Conversores da estrutura extraida: campo perdido aqui some da tela e da citacao.
 
 func ponteiroInt(v int) *int { return &v }
 
 func TestNodeIDSobreviveAConversaoDoSumario(t *testing.T) {
-	// Este campo tem historia: o backend enviava node_id e o normalizador do
-	// frontend descartava. A interface exibia a estrutura mas nao conseguia
-	// pedir conexoes, porque a rota precisa do node_id como parametro.
-	//
-	// A cobertura do lado do frontend ja existe; esta e a metade do backend.
+	// A rota de conexoes precisa do node_id como parametro.
 	resposta := ToOutlineNodeResponses([]models.DocumentOutlineNode{
 		{ID: 1, DocumentID: 7, NodeID: "node-001-2-penalidades", Title: "2 DAS PENALIDADES", Level: 1},
 	})
@@ -43,8 +37,7 @@ func TestNodeIDSobreviveAConversaoDoSumario(t *testing.T) {
 }
 
 func TestIntervaloDePaginaDoNoSobrevive(t *testing.T) {
-	// start_page e end_page sustentam a proveniencia: sem eles a citacao nao
-	// aponta para lugar nenhum, e a metrica TPC do trabalho mede zero.
+	// start_page e end_page sao a proveniencia da citacao.
 	resposta := ToOutlineNodeResponses([]models.DocumentOutlineNode{
 		{ID: 1, DocumentID: 7, NodeID: "n1", Title: "Secao", StartPage: ponteiroInt(3), EndPage: ponteiroInt(5)},
 	})
@@ -58,9 +51,7 @@ func TestIntervaloDePaginaDoNoSobrevive(t *testing.T) {
 }
 
 func TestNoSemIntervaloDePaginaNaoInventaZero(t *testing.T) {
-	// Nó sem página conhecida e estado legitimo (documento sem paginacao).
-	// Virar 0 seria pior que nil: a tela exibiria "pagina 0" como se fosse
-	// informacao real, e a metrica de proveniencia contaria como coberto.
+	// No sem pagina conhecida fica nil: 0 apareceria como "pagina 0".
 	resposta := ToOutlineNodeResponses([]models.DocumentOutlineNode{
 		{ID: 1, DocumentID: 7, NodeID: "n1", Title: "Sem pagina"},
 	})
@@ -163,8 +154,7 @@ func TestCabecalhoDeTabelaNuloViraListaVazia(t *testing.T) {
 }
 
 func TestParDeMetadadoPreservaChaveEValor(t *testing.T) {
-	// ocr_engine e page_count sao lidos daqui, e a metrica de proveniencia do
-	// artigo depende de conseguir distinguir os tipos.
+	// ocr_engine e page_count sao lidos daqui.
 	resposta := ToMetadataPairResponses([]models.MetadataPair{
 		{ID: 1, DocumentID: 7, Key: "ocr_engine", Value: "unlimited_ocr"},
 	})

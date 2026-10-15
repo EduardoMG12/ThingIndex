@@ -15,25 +15,16 @@ import (
 	"gorm.io/gorm"
 )
 
-// chatLLMTimeout e o prazo total das chamadas de LLM de uma mensagem de chat
-// (expansao da pergunta + geracao). O cliente HTTP do LLM nao tem mais
-// Timeout global -- ele cortava o stream aos 45 s --, entao o limite total
-// precisa vir daqui; sem ele um provedor que streama devagar para sempre
-// prenderia a requisicao.
+// chatLLMTimeout cobre expansao + geracao. O cliente HTTP do LLM nao tem
+// Timeout global (cortava o stream), entao o limite total vem daqui.
 const chatLLMTimeout = 5 * time.Minute
 
 // chatPersistTimeout limita a gravacao da resposta depois que o ctx da
 // requisicao ja pode estar cancelado.
 const chatPersistTimeout = 5 * time.Second
 
-// persistContext devolve um ctx para gravar a resposta que sobrevive ao
-// cancelamento da requisicao.
-//
-// MOTIVO: a persistencia usava o ctx da requisicao. O caso mais comum de
-// interrupcao e o cliente desconectar -- justamente quando esse ctx esta
-// cancelado --, entao AddMessage falhava e a resposta parcial, ja paga ao
-// LLM, sumia sem registro. WithoutCancel mantem os valores do ctx e ignora o
-// cancelamento; o timeout impede que a gravacao pendure para sempre.
+// persistContext ignora o cancelamento da requisicao: quando o cliente
+// desconecta, a resposta parcial (ja paga) ainda precisa ser gravada.
 func persistContext(ctx context.Context) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.WithoutCancel(ctx), chatPersistTimeout)
 }
@@ -45,8 +36,6 @@ const (
 	chatStreamEventDone    = "done"
 )
 
-// chatCollectionLookup e o recorte do repositorio de colecoes que o chat usa:
-// so a checagem de posse, filtrada por user_id.
 type chatCollectionLookup interface {
 	GetCollectionByID(ctx context.Context, id uint, userID uint) (*models.Collection, error)
 }
@@ -83,9 +72,7 @@ func (u *chatUseCase) CreateConversation(ctx context.Context, userID uint, colle
 		return nil, domain.ErrCollectionRequired
 	}
 
-	// So a posse importa aqui. Antes isto materializava a colecao inteira
-	// (GetCollectionContext: 9 consultas e ate dezenas de milhares de linhas
-	// com texto integral) e descartava o resultado.
+	// So a posse importa; GetCollectionContext aqui carregaria a colecao inteira.
 	if _, err := u.collectionRepo.GetCollectionByID(ctx, collectionID, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) || errors.Is(err, domain.ErrCollectionNotFound) {
 			return nil, domain.ErrCollectionNotFound
@@ -212,8 +199,7 @@ func (u *chatUseCase) StreamCollectionChat(
 	llmCtx, cancelLLM := context.WithTimeout(ctx, chatLLMTimeout)
 	defer cancelLLM()
 
-	// A expansao roda ANTES da recuperacao, porque o que ela muda e o texto da
-	// consulta. Ver docs/prds/pre-registro-expansao-consulta.md: braco E.
+	// A expansao roda antes da recuperacao porque muda o texto da consulta.
 	query := prompt
 	if u.retrievalOptions.QueryExpansion {
 		if extra := u.expander.Expand(llmCtx, llm, domain.LLMCacheScope(userID, llm), prompt); extra != "" {
@@ -268,13 +254,7 @@ func (u *chatUseCase) StreamCollectionChat(
 
 	var answerBuilder strings.Builder
 
-	// persistAnswer grava o que houver de resposta ate agora.
-	//
-	// Precisa acontecer TAMBEM no caminho de erro. Antes, um `return err` no
-	// meio do streaming pulava a persistencia inteira: o usuario via o texto
-	// aparecer na tela, a conexao caia, e ao recarregar a conversa a resposta
-	// tinha sumido -- sem nenhum registro de que a chamada de LLM foi feita e
-	// paga. Guardar o parcial e melhor que perder tudo.
+	// Tambem roda no caminho de erro, senao a resposta parcial some ao recarregar.
 	var usage *domain.ChatUsage
 	sourceRefs := func() []models.ChatSourceReference {
 		persistedSources := make([]models.ChatSourceReference, 0, len(sources))
@@ -297,9 +277,6 @@ func (u *chatUseCase) StreamCollectionChat(
 		}
 		return persistedSources
 	}
-	// persistFailure grava a falha como mensagem do assistente (status
-	// "error", detalhe do provedor, fontes). Antes a pergunta ficava sem
-	// resposta na conversa e o usuario nao sabia se a IA tinha sido chamada.
 	persistFailure := func(cause error) {
 		if strings.TrimSpace(answerBuilder.String()) != "" || cause == nil {
 			return
@@ -316,8 +293,7 @@ func (u *chatUseCase) StreamCollectionChat(
 		if answer == "" {
 			return nil
 		}
-		// Medido depois da resposta (o provedor so informa consumo da ultima
-		// chamada); a parcial tambem e paga, entao tambem e medida.
+		// A parcial tambem e paga, entao tambem e medida.
 		measured := chatUsageFor(llm, systemPrompt, userPrompt, answer)
 		usage = &measured
 
@@ -354,10 +330,7 @@ func (u *chatUseCase) StreamCollectionChat(
 				Delta: delta,
 			})
 		}); err != nil {
-			// A gravacao usa persistContext, que sobrevive ao cliente ter
-			// desconectado. O erro de persistencia so e logado, nunca
-			// substitui o erro original do stream, que e o que o handler
-			// precisa para escolher a mensagem certa ao usuario.
+			// O erro de persistencia so e logado; o handler precisa do erro original.
 			if persistErr := persistAnswer(); persistErr != nil {
 				log.Printf("chat: resposta parcial da conversa %d nao pode ser persistida: %v", conversation.ID, persistErr)
 			}
@@ -398,9 +371,8 @@ func (u *chatUseCase) StreamCollectionChat(
 	})
 }
 
-// chatUsageFor mede o consumo de uma resposta: numeros do provedor quando ele
-// os informa (TokenUsageReporter), estimativa runas/4 quando nao -- rotulada
-// como estimativa. Custo so com preco cadastrado (LLMPricingProvider).
+// chatUsageFor usa os numeros do provedor quando ele informa; senao estima
+// runas/4. Custo so com preco cadastrado.
 func chatUsageFor(llm domain.LLMService, systemPrompt, userPrompt, answer string) domain.ChatUsage {
 	usage := domain.ChatUsage{
 		PromptTokens:     estimateChatTokens(systemPrompt) + estimateChatTokens(userPrompt),
@@ -424,9 +396,8 @@ func chatUsageFor(llm domain.LLMService, systemPrompt, userPrompt, answer string
 	return usage
 }
 
-// estimateChatTokens e a mesma regra da indexacao (processing.estimateTextTokens):
-// uma runa a cada quatro. Copiada, nao importada, para o usecase nao depender
-// do pacote de processamento.
+// estimateChatTokens copia a regra de processing.estimateTextTokens para nao
+// depender do pacote.
 func estimateChatTokens(value string) int {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
@@ -440,35 +411,27 @@ func buildConversationTitle(title string) string {
 	if normalized == "" {
 		return fmt.Sprintf("Chat %s", time.Now().UTC().Format("2006-01-02 15:04"))
 	}
-	// Corte por runes, nao por bytes. `normalized[:255]` parte um code point
-	// UTF-8 no meio quando o caractere 255 e acentuado -- caso comum em
-	// portugues -- e grava bytes invalidos no titulo. O limite de 255 e o
-	// tamanho da coluna, entao contar runes so pode gravar menos, nunca mais.
+	// Corte por runas: cortar por bytes parte caracteres acentuados.
 	if runes := []rune(normalized); len(runes) > 255 {
 		return strings.TrimSpace(string(runes[:255]))
 	}
 	return normalized
 }
 
-// Limites do contexto enviado ao LLM. Constantes exportadas de proposito: o
-// artigo compara custo por consulta, entao o teto tem de ser um numero
-// nomeado e travado por teste, nao um literal escondido.
+// Limites do contexto enviado ao LLM.
 const (
-	// ChatSourceLimit e o teto de fontes de SECAO e PAGINA por resposta. As
-	// linhas de tabela contam a parte (ChatTableRowSourceLimit), entao o total
-	// citado pode chegar a ChatSourceLimit + ChatTableRowSourceLimit = 9.
+	// ChatSourceLimit e o teto de fontes de secao e pagina; linhas de tabela
+	// contam a parte (ChatTableRowSourceLimit).
 	ChatSourceLimit = 6
-	// ChatNodeSourceLimit e quantas dessas fontes vem de secoes do sumario
-	// (node hits), que entram ANTES das paginas por serem a unidade
-	// estrutural da tese e terem peso 3 no retrieval.
+	// ChatNodeSourceLimit: fontes vindas de secoes do sumario, que entram antes
+	// das paginas.
 	ChatNodeSourceLimit = 3
-	// ChatTableRowSourceLimit: linhas de tabela que entram antes das secoes,
-	// alem das ChatSourceLimit fontes de secao e pagina.
+	// ChatTableRowSourceLimit: linhas de tabela, alem das ChatSourceLimit.
 	ChatTableRowSourceLimit = 3
 	// ChatPageCharLimit corta o conteudo de cada pagina enviada ao modelo.
 	ChatPageCharLimit = 4000
-	// ChatContextCharLimit e o teto somado de conteudo de paginas no prompt;
-	// estourou, as fontes seguintes voltam ao trecho curto.
+	// ChatContextCharLimit e o teto somado de paginas no prompt; depois dele as
+	// fontes voltam ao trecho curto.
 	ChatContextCharLimit = 24000
 )
 
@@ -503,14 +466,10 @@ func buildChatSources(
 	sources := make([]domain.ChatSource, 0, ChatSourceLimit)
 	seen := make(map[string]struct{})
 
-	// O paragrafo da pagina com mais termos da pergunta e o que o canvas
-	// grifa ao clicar na fonte. Zero termos em comum: nenhum, e o clique cai
-	// na pagina.
+	// Paragrafo com mais termos da pergunta e o que o canvas grifa.
 	significant := significantQueryTokens(retrieval.Query)
-	// Fonte de secao ou de pagina precisa de uma fracao dos termos da
-	// pergunta para entrar: sem isso a lista trazia "5.1.5 Acessibilidade"
-	// para uma pergunta sobre estagio, por um termo solto. Linha de tabela ja
-	// exige 2 termos no retrieval.
+	// Exige uma fracao dos termos da pergunta, senao um termo solto puxa secao
+	// irrelevante. Linha de tabela ja exige 2 termos no retrieval.
 	minCoverage := chatSourceMinCoverage(len(significant))
 	matched := func(text string) []string {
 		tokens := tokenSet(text)
@@ -530,13 +489,8 @@ func buildChatSources(
 		key := fmt.Sprintf("%d:%d", paragraph.DocumentID, *paragraph.PageNumber)
 		paragraphsByPage[key] = append(paragraphsByPage[key], paragraph)
 	}
-	// Texto da pagina para contar termos: o conteudo da pagina, ou os
-	// paragrafos dela quando o contexto veio sem paginas.
-	// continuesOn: a pagina seguinte, quando o texto desta termina sem
-	// pontuacao final (frase quebrada na virada) e a seguinte existe.
-	// Pagina com tabela nao continua: termina sem ponto por ser tabela, e o
-	// comeco da seguinte e outra tabela (o calendario de outubro colado ao de
-	// setembro fez o modelo errar c12). As linhas ja entram como fonte.
+	// continuesOn: pagina seguinte quando a frase quebra na virada. Pagina com
+	// tabela nao continua: termina sem ponto por ser tabela.
 	continuesOn := func(documentID uint, page int) int {
 		key := fmt.Sprintf("%d:%d", documentID, page)
 		if _, hasTable := pagesWithTables[key]; hasTable || !pageEndsMidSentence(pageLookup[key].Content) {
@@ -557,8 +511,6 @@ func buildChatSources(
 		}
 		return strings.Join(parts, " ")
 	}
-	// bestParagraph devolve o paragrafo com mais termos da pergunta, as linhas
-	// dele que os contem (grifo fino) e o texto dessas linhas (trecho).
 	type paragraphPick struct {
 		id        uint
 		lines     []int
@@ -586,13 +538,8 @@ func buildChatSources(
 		tableBoxes[table.ID] = sourceBoxFromMetadata(table.Metadata)
 	}
 
-	// Linhas de tabela primeiro: e a fonte mais precisa (documento, pagina,
-	// tabela, linha) e a mais barata no prompt. A pagina inteira da tabela
-	// ainda pode entrar depois pelos hits de pagina.
-	// As linhas nao consomem as vagas das paginas: custam ~100 caracteres
-	// contra 4.000 de uma pagina, e uma pergunta de prosa perdia a pagina
-	// certa para uma linha fraca. Linha fraca (abaixo de metade da melhor)
-	// tambem fica de fora.
+	// Linhas de tabela primeiro. Nao consomem as vagas das paginas (sao bem
+	// menores), e linha abaixo de metade da melhor fica de fora.
 	rowSources := 0
 	for _, hit := range retrieval.TableRowHits {
 		if rowSources == ChatTableRowSourceLimit || hit.Score*2 < retrieval.TableRowHits[0].Score {
@@ -621,8 +568,6 @@ func buildChatSources(
 		rowSources++
 	}
 
-	// Secoes depois: a pagina inicial da secao e o menor pedaco com a
-	// proveniencia inteira (documento, secao, pagina).
 	for _, hit := range retrieval.NodeHits {
 		if len(sources)-rowSources == ChatNodeSourceLimit {
 			break
@@ -713,16 +658,9 @@ func buildChatSources(
 	return orderChatSources(sources, rowSources, len(significant))
 }
 
-// orderChatSources decide a ordem final. Linha de tabela so fica na frente
-// quando responde a pelo menos metade dos termos da pergunta (pergunta de
-// tabela: "pre-requisito de Estrutura de Dados I" casa quase tudo na linha);
-// as demais linhas entram na ordenacao comum, junto com secoes e paginas,
-// por numero de termos casados (estavel: empate mantem linha, secao, pagina).
-// Antes a ordem era fixa "linhas, secoes, paginas", e a pagina da Lei com 8
-// termos ficava em 4o atras de tres linhas de calendario com 2 termos
-// genericos. O conjunto de fontes nao muda, so a ordem no card e no prompt.
-// (Multiplicar o BM25 pela cobertura foi medido e perdeu uma pagina-alvo,
-// t18; nao entrou.)
+// orderChatSources so poe linha de tabela na frente quando ela casa ao menos
+// metade dos termos; o resto ordena por termos casados (ordenacao estavel).
+// Muda so a ordem, nao o conjunto de fontes.
 func orderChatSources(sources []domain.ChatSource, rowSources int, significantTerms int) []domain.ChatSource {
 	threshold := (significantTerms + 1) / 2
 	strong := make([]domain.ChatSource, 0, rowSources)
@@ -740,8 +678,8 @@ func orderChatSources(sources []domain.ChatSource, rowSources int, significantTe
 	return append(strong, rest...)
 }
 
-// sourceBoxFromMetadata le metadata.box (JSONB: x_min...) de um paragrafo ou
-// tabela. Nulo quando nao ha caixa (OCR sem posicao, HTML).
+// sourceBoxFromMetadata le metadata.box; nil quando nao ha caixa (OCR sem
+// posicao, HTML).
 func sourceBoxFromMetadata(metadata map[string]any) *models.SourceBox {
 	raw, ok := metadata["box"].(map[string]any)
 	if !ok {
@@ -763,8 +701,6 @@ func sourceBoxFromMetadata(metadata map[string]any) *models.SourceBox {
 	return &models.SourceBox{XMin: xMin, YMin: yMin, XMax: xMax, YMax: yMax, PageWidth: pw, PageHeight: ph}
 }
 
-// lineBoxesFromMetadata devolve as caixas [xMin, yMin, xMax, yMax] das linhas
-// escolhidas, na ordem de `lines`.
 func lineBoxesFromMetadata(metadata map[string]any, lines []int) [][4]float64 {
 	raw, ok := metadata["lines"].([]any)
 	if !ok || len(lines) == 0 {
@@ -797,11 +733,8 @@ func lineBoxesFromMetadata(metadata map[string]any, lines []int) [][4]float64 {
 	return out
 }
 
-// chatSourceMinCoverage e quantos termos significativos da pergunta uma
-// fonte de secao ou pagina precisa conter: 2 (pergunta de um termo exige
-// esse um). Foi 40% dos termos e perdeu 3 paginas-alvo no gabarito (t18, t20,
-// p21): pergunta longa tem muito termo acessorio, e a pagina certa casa so
-// os dois que importam.
+// chatSourceMinCoverage: termos da pergunta que uma fonte precisa conter.
+// Percentual perdia paginas certas em perguntas longas.
 func chatSourceMinCoverage(significant int) int {
 	if significant <= 1 {
 		return significant
@@ -809,10 +742,8 @@ func chatSourceMinCoverage(significant int) int {
 	return 2
 }
 
-// matchingLines le metadata.lines do paragrafo ([{t, b}]) e devolve os indices
-// das linhas que contem termos da pergunta -- a janela contigua em torno da
-// linha com mais termos -- e o texto dessas linhas. Sem linhas (paragrafo de
-// uma linha, ou texto sem caixa), devolve nada e o grifo e o paragrafo.
+// matchingLines devolve a janela contigua de linhas em torno da linha com
+// mais termos. Sem metadata.lines, nada (o grifo fica no paragrafo).
 func matchingLines(metadata map[string]any, terms []string) ([]int, string) {
 	raw, ok := metadata["lines"].([]any)
 	if !ok || len(raw) < 2 {
@@ -854,17 +785,13 @@ func buildCollectionChatPrompt(
 	sources []domain.ChatSource,
 ) (string, string) {
 	language := normalizeChatLanguage(request.Language)
-	// A instrucao de idioma vai por ultimo no system prompt e repetida no fim
-	// do user prompt, na propria lingua: com o prompt todo em ingles e
-	// evidencia longa, o modelo respondia em ingles a pergunta em portugues.
+	// Instrucao de idioma por ultimo e repetida no user prompt: com prompt em
+	// ingles e evidencia longa, o modelo respondia em ingles.
 	systemPrompt := strings.Join([]string{
 		"You are ThingIndex Assistant, a grounded document-analysis assistant.",
 		"Answer only from the provided relational document context.",
 		"If the evidence is insufficient, say that clearly and do not invent facts.",
-		// "Start with the direct answer in one sentence" foi testado em
-		// 2026-09-09 e descartado: o modelo afirmava antes de ler ("coluna de
-		// pre-requisito vazia" com o SIS07201 na fonte) e a resposta ficou
-		// mais longa (311 -> 358 caracteres), nao mais curta.
+		// Pedir a resposta direta primeiro fazia o modelo afirmar antes de ler a fonte.
 		"Prefer precise, direct answers and cite the supporting document names and pages in prose when relevant.",
 		"Write the answer in " + language + ". " + languageReminder(language),
 	}, "\n")
@@ -887,9 +814,8 @@ func buildCollectionChatPrompt(
 	}
 
 	if len(sources) > 0 {
-		// O conteudo da pagina citada, nao so um trecho de 220 caracteres:
-		// com o trecho o modelo dizia "nao ha informacoes" com a resposta na
-		// pagina. Teto por pagina e teto total, ambos constantes testadas.
+		// Pagina inteira, nao trecho: so com o trecho o modelo dizia que nao havia
+		// informacao.
 		pageContent := make(map[string]string, len(collectionContext.DocumentPages))
 		for _, page := range collectionContext.DocumentPages {
 			pageContent[fmt.Sprintf("%d:%d", page.DocumentID, page.PageNumber)] = page.Content
@@ -934,17 +860,14 @@ func buildCollectionChatPrompt(
 	return systemPrompt, userPrompt.String()
 }
 
-// chatSourceBody devolve o conteudo da pagina da fonte (cortado por runas em
-// ChatPageCharLimit) e quantas runas consumiu do teto total. Sem espaco no
-// teto, ou sem a pagina no contexto, volta ao trecho curto e consome zero.
+// chatSourceBody devolve a pagina da fonte e as runas consumidas do teto.
+// Sem espaco ou sem pagina, volta ao trecho curto.
 func chatSourceBody(source domain.ChatSource, pageContent map[string]string, remaining int) (string, int) {
 	content := strings.Join(strings.Fields(pageContent[fmt.Sprintf("%d:%d", source.DocumentID, source.Page)]), " ")
 	if source.Body != "" {
-		// Fonte menor que a pagina (linha de tabela): vai ela, nao a pagina.
 		content = strings.Join(strings.Fields(source.Body), " ")
 	} else if source.ContinuesOnPage > 0 && content != "" {
-		// A frase quebrou na virada: o comeco da pagina seguinte vai junto,
-		// marcado, para o modelo ler o paragrafo inteiro.
+		// Frase quebrada na virada: manda o comeco da pagina seguinte junto.
 		if next := pageContinuation(pageContent[fmt.Sprintf("%d:%d", source.DocumentID, source.ContinuesOnPage)]); next != "" {
 			content += fmt.Sprintf(" [continua na p. %d] %s", source.ContinuesOnPage, next)
 		}
@@ -963,14 +886,10 @@ func chatSourceBody(source domain.ChatSource, pageContent map[string]string, rem
 	return content, len(runes)
 }
 
-// ChatContinuationCharLimit e quanto da pagina seguinte acompanha uma fonte
-// cuja frase quebrou na virada.
 const ChatContinuationCharLimit = 600
 
-// pageEndsMidSentence: o texto termina sem ponto final. ";" e ":" contam
-// como continuacao, nao como fim: em texto legal e academico sao item de
-// lista ("II - conceito B ...;") ou abertura de lista, e o resto esta na
-// pagina seguinte ("IV - conceito D" na p. 126 do PPC).
+// pageEndsMidSentence: ";" e ":" contam como continuacao (itens de lista em
+// texto legal).
 func pageEndsMidSentence(content string) bool {
 	trimmed := strings.TrimRight(strings.TrimSpace(content), "\"'»)]”’")
 	if trimmed == "" {
@@ -980,8 +899,6 @@ func pageEndsMidSentence(content string) bool {
 	return !strings.ContainsRune(".!?", rune(last))
 }
 
-// pageContinuation devolve o comeco da pagina seguinte ate o fim da ultima
-// frase que couber em ChatContinuationCharLimit.
 func pageContinuation(content string) string {
 	runes := []rune(strings.Join(strings.Fields(content), " "))
 	if len(runes) == 0 {
@@ -1000,7 +917,6 @@ func pageContinuation(content string) string {
 	return strings.TrimSpace(string(runes[:cut]))
 }
 
-// languageReminder e a instrucao de idioma na propria lingua.
 func languageReminder(language string) string {
 	switch language {
 	case "English":
@@ -1041,8 +957,7 @@ func normalizeChatLanguage(language string) string {
 	}
 }
 
-// ChatErrorDetail resume o erro do provedor para o usuario: uma linha, ate
-// 200 caracteres ("monthly usage limit", "connection refused").
+// ChatErrorDetail resume o erro do provedor em uma linha de ate 200 caracteres.
 func ChatErrorDetail(err error) string {
 	if err == nil {
 		return ""

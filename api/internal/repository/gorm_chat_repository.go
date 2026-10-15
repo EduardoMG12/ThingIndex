@@ -152,9 +152,7 @@ func (r *gormChatConversationRepository) AddMessage(ctx context.Context, userID 
 
 func deriveConversationTitle(content string) string {
 	trimmed := normalizeWhitespace(content)
-	// Mesmo motivo de buildConversationTitle: cortar em bytes quebra UTF-8 no
-	// meio do code point. Aqui o titulo e exibido direto na lista de
-	// conversas, entao o defeito aparece como caractere corrompido na tela.
+	// Corta por rune para nao quebrar UTF-8 no meio.
 	if runes := []rune(trimmed); len(runes) > 80 {
 		return strings.TrimSpace(string(runes[:80])) + "..."
 	}

@@ -2,9 +2,7 @@ package models
 
 import "time"
 
-// UserIndexingPreferences: o que a LLM gera na indexacao dos documentos do
-// usuario. Sem tag default nos booleanos de proposito: com `default:true` o
-// GORM gravaria true quando o valor e false.
+// Sem `default:true` nos booleanos: o GORM gravaria true quando o valor e false.
 type UserIndexingPreferences struct {
 	ID               uint      `gorm:"primarykey" json:"id"`
 	UserID           uint      `gorm:"not null;uniqueIndex" json:"user_id"`
@@ -17,14 +15,7 @@ type UserIndexingPreferences struct {
 }
 
 // EnrichmentCacheEntry guarda resumo e topicos por (usuario, provedor, modelo,
-// tipo, hash do texto).
-//
-// Era global, chaveado so por (tipo, modelo, hash), com a premissa de que o
-// texto de uma pagina e o mesmo para todos. O texto e; o resumo nao: ele vem
-// do LLM que cada usuario configura, e nome de modelo e base_url sao texto
-// livre. Um usuario podia envenenar o cache de todos os outros (P0-1). O
-// indice unico antigo (idx_enrichment_cache) e removido na migracao; as
-// linhas antigas ficam sem user_id (0) e nunca mais sao lidas.
+// tipo, hash do texto). Linhas antigas, sem user_id, nunca sao lidas.
 type EnrichmentCacheEntry struct {
 	ID          uint      `gorm:"primarykey" json:"id"`
 	UserID      uint      `gorm:"not null;default:0;uniqueIndex:idx_enrichment_cache_scope,priority:1" json:"user_id"`

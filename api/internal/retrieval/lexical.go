@@ -7,37 +7,16 @@ import (
 	"unicode"
 )
 
-// Este arquivo implementa os bracos LEXICAIS do experimento comparativo.
-//
-// Braco A (relacional): o scorer atual do ThingIndex, contagem de substring.
-// Braco B (BM25):       Robertson & Zaragoza (2009), a baseline obrigatoria.
-//
-// Por que o BM25 e obrigatorio: o artigo CITA Robertson & Zaragoza e depois nao
-// usa BM25 em lugar nenhum. Comparar a abordagem relacional apenas com
-// variacoes dela mesma nao sustenta nenhuma afirmacao de superioridade.
-//
-// Por que reimplementar o braco A aqui em vez de chamar o codigo de producao:
-// o scorer de producao esta acoplado ao repositorio e ao modelo de dados. Para
-// medir os quatro bracos sobre o MESMO corpus com a MESMA tokenizacao,
-// precisamos deles isolados. A formula do braco A e copia fiel de
-// document_usecase.go -- e justamente por ser tao simples que ela e o objeto de
-// estudo.
+// Bracos lexicais: A (contagem de substring, copia do scorer de
+// document_usecase.go) e B (BM25). O A e reimplementado aqui porque o de
+// producao esta acoplado ao repositorio.
 
-// Document e uma unidade indexavel do experimento.
 type Document struct {
 	ID   string
 	Text string
 }
 
-// Tokenize normaliza e quebra o texto em termos.
-//
-// A MESMA tokenizacao e usada por todos os bracos lexicais de proposito: se
-// cada braco normalizasse de um jeito, a comparacao mediria diferenca de
-// pre-processamento em vez de diferenca de modelo de recuperacao.
-//
-// Nao remove acentos: em portugues "e" e "é" sao palavras diferentes, e
-// remover acento introduz colisoes que favoreceriam artificialmente o casamento
-// lexical -- justamente o que o experimento quer medir sem viés.
+// Tokenize e a mesma para todos os bracos lexicais. Nao remove acentos.
 func Tokenize(text string) []string {
 	fields := strings.FieldsFunc(strings.ToLower(text), func(r rune) bool {
 		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
@@ -52,21 +31,8 @@ func Tokenize(text string) []string {
 	return tokens
 }
 
-// SubstringScorer reproduz o braco A: o scorer atual do ThingIndex.
-//
-// A formula e a de document_usecase.go: para cada termo da consulta, +1 se o
-// termo aparece como substring no texto normalizado. Sem IDF, sem normalizacao
-// por comprimento, sem saturacao de frequencia.
-//
-// As tres ausencias importam e sao o achado que o experimento documenta:
-//
-//   - Sem IDF, um termo comum ("de", "o") pesa igual a um termo discriminativo.
-//   - Sem normalizacao por comprimento, documento longo vence por ser longo.
-//   - Por ser substring e nao token, "pag" casa dentro de "pagamento" e dentro
-//     de "pagina" -- casamentos que o usuario nao pediu.
-//
-// Reproduzi-lo fielmente e o ponto: o experimento precisa medir o sistema como
-// ele e, nao uma versao idealizada dele.
+// SubstringScorer: +1 por termo da consulta que aparece como substring. Sem
+// IDF, sem normalizacao por comprimento ("pag" casa em "pagamento" e "pagina").
 func SubstringScorer(docs []Document, query string) []Result {
 	terms := Tokenize(query)
 
@@ -88,23 +54,16 @@ func SubstringScorer(docs []Document, query string) []Result {
 	return results
 }
 
-// BM25Params agrupa os hiperparametros do BM25.
-//
-// Os defaults k1=1.2 e b=0.75 sao os do artigo original e os usados em TREC.
-// Mante-los fixos e deliberado: ajusta-los contra o proprio conjunto de teste
-// transformaria a baseline num modelo tunado e invalidaria a comparacao -- seria
-// comparar o ThingIndex sem tuning contra um BM25 com tuning.
+// BM25Params: k1 e b ficam nos valores canonicos, sem tuning no conjunto de teste.
 type BM25Params struct {
 	K1 float64
 	B  float64
 }
 
-// DefaultBM25Params devolve os parametros canonicos.
 func DefaultBM25Params() BM25Params {
 	return BM25Params{K1: 1.2, B: 0.75}
 }
 
-// BM25Index e um indice invertido com as estatisticas necessarias ao BM25.
 type BM25Index struct {
 	params        BM25Params
 	docIDs        []string
@@ -115,7 +74,6 @@ type BM25Index struct {
 	totalDocCount int
 }
 
-// NewBM25Index constroi o indice a partir do corpus.
 func NewBM25Index(docs []Document, params BM25Params) *BM25Index {
 	if params.K1 <= 0 {
 		params.K1 = 1.2
@@ -158,16 +116,8 @@ func NewBM25Index(docs []Document, params BM25Params) *BM25Index {
 	return index
 }
 
-// Search devolve os documentos ordenados por score BM25.
-//
-// Usa o IDF com suavizacao de Robertson:
-//
-//	idf(t) = ln(1 + (N - df + 0.5) / (df + 0.5))
-//
-// O `1 +` externo e o que garante IDF sempre positivo. Sem ele, um termo
-// presente em mais da metade do corpus recebe IDF NEGATIVO e passa a PUNIR os
-// documentos que o contem -- um documento que casa com todos os termos da
-// consulta poderia ficar atras de um que nao casa com nenhum.
+// Search usa idf(t) = ln(1 + (N - df + 0.5) / (df + 0.5)); sem o `1 +` um
+// termo em mais da metade do corpus teria IDF negativo.
 func (idx *BM25Index) Search(query string) []Result {
 	if idx == nil || idx.totalDocCount == 0 {
 		return nil
@@ -205,11 +155,7 @@ func (idx *BM25Index) Search(query string) []Result {
 	return results
 }
 
-// sortResults ordena por score decrescente, desempatando por DocID.
-//
-// O desempate explicito nao e cosmetico: sem ele a ordem de itens com score
-// igual depende da ordem de iteracao, e o experimento deixa de ser
-// reproduzivel -- justamente a propriedade que o trabalho afirma ter.
+// sortResults desempata por DocID para a ordem ser reproduzivel.
 func sortResults(results []Result) {
 	sort.Slice(results, func(i, j int) bool {
 		if results[i].Score != results[j].Score {
@@ -219,13 +165,8 @@ func sortResults(results []Result) {
 	})
 }
 
-// FoldDiacritics tira acentos e cedilha das vogais e consoantes do portugues
-// e do espanhol, depois de baixar a caixa. E o que a producao usa antes de
-// tokenizar: o usuario escreve "horaria" e o documento traz "horária".
-//
-// O experimento (bracos A a D) NAO dobra acentos de proposito: ele mede o
-// sistema como foi publicado. A producao e um braco B com esta dobra a mais,
-// e a diferenca fica declarada aqui.
+// FoldDiacritics tira acentos e cedilha (pt/es) depois de baixar a caixa. A
+// producao usa antes de tokenizar; os bracos do experimento nao.
 func FoldDiacritics(text string) string {
 	return diacriticsFolder.Replace(strings.ToLower(text))
 }

@@ -19,11 +19,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// sseWriteDeadline e a janela de OCIOSIDADE do stream de chat: o prazo e
-// renovado a cada evento escrito, entao o que ele limita e o silencio entre
-// dois eventos, e nao a duracao total da resposta. Um LLM que para de produzir
-// derruba a conexao em 2 minutos; um que continua produzindo pode levar o tempo
-// que precisar.
+// sseWriteDeadline limita o silencio entre dois eventos, nao a duracao total:
+// o prazo e renovado a cada evento escrito.
 const sseWriteDeadline = 2 * time.Minute
 
 type ChatHandler struct {
@@ -281,20 +278,14 @@ func (h *ChatHandler) StreamCollectionChat(c *gin.Context) {
 		case errors.Is(err, domain.ErrLLMProviderNotConfigured):
 			_ = writeChatEvent(c, "error", gin.H{"message": i18n.T(lang, "provider.error_llm_not_configured")})
 		default:
-			// "Falha ao gerar resposta" sozinho esconde a causa que o usuario
-			// precisa saber ("monthly usage limit", "context length"). O
-			// detalhe vai junto, curto e numa linha.
+			// Manda o detalhe junto ("monthly usage limit", "context length").
 			_ = writeChatEvent(c, "error", gin.H{"message": i18n.T(lang, "chat.error_stream"), "detail": chatErrorDetail(err)})
 		}
 	}
 }
 
-// chatStreamEventLog loga os eventos do SSE sem uma linha por delta.
-//
-// MOTIVO: havia um log.Printf por evento -- cada token/delta --, centenas de
-// linhas por resposta no caminho quente e sob o lock do logger. Agora so os
-// eventos de estagio/fontes/fim saem na hora; os deltas sao contados e
-// resumidos numa linha ao final.
+// chatStreamEventLog loga os eventos do SSE; os deltas so sao contados e
+// resumidos numa linha no fim, para nao logar cada token.
 type chatStreamEventLog struct {
 	logf       func(format string, args ...any)
 	deltas     int
@@ -319,7 +310,7 @@ func (l *chatStreamEventLog) finish(conversationID uint) {
 }
 
 // chatErrorDetail devolve a causa do erro do provedor em uma linha de ate 200
-// caracteres, para o usuario entender por que a resposta nao veio.
+// caracteres.
 func chatErrorDetail(err error) string {
 	return usecase.ChatErrorDetail(err)
 }
@@ -333,23 +324,10 @@ func parseChatUint(value string) (uint, error) {
 	return uint(parsed), nil
 }
 
-// writeChatEvent escreve um evento SSE e empurra o prazo de escrita.
-//
-// O ServerWriteTimeout do http.Server e um deadline ABSOLUTO contado do inicio
-// da requisicao, e nao um limite de ociosidade. Com 30s configurados, qualquer
-// resposta de chat que demorasse mais que isso era cortada no meio -- o usuario
-// via o texto parar sem erro e sem explicacao. Aumentar o WriteTimeout global
-// nao serve: afrouxaria o prazo de todas as outras rotas, que e justamente a
-// protecao contra cliente lento.
-//
-// http.ResponseController.SetWriteDeadline empurra o prazo apenas desta
-// conexao, a cada evento. Enquanto o LLM estiver produzindo texto o stream
-// segue vivo; se ele parar de produzir, o deadline vence e a conexao morre --
-// que e o comportamento desejado (limite de ociosidade, nao de duracao total).
-//
-// Servidores sem suporte a SetWriteDeadline devolvem ErrNotSupported. Nesse
-// caso seguimos escrevendo normalmente em vez de abortar: perder o streaming
-// longo e ruim, perder o chat inteiro e pior.
+// writeChatEvent escreve um evento SSE e empurra o prazo de escrita desta
+// conexao. O WriteTimeout do http.Server e absoluto desde o inicio da
+// requisicao e cortaria respostas longas; aumenta-lo afrouxaria todas as rotas.
+// Se SetWriteDeadline nao for suportado, segue escrevendo sem o prazo.
 func writeChatEvent(c *gin.Context, event string, payload any) error {
 	encoded, err := json.Marshal(payload)
 	if err != nil {

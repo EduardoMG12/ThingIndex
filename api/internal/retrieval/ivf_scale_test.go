@@ -7,54 +7,12 @@ import (
 	"testing"
 )
 
-// Este arquivo responde a AMEACA A VALIDADE mais obvia do achado de
-// determinismo do braco C-IVF.
-//
-// A OBJECAO QUE ELE ANTECIPA
-//
-// O corpus C1 tem 5 documentos. Com `lists = sqrt(N)`, isso da apenas 2
-// particoes, e um cetico razoavel dira: "o IVF perde recall e varia entre
-// seeds porque voce o colocou num regime degenerado. Com um corpus de tamanho
-// realista o k-means converge para particoes estaveis e o efeito desaparece."
-//
-// A objecao e legitima e nao pode ser respondida com argumento -- so com
-// medida. Sem ela, o numero de 48,4% de perda reportado no artigo fica
-// vulneravel a primeira pergunta da banca.
-//
-// O QUE A MEDICAO MOSTRA (ver TestIVFInstabilidadePersisteEmEscala)
-//
-//	N=   5  lists= 2  recall@10 do IVF vs exato:  31%   consultas instaveis: 20/20
-//	N=  50  lists= 7  recall@10 do IVF vs exato:  69%   consultas instaveis: 20/20
-//	N= 200  lists=14  recall@10 do IVF vs exato:  81%   consultas instaveis: 20/20
-//	N=1000  lists=32  recall@10 do IVF vs exato:  50%   consultas instaveis: 20/20
-//
-// A leitura correta tem DUAS partes, e a honestidade do trabalho depende de
-// reportar as duas:
-//
-//  1. A OBJECAO PROCEDE quanto a MAGNITUDE da perda de recall. Em N=5 o IVF
-//     recupera 31% do que a varredura exata recupera; em N=200, 81%. O regime
-//     de corpus minusculo de fato amplifica a perda, e o artigo precisa dizer
-//     isso em Ameacas a Validade em vez de esperar que ninguem note.
-//
-//  2. A OBJECAO NAO PROCEDE quanto a INSTABILIDADE, que e a afirmacao que o
-//     trabalho realmente faz. Em TODAS as escalas testadas, incluindo N=1000,
-//     100% das consultas devolvem rankings diferentes quando so a seed muda.
-//     A instabilidade nao e artefato de corpus pequeno: e propriedade do
-//     algoritmo.
-//
-// A distincao importa porque as duas afirmacoes tem forcas diferentes. "O IVF
-// perde metade do recall" e sensivel ao corpus. "O IVF torna a resposta
-// dependente da seed" nao e -- e e essa a afirmacao que sustenta a tese.
+// O corpus C1 tem so 5 documentos (2 particoes). Estes testes conferem se o
+// comportamento do IVF se mantem com N maior: a perda de recall varia com N,
+// mas a instabilidade entre seeds aparece em todas as escalas testadas.
 
-// syntheticCorpus gera um corpus com estrutura de cluster em alta dimensao.
-//
-// Usa 768 dimensoes (a do multilingual-e5-base) e 8 clusters gaussianos porque
-// o objetivo e testar o REGIME, nao o conteudo: o que muda entre N=5 e N=1000
-// e o numero de particoes que o k-means precisa formar, e e exatamente isso
-// que a objecao questiona.
-//
-// Os vetores sao normalizados para norma 1, como os reais, para que o produto
-// interno continue sendo o cosseno.
+// syntheticCorpus: 768 dimensoes (a do multilingual-e5-base), 8 clusters
+// gaussianos, vetores com norma 1.
 func syntheticCorpus(n, dim int, seed int64) []DenseVector {
 	source := rand.New(rand.NewSource(seed))
 
@@ -73,10 +31,7 @@ func syntheticCorpus(n, dim int, seed int64) []DenseVector {
 		center := centers[i%clusters]
 		vector := make([]float64, dim)
 		for d := range vector {
-			// O desvio e dividido por sqrt(dim) para que a dispersao angular
-			// nao dependa da dimensao: sem isso, em 768d todos os pontos
-			// ficariam praticamente ortogonais ao centro e os clusters
-			// deixariam de existir.
+			// divide por sqrt(dim); senao em 768d tudo fica ortogonal ao centro
 			vector[d] = center[d] + 0.35*source.NormFloat64()/math.Sqrt(float64(dim))
 		}
 		vectors = append(vectors, DenseVector{
@@ -127,10 +82,7 @@ func TestIVFInstabilidadePersisteEmEscala(t *testing.T) {
 		consultasInstaveis := 0
 
 		for q := 0; q < consultas; q++ {
-			// A consulta e um documento existente levemente perturbado, o que
-			// simula "o usuario procura por algo que esta no corpus" -- o caso
-			// em que a perda de recall e mais grave, porque a resposta certa
-			// existe e mesmo assim pode nao ser devolvida.
+			// consulta = documento existente perturbado; a resposta certa existe
 			base := vectors[querySource.Intn(n)].Vector
 			query := make([]float64, dim)
 			for d := range query {
@@ -179,12 +131,7 @@ func TestIVFInstabilidadePersisteEmEscala(t *testing.T) {
 		t.Logf("N=%4d lists=%3d probes=%d | recall@%d do IVF vs exato: %5.1f%% | consultas instaveis entre seeds: %d/%d",
 			n, params.Lists, params.Probes, topK, recallMedio, consultasInstaveis, consultas)
 
-		// A ASSERCAO QUE IMPORTA. A afirmacao do artigo nao e sobre a
-		// magnitude da perda (que varia com N, e o artigo reporta isso em
-		// Ameacas a Validade) -- e sobre a resposta depender de um numero
-		// aleatorio. Se em alguma escala a instabilidade desaparecesse, a
-		// afirmacao precisaria ser restringida aquele regime, e este teste
-		// falharia dizendo exatamente isso.
+		// a instabilidade por seed tem de aparecer em toda escala
 		if consultasInstaveis == 0 {
 			t.Errorf("N=%d: nenhuma consulta variou entre seeds. A afirmacao do artigo de que "+
 				"o indice aproximado torna a resposta dependente da seed nao vale nesta escala "+
@@ -198,11 +145,7 @@ func TestIVFPerdaDeRecallEMaiorEmCorpusMinusculo(t *testing.T) {
 		t.Skip("gera corpus de 200 vetores em 768d; pulado em -short")
 	}
 
-	// Este teste registra a parte da objecao que PROCEDE, e existe para que o
-	// numero reportado no artigo (48,4% de perda no corpus C1) venha sempre
-	// acompanhado da ressalva de escala. Se alguem "melhorar" o IVF de modo a
-	// eliminar a diferenca entre as escalas, o teste falha e obriga a revisar
-	// o texto de Ameacas a Validade.
+	// A perda de recall no corpus minusculo e maior que em N=200.
 	const (
 		dim       = 768
 		consultas = 20

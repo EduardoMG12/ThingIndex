@@ -6,11 +6,6 @@
 //	T  ThingIndex como esta (BM25 + 6 fontes + LLM), medido pela API real
 //	F  o mesmo modelo com o documento inteiro no contexto, sem recuperacao
 //
-// O braco F e o adversario que o artigo nunca tinha medido ("por que nao mandar
-// tudo para a IA?"). Se ele vencer em acerto, o resultado e publicado do mesmo
-// jeito (constituicao VI): a comparacao passa a ser custo por consulta e
-// proveniencia verificavel.
-//
 // Nao roda em CI: depende de rede, de provedor e da API no ar.
 //
 // Uso (a partir de api/, com o .env carregado no ambiente):
@@ -42,18 +37,12 @@ func defaultGabaritoPath() string {
 	return filepath.Join(filepath.Dir(thisFile), "..", "..", "internal", "evalcorpus", "testdata", "gabarito-si.json")
 }
 
-// variant e pair_id entram no CSV porque sem eles a comparacao literal x
-// parafrase so sai cruzando o CSV com o gabarito na mao, que foi como ela
-// precisou ser feita na primeira medicao. O par e a variavel central do
-// experimento de formulacao: ela pertence ao dado bruto.
+// variant e pair_id vao no CSV para comparar literal x parafrase sem cruzar
+// com o gabarito na mao.
 var csvHeader = []string{"question_id", "stratum", "variant", "pair_id", "origin", "arm", "scope", "repeat", "model", "correct", "cited_pages", "provenance_ok", "retrieval_hit", "prompt_tokens", "completion_tokens", "usage_reported", "latency_ms", "cost_usd", "truncated", "error", "answer"}
 
-// csvColumn devolve o indice da coluna pelo nome do csvHeader.
-//
-// MOTIVO: o status impresso no terminal lia row[7] -- a coluna "repeat" --
-// como se fosse "correct" (indice 9); toda linha com repeat != "true" saia
-// "errada", ou seja, todas. Indice magico desalinha em silencio quando uma
-// coluna entra no meio; o nome nao. Coluna inexistente e erro de programa.
+// csvColumn devolve o indice da coluna pelo nome; indice fixo desalinhava
+// quando uma coluna entrava no meio.
 func csvColumn(name string) int {
 	for i, column := range csvHeader {
 		if column == name {

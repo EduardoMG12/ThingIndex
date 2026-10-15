@@ -9,9 +9,8 @@ import (
 	"thing-index/internal/domain"
 )
 
-// Regressao P0-1 contra Postgres real: o indice unico precisa aceitar o mesmo
-// (tipo, modelo, hash) para usuarios diferentes, e a leitura precisa filtrar
-// por usuario e provedor.
+// O indice unico aceita o mesmo (tipo, modelo, hash) para usuarios
+// diferentes; a leitura filtra por usuario e provedor.
 func TestCacheDeEnriquecimentoIsolaUsuarioEProvedor(t *testing.T) {
 	db := openIntegrationDB(t)
 	repo := NewGormIndexingRepository(db)
@@ -36,7 +35,6 @@ func TestCacheDeEnriquecimentoIsolaUsuarioEProvedor(t *testing.T) {
 		t.Fatalf("a vitima leu a entrada do atacante: %+v", encontrados)
 	}
 
-	// Mesmo (tipo, modelo, hash) para outro usuario precisa gravar, nao colidir.
 	if err := repo.StoreEnrichment(ctx, vitima, []domain.EnrichmentCacheEntry{{Kind: "page", ContentHash: "h1", Summary: "legitimo"}}); err != nil {
 		t.Fatalf("gravar da vitima: %v", err)
 	}

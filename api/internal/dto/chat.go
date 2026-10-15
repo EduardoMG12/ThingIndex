@@ -6,10 +6,7 @@ import (
 	"thing-index/internal/models"
 )
 
-// Limites do corpo do chat. Sem eles o papel era texto livre -- ia para o
-// prompt em maiusculas, entao "system" virava uma linha SYSTEM: -- e o corpo
-// inteiro era decodificado antes de o use case cortar o historico para 6.
-// O frontend manda as 6 ultimas mensagens; 20 deixa folga sem abrir a porta.
+// Limites do corpo do chat. O frontend manda as 6 ultimas mensagens; 20 da folga.
 const (
 	ChatHistoryMaxItems        = 20
 	ChatPromptMaxRunes         = 8000

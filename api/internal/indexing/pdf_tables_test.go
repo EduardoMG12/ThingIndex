@@ -127,8 +127,7 @@ func TestPaginaDeProsaNaoGeraTabela(t *testing.T) {
 	}
 }
 
-// Celula de tabela nao e secao: a Matriz inteira e uma tabela, e o sumario
-// dela tinha 16 "secoes" como "67 SIS07304 | SIS07405" e "Atividade Pedagógica".
+// Celula de tabela nao e secao ("67 SIS07304 | SIS07405", "Atividade Pedagógica").
 func TestCelulaDeTabelaNaoViraSecao(t *testing.T) {
 	exigirFerramentasDePDF(t)
 	dados, err := os.ReadFile(filepath.Join(diretorioDoDemo, "matriz-curricular-si-palmas-2023.pdf"))
@@ -157,9 +156,7 @@ func TestCelulaDeTabelaNaoViraSecao(t *testing.T) {
 	}
 }
 
-// O texto da pagina inclui os titulos: a identificacao do PPC do Tecnico e
-// feita de rotulos curtos que o detector promove a titulo, e sem eles a
-// pagina 7 ficava so com endereco e telefone.
+// O texto da pagina inclui os titulos (rotulos curtos promovidos a titulo).
 func TestTextoDaPaginaIncluiOsTitulos(t *testing.T) {
 	exigirFerramentasDePDF(t)
 	dados, err := os.ReadFile(filepath.Join(diretorioDoDemo, "ppc-tecnico-informatica-palmas.pdf"))

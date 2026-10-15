@@ -442,20 +442,8 @@ func toIndexingBenchmarkRetrievalComparisonResponse(
 	}
 }
 
-// copiaDeTextos devolve uma copia da lista que NUNCA e nil.
-//
-// Substitui copiaDeTextos(origem), que preserva a copia mas devolve
-// nil quando a origem esta vazia -- e nil serializa como `null` no JSON, nao
-// como `[]`. O cliente que faz .map direto quebra com
-// "Cannot read properties of null".
-//
-// O frontend atual se protege com normalizeStringList, mas a inconsistencia de
-// contrato continua sendo dele: o resto do pacote devolve [] e estes seis
-// campos devolviam null.
-//
-// A copia continua sendo necessaria: sem ela, o chamador que altera a resposta
-// corromperia a fixture carregada em memoria, e o pedido seguinte veria dado
-// adulterado.
+// copiaDeTextos nunca devolve nil: nil vira `null` no JSON. A copia evita que o
+// chamador altere a fixture em memoria.
 func copiaDeTextos(origem []string) []string {
 	copia := make([]string, 0, len(origem))
 	return append(copia, origem...)

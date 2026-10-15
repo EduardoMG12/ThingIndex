@@ -20,7 +20,6 @@ import (
 	"thing-index/internal/pkg/provider"
 )
 
-// answer e o que cada braco devolve para uma pergunta.
 type answer struct {
 	Text             string
 	Model            string     // modelo reportado pelo braco (T: no evento done)
@@ -33,11 +32,8 @@ type answer struct {
 	Err              error
 }
 
-// ---------------------------------------------------------------- braco T
-
 // thingIndexArm fala com a API real: login, conversa nova por pergunta e
-// /chat/stream. Mede o produto como o coordenador o usa, nao uma versao
-// idealizada do usecase.
+// /chat/stream.
 type thingIndexArm struct {
 	api        string
 	token      string
@@ -89,9 +85,7 @@ func (a *thingIndexArm) post(path string, body any, out any) error {
 }
 
 // doResilient repete a chamada quando a API cai no meio da rodada (o air
-// recompila a API a cada edicao em Go do mesmo modulo: "connection reset by
-// peer" ou EOF por uns 20 segundos). Sem isto, uma rodada de 72 perguntas
-// perdeu 52 por uma edicao no indexador.
+// recompila a cada edicao: "connection reset by peer" ou EOF por ~20 s).
 func (a *thingIndexArm) doResilient(req *http.Request, body []byte) (*http.Response, error) {
 	var resp *http.Response
 	var err error
@@ -124,17 +118,15 @@ func (a *thingIndexArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) 
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+a.token)
-	// O frontend manda o locale neste header; sem ele a API assume outro
-	// idioma e o modelo responde em ingles, o que derruba o casamento.
+	// Sem o locale a API responde em ingles e o casamento falha.
 	req.Header.Set("Accept-Language", "pt-BR")
 	start := time.Now()
 	resp, err := a.doResilient(req, raw)
 	if err != nil {
 		return answer{Err: err}
 	}
-	// A rota /chat/stream tem limitador por usuario (429). O experimento nao
-	// e um ataque: espera a janela passar e tenta de novo, sem contar o tempo
-	// de espera na latencia.
+	// /chat/stream tem limitador por usuario (429): espera a janela, sem contar
+	// a espera na latencia.
 	for tries := 0; resp.StatusCode == http.StatusTooManyRequests && tries < 10; tries++ {
 		resp.Body.Close()
 		time.Sleep(30 * time.Second)
@@ -202,13 +194,11 @@ func (a *thingIndexArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) 
 	}
 	out.Latency = time.Since(start)
 	out.Text = strings.TrimSpace(text.String())
-	// A API engole a falha do provedor e fecha o stream sem texto; sem isto a
-	// linha entraria como "errada" e contaminaria o acerto.
+	// A API engole a falha do provedor e fecha o stream sem texto.
 	if out.Err == nil && out.Text == "" {
 		out.Err = errors.New("resposta vazia (provedor falhou no servidor?)")
 	}
-	// Conversa descartavel: sem isso, 200+ conversas do experimento poluem a
-	// tela do usuario demo. Melhor esforco; a linha ja esta medida.
+	// Apaga a conversa para nao poluir a tela do usuario demo. Melhor esforco.
 	for tries := 0; tries < 5; tries++ {
 		req, err = http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/chat/conversations/%d", a.api, created.Data.ID), nil)
 		if err != nil {
@@ -220,8 +210,7 @@ func (a *thingIndexArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) 
 			break
 		}
 		resp.Body.Close()
-		// O DELETE passa pelo mesmo limitador do chat (429): sem esperar, 182
-		// conversas "gabarito" ficaram na tela do usuario demo.
+		// O DELETE passa pelo mesmo limitador (429).
 		if resp.StatusCode != http.StatusTooManyRequests {
 			break
 		}
@@ -230,10 +219,8 @@ func (a *thingIndexArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion) 
 	return out
 }
 
-// ---------------------------------------------------------------- braco F
-
 // fullDocumentArm manda o(s) documento(s) inteiro(s) ao mesmo modelo, sem
-// recuperacao. E o adversario que o artigo nunca tinha medido.
+// recuperacao.
 type fullDocumentArm struct {
 	llm      domain.LLMService
 	fallback domain.LLMService
@@ -350,9 +337,8 @@ func (a *fullDocumentArm) Ask(ctx context.Context, q evalcorpus.GabaritoQuestion
 	if err != nil && strings.Contains(strings.ToLower(err.Error()), "context") {
 		out.Truncated = true
 	}
-	// Provedor que aceita o prompt mas conta bem menos tokens do que o enviado
-	// cortou o contexto em silencio. 50% e folga para a diferenca entre a
-	// estimativa por runas e o tokenizador real.
+	// Provedor que conta bem menos tokens que o enviado cortou o contexto em
+	// silencio. 50% de folga cobre runas/4 vs tokenizador real.
 	if out.UsageReported && out.PromptTokens < estimated/2 {
 		out.Truncated = true
 	}

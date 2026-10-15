@@ -11,11 +11,9 @@ import (
 	"thing-index/internal/models"
 )
 
-// Regressao P1-4: ReplaceIndexingResult fazia um unico INSERT com todos os
-// paragrafos. ParagraphNode tem 8 colunas, entao acima de ~8191 paragrafos o
-// statement passava de 65535 parametros, o pgx recusava e o documento ia para
-// FAILED_PERSISTING_INDEX. A conexao deste teste NAO tem CreateBatchSize: o
-// que precisa segurar e o lote explicito do repositorio.
+// Acima de ~8191 paragrafos (8 colunas) um INSERT unico passa de 65535
+// parametros e o pgx recusa. A conexao aqui nao tem CreateBatchSize: quem
+// segura e o lote explicito do repositorio.
 func TestReplaceIndexingResultPersisteDocumentoComMaisDeNoveMilParagrafos(t *testing.T) {
 	db := openIntegrationDB(t)
 	repo := &gormDocumentProcessingRepository{db: db}

@@ -47,9 +47,8 @@ func stripWhitespace(s string) string {
 	return b.String()
 }
 
-// Regressao: um PDF totalmente digitalizado fazia o extrator retornar
-// "implausible text", e indexPDF abortava antes de chegar no fallback de OCR.
-// Na pratica o OCR so funcionava em PDFs parcialmente escaneados.
+// Regressao: PDF totalmente digitalizado abortava com "implausible text"
+// antes do fallback de OCR.
 func TestScannedPDFReachesOCRFallback(t *testing.T) {
 	t.Parallel()
 

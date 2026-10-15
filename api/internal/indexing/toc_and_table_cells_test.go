@@ -2,9 +2,8 @@ package indexing
 
 import "testing"
 
-// A pagina de sumario do PPC ("1.1.1 Denominacao do Curso 9", 124 linhas)
-// duplicava cada secao do documento. Cinco ou mais linhas terminadas em
-// numero de pagina marcam a pagina como sumario, e nela nada vira titulo.
+// Cinco ou mais linhas terminadas em numero de pagina marcam a pagina como
+// sumario, e nela nada vira titulo.
 func TestPaginaDeSumarioNaoGeraTitulos(t *testing.T) {
 	page := 3
 	blocks := []textBlock{
@@ -37,7 +36,7 @@ func TestPaginaDeSumarioNaoGeraTitulos(t *testing.T) {
 }
 
 // "Teorica 67", "Total 205", "Subtotal 4 80 40": celulas de tabela em caixa
-// mista com numero solto viravam secao (33 de 50 na matriz curricular).
+// mista com numero solto viravam secao.
 // Titulo numerado ("2.1 Objetivos") e caixa alta ("ANEXO X - C") continuam.
 func TestCelulaDeTabelaComNumeroNaoEhTitulo(t *testing.T) {
 	// Tambem: valor de campo de uma palavra, item terminado em ponto e virgula

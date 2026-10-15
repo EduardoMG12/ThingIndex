@@ -20,24 +20,9 @@ func newChunkBuilder(documentID uint) *chunkBuilder {
 	return &chunkBuilder{documentID: documentID}
 }
 
-// chunkPageFor decide a pagina de origem dos chunks de um no do sumario.
-//
-// Precedencia, da origem mais proxima para a mais distante: pagina do primeiro
-// paragrafo NAO VAZIO do intervalo do no; se nula, o StartPage do proprio no;
-// se tambem nula, nulo. Nunca zero.
-//
-// A ordem importa. O StartPage do no e derivado dos mesmos paragrafos, entao
-// usar o paragrafo direto e um passo de derivacao a menos entre a evidencia e
-// a coordenada publicada. E nada aqui infere pagina por semelhanca de texto:
-// heuristica de atribuicao produziria uma pagina plausivel e errada, que e o
-// pior resultado possivel numa metrica de auditabilidade (principio I).
-//
-// O retorno e sempre um ponteiro NOVO, nunca o do paragrafo ou o do no. Devolver
-// o ponteiro de origem faria o chunk compartilhar memoria com a estrutura que o
-// gerou: alterar a pagina do paragrafo depois mudaria a pagina do chunk sem que
-// ninguem tivesse escrito nele. Nao ha esse caminho hoje, mas o principio II
-// exige que a mesma entrada produza a mesma saida, e proveniencia que muda
-// sozinha e o oposto disso.
+// chunkPageFor: pagina do primeiro paragrafo nao vazio do no; senao o
+// StartPage do no; senao nil. Nunca zero, e nunca inferida por texto.
+// Devolve ponteiro novo para o chunk nao compartilhar memoria com a origem.
 func chunkPageFor(node models.DocumentOutlineNode, paragraphs []models.ParagraphNode) *int {
 	if start, end, ok := outlineParagraphRange(node); ok {
 		for idx := start; idx <= end && idx < len(paragraphs); idx++ {
@@ -148,9 +133,8 @@ func (b *chunkBuilder) buildChunksForNode(
 	}
 }
 
-// splitOversizedChunk recebe a pagina ja resolvida em vez de recalcular: as
-// partes de um mesmo no compartilham a pagina de inicio do no, e recalcular
-// abriria espaco para as partes divergirem entre si.
+// splitOversizedChunk recebe a pagina ja resolvida para as partes do mesmo no
+// nao divergirem.
 func (b *chunkBuilder) splitOversizedChunk(
 	node models.DocumentOutlineNode,
 	content string,

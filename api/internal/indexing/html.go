@@ -24,10 +24,8 @@ func (i *DeterministicIndexer) indexHTML(documentID uint, data []byte) (domain.I
 	currentSectionKey := ""
 	currentSectionTitle := ""
 
-	// insideBlock evita emitir duas vezes o texto de um <p>/<li> aninhado:
-	// extractHTMLText ja captura toda a subarvore do bloco externo, e antes a
-	// descida continuava emitindo cada bloco interno de novo. A recursao segue
-	// mesmo assim, para que tabelas dentro de listas ainda sejam encontradas.
+	// insideBlock evita duplicar o texto de <p>/<li> aninhado (extractHTMLText
+	// ja pega a subarvore). A recursao segue para achar tabelas dentro de listas.
 	var walk func(node *html.Node, insideBlock bool)
 	walk = func(node *html.Node, insideBlock bool) {
 		if node == nil {

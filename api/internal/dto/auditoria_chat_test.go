@@ -9,12 +9,8 @@ import (
 	"thing-index/internal/models"
 )
 
-// Conversores de auditoria e chat. A auditoria e o que sustenta a afirmacao de
-// rastreabilidade do trabalho; o chat e a tela mais usada.
-
 func TestEventoDeAuditoriaPreservaCorrelacaoEStatus(t *testing.T) {
-	// correlation_id e o que liga um upload a indexacao e ao erro. Perdido, a
-	// trilha de auditoria vira uma lista de eventos soltos.
+	// correlation_id liga o upload a indexacao e ao erro.
 	quando := time.Date(2026, 3, 20, 12, 0, 0, 0, time.UTC)
 
 	resposta := ToDocumentAuditEventResponse(&models.DocumentAuditEvent{
@@ -64,8 +60,7 @@ func TestResumoDeAuditoriaDeProviderSobrevive(t *testing.T) {
 }
 
 func TestPaginacaoDeAuditoriaPreservaOCursor(t *testing.T) {
-	// Sem next_cursor o botao "carregar mais" nao tem para onde ir, e a tela
-	// mostra so a primeira pagina sem avisar que ha mais.
+	// Sem next_cursor o "carregar mais" nao funciona.
 	resposta := ToDocumentAuditQueryResponse(&domain.DocumentAuditQueryResult{
 		PageInfo: domain.AuditPageInfo{
 			Limit:      12,
@@ -99,8 +94,6 @@ func TestConversaDeChatNulaDevolveNulo(t *testing.T) {
 }
 
 func TestConversaDeChatPreservaAColecaoEOTitulo(t *testing.T) {
-	// collection_id define sobre quais documentos a conversa responde. Perdido,
-	// a conversa passaria a buscar no acervo errado.
 	resposta := ToChatConversationResponse(&models.ChatConversation{
 		ID:           5,
 		CollectionID: 9,

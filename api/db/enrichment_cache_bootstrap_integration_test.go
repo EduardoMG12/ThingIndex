@@ -50,10 +50,8 @@ func abrirBancoDeMigracao(t *testing.T) *gorm.DB {
 	return db
 }
 
-// Regressao P0-1: banco que ja tinha o cache global (indice unico em kind,
-// model, content_hash, linhas sem dono) precisa sair da migracao com o indice
-// antigo removido e as linhas envenenaveis apagadas; senao dois usuarios com o
-// mesmo texto colidiriam no indice antigo.
+// Banco com o cache global antigo: a migracao tem de remover o indice unico antigo
+// e apagar as linhas sem dono, senao dois usuarios com o mesmo texto colidem.
 func TestMigracaoDoCacheDeEnriquecimentoRemoveIndiceGlobalELinhasSemDono(t *testing.T) {
 	db := abrirBancoDeMigracao(t)
 

@@ -11,14 +11,9 @@ import (
 	"strings"
 )
 
-// Gabarito e o conjunto de perguntas de coordenador sobre a colecao real de SI,
-// usado pelo experimento de geracao (cmd/generation-eval).
-//
-// Difere do Corpus C1 de proposito: C1 e hermetico e mede RECUPERACAO sobre
-// documentos sinteticos; o gabarito aponta para PDFs reais, por pagina fisica,
-// e mede a RESPOSTA ponta a ponta. O hash congela as perguntas: ajustar o
-// sistema e depois "ajustar" a pergunta e a forma mais facil de produzir um
-// numero falso, e o teste falha se o arquivo mudar sem o hash acompanhar.
+// Gabarito e o conjunto de perguntas sobre a colecao real de SI usado pelo
+// cmd/generation-eval. Aponta para PDFs reais por pagina fisica. O hash congela
+// as perguntas: o teste falha se o arquivo mudar sem o hash acompanhar.
 type Gabarito struct {
 	Version      string             `json:"version"`
 	Notes        string             `json:"notes"`
@@ -26,17 +21,12 @@ type Gabarito struct {
 	ReviewedBy   []string           `json:"reviewed_by"`
 	Documents    []GabaritoDocument `json:"documents"`
 	Questions    []GabaritoQuestion `json:"questions"`
-	// Strata e MinQuestions permitem que cada gabarito declare as proprias
-	// regras. Sem isso, as regras do acervo de ensino (prosa, tabela,
-	// calendario, negativa) valeriam para todo gabarito, e um corpus de
-	// legislacao so entraria inventando perguntas de calendario sobre lei
-	// federal ou afrouxando a constante para todo mundo. Ausentes, valem os
-	// padroes historicos, entao o gabarito de ensino nao muda.
+	// Strata e MinQuestions sao opcionais; ausentes, valem os padroes do acervo
+	// de ensino.
 	Strata       map[string]int `json:"strata,omitempty"`
 	MinQuestions int            `json:"min_questions,omitempty"`
 }
 
-// strata devolve os estratos exigidos deste gabarito.
 func (g *Gabarito) strata() map[string]int {
 	if len(g.Strata) > 0 {
 		return g.Strata
@@ -44,7 +34,6 @@ func (g *Gabarito) strata() map[string]int {
 	return GabaritoStrata
 }
 
-// minQuestions devolve o minimo de perguntas deste gabarito.
 func (g *Gabarito) minQuestions() int {
 	if g.MinQuestions > 0 {
 		return g.MinQuestions
@@ -57,13 +46,8 @@ type GabaritoDocument struct {
 	File  string `json:"file"`
 	Title string `json:"title"`
 	Pages int    `json:"pages"`
-	// Aliases sao os outros nomes com que o documento aparece nas fontes do
-	// chat: o titulo que ficou gravado na colecao nem sempre e o do gabarito
-	// ("NR 6 - Equipamentos de Protecao Individual" contra "NR 6 - EPI"). Sem
-	// eles a citacao correta nao casa com o alvo e a proveniencia sai
-	// subestimada. Ficam fora do hash congelado, que cobre so as perguntas:
-	// dizer como um documento se chama nao muda o que se pergunta nem o que
-	// se espera.
+	// Aliases sao outros titulos com que o documento aparece nas fontes do chat
+	// ("NR 6 - EPI"). Ficam fora do hash, que cobre so as perguntas.
 	Aliases []string `json:"aliases,omitempty"`
 }
 
@@ -99,48 +83,27 @@ type GabaritoQuestion struct {
 	// Targets lista documento e paginas onde a resposta esta. Vazio marca
 	// pergunta negativa: a resposta certa e a recusa.
 	Targets []GabaritoTarget `json:"targets"`
-	// AnswerPatterns sao regex que TODAS precisam casar na resposta, ja com
-	// acentos e caixa dobrados. Uma alternancia dentro da regex cobre as formas
-	// equivalentes ("sis07206|programacao de computadores i").
+	// AnswerPatterns: todas precisam casar, sobre texto ja sem acento e caixa.
 	AnswerPatterns []string `json:"answer_patterns"`
-	// RejectPatterns invalida a resposta se QUALQUER uma casar, mesmo que as
-	// AnswerPatterns casem. Serve as perguntas cuja resposta certa pode conter
-	// "nao" ou "ha": sem isso, uma recusa ("nao ha informacoes sobre isso")
-	// passava como acerto de existencia ou de premissa falsa. A banca mediu
-	// que uma recusa constante acertava as 24 perguntas dessas formas.
+	// RejectPatterns invalida a resposta se qualquer uma casar. Sem isso uma
+	// recusa ("nao ha informacoes") passava em perguntas cuja resposta tem "nao" ou "ha".
 	RejectPatterns []string `json:"reject_patterns,omitempty"`
 	Expected       string   `json:"expected"`
-	// Variant e PairID sustentam o achado central do trabalho sobre reuso de
-	// vocabulario: a recuperacao acerta quase tudo quando a pergunta repete as
-	// palavras do documento e despenca quando a mesma necessidade e expressa de
-	// outro jeito.
-	//
-	// Medir isso exige que a MESMA necessidade de informacao apareca duas vezes,
-	// com a mesma resposta esperada e o mesmo alvo, mudando so a formulacao:
-	//
-	//	literal   -- usa os termos do documento
-	//	parafrase -- expressa a necessidade com o vocabulario de quem pergunta
-	//
-	// PairID liga as duas. Sem o par, um gabarito escrito por quem ja leu a
-	// pagina herda o vocabulario dela e mede casamento lexical se passando por
-	// compreensao, que foi exatamente o diagnostico do conselho sobre os 100%
-	// obtidos nos primeiros temas.
+	// Variant (literal | parafrase) e PairID ligam duas formulacoes da mesma
+	// pergunta, com mesmo alvo e mesma resposta esperada.
 	Variant string `json:"variant,omitempty"`
 	PairID  string `json:"pair_id,omitempty"`
 	// Origin: "pdf" (escrita a partir do PDF) ou "rodada-cc5" (ja usada para
-	// ajustar o sistema; o artigo reporta com e sem elas).
+	// ajustar o sistema).
 	Origin string `json:"origin"`
 }
 
-// GabaritoStrata sao os estratos PADRAO, do acervo de ensino, e o minimo de
-// perguntas em cada um. Um gabarito pode declarar os seus em "strata".
+// GabaritoStrata sao os estratos padrao e o minimo de perguntas em cada um.
 var GabaritoStrata = map[string]int{"prosa": 20, "tabela": 15, "calendario": 10, "negativa": 5}
 
-// GabaritoMinQuestions e o minimo PADRAO. Um gabarito pode declarar o seu em
-// "min_questions".
+// GabaritoMinQuestions e o minimo padrao (sobrescrito por "min_questions").
 const GabaritoMinQuestions = 50
 
-// Variantes de formulacao. Ver o comentario de GabaritoQuestion.Variant.
 const (
 	VariantLiteral   = "literal"
 	VariantParafrase = "parafrase"
@@ -161,8 +124,7 @@ func LoadGabarito(path string) (*Gabarito, error) {
 	return &g, nil
 }
 
-// QuestionsSHA256 e o hash das perguntas serializadas; e o valor esperado em
-// FrozenSHA256.
+// QuestionsSHA256 e o hash das perguntas serializadas (comparado com FrozenSHA256).
 func (g *Gabarito) QuestionsSHA256() string {
 	raw, _ := json.Marshal(g.Questions)
 	sum := sha256.Sum256(raw)
@@ -252,8 +214,6 @@ func (g *Gabarito) Validate() error {
 		}
 	}
 
-	// Um par incompleto ou incoerente invalida a comparacao literal x parafrase,
-	// que e justamente o que o par existe para medir.
 	pairIDs := make([]string, 0, len(pares))
 	for id := range pares {
 		pairIDs = append(pairIDs, id)

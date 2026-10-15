@@ -7,10 +7,6 @@ import (
 	"thing-index/internal/domain"
 )
 
-// Conversores do relatorio de benchmark. E o payload que expõe a comparacao com
-// o PageIndex e as metricas que o trabalho cita -- numero corrompido aqui vira
-// numero errado na defesa.
-
 func TestRelatorioNuloDevolveNulo(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -24,9 +20,7 @@ func TestRelatorioNuloDevolveNulo(t *testing.T) {
 }
 
 func TestMetricasDoBenchmarkSobrevivemSemArredondar(t *testing.T) {
-	// As metricas vao para tabela do artigo. Truncar 0,562 para 0,56 ou para 0
-	// mudaria um numero citado -- e o principio de honestidade do projeto exige
-	// que o valor exibido seja o medido.
+	// As metricas nao podem ser arredondadas na conversao.
 	resposta := ToIndexingBenchmarkReportResponse(&domain.IndexingBenchmarkReport{
 		DatasetVersion: "2026-03-20",
 		Metrics: domain.IndexingBenchmarkMetrics{
@@ -57,8 +51,6 @@ func TestMetricasDoBenchmarkSobrevivemSemArredondar(t *testing.T) {
 }
 
 func TestListasDoRelatorioVaziasNaoViramNulas(t *testing.T) {
-	// A tela percorre metodologia, criterios e limitacoes. Null quebra a pagina
-	// de benchmark inteira.
 	resposta := ToIndexingBenchmarkReportResponse(&domain.IndexingBenchmarkReport{
 		DatasetVersion: "2026-03-20",
 	})
@@ -85,8 +77,7 @@ func TestListasDoRelatorioVaziasNaoViramNulas(t *testing.T) {
 }
 
 func TestCorpusPreservaTitulosEsperados(t *testing.T) {
-	// ExpectedOutlineTitles e o gabarito da avaliacao estrutural. Perdido, o
-	// benchmark compara contra lista vazia e passa sempre.
+	// ExpectedOutlineTitles e o gabarito; perdido, o benchmark compara contra lista vazia.
 	resposta := ToIndexingBenchmarkReportResponse(&domain.IndexingBenchmarkReport{
 		Corpus: []domain.IndexingBenchmarkCorpusDocument{
 			{
@@ -117,9 +108,7 @@ func TestCorpusPreservaTitulosEsperados(t *testing.T) {
 }
 
 func TestCorpusCopiaOsTitulosEmVezDeCompartilharOSlice(t *testing.T) {
-	// O conversor usa append([]string(nil), ...) de proposito: sem a copia, o
-	// chamador que altera a resposta corromperia a fixture carregada em
-	// memoria, e o proximo pedido veria dado adulterado.
+	// Sem a copia, alterar a resposta corromperia a fixture em memoria.
 	original := []string{"1 RELATORIO", "2 FUNDAMENTACAO"}
 
 	resposta := ToIndexingBenchmarkReportResponse(&domain.IndexingBenchmarkReport{

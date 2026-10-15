@@ -117,8 +117,7 @@ func TestFonteDeLinhaVemPrimeiroEVaiAoPromptComoLinha(t *testing.T) {
 	}
 }
 
-// A fonte de pagina aponta o paragrafo com mais termos da pergunta: e o que o
-// canvas grifa ao clicar.
+// A fonte de pagina aponta o paragrafo com mais termos da pergunta.
 func TestFonteDePaginaApontaOParagrafoMaisProximoDaPergunta(t *testing.T) {
 	t.Parallel()
 	page := 126
@@ -169,9 +168,8 @@ func TestFonteApontaAsLinhasQueCasamAPergunta(t *testing.T) {
 	}
 }
 
-// A fonte leva a caixa do paragrafo, as caixas das linhas citadas e a data de
-// indexacao: depois de reindexar, o grifo continua no lugar e a tela sabe que
-// o indice mudou.
+// A fonte leva as caixas e a data de indexacao, para o grifo sobreviver a
+// reindexacao.
 func TestFonteLevaCaixaLinhasEDataDoIndice(t *testing.T) {
 	t.Parallel()
 	page := 199
@@ -195,9 +193,7 @@ func TestFonteLevaCaixaLinhasEDataDoIndice(t *testing.T) {
 	}
 }
 
-// Entre secoes e paginas, a fonte com mais termos da pergunta vem antes,
-// independente de ser secao ou pagina. Antes: tres secoes com 2 termos na
-// frente da pagina da Lei com 5.
+// Entre secoes e paginas, vem antes a fonte com mais termos da pergunta.
 func TestFontesOrdenadasPorTermosCasados(t *testing.T) {
 	t.Parallel()
 	p1, p3 := 1, 3

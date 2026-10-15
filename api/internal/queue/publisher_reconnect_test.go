@@ -7,19 +7,6 @@ import (
 	"testing"
 )
 
-// O publicador guardava conexao e canal criados uma unica vez, na subida do
-// processo. Quando o RabbitMQ caia e voltava, todo Publish seguinte falhava com
-// "channel/connection is not open" -- para sempre, porque nada reabria a
-// conexao.
-//
-// O efeito foi observado numa queda real de broker: os eventos do outbox
-// esgotaram as tentativas e foram para FAILED DEPOIS que o RabbitMQ ja havia
-// voltado. O documento ficou QUEUED indefinidamente, e a unica saida era
-// reiniciar o worker.
-//
-// E o mesmo defeito que derrubava o consumidor: objeto de conexao de longa vida
-// que nao sabe se reconstruir.
-
 type publicadorFalso struct {
 	tentativas  int32
 	reconexoes  int32
@@ -59,9 +46,6 @@ func TestPublicadorReconectaQuandoOCanalMorreu(t *testing.T) {
 	}
 }
 
-// TestPublicadorNaoReconectaEmErroDeNegocio: payload invalido nao melhora com
-// conexao nova. Reconectar nesse caso mascararia o defeito e dobraria o custo
-// de cada falha.
 func TestPublicadorNaoReconectaEmErroDeNegocio(t *testing.T) {
 	erroDeNegocio := errors.New("evento sem document_id")
 	falso := &publicadorFalso{falharAte: 5, erroDeCanal: erroDeNegocio}
@@ -79,8 +63,7 @@ func TestPublicadorNaoReconectaEmErroDeNegocio(t *testing.T) {
 	}
 }
 
-// TestPublicadorTentaUmaVezSo evita laco: se a publicacao falhar de novo mesmo
-// depois de reconectar, o erro sobe para o outbox tratar com backoff proprio.
+// Se falhar de novo apos reconectar, o erro sobe para o backoff do outbox.
 func TestPublicadorTentaUmaVezSo(t *testing.T) {
 	erroPersistente := errors.New("connection refused")
 	falso := &publicadorFalso{falharAte: 99, erroDeCanal: erroPersistente}
@@ -96,8 +79,6 @@ func TestPublicadorTentaUmaVezSo(t *testing.T) {
 	}
 }
 
-// TestFalhaAoReconectarDevolveOErroOriginal: o operador precisa ver por que a
-// publicacao falhou, nao um erro secundario de dial que esconde a causa.
 func TestFalhaAoReconectarDevolveOErroOriginal(t *testing.T) {
 	erroDeCanal := errors.New("channel/connection is not open")
 	falso := &publicadorFalso{falharAte: 1, erroDeCanal: erroDeCanal}

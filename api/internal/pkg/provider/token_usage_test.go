@@ -10,19 +10,8 @@ import (
 	"thing-index/internal/domain"
 )
 
-// A Metodologia do artigo promete avaliar TRES dimensoes -- precisao,
-// auditabilidade e custo operacional. As duas primeiras tem numero; a terceira
-// nao tinha nem instrumentacao: a resposta do provedor traz `usage` com os
-// tokens consumidos, e o parser simplesmente nao declarava o campo, entao o
-// dado era descartado no unmarshal sem erro nenhum.
-//
-// Sem isso, qualquer afirmacao de custo no artigo seria estimativa a partir de
-// contagem local de caracteres -- exatamente o tipo de numero que o proprio
-// trabalho critica.
-
 func TestRespostaDeChatCarregaOConsumoDeTokens(t *testing.T) {
-	// Formato devolvido pela API compativel com OpenAI, que e a que os
-	// provedores configurados no projeto implementam.
+	// Formato da API compativel com OpenAI.
 	bruto := `{
 		"choices": [{"message": {"role": "assistant", "content": "resposta"}}],
 		"usage": {"prompt_tokens": 412, "completion_tokens": 87, "total_tokens": 499}
@@ -47,9 +36,7 @@ func TestRespostaDeChatCarregaOConsumoDeTokens(t *testing.T) {
 	}
 }
 
-// TestRespostaSemUsageNaoQuebra cobre o provedor que nao reporta consumo --
-// Ollama local, por exemplo. Ausencia de metrica nao pode virar erro de
-// indexacao: o documento tem que ser processado do mesmo jeito.
+// Provedor que nao reporta consumo (Ollama local) nao pode virar erro de indexacao.
 func TestRespostaSemUsageNaoQuebra(t *testing.T) {
 	bruto := `{"choices": [{"message": {"role": "assistant", "content": "resposta"}}]}`
 
@@ -66,9 +53,7 @@ func TestRespostaSemUsageNaoQuebra(t *testing.T) {
 	}
 }
 
-// TestTotalDeTokensSeApoiaNasPartesQuandoAusente: alguns provedores compativeis
-// devolvem prompt e completion sem o total. Somar no cliente evita que a
-// metrica agregada fique zerada por omissao do provedor.
+// Alguns provedores devolvem prompt e completion sem o total.
 func TestTotalDeTokensSeApoiaNasPartesQuandoAusente(t *testing.T) {
 	bruto := `{
 		"choices": [{"message": {"role": "assistant", "content": "ok"}}],
@@ -85,8 +70,7 @@ func TestTotalDeTokensSeApoiaNasPartesQuandoAusente(t *testing.T) {
 	}
 }
 
-// TestTotalDeTokensPrefereOValorDoProvedor: quando o provedor informa o total,
-// ele manda -- pode incluir tokens de sistema que as partes nao mostram.
+// Se o provedor informa o total, ele vale (pode incluir tokens de sistema).
 func TestTotalDeTokensPrefereOValorDoProvedor(t *testing.T) {
 	usage := &tokenUsage{PromptTokens: 100, CompletionTokens: 25, TotalTokens: 140}
 
@@ -103,9 +87,7 @@ func TestUsageNuloEhSeguro(t *testing.T) {
 	}
 }
 
-// Daqui para baixo: o circuito completo. Capturar o campo no parser nao basta
-// se o dado nao chega a quem mede -- estes testes exercitam o cliente contra um
-// servidor HTTP real.
+// Daqui para baixo: cliente contra um servidor HTTP real.
 
 func TestClienteExpoeOConsumoDaUltimaChamada(t *testing.T) {
 	servidor := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -160,17 +142,13 @@ func TestProvedorSemUsageNaoInventaNumero(t *testing.T) {
 		t.Fatalf("geracao falhou: %v", err)
 	}
 
-	// Provedor que nao reporta (Ollama local) precisa continuar distinguivel de
-	// provedor que reportou zero. Numero fingido em metrica de custo e pior do
-	// que metrica ausente.
+	// Provedor que nao reporta tem de ser distinguivel de provedor que reportou zero.
 	if _, _, _, reportado := cliente.LastTokenUsage(); reportado {
 		t.Fatal("cliente marcou consumo como reportado sem o provedor informar")
 	}
 }
 
-// TestClienteImplementaTokenUsageReporter trava o contrato: se a assinatura da
-// interface mudar, isto quebra aqui em vez de silenciosamente parar de medir no
-// chamador, que usa type assertion.
+// O chamador usa type assertion: mudar a assinatura pararia de medir em silencio.
 func TestClienteImplementaTokenUsageReporter(t *testing.T) {
 	var _ domain.TokenUsageReporter = (*openAICompatibleLLMClient)(nil)
 }

@@ -13,7 +13,6 @@ import (
 // que "Programação" no gabarito e "programacao" na resposta casem.
 func fold(s string) string { return strings.ToLower(retrieval.FoldDiacritics(s)) }
 
-// matchesAnswer diz se TODOS os padroes do gabarito casam na resposta.
 func matchesAnswer(answer string, patterns []string) bool {
 	folded := fold(answer)
 	for _, p := range patterns {
@@ -25,9 +24,8 @@ func matchesAnswer(answer string, patterns []string) bool {
 	return len(patterns) > 0
 }
 
-// answerCorrect aplica o criterio completo de uma pergunta: todas as
-// AnswerPatterns casam e nenhuma RejectPattern casa. E a unica funcao que o
-// braco ao vivo e o rescore usam, para que os dois nunca divirjam.
+// answerCorrect: todas as AnswerPatterns casam e nenhuma RejectPattern casa.
+// Usada pelo braco ao vivo e pelo rescore, para os dois nao divergirem.
 func answerCorrect(answer string, q evalcorpus.GabaritoQuestion) bool {
 	if !matchesAnswer(answer, q.AnswerPatterns) {
 		return false
@@ -45,9 +43,8 @@ func answerCorrect(answer string, q evalcorpus.GabaritoQuestion) bool {
 var citedPagesRE = regexp.MustCompile(`\b(?:p\.|pp\.|pag\.|pags?\.|pagina|paginas)\s*((?:\d+\s*(?:,|e|a|-|ate)?\s*)+)`)
 var numberRE = regexp.MustCompile(`\d+`)
 
-// citedPages extrai as paginas que uma resposta em prosa cita ("p. 54",
-// "paginas 9 e 54", "pag. 3"). Serve ao braco F, que nao tem fontes
-// estruturadas: a unica proveniencia possivel e a que o modelo escreve.
+// citedPages extrai as paginas citadas em prosa ("p. 54", "paginas 9 e 54",
+// "pag. 3"). O braco F nao tem fontes estruturadas.
 func citedPages(answer string) []int {
 	seen := map[int]bool{}
 	var out []int
@@ -64,7 +61,6 @@ func citedPages(answer string) []int {
 	return out
 }
 
-// citation e uma fonte estruturada (braco T): documento do gabarito e pagina.
 type citation struct {
 	DocumentID string
 	Page       int
@@ -85,7 +81,6 @@ func provenanceOK(q evalcorpus.GabaritoQuestion, cites []citation) bool {
 
 // provenanceByPage e a versao frouxa para o braco F: a pagina citada em prosa
 // nao diz de que documento e, entao basta pertencer a uniao das paginas-alvo.
-// Isso favorece o braco F; o relatorio diz isso.
 func provenanceByPage(q evalcorpus.GabaritoQuestion, pages []int) bool {
 	for _, t := range q.Targets {
 		for _, p := range t.Pages {

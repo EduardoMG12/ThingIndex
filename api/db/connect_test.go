@@ -10,9 +10,8 @@ import (
 // Teto de parametros por statement do protocolo do Postgres (pgx recusa acima).
 const postgresMaxParametros = 65535
 
-// Regressao P1-4: insercao sem lote estourava 65535 parametros em documentos
-// grandes. A conexao de producao precisa ter CreateBatchSize, e o lote vezes a
-// tabela mais larga do esquema precisa caber no teto.
+// Sem lote, documentos grandes estouravam 65535 parametros. O lote vezes a tabela
+// mais larga tem de caber no teto.
 func TestConexaoInsereEmLotesQueCabemNoLimiteDeParametrosDoPostgres(t *testing.T) {
 	t.Parallel()
 

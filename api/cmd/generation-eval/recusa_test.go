@@ -17,11 +17,8 @@ func carregarTema(t *testing.T, tema string) *evalcorpus.Gabarito {
 	return g
 }
 
-// Linha de base da recusa constante: uma resposta fixa, que nao olha o
-// acervo, so pode acertar as perguntas negativas. A banca mostrou duas vezes
-// que os padroes aceitavam recusa (primeiro "nao" solto; depois "existe",
-// "consta" e "trata" sem exigir afirmacao), entao a lista cobre as formas de
-// negar que o modelo de fato usa nas respostas versionadas.
+// Recusa constante: uma resposta fixa so pode acertar as negativas. A lista
+// cobre as formas de negar que o modelo usa nas respostas versionadas.
 func TestRecusaConstanteSoAcertaNegativas(t *testing.T) {
 	recusas := []string{
 		"Não há informações sobre isso nos documentos fornecidos.",
@@ -33,7 +30,6 @@ func TestRecusaConstanteSoAcertaNegativas(t *testing.T) {
 		"Não há previsão legal sobre esse tema nos trechos.",
 		"Não, os documentos não preveem isso.",
 		"Não é possível determinar com base nos documentos fornecidos.",
-		// Terceira leitura da banca: formas que o v5 ainda aceitava.
 		"Não está previsto nos documentos.",
 		"Não há dispositivo que preveja isso.",
 		"Nenhum dos documentos trata desse assunto.",
@@ -88,10 +84,6 @@ func TestRespostaOpostaNaoPassa(t *testing.T) {
 	}
 }
 
-// Linha de base de "Sim." por forma: registrada no artigo como o piso das
-// formas cuja resposta certa e afirmativa. Este teste so imprime; a
-// existencia e a confirmacao sao perguntas de sim ou nao, e o piso delas nao
-// e zero por construcao.
 // Falso negativo: "píxeis" (plural) e a resposta certa de pr8 e nao contem
 // "pixel" depois de tirar os acentos.
 func TestPixeisContaComoPixel(t *testing.T) {

@@ -14,17 +14,8 @@ import (
 	"thing-index/internal/models"
 )
 
-// Quase toda a caçada de defeitos desta rodada usou HTML, que e o caminho facil
-// do extrator. PDF e o formato que o trabalho promete tratar e o unico que
-// exercita pdftotext, deteccao de pagina e OCR.
-//
-// Enviei estes arquivos pelo pipeline manualmente antes de escrever o teste:
-// 2 paginas cada, 4 nos cada, zero paginas vazias. O pipeline FUNCIONA -- e e
-// justamente por isso que vale travar, porque a proxima regressao no extrator
-// passaria despercebida.
-//
-// As asserções usam trechos REAIS do conteudo, verificados com pdftotext. Um
-// teste que so conta paginas passaria com o extrator devolvendo lixo binario.
+// PDFs reais de exemplo pelo pipeline. As asserções usam trechos do conteudo
+// conferidos com pdftotext; so contar paginas passaria com lixo binario.
 
 const diretorioDePDFs = "../usecase/testdata/indexing-benchmark"
 
@@ -34,9 +25,7 @@ type expectativaDePDF struct {
 	nosMinimos int
 	// Trechos do CORPO das paginas.
 	trechosNoTexto []string
-	// Titulos que precisam virar no de sumario. O extrator separa estrutura de
-	// conteudo: cabecalho vira no, o resto vira pagina -- e afirmar o titulo no
-	// corpo da pagina foi erro meu na primeira versao deste teste.
+	// Titulos que precisam virar no de sumario (nao aparecem no corpo da pagina).
 	titulosEsperados []string
 }
 
@@ -49,11 +38,8 @@ func exigirFerramentasDePDF(t *testing.T) {
 	}
 }
 
-// paginasSegundoPdfinfo le a contagem da ferramenta externa.
-//
-// Comparar com o pdfinfo, em vez de um numero fixo no teste, faz a asserção
-// continuar valendo se alguem trocar os arquivos de exemplo -- e detecta o
-// extrator perdendo paginas, que era o objetivo.
+// paginasSegundoPdfinfo: compara com o pdfinfo para o teste sobreviver a troca
+// dos arquivos de exemplo.
 func paginasSegundoPdfinfo(t *testing.T, caminho string) int {
 	t.Helper()
 
@@ -163,8 +149,7 @@ func TestPDFsReaisPassamPeloIndexadorCompleto(t *testing.T) {
 				}
 			}
 
-			// Os titulos vivem nos nos, nao nas paginas: perder essa separacao
-			// significa que a recuperacao em nivel de secao deixou de existir.
+			// Os titulos vivem nos nos, nao nas paginas.
 			var titulos []string
 			for _, no := range resultado.OutlineNodes {
 				titulos = append(titulos, no.Title)
@@ -179,10 +164,7 @@ func TestPDFsReaisPassamPeloIndexadorCompleto(t *testing.T) {
 	}
 }
 
-// TestPDFPreservaANumeracaoDePagina protege a proveniencia: o trabalho afirma
-// que todo item recuperado aponta para a pagina de origem, e a metrica TPC do
-// artigo depende disso. Numeracao comecando em zero, repetida ou fora de ordem
-// quebraria a afirmacao sem quebrar nenhum outro teste.
+// Numeracao de pagina comecando em 1, sem repeticao e em ordem.
 func TestPDFPreservaANumeracaoDePagina(t *testing.T) {
 	exigirFerramentasDePDF(t)
 
@@ -207,9 +189,7 @@ func TestPDFPreservaANumeracaoDePagina(t *testing.T) {
 	}
 }
 
-// TestPDFCorrompidoFalhaSemDerrubarOProcesso: bytes invalidos vem de upload de
-// usuario. O indexador precisa devolver erro, nunca entrar em panico -- panico
-// no worker derruba a fila inteira.
+// PDF corrompido devolve erro, sem panic (panic derruba o worker).
 func TestPDFCorrompidoFalhaSemDerrubarOProcesso(t *testing.T) {
 	indexer := NewDeterministicIndexer()
 	doc := &models.Document{ID: 1, Title: "corrompido.pdf", MimeType: "application/pdf"}

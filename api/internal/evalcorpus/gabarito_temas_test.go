@@ -5,17 +5,13 @@ import (
 	"testing"
 )
 
-// gabaritosPorTema sao os acervos tematicos que sustentam a afirmacao generica
-// do trabalho: um sistema que se apresenta como plataforma documental precisa
-// de medicao em mais de um dominio, e nao de um so acervo repetido.
 var gabaritosPorTema = []string{
 	"testdata/gabarito-seguranca-trabalho.json",
 	"testdata/gabarito-produto.json",
 	"testdata/gabarito-licitacoes.json",
 }
 
-// As cinco formas de pergunta. A mesma taxonomia em todos os temas permite ler
-// o resultado em duas direcoes: por tema e por forma.
+// As cinco formas de pergunta, iguais em todos os temas.
 var formasValidas = map[string]bool{
 	"aberta": true, "confirmacao": true, "existencia": true,
 	"premissa-falsa": true, "negativa": true,
@@ -52,13 +48,8 @@ func TestGabaritosPorTemaSaoValidos(t *testing.T) {
 	}
 }
 
-// O par literal/parafrase e a razao de existir destes gabaritos. Sem ele, um
-// gabarito escrito por quem ja leu a pagina herda o vocabulario dela, e o
-// numero mede casamento lexical se passando por compreensao.
-//
-// A checagem estrutural do par (existem dois, variantes diferentes, mesma
-// resposta esperada) esta em Validate. Aqui vai o que Validate nao consegue
-// julgar: se a parafrase realmente PARAFRASEIA.
+// A estrutura do par ja e checada em Validate; aqui so se a parafrase de fato
+// usa outras palavras.
 func TestParafraseNaoRepeteOVocabularioDaVersaoLiteral(t *testing.T) {
 	t.Parallel()
 
@@ -95,8 +86,7 @@ func TestParafraseNaoRepeteOVocabularioDaVersaoLiteral(t *testing.T) {
 					compartilhados++
 				}
 			}
-			// Metade ou mais dos termos em comum significa que a "parafrase"
-			// e a mesma pergunta com outra pontuacao, e o par nao mede nada.
+			// Metade ou mais dos termos em comum: nao e parafrase.
 			if fracao := float64(compartilhados) / float64(len(parafrase)); fracao >= 0.5 {
 				t.Errorf("%s: par %q compartilha %.0f%% dos termos entre literal e parafrase; reformule a parafrase\n  literal:   %s\n  parafrase: %s",
 					caminho, pid, fracao*100, variantes[VariantLiteral], variantes[VariantParafrase])
@@ -105,9 +95,7 @@ func TestParafraseNaoRepeteOVocabularioDaVersaoLiteral(t *testing.T) {
 	}
 }
 
-// termosSignificativos devolve as palavras de 4+ letras, em minusculas, fora da
-// lista de palavras funcionais. Aproximacao deliberadamente simples: o objetivo
-// e pegar parafrase preguicosa, nao fazer analise linguistica.
+// termosSignificativos: palavras de 4+ letras, minusculas, fora das funcionais.
 func termosSignificativos(texto string) map[string]bool {
 	funcionais := map[string]bool{
 		"para": true, "pela": true, "pelo": true, "como": true, "qual": true,
@@ -126,9 +114,7 @@ func termosSignificativos(texto string) map[string]bool {
 	return out
 }
 
-// Pergunta de premissa falsa com alvo declarado e proposital: diferente da
-// negativa, a informacao EXISTE no acervo. O que nao existe e o dado que a
-// pergunta afirma.
+// Premissa falsa tem alvo: a informacao existe, o dado afirmado e que nao.
 func TestPremissaFalsaApontaOndeEstaACorrecao(t *testing.T) {
 	t.Parallel()
 
@@ -146,8 +132,7 @@ func TestPremissaFalsaApontaOndeEstaACorrecao(t *testing.T) {
 	}
 }
 
-// O gabarito de ensino nao declara estratos proprios e precisa continuar
-// valendo pelos padroes historicos.
+// O gabarito de ensino usa os estratos padrao.
 func TestGabaritoDeEnsinoContinuaValidoComOsPadroes(t *testing.T) {
 	t.Parallel()
 
@@ -163,9 +148,8 @@ func TestGabaritoDeEnsinoContinuaValidoComOsPadroes(t *testing.T) {
 	}
 }
 
-// O edital municipal e um acervo de documento unico, medido so como
-// generalizacao (o artigo declara isso), e por isso nao passa pelas regras de
-// tema acima. O hash das perguntas, porem, vale para ele como para os outros.
+// O edital municipal e documento unico e fica fora das regras de tema; o hash
+// vale igual.
 func TestGabaritoPrefeituraConfereOHash(t *testing.T) {
 	t.Parallel()
 	if _, err := LoadGabarito("testdata/gabarito-prefeitura.json"); err != nil {
@@ -173,9 +157,8 @@ func TestGabaritoPrefeituraConfereOHash(t *testing.T) {
 	}
 }
 
-// Gabarito da Secao 8.7 (legislacao, 19 perguntas, ids d01..n03), restaurado
-// de caf7624 com outro nome: o arquivo gabarito-licitacoes.json passou a ser o
-// da bateria. Sem ele o instrumento da Tabela 15 so existia no historico.
+// Gabarito de legislacao (19 perguntas, ids d01..n03), restaurado de caf7624
+// com outro nome porque gabarito-licitacoes.json passou a ser o da bateria.
 func TestGabaritoLegislacaoConfereOHash(t *testing.T) {
 	t.Parallel()
 	g, err := LoadGabarito("testdata/gabarito-legislacao.json")
