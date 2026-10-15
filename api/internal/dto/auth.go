@@ -22,7 +22,6 @@ type ResetPasswordRequest struct {
 	NewPassword string `json:"new_password" binding:"required,min=6"`
 }
 
-// User-focused response equivalent to auto-expose
 type UserResponse struct {
 	ID        uint      `json:"id"`
 	Name      string    `json:"name"`

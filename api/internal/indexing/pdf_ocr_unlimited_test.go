@@ -59,9 +59,8 @@ func TestUnlimitedOCRParsesDetectionMarkers(t *testing.T) {
 	}
 }
 
-// A caixa precisa sair no mesmo espaco das caixas do `pdftotext -bbox-layout`:
-// pontos PDF, origem no canto superior esquerdo. Se as duas fontes divergirem, o
-// grifo aparece deslocado sem nenhum erro.
+// A caixa sai no mesmo espaco do `pdftotext -bbox-layout`: pontos PDF, origem
+// no canto superior esquerdo.
 func TestUnlimitedOCRConvertsBoxToPDFPoints(t *testing.T) {
 	t.Parallel()
 
@@ -105,8 +104,7 @@ func TestUnlimitedOCRSupportsRawPixelCoordinates(t *testing.T) {
 	}
 }
 
-// Texto sem caixa nao pode ser descartado: sem ancora ele ainda serve para
-// busca e para o contexto entregue ao LLM.
+// Texto sem caixa nao e descartado.
 func TestUnlimitedOCRKeepsBlocksWithoutBox(t *testing.T) {
 	t.Parallel()
 
@@ -219,8 +217,7 @@ func TestUnlimitedOCRSendsOpenAICompatibleRequest(t *testing.T) {
 	}
 }
 
-// Erro do servidor precisa subir com a mensagem, e nao virar pagina vazia
-// silenciosa — sem isso a indexacao registraria sucesso sem conteudo.
+// Erro do servidor sobe com a mensagem, nao vira pagina vazia.
 func TestUnlimitedOCRSurfacesServerError(t *testing.T) {
 	t.Parallel()
 
@@ -242,11 +239,8 @@ func TestUnlimitedOCRSurfacesServerError(t *testing.T) {
 	}
 }
 
-// Caminho completo com um PDF digitalizado de verdade: renderiza a pagina com
-// pdftoppm, conversa com um servidor que responde no formato do modelo, e
-// verifica que a ancora chega ate o ParagraphNode.
-//
-// Cobre tudo exceto o modelo em si, que exige GPU.
+// PDF digitalizado de ponta a ponta (pdftoppm + servidor fake no formato do
+// modelo): a ancora precisa chegar ao ParagraphNode.
 func TestUnlimitedOCRAnchorsScannedPDFEndToEnd(t *testing.T) {
 	if _, err := exec.LookPath("pdftoppm"); err != nil {
 		t.Skip("pdftoppm indisponivel no PATH")

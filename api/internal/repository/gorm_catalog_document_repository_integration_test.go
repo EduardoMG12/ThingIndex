@@ -637,14 +637,8 @@ func titleSuffix(id uint) string {
 	return fmt.Sprintf("%d", id)
 }
 
-// Este teste existe porque os anteriores nao conseguiam pegar o bug: eles
-// contam linhas com o escopo padrao do GORM, que ESCONDE registros com
-// deleted_at preenchido. Um soft delete passava por exclusao completa.
-//
-// Aqui a contagem e feita com Unscoped(), que enxerga tambem o que foi
-// soft-deletado. Sem o Unscoped() no repositorio, o texto integral do documento
-// "excluido" continua no banco -- o oposto do que o usuario pediu, e um
-// problema serio para um sistema que se apresenta como auditavel.
+// Conta com Unscoped(): o escopo padrao do GORM esconde soft delete, e um soft
+// delete passaria por exclusao completa.
 func TestCatalogRepositoryDeleteDocumentApagaConteudoDeVerdade(t *testing.T) {
 	db := openIntegrationDB(t)
 	repo := &GormCatalogDocumentRepository{db: db}
@@ -661,8 +655,6 @@ func TestCatalogRepositoryDeleteDocumentApagaConteudoDeVerdade(t *testing.T) {
 		t.Fatalf("DeleteDocument retornou erro: %v", err)
 	}
 
-	// As tabelas com gorm.DeletedAt sao as que correm o risco. Se o registro
-	// ainda estiver la para o Unscoped(), o conteudo nao foi apagado.
 	derivados := []struct {
 		nome  string
 		model any

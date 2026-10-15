@@ -8,13 +8,8 @@ import (
 	"thing-index/internal/models"
 )
 
-// Conversores de recuperacao e do indice do documento. Sao o payload da tela de
-// documento e da busca -- as duas telas onde o trabalho demonstra a tese.
-
 func TestRecuperacaoEmArvorePreservaAOrdemDoRanking(t *testing.T) {
-	// A ordem E o resultado: embaralhar na conversao mostraria o quarto
-	// colocado em primeiro sem nenhum erro visivel, e a demonstracao da tese
-	// passaria a mentir na tela.
+	// A ordem e o resultado; nao pode ser alterada na conversao.
 	resposta := ToTreeRetrievalResponse(&domain.TreeRetrievalResult{
 		NodeHits: []domain.TreeNodeHit{
 			{NodeID: "n1", Title: "Primeiro", Score: 30},
@@ -44,9 +39,6 @@ func TestRecuperacaoEmArvorePreservaAOrdemDoRanking(t *testing.T) {
 }
 
 func TestRecuperacaoSemResultadoNaoViraNula(t *testing.T) {
-	// Consulta sem resultado e o caso que o trabalho mais precisa exibir com
-	// clareza: os seis bracos tem taxa de falso positivo 1,000, e a tela poder
-	// dizer "nao encontrei" e o contraponto.
 	resposta := ToTreeRetrievalResponse(&domain.TreeRetrievalResult{})
 
 	if resposta == nil {
@@ -72,8 +64,6 @@ func TestRecuperacaoNulaDevolveNulo(t *testing.T) {
 }
 
 func TestIndiceDoDocumentoAgregaTodasAsCamadas(t *testing.T) {
-	// Este payload monta a tela de documento inteira. Uma camada nula quebra a
-	// aba correspondente sem erro no backend.
 	resposta := ToDocumentIndexResponse(&domain.DocumentIndex{
 		Document: &models.Document{ID: 7, UserID: 2, Title: "Contrato.pdf"},
 		OutlineNodes: []models.DocumentOutlineNode{

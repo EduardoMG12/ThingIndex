@@ -1,42 +1,18 @@
 // Command retrieval-eval roda o experimento comparativo de recuperacao e emite
-// um CSV com uma linha por (consulta, braco).
+// um CSV com uma linha por (consulta, braco). Uma linha por consulta porque o
+// teste estatistico (Wilcoxon) e pareado.
 //
-// Por que UMA LINHA POR CONSULTA e nao a media: o teste estatistico do artigo e
-// pareado (Wilcoxon signed-rank, que nao assume normalidade). Ele compara os
-// bracos consulta a consulta, e uma media agregada joga fora exatamente a
-// informacao de que ele precisa. O CSV bruto tambem permite que qualquer pessoa
-// recalcule as tabelas do artigo sem reexecutar nada.
-//
-// Bracos implementados aqui:
+// Bracos:
 //
 //	A  relacional  scorer atual do ThingIndex (contagem de substring)
-//	B  bm25        Robertson & Zaragoza -- a baseline que o artigo cita e nunca usou
+//	B  bm25        Robertson & Zaragoza
 //	C  denso       multilingual-e5-base, varredura exata (cosseno)
-//	C' denso-ivf   o mesmo modelo sob indice APROXIMADO IVF-Flat (o do pgvector)
-//	D  rrf         fusao lexical (A+B) por Reciprocal Rank Fusion (Cormack et al. 2009)
-//	E  rrf-denso   fusao lexical + denso -- o estado da pratica em RAG hibrido
+//	C' denso-ivf   o mesmo modelo sob indice aproximado IVF-Flat (o do pgvector)
+//	D  rrf         fusao lexical (A+B) por Reciprocal Rank Fusion
+//	E  rrf-denso   fusao lexical + denso
 //
-// # POR QUE O BRACO C EXISTE AGORA, E COMO ELE CONTINUA HERMETICO
-//
-// Uma versao anterior deste arquivo declarava a ausencia do braco denso como
-// deliberada, porque carregar um modelo de 1,1 GB tornaria a execucao
-// nao-hermetica e nao-reproduzivel em CI. O diagnostico estava certo; a
-// conclusao, nao. A solucao usada em replicabilidade de RI e separar as duas
-// etapas: os embeddings sao computados UMA VEZ, fora do harness
-// (scripts/embed-corpus.py), e VERSIONADOS como artefato. Aqui so acontece
-// busca -- aritmetica de ponto flutuante sobre vetores lidos de um JSON.
-//
-// O harness continua hermetico, a medida de latencia deixa de estar
-// contaminada por tempo de inferencia do modelo, e o resultado deixa de
-// depender da versao de torch instalada na maquina de quem executa.
-//
-// # POR QUE DUAS VARIANTES DE DENSO
-//
-// Medir apenas o denso exato produziria uma comparacao enviesada A FAVOR da
-// tese deste trabalho: "o denso tambem e deterministico" e verdade na
-// varredura exata e falso no indice aproximado -- e e o aproximado que se usa
-// em escala, porque a varredura exata e O(N) por consulta. Ver
-// internal/retrieval/ivf.go.
+// Os embeddings sao pre-computados por scripts/embed-corpus.py e lidos de um
+// JSON; aqui so acontece busca, sem modelo carregado.
 //
 // Uso:
 //
@@ -62,12 +38,8 @@ import (
 	"thing-index/internal/retrieval"
 )
 
-// arm e um braco do experimento: recebe a consulta e devolve o ranking.
-//
-// A busca recebe a CONSULTA INTEIRA, e nao so o texto, porque os bracos densos
-// precisam do ID para localizar o vetor pre-computado no artefato. Passar o
-// texto e reencodar aqui exigiria o modelo dentro do harness -- exatamente o
-// que o desenho evita.
+// arm e um braco do experimento. Recebe a consulta inteira porque os bracos
+// densos precisam do ID para achar o vetor pre-computado.
 type arm struct {
 	name   string
 	search func(query evalcorpus.Query) []retrieval.Result
@@ -105,9 +77,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// A checagem de circularidade roda ANTES da medicao e aborta a execucao.
-	// Um corpus circular produz numeros altos e sem significado; deixar o
-	// experimento rodar assim seria produzir evidencia falsa.
+	// Corpus circular gera numeros altos e sem significado: aborta antes de medir.
 	if warnings := corpus.CheckCircularity(retrieval.Tokenize); len(warnings) > 0 {
 		fmt.Fprintln(os.Stderr, "retrieval-eval: corpus circular, medicao abortada:")
 		for _, warning := range warnings {
@@ -116,17 +86,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	// O artefato de embeddings e opcional, mas quando presente ele e
-	// CONFERIDO CONTRA O CORPUS. Ver checkDenseSync: um artefato obsoleto nao
-	// falha, produz numero errado -- por isso a checagem aborta em vez de
-	// avisar.
+	// Artefato de embeddings e opcional, mas se existir tem de bater com o corpus.
 	var dense *retrieval.DenseArtifact
 	if *embeddingsPath != "" {
 		loaded, err := retrieval.LoadDenseArtifact(*embeddingsPath)
 		switch {
 		case os.IsNotExist(err):
-			// Ausencia ANUNCIADA, nunca silenciosa: o experimento roda so com
-			// os bracos lexicais e quem le o stderr sabe disso.
+			// Sem artefato roda so os lexicais, avisando no stderr.
 			fmt.Fprintf(os.Stderr,
 				"retrieval-eval: %s nao existe; bracos densos DESATIVADOS.\n"+
 					"  gere com: python3 scripts/embed-corpus.py --corpus %s --out %s\n",
@@ -153,19 +119,8 @@ func main() {
 		}
 	}
 
-	// O experimento roda nas DUAS granularidades na mesma execucao.
-	//
-	// Ranquear documento inteiro descasa da tese (o trabalho afirma
-	// proveniencia de paragrafo) e satura as metricas: com 5 documentos e um
-	// relevante por consulta, R@5 e 1,000 por aritmetica. Ranquear secao
-	// corrige isso -- o universo passa a 19 unidades e a baseline aleatoria de
-	// P@1 cai de 0,200 para 0,053.
-	//
-	// As duas ficam lado a lado, e nao so a nova, por duas razoes: a
-	// comparacao entre granularidades e ela propria um resultado do artigo, e
-	// os bracos densos so tem vetor POR DOCUMENTO (o artefato traz 5 vetores).
-	// Re-embutir por secao exigiria chamada de rede, que o principio II da
-	// constituicao proibe no caminho principal.
+	// Mede nas duas granularidades. So documento satura as metricas (5 docs,
+	// R@5 = 1 por aritmetica); os densos so tem vetor por documento.
 	var allRows []row
 
 	docUnits := evalcorpus.RetrievalUnits(documentosComoUnidadeUnica(corpus))
@@ -176,10 +131,7 @@ func main() {
 
 	sectionUnits := evalcorpus.RetrievalUnits(corpus.Documents)
 	if len(sectionUnits) > len(corpus.Documents) {
-		// Os bracos densos ficam de fora desta granularidade: sem vetor por
-		// secao, eles devolveriam vazio e apareceriam como falha do metodo, e
-		// nao como ausencia de artefato. Declarar a ausencia e melhor que
-		// medir errado.
+		// Densos ficam de fora aqui: sem vetor por secao, sairiam como falha.
 		sectionArms := buildArms(sectionUnits, nil)
 		allRows = append(allRows, evaluate(corpus, sectionArms, "section", func(q evalcorpus.Query) map[string]int {
 			return q.RelevanceSections
@@ -220,13 +172,8 @@ func main() {
 	}
 }
 
-// documentosComoUnidadeUnica remove as secoes declaradas para que
-// RetrievalUnits produza uma unidade por documento.
-//
-// Existe para a granularidade de documento continuar sendo medida EXATAMENTE
-// como antes da issue #16, garantindo que os numeros historicos do artigo
-// permanecam comparaveis. Sem isso, a mesma funcao devolveria secoes e a
-// comparacao entre granularidades perderia o ponto de referencia.
+// documentosComoUnidadeUnica remove as secoes para que RetrievalUnits produza
+// uma unidade por documento, mantendo os numeros antigos comparaveis.
 func documentosComoUnidadeUnica(corpus *evalcorpus.Corpus) []evalcorpus.Document {
 	docs := make([]evalcorpus.Document, 0, len(corpus.Documents))
 	for _, doc := range corpus.Documents {
@@ -236,16 +183,7 @@ func documentosComoUnidadeUnica(corpus *evalcorpus.Corpus) []evalcorpus.Document
 	return docs
 }
 
-// buildArms monta os bracos do experimento.
-//
-// O artefato de embeddings e OPCIONAL: quando ausente, os bracos densos
-// simplesmente nao entram e o experimento roda so com os lexicais. Isso e o
-// que mantem o harness executavel em CI sem depender do artefato -- mas a
-// ausencia e ANUNCIADA no stderr, nunca silenciosa. Um braco que some sem
-// aviso viraria uma tabela incompleta no artigo sem ninguem perceber.
-//
-// `units` define a granularidade: documentos inteiros ou secoes. Ver
-// buildUnits e o comentario de granularity em main.
+// buildArms monta os bracos. Sem artefato de embeddings os densos nao entram.
 func buildArms(units []evalcorpus.RetrievalUnit, dense *retrieval.DenseArtifact) []arm {
 	docs := make([]retrieval.Document, 0, len(units))
 	for _, unit := range units {
@@ -282,15 +220,10 @@ func buildArms(units []evalcorpus.RetrievalUnit, dense *retrieval.DenseArtifact)
 	vectors := dense.DocumentVectors()
 	exact := retrieval.NewDenseIndex(vectors)
 
-	// Os parametros do IVF seguem o pgvector: lists = sqrt(N), probes = 1
-	// (o default). Ver DefaultIVFParams -- medir o default e proposital,
-	// porque e a configuracao que a maioria das instalacoes roda.
+	// lists = sqrt(N), probes = 1: o default do pgvector.
 	ivf := retrieval.NewIVFIndex(vectors, retrieval.DefaultIVFParams(len(vectors)))
 
-	// denseSearch resolve o vetor da consulta pelo ID. Uma consulta sem vetor
-	// e um artefato DESSINCRONIZADO do corpus, e o tratamento e devolver vazio
-	// -- que aparece como falha do braco na tabela em vez de passar batido.
-	// A verificacao forte fica em checkDenseSync, que aborta antes de medir.
+	// Consulta sem vetor = artefato dessincronizado; devolve vazio.
 	denseSearch := func(query evalcorpus.Query) []retrieval.Result {
 		vector, ok := dense.QueryVector(query.ID)
 		if !ok {
@@ -319,11 +252,7 @@ func buildArms(units []evalcorpus.RetrievalUnit, dense *retrieval.DenseArtifact)
 			},
 		},
 		arm{
-			// Braco E: o hibrido do estado da pratica, fundindo sinal lexical
-			// e denso. Ele existe porque o braco D funde duas variantes
-			// LEXICAIS -- que erram junto, pelo mesmo motivo. Fundir sinais de
-			// natureza diferente e o que a literatura de RAG hibrido faz, e
-			// sem ele a comparacao do artigo estaria datada.
+			// Funde lexical com denso; o D funde dois lexicais, que erram junto.
 			name: "E-rrf-denso",
 			search: func(query evalcorpus.Query) []retrieval.Result {
 				return retrieval.ReciprocalRankFusion([][]retrieval.Result{
@@ -337,14 +266,9 @@ func buildArms(units []evalcorpus.RetrievalUnit, dense *retrieval.DenseArtifact)
 	return arms
 }
 
-// checkDenseSync garante que o artefato de embeddings corresponde AO CORPUS
-// QUE ESTA SENDO MEDIDO.
-//
-// Este e o guard mais importante do braco denso. Um artefato obsoleto nao
-// causa erro: causa numeros plausiveis calculados sobre o corpus ERRADO --
-// exatamente a classe de defeito que o experimento inteiro foi desenhado para
-// evitar. A conferencia e por hash SHA-256 do texto que foi enviado ao modelo,
-// gravado no artefato pelo scripts/embed-corpus.py.
+// checkDenseSync confere, por SHA-256 do texto embutido, que o artefato de
+// embeddings corresponde ao corpus medido. Artefato obsoleto nao da erro, da
+// numero errado.
 func checkDenseSync(corpus *evalcorpus.Corpus, dense *retrieval.DenseArtifact) []string {
 	var problems []string
 
@@ -363,9 +287,7 @@ func checkDenseSync(corpus *evalcorpus.Corpus, dense *retrieval.DenseArtifact) [
 	}
 
 	for _, doc := range corpus.Documents {
-		// A montagem tem de ser IDENTICA a do embed-corpus.py e a do
-		// buildArms. Se divergir, os bracos passariam a indexar campos
-		// diferentes e a comparacao mediria isso em vez do modelo.
+		// Tem de montar o texto igual ao embed-corpus.py, senao o hash nao bate.
 		want := hashOf(doc.Title + "\n" + doc.Content)
 		got, ok := documentHash[doc.ID]
 		if !ok {
@@ -397,25 +319,17 @@ func checkDenseSync(corpus *evalcorpus.Corpus, dense *retrieval.DenseArtifact) [
 	return problems
 }
 
-// row e uma linha do CSV: um par (consulta, braco) numa granularidade.
 type row struct {
 	metrics  retrieval.QueryMetrics
 	variant  string
 	negative bool
 	falsePos float64
-	// granularity distingue as duas unidades de recuperacao medidas na mesma
-	// execucao ("document" ou "section"). Sem essa coluna as duas medicoes
-	// ficariam indistinguiveis no CSV e a analise somaria maca com laranja.
+	// "document" ou "section".
 	granularity string
 }
 
-// evaluate mede cada braco contra o gabarito da granularidade em uso.
-//
-// `judgments` escolhe o gabarito: por documento ou por secao. Passar o gabarito
-// errado para a granularidade em uso nao falharia em lugar nenhum -- produziria
-// zeros plausiveis, porque nenhum id casaria. Por isso quem chama e obrigado a
-// dizer explicitamente qual usa, e main aborta antes de medir quando o corpus
-// nao tem o gabarito pedido.
+// evaluate mede cada braco contra o gabarito da granularidade em uso. Gabarito
+// trocado nao falha, so da zero, por isso e explicito.
 func evaluate(corpus *evalcorpus.Corpus, arms []arm, granularity string, judgments func(evalcorpus.Query) map[string]int) []row {
 	rows := make([]row, 0, len(corpus.Queries)*len(arms))
 
@@ -455,8 +369,7 @@ func writeCSV(file *os.File, rows []row) error {
 		"r_at_5", "r_at_10",
 		"reciprocal_rank", "ndcg_at_10",
 		"false_positive", "result_count", "latency_ms",
-		// Tetos: o maximo alcancavel dado o gabarito. Sem eles a tabela nao se
-		// explica -- "P@3 = 0,312" parece 31% de acerto quando o teto e 0,375.
+		// Teto alcancavel dado o gabarito.
 		"p_at_1_ceiling", "p_at_3_ceiling", "p_at_5_ceiling",
 		"r_at_5_ceiling", "r_at_10_ceiling", "relevant_count",
 	}
@@ -550,9 +463,6 @@ func printSummary(file *os.File, corpus *evalcorpus.Corpus, rows []row) {
 			name, current.p1/n, current.mrr/n, current.ndcg/n, fp)
 	}
 
-	// A queda de P@1 de literal para paraphrase e noisy e o grafico mais
-	// informativo do experimento: mede a dependencia de casamento lexical, que
-	// e exatamente o que um benchmark com consultas copiadas do alvo esconde.
 	fmt.Fprintf(file, "\nP@1 por variante de consulta (queda = dependencia de casamento lexical)\n")
 	fmt.Fprintf(file, "%-14s %10s %12s %8s\n", "braco", "literal", "paraphrase", "noisy")
 	for _, name := range armOrder {

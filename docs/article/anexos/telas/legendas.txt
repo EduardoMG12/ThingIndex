@@ -1,0 +1,16 @@
+01-login.png | Tela de login.
+02-cadastro.png | Tela de cadastro de nova conta.
+03-pagina-inicial.png | Página inicial pública do sistema.
+04-area-de-trabalho-documentos.png | Área de trabalho com a coleção "Segurança do trabalho" e a lista de documentos indexados no painel lateral.
+05-area-de-trabalho-chat.png | Área de trabalho com o painel de chat vazio e o provedor de LLM ativo para o chat.
+06-area-de-trabalho-pdf.png | Área de trabalho com o painel lateral fechado e os PDFs da coleção abertos lado a lado.
+07-operacoes.png | Página de operações com o provedor ativo para indexação e os indicadores do processamento.
+08-operacoes-monitoramento.png | Seção de monitoramento da página de operações, com o resumo do fluxo de indexação.
+09-auditoria.png | Trilha de auditoria documental com os eventos de envio dos documentos.
+10-custos.png | Página de custos com a estimativa operacional e a cobertura de preços.
+11-custos-detalhe.png | Detalhes da página de custos: limites da estimativa e fontes de preço.
+12-configuracoes-storage.png | Configurações de provedores na aba de armazenamento.
+13-configuracoes-llm.png | Cadastro de provedor Ollama com modelo, URL base e preço por milhão de tokens de entrada e saída.
+14-configuracoes-llm-ativa.png | Configurações com o provedor Ollama ativo para indexação e chat e as opções de enriquecimento.
+15-documentacao.png | Página de documentação técnica do sistema.
+16-perfil.png | Edição do perfil do usuário no menu lateral.

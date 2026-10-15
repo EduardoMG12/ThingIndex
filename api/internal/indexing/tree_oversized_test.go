@@ -9,10 +9,7 @@ import (
 	"thing-index/internal/models"
 )
 
-// LLM que devolve uma arvore "bonita" de um no so cobrindo 40 paginas: e o
-// que aconteceu com o PPC de 209 paginas (7 nos de ate 130 paginas, com
-// start_page na pagina do sumario). Cobertura por intervalo passa; a
-// estrutura e chute.
+// LLM devolve um no so cobrindo 40 paginas: passa na cobertura, mas e chute.
 type stubOversizedTreeLLM struct{}
 
 func (stubOversizedTreeLLM) GenerateText(_ context.Context, _ string, userPrompt string) (string, error) {

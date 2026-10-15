@@ -9,13 +9,8 @@ function success(data: unknown) {
     };
 }
 
-// A URL do cookie acompanha a baseURL. Fixar a porta 3000 fazia o cookie ser
-// descartado sempre que a suite rodava em outra porta, e todo teste autenticado
-// caia na tela de login sem explicar o motivo.
-// Alem do cookie, o bootstrap do app busca /api/user/me. Sem esse mock a
-// chamada ia para a API real com um token falso, recebia 401 e a pagina
-// redirecionava para o login — todo teste autenticado falhava com "elemento nao
-// encontrado", escondendo a causa real.
+// Cookie na URL da baseURL (porta fixa fazia o cookie ser descartado) e mock
+// de /api/user/me, senao o 401 do token falso joga para o login.
 async function authenticateRoutes(context: BrowserContext) {
     await context.route("**/api/user/me", async (route) => {
         await route.fulfill({
@@ -50,15 +45,8 @@ async function authenticate(context: BrowserContext, baseURL: string | undefined
 
 test.use({ locale: "en-US" });
 
-// O diagnostico anterior estava errado: nao era seletor desatualizado. O h1
-// "ThingIndex Chat" e a lista de conversas antiga viviam em componentes que
-// nenhuma pagina renderizava (removidos como codigo morto). A lista de
-// conversas migrou para a sidebar do AppShell, sincronizada por evento
-// (thingindex:chat-sidebar-sync).
-// O teste agora exercita o fluxo real: sidebar vazia -> primeira mensagem cria
-// a conversa -> resposta com fonte citada -> exclusao volta ao estado vazio.
-// O chat vive no painel da Area de trabalho; a lista de conversas continua no
-// menu lateral, pendurada no item "Workspace".
+// Sidebar vazia -> primeira mensagem cria a conversa -> resposta com fonte ->
+// exclusao volta ao vazio. A lista fica no menu lateral, sob "Workspace".
 test("chat workspace keeps conversation history, creates a fresh draft, and expands verified sources", async ({ baseURL, context, page }) => {
     await authenticate(context, baseURL);
 

@@ -42,7 +42,6 @@ export async function login(formData: FormData) {
       return { error: translate(locale, "auth.errors.missingToken") };
     }
 
-    // Configura o cookie com o token JWT
     cookieStore.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -93,7 +92,6 @@ export async function register(formData: FormData) {
       return { error: translate(locale, "auth.errors.missingToken") };
     }
 
-    // Configura o cookie com o token JWT
     cookieStore.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

@@ -10,10 +10,7 @@ import (
 	"gorm.io/gorm/schema"
 )
 
-// Regressao P2-8: os filtros quentes abaixo so tinham indices de uma coluna,
-// e o Postgres precisava combinar indices ou ordenar em memoria. Cada caso
-// lista a consulta que o indice atende; mudar a ordem das colunas quebra o
-// uso do indice para o ORDER BY, entao a ordem e travada aqui.
+// Indices compostos dos filtros quentes. A ordem das colunas importa para o ORDER BY.
 func TestIndicesCompostosDosFiltrosQuentes(t *testing.T) {
 	casos := []struct {
 		modelo   any

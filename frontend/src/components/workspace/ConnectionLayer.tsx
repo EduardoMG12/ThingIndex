@@ -3,12 +3,7 @@
 import { useI18n } from "@/lib/i18n/provider";
 import { caminhoDaLinha, corPorTipo, espessuraPorScore, type Linha } from "@/lib/workspace/connections";
 
-/**
- * Linhas de conexao em SVG, em coordenadas do mundo (o <svg> vive dentro do
- * conteiner que recebe o transform do viewport, entao pan e zoom vem de
- * graca). Nada aqui e persistido: as linhas existem enquanto a resposta da
- * API de conexoes estiver em memoria.
- */
+// SVG em coordenadas do mundo: fica dentro do transform do viewport.
 
 export type ConnectionLayerProps = {
     linhas: Linha[];
@@ -33,10 +28,7 @@ export function ConnectionLayer({ linhas, realcada, onRealcar, onEscolher }: Con
         >
             {linhas.map((linha) => {
                 const ativa = realcada === null || realcada === linha.id;
-                // O rotulo fica na PONTA de destino, nao no meio da curva: no
-                // meio ele flutuava no vazio e nao dizia a que linha pertencia.
-                // Ao passar o mouse, mostra os termos que justificam a aresta.
-                // Aresta "mesma norma" diz isso no rotulo: os dois trechos citam a mesma lei ou resolucao.
+                // Rotulo na ponta de destino; no meio da curva nao dava para saber de qual linha era.
                 const contagem = linha.tipo === "mesma-norma"
                     ? t("workspace.sidebar.sameNorm")
                     : linha.tipo === "mesma-disciplina"

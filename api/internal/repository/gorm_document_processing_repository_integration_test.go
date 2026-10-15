@@ -13,14 +13,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// O reaper existe para o worker que MORREU no meio do trabalho: nenhum codigo
-// do processo roda, ninguem marca FAILED, e o documento fica PROCESSING para
-// sempre. Do lado do usuario a tela mostra "processando" indefinidamente, sem
-// erro e sem opcao de reenviar.
-//
-// Este teste roda contra Postgres real porque o que precisa estar correto e a
-// condicao SQL -- em especial o `index_started_at IS NOT NULL`, que um mock nao
-// exercitaria de verdade.
+// Postgres real porque o que importa e a condicao SQL, em especial
+// index_started_at IS NOT NULL.
 func TestReapStuckProcessingDocumentsLiberaApenasOsPresos(t *testing.T) {
 	db := openIntegrationDB(t)
 	repo := &gormDocumentProcessingRepository{db: db}
@@ -34,18 +28,14 @@ func TestReapStuckProcessingDocumentsLiberaApenasOsPresos(t *testing.T) {
 	antigo := agora.Add(-2 * time.Hour)
 	recente := agora.Add(-1 * time.Minute)
 
-	// Preso: PROCESSING desde 2h atras. Precisa ser liberado.
 	preso := seedProcessingDocument(t, db, user.ID, category.ID, collection.ID, "preso.pdf", domain.DocumentStatusProcessing, &antigo)
 
-	// Em andamento legitimo: comecou ha 1 minuto. NAO pode ser tocado, senao o
-	// reaper transforma lentidao normal em erro.
+	// Comecou ha 1 minuto: nao pode ser tocado.
 	emAndamento := seedProcessingDocument(t, db, user.ID, category.ID, collection.ID, "em-andamento.pdf", domain.DocumentStatusProcessing, &recente)
 
-	// Sem index_started_at: nao ha referencia temporal, entao nao da para
-	// afirmar que esta preso. Ignorar e mais seguro que marcar FAILED.
+	// Sem index_started_at: ignorado.
 	semCarimbo := seedProcessingDocument(t, db, user.ID, category.ID, collection.ID, "sem-carimbo.pdf", domain.DocumentStatusProcessing, nil)
 
-	// Ja concluido ha muito tempo: o filtro de status precisa protege-lo.
 	indexado := seedProcessingDocument(t, db, user.ID, category.ID, collection.ID, "indexado.pdf", domain.DocumentStatusIndexed, &antigo)
 
 	cutoff := agora.Add(-30 * time.Minute)
@@ -63,8 +53,6 @@ func TestReapStuckProcessingDocumentsLiberaApenasOsPresos(t *testing.T) {
 	assertDocumentStatus(t, db, semCarimbo.ID, domain.DocumentStatusProcessing, "")
 	assertDocumentStatus(t, db, indexado.ID, domain.DocumentStatusIndexed, "")
 
-	// A mensagem precisa dizer ao usuario o que fazer. Um FAILED sem
-	// explicacao e quase tao ruim quanto o PROCESSING eterno.
 	var liberado models.Document
 	if err := db.First(&liberado, preso.ID).Error; err != nil {
 		t.Fatalf("recarregar documento liberado: %v", err)

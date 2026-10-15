@@ -2,27 +2,13 @@ package evalcorpus
 
 import "testing"
 
-// Este arquivo trava as propriedades do corpus C1 REAL (nao de fixtures
-// sinteticas). Constituicao, principio III: numero citado no artigo vem de
-// execucao real, e o teste trava a constante para que altera-la obrigue a
-// revisar o artigo.
+// Propriedades do corpus C1 real (nao de fixtures).
 
 const (
-	// documentosC1 e secoesC1 sao os universos de recuperacao. A razao entre
-	// eles e o que da poder de discriminacao ao experimento.
-	//
-	// ATENCAO a uma confusao facil: o extrator estrutural devolve 26 nos para
-	// este corpus, nao 19. A diferenca sao os titulos de capa -- "ACORDAO",
-	// "RECURSO ORDINARIO 0001234-...", "CONTRATO DE PRESTACAO...",
-	// "ANEXO II - NIVEIS DE SERVICO". Sao estrutura legitima, mas nao sao
-	// unidades que respondem a uma consulta: ninguem pergunta algo cuja
-	// resposta seja "ACORDAO".
-	//
-	// O universo de RECUPERACAO e o do gabarito: 19 secoes de conteudo. E esse
-	// o numero que entra nas metricas do artigo.
-	documentosC1 = 5
-	secoesC1     = 19
-	// paresSecaoJulgadosC1 e o total de julgamentos (consulta, secao).
+	// O extrator devolve 26 nos para este corpus, nao 19: os 7 a mais sao titulos
+	// de capa ("ACORDAO", "ANEXO II - ..."), que nao respondem consulta nenhuma.
+	documentosC1         = 5
+	secoesC1             = 19
 	paresSecaoJulgadosC1 = 22
 )
 
@@ -35,8 +21,6 @@ func carregarC1(t *testing.T) *Corpus {
 	return corpus
 }
 
-// TestC1TemOUniversoDeSecoesDeclaradoNoArtigo trava os dois numeros que
-// sustentam a afirmacao de que a mudanca de unidade aumenta a discriminacao.
 func TestC1TemOUniversoDeSecoesDeclaradoNoArtigo(t *testing.T) {
 	corpus := carregarC1(t)
 
@@ -53,9 +37,6 @@ func TestC1TemOUniversoDeSecoesDeclaradoNoArtigo(t *testing.T) {
 	}
 }
 
-// TestC1AumentaOPoderDeDiscriminacao e o teste que justifica a issue #16
-// inteira. Ele falha se alguem reduzir o corpus a ponto de o experimento voltar
-// a nao discriminar.
 func TestC1AumentaOPoderDeDiscriminacao(t *testing.T) {
 	corpus := carregarC1(t)
 
@@ -64,16 +45,12 @@ func TestC1AumentaOPoderDeDiscriminacao(t *testing.T) {
 		secoes += len(doc.Sections)
 	}
 
-	// Com 5 documentos, R@5 e 1,000 por aritmetica: recuperar 5 de 5 sempre
-	// acha o relevante. Com o universo de secoes maior que a profundidade de
-	// corte, a metrica volta a significar alguma coisa.
+	// Com 5 documentos, R@5 e 1,000 por aritmetica.
 	const corteR = 5
 	if secoes <= corteR {
 		t.Fatalf("universo de secoes (%d) nao excede o corte R@%d: a metrica volta a ser aritmetica", secoes, corteR)
 	}
 
-	// A baseline aleatoria de P@1 precisa cair substancialmente; e ela que
-	// explica por que os bracos empatavam.
 	baselineDoc := 1.0 / float64(len(corpus.Documents))
 	baselineSec := 1.0 / float64(secoes)
 	if baselineSec >= baselineDoc/2 {
@@ -81,9 +58,6 @@ func TestC1AumentaOPoderDeDiscriminacao(t *testing.T) {
 	}
 }
 
-// TestC1TemGabaritoDeSecaoParaTodaConsultaPositiva garante que a anotacao
-// cobriu o corpus inteiro. Uma consulta positiva sem gabarito de secao seria
-// medida como falha do braco, nao como lacuna de anotacao.
 func TestC1TemGabaritoDeSecaoParaTodaConsultaPositiva(t *testing.T) {
 	corpus := carregarC1(t)
 
@@ -106,9 +80,6 @@ func TestC1TemGabaritoDeSecaoParaTodaConsultaPositiva(t *testing.T) {
 	}
 }
 
-// TestC1NaoReintroduziuCircularidadeNaAnotacaoDeSecao e a guarda mais
-// importante sobre o corpus real: roda a checagem de ancoragem sobre o arquivo
-// de verdade, nao sobre fixture.
 func TestC1NaoReintroduziuCircularidadeNaAnotacaoDeSecao(t *testing.T) {
 	corpus := carregarC1(t)
 
@@ -117,9 +88,7 @@ func TestC1NaoReintroduziuCircularidadeNaAnotacaoDeSecao(t *testing.T) {
 	}
 }
 
-// TestC1MantemCoerenciaEntreOsDoisNiveis garante que o gabarito de secao nao
-// contradiz o de documento -- toda secao julgada pertence a um documento
-// tambem julgado relevante na mesma consulta.
+// Toda secao julgada pertence a um documento julgado relevante na mesma consulta.
 func TestC1MantemCoerenciaEntreOsDoisNiveis(t *testing.T) {
 	corpus := carregarC1(t)
 

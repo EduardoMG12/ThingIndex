@@ -7,15 +7,12 @@ import (
 	"thing-index/internal/models"
 )
 
-// HighlightColors sao as cinco chaves aceitas para uma marca. Fixas de
-// proposito: a legenda da colecao da significado a cada uma, e o frontend
-// tem classe de cor para cada chave.
+// HighlightColors sao as cinco chaves aceitas; o frontend tem uma classe por chave.
 var HighlightColors = []string{"amarelo", "verde", "azul", "vermelho", "roxo"}
 
 // LegendKey e a chave em collections.metadata onde os rotulos das cores vivem.
 const LegendKey = "workspace_legend"
 
-// MaxLegendLabelLength limita o rotulo de cada cor.
 const MaxLegendLabelLength = 60
 
 var (
@@ -25,11 +22,8 @@ var (
 	ErrInvalidViewState         = errors.New("invalid view state")
 )
 
-// MaxViewStateBytes limita o estado serializado; 64 KB cabem centenas de
-// quadros e e o suficiente para uma colecao inteira.
 const MaxViewStateBytes = 64 * 1024
 
-// WorkspaceViewStateRepository persiste um estado por usuario e colecao.
 type WorkspaceViewStateRepository interface {
 	GetViewState(ctx context.Context, userID, collectionID uint) (map[string]any, error)
 	UpsertViewState(ctx context.Context, userID, collectionID uint, state map[string]any) error
@@ -52,7 +46,7 @@ type ParagraphHighlightRepository interface {
 	// UpsertHighlight cria ou troca a cor. Devolve ErrParagraphNotInCollection
 	// quando o paragrafo nao pertence a um documento de uma colecao do usuario.
 	UpsertHighlight(ctx context.Context, userID, collectionID, paragraphNodeID uint, color string) (*models.ParagraphHighlight, error)
-	// DeleteHighlight e idempotente: apagar o que nao existe nao e erro.
+	// DeleteHighlight e idempotente.
 	DeleteHighlight(ctx context.Context, userID, collectionID, paragraphNodeID uint) error
 }
 

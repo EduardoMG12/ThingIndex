@@ -1,15 +1,7 @@
 // Command schema-dbml gera o esquema relacional do ThingIndex em DBML.
 //
-// Motivo: o Apendice A do artigo promete "o esquema completo em formato DBML no
-// repositorio do projeto", e ate agora nenhum arquivo .dbml existia -- a
-// promessa era falsa e verificavel em um `find`. Alem disso o artigo afirmava
-// 20 tabelas, quando o AutoMigrate registra 21.
-//
-// Escrever o .dbml a mao so trocaria um numero desatualizado por outro. O
-// gerador le os mesmos modelos que db.ManagedModels() entrega ao AutoMigrate e
-// usa o parser de schema do proprio GORM, entao o documento do apendice e
-// derivado do esquema real em vez de descrever de memoria o que se acredita que
-// ele seja. Se um modelo mudar e o .dbml nao for regerado, o CI acusa
+// Le os mesmos modelos que db.ManagedModels() entrega ao AutoMigrate, pelo
+// parser de schema do GORM. O CI acusa .dbml desatualizado
 // (`make schema-dbml-check`).
 //
 // Uso:
@@ -34,11 +26,8 @@ import (
 	"gorm.io/gorm/schema"
 )
 
-// defaultOutputPath resolve o destino a partir da localizacao deste arquivo-fonte,
-// nao do diretorio de trabalho. Sem isso o caminho relativo funcionava em
-// `go run ./cmd/schema-dbml` (cwd=api/) e quebrava em `go test ./...`, que roda
-// com o cwd no diretorio do pacote -- o teste falhava por nao achar o arquivo,
-// nao por o esquema estar errado.
+// defaultOutputPath resolve o destino pela localizacao deste arquivo, nao pelo
+// cwd: `go test` roda com o cwd no diretorio do pacote.
 func defaultOutputPath() string {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -132,8 +121,7 @@ func render() (string, error) {
 
 		for _, field := range table.Fields {
 			if field.DBName == "" {
-				// Campo apenas de aplicacao (gorm:"-") ou associacao pura:
-				// nao vira coluna.
+				// gorm:"-" ou associacao pura: nao vira coluna.
 				continue
 			}
 
@@ -228,17 +216,10 @@ func renderIndexes(table *schema.Schema) string {
 	return b.String()
 }
 
-// collectRelations extrai as chaves estrangeiras de um schema.
-//
-// Cuidado que custou um bug: o GORM registra a relacao nos DOIS schemas. Ao
-// parsear ChatConversation (HasMany Messages), a mesma relacao aparece tambem
-// em ChatConversationEntry. Deduzir a tabela a partir de `table` ou de
-// `rel.FieldSchema` produzia auto-referencias falsas do tipo
-// `chat_conversation_entries.conversation_id > chat_conversation_entries.id`.
-//
-// A leitura confiavel e ignorar quem declarou a relacao e perguntar aos
-// proprios campos a que schema pertencem: a FK sempre mora na tabela "muitos" e
-// a PK na tabela "um", independente do lado em que a associacao foi escrita.
+// collectRelations extrai as chaves estrangeiras de um schema. O GORM registra
+// a relacao nos dois schemas, entao a tabela vem dos proprios campos (FK no
+// lado "muitos", PK no lado "um"), nao de quem declarou a associacao; senao
+// surgem auto-referencias falsas.
 func collectRelations(table *schema.Schema) []relation {
 	var out []relation
 
@@ -267,9 +248,8 @@ func collectRelations(table *schema.Schema) []relation {
 	return out
 }
 
-// dbmlType traduz o tipo do GORM para um nome reconhecido pelo dbdiagram.io.
-// Prioriza a anotacao explicita `gorm:"type:..."` quando ela existe, porque e
-// ela que descreve o tipo real criado no Postgres (jsonb, text, etc.).
+// dbmlType traduz o tipo do GORM para o dbdiagram.io, preferindo
+// `gorm:"type:..."` quando existe.
 func dbmlType(field *schema.Field) string {
 	if raw := strings.TrimSpace(strings.ToLower(string(field.DataType))); raw != "" {
 		switch raw {
@@ -292,8 +272,6 @@ func dbmlType(field *schema.Field) string {
 		case "bytes":
 			return "bytea"
 		default:
-			// Tipos vindos de `type:` no tag (jsonb, text, numeric(...)) ja
-			// sao validos em Postgres e no dbdiagram.
 			return raw
 		}
 	}

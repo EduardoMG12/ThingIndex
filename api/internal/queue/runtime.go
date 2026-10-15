@@ -17,13 +17,8 @@ type BootstrapOptions struct {
 	NewPublisher func(*config.Config) (*RabbitMQPublisher, error)
 }
 
-// BootstrapRabbitMQRuntime espera o broker e devolve o publisher.
-//
-// O consumidor nao e criado aqui: quem consome e o ConsumerSupervisor, que
-// recria o consumidor a cada tentativa (ver ConsumoComCallbacks). Um
-// consumidor criado no bootstrap ficava ocioso segurando conexao e canal AMQP
-// durante toda a vida do processo, e era nele que as callbacks de falha eram
-// instaladas por engano.
+// BootstrapRabbitMQRuntime espera o broker e devolve o publisher. O consumidor
+// e criado pelo ConsumerSupervisor a cada tentativa.
 func BootstrapRabbitMQRuntime(
 	ctx context.Context,
 	cfg *config.Config,

@@ -7,16 +7,8 @@ import (
 	"testing"
 )
 
-// O prompt gerador de perguntas esta congelado pelo pre-registro em
-// docs/prds/pre-registro-perguntas-geradas.md.
-//
-// Este teste existe para tornar a alteracao VISIVEL, nao para proibi-la. O
-// compromisso registrado e rodar uma versao so: rodar varias e reportar a
-// melhor produz um numero favoravel e sem valor, e sem um hash ninguem
-// consegue detectar isso depois, nem o proprio autor daqui a um mes.
-//
-// Se o prompt precisar mudar, mude tambem este hash NO MESMO commit, e escreva
-// um pre-registro novo. A medicao anterior passa a nao valer.
+// Hash do prompt de perguntas, para qualquer mudanca nele ficar visivel.
+// Mudou o prompt, atualize o hash no mesmo commit (e a medicao antiga deixa de valer).
 const hashDoPromptDePerguntas = "12c07448ee11a62ea87181cf708f13360139e4418d0b7e3952a1a4977f50be21"
 
 func TestPromptDePerguntasEstaCongelado(t *testing.T) {
@@ -36,10 +28,7 @@ supoe este prompt exato.`, atual)
 	}
 }
 
-// O prompt de perguntas precisa pedir o OPOSTO do prompt de resumo. Se um dia
-// alguem "melhorar" o prompt de perguntas pedindo os numeros e termos da
-// pagina, ele vira o resumo de novo e o experimento perde o sentido sem que
-// nenhum teste reclame.
+// O prompt de perguntas nao pode pedir os termos da pagina, senao vira o resumo.
 func TestPromptDePerguntasPedeLinguagemDeLeigo(t *testing.T) {
 	t.Parallel()
 

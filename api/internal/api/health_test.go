@@ -11,17 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// O /health devolvia texto fixo: "API Thing-Index no ar!" com status 200,
-// sem verificar nada.
-//
-// Medido derrubando o Postgres com a API no ar: as consultas passaram a falhar
-// e o /health continuou respondendo 200. Um orquestrador que use esse endpoint
-// como liveness/readiness manteria no balanceador uma instancia incapaz de
-// servir qualquer requisicao util -- o pior tipo de indisponibilidade, porque
-// o painel fica verde enquanto o usuario recebe erro.
-//
-// A distincao que o teste trava: responder ao HTTP prova que o processo esta
-// vivo; so a checagem de dependencia prova que ele consegue trabalhar.
+// Responder HTTP prova que o processo esta vivo; so a checagem do banco prova que
+// ele consegue trabalhar.
 
 type pingadorFalso struct {
 	err error
@@ -57,8 +48,6 @@ func TestHealthReportaFalhaQuandoOBancoEstaFora(t *testing.T) {
 		t.Fatalf("com o banco fora o health deveria devolver 503, devolveu %d", gravador.Code)
 	}
 
-	// O envelope de erro do projeto usa o campo "errors"; o de sucesso usa
-	// "data". O teste segue o contrato existente em vez de inventar um novo.
 	corpo := lerCorpo(t, gravador)
 	detalhe, _ := corpo["errors"].(map[string]any)
 	if detalhe == nil {
@@ -89,10 +78,7 @@ func TestHealthReportaSucessoComOBancoNoAr(t *testing.T) {
 	}
 }
 
-// TestHealthNaoVazaDetalheDaInfraestrutura: a mensagem de erro do driver
-// carrega IP interno, porta e as vezes o nome do banco. O endpoint e publico
-// (nao passa por autenticacao), entao o detalhe fica no log do servidor, nao na
-// resposta.
+// A mensagem do driver tem IP e porta; o endpoint e publico.
 func TestHealthNaoVazaDetalheDaInfraestrutura(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -113,9 +99,7 @@ func TestHealthNaoVazaDetalheDaInfraestrutura(t *testing.T) {
 	}
 }
 
-// TestHealthRespondeMesmoSemPingador cobre a montagem defensiva: se o handler
-// for registrado sem dependencia, ele nao pode entrar em panico e derrubar o
-// processo inteiro.
+// Registrado sem dependencia, o handler nao pode dar panico.
 func TestHealthRespondeMesmoSemPingador(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

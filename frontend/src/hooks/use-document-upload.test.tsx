@@ -215,8 +215,7 @@ describe("useDocumentUpload", () => {
         await waitFor(() => {
             expect(result.current.files[0].status).toBe("indexed");
         });
-        // O arquivo continua listado (o usuario ve "Indexed"), mas nao conta
-        // como enviavel: e isso que esconde o botao "Upload 1 document".
+        // Continua listado como "Indexed", mas nao conta como enviavel.
         expect(result.current.files).toHaveLength(1);
         expect(result.current.queuedCount).toBe(0);
     });

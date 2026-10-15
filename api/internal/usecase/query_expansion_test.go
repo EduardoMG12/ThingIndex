@@ -12,10 +12,7 @@ import (
 	"thing-index/internal/domain"
 )
 
-// O prompt esta congelado pelo pre-registro
-// (docs/prds/pre-registro-expansao-consulta.md). Este teste existe para que
-// alterar o texto quebre o build: rodar varias versoes do prompt e reportar a
-// melhor produz um numero favoravel e sem valor, e ninguem detecta isso depois.
+// O prompt da expansao e travado por hash: mudar o texto quebra o teste.
 func TestPromptDaExpansaoEstaCongelado(t *testing.T) {
 	const esperado = "bbc051efd4d6636b2682c7ffd33866845aaf894da6ad0172ccbe289bf44d2250"
 	sum := sha256.Sum256([]byte(queryExpansionSystemPrompt))
@@ -25,7 +22,6 @@ func TestPromptDaExpansaoEstaCongelado(t *testing.T) {
 			"Se a mudanca e intencional, ela exige um pre-registro NOVO e a medicao recomeca.", got)
 	}
 
-	// Conteudo que o pre-registro promete, para o hash nao virar um numero solto.
 	for _, exigido := range []string{
 		"Do not answer the question",
 		"technical or formal terms",
@@ -51,9 +47,7 @@ func TestSanitizeExpansion(t *testing.T) {
 		{"vazio vira vazio", "   ", ""},
 		{"aspas ao redor", "\"epi fornecimento\"", "epi fornecimento"},
 		{"no maximo oito termos", "a1 b2 c3 d4 e5 f6 g7 h8 i9 j10", "a1 b2 c3 d4 e5 f6 g7 h8"},
-		// O modelo as vezes ignora a instrucao e responde a pergunta. Colar uma
-		// resposta inteira na consulta arruinaria o ranking, entao o texto longo
-		// e descartado por inteiro em vez de truncado.
+		// Resposta inteira na consulta arruinaria o ranking: descarta, nao trunca.
 		{"resposta longa e descartada", strings.Repeat("palavra ", 40), ""},
 	}
 	for _, c := range casos {
@@ -114,9 +108,7 @@ func (c *cacheFalso) StoreEnrichment(_ context.Context, scope domain.EnrichmentC
 
 var escopoM1 = domain.EnrichmentCacheScope{UserID: 1, Provider: "OPENAI|api.openai.com", Model: "m1"}
 
-// Regressao P0-1: a expansao da pergunta usava o mesmo cache global do
-// enriquecimento. Termos gerados pelo provedor de um usuario nao podem ser
-// servidos a outro.
+// Termos gerados pelo provedor de um usuario nao podem ser servidos a outro.
 func TestExpandNaoReaproveitaExpansaoDeOutroUsuario(t *testing.T) {
 	cache := &cacheFalso{entradas: map[string]domain.EnrichmentCacheEntry{}}
 	atacante := &llmFalso{resposta: "termo envenenado"}
@@ -151,9 +143,7 @@ func TestExpandUsaCacheNaSegundaVez(t *testing.T) {
 	}
 }
 
-// Expansao vazia tambem vai para o cache: sem isso, toda pergunta que ja usa o
-// vocabulario formal pagaria uma chamada de LLM em cada repeticao da bateria, e
-// a medicao de custo do experimento sairia errada.
+// Expansao vazia tambem vai para o cache.
 func TestExpansaoVaziaTambemEGravada(t *testing.T) {
 	cache := &cacheFalso{entradas: map[string]domain.EnrichmentCacheEntry{}}
 	llm := &llmFalso{resposta: "\n"}
@@ -170,8 +160,7 @@ func TestExpansaoVaziaTambemEGravada(t *testing.T) {
 	}
 }
 
-// Falha de LLM cai no braco de controle em vez de derrubar a pergunta: a busca
-// sem expansao e o comportamento atual do sistema, nao um erro.
+// Falha de LLM segue sem expansao em vez de derrubar a pergunta.
 func TestExpandFalhaSilenciosaNaoQuebraABusca(t *testing.T) {
 	e := newQueryExpander(&cacheFalso{entradas: map[string]domain.EnrichmentCacheEntry{}})
 	llm := &llmFalso{err: errors.New("provedor fora do ar")}

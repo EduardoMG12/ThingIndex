@@ -11,8 +11,7 @@ import (
 	"thing-index/internal/models"
 )
 
-// GormIndexingRepository: preferencias de enriquecimento por usuario e cache
-// de resumos por hash. Usado pelo indexador (le) e pela API (le e grava).
+// GormIndexingRepository: preferencias de enriquecimento por usuario e cache de resumos por hash.
 type GormIndexingRepository struct {
 	db *gorm.DB
 }
@@ -41,9 +40,8 @@ func (r *GormIndexingRepository) SaveIndexingPreferences(ctx context.Context, us
 	}).Create(&row).Error
 }
 
-// LookupEnrichment so le entradas do escopo informado: mesmo usuario, mesmo
-// provedor (tipo + host) e mesmo modelo. Escopo sem usuario nao le nada --
-// user_id 0 e o que sobrou do cache global antigo.
+// LookupEnrichment so le o escopo informado (usuario, provedor, modelo).
+// user_id 0 e resto do cache global antigo e nunca e lido.
 func (r *GormIndexingRepository) LookupEnrichment(ctx context.Context, scope domain.EnrichmentCacheScope, kind string, hashes []string) (map[string]domain.EnrichmentCacheEntry, error) {
 	out := make(map[string]domain.EnrichmentCacheEntry, len(hashes))
 	if len(hashes) == 0 || scope.UserID == 0 {

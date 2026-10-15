@@ -103,8 +103,7 @@ describe("PdfFrame", () => {
         expect(screen.getByRole("button", { name: "Próxima página" })).toBeDisabled();
         fireEvent.keyDown(screen.getByTestId("pdf-frame-7"), { key: "PageUp" });
         expect(onMudar).toHaveBeenLastCalledWith(7, { modo: "pagina", paginaAtual: 29 });
-        // Trocar de pagina nao reabre o documento: o cache de abrirDocumento
-        // e chamado, mas a ideia e que o quadro nao dependa disso.
+        // Trocar de pagina nao reabre o documento.
         expect(vi.mocked(abrirDocumento).mock.calls.length).toBeLessThanOrEqual(chamadas + 1);
     });
 

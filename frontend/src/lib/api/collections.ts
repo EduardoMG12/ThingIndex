@@ -65,15 +65,7 @@ export async function fetchCollectionContext(
     return normalized;
 }
 
-/**
- * Busca as conexoes derivadas de um no do sumario.
- *
- * `minScore` e explicito de proposito. Subir o limiar faz as conexoes
- * desaparecerem, e esse e o comportamento correto quando nao ha relacao real --
- * o oposto do falso positivo de 1,000 que este projeto mede nos seis bracos
- * avaliados. Esconder o parametro tiraria da interface a unica demonstracao de
- * que o sistema sabe se calar.
- */
+// minScore explicito: subir o limiar tem de poder zerar as conexoes.
 export async function fetchNodeConnections(
     collectionId: number,
     nodeId: string,
@@ -106,14 +98,8 @@ export async function fetchNodeConnections(
     return normalizeNodeConnections(hasResponseData(payload) ? payload.data : null);
 }
 
-// ---------------------------------------------------------------------------
-// Anotacoes do workspace: marcas coloridas por paragrafo e legenda da colecao.
-// Persistidas por usuario no backend; nada aqui e recuperacao.
-//
-// Sem redirecionar em 401: sao dados secundarios da tela. Quem decide se a
-// sessao acabou e o carregamento do contexto; um 401 aqui vira erro na
-// sidebar, nao uma navegacao inteira para o login.
-// ---------------------------------------------------------------------------
+// Anotacoes (marcas e legenda). Sem redirect em 401: quem decide se a sessao
+// acabou e o carregamento do contexto; aqui vira erro na sidebar.
 
 const SEM_REDIRECIONAR = { redirectOnUnauthorized: false } as const;
 

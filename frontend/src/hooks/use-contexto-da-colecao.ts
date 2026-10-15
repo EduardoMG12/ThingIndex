@@ -9,19 +9,13 @@ import type { WorkspaceViewState } from "@/lib/api/contracts/view-state";
 
 export type AnexosDoContexto = { marcas: Highlight[]; legenda: Legend; estado: WorkspaceViewState };
 
-// Carrega contexto, marcas, legenda e estado do canvas da colecao selecionada.
-//
-// Toda carga (a da troca de colecao e as recargas silenciosas do polling ou de
-// apagar/reindexar) passa pelo mesmo AbortController: a nova aborta a anterior,
-// e a troca de colecao e o unmount abortam a pendente. Antes a recarga usava um
-// controller descartavel, e uma resposta atrasada da colecao A podia chegar
-// depois da B e mostrar documentos da colecao errada.
+// Toda carga, inclusive a recarga silenciosa, usa o mesmo AbortController,
+// senao uma resposta atrasada da colecao A podia cair depois da B.
 export function useContextoDaColecao(selecionada: number | null, mensagemDeErro: string) {
     const [context, setContext] = useState<CollectionContext | null>(null);
     const [anexos, setAnexos] = useState<AnexosDoContexto>({ marcas: [], legenda: {}, estado: {} });
-    // Qual colecao ja terminou de carregar (com sucesso ou erro). "carregando" e
-    // derivado disso, sem setState sincrono dentro do efeito; a recarga
-    // silenciosa nao mexe aqui, entao nao mostra o loader de tela cheia.
+    // "carregando" e derivado daqui (sem setState sincrono no efeito); a recarga
+    // silenciosa nao mexe nisso.
     const [concluidaPara, setConcluidaPara] = useState<number | null>(null);
     const [falha, setFalha] = useState<{ collectionId: number; mensagem: string } | null>(null);
 

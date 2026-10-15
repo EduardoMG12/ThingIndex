@@ -12,20 +12,9 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// A fila tinha um defeito grave: consumidor e publicador guardavam conexao AMQP
-// de longa vida e, depois de uma queda do broker, nunca reabriam -- documentos
-// ficavam presos para sempre e so um restart resolvia.
-//
-// Este teste responde se o storage sofre do mesmo mal. A resposta medida contra
-// um MinIO real (derrubado e religado com a API no ar) foi NAO: o download
-// falha com 500 durante a queda e volta a 200 sozinho depois, sem reiniciar a
-// API. O motivo e que o cliente fala HTTP stateless e abre conexao nova a cada
-// operacao, enquanto o AMQP mantem socket persistente.
-//
-// O teste trava essa propriedade. Se alguem trocar o cliente por um que
-// mantenha sessao, ou passar a cachear conexao "para otimizar", o storage
-// herda o defeito da fila -- e o sintoma so apareceria em producao, depois de
-// uma instabilidade, como upload falhando ate reiniciar a API.
+// O cliente do storage fala HTTP sem estado e abre conexao a cada operacao, entao
+// volta sozinho depois de uma queda (ao contrario da conexao AMQP de longa vida da
+// fila). Este teste trava isso contra um MinIO real.
 
 var loadResilienciaEnvOnce sync.Once
 
@@ -55,8 +44,7 @@ func TestClienteDeStorageSobreviveAErroDeRede(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = storage.DeleteFile(context.Background(), caminho) })
 
-	// Contexto ja cancelado simula a falha de rede. O que importa e o que
-	// acontece DEPOIS do erro.
+	// Contexto ja cancelado simula a falha de rede.
 	ctxCancelado, cancelar := context.WithCancel(context.Background())
 	cancelar()
 
@@ -64,8 +52,7 @@ func TestClienteDeStorageSobreviveAErroDeRede(t *testing.T) {
 		t.Fatal("leitura com contexto cancelado deveria falhar")
 	}
 
-	// A prova: a operacao seguinte funciona sem nenhuma reinicializacao do
-	// cliente. Era exatamente isto que a fila NAO fazia.
+	// A operacao seguinte tem de funcionar sem reinicializar o cliente.
 	leitor, err := storage.OpenFile(ctx, caminho)
 	if err != nil {
 		t.Fatalf("cliente nao se recuperou apos erro de rede: %v", err)
@@ -81,8 +68,7 @@ func TestClienteDeStorageSobreviveAErroDeRede(t *testing.T) {
 	}
 }
 
-// TestOperacoesSucessivasNaoDegradam: acumular estado entre chamadas seria o
-// primeiro sintoma de conexao presa.
+// Acumular estado entre chamadas seria o primeiro sintoma de conexao presa.
 func TestOperacoesSucessivasNaoDegradam(t *testing.T) {
 	storage := storageDeTeste(t)
 	ctx := context.Background()

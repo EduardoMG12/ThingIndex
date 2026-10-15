@@ -1,15 +1,5 @@
-/**
- * Conexoes derivadas entre nos de documentos distintos.
- *
- * "Derivada" e a palavra que carrega o peso: a API recalcula estas relacoes a
- * cada chamada, a partir do texto do proprio no, e nao existe tabela de arestas
- * no banco. O principio II da constituicao do projeto admite grafos apenas como
- * trilha comparativa, jamais como camada primaria de recuperacao.
- *
- * Consequencia pratica para quem consome: nao ha o que invalidar em cache de
- * escrita, porque nao ha escrita. Duas chamadas com os mesmos parametros
- * devolvem o mesmo resultado.
- */
+// Conexoes recalculadas pela API a cada chamada (nao ha tabela de arestas).
+// Mesmos parametros, mesmo resultado.
 
 export type NodeConnection = {
     documentId: number;
@@ -18,11 +8,7 @@ export type NodeConnection = {
     summary: string;
     startPage: number | null;
     score: number;
-    /**
-     * Termos da origem encontrados no destino. Sao a justificativa da aresta --
-     * sem eles a conexao seria tao opaca quanto uma vizinhanca vetorial, que e
-     * exatamente o que este projeto evita.
-     */
+    /** Termos da origem encontrados no destino. */
     matchedTerms: string[];
     /** "termo-raro" (padrao) ou "mesma-norma": os dois trechos citam a mesma lei/resolucao. */
     kind: "termo-raro" | "mesma-norma" | "mesma-disciplina";
@@ -80,15 +66,7 @@ function normalizeConnection(value: unknown): NodeConnection | null {
     };
 }
 
-/**
- * Converte a resposta da API no formato usado pela interface.
- *
- * Lista vazia NAO e erro: significa que nenhuma conexao superou o limiar, que e
- * a resposta correta quando nao existe relacao real. Este trabalho mede taxa de
- * falso positivo de 1,000 nos seis bracos avaliados justamente porque nenhum
- * sabe se calar; esconder o vazio na interface desfaria o unico ponto em que o
- * sistema acerta esse comportamento.
- */
+// Lista vazia nao e erro: nenhuma conexao passou do limiar.
 export function normalizeNodeConnections(value: unknown): NodeConnectionsResult {
     const record = asRecord(value);
     if (!record) {
@@ -100,8 +78,7 @@ export function normalizeNodeConnections(value: unknown): NodeConnectionsResult 
     return {
         nodeId: asString(record.node_id),
         minScore: asNumber(record.min_score),
-        // A ordem vem da API, ja por score decrescente. Reordenar aqui poderia
-        // divergir do backend e quebrar o determinismo que o trabalho afirma.
+        // Ja vem por score decrescente da API; nao reordenar.
         connections: rawConnections
             .map(normalizeConnection)
             .filter((connection): connection is NodeConnection => connection !== null),

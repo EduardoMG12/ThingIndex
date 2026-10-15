@@ -1,0 +1,132 @@
+@startuml
+' GERADO por scripts/gerar-anexos.py a partir de docs/schema/thingindex.dbml.
+' Nao edite a mao.
+!include estilo.iuml
+skinparam defaultFontSize 13
+skinparam linetype ortho
+skinparam nodesep 40
+skinparam ranksep 50
+hide circle
+entity "pricing_sources" as pricing_sources {
+  {field} <b>PK</b> id : serial
+  --
+  {field} <i>FK</i> user_id : integer
+  {field} provider_type : varchar(50)
+  {field} name : varchar(120)
+  {field} source_url : varchar(1024)
+  {field} is_enabled : boolean
+  {field} last_synced_at : timestamptz
+  {field} last_sync_status : varchar(32)
+  {field} last_sync_error : text
+  {field} last_sync_duration_ms : integer
+  {field} last_price_count : integer
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+}
+entity "model_prices" as model_prices {
+  {field} <b>PK</b> id : serial
+  --
+  {field} <i>FK</i> user_id : integer
+  {field} pricing_source_id : integer
+  {field} provider_type : varchar(50)
+  {field} model_key : varchar(120)
+  {field} model_name : varchar(255)
+  {field} unit : varchar(80)
+  {field} currency : varchar(10)
+  {field} flat_price_usd : numeric
+  {field} input_cost_per_million_usd : numeric
+  {field} output_cost_per_million_usd : numeric
+  {field} cached_input_cost_per_million_usd : numeric
+  {field} context_cost_per_million_usd : numeric
+  {field} price_notes : text
+  {field} last_synced_at : timestamptz
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+}
+entity "model_price_histories" as model_price_histories {
+  {field} <b>PK</b> id : serial
+  --
+  {field} <i>FK</i> user_id : integer
+  {field} pricing_source_id : integer
+  {field} provider_type : varchar(50)
+  {field} model_key : varchar(120)
+  {field} model_name : varchar(255)
+  {field} unit : varchar(80)
+  {field} currency : varchar(10)
+  {field} flat_price_usd : numeric
+  {field} input_cost_per_million_usd : numeric
+  {field} output_cost_per_million_usd : numeric
+  {field} cached_input_cost_per_million_usd : numeric
+  {field} context_cost_per_million_usd : numeric
+  {field} price_notes : text
+  {field} captured_at : timestamptz
+  {field} created_at : timestamptz
+}
+entity "chat_conversations" as chat_conversations {
+  {field} <b>PK</b> id : serial
+  --
+  {field} <i>FK</i> user_id : integer
+  {field} collection_id : integer
+  {field} title : varchar(255)
+  {field} last_message_at : timestamptz
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+  {field} deleted_at : timestamptz
+}
+entity "chat_conversation_entries" as chat_conversation_entries {
+  {field} <b>PK</b> id : serial
+  --
+  {field} <i>FK</i> conversation_id : integer
+  {field} role : varchar(16)
+  {field} content : text
+  {field} sources : jsonb
+  {field} prompt_tokens : integer
+  {field} completion_tokens : integer
+  {field} usage_reported : boolean
+  {field} provider_type : varchar(32)
+  {field} model : varchar(128)
+  {field} estimated_cost_usd : numeric
+  {field} status : varchar(16)
+  {field} error_detail : text
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+  {field} deleted_at : timestamptz
+}
+entity "paragraph_highlights" as paragraph_highlights {
+  {field} <b>PK</b> id : serial
+  --
+  {field} <i>FK</i> user_id : integer
+  {field} collection_id : integer
+  {field} document_id : integer
+  {field} <i>FK</i> paragraph_node_id : integer
+  {field} color : varchar(16)
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+  {field} deleted_at : timestamptz
+}
+entity "workspace_view_states" as workspace_view_states {
+  {field} <b>PK</b> id : serial
+  --
+  {field} <i>FK</i> user_id : integer
+  {field} collection_id : integer
+  {field} state : jsonb
+  {field} created_at : timestamptz
+  {field} updated_at : timestamptz
+}
+entity "paragraph_nodes (Figura 1)" as paragraph_nodes {
+  {field} <b>PK</b> id : serial
+}
+entity "users (Figura 1)" as users {
+  {field} <b>PK</b> id : serial
+}
+chat_conversations ||--o{ chat_conversation_entries
+users ||--o{ chat_conversations
+users ||--o{ model_price_histories
+users ||--o{ model_prices
+paragraph_nodes ||--o{ paragraph_highlights
+users ||--o{ paragraph_highlights
+users ||--o{ pricing_sources
+users ||--o{ workspace_view_states
+chat_conversations -[hidden]down- pricing_sources
+model_price_histories -[hidden]down- workspace_view_states
+@enduml

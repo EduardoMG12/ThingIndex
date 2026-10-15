@@ -259,13 +259,7 @@ describe("DocumentAuditExplorer", () => {
     });
 
     it("preserva o termo digitado ao clicar num filtro rapido", async () => {
-        // Cenario: o usuario digita no campo de busca e, ANTES de submeter,
-        // clica no atalho "Somente falhas".
-        //
-        // A versao anterior montava o proximo estado como
-        // `{...filters, ...appliedFilters, ...partial}` -- appliedFilters vinha
-        // depois e reimpunha o valor vazio ja submetido, apagando o texto do
-        // campo na frente do usuario e ignorando o termo na consulta.
+        // Digita a busca e clica em "Somente falhas" antes de submeter.
         const page = {
             items: [
                 {
@@ -306,12 +300,10 @@ describe("DocumentAuditExplorer", () => {
 
         await user.click(screen.getByRole("button", { name: /Somente falhas/i }));
 
-        // O texto digitado continua no campo...
         await waitFor(() => {
             expect(searchField).toHaveValue("contrato");
         });
 
-        // ...e vai junto na consulta, com o filtro rapido aplicado.
         await waitFor(() => {
             expect(fetchDocumentAuditEvents).toHaveBeenLastCalledWith(
                 expect.objectContaining({
@@ -323,11 +315,7 @@ describe("DocumentAuditExplorer", () => {
     });
 
     it("descarta a pagina em voo quando o filtro muda antes de ela chegar", async () => {
-        // O efeito de carga sempre teve flag de cancelamento; o handleLoadMore
-        // nao tinha. Clicar num filtro com a paginacao em voo fazia a resposta
-        // antiga chegar depois e sobrescrever summary/page_info com os da
-        // consulta anterior -- a tela mostrava contadores de um filtro e itens
-        // de outro, sem erro nenhum.
+        // "Carregar mais" em voo nao pode sobrescrever o resultado do filtro novo.
         const primeiraPagina = {
             items: [
                 {
@@ -356,8 +344,7 @@ describe("DocumentAuditExplorer", () => {
             page_info: { limit: 12, returned: 1, has_next: true, next_cursor: "cursor-1" },
         };
 
-        // A pagina seguinte fica pendente ate o teste liberar: e assim que a
-        // corrida vira deterministica em vez de depender de temporizacao.
+        // Fica pendente ate o teste liberar, para a corrida ser deterministica.
         let liberarPaginaEmVoo: (valor: typeof primeiraPagina) => void = () => {};
         const paginaEmVoo = new Promise<typeof primeiraPagina>((resolve) => {
             liberarPaginaEmVoo = resolve;
@@ -391,9 +378,7 @@ describe("DocumentAuditExplorer", () => {
             items: [{ ...primeiraPagina.items[0], id: 2, title: "Pagina atrasada.pdf" }],
         });
 
-        // waitFor de ausencia passa no primeiro tick, antes de a promessa
-        // atrasada resolver -- nao detectaria nada. Espera-se a fila de
-        // microtarefas drenar e so entao afirma.
+        // waitFor de ausencia passaria no primeiro tick; drena as microtarefas antes.
         await act(async () => {
             await new Promise((resolve) => setTimeout(resolve, 50));
         });

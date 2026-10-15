@@ -10,12 +10,8 @@ import { translate } from "@/lib/i18n/translate";
 
 const PREVIEW_POLL_INTERVAL_MS = 3000;
 
-// Carrega indice e contexto da colecao do documento aberto no preview.
-//
-// As dependencias sao id, status, updated_at e colecao, nao o objeto: o
-// polling de useDocuments entrega objetos novos a cada rodada, e depender da
-// referencia fazia o preview abortar e refazer os dois fetches (com flicker de
-// loading) a cada 3 s, mesmo com o documento selecionado ja concluido.
+// Depende dos campos, nao do objeto: o polling de useDocuments cria objetos
+// novos a cada 3 s e o preview refazia os fetches.
 export function useDocumentPreviewData(document: Document | null, locale: AppLocale) {
     const [context, setContext] = useState<CollectionContext | null>(null);
     const [documentIndex, setDocumentIndex] = useState<DocumentIndex | null>(null);

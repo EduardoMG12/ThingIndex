@@ -27,9 +27,7 @@ type ChatSource struct {
 	DocName string `json:"docName"`
 	Page    int    `json:"page"`
 	Snippet string `json:"snippet"`
-	// DocumentID e NodeID deixam o frontend ir ao documento (e a secao, quando
-	// o hit e de um no do sumario) sem parsear o ID. Ambos opcionais para as
-	// mensagens gravadas antes de existirem.
+	// Opcionais: mensagens antigas nao tem.
 	DocumentID uint   `json:"documentId,omitempty"`
 	NodeID     string `json:"nodeId,omitempty"`
 	// ParagraphID e o paragrafo da pagina com mais termos da pergunta: e o
@@ -38,16 +36,11 @@ type ChatSource struct {
 	// Lines sao os indices (em metadata.lines do paragrafo) das linhas que
 	// casam a pergunta: o grifo fino, em vez do paragrafo inteiro.
 	Lines []int `json:"lines,omitempty"`
-	// MatchedTerms sao os termos da pergunta presentes na fonte: e o "por que
-	// esta fonte esta aqui", auditavel, como nas conexoes.
+	// MatchedTerms sao os termos da pergunta presentes na fonte.
 	MatchedTerms []string `json:"matchedTerms,omitempty"`
-	// Box, LineBoxes e IndexedAt tornam a citacao autocontida: o grifo e
-	// reproduzivel na pagina mesmo depois de o documento ser reindexado, e a
-	// tela sabe dizer que o indice mudou desde a resposta.
-	// ContinuesOnPage e a pagina seguinte quando o texto desta termina no
-	// meio da frase: o paragrafo com a resposta pode ter quebrado na virada
-	// (p. 186 -> 187 "e vedada a matricula simultanea"). O prompt leva o
-	// comeco da pagina seguinte e a citacao cobre as duas.
+	// Box, LineBoxes e IndexedAt deixam o grifo reproduzivel depois de reindexar.
+	// ContinuesOnPage e a pagina seguinte quando o paragrafo quebra na virada; o
+	// prompt leva o comeco dela.
 	ContinuesOnPage int               `json:"continuesOnPage,omitempty"`
 	Box             *models.SourceBox `json:"box,omitempty"`
 	LineBoxes       [][4]float64      `json:"lineBoxes,omitempty"`
@@ -57,10 +50,8 @@ type ChatSource struct {
 	Body string `json:"-"`
 }
 
-// ChatUsage e o consumo de UMA resposta. UsageReported=false significa que o
-// provedor nao informou e os numeros sao estimativa (runas/4), a mesma regra
-// da indexacao -- e a estimativa e rotulada como tal ate a interface
-// (constituicao VI). EstimatedCostUSD e nulo sem preco cadastrado.
+// ChatUsage e o consumo de uma resposta. UsageReported=false: numeros estimados
+// (runas/4). EstimatedCostUSD e nulo sem preco cadastrado.
 type ChatUsage struct {
 	PromptTokens     int      `json:"promptTokens"`
 	CompletionTokens int      `json:"completionTokens"`

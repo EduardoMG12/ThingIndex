@@ -60,9 +60,8 @@ type pageSummaryResponse struct {
 	Pages []pageSummaryItem `json:"pages"`
 }
 
-// pageQuestionsResponse e a saida do gerador de perguntas de leigo. Formato
-// separado do resumo de proposito: os dois coexistem para que a medicao possa
-// comparar um contra o outro.
+// pageQuestionsResponse e a saida do gerador de perguntas de leigo, separada
+// do resumo para os dois poderem ser comparados.
 type pageQuestionsResponse struct {
 	Pages []pageQuestionsItem `json:"pages"`
 }
@@ -130,8 +129,7 @@ func (e *LLMEnricher) EnrichWith(ctx context.Context, llm domain.LLMService, doc
 
 	contextBlock := buildPromptContext(doc, updated)
 
-	// Fallback nunca e silencioso: sem o log, cinco chamadas devolvendo um
-	// token cada passaram meses como "enrichment_status=applied".
+	// Loga o fallback; sem isso respostas vazias passavam como "applied".
 	calls := 0
 	var synopsis documentSynopsisResponse
 	if !prefs.DocumentSynopsis {
@@ -148,11 +146,8 @@ func (e *LLMEnricher) EnrichWith(ctx context.Context, llm domain.LLMService, doc
 		appendMetadata(&updated, documentID, "synopsis_source", "llm")
 	}
 	applyDocumentSynopsis(&updated, documentID, synopsis)
-	// Resumos para TODAS as secoes e TODAS as paginas com texto, em lotes:
-	// antes eram 12 secoes e 8 paginas por documento, e o PPC de 209 paginas
-	// ficava com 200 paginas em fallback (os 320 primeiros caracteres).
-	// O texto proprio de cada secao (paragrafos dela, sem os filhos) e o que
-	// vai ao prompt; com o texto da pagina inteira a LLM pulava metade dos nos.
+	// Resume todas as secoes e paginas, em lotes. Vai ao prompt o texto proprio
+	// da secao (sem os filhos); com a pagina inteira a LLM pulava nos.
 	populateOutlineRetrievalText(&updated)
 	hits := enrichmentCacheHits{}
 	var sections sectionSummaryResponse
@@ -164,11 +159,8 @@ func (e *LLMEnricher) EnrichWith(ctx context.Context, llm domain.LLMService, doc
 	if prefs.PageSummaries {
 		pages = e.generateAllPageSummaries(ctx, llm, doc, updated, &calls, &hits)
 		applyPageSummaries(&updated, pages)
-		// As perguntas de leigo saem da MESMA preferencia do resumo, para que o
-		// experimento compare os dois campos gerados sobre o mesmo conjunto de
-		// paginas. Sem cache: o cache e chaveado por (escopo, tipo, hash do
-		// texto) e guarda resumo, entao reaproveita-lo aqui devolveria resumo
-		// no lugar de pergunta.
+		// Mesma preferencia do resumo, para cobrir as mesmas paginas. Sem cache:
+		// a chave nao distingue resumo de pergunta.
 		applyPageQuestions(updated, e.generateAllPageQuestions(ctx, llm, doc, updated, &calls))
 	}
 	fillMissingPageSummaries(&updated)
@@ -243,16 +235,14 @@ const (
 	enrichmentMaxBatchCalls = 80
 )
 
-// generateAllPageSummaries resume todas as paginas com texto, em lotes de
-// enrichmentPageBatch por chamada. Lote que falha e logado e pulado; as
-// paginas dele caem no fallback de fillMissingPageSummaries.
+// generateAllPageSummaries: lote que falha e pulado; as paginas dele caem no
+// fallback de fillMissingPageSummaries.
 type enrichmentCacheHits struct {
 	pages    int
 	sections int
 }
 
-// enrichmentCacheScope e o escopo do cache para este documento: o dono do
-// documento e o LLM que ele configurou. Ver domain.EnrichmentCacheScope.
+// enrichmentCacheScope: dono do documento + LLM que ele configurou.
 func enrichmentCacheScope(llm domain.LLMService, doc *models.Document) domain.EnrichmentCacheScope {
 	var userID uint
 	if doc != nil {
@@ -345,13 +335,8 @@ func (e *LLMEnricher) generateAllPageSummaries(ctx context.Context, llm domain.L
 	return all
 }
 
-// generateAllPageQuestions gera, para cada pagina com texto, as perguntas que
-// ela responde em linguagem de leigo. Mesma estrutura em lotes do resumo, e o
-// resultado vai para uma COLUNA PROPRIA: os dois campos coexistem porque o
-// experimento pre-registrado compara um contra o outro.
-//
-// Lote que falha e pulado, como no resumo: perder as perguntas de uma pagina
-// degrada a busca daquela pagina, nao quebra a indexacao.
+// generateAllPageQuestions gera as perguntas de leigo que cada pagina responde,
+// em coluna propria. Lote que falha e pulado, como no resumo.
 func (e *LLMEnricher) generateAllPageQuestions(ctx context.Context, llm domain.LLMService, doc *models.Document, result domain.IndexingResult, calls *int) pageQuestionsResponse {
 	var all pageQuestionsResponse
 	var batch []models.DocumentPage
@@ -388,10 +373,8 @@ func (e *LLMEnricher) generateAllPageQuestions(ctx context.Context, llm domain.L
 	return all
 }
 
-// applyPageQuestions grava as perguntas na coluna propria, uma por linha.
-// Uma por linha, e nao separadas por virgula, porque o BM25 tokeniza por
-// espaco e a quebra de linha evita colar a ultima palavra de uma pergunta na
-// primeira da seguinte.
+// applyPageQuestions grava uma pergunta por linha, para o BM25 nao colar a
+// ultima palavra de uma na primeira da seguinte.
 func applyPageQuestions(result domain.IndexingResult, payload pageQuestionsResponse) {
 	for _, page := range payload.Pages {
 		if page.PageNumber <= 0 {
@@ -424,8 +407,6 @@ func buildPageBatchContext(doc *models.Document, pages []models.DocumentPage) st
 	return b.String()
 }
 
-// generateAllSectionSummaries resume todas as secoes, em lotes de
-// enrichmentSectionBatch, com o texto das paginas da secao como contexto.
 func (e *LLMEnricher) generateAllSectionSummaries(ctx context.Context, llm domain.LLMService, doc *models.Document, result domain.IndexingResult, calls *int, hits *enrichmentCacheHits) sectionSummaryResponse {
 	var all sectionSummaryResponse
 	pageContent := make(map[int]string, len(result.DocumentPages))

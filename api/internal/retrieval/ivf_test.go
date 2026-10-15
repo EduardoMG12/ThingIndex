@@ -7,15 +7,9 @@ import (
 	"testing"
 )
 
-// clusteredCorpus monta um corpus com estrutura de cluster CONHECIDA: tres
-// grupos bem separados no espaco, `perGroup` vetores cada.
-//
-// A estrutura ser conhecida e o que torna os testes falseaveis: sabemos de
-// antemao qual documento deveria ser recuperado, entao "o IVF perdeu" e uma
-// afirmacao verificavel e nao uma leitura da saida do proprio codigo.
+// clusteredCorpus: tres grupos ortogonais com `perGroup` vetores cada, para
+// sabermos de antemao o que deveria ser recuperado.
 func clusteredCorpus(perGroup int) []DenseVector {
-	// Tres eixos ortogonais como centros. Vetores do mesmo grupo ficam a
-	// cosseno >= 0,99 entre si e ~0 dos outros grupos.
 	centers := [][]float64{
 		{1, 0, 0},
 		{0, 1, 0},
@@ -25,9 +19,7 @@ func clusteredCorpus(perGroup int) []DenseVector {
 	vectors := make([]DenseVector, 0, perGroup*len(centers))
 	for group, center := range centers {
 		for i := 0; i < perGroup; i++ {
-			// Inclina levemente o vetor dentro do proprio grupo, mantendo
-			// norma 1. O desvio cresce com i, entao a ordem dentro do grupo
-			// tambem e conhecida.
+			// inclina dentro do grupo mantendo norma 1
 			tilt := 0.02 * float64(i)
 			vector := make([]float64, 3)
 			copy(vector, center)
@@ -45,12 +37,7 @@ func clusteredCorpus(perGroup int) []DenseVector {
 }
 
 func TestIVFWithProbesEqualListsMatchesExactSearch(t *testing.T) {
-	// ANCORA DE CORRETUDE. Visitando TODAS as particoes, o IVF deixa de ser
-	// aproximado e precisa concordar item a item com a varredura exata.
-	//
-	// Sem esta ancora, uma diferenca entre C-exato e C-IVF seria ambigua:
-	// poderia ser a aproximacao (o efeito que queremos medir) ou um bug na
-	// implementacao (que invalidaria a medida inteira).
+	// Visitando todas as particoes o IVF tem de bater item a item com o exato.
 	vectors := clusteredCorpus(4)
 	query := []float64{1, 0, 0}
 
@@ -77,29 +64,15 @@ func TestIVFWithProbesEqualListsMatchesExactSearch(t *testing.T) {
 	}
 }
 
-// angularCorpus monta clusters ANGULARMENTE PROXIMOS: os centros ficam a 0, 25
-// e 50 graus no plano xy.
-//
-// Existe porque clusteredCorpus separa os grupos por 90 graus, e a 90 graus
-// nenhum documento de um grupo vizinho passa o piso de similaridade de 0,80 --
-// o que impede construir o cenario de perda de recall (nao ha o que perder se
-// nada era recuperavel). Com 25 graus de separacao:
-//
-//	cos(0)   = 1,000  -> acima do piso
-//	cos(25)  = 0,906  -> acima do piso
-//	cos(50)  = 0,643  -> abaixo do piso
-//
-// Assim uma consulta alinhada ao grupo 0 tem relevantes legitimos em DUAS
-// particoes, e visitar apenas uma perde documentos que deveriam ter vindo.
+// angularCorpus: centros a 0, 25 e 50 graus no plano xy. Com grupos
+// ortogonais nada de um grupo vizinho passaria do piso, e nao haveria recall
+// a perder.
 func angularCorpus(perGroup int) []DenseVector {
 	degrees := []float64{0, 25, 50}
 
 	vectors := make([]DenseVector, 0, perGroup*len(degrees))
 	for group, degree := range degrees {
 		for i := 0; i < perGroup; i++ {
-			// Espalha os membros do grupo em ate 4 graus em torno do centro,
-			// o que mantem a coesao interna (cos(4) = 0,998) sem que fiquem
-			// identicos.
 			angle := (degree + float64(i)) * math.Pi / 180
 			vectors = append(vectors, DenseVector{
 				ID:     fmt.Sprintf("a%d-d%02d", group, i),
@@ -111,40 +84,18 @@ func angularCorpus(perGroup int) []DenseVector {
 }
 
 func TestIVFWithFewerProbesLosesRecall(t *testing.T) {
-	// O ACHADO CENTRAL DO BRACO C-IVF, em forma de teste.
-	//
-	// Um documento relevante que cai numa particao nao visitada e invisivel.
-	// Nao ha erro, nao ha aviso -- o resultado simplesmente vem incompleto.
-	// Este teste constroi o cenario de proposito e verifica que a perda
-	// acontece, para que o numero reportado no artigo tenha mecanismo
-	// demonstrado e nao seja uma afirmacao de fe.
-	//
-	// O corpus ANGULAR e necessario aqui, e a razao vale registro: com
-	// clusters ortogonais (o de clusteredCorpus) a consulta que fica entre
-	// dois grupos tem cosseno 0,707 com AMBOS -- abaixo do piso de 0,80 --
-	// entao nenhum documento passa e nao ha recall a perder. A primeira versao
-	// deste teste falhava exatamente assim, com "0 vs 0". Para demonstrar
-	// perda de recall e preciso que documentos de MAIS DE UMA particao
-	// estejam legitimamente acima do piso.
+	// Precisa do corpus angular: com grupos ortogonais a consulta entre dois
+	// grupos fica abaixo do piso e o teste dava "0 vs 0".
 	vectors := angularCorpus(4)
 
-	// Consulta alinhada ao grupo 0. Pela construcao de angularCorpus:
-	//   grupo 0 -> cosseno ~1,00  (acima do piso)
-	//   grupo 1 -> cosseno ~0,91  (acima do piso)
-	//   grupo 2 -> cosseno ~0,64  (abaixo do piso)
-	// Logo a varredura completa deve trazer os grupos 0 e 1, e probes=1 --
-	// visitando so a particao do grupo 0 -- deve perder o grupo 1.
+	// Alinhada ao grupo 0: grupos 0 e 1 passam do piso, o 2 nao. probes=1 deve
+	// perder o grupo 1.
 	query := []float64{1, 0, 0}
 
 	params := DefaultIVFParams(len(vectors))
 	params.Lists = 3
-	// Seed 42 e a default de DefaultIVFParams e produz o particionamento
-	// "correto" (um centroide por grupo angular). A escolha e deliberada e a
-	// razao esta em TestIVFRecallDependsOnSeed: com outras seeds o k-means
-	// COLAPSA dois grupos numa particao so, e ai probes=1 recupera tudo por
-	// acidente. Ou seja, a mesma configuracao perde ou nao perde recall
-	// dependendo de um numero aleatorio -- e esse e o achado, nao um defeito
-	// do teste. Aqui fixamos a seed para isolar o efeito de `probes`.
+	// Com outras seeds o k-means junta dois grupos numa particao e probes=1
+	// recupera tudo por acaso (ver TestIVFRecallDependsOnSeed).
 	params.Seed = 42
 
 	params.Probes = 3
@@ -153,8 +104,6 @@ func TestIVFWithFewerProbesLosesRecall(t *testing.T) {
 	params.Probes = 1
 	partial := NewIVFIndex(vectors, params).Search(query)
 
-	// Pre-condicao explicita: sem documentos de dois grupos acima do piso, o
-	// teste nao teria como distinguir "o IVF perdeu" de "o piso cortou tudo".
 	if len(full) < 2 {
 		t.Fatalf("o cenario precisa de pelo menos 2 documentos acima do piso na varredura completa, veio %d", len(full))
 	}
@@ -166,9 +115,7 @@ func TestIVFWithFewerProbesLosesRecall(t *testing.T) {
 
 	t.Logf("perda de recall: probes=3 -> %d itens, probes=1 -> %d itens", len(full), len(partial))
 
-	// Todo item devolvido com probes=1 tambem tem de aparecer com probes=3: o
-	// indice aproximado OMITE resultados, nunca inventa. Se inventasse, o
-	// problema seria de corretude, nao de recall.
+	// o indice aproximado omite resultados, nunca inventa
 	inFull := map[string]bool{}
 	for _, result := range full {
 		inFull[result.DocID] = true
@@ -182,10 +129,6 @@ func TestIVFWithFewerProbesLosesRecall(t *testing.T) {
 }
 
 func TestIVFIsDeterministicForFixedSeedAndOrder(t *testing.T) {
-	// Fixados seed E ordem de insercao, o IVF tem de ser reproduzivel. Sem
-	// isso nao seria possivel atribuir a variacao observada entre execucoes a
-	// seed ou a ordem -- ela poderia vir de mapa iterado em ordem aleatoria
-	// dentro do proprio harness.
 	vectors := clusteredCorpus(5)
 	query := []float64{1, 0, 0}
 
@@ -212,16 +155,7 @@ func TestIVFIsDeterministicForFixedSeedAndOrder(t *testing.T) {
 }
 
 func TestIVFSeedChangesPartitioning(t *testing.T) {
-	// A EVIDENCIA QUE SUSTENTA A AFIRMACAO DO ARTIGO.
-	//
-	// Trocar apenas a seed -- sem tocar no corpus, no modelo ou na consulta --
-	// muda o particionamento. Com probes < lists isso pode mudar o resultado
-	// devolvido ao usuario.
-	//
-	// E esta a diferenca qualitativa que o trabalho reivindica: na recuperacao
-	// relacional nao existe estrutura de indice capaz de fazer a resposta
-	// depender de um numero aleatorio escolhido no momento da criacao do
-	// indice.
+	// So a seed muda; com probes < lists isso pode mudar o resultado.
 	vectors := clusteredCorpus(6)
 
 	params := DefaultIVFParams(len(vectors))
@@ -248,14 +182,7 @@ func TestIVFSeedChangesPartitioning(t *testing.T) {
 }
 
 func TestIVFInsertionOrderChangesPartitioning(t *testing.T) {
-	// A SEGUNDA fonte de nao-determinismo, e a mais contra-intuitiva: com a
-	// MESMA seed, apenas mudar a ordem em que os documentos foram inseridos
-	// pode alterar o particionamento.
-	//
-	// Isso importa para o argumento porque a ordem de insercao nao e uma
-	// escolha de configuracao -- e o historico de uso do sistema. Dois
-	// usuarios que subiram os mesmos documentos em ordem diferente podem obter
-	// respostas diferentes para a mesma pergunta.
+	// Mesma seed, so a ordem de insercao muda.
 	vectors := clusteredCorpus(6)
 
 	params := DefaultIVFParams(len(vectors))
@@ -284,24 +211,7 @@ func TestIVFInsertionOrderChangesPartitioning(t *testing.T) {
 }
 
 func TestIVFRecallDependsOnSeed(t *testing.T) {
-	// O RESULTADO MAIS FORTE DO BRACO C-IVF, e o mais desconfortavel para
-	// quem defende o indice aproximado.
-	//
-	// TestIVFSeedChangesPartitioning mostra que a seed muda a estrutura
-	// INTERNA do indice. Isso, sozinho, um cetico pode descartar: "e detalhe
-	// de implementacao, o usuario nao ve".
-	//
-	// Este teste fecha o argumento mostrando que a seed muda O QUE O USUARIO
-	// RECEBE. Mesmo corpus, mesma consulta, mesma configuracao de `lists` e
-	// `probes` -- e conjuntos de documentos diferentes, porque o k-means
-	// convergiu para outro particionamento.
-	//
-	// A traducao para o artigo: num indice aproximado, a resposta a uma
-	// pergunta depende de um numero aleatorio sorteado quando o indice foi
-	// criado. Nao ha consulta, corpus ou modelo que explique a diferenca, e
-	// nao ha como o usuario perceber que ela ocorreu. Na recuperacao
-	// relacional essa classe de variacao nao existe -- nao ha estrutura de
-	// indice entre a pergunta e a resposta.
+	// Aqui a seed muda o conjunto devolvido, nao so a estrutura interna.
 	vectors := angularCorpus(4)
 	query := []float64{1, 0, 0}
 
@@ -309,7 +219,6 @@ func TestIVFRecallDependsOnSeed(t *testing.T) {
 	params.Lists = 3
 	params.Probes = 1
 
-	// O teto: o que a varredura exata recuperaria.
 	exact := NewDenseIndex(vectors).Search(query)
 
 	recallBySeed := map[int64]int{}
@@ -340,9 +249,6 @@ func TestIVFRecallDependsOnSeed(t *testing.T) {
 			"resposta dependente da seed nao se sustenta e precisa ser removida")
 	}
 
-	// Pelo menos uma seed tem de perder documentos em relacao ao exato -- e o
-	// que caracteriza a aproximacao. Se nenhuma perdesse, o indice nao estaria
-	// aproximando nada e a comparacao com o exato seria vazia.
 	perdeuAlguma := false
 	for _, recovered := range recallBySeed {
 		if recovered < len(exact) {
@@ -359,10 +265,6 @@ func TestIVFRecallDependsOnSeed(t *testing.T) {
 }
 
 func TestDefaultIVFParamsFollowsPgvectorHeuristic(t *testing.T) {
-	// lists = sqrt(N) e a recomendacao do pgvector para colecoes de ate 1M.
-	// O teste trava a heuristica porque ela e reportada no artigo como a
-	// configuracao usada -- se o codigo mudasse, o artigo passaria a descrever
-	// um experimento que nao foi o executado.
 	cases := []struct {
 		documents int
 		lists     int
@@ -380,16 +282,13 @@ func TestDefaultIVFParamsFollowsPgvectorHeuristic(t *testing.T) {
 		}
 	}
 
-	// probes=1 e o DEFAULT do pgvector. Medir o default e proposital: e a
-	// configuracao que a maioria das instalacoes efetivamente roda.
 	if got := DefaultIVFParams(100).Probes; got != 1 {
 		t.Fatalf("probes default deveria ser 1 (o do pgvector), veio %d", got)
 	}
 }
 
 func TestIVFNeverExceedsCorpusSize(t *testing.T) {
-	// Guard de robustez: lists > N faria o k-means sortear centroides
-	// repetidos e produzir particoes vazias.
+	// lists > N geraria centroides repetidos e particoes vazias.
 	vectors := clusteredCorpus(1)
 
 	params := IVFParams{Lists: 99, Probes: 99, Seed: 1, MaxIter: 10}

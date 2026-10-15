@@ -50,10 +50,8 @@ func abrirBancoDeMigracao(t *testing.T) *gorm.DB {
 	return db
 }
 
-// Regressao P0-1: banco que ja tinha o cache global (indice unico em kind,
-// model, content_hash, linhas sem dono) precisa sair da migracao com o indice
-// antigo removido e as linhas envenenaveis apagadas; senao dois usuarios com o
-// mesmo texto colidiriam no indice antigo.
+// Banco com o cache global antigo: a migracao tem de remover o indice unico antigo
+// e apagar as linhas sem dono, senao dois usuarios com o mesmo texto colidem.
 func TestMigracaoDoCacheDeEnriquecimentoRemoveIndiceGlobalELinhasSemDono(t *testing.T) {
 	db := abrirBancoDeMigracao(t)
 
@@ -75,6 +73,19 @@ func TestMigracaoDoCacheDeEnriquecimentoRemoveIndiceGlobalELinhasSemDono(t *test
 		}
 	}
 
+	// Com a FK para users, os donos precisam existir, e as linhas legadas
+	// (sem user_id) saem antes do AutoMigrate, como no bootstrap.
+	if err := db.AutoMigrate(&models.User{}); err != nil {
+		t.Fatalf("criar users: %v", err)
+	}
+	for _, usuario := range []uint{1, 2} {
+		if err := db.Create(&models.User{ID: usuario, Name: "u", Email: fmt.Sprintf("u%d@x", usuario), Password: "x"}).Error; err != nil {
+			t.Fatalf("criar usuario %d: %v", usuario, err)
+		}
+	}
+	if err := removeOrphanUserRows(db); err != nil {
+		t.Fatalf("removeOrphanUserRows: %v", err)
+	}
 	if err := db.AutoMigrate(&models.EnrichmentCacheEntry{}); err != nil {
 		t.Fatalf("AutoMigrate sobre o esquema legado: %v", err)
 	}

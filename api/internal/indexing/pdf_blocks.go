@@ -9,12 +9,9 @@ import (
 	"github.com/ledongthuc/pdf"
 )
 
-// ponytail: este fallback (usado so quando pdftotext falta no PATH) nao emite
-// textBlock.Box. As coordenadas do ledongthuc/pdf vem em espaco PDF cru, com
-// origem inferior esquerda e sem /Rotate nem CropBox aplicados, entao seriam
-// incompativeis com as do pdftotext. Box nil e honesto; caixa no espaco errado
-// desalinha o grifo em silencio. Para ancorar aqui tambem: ler MediaBox/Rotate
-// da pagina e converter para origem superior esquerda antes de preencher Box.
+// Fallback sem pdftotext: nao emite textBlock.Box. O ledongthuc/pdf usa espaco
+// PDF cru (origem inferior esquerda, sem /Rotate nem CropBox), incompativel com
+// o pdftotext. Para ancorar: converter via MediaBox/Rotate antes de preencher Box.
 func blocksFromPDFPage(page pdf.Page, pageNumber *int) []textBlock {
 	content := page.Content()
 	if len(content.Text) == 0 {

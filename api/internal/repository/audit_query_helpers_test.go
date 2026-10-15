@@ -7,20 +7,8 @@ import (
 	"thing-index/internal/domain"
 )
 
-// internal/repository tinha 0,8% de cobertura porque quase todo teste do pacote
-// exige Postgres e roda so com a tag integration. O resultado e que a suite
-// padrao atravessa a camada que fala com o banco sem exercitar nada -- e o bug
-// da corrida de colecao morava aqui.
-//
-// Estes testes cobrem a logica PURA: normalizacao de parametro e escape de
-// padrao. Onde o banco e indispensavel, o teste continua com a tag integration;
-// a meta nao e fingir cobertura com mock de SQL.
-
 func TestLimiteDeAuditoriaEhNormalizado(t *testing.T) {
-	// O limite vem da querystring, controlada pelo cliente. Sem normalizacao,
-	// limit=0 devolveria pagina vazia (o usuario acha que nao ha eventos) e
-	// limit=100000 varreria a tabela inteira -- negacao de servico com uma
-	// requisicao.
+	// limit vem do cliente: 0 daria pagina vazia e 100000 varreria a tabela.
 	casos := []struct {
 		nome     string
 		entrada  int
@@ -47,9 +35,7 @@ func TestLimiteDeAuditoriaEhNormalizado(t *testing.T) {
 }
 
 func TestEscapeDePadraoNeutralizaCoringas(t *testing.T) {
-	// O termo de busca vai para um LIKE. Sem escape, um usuario digitando "%"
-	// casaria com TODOS os registros -- e num filtro de auditoria isso significa
-	// ver o que nao deveria.
+	// Sem escape, "%" casaria com todos os registros.
 	casos := []struct {
 		nome     string
 		entrada  string
@@ -86,9 +72,6 @@ func TestEscapeDePadraoNeutralizaCoringas(t *testing.T) {
 }
 
 func TestEscapeDePadraoNormalizaCaixaEEspaco(t *testing.T) {
-	// A busca e case-insensitive por decisao de produto, e espaco nas pontas
-	// vem de copiar e colar. Sem normalizar, "  Contrato " nao acharia
-	// "contrato".
 	obtido := escapeLikePattern("  CONTRATO Social  ")
 
 	if obtido != "contrato social" {
@@ -97,8 +80,6 @@ func TestEscapeDePadraoNormalizaCaixaEEspaco(t *testing.T) {
 }
 
 func TestEscapeDePadraoPreservaTextoComum(t *testing.T) {
-	// Escape agressivo demais quebraria a busca legitima: o usuario que procura
-	// "contrato" precisa achar "contrato".
 	obtido := escapeLikePattern("Contrato de prestacao")
 
 	if obtido != "contrato de prestacao" {
@@ -110,7 +91,6 @@ func TestEscapeDePadraoPreservaTextoComum(t *testing.T) {
 }
 
 func TestEscapeDePadraoLidaComEntradaVazia(t *testing.T) {
-	// Campo de busca em branco e o estado inicial da tela.
 	if obtido := escapeLikePattern(""); obtido != "" {
 		t.Fatalf("entrada vazia virou %q", obtido)
 	}
@@ -120,11 +100,8 @@ func TestEscapeDePadraoLidaComEntradaVazia(t *testing.T) {
 }
 
 func TestEscapeDePadraoNeutralizaBarraInvertida(t *testing.T) {
-	// A barra e o proprio caractere de escape: deixa-la passar permitiria
-	// desarmar o escape dos outros coringas.
-	// A asserção compara com o esperado exato, e nao com strings.Contains: a
-	// primeira versao deste teste passava com o codigo bugado porque a entrada
-	// JA continha a sequencia procurada.
+	// A barra e o caractere de escape. Compara com o valor exato: strings.Contains
+	// passava com o codigo bugado porque a entrada ja tinha a sequencia.
 	obtido := escapeLikePattern(`caminho\arquivo`)
 	esperado := `caminho\\arquivo`
 
@@ -135,8 +112,6 @@ func TestEscapeDePadraoNeutralizaBarraInvertida(t *testing.T) {
 }
 
 func TestFiltroComQueryNulaNaoEntraEmPanico(t *testing.T) {
-	// Guarda defensiva: query nula significa erro de montagem, e panico aqui
-	// derrubaria o handler inteiro em vez de devolver erro.
 	defer func() {
 		if r := recover(); r != nil {
 			t.Fatalf("panico com query nula: %v", r)

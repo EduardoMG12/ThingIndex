@@ -9,20 +9,6 @@ import (
 	"time"
 )
 
-// Uma queda do RabbitMQ derrubava o worker inteiro: o consumidor devolvia
-// ErrDeliveriesChannelClosed e o main chamava log.Fatalf, contando com o
-// supervisor do Docker para reiniciar.
-//
-// Em producao (restart: unless-stopped) isso funciona. Em desenvolvimento o air
-// segura o processo, e o resultado observado foi pior do que travar: o
-// container continuava "running", o consumidor estava morto, e os eventos
-// ficavam PENDING no outbox sem ninguem perceber. Dois documentos ficaram
-// QUEUED indefinidamente num teste real de queda.
-//
-// Mesmo em producao, derrubar o processo por uma queda de broker desperdica:
-// perde o dispatcher de outbox e o reaper que rodam no mesmo binario, e ambos
-// tem trabalho util a fazer enquanto o broker volta.
-
 type consumidorFalso struct {
 	mu         sync.Mutex
 	chamadas   int32
@@ -69,7 +55,6 @@ func TestSupervisorReconectaAposQuedaDoBroker(t *testing.T) {
 	pronto := make(chan error, 1)
 	go func() { pronto <- sup.Run(ctx) }()
 
-	// Depois das duas quedas o consumidor precisa estar rodando de novo.
 	prazo := time.After(2 * time.Second)
 	for falso.total() < 3 {
 		select {
@@ -93,9 +78,6 @@ func TestSupervisorReconectaAposQuedaDoBroker(t *testing.T) {
 	}
 }
 
-// TestSupervisorNaoReconectaEmErroDeProgramacao: reconectar indefinidamente diante
-// de um erro que nao e de conexao transformaria bug em laco infinito silencioso.
-// Só falha de canal justifica nova tentativa.
 func TestSupervisorNaoReconectaEmErroDeProgramacao(t *testing.T) {
 	erroFatal := errors.New("credencial invalida")
 	falso := &consumidorFalso{erros: []error{erroFatal}}
@@ -114,8 +96,6 @@ func TestSupervisorNaoReconectaEmErroDeProgramacao(t *testing.T) {
 	}
 }
 
-// TestSupervisorRespeitaCancelamentoDuranteAEspera: o encerramento gracioso nao
-// pode ficar preso no intervalo entre tentativas.
 func TestSupervisorRespeitaCancelamentoDuranteAEspera(t *testing.T) {
 	falso := &consumidorFalso{erros: []error{ErrDeliveriesChannelClosed}}
 
@@ -138,7 +118,6 @@ func TestSupervisorRespeitaCancelamentoDuranteAEspera(t *testing.T) {
 	}
 }
 
-// TestSupervisorEsperaEntreTentativas evita martelar um broker que esta voltando.
 func TestSupervisorEsperaEntreTentativas(t *testing.T) {
 	falso := &consumidorFalso{
 		erros: []error{
@@ -176,14 +155,8 @@ func TestSupervisorEsperaEntreTentativas(t *testing.T) {
 	<-pronto
 }
 
-// TestSupervisorReconectaEmFalhaDeConexao cobre o caso que quebrou a primeira
-// versao desta correcao em producao de desenvolvimento.
-//
-// Quando o broker cai, a tentativa seguinte nao devolve
-// ErrDeliveriesChannelClosed: devolve o erro de dial ou
-// "Exception (504) channel/connection is not open". Tratar so o canal fechado
-// como transitorio fazia o supervisor desistir na SEGUNDA tentativa e o
-// processo morrer -- exatamente o que se queria evitar.
+// Apos a queda, a tentativa seguinte devolve erro de dial ou
+// "channel/connection is not open", e isso tambem tem de reconectar.
 func TestSupervisorReconectaEmFalhaDeConexao(t *testing.T) {
 	casos := []struct {
 		nome string

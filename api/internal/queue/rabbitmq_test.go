@@ -65,10 +65,6 @@ func fmtError(base error) error {
 	return fmt.Errorf("%w: wrapped", base)
 }
 
-// O consumidor e sequencial: uma mensagem por vez. Sem prazo maximo, um PDF
-// gigante ou um provider de LLM que aceita a conexao e nunca responde prende a
-// goroutine para sempre e a fila inteira para atras dele. O ctx do handler era
-// o do processo, sem deadline nenhum.
 func TestHandleDeliveryInterrompeMensagemQueEstouraOPrazo(t *testing.T) {
 	t.Parallel()
 
@@ -76,7 +72,6 @@ func TestHandleDeliveryInterrompeMensagemQueEstouraOPrazo(t *testing.T) {
 
 	handlerRetornou := make(chan struct{})
 	err := consumer.handleDelivery(context.Background(), func(ctx context.Context, _ domain.DocumentIndexRequestedEvent) error {
-		// Handler bem comportado: respeita o cancelamento do contexto.
 		<-ctx.Done()
 		close(handlerRetornou)
 		return ctx.Err()
@@ -92,9 +87,7 @@ func TestHandleDeliveryInterrompeMensagemQueEstouraOPrazo(t *testing.T) {
 		t.Fatal("esperava erro de timeout, veio nil")
 	}
 
-	// A classificacao importa tanto quanto a interrupcao: o timeout precisa
-	// ser TRANSIENTE. Se fosse permanente, um provider lento mandaria
-	// documentos legitimos direto para a DLQ sem nenhuma nova tentativa.
+	// O timeout tem de ser transiente; se fosse permanente iria direto para a DLQ.
 	if !errors.Is(err, domain.ErrDocumentIndexing) {
 		t.Fatalf("o timeout deveria ser ErrDocumentIndexing (transiente), veio %v", err)
 	}
@@ -123,10 +116,7 @@ func TestHandleDeliveryNaoInterfereQuandoOHandlerTerminaATempo(t *testing.T) {
 	}
 }
 
-// Regressao sutil: no shutdown o contexto pai e cancelado, e por heranca o
-// contexto do handler tambem. Sem separar os dois casos, um documento
-// interrompido por SIGTERM seria reportado como "estourou o prazo" e contaria
-// retry -- eventualmente indo para a DLQ por culpa de um deploy.
+// No shutdown o ctx do handler tambem cancela; isso nao pode contar como timeout.
 func TestHandleDeliveryNaoConfundeShutdownComTimeoutDaMensagem(t *testing.T) {
 	t.Parallel()
 

@@ -6,17 +6,12 @@ import (
 	"unicode/utf8"
 )
 
-// O corte de string em bytes (`s[:255]`) parte um code point UTF-8 no meio
-// quando o caractere na fronteira e multibyte. Em portugues isso e o caso
-// comum, nao a excecao: qualquer acento na posicao errada corrompe o titulo.
-//
-// O teste ancora no que importa de fato -- a string resultante e UTF-8 valida e
-// cabe na coluna -- em vez de fixar um recorte especifico.
+// Cortar em bytes parte o code point quando o caractere na fronteira e
+// multibyte. O teste so exige UTF-8 valido e caber na coluna.
 func TestBuildConversationTitleNaoQuebraUTF8NaFronteira(t *testing.T) {
 	t.Parallel()
 
-	// "ã" ocupa 2 bytes. Com 254 caracteres ASCII antes dele, o byte 255 cai
-	// exatamente no meio do code point -- a fronteira que quebra.
+	// "ã" ocupa 2 bytes; com 254 ASCII antes, o byte 255 cai no meio dele.
 	titulo := strings.Repeat("a", 254) + "ã" + strings.Repeat("b", 50)
 
 	resultado := buildConversationTitle(titulo)

@@ -12,9 +12,7 @@ type llmUsageSnapshot struct {
 	ProviderType string
 	Model        string
 	RequestCount int
-	// FailedRequestCount separa "nenhuma chamada foi feita" de "todas as
-	// chamadas falharam". Sem ele, os dois casos reportavam request_count 0 e a
-	// telemetria de uso do LLM ficava cega para falha de provider.
+	// FailedRequestCount separa "nenhuma chamada" de "todas falharam".
 	FailedRequestCount    int
 	EstimatedInputTokens  int
 	EstimatedOutputTokens int

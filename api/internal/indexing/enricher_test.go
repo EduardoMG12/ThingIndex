@@ -154,8 +154,7 @@ func lastMetadataValue(pairs []models.MetadataPair, key string) string {
 }
 
 // stubBatchLLM responde resumos para todas as paginas e secoes pedidas no
-// prompt, e conta as chamadas: prova que o enriquecimento cobre o documento
-// inteiro em lotes, nao so as 8 primeiras paginas e 12 primeiras secoes.
+// prompt e conta as chamadas.
 type stubBatchLLM struct {
 	calls *int
 }
@@ -233,14 +232,8 @@ func TestEnriquecimentoResumeTodasAsPaginasESecoesEmLotes(t *testing.T) {
 			t.Fatalf("secao %d sem resumo da LLM: %q", node.SequenceOrder, node.Summary)
 		}
 	}
-	// O orcamento subiu de 12 para 14 em 2026-09-19, quando a geracao de
-	// perguntas de leigo entrou ao lado do resumo. O custo e conhecido e
-	// deliberado: um lote de perguntas por lote de paginas, ou seja, as
-	// chamadas de pagina DOBRAM quando o enriquecimento esta ligado.
-	//
-	// O numero fica travado em vez de virar ">= 0" porque orcamento de chamada
-	// de LLM que ninguem observa cresce sozinho: foi exatamente assim que o
-	// enriquecimento chegou a 700 mil tokens por 10 documentos.
+	// Perguntas de leigo somam um lote por lote de paginas. Numero travado de
+	// proposito: orcamento de chamadas que ninguem olha cresce sozinho.
 	if calls > 14 {
 		t.Fatalf("chamadas = %d, esperava no maximo 14 (sinopse, sinais, arvore, lotes de secao, de pagina e de pergunta)", calls)
 	}
@@ -352,11 +345,8 @@ func TestEscopoDesligadoNaoChamaALLM(t *testing.T) {
 	}
 }
 
-// Regressao P0-1: o cache era global por (tipo, modelo, hash). Um usuario com
-// base_url proprio e o mesmo nome de modelo gravava resumos que eram servidos
-// a qualquer outro usuario que indexasse o mesmo texto. Com o escopo por
-// usuario, o dono de outro documento com o mesmo texto chama o proprio LLM e
-// nao ve acerto de cache (o contador tambem deixa de vazar indexacao alheia).
+// Cache escopado por usuario: outro dono com o mesmo texto chama o proprio LLM
+// e nao ve acerto de cache.
 func TestCacheDeEnriquecimentoNaoCruzaUsuarios(t *testing.T) {
 	t.Parallel()
 	cache := &stubCache{entries: map[string]domain.EnrichmentCacheEntry{}}

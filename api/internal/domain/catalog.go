@@ -166,9 +166,8 @@ type CollectionTableRowHit struct {
 	RowIndex   int
 	PageNumber int
 	Title      string
-	// Text e a linha renderizada com o cabecalho colado em cada celula.
-	Text  string
-	Score int
+	Text       string
+	Score      int
 }
 
 type CollectionDocumentHit struct {
@@ -194,18 +193,8 @@ type CollectionPageHit struct {
 	Score      int
 }
 
-// NodeConnection e uma relacao DERIVADA entre um no do sumario e um no de outro
-// documento do acervo.
-//
-// "Derivada" e a palavra que importa: a conexao e recalculada a cada consulta
-// pelo scorer relacional, e nunca persistida. O principio II da constituicao
-// admite grafos apenas como trilha comparativa, jamais como camada primaria de
-// recuperacao -- uma tabela de arestas seria exatamente isso e refutaria a tese
-// do trabalho. Aqui a aresta e a saida do recuperador, nao uma estrutura
-// consultada por ele.
-//
-// Nao existe repositorio, migration ou modelo GORM correspondente a este tipo,
-// e essa ausencia e deliberada.
+// NodeConnection e uma relacao derivada entre um no do sumario e um no de outro
+// documento. Recalculada a cada consulta, nunca persistida (nao ha tabela).
 type NodeConnection struct {
 	DocumentID uint
 	NodeID     string
@@ -213,9 +202,7 @@ type NodeConnection struct {
 	Summary    string
 	StartPage  *int
 	Score      int
-	// MatchedTerms sao os termos da origem encontrados no destino. Respondem
-	// "por que esta flecha existe?" -- sem isso a conexao seria tao opaca
-	// quanto a vizinhanca vetorial que este trabalho critica.
+	// MatchedTerms sao os termos da origem encontrados no destino.
 	MatchedTerms []string
 	// Kind: "termo-raro" ou "mesma-norma" (os dois trechos citam a mesma lei,
 	// resolucao, decreto ou portaria).
@@ -232,16 +219,8 @@ type CategoryCatalogRepository interface {
 
 type CollectionRepository interface {
 	CreateCollection(ctx context.Context, collection *models.Collection) error
-	// EnsureCollection cria a colecao ou devolve a existente, resolvendo a
-	// corrida no banco.
-	//
-	// Existe porque buscar-e-criar no usecase e um check-then-act: entre a
-	// busca que nao encontra e a criacao, outra requisicao cria a mesma colecao
-	// e a segunda recebe violacao de unicidade. Medido com 20 uploads
-	// simultaneos para a mesma colecao: um deles voltava HTTP 500.
-	//
-	// So o banco pode arbitrar quem ganha a corrida; reexecutar a busca no
-	// usecase apenas moveria a janela.
+	// EnsureCollection cria a colecao ou devolve a existente, resolvendo a corrida no
+	// banco (buscar-e-criar no usecase dava violacao de unicidade com uploads simultaneos).
 	EnsureCollection(ctx context.Context, collection *models.Collection) error
 	UpdateCollection(ctx context.Context, collection *models.Collection) error
 	GetCollectionByID(ctx context.Context, id uint, userID uint) (*models.Collection, error)

@@ -10,22 +10,10 @@ import (
 	"thing-index/internal/domain"
 )
 
-// Expansao da pergunta antes da busca, pre-registrada em
-// docs/prds/pre-registro-expansao-consulta.md.
-//
-// Existe porque a queda de vocabulario e o unico efeito com significancia
-// medido no trabalho (0,903 literal contra 0,677 parafrase, p = 0,021), e
-// expandir o DOCUMENTO ja foi medido e deu nulo em quatro bracos. A assimetria
-// que motiva tentar o outro lado: existem muitas formas leigas de perguntar e
-// uma forma tecnica de nomear a coisa.
-//
-// A expansao ve APENAS o texto da pergunta. Nunca o acervo, a pagina-alvo nem o
-// gabarito: sem isso, um termo que acerte o vocabulario do documento seria
-// vazamento em vez de conhecimento de mundo do modelo.
+// Expansao da pergunta antes da busca. A LLM ve apenas o texto da pergunta,
+// nunca o acervo, para os termos nao vazarem o vocabulario do documento.
 
-// queryExpansionSystemPrompt esta congelado pelo pre-registro. Alterar o texto
-// quebra o teste que trava o hash, de proposito: rodar varias versoes e
-// reportar a melhor produz um numero favoravel e sem valor.
+// queryExpansionSystemPrompt e travado por hash no teste.
 const queryExpansionSystemPrompt = `You expand a search query for a lexical (BM25) index over Portuguese documents.
 Return only a single line of terms separated by spaces.
 Do not answer the question.
@@ -40,9 +28,8 @@ const (
 	queryExpansionMaxTerms  = 8
 )
 
-// parseQueryExpansion interpreta o braco do experimento. Desligado por padrao:
-// o braco C do pre-registro e o comportamento atual do sistema. Chamada uma vez,
-// em NewRetrievalOptions.
+// parseQueryExpansion: desligado por padrao. Chamada uma vez, em
+// NewRetrievalOptions.
 func parseQueryExpansion(raw string) bool {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
 	case "1", "true", "on":
@@ -60,18 +47,14 @@ func newQueryExpander(cache domain.EnrichmentCache) *queryExpander {
 	return &queryExpander{cache: cache}
 }
 
-// queryExpansionKey normaliza antes do hash para que a mesma pergunta com outra
-// caixa ou espacamento reaproveite o cache em vez de gastar outra chamada.
 func queryExpansionKey(question string) string {
 	normalized := strings.Join(strings.Fields(strings.ToLower(question)), " ")
 	sum := sha256.Sum256([]byte(normalized))
 	return hex.EncodeToString(sum[:])
 }
 
-// sanitizeExpansion corta o que a LLM devolveu para termos utilizaveis num
-// indice lexical. Descarta linha longa demais para ser lista de termos: o
-// modelo as vezes ignora a instrucao e responde a pergunta, e uma resposta
-// inteira colada na consulta arruinaria o ranking.
+// sanitizeExpansion descarta linhas longas: as vezes o modelo responde a
+// pergunta em vez de listar termos.
 func sanitizeExpansion(raw string) string {
 	line := strings.TrimSpace(raw)
 	if idx := strings.IndexAny(line, "\n\r"); idx >= 0 {
@@ -104,13 +87,9 @@ func sanitizeExpansion(raw string) string {
 	return strings.Join(terms, " ")
 }
 
-// Expand devolve os termos a acrescentar a pergunta, ou "" quando nao ha nada a
-// acrescentar. Erro de LLM ou de cache nao e fatal: a busca segue com a
-// pergunta original, que e o braco de controle.
-//
-// O escopo do cache (domain.LLMCacheScope) tem o usuario e o LLM que ele
-// configurou: trocar de modelo invalida as expansoes guardadas, e um usuario
-// nunca recebe termos gerados pelo provedor de outro.
+// Expand devolve os termos a acrescentar, ou "". Erro de LLM ou cache nao e
+// fatal: segue com a pergunta original. O escopo do cache inclui usuario e
+// modelo.
 func (e *queryExpander) Expand(ctx context.Context, llm domain.LLMService, scope domain.EnrichmentCacheScope, question string) string {
 	if e == nil || llm == nil {
 		return ""
@@ -136,9 +115,7 @@ func (e *queryExpander) Expand(ctx context.Context, llm domain.LLMService, scope
 	}
 	terms := sanitizeExpansion(raw)
 
-	// Grava tambem a expansao vazia: sem isso, toda pergunta que ja usa o
-	// vocabulario formal pagaria uma chamada de LLM em cada repeticao, e a
-	// medicao de custo do experimento sairia errada.
+	// Grava tambem a expansao vazia, senao repetir a pergunta chamaria a LLM de novo.
 	if e.cache != nil {
 		if err := e.cache.StoreEnrichment(ctx, scope, []domain.EnrichmentCacheEntry{{
 			Kind:        queryExpansionCacheKind,

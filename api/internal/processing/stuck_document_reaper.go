@@ -9,29 +9,13 @@ import (
 	"thing-index/internal/domain"
 )
 
-// StuckDocumentReaper libera documentos que ficaram presos em PROCESSING.
-//
-// Ha dois modos de falha distintos, e cada um precisa da sua defesa:
-//
-//   - O worker esta VIVO mas demora demais (PDF gigante, LLM que nao responde).
-//     Quem resolve isso e o timeout por mensagem no consumidor, que interrompe
-//     o handler e devolve a mensagem para o fluxo de retry.
-//   - O worker MORREU no meio do trabalho (OOM kill, SIGKILL, queda do no).
-//     Aqui nenhum codigo do processo roda: ninguem marca FAILED, ninguem
-//     agenda retry. O documento fica PROCESSING para sempre.
-//
-// Este reaper existe para o segundo caso. Sem ele, o usuario ve "processando"
-// indefinidamente -- sem mensagem de erro e sem forma de reenviar.
-//
-// No mesmo laco ele reconcilia documentos presos em QUEUED cujo evento ja foi
-// PUBLISHED ha mais de queuedAfter: a mensagem se perdeu depois do broker (fila
-// apagada, purge, volume perdido). Esses ganham um evento PENDING novo no
-// outbox, em vez de FAILED: nada falhou no documento, so a entrega.
+// StuckDocumentReaper marca FAILED documentos presos em PROCESSING porque o
+// worker morreu (OOM, SIGKILL); worker lento e coberto pelo timeout por mensagem.
+// Tambem republica (PENDING no outbox) documentos em QUEUED cujo evento foi
+// PUBLISHED ha mais de queuedAfter: a mensagem se perdeu depois do broker.
 type StuckDocumentReaper struct {
 	repo domain.DocumentProcessingRepository
-	// Quanto tempo em PROCESSING caracteriza documento preso. Precisa ser
-	// folgadamente maior que o timeout por mensagem, senao o reaper marca
-	// FAILED um documento que o worker ainda esta processando legitimamente.
+	// Precisa ser bem maior que o timeout por mensagem.
 	stuckAfter time.Duration
 	// Quanto tempo com o ultimo evento PUBLISHED e o documento ainda em QUEUED
 	// caracteriza mensagem perdida. Zero desliga a reconciliacao.
@@ -59,8 +43,7 @@ func (r *StuckDocumentReaper) Run(ctx context.Context) error {
 
 	for {
 		if err := r.reapOnce(ctx); err != nil && ctx.Err() == nil {
-			// Loga e segue: uma falha transitoria de banco nao pode derrubar o
-			// worker inteiro, que continua consumindo a fila normalmente.
+			// Falha transitoria de banco nao derruba o worker.
 			log.Printf("stuck document reaper: %v", err)
 		}
 
@@ -104,9 +87,7 @@ func (r *StuckDocumentReaper) reapProcessing(ctx context.Context) error {
 	}
 
 	if reaped > 0 {
-		// Silencio quando nao ha nada a fazer, log quando ha: um numero
-		// crescente aqui e sinal de worker morrendo com frequencia, e essa
-		// informacao se perde se o log for sempre igual.
+		// So loga quando ha algo: numero crescente aqui = worker morrendo.
 		log.Printf("stuck document reaper: %d documento(s) presos em PROCESSING ha mais de %s foram marcados como FAILED", reaped, r.stuckAfter)
 	}
 

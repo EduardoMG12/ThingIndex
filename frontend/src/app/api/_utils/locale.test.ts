@@ -11,11 +11,8 @@ vi.mock("next/headers", () => ({
 
 import { createForwardHeaders } from "@/app/api/_utils/locale";
 
-// O Next so preenche x-forwarded-for com o endereco do socket quando o cliente
-// NAO manda o cabecalho; se manda, o valor do cliente passa intacto. Sem um
-// proxy reverso na frente que sobrescreva o cabecalho, repassar esse valor a
-// API deixa o limite por IP forjavel (cada tentativa com um IP inventado ganha
-// um balde novo). Por isso o repasse e opt-in.
+// Sem proxy reverso o x-forwarded-for vem do cliente e pode ser forjado,
+// por isso o repasse e opt-in.
 describe("createForwardHeaders: IP do cliente", () => {
     beforeEach(() => {
         incomingHeadersMock.mockReset();

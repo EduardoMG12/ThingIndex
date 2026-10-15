@@ -128,12 +128,8 @@ func buildIndexingResult(documentID uint, headings []outlineDraft, paragraphs []
 	return result
 }
 
-// buildDocumentPages monta o texto de cada pagina a partir dos paragrafos E
-// dos titulos, na ordem em que aparecem. Antes so os paragrafos entravam, e
-// tudo que o detector de titulo capturava sumia da pagina: na identificacao
-// de um PPC ("1.1.4 Eixo Tecnologico" / "Informacao e Comunicacao" /
-// "1.1.6 Forma de Oferta" / "Integrado") a pagina ficava com o endereco e o
-// telefone, e a pergunta sobre eixo e oferta nunca achava a pagina.
+// buildDocumentPages inclui os titulos no texto da pagina, nao so os
+// paragrafos: senao o que o detector de titulo captura some da busca.
 func round1(v float64) float64 { return float64(int(v*10+0.5)) / 10 }
 
 func buildDocumentPages(documentID uint, headings []outlineDraft, paragraphs []textBlock) []models.DocumentPage {

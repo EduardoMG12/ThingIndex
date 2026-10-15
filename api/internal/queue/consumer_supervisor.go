@@ -8,31 +8,14 @@ import (
 	"time"
 )
 
-// ConsumerSupervisor reexecuta o consumidor quando o RabbitMQ fecha o canal de
-// entregas, em vez de deixar o processo morrer.
-//
-// MOTIVO: uma queda do broker derrubava o worker inteiro. O main chamava
-// log.Fatalf e contava com o supervisor do Docker (restart: unless-stopped).
-// Isso funciona em producao, mas tem dois problemas.
-//
-// O primeiro apareceu num teste real de queda: em desenvolvimento o air segura
-// o processo, entao o container continuava "running" com o consumidor morto.
-// Os eventos ficaram PENDING no outbox e dois documentos travaram em QUEUED
-// indefinidamente -- pior que falhar, porque nada indicava o problema.
-//
-// O segundo vale tambem em producao: o mesmo binario hospeda o dispatcher de
-// outbox e o reaper de documentos presos. Derrubar tudo por uma queda de broker
-// interrompe dois servicos que teriam trabalho util a fazer enquanto o
-// RabbitMQ volta.
+// ConsumerSupervisor reexecuta o consumidor quando o broker cai, em vez de
+// derrubar o processo (que tambem hospeda o dispatcher do outbox e o reaper).
 type ConsumerSupervisor struct {
 	consumir func(context.Context) error
 	espera   time.Duration
 }
 
-// NewConsumerSupervisor cria o supervisor.
-//
-// A espera entre tentativas e obrigatoria: sem ela, um broker fora do ar vira
-// laco quente consumindo CPU e enchendo o log.
+// A espera entre tentativas evita laco quente com o broker fora do ar.
 func NewConsumerSupervisor(consumir func(context.Context) error, espera time.Duration) *ConsumerSupervisor {
 	if espera <= 0 {
 		espera = time.Second
@@ -40,20 +23,9 @@ func NewConsumerSupervisor(consumir func(context.Context) error, espera time.Dur
 	return &ConsumerSupervisor{consumir: consumir, espera: espera}
 }
 
-// erroDeConexaoTransitoria diz se vale tentar de novo.
-//
-// ErrDeliveriesChannelClosed cobre so o primeiro momento da queda: o broker
-// fecha o canal de entregas. A tentativa SEGUINTE falha de outro jeito -- erro
-// de dial enquanto o RabbitMQ nao voltou, ou "channel/connection is not open"
-// se a conexao morta for reaproveitada.
-//
-// Tratar apenas o canal fechado como transitorio fez o supervisor desistir na
-// segunda tentativa e o processo morrer, que era justamente o que a supervisao
-// deveria evitar.
-//
-// A comparacao e por texto porque a biblioteca amqp devolve *amqp.Error com
-// codigo numerico e os erros de rede vem do pacote net -- um errors.As para
-// cada tipo acoplaria este arquivo as duas bibliotecas sem ganhar precisao.
+// Depois da queda, a tentativa seguinte falha com erro de dial ou
+// "channel/connection is not open", nao com ErrDeliveriesChannelClosed.
+// Comparacao por texto porque os erros vem do amqp e do pacote net.
 func erroDeConexaoTransitoria(err error) bool {
 	if errors.Is(err, ErrDeliveriesChannelClosed) {
 		return true
@@ -78,11 +50,7 @@ func erroDeConexaoTransitoria(err error) bool {
 	return false
 }
 
-// Run executa o consumidor ate o contexto ser cancelado.
-//
-// Reconecta apenas em falha de conexao. Qualquer outro erro sobe: tentar de
-// novo diante de credencial invalida ou fila inexistente transformaria um bug
-// de configuracao em laco infinito silencioso, e o operador nunca veria a causa.
+// Run so reconecta em falha de conexao; qualquer outro erro sobe.
 func (s *ConsumerSupervisor) Run(ctx context.Context) error {
 	for {
 		err := s.consumir(ctx)
@@ -93,12 +61,10 @@ func (s *ConsumerSupervisor) Run(ctx context.Context) error {
 		case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
 			return err
 		case !erroDeConexaoTransitoria(err):
-			// Erro que nova tentativa nao resolve.
 			return err
 		}
 
-		// Antes de esperar, confere se ja fomos cancelados: sem isso o
-		// encerramento gracioso fica preso ate o fim do intervalo.
+		// Sem isso o shutdown espera o intervalo inteiro.
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}

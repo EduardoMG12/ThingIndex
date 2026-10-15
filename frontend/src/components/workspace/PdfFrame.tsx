@@ -8,16 +8,8 @@ import { abrirDocumento, fecharDocumento, medirPaginas, type TamanhoDePagina } f
 import { useI18n } from "@/lib/i18n/provider";
 import { APRESENTACAO_PADRAO, limitarPagina, type Apresentacao } from "@/lib/workspace/highlights";
 
-/**
- * Quadro de um PDF no canvas: cabecalho, e as paginas empilhadas com o tamanho
- * real (pontos PDF = pixels do mundo em zoom 1). Cada pagina e um placeholder;
- * so as que o pai marca como "vivas" ganham <canvas>. E o pai quem conhece o
- * viewport e o orcamento global -- este componente nao decide nada sobre isso.
- *
- * Abre o documento quando `visivel` fica true pela primeira vez, mede as
- * paginas (barato) e avisa o pai com onMedidas. Fora do viewport por mais de
- * 30 s, fecha o documento e libera memoria; reabre ao voltar.
- */
+// So as paginas que o pai marca como vivas ganham <canvas>; o orcamento e dele.
+// Fora do viewport por 30 s, fecha o documento.
 
 export const ALTURA_DO_CABECALHO = 40;
 export const ESPACO_ENTRE_PAGINAS = 16;
@@ -104,10 +96,8 @@ export function PdfFrame({
     const [paginas, setPaginas] = useState<TamanhoDePagina[] | null>(null);
     const [erro, setErro] = useState<string | null>(null);
 
-    // Abre quando visivel e ainda nao aberto; fecha depois de um tempo fora.
-    // Sem flag "ja abriu" em ref: o StrictMode do React roda o efeito duas
-    // vezes em dev, e a flag fazia a segunda passada desistir com o documento
-    // ainda por carregar. Reexecutar e barato porque abrirDocumento tem cache.
+    // Sem flag "ja abriu" em ref: com o StrictMode a segunda passada desistia.
+    // abrirDocumento tem cache, reexecutar e barato.
     useEffect(() => {
         if (!visivel) {
             if (!documento) {
@@ -140,9 +130,7 @@ export function PdfFrame({
         };
     }, [visivel, documentId, documento, t]);
 
-    // Medir e um efeito separado de proposito: se estivesse no mesmo efeito,
-    // o setDocumento acima o reexecutaria e o cleanup cancelaria a medicao em
-    // voo -- foi exatamente o que aconteceu na primeira versao.
+    // Efeito separado: junto, o setDocumento reexecutaria e cancelaria a medicao.
     useEffect(() => {
         if (!documento || paginas) {
             return;

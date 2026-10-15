@@ -83,9 +83,8 @@ func (d *OutboxDispatcher) dispatchOnce(ctx context.Context) error {
 		}
 
 		if err := d.repo.MarkEventPublished(ctx, event.ID, time.Now().UTC()); err != nil {
-			// Nao aborta o lote: os eventos seguintes ja foram reivindicados e
-			// ficariam presos em IN_FLIGHT ate o visibility timeout vencer.
-			// Este evento especifico volta pela mesma rede de seguranca.
+			// Nao aborta o lote: os seguintes ja foram reivindicados e ficariam
+			// em IN_FLIGHT ate o visibility timeout.
 			log.Printf("outbox: evento %d publicado no broker mas nao marcado como PUBLISHED: %v", event.ID, err)
 		}
 	}

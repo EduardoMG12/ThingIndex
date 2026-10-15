@@ -53,8 +53,6 @@ func (e *commandPDFTextExtractor) Extract(data []byte) (pdfTextExtraction, error
 
 	// -bbox-layout entrega paginas explicitas e a caixa de cada bloco/linha ja no
 	// espaco renderizado (origem superior esquerda, /Rotate e CropBox aplicados).
-	// O modo -layout antigo devolvia so texto: sem coordenada e sem fronteira de
-	// pagina confiavel, porque pdftotext separa paginas com form feed.
 	cmd := exec.Command(e.binPath, "-bbox-layout", "-enc", "UTF-8", pdfPath, txtPath)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return pdfTextExtraction{}, fmt.Errorf("pdftotext failed: %w: %s", err, strings.TrimSpace(string(output)))
@@ -71,11 +69,8 @@ func (e *commandPDFTextExtractor) Extract(data []byte) (pdfTextExtraction, error
 	}
 
 	if !isPlausibleText(textFromPageBlocks(extraction.PageBlocks)) {
-		// Sem camada de texto utilizavel (PDF digitalizado) ou texto corrompido.
-		// Isso nao e erro de parsing: a contagem de paginas continua valida e o
-		// fallback de OCR decide pagina a pagina. Retornar erro aqui tornava o
-		// OCR inalcancavel justamente nos documentos 100% escaneados, que sao a
-		// maioria dos processos judiciais digitalizados.
+		// Sem camada de texto (PDF digitalizado) nao e erro: o fallback de OCR
+		// decide pagina a pagina. Retornar erro aqui pularia o OCR.
 		if extraction.PageCount == 0 {
 			return pdfTextExtraction{}, fmt.Errorf("pdftotext returned no pages")
 		}
@@ -111,8 +106,7 @@ type pdfBBoxLine struct {
 	Words []pdfBBoxWord `xml:"word"`
 }
 
-// pdfBBoxWord guarda a caixa de cada palavra. Antes so o texto era lido; a
-// deteccao de tabela precisa da coordenada horizontal para separar celulas.
+// pdfBBoxWord: a deteccao de tabela precisa da coordenada de cada palavra.
 type pdfBBoxWord struct {
 	XMin float64 `xml:"xMin,attr"`
 	YMin float64 `xml:"yMin,attr"`
@@ -131,8 +125,7 @@ func (l pdfBBoxLine) text() string {
 
 // sanitizeXMLControlChars troca por espaco os caracteres de controle que o
 // XML 1.0 proibe (C0 exceto tab, LF e CR). O pdftotext copia o que esta no
-// PDF, e a matriz curricular do IFPR (SAGRES) traz um ESC (U+001B) dentro de
-// uma <word>: o decoder abortava o documento inteiro por um byte.
+// PDF (ex.: ESC dentro de <word>) e o decoder abortaria o documento inteiro.
 func sanitizeXMLControlChars(raw []byte) []byte {
 	saida := make([]byte, len(raw))
 	for i, b := range raw {
@@ -211,13 +204,8 @@ func parsePDFBBoxLayout(raw []byte) (pdfTextExtraction, error) {
 }
 
 // mergeBlocksOnSameRow remonta uma linha visual que o poppler quebrou em varios
-// blocos. Ele corta o fluxo quando encontra folga horizontal grande (tabela,
-// campo alinhado, texto justificado), entao "Critical services run in an
-// alternate region" virava tres blocos, e o primeiro, curto e capitalizado,
-// ainda era classificado como titulo e poluia o outline.
-//
-// So blocos de uma linha se juntam: bloco multilinha ja e um paragrafo agrupado
-// pelo poppler e nao deve ser fundido com vizinhos.
+// blocos na folga horizontal (o primeiro pedaco virava titulo falso).
+// So junta blocos de uma linha; multilinha ja e paragrafo.
 func mergeBlocksOnSameRow(blocks []textBlock) []textBlock {
 	if len(blocks) < 2 {
 		return blocks
@@ -233,10 +221,8 @@ func mergeBlocksOnSameRow(blocks []textBlock) []textBlock {
 		return left.YMin < right.YMin
 	})
 
-	// Primeiro agrupa por faixa vertical, depois ordena cada faixa por X. Ordenar
-	// direto por (YMin, XMin) embaralharia a leitura: fragmentos da mesma linha
-	// visual costumam ter baselines com alguns decimos de diferenca, e o vizinho
-	// da direita pode ter YMin menor que o da esquerda.
+	// Agrupa por faixa vertical antes de ordenar por X: fragmentos da mesma
+	// linha tem baselines com decimos de diferenca.
 	rows := make([][]textBlock, 0, len(ordered))
 	for _, block := range ordered {
 		placed := false
@@ -266,8 +252,6 @@ func mergeBlocksOnSameRow(blocks []textBlock) []textBlock {
 			head.Box.XMax = math.Max(head.Box.XMax, block.Box.XMax)
 			head.Box.YMax = math.Max(head.Box.YMax, block.Box.YMax)
 		}
-		// Blocos de uma linha fundidos numa linha visual: uma linha so, com a
-		// caixa da uniao.
 		if len(row) > 1 {
 			head.Lines = []textLine{{Text: head.Content, Box: *head.Box}}
 		}
@@ -476,11 +460,8 @@ var attachmentHeadingKeywords = []string{
 	"demonstrativo de calculo",
 }
 
-// mostlyNumeric: linha em que os digitos dominam os caracteres alfanumericos.
-// Linha de calendario ("1 2 3 1 Feriado Nacional") ou de tabela de datas
-// ("22 23 24 25 26 27 28") casa com o padrao de titulo numerado e virava
-// secao do sumario -- achado com o calendario academico do IFPR: 30 secoes
-// de lixo em 5 paginas.
+// mostlyNumeric: linha de calendario ou tabela de datas ("22 23 24 25") casa
+// com o padrao de titulo numerado e viraria secao.
 func mostlyNumeric(text string) bool {
 	fields := strings.Fields(text)
 	numeric := 0
@@ -564,8 +545,7 @@ func looksLikeHeading(text string) bool {
 	}
 
 	// Celula de tabela ("Teorica 67", "Total 205", "Subtotal 4 80 40"): curta,
-	// sem numeracao de secao e com um numero solto. Na matriz curricular, 33
-	// de 50 "secoes" eram isso.
+	// sem numeracao de secao e com um numero solto.
 	if hasStandaloneNumber(text) {
 		return false
 	}
@@ -1005,12 +985,8 @@ func buildOutlineNodePath(parts []string) string {
 	return clampIdentifierWithHash(strings.Join(parts, "/"), maxOutlineNodePathLength)
 }
 
-// clampIdentifierWithHash limita o identificador em CARACTERES, nao em bytes.
-// As colunas sao varchar(N), que o Postgres conta em caracteres, e a slug
-// preserva letras acentuadas. Cortar por byte partia "ã" (0xc3 0xa3) ao meio
-// e o INSERT caia com "invalid byte sequence for encoding UTF8: 0xc3 0x2d" --
-// achado com o Edital 56/2026 do IFPR, cujo titulo de secao longo termina
-// justamente num acento.
+// clampIdentifierWithHash corta em caracteres, nao bytes: varchar(N) conta
+// caracteres e cortar por byte parte "ã" ao meio (INSERT falha com UTF8 invalido).
 func clampIdentifierWithHash(value string, limit int) string {
 	runes := []rune(value)
 	if len(runes) <= limit {

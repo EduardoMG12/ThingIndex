@@ -1,9 +1,6 @@
 //go:build integration
 
-// Pacote de teste externo de proposito: este teste precisa de
-// internal/usecase, e internal/usecase importa internal/processing. No mesmo
-// pacote isso fecha um ciclo de import e o alvo `-tags=integration` nem
-// compila.
+// Pacote externo: internal/usecase importa internal/processing (ciclo de import).
 package processing_test
 
 import (

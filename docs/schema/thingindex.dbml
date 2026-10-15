@@ -555,15 +555,31 @@ Table enrichment_cache_entries {
 // Relacionamentos (chaves estrangeiras declaradas nos modelos GORM)
 
 Ref: chat_conversation_entries.conversation_id > chat_conversations.id
+Ref: chat_conversations.user_id > users.id
 Ref: collections.category_id > document_categories.id
+Ref: collections.user_id > users.id
+Ref: document_audit_events.user_id > users.id
+Ref: document_categories.user_id > users.id
 Ref: document_chunks.document_id > documents.id
 Ref: document_outline_nodes.document_id > documents.id
 Ref: document_outline_nodes.parent_id > document_outline_nodes.id
 Ref: document_pages.document_id > documents.id
 Ref: document_processing_attempts.document_id > documents.id
+Ref: document_processing_attempts.user_id > users.id
 Ref: documents.category_id > document_categories.id
 Ref: documents.collection_id > collections.id
+Ref: documents.user_id > users.id
+Ref: enrichment_cache_entries.user_id > users.id
 Ref: metadata_pairs.document_id > documents.id
+Ref: model_price_histories.user_id > users.id
+Ref: model_prices.user_id > users.id
 Ref: paragraph_highlights.paragraph_node_id > paragraph_nodes.id
+Ref: paragraph_highlights.user_id > users.id
 Ref: paragraph_nodes.document_id > documents.id
+Ref: pricing_sources.user_id > users.id
+Ref: provider_audit_events.user_id > users.id
+Ref: provider_model_catalogs.user_id > users.id
 Ref: table_sections.document_id > documents.id
+Ref: user_indexing_preferences.user_id > users.id
+Ref: user_provider_configs.user_id > users.id
+Ref: workspace_view_states.user_id > users.id

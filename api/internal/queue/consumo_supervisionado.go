@@ -6,23 +6,16 @@ import (
 	"thing-index/internal/domain"
 )
 
-// ConsumidorDeIndexacao e o recorte do RabbitMQConsumer que o supervisor usa.
-// Existe para que o wiring do indexer seja testavel sem broker.
+// ConsumidorDeIndexacao e o recorte do RabbitMQConsumer usado pelo supervisor.
 type ConsumidorDeIndexacao interface {
 	SetFailureCallbacks(DocumentIndexFailureCallbacks)
 	ConsumeDocumentIndexRequested(context.Context, func(context.Context, domain.DocumentIndexRequestedEvent) error) error
 	Close() error
 }
 
-// ConsumoComCallbacks monta a funcao que o ConsumerSupervisor reexecuta: cria
-// um consumidor novo, instala as callbacks de falha NELE e consome.
-//
-// MOTIVO: as callbacks eram instaladas num consumidor criado no bootstrap,
-// enquanto quem consumia de fato era outro, criado dentro do supervisor e sem
-// callbacks. MarkRetryScheduled, MarkMovedToDLQ e MarkPermanentFailure nunca
-// rodavam: nenhuma tentativa de processamento era gravada e o status nunca
-// virava RETRY_SCHEDULED nem MOVED_TO_DLQ. Amarrar as callbacks aqui garante
-// que todo consumidor recriado pelo supervisor as recebe.
+// ConsumoComCallbacks monta a funcao que o ConsumerSupervisor reexecuta. As
+// callbacks de falha sao instaladas em cada consumidor recriado; instaladas
+// so no bootstrap, o consumidor real rodava sem elas.
 func ConsumoComCallbacks(
 	novoConsumidor func() (ConsumidorDeIndexacao, error),
 	callbacks DocumentIndexFailureCallbacks,

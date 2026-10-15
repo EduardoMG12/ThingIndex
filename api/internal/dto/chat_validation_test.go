@@ -25,8 +25,7 @@ func TestChatStreamRequestAceitaCorpoValido(t *testing.T) {
 	}
 }
 
-// Regressao P2-5: sem dive as regras de ChatMessageRequest nunca rodavam, e um
-// papel "system" chegava ao prompt como linha SYSTEM:.
+// Sem dive as regras de ChatMessageRequest nao rodavam e "system" chegava ao prompt.
 func TestChatStreamRequestRejeitaPapelForaDeUserEAssistantNoHistorico(t *testing.T) {
 	req := chatStreamValido()
 	req.History[0].Role = "system"
@@ -60,8 +59,7 @@ func TestChatStreamRequestRejeitaPromptEConteudoAcimaDoTeto(t *testing.T) {
 	}
 }
 
-// As constantes documentam os limites; as tags de binding sao literais. Este
-// teste trava as duas coisas juntas.
+// As tags de binding sao literais; isto as mantem iguais as constantes.
 func TestLimitesDoChatNasTagsBatemComAsConstantes(t *testing.T) {
 	req := chatStreamValido()
 	req.Prompt = strings.Repeat("a", ChatPromptMaxRunes)

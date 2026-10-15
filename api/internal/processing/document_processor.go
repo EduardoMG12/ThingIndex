@@ -61,20 +61,14 @@ func (p *DocumentProcessor) Process(ctx context.Context, event domain.DocumentIn
 			StartedAt:    &startedAt,
 			CompletedAt:  completedAt,
 		}); err != nil {
-			// Antes este erro era descartado com `_ =`, inclusive nas
-			// transicoes que marcam FAILED. O efeito era um documento
-			// congelado em PROCESSING sem nenhum sintoma em log -- o pior
-			// modo de falha possivel para diagnosticar.
+			// Engolir este erro deixa o documento preso em PROCESSING sem log.
 			log.Printf("document processor: falha ao atualizar estado do documento %d para %s/%s: %v",
 				event.DocumentID, status, stage, err)
 		}
 	}
 
-	// A carga do documento vem ANTES de marcar PROCESSING de proposito. O
-	// claim do outbox impede publicacao dupla, mas nao impede reentrega do
-	// RabbitMQ (worker que morre entre processar e dar o ack). Marcar
-	// PROCESSING primeiro sobrescreveria o estado INDEXED de um documento
-	// pronto, e so entao descobririamos que era duplicata.
+	// Carrega antes de marcar PROCESSING: numa reentrega do RabbitMQ (worker
+	// morreu antes do ack) isso sobrescreveria o INDEXED de um documento pronto.
 	doc, err := p.repo.GetDocumentByIDForProcessing(ctx, event.DocumentID)
 	if err != nil {
 		completedAt := time.Now().UTC()
@@ -181,11 +175,8 @@ func (p *DocumentProcessor) Process(ctx context.Context, event domain.DocumentIn
 		}
 	}
 
-	// O enricher cai em fallback deterministico sempre que uma chamada ao LLM
-	// falha, e devolve sucesso. Sem esta correcao o pipeline gravava
-	// enrichment_status "applied" mesmo quando nenhuma requisicao completou —
-	// o metadado afirmava enriquecimento por IA num indice 100% deterministico,
-	// e a telemetria de custo e qualidade herdava a mentira.
+	// O enricher devolve sucesso mesmo caindo em fallback; sem isto
+	// enrichment_status ficava "applied" sem nenhuma chamada concluida.
 	if enrichmentStatus == "applied" && observedLLM != nil {
 		if usage := observedLLM.Snapshot(); usage.RequestCount == 0 {
 			enrichmentStatus = "degraded"
@@ -215,23 +206,9 @@ func (p *DocumentProcessor) Process(ctx context.Context, event domain.DocumentIn
 	return nil
 }
 
-// isAlreadyIndexedFor decide se o evento recebido ja foi atendido.
-//
-// A regra e uma so: o documento esta INDEXED e foi indexado DEPOIS de o evento
-// ter sido pedido. Qualquer coisa fora disso processa normalmente.
-//
-// As tres guardas conservadoras importam mais que a regra:
-//
-//  1. RequestedAt zero -> processa. Eventos gravados antes desta mudanca nao
-//     carregam o carimbo, e descartar por ausencia de informacao perderia
-//     indexacao de verdade.
-//  2. IndexedAt nil -> processa. E o caso da reindexacao manual, que zera o
-//     campo justamente para pedir trabalho novo.
-//  3. Status != INDEXED -> processa. Documento em FAILED ou ORPHANED precisa da
-//     nova tentativa mesmo que tenha um indexed_at antigo.
-//
-// Na duvida o sistema reprocessa. Reprocessar custa uma rodada de LLM;
-// descartar por engano deixa o documento sem indice e o usuario sem sintoma.
+// isAlreadyIndexedFor: so pula quando o documento esta INDEXED e foi indexado
+// depois do pedido. RequestedAt zero (eventos antigos), IndexedAt nil
+// (reindexacao manual) ou outro status: processa. Na duvida, reprocessa.
 func isAlreadyIndexedFor(doc *models.Document, event domain.DocumentIndexRequestedEvent) bool {
 	if doc == nil || doc.IndexedAt == nil {
 		return false

@@ -30,11 +30,7 @@ export function ChatMessageCard({
     message: ChatWorkspaceMessage;
     isStreaming: boolean;
     onVerNoDocumento?: (source: Source) => void;
-    /**
-     * Fonte focada no canvas, pelo id (estavel entre o rascunho e a mensagem
-     * recarregada apos o stream). Quando o pai controla, o card nao guarda
-     * estado proprio: o card remonta no recarregamento e perderia o clique.
-     */
+    /** Fonte ativa pelo id. Controlada pelo pai porque o card remonta depois do stream. */
     fonteAtivaId?: string | null;
     onFonteAtiva?: (id: string) => void;
     /** Data do indice atual de cada documento, para avisar fonte de indice antigo. */
@@ -163,9 +159,7 @@ export function ChatMessageCard({
                                 </button>
                             </div>
                         ) : null}
-                        {/* Colunas pela largura do conteiner (o painel do workspace tem ~500px
-                            mesmo em tela grande): cada cartao precisa de 16rem para o nome
-                            do documento e a pagina ficarem legiveis; abaixo disso, 1 coluna. */}
+                        {/* auto-fill pela largura do painel (~500px no workspace), nao da tela. */}
                         <div className="grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-2">
                             {fontes.map((source, indice) => (
                                 <SourceReference

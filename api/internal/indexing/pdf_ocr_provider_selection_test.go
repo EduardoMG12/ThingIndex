@@ -6,19 +6,8 @@ import (
 	"testing"
 )
 
-// O provider de OCR remoto (THINGINDEX_OCR_ENDPOINT) existia, estava testado e
-// NUNCA era alcancado em producao: NewDeterministicIndexer chamava
-// newCommandPDFOCRExtractor() -- so o tesseract local -- em vez de
-// newPDFOCRExtractor(), que tenta o remoto e cai para o local.
-//
-// O efeito era silencioso e caro de perceber: configurar o endpoint nao mudava
-// nada, o indice sempre gravava ocr_engine='local_tesseract', e o servico `ocr`
-// do docker-compose ficava inalcancavel. Nenhum erro, nenhum log -- so a
-// funcionalidade ausente.
-//
-// Estes testes travam a decisao no construtor de PRODUCAO, que era onde o
-// defeito morava. Testar newPDFOCRExtractor isoladamente nao teria pegado nada:
-// aquela funcao sempre esteve correta.
+// Testa a escolha do OCR no construtor de producao: NewDeterministicIndexer
+// chamava so o tesseract local e THINGINDEX_OCR_ENDPOINT era ignorado sem erro.
 
 func exigirFerramentasDeOCR(t *testing.T) {
 	t.Helper()
@@ -63,10 +52,7 @@ func TestIndexadorDeProducaoCaiParaOLocalSemEndpoint(t *testing.T) {
 	}
 }
 
-// TestEndpointEmBrancoNaoAtivaOProviderRemoto cobre o caso de configuracao
-// pela metade: variavel presente mas vazia, comum em .env copiado de exemplo.
-// Ativar o remoto com endpoint vazio faria toda indexacao de PDF escaneado
-// falhar por erro de rede.
+// Variavel presente mas vazia (.env copiado do exemplo) nao ativa o remoto.
 func TestEndpointEmBrancoNaoAtivaOProviderRemoto(t *testing.T) {
 	exigirFerramentasDeOCR(t)
 
@@ -79,10 +65,7 @@ func TestEndpointEmBrancoNaoAtivaOProviderRemoto(t *testing.T) {
 	}
 }
 
-// TestNomeDoProviderRemotoNaoColideComOLocal protege a metrica: o valor de
-// Name() e gravado como ocr_engine no indice e e a unica evidencia de qual
-// motor processou o documento. Dois providers com o mesmo nome tornariam a
-// auditoria incapaz de distinguir.
+// Name() vai para ocr_engine no indice; os dois providers precisam diferir.
 func TestNomeDoProviderRemotoNaoColideComOLocal(t *testing.T) {
 	if unlimitedOCREngineName == "local_tesseract" {
 		t.Fatal("provider remoto usa o mesmo nome do local: ocr_engine deixa de identificar o motor")

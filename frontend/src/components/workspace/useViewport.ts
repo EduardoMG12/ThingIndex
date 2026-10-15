@@ -14,14 +14,9 @@ import {
     type Viewport,
 } from "@/lib/workspace/geometry";
 
-/**
- * Pan e zoom do canvas, na convencao do Figma/Miro: roda = pan, Ctrl/Cmd+roda
- * e pinch = zoom ao redor do cursor, arrastar o fundo = pan. O estado e so
- * {x, y, escala}; quem aplica e o contêiner "mundo" via CSS transform.
- *
- * O listener de roda e registrado a mao porque o onWheel do React e passivo e
- * nao deixa chamar preventDefault -- sem isso a pagina inteira rola junto.
- */
+// Roda = pan, Ctrl/Cmd+roda e pinch = zoom no cursor (como Figma).
+// Listener de wheel na mao: o onWheel do React e passivo e nao deixa
+// chamar preventDefault.
 
 const VIEWPORT_INICIAL: Viewport = { x: 24, y: 24, escala: 1 };
 const PASSO_DOS_BOTOES = 1.25;
@@ -39,9 +34,7 @@ export function useViewport(inicial?: Viewport) {
     const ponteiros = useRef<Map<number, Ponto>>(new Map());
     const pinch = useRef<EstadoDePinch | null>(null);
 
-    // Tamanho da area visivel, para "ajustar a tela" e para o orcamento de
-    // renderizacao. ResizeObserver dispara ao montar, entao nao ha setState
-    // sincrono no efeito.
+    // ResizeObserver ja dispara ao montar, sem setState sincrono no efeito.
     useEffect(() => {
         const el = containerRef.current;
         if (!el) {

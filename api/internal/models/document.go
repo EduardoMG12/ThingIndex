@@ -9,6 +9,7 @@ import (
 type DocumentCategory struct {
 	ID             uint           `gorm:"primarykey" json:"id"`
 	UserID         uint           `gorm:"not null;uniqueIndex:idx_user_category_normalized" json:"user_id"`
+	User           *User          `gorm:"foreignKey:UserID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	Name           string         `gorm:"size:255;not null" json:"name"`
 	NormalizedName string         `gorm:"size:255;uniqueIndex:idx_user_category_normalized" json:"-"`
 	Description    string         `gorm:"type:text" json:"description"`
@@ -20,6 +21,7 @@ type DocumentCategory struct {
 type Collection struct {
 	ID             uint              `gorm:"primarykey" json:"id"`
 	UserID         uint              `gorm:"not null;uniqueIndex:idx_user_collection_normalized;index" json:"user_id"`
+	User           *User             `gorm:"foreignKey:UserID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	CategoryID     *uint             `json:"category_id,omitempty"`
 	Category       *DocumentCategory `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
 	Name           string            `gorm:"size:255;not null" json:"name"`
@@ -34,6 +36,7 @@ type Collection struct {
 type Document struct {
 	ID                  uint                        `gorm:"primarykey" json:"id"`
 	UserID              uint                        `gorm:"not null;index;index:idx_documents_user_collection_created,priority:1" json:"user_id"`
+	User                *User                       `gorm:"foreignKey:UserID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	Title               string                      `gorm:"size:255;not null" json:"title"`
 	FileURL             string                      `gorm:"size:512;not null" json:"file_url"`
 	Size                int64                       `json:"size"`
@@ -55,17 +58,9 @@ type Document struct {
 	DeletedAt           gorm.DeletedAt              `gorm:"index" json:"-"`
 }
 
-// As seis tabelas de estrutura extraida (paragrafos, paginas, tabelas, pares
-// de metadado, chunks e nos de sumario) apontam para o documento por chave
-// estrangeira. Sem o campo Document o GORM nao cria a constraint, e por muito
-// tempo document_id foi so uma coluna NOT NULL: nada impedia uma linha
-// estrutural de apontar para um documento que nao existe, que e justamente o
-// dado sem proveniencia que o principio I da constituicao proibe.
-//
-// RESTRICT, e nao CASCADE: a exclusao de documento ja apaga as linhas
-// estruturais na mesma transacao (deleteStructuredDocumentData) antes do soft
-// delete do documento, e um DELETE fisico de documento que deixasse filhas
-// para tras deve falhar, nao arrastar conteudo sem registro.
+// O campo Document faz o GORM criar a FK. RESTRICT, nao CASCADE: a exclusao de
+// documento ja apaga as linhas estruturais na mesma transacao, e um DELETE fisico
+// que deixasse filhas deve falhar.
 type ParagraphNode struct {
 	ID            uint           `gorm:"primarykey" json:"id"`
 	DocumentID    uint           `gorm:"not null;index;uniqueIndex:idx_paragraph_nodes_document_sequence" json:"document_id"`
@@ -86,17 +81,8 @@ type DocumentPage struct {
 	PageNumber int       `gorm:"not null;uniqueIndex:idx_document_pages_document_page" json:"page_number"`
 	Content    string    `gorm:"type:text;not null" json:"content"`
 	Summary    string    `gorm:"type:text" json:"summary,omitempty"`
-	// GeneratedQuestions sao perguntas que esta pagina responde, escritas em
-	// linguagem de leigo pelo enriquecimento. Coluna PROPRIA, e nao concatenada
-	// ao resumo, porque o experimento pre-registrado compara os dois campos
-	// separadamente: o resumo e o controle negativo (ja medido como inutil para
-	// a busca) e as perguntas sao o tratamento.
-	//
-	// A razao de existir: um indice lexical so consegue usar vocabulario que NAO
-	// esta no documento. O resumo repete o jargao da pagina e por isso nao
-	// acrescenta termo nenhum (medido: zero termos exclusivos em 10 perguntas).
-	// A pergunta de leigo e a unica coisa que o enriquecimento pode produzir que
-	// o documento nao tem.
+	// GeneratedQuestions sao perguntas que a pagina responde, em linguagem de leigo.
+	// Coluna propria, separada do resumo, para poder medir os dois campos separadamente.
 	GeneratedQuestions string         `gorm:"type:text" json:"generated_questions,omitempty"`
 	TokenEstimate      int            `gorm:"not null;default:0" json:"token_estimate"`
 	Metadata           map[string]any `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
@@ -111,9 +97,8 @@ type TableSection struct {
 	Document      *Document `gorm:"foreignKey:DocumentID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	SequenceOrder int       `gorm:"not null;uniqueIndex:idx_table_sections_document_sequence" json:"sequence_order"`
 	Title         string    `gorm:"size:255" json:"title,omitempty"`
-	// PageNumber e a pagina fisica onde a tabela esta. Uma tabela que atravessa
-	// paginas vira uma TableSection por pagina: sem pagina a celula nao e
-	// auditavel (constituicao I). Nulo em HTML e planilha, que nao tem pagina.
+	// PageNumber: tabela que atravessa paginas vira uma TableSection por pagina.
+	// Nulo em HTML e planilha.
 	PageNumber *int           `gorm:"index" json:"page_number,omitempty"`
 	Headers    []string       `gorm:"type:jsonb;serializer:json" json:"headers"`
 	Rows       [][]string     `gorm:"type:jsonb;serializer:json" json:"rows"`
@@ -145,15 +130,8 @@ type DocumentChunk struct {
 	Content              string    `gorm:"type:text;not null" json:"content"`
 	SourceParagraphStart *int      `json:"source_paragraph_start,omitempty"`
 	SourceParagraphEnd   *int      `json:"source_paragraph_end,omitempty"`
-	// PageNumber e a pagina onde o chunk COMECA. Chunk e evidencia citavel: ele
-	// entra na recuperacao da colecao e vira fonte da resposta do chat. Sem
-	// pagina, a fonte nao e clicavel ate o trecho, que e o que auditabilidade
-	// significa neste trabalho (constituicao, principio I).
-	//
-	// Vem da estrutura de origem, nunca de heuristica: pagina do primeiro
-	// paragrafo do intervalo do no, com o StartPage do no como segunda opcao.
-	// Nulavel porque HTML e planilha nao tem pagina, e porque um no sem
-	// paragrafo com pagina precisa ficar nulo em vez de mentir "pagina 1".
+	// PageNumber e a pagina onde o chunk comeca: pagina do primeiro paragrafo do no,
+	// ou StartPage do no. Nulo quando nao ha pagina, em vez de assumir "pagina 1".
 	PageNumber    *int           `gorm:"index" json:"page_number,omitempty"`
 	TokenEstimate int            `gorm:"not null;default:0" json:"token_estimate"`
 	Metadata      map[string]any `gorm:"type:jsonb;serializer:json" json:"metadata,omitempty"`
@@ -203,6 +181,7 @@ type DocumentProcessingAttempt struct {
 	DocumentID        uint           `gorm:"not null;index:idx_document_processing_attempts_document_created,priority:1" json:"document_id"`
 	Document          *Document      `gorm:"foreignKey:DocumentID" json:"-"`
 	UserID            uint           `gorm:"not null;index" json:"user_id"`
+	User              *User          `gorm:"foreignKey:UserID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	Stage             string         `gorm:"size:64;index" json:"stage,omitempty"`
 	FailureKind       string         `gorm:"size:32;index" json:"failure_kind,omitempty"`
 	Disposition       string         `gorm:"size:32;index" json:"disposition,omitempty"`
@@ -220,6 +199,7 @@ type DocumentProcessingAttempt struct {
 type DocumentAuditEvent struct {
 	ID            uint           `gorm:"primarykey;index:idx_document_audit_events_user_created,priority:3" json:"id"`
 	UserID        uint           `gorm:"not null;index;index:idx_document_audit_events_user_created,priority:1" json:"user_id"`
+	User          *User          `gorm:"foreignKey:UserID;constraint:OnUpdate:RESTRICT,OnDelete:RESTRICT" json:"-"`
 	DocumentID    *uint          `gorm:"index" json:"document_id,omitempty"`
 	CollectionID  *uint          `gorm:"index" json:"collection_id,omitempty"`
 	ActorType     string         `gorm:"size:32;not null;default:'USER';index" json:"actor_type"`
