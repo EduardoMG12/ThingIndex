@@ -104,10 +104,7 @@ const contexto = {
 describe("WorkspaceCanvas", () => {
     beforeEach(() => {
         vi.mocked(fetchNodeConnections).mockReset();
-        // jsdom nesta versao nao expoe localStorage.clear diretamente no
-        // escopo do teste; substituir por um duplo em memoria mantem o teste
-        // independente do ambiente e ainda exercita o caminho real de
-        // persistencia do componente.
+        // Este jsdom nao tem localStorage.clear; usa um duplo em memoria.
         const memoria = new Map<string, string>();
         Object.defineProperty(window, "localStorage", {
             configurable: true,
@@ -140,8 +137,7 @@ describe("WorkspaceCanvas", () => {
 
         fireEvent.click(screen.getByRole("button", { name: /Contrato SLA/i }));
 
-        // A sidebar mostra os nos DAQUELE documento, com os resumos que ja
-        // existem no indice -- nenhuma chamada de LLM no caminho.
+        // Sidebar com os nos do documento e os resumos do indice.
         expect(screen.getByText("2 PENALIDADES")).toBeInTheDocument();
         expect(screen.getByText("1 DISPONIBILIDADE")).toBeInTheDocument();
         expect(screen.getByText(/Multa de 5 por cento/)).toBeInTheDocument();
@@ -175,21 +171,14 @@ describe("WorkspaceCanvas", () => {
             expect(screen.getByText("2 DAS PENALIDADES")).toBeInTheDocument();
         });
 
-        // A aresta precisa dizer POR QUE existe: sem isso seria tao opaca
-        // quanto a vizinhanca vetorial que este projeto evita.
-        // A justificativa precisa estar na sidebar (a linha SVG tambem repete
-        // os termos no <title>, entao o escopo e o painel de detalhes).
+        // Escopo na sidebar: o <title> da linha SVG repete os termos.
         const sidebar = within(screen.getByLabelText("Detalhes do documento"));
         expect(sidebar.getByText(/multa/)).toBeInTheDocument();
         expect(sidebar.getByText(/descumprimento/)).toBeInTheDocument();
     });
 
     it("declara ausencia de conexao em vez de mostrar area vazia", async () => {
-        // Este e o teste que mais importa. Lista vazia significa "nenhuma
-        // conexao supera o limiar", que e a resposta CORRETA quando nao ha
-        // relacao. A interface precisa dizer isso com todas as letras -- uma
-        // area em branco seria lida como falha de carregamento, e o sistema
-        // perderia credito justamente pelo unico ponto em que sabe se calar.
+        // Lista vazia tem de virar mensagem, nao area em branco.
         vi.mocked(fetchNodeConnections).mockResolvedValue({
             nodeId: "sla#disponibilidade",
             minScore: 2,
@@ -240,13 +229,8 @@ describe("WorkspaceCanvas", () => {
     });
 
     it("empilha painel e sidebar em telas estreitas", () => {
-        // Regressao medida no navegador: com `flex` e sidebar de largura fixa
-        // (w-80), num viewport de 780px o canvas era espremido para 72px e os
-        // cartoes ficavam ilegiveis atras da sidebar.
-        //
-        // Duas garantias: a coluna so aparece a partir de lg, e o canvas tem
-        // min-w-0 -- sem ele um item flex assume a largura do conteudo e volta
-        // a estourar o container, que foi exatamente a causa do bug.
+        // Em 780px o canvas era espremido para 72px pela sidebar fixa. Coluna so a
+        // partir de lg e min-w-0 no canvas.
         const { container } = render(<WorkspaceCanvas context={contexto} />, opcoes);
 
         const raiz = container.firstElementChild as HTMLElement;
@@ -284,9 +268,7 @@ describe("WorkspaceCanvas", () => {
 
     it("marca com cor de forma otimista e desfaz quando a API falha", async () => {
         vi.mocked(putHighlight).mockRejectedValueOnce(new Error("Cor invalida"));
-        // O quadro so abre quando entra no viewport, e o viewport vem do
-        // ResizeObserver; o stub do jsdom nunca dispara, entao este avisa um
-        // tamanho de tela de verdade.
+        // O ResizeObserver do jsdom nunca dispara; este informa um tamanho real.
         const original = globalThis.ResizeObserver;
         globalThis.ResizeObserver = class {
             private cb: ResizeObserverCallback;

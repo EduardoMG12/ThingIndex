@@ -6,9 +6,7 @@ vi.mock("@/hooks/use-categories", () => ({
     useCategories: vi.fn(),
 }));
 
-// O I18nProvider le o locale do pathname; sem o mock de navegacao o provider
-// nao monta e todo teste falharia por ausencia de contexto, escondendo o que
-// realmente se quer medir.
+// O I18nProvider le o locale do pathname; sem o mock ele nao monta.
 vi.mock("next/navigation", () => ({
     usePathname: () => "/pt-BR/dashboard",
 }));
@@ -44,11 +42,7 @@ describe("CategoryCombobox", () => {
     });
 
     it("propaga o valor sem espacos nas pontas enquanto o usuario digita", async () => {
-        // O componente aparava o valor ao SELECIONAR e ao sair do campo, mas
-        // propagava o texto cru a cada tecla. Quem consome (UploadTab) envia
-        // esse valor direto no upload -- digitar " Contratos " e enviar sem sair
-        // do campo criava uma categoria com espacos, duplicando a existente,
-        // porque a deduplicacao de use-categories compara por nome aparado.
+        // O UploadTab envia o valor direto; com espacos duplicava a categoria.
         const aoMudar = vi.fn();
         renderizar(<CategoryCombobox value="" onChange={aoMudar} />);
 
@@ -70,9 +64,7 @@ describe("CategoryCombobox", () => {
     });
 
     it("mantem o texto digitado visivel, com os espacos, enquanto edita", async () => {
-        // Aparar o que o usuario VE seria hostil: apagaria o espaco no momento
-        // em que ele o digita, entre duas palavras. O trim vale para o valor
-        // propagado, nao para o campo.
+        // O campo mostra o texto cru; so o valor propagado vai aparado.
         const aoMudar = vi.fn();
         renderizar(<CategoryCombobox value="" onChange={aoMudar} />);
 
@@ -83,10 +75,7 @@ describe("CategoryCombobox", () => {
     });
 
     it("a lista de sugestoes fica acima do conteudo seguinte", () => {
-        // A lista e posicionada de forma absoluta sobre o campo seguinte do
-        // formulario. Sem z-index alto o proximo campo desenha por cima e a
-        // sugestao fica inclicavel -- defeito que so aparece em formulario com
-        // mais de um campo, e por isso escapa de teste isolado.
+        // Lista absoluta sobre o proximo campo: sem z-index alto fica inclicavel.
         const { container } = renderizar(<CategoryCombobox value="" onChange={vi.fn()} />);
 
         const lista = container.querySelector(".absolute");

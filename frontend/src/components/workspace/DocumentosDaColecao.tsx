@@ -8,12 +8,6 @@ import type { DocumentSummary } from "@/lib/api/contracts/document-context";
 import { formatDocumentStatus, tomDoStatus } from "@/lib/documents/status";
 import { useI18n } from "@/lib/i18n/provider";
 
-/**
- * Lista dos documentos da colecao dentro do painel da Area de trabalho:
- * clicar foca o quadro no canvas; reindexar e apagar ficam por item. Quem
- * recarrega o contexto depois e a pagina.
- */
-
 const TOM = {
     ok: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
     erro: "bg-red-500/15 text-red-700 dark:text-red-300",

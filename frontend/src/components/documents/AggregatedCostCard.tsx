@@ -22,10 +22,8 @@ function formatUSD(value: number, locale: string) {
     }).format(value > 0 ? value : 0);
 }
 
-// Cartao "Custo agregado" de /documents. Consumo sem preco conhecido aparece
-// como "Nao informado", nunca como US$ 0 (ver describeAggregatedCost). Os
-// tokens do resumo sao sempre estimados pelo backend (contagem por texto no
-// observer da indexacao), por isso o rotulo "estimados" e fixo.
+// Sem preco conhecido mostra "Nao informado", nunca US$ 0. Os tokens do
+// resumo sao sempre estimados pelo backend, dai o rotulo fixo.
 export function AggregatedCostCard({ summary }: Props) {
     const { locale, t } = useI18n();
     const custo = describeAggregatedCost(summary);

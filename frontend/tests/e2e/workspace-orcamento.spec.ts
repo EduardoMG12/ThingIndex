@@ -1,13 +1,8 @@
 import { expect, test, type BrowserContext } from "@playwright/test";
 import { resolve } from "node:path";
 
-/**
- * Orcamento de renderizacao: com tres PDFs de 30 paginas no canvas, nunca ha
- * mais de 12 <canvas> de pagina vivos, em qualquer posicao de rolagem. E o que
- * permite varios PDFs no workspace sem o navegador engasgar.
- *
- * Fixture trinta-paginas.pdf gerada por tests/e2e/fixtures/gerar.py.
- */
+// Tres PDFs de 30 paginas: nunca mais de 12 <canvas> vivos, em qualquer rolagem.
+// trinta-paginas.pdf vem de tests/e2e/fixtures/gerar.py.
 
 const FIXTURE = resolve(__dirname, "fixtures/trinta-paginas.pdf");
 const TETO = 12;
@@ -17,8 +12,7 @@ function success(data: unknown) {
 }
 
 async function authenticate(context: BrowserContext, baseURL: string | undefined) {
-    // A Area de trabalho agora embute o chat: sem estes mocks as buscas de
-    // runtime e de conversas recebem 401 da API real e a pagina cai no login.
+    // Mocks do chat embutido; sem eles runtime e conversas dao 401 e cai no login.
     await context.route("**/api/user/providers/runtime", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: 200, type: "success", message: "ok", data: {} }) }));
     await context.route("**/api/chat/conversations**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: 200, type: "success", message: "ok", data: [] }) }));
     await context.route("**/api/user/me", async (route) => {
@@ -74,8 +68,7 @@ test("nunca ha mais de 12 canvases de pagina vivos, mesmo rolando tres PDFs de 3
         await route.fulfill({ status: 200, contentType: "application/pdf", path: FIXTURE });
     });
 
-    // Viewport alto de proposito: com 1000 px so cabem ~9 paginas visiveis e o
-    // teto nunca aperta -- o teste passava com teto 100 (provado por reversao).
+    // Viewport alto: com 1000 px cabem ~9 paginas e o teto nunca aperta.
     await page.setViewportSize({ width: 1600, height: 2000 });
     await page.goto("/pt-BR/workspace");
     // Os quadros so abrem quando entram no viewport; "Ajustar a tela" poe os
@@ -115,7 +108,6 @@ test("nunca ha mais de 12 canvases de pagina vivos, mesmo rolando tres PDFs de 3
         expect(vivos, `passo ${passo}`).toBeLessThanOrEqual(TETO);
         expect(vivos, `passo ${passo}`).toBeGreaterThan(0);
     }
-    // O teto foi exercitado de verdade: ha mais paginas visiveis do que o
-    // orcamento permite, e o maximo observado bate exatamente nele.
+    // Mais paginas visiveis que o teto, e o maximo bate nele.
     expect(maximo).toBe(TETO);
 });

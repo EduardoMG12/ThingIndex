@@ -1,12 +1,5 @@
-/**
- * Logica pura das conexoes desenhadas no canvas: de uma lista de conexoes
- * derivadas (API) para linhas em coordenadas do mundo, mais o conjunto de
- * paragrafos da secao destino que ganham grifo secundario. Sem React.
- *
- * O score e a contagem de termos significativos da origem encontrados no
- * destino (inteiro, minimo 2 por padrao). Nao e probabilidade, e a espessura
- * da linha e o rotulo dizem isso: "3 termos", nunca "0,75".
- */
+// O score e uma contagem de termos em comum (min. 2), nao probabilidade:
+// o rotulo diz "3 termos", nunca "0,75".
 
 import { readLines, type OutlineNode, type ParagraphNode } from "@/lib/api/contracts/document-context";
 import type { NodeConnection } from "@/lib/api/contracts/node-connections";

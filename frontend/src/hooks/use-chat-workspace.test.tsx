@@ -181,15 +181,7 @@ describe("useChatWorkspace", () => {
     });
 
     it("carrega a conversa escolhida mesmo com outra recebendo stream", async () => {
-        // Cenario: o usuario envia uma pergunta na conversa 10 e, enquanto a
-        // resposta ainda esta chegando, clica na conversa 11 na barra lateral.
-        //
-        // O guard do efeito de carga era `if (isLoading) return`, ou seja,
-        // bloqueava QUALQUER carga durante o streaming. O cabecalho passava a
-        // mostrar o titulo da conversa 11 enquanto a area de mensagens seguia
-        // exibindo o conteudo da 10 -- por dezenas de segundos, e com os deltas
-        // da 10 sendo escritos sob o rotulo da 11. Agora o guard so protege a
-        // conversa que esta de fato streamando.
+        // Troca da conversa 10 para a 11 com o stream da 10 ainda em andamento.
         vi.mocked(fetchChatConversations).mockResolvedValue([
             createConversation(10, "Em streaming"),
             createConversation(11, "Outra conversa"),
@@ -208,8 +200,7 @@ describe("useChatWorkspace", () => {
             ],
         }));
 
-        // Stream que NAO resolve: mantem isLoading === true durante o teste,
-        // que e exatamente a condicao em que o bug se manifestava.
+        // Stream que nunca resolve, para manter isLoading.
         let liberarStream: (() => void) | undefined;
         vi.mocked(streamCollectionChat).mockImplementation(
             () =>
@@ -248,8 +239,6 @@ describe("useChatWorkspace", () => {
             expect(result.current.activeConversationId).toBe(11);
         });
 
-        // O conteudo precisa acompanhar o titulo. Com o guard antigo as
-        // mensagens continuariam sendo as da conversa 10.
         await waitFor(() => {
             expect(result.current.messages.some((m) => m.content === "Resposta da conversa 11")).toBe(true);
         });

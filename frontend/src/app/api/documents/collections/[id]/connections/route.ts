@@ -12,15 +12,7 @@ type RouteContext = {
     }>;
 };
 
-/**
- * Conexoes derivadas entre nos de documentos distintos da colecao.
- *
- * Repassa `node_id` e `min_score` para a API. O `min_score` viaja explicito em
- * vez de ficar fixo aqui porque o limiar e o que separa "existe evidencia" de
- * "devolvi o menos ruim" -- deixar o cliente escolher permite mostrar na tela
- * que subir o corte faz as conexoes desaparecerem, que e o comportamento
- * correto quando nao ha relacao real.
- */
+// min_score vem do cliente, nao fixo aqui: a tela deixa ajustar o limiar.
 export async function GET(request: Request, context: RouteContext) {
     const token = (await cookies()).get("token")?.value;
 

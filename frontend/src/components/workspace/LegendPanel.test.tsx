@@ -11,13 +11,9 @@ vi.mock("next/navigation", () => ({
 const opcoes = { wrapper: createTestWrapper("pt-BR") };
 
 describe("LegendPanel", () => {
-    // O painel guarda "aberta/recolhida" no localStorage; sem limpar, o
-    // primeiro teste deixa a legenda aberta e o clique do segundo a fecha
-    // (falhava na CI, passava local por ordem de execucao).
     beforeEach(() => {
-        // Comeca recolhida em todo teste. O localStorage do jsdom varia entre
-        // ambientes (aqui so tem getItem/setItem; na CI persiste entre
-        // testes), por isso grava a chave em vez de limpar tudo.
+        // Grava a chave em vez de limpar: o localStorage do jsdom muda entre
+        // ambientes e na CI persiste entre testes.
         try {
             window.localStorage.setItem("thingindex.workspace.legenda.recolhida", "1");
         } catch {

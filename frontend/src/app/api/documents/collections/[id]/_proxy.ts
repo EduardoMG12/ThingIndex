@@ -6,11 +6,7 @@ import { createForwardHeaders } from "@/app/api/_utils/locale";
 
 const API_URL = process.env.API_INTERNAL_URL || "http://api:8080/api/v1";
 
-/**
- * Proxy JSON autenticado para /documents/collections/{id}/... da API. As
- * rotas de anotacao do workspace (marcas e legenda) sao todas iguais fora o
- * caminho e o metodo; o que varia fica no chamador.
- */
+// Proxy JSON autenticado para /documents/collections/{id}/... da API.
 export async function proxyCollectionJson(
     request: Request,
     subpath: string,
@@ -23,8 +19,7 @@ export async function proxyCollectionJson(
     }
 
     try {
-        // createForwardHeaders devolve um Headers: espalhar com {...} perde tudo
-        // (inclusive o Authorization) -- foi assim que o primeiro PUT deu 401.
+        // Headers nao espalha com {...}: perde o Authorization.
         const headers = new Headers(await createForwardHeaders(request, { token }));
         if (init.body !== undefined) {
             headers.set("Content-Type", "application/json");

@@ -15,11 +15,7 @@ export type ProviderField = {
     suggestions?: string[];
 };
 
-/**
- * Preco opcional do modelo (US$ por 1 milhao de tokens). Vai nas credenciais
- * do provedor e o backend usa para estimar o custo das respostas e da
- * indexacao; sem ele, o custo aparece como indisponivel.
- */
+/** US$ por 1M de tokens, opcional. Sem ele o custo fica indisponivel. */
 export const LLM_PRICING_FIELD_KEYS = ["input_cost_per_million_usd", "output_cost_per_million_usd"] as const;
 
 const llmPricingFields: ProviderField[] = [
@@ -80,11 +76,9 @@ const openRouterModelSuggestions = [
 ];
 
 /**
- * Provedores escondidos da tela nesta versao: o runtime continua a
- * suporta-los (S3 compativel e API compativel com OpenAI cobrem todos), mas
- * so MinIO, Ollama e OpenAI foram exercitados nos experimentos. Um provedor
- * escondido volta a aparecer se o usuario ja tiver credencial salva nele.
- */
+* Escondidos porque so MinIO, Ollama e OpenAI foram testados; o runtime
+* suporta. Reaparecem se ja houver credencial salva.
+*/
 export const HIDDEN_PROVIDER_TYPES: ReadonlySet<string> = new Set([
     "AWS_S3",
     "CLOUDFLARE_R2",

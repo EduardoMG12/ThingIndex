@@ -63,7 +63,6 @@ export const Hero = () => {
                     </Link>
                 </motion.div>
 
-                {/* Terminal preview */}
                 <motion.div
                     {...fadeUp}
                     transition={{ delay: 0.4, duration: 0.7 }}

@@ -47,7 +47,6 @@ export const LoginForm = () => {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="w-full max-w-sm"
         >
-            {/* Brand */}
             <div className="mb-10 text-center">
                 <motion.div
                     className="mx-auto mb-4 flex items-center justify-center"
@@ -65,7 +64,6 @@ export const LoginForm = () => {
                 </p>
             </div>
 
-            {/* Card */}
             <div className="rounded-xl border border-border bg-secondary/20 p-6 backdrop-blur-sm">
                 <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                     <div className="space-y-1.5">

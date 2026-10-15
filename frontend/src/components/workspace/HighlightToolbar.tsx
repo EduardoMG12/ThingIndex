@@ -5,11 +5,7 @@ import { ChevronLeft, ChevronRight, Link2, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n/provider";
 import { classesDaCor, CORES, rotuloDaCor, type HighlightColor, type Legend } from "@/lib/workspace/highlights";
 
-/**
- * Barra flutuante sobre o paragrafo selecionado: cinco chips de cor, "sem cor"
- * e "Ver conexoes". Vive dentro da pagina, acima do paragrafo (abaixo quando
- * nao cabe), para a acao acontecer em cima do PDF e nao na sidebar.
- */
+// Barra acima do paragrafo selecionado (abaixo quando nao cabe).
 
 /** Navegador "conexao i de N": aparece quando as conexoes do trecho ja foram pedidas. */
 export type NavegadorDeConexoes = {

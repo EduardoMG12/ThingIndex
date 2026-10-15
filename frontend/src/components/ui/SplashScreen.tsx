@@ -119,7 +119,6 @@ export const SplashScreen = () => {
                                 : "radial-gradient(circle at top left, rgba(245,166,35,0.18), transparent 22%), radial-gradient(circle at top right, rgba(82,168,255,0.12), transparent 24%), #090b11",
                     }}
                 >
-                    {/* Background Points (Connecting Graph Vibe) */}
                     <div className="absolute inset-0 pointer-events-none opacity-30">
                         {points.map((point) => (
                             <motion.div
@@ -145,7 +144,6 @@ export const SplashScreen = () => {
                         ))}
                     </div>
 
-                    {/* Central Logo and Branding */}
                     <div className="relative flex flex-col items-center">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.92 }}
@@ -189,7 +187,6 @@ export const SplashScreen = () => {
                         </motion.div>
                     </div>
 
-                    {/* Progress Bar Loader */}
                     <motion.div
                         className="fixed bottom-0 left-0 h-1"
                         style={{

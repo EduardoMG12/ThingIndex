@@ -20,14 +20,6 @@ import type {
     CollectionSummary,
 } from "@/lib/api/contracts/document-context";
 
-/**
- * Area de trabalho: painel navegavel com os documentos de uma colecao.
- *
- * A tela le APENAS dado que a indexacao deterministica ja gravou -- titulos,
- * resumos e hierarquia de secoes. Nao ha chamada de LLM em nenhum caminho, e e
- * por isso que ela abre instantaneamente. As conexoes entre trechos sao
- * derivadas sob demanda pelo mesmo scorer relacional das consultas normais.
- */
 const PAINEL_LARGURA_PADRAO = 340;
 const PAINEL_LARGURA_MIN = 280;
 const PAINEL_LARGURA_MAX = 640;
@@ -85,7 +77,6 @@ function WorkspacePageInner() {
         setChatAberto(window.matchMedia("(min-width: 1024px)").matches);
     }, []);
     const colecaoDaUrl = Number(searchParams.get("collection"));
-    // Carregamento da lista de colecoes; o do contexto fica no hook abaixo.
     const [carregandoColecoes, setCarregandoColecoes] = useState(true);
     const [erroColecoes, setErroColecoes] = useState<string | null>(null);
 
@@ -133,9 +124,7 @@ function WorkspacePageInner() {
         [pathname, router, searchParams]
     );
 
-    // Marcas, legenda e estado chegam junto com o contexto para o canvas abrir
-    // ja no lugar certo, sem pulo; falha neles nao impede a tela. A recarga e
-    // silenciosa (sem o loader de tela cheia), para o canvas nao desmontar.
+    // Recarga silenciosa (sem loader de tela cheia) para o canvas nao desmontar.
     const {
         context,
         anexos,
@@ -154,9 +143,7 @@ function WorkspacePageInner() {
         if (!acompanhando) {
             return;
         }
-        // A decisao de parar e tomada no tick, com o contexto mais recente:
-        // num efeito ela rodaria com o contexto velho (sem o documento novo)
-        // e pararia antes da primeira recarga.
+        // Decide parar no tick: num efeito veria o contexto velho e pararia cedo.
         const timer = window.setInterval(() => {
             const atual = contextRef.current;
             if (atual && !atual.documents.some((d) => aindaIndexando(d.status))) {
@@ -183,8 +170,6 @@ function WorkspacePageInner() {
 
     return (
         <AppShell contentClassName="max-w-none p-0">
-            {/* Canvas dominante, como Figma/Miro: cabecalho de uma linha e o
-                resto da altura para o canvas. A descricao vira tooltip. */}
             <div className="flex h-[calc(100vh-4.5rem)] min-h-[560px] flex-col gap-2 p-3">
                 <header className="flex flex-wrap items-center justify-between gap-3 px-1">
                     <h1 className="text-base font-semibold" title={t("workspace.description")}>{t("workspace.title")}</h1>
