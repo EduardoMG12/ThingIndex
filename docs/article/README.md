@@ -7,6 +7,7 @@ Modelo Relacional*.
 
 | Arquivo | O que é |
 |---|---|
+| `ThingIndex-artigo.pdf` | Artigo compilado |
 | `artigo.tex` | Fonte do artigo (modelo SBC). Compila no Overleaf com `sbc-template.sty` e `sbc.bst` na raiz do projeto. |
 | `references.bib` | Bibliografia BibTeX |
 | `tables/` | Tabelas geradas a partir dos CSV de `results/` |
