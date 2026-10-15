@@ -924,8 +924,10 @@ CORRECOES_A8 = [
      "resposta certa também deixaram de contar como certas.",
      "A frase “Não existe previsão sobre isso nos documentos.” acertava as 12 perguntas que "
      "perguntam se um assunto existe, e 6 recusas a uma mesma pergunta contavam como certas.",
-     [("Sem expansão", "70,0%"), ("Com expansão", "90,1%")],
-     [("Sem expansão", "68,5%"), ("Com expansão", "88,7%")]),
+     [("Sem expansão", "70,0%"), ("Com expansão", "90,1%"),
+      ("Teste da Seção 8.7 do artigo (pares)", "12 a 0")],
+     [("Sem expansão", "68,5%"), ("Com expansão", "88,7%"),
+      ("Teste da Seção 8.7 do artigo (pares)", "13 a 0")]),
     ("Mais formas de recusa passaram a ser barradas, e uma resposta certa escrita “píxeis” "
      "(plural de pixel) passou a ser aceita.",
      "“Píxeis” sem acento não contém a palavra “pixel”, e a resposta certa era marcada como "
@@ -991,6 +993,11 @@ def a8() -> str:
         "<col style='width:21%'><col style='width:21%'></colgroup><thead><tr>"
         "<th>O que mudou</th><th>Por quê</th><th>Antes</th><th>Depois</th></tr></thead>"
         f"<tbody>{tr}</tbody></table>"
+        "<p class='nota-a8'>No teste da Seção 8.7 do artigo, que compara cada pergunta escrita "
+        "com as palavras do documento com a mesma pergunta escrita com outras palavras, o "
+        "gabarito original dava 8 pares a favor da primeira e 2 a favor da segunda (valor-p "
+        "de 0,109, sem diferença detectável). A diferença só passou a ser detectável depois "
+        "das correções deste quadro, e o artigo declara isso.</p>"
         "<p class='nota-a8'>Os valores de cada linha são os do momento daquela correção; as correções "
         "seguintes e os ajustes do sistema mudaram alguns deles de novo, e o artigo publica os "
         "números finais. As regras da busca também foram ajustadas olhando as 72 perguntas "
