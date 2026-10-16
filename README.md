@@ -270,6 +270,15 @@ scripts/       execução, testes, experimentos e conferência do artigo
 }
 ```
 
+## Uso de inteligência artificial
+
+Durante o desenvolvimento do sistema e a preparação do artigo, o autor utilizou as ferramentas
+de inteligência artificial generativa Claude (Anthropic) e ChatGPT (OpenAI) para auxiliar na
+programação, na revisão da escrita acadêmica, na estruturação das seções, na tradução do resumo
+e na melhoria geral da redação. A pergunta de pesquisa, o desenho dos experimentos, os
+gabaritos e as decisões técnicas são do autor, que revisou todo o conteúdo e assume plena
+responsabilidade por ele.
+
 ## Licença
 
 [MIT](LICENSE).
