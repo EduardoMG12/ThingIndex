@@ -90,6 +90,29 @@ if grep -qEi "usage[^.]{0,80}(descartad|ignorad)" "$ARTIGO"; then
   falhas=$((falhas + 1))
 fi
 
+# --- Temperatura das respostas do chat --------------------------------------
+# O artigo diz que as respostas pelo chat usaram a temperatura padrao do
+# sistema, 0,2. O chat usa StreamText, que envia defaultLLMStreamingTemperature
+# (api/internal/pkg/provider/factory.go). Se a constante mudar, o texto mente.
+if grep -q "foi a padrão do sistema, 0,2 nas respostas dadas pelo" "$ARTIGO"; then
+  if ! grep -qE "^const defaultLLMStreamingTemperature = 0\.2$" api/internal/pkg/provider/factory.go; then
+    echo "FALHA: o artigo diz temperatura 0,2 no chat, mas defaultLLMStreamingTemperature mudou." >&2
+    falhas=$((falhas + 1))
+  fi
+  if ! grep -q "streamer.StreamText" api/internal/usecase/chat_usecase.go; then
+    echo "FALHA: o artigo diz temperatura do streaming no chat, mas o chat nao usa mais StreamText." >&2
+    falhas=$((falhas + 1))
+  fi
+fi
+
+# --- Tempo de calculo da busca ----------------------------------------------
+# Nao ha medicao isolada do tempo do BM25 no sistema; o texto nao pode dizer
+# que ele e "aceitavel" como se fosse medido.
+if grep -qE "tempo de cálculo[^.]{0,120}é aceitável" "$ARTIGO"; then
+  echo "FALHA: o artigo afirma tempo de calculo aceitavel sem medicao." >&2
+  falhas=$((falhas + 1))
+fi
+
 echo "repositorio privado: $repo_privado"
 
 if [[ $falhas -gt 0 ]]; then

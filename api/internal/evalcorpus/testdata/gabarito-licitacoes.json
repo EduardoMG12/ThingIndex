@@ -22,7 +22,7 @@
       ]
     }
   ],
-  "frozen_sha256": "937d00527cdedb770a192039b509eb5dc4085de6492b4653e094798fa2e07571",
+  "frozen_sha256": "25a52be6147156de90a70323747307cc93983189a78cdb7f2d34b1eb14752040",
   "min_questions": 25,
   "notes": "Perguntas em PAR: a mesma necessidade de informacao aparece duas vezes, com a mesma resposta esperada e o mesmo alvo, mudando so a formulacao. LITERAL usa os termos do documento; PARAFRASE usa o vocabulario de quem pergunta no dia a dia, sem repetir as palavras do texto. O par existe porque um gabarito escrito por quem ja leu a pagina herda o vocabulario dela, e ai a medicao vira casamento lexical se passando por compreensao. Formas: aberta, confirmacao, existencia, premissa-falsa (a pergunta embute um dado errado e a resposta certa e corrigir) e negativa (nao consta). Escrito a partir dos PDF com pdftotext -layout; cada pagina-alvo foi conferida.",
   "questions": [
@@ -290,7 +290,7 @@
     },
     {
       "answer_patterns": [
-        "\\bsim\\b|existe|prev|trata"
+        "\\bsim\\b|existe|\\bprev(e|eem|er|isto|ista|istos|istas|isao|isoes)\\b|\\btrat(a|am|ar)\\b"
       ],
       "expected": "Sim, a Lei 14.133 traz um capitulo de infracoes e sancoes administrativas (art. 155 e seguintes), com advertencia, multa, impedimento de licitar e declaracao de inidoneidade.",
       "id": "lc8L",
@@ -316,7 +316,7 @@
     },
     {
       "answer_patterns": [
-        "\\bsim\\b|existe|prev|trata"
+        "\\bsim\\b|existe|\\bprev(e|eem|er|isto|ista|istos|istas|isao|isoes)\\b|\\btrat(a|am|ar)\\b"
       ],
       "expected": "Sim, a Lei 14.133 traz um capitulo de infracoes e sancoes administrativas (art. 155 e seguintes), com advertencia, multa, impedimento de licitar e declaracao de inidoneidade.",
       "id": "lc8P",
@@ -382,7 +382,7 @@
     },
     {
       "answer_patterns": [
-        "\\bsim\\b|existe|prev|seguro-garantia"
+        "\\bsim\\b|existe|\\bprev(e|eem|er|isto|ista|istos|istas|isao|isoes)\\b|seguro-garantia"
       ],
       "expected": "Sim, o seguro-garantia e uma das modalidades de garantia, e serve para garantir o cumprimento das obrigacoes do contratado (art. 96 e 97).",
       "id": "lc10L",
@@ -408,7 +408,7 @@
     },
     {
       "answer_patterns": [
-        "\\bsim\\b|existe|prev|seguro-garantia"
+        "\\bsim\\b|existe|\\bprev(e|eem|er|isto|ista|istos|istas|isao|isoes)\\b|seguro-garantia"
       ],
       "expected": "Sim, o seguro-garantia e uma das modalidades de garantia, e serve para garantir o cumprimento das obrigacoes do contratado (art. 96 e 97).",
       "id": "lc10P",
@@ -628,5 +628,5 @@
     "negativa": 3,
     "premissa-falsa": 4
   },
-  "version": "licitacoes-2026-09-v6"
+  "version": "licitacoes-2026-09-v7"
 }

@@ -80,9 +80,9 @@ A fonte LaTeX está em [`docs/article/artigo.tex`](docs/article/artigo.tex).
 
 <table>
   <tr>
-    <td align="center" width="25%"><h2>69,5%</h2>de acerto em perguntas novas<br/><sub>cerca de 7 em 10 respostas</sub></td>
-    <td align="center" width="25%"><h2>88,7%</h2>com a expansão da pergunta<br/><sub>14 perguntas ganhas, nenhuma perdida</sub></td>
-    <td align="center" width="25%"><h2>≈ 1/26</h2>dos <i>tokens</i> de mandar o PDF inteiro<br/><sub>72 de 72 perguntas certas</sub></td>
+    <td align="center" width="25%"><h2>68,1%</h2>de acerto em perguntas novas<br/><sub>cerca de 7 em 10 respostas</sub></td>
+    <td align="center" width="25%"><h2>88,7%</h2>com a expansão da pergunta<br/><sub>15 perguntas ganhas, nenhuma perdida</sub></td>
+    <td align="center" width="25%"><h2>≈ 9×</h2>menos <i>tokens</i> que mandar o PDF inteiro<br/><sub>mediana, com o mesmo acerto (71 de 72)</sub></td>
     <td align="center" width="25%"><h2>13 × 11</h2>busca por palavras × por significado<br/><sub>de 16 consultas, sem diferença detectável</sub></td>
   </tr>
 </table>
@@ -90,10 +90,10 @@ A fonte LaTeX está em [`docs/article/artigo.tex`](docs/article/artigo.tex).
 | Pergunta | Resultado |
 |---|---|
 | Busca por palavras ou por significado: qual acha mais? | Ficaram próximas: 13 de 16 contra 11 de 16 consultas, sem diferença detectável |
-| Buscar trechos custa menos que mandar o PDF inteiro ao modelo? | Sim: na mediana, cerca de 1/26 dos *tokens*, com 72 de 72 perguntas certas contra 71 de 72 |
-| Quanto o sistema acerta em perguntas novas? | 69,5% das respostas, cerca de 7 em 10 |
-| A redação da pergunta muda o acerto? | Sim: 88,2% com as palavras do documento e 41,9% com outras palavras |
-| Expandir a pergunta com um LLM ajuda? | De 69,5% para 88,7% (experimental, desligada por padrão) |
+| Buscar trechos custa menos que mandar o PDF inteiro ao modelo? | Sim: na mediana das perguntas com resposta, cerca de 9 vezes menos *tokens*, com o mesmo acerto (71 de 72 nos dois casos) |
+| Quanto o sistema acerta em perguntas novas? | 68,1% das respostas, cerca de 7 em 10 |
+| A redação da pergunta muda o acerto? | Sim: 88,2% com as palavras do documento e 38,7% com outras palavras |
+| Expandir a pergunta com um LLM ajuda? | De 68,1% para 88,7% (experimental, desligada por padrão) |
 | Fonte certa garante resposta certa? | Não: o sistema citou, com a página certa, o artigo de uma lei revogada |
 
 As ressalvas de cada número e a resposta à pergunta de pesquisa, condição por condição,
@@ -269,6 +269,15 @@ scripts/       execução, testes, experimentos e conferência do artigo
   url          = {https://github.com/EduardoMG12/ThingIndex}
 }
 ```
+
+## Uso de inteligência artificial
+
+Durante o desenvolvimento do sistema e a preparação do artigo, o autor utilizou as ferramentas
+de inteligência artificial generativa Claude (Anthropic) e ChatGPT (OpenAI) para auxiliar na
+programação, na revisão da escrita acadêmica, na estruturação das seções, na tradução do resumo
+e na melhoria geral da redação. A pergunta de pesquisa, o desenho dos experimentos, os
+gabaritos e as decisões técnicas são do autor, que revisou todo o conteúdo e assume plena
+responsabilidade por ele.
 
 ## Licença
 
