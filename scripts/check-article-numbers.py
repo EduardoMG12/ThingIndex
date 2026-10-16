@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import collections
 import csv
+import json
 import importlib.util
 import sys
 import re
@@ -224,7 +225,7 @@ def conferir_geracao(texto: str, apoio: str) -> int:
     esperados.update(legislacao())
     esperados.update(busca_da_bateria())
     esperados.update(enriquecimento_repeticoes())
-    esperados.update(gpt_oss_no_corpo())
+    esperados.update(sim_constante())
 
     falhas = 0
     for descricao, trecho in esperados.items():
@@ -289,7 +290,13 @@ def origem_c1() -> dict[str, str]:
     return {
         # A tabela-resumo so da o total; as contagens intermediarias ficam na
         # Secao 8.4, conferidas nas ancoras abaixo.
-        "origem C1 (resumo)": f"Sim: {completos} de {total} unidades de C1; parte veio de ajustar a métrica",
+        # A correcao do sistema (pagina nos trechos) levou de 51 a 70; a
+        # redefinicao da metrica (metadados do documento inteiro), de 70 a 155.
+        "origem C1 (resumo)": (f"Sim: {completos} de {total} unidades de C1; a correção do sistema levou de "
+                               f"{primeira} a {primeira + tipo['Trecho']}, e o ajuste da métrica, a {total}"),
+        "origem C1, correcao do sistema": (f"que deu coluna de página aos trechos, levou a {primeira + tipo['Trecho']}; "
+                                           "a maior parte da diferença veio de ajustar a métrica"
+                                           if tipo["Metadado"] > tipo["Trecho"] else "<a correcao do sistema passou a ser a maior parte>"),
         "origem C1, versao atual": (f"Na versão atual, as {total} unidades indexadas de C1 têm a origem completa"
                                     if completos == total else "<nem todas as unidades de C1 tem origem completa>"),
         "origem C1, primeira medicao": f"A primeira medição deu {primeira} de {total}",
@@ -325,7 +332,8 @@ def busca_da_bateria() -> dict[str, str]:
         alvo = [r for r in rs if r["retrieval_hit"] != ""]
         return sum(r["retrieval_hit"] == "true" for r in alvo), len(alvo)
     (ko, no), (ke, ne) = hit(off), hit(on)
-    certas = [r for r in off if r["correct"] == "true"]
+    # So as certas com pagina-alvo: as negativas certas nao tem pagina a achar.
+    certas = [r for r in off if r["correct"] == "true" and r["retrieval_hit"] != ""]
     sem_fonte = sum(r["retrieval_hit"] == "false" for r in certas)
     return {
         "busca da bateria (8.7)": f"a página certa esteve entre as fontes em {ko} de {no} respostas com página-alvo ({_pct(ko / no)}\\%)",
@@ -333,9 +341,30 @@ def busca_da_bateria() -> dict[str, str]:
                                      f"página-alvo ({_pct(ke / ne)}\\%), contra {ko} ({_pct(ko / no)}\\%) sem ela"),
         "busca da bateria (tabela b)": (f"A página certa esteve entre as fontes em {_pct(ko / no)}\\% das respostas com página-alvo"),
         "busca com expansao (tabela b)": f"A expansão por LLM leva a página certa a {_pct(ke / ne)}\\%",
-        "certas sem a pagina (8.7)": f"Em {sem_fonte} das {len(certas)} respostas certas, a página certa não estava entre as fontes",
-        "certas sem a pagina (tabela c)": f"em {sem_fonte} das {len(certas)} respostas certas da bateria a página certa não estava entre as fontes",
+        "certas sem a pagina (8.7)": f"Em {sem_fonte} das {len(certas)} respostas certas com página-alvo, a página certa não estava entre as fontes",
+        "certas sem a pagina (tabela c)": f"em {sem_fonte} das {len(certas)} respostas certas da bateria com página-alvo a página certa não estava entre as fontes",
     }
+
+
+def sim_constante() -> dict[str, str]:
+    """A resposta fixa "Sim." contra as perguntas de existencia da bateria
+    (Secao 8.7; registro 6 de alteracoes-pos-medicao.md): conta as que ela
+    acertaria com o gabarito atual."""
+    gab = RAIZ / "api" / "internal" / "evalcorpus" / "testdata"
+    total = acerta = 0
+    for tema in ("seguranca-trabalho", "produto", "licitacoes"):
+        g = json.load(open(gab / f"gabarito-{tema}.json", encoding="utf-8"))
+        for q in g.get("questions", g):
+            if q.get("stratum") != "existencia":
+                continue
+            total += 1
+            # Mesma dobra do corretor (fold em api/cmd/generation-eval/metrics.go).
+            ok = all(re.search(p, "sim.") for p in q.get("answer_patterns", []))
+            ok = ok and not any(re.search(p, "sim.") for p in q.get("reject_patterns") or [])
+            acerta += ok
+    if acerta != total:
+        return {"Sim. constante": f"<Sim. acerta {acerta} de {total} perguntas de existencia>"}
+    return {"Sim. constante": f"a resposta fixa ``Sim.'' ainda acertaria as {total} perguntas de existência, cuja resposta certa é sempre sim"}
 
 
 def enriquecimento_repeticoes() -> dict[str, str]:
@@ -344,16 +373,6 @@ def enriquecimento_repeticoes() -> dict[str, str]:
     reps = {r["repeat"] for b in ("content", "content-summary", "content-questions", "max")
             for r in csv.DictReader(open(d / f"braco-seguranca-trabalho-{b}.csv", encoding="utf-8"))}
     return {"enriquecimento, uma repeticao": "e 2 negativas) e uma repetição," if reps == {"1"} else f"<enriquecimento com repeticoes {sorted(reps)}>"}
-
-
-def gpt_oss_no_corpo() -> dict[str, str]:
-    """O teste com outro modelo, como dito nas Ameacas (so no braco F). Reusa
-    a conta de gpt_oss_sem_falhas, conferida em apoio-resultados.tex."""
-    m = re.match(r"(\S+)\\% contra (\S+)\\% do modelo principal nas (\d+) perguntas", gpt_oss_sem_falhas())
-    if not m:
-        return {"gpt-oss no corpo": "<conta do gpt-oss mudou de forma>"}
-    return {"gpt-oss no corpo": (f"feito só no braço F (documento inteiro), acertou {m.group(1)}\\% contra "
-                                 f"{m.group(2)}\\% do modelo principal nas {m.group(3)} perguntas que ele respondeu")}
 
 
 def queda_literal_parafrase(rows: list[dict], gran: str, arm: str) -> float | None:
@@ -477,10 +496,18 @@ def gpt_oss_sem_falhas() -> str:
     base = [r for r in csv.DictReader(open(res / "generation-results-F-document.csv", encoding="utf-8"))
             if r["question_id"] in ids]
     kb = sum(r["correct"] == "true" for r in base)
-    return (f"{_pct(k / len(validas))}\\% contra {_pct(kb / len(base))}\\% do modelo principal nas "
-            f"{len(ids)} perguntas que o outro modelo respondeu, o que indica que os números dependem do "
-            f"modelo. Das {len(falha)} restantes, {len(longas)} eram negativas cujo texto, com cinco "
-            f"documentos, passou da janela do modelo, e {len(tempo)} esgotou o tempo.")
+    # As erradas que trazem espaco estreito (U+202F) ou hifen inseparavel
+    # (U+2011): FoldDiacritics (api/internal/retrieval/lexical.go), usado pelo
+    # corretor, nao os normaliza, e a comparacao entre modelos nao vale.
+    erradas = [r for r in validas if r["correct"] != "true"]
+    especiais = sum(bool(re.search("[\u202f\u2011]", r["answer"])) for r in erradas)
+    return (f"acertou {k} das {len(validas)} perguntas que respondeu ({_pct(k / len(validas))}\\%), contra "
+            f"{_pct(kb / len(base))}\\% do modelo principal nas mesmas perguntas. A comparação não vale: "
+            f"{especiais} das {len(erradas)} respostas marcadas como erradas contêm o espaço estreito "
+            f"(U+202F) ou o hífen inseparável (U+2011), que o corretor não normaliza (só tira acentos e "
+            f"caixa), e por isso esses números não mostram que o acerto dependa do modelo. Das {len(falha)} "
+            f"restantes, {len(longas)} eram negativas cujo texto, com cinco documentos, passou da janela do "
+            f"modelo, e {len(tempo)} esgotou o tempo.")
 
 
 def expansao_por_variante() -> dict[str, str]:
