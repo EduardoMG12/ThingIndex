@@ -214,6 +214,9 @@ def conferir_geracao(texto: str, apoio: str) -> int:
     esperados.update(acerto_por_pergunta_ensino())
     esperados.update(origem_c1())
     esperados.update(legislacao())
+    esperados.update(busca_da_bateria())
+    esperados.update(enriquecimento_repeticoes())
+    esperados.update(gpt_oss_no_corpo())
 
     falhas = 0
     for descricao, trecho in esperados.items():
@@ -293,6 +296,51 @@ def legislacao() -> dict[str, str]:
     k = sum(r["correct"] == "true" for r in rows)
     kd = sum(r["correct"] == "true" for r in div)
     return {"legislacao": f"acertou {k} das {len(rows)} perguntas; nas {len(div)} divergentes, acertou {kd}"}
+
+
+def busca_da_bateria() -> dict[str, str]:
+    """Pagina certa entre as fontes na bateria (retrieval_hit), sem e com
+    expansao, e as respostas certas sem a pagina certa entre as fontes
+    (Secoes 8.7 e 8.9 e Tabela de resposta). As negativas nao tem
+    pagina-alvo (retrieval_hit vazio) e ficam fora do denominador."""
+    res = RAIZ / "docs" / "article" / "results" / "expansao"
+    def linhas(arm):
+        return [r for t in ("seguranca-trabalho", "produto", "licitacoes")
+                for r in csv.DictReader(open(res / f"{arm}-{t}.csv", encoding="utf-8"))]
+    off, on = linhas("off"), linhas("on")
+    def hit(rs):
+        alvo = [r for r in rs if r["retrieval_hit"] != ""]
+        return sum(r["retrieval_hit"] == "true" for r in alvo), len(alvo)
+    (ko, no), (ke, ne) = hit(off), hit(on)
+    certas = [r for r in off if r["correct"] == "true"]
+    sem_fonte = sum(r["retrieval_hit"] == "false" for r in certas)
+    return {
+        "busca da bateria (8.7)": f"a página certa esteve entre as fontes em {ko} de {no} respostas com página-alvo ({_pct(ko / no)}\\%)",
+        "busca com expansao (8.9)": (f"a página certa passou a estar entre as fontes em {ke} de {ne} respostas com "
+                                     f"página-alvo ({_pct(ke / ne)}\\%), contra {ko} ({_pct(ko / no)}\\%) sem ela"),
+        "busca da bateria (tabela b)": (f"A página certa esteve entre as fontes em {_pct(ko / no)}\\% das respostas com página-alvo"),
+        "busca com expansao (tabela b)": f"A expansão por LLM leva a página certa a {_pct(ke / ne)}\\%",
+        "certas sem a pagina (8.7)": f"Em {sem_fonte} das {len(certas)} respostas certas, a página certa não estava entre as fontes",
+        "certas sem a pagina (tabela c)": f"em {sem_fonte} das {len(certas)} respostas certas da bateria a página certa não estava entre as fontes",
+    }
+
+
+def enriquecimento_repeticoes() -> dict[str, str]:
+    """O enriquecimento (Secao 8.8) foi executado uma vez por braco."""
+    d = RAIZ / "docs" / "article" / "results" / "enriquecimento-reexecucao"
+    reps = {r["repeat"] for b in ("content", "content-summary", "content-questions", "max")
+            for r in csv.DictReader(open(d / f"braco-seguranca-trabalho-{b}.csv", encoding="utf-8"))}
+    return {"enriquecimento, uma repeticao": "e 2 negativas) e uma repetição." if reps == {"1"} else f"<enriquecimento com repeticoes {sorted(reps)}>"}
+
+
+def gpt_oss_no_corpo() -> dict[str, str]:
+    """O teste com outro modelo, como dito nas Ameacas (so no braco F). Reusa
+    a conta de gpt_oss_sem_falhas, conferida em apoio-resultados.tex."""
+    m = re.match(r"(\S+)\\% contra (\S+)\\% do modelo principal nas (\d+) perguntas", gpt_oss_sem_falhas())
+    if not m:
+        return {"gpt-oss no corpo": "<conta do gpt-oss mudou de forma>"}
+    return {"gpt-oss no corpo": (f"feito só no braço F (documento inteiro), acertou {m.group(1)}\\% contra "
+                                 f"{m.group(2)}\\% do modelo principal nas {m.group(3)} perguntas que ele respondeu")}
 
 
 def queda_literal_parafrase(rows: list[dict], gran: str, arm: str) -> float | None:
