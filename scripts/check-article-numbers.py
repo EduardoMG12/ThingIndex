@@ -21,6 +21,7 @@ import csv
 import json
 import importlib.util
 import math
+import statistics
 import sys
 import re
 from pathlib import Path
@@ -121,6 +122,9 @@ def conferir_geracao(texto: str, apoio: str) -> int:
         "pagina exibida T em respostas": f"{prov_t['exibida']} de {prov_t['respostas']}",
         "pagina citada T": f"correta em {prov_t['prosa_com_folio']} de {prov_t['respostas']} respostas em T",
         "pagina citada F": f"{prov_f['prosa_com_folio']} de {prov_f['respostas']} em F",
+        # Sem aceitar o numero impresso (folio), so pela posicao da pagina no PDF.
+        "pagina citada sem folio (8.5)": (f"só pela posição da página no arquivo, F teria {prov_f['prosa']}, "
+                                          f"e T, {prov_t['prosa']})"),
         # Cada numero ancorado na frase em que aparece: um valor solto casaria
         # com qualquer outra ocorrencia (a banca mostrou que 0,685 -> 0,686
         # passava).
@@ -232,8 +236,16 @@ def conferir_geracao(texto: str, apoio: str) -> int:
     esperados.update(acerto_com_gabarito_original())
     esperados.update(custo_invertido())
     esperados.update(existencia_acerto())
+    esperados.update(mediana_tokens())
+    esperados.update(continuacao_e_latencia())
 
     falhas = 0
+    # A razao com as negativas (26,5) so aparece com a ressalva da Secao 8.5.
+    for velho in ("1/26", "26 vezes", "26 times"):
+        if velho in texto:
+            print(f"FALHA  tokens: '{velho}' voltou ao artigo; o numero principal e o das perguntas com resposta",
+                  file=sys.stderr)
+            falhas += 1
     for descricao, trecho in esperados.items():
         alvo, onde = (apoio, "apoio-resultados.tex") if descricao in NO_APOIO else (texto, "artigo")
         if trecho not in alvo:
@@ -301,7 +313,6 @@ def ancoras_auditoria(c: dict, e: dict, ef: dict, g: dict) -> dict[str, str]:
         "pares concordantes (apoio)": f"{ef['concordantes']} dos 31 pares tiveram o mesmo resultado",
         "existencia, Sim. (apoio)": f"de modo que o {_pct(ex_k / ex_n)}\\% dessa forma",
         "ensino por resposta (limitacoes)": f"O acervo de desenvolvimento (ensino) chegou a {_pct(t['ok'] / t['n'])}\\%",
-        "ensino por resposta T (limitacoes)": f"e de 216 para {t['ok']}, no braço T)",
         "abstract": f"accuracy was {_pct(c['total'][0] / c['total'][1]).replace(',', '.')}\\% with the original question",
     }
 
@@ -375,7 +386,8 @@ def busca_da_bateria() -> dict[str, str]:
     certas = [r for r in off if r["correct"] == "true" and r["retrieval_hit"] != ""]
     sem_fonte = sum(r["retrieval_hit"] == "false" for r in certas)
     return {
-        "busca da bateria (8.7)": f"a página certa esteve entre as fontes em {ko} de {no} respostas com página-alvo ({_pct(ko / no)}\\%)",
+        "busca da bateria (8.7)": (f"a página certa esteve entre as fontes em {ko} de {no} respostas com página-alvo ({_pct(ko / no)}\\%, "
+                                   "com a métrica corrigida depois da medição; Anexo~A8)"),
         "busca com expansao (8.9)": (f"a página certa passou a estar entre as fontes em {ke} de {ne} respostas com "
                                      f"página-alvo ({_pct(ke / ne)}\\%), contra {ko} ({_pct(ko / no)}\\%) sem ela"),
         "busca da bateria (tabela b)": (f"A página certa esteve entre as fontes em {_pct(ko / no)}\\% das respostas com página-alvo"),
@@ -454,6 +466,23 @@ def conferir_variantes(rows: list[dict], texto: str, apoio: str) -> int:
     lit_c, par_c = kn("document", "C-denso", "literal"), kn("document", "C-denso", "paraphrase")
     slit_a, spar_a = kn("section", "A-relacional", "literal"), kn("section", "A-relacional", "paraphrase")
     slit_b, spar_b = kn("section", "B-bm25", "literal"), kn("section", "B-bm25", "paraphrase")
+    noi_b, noi_c = kn("document", "B-bm25", "noisy"), kn("document", "C-denso", "noisy")
+
+    def erradas(arm):
+        return {r["query_id"] for r in rows if r["negative"] == "false" and r["granularity"] == "document"
+                and r["arm"] == arm and float(r["p_at_1"]) < 1}
+    comum = len(erradas("B-bm25") & erradas("C-denso"))
+    # O texto diz "as 5 literais" do BM25 e "as 4 ruidosas" da densa: so vale
+    # se acertaram todas.
+    por_tipo = (f"o BM25 acertou as {lit_b[1]} literais, {par_b[0]} das {par_b[1]} paráfrases e {noi_b[0]} das "
+                f"{noi_b[1]} ruidosas; a densa, {lit_c[0]} das {lit_c[1]} literais, {par_c[0]} das {par_c[1]} "
+                f"paráfrases e as {noi_c[1]} ruidosas, e só {comum} consulta foi errada pelos dois"
+                if lit_b[0] == lit_b[1] and noi_c[0] == noi_c[1] and comum == 1 else "<C1 por tipo de consulta mudou>")
+    # "pode ser acaso" entre as secoes so vale enquanto o P@1 contagem x BM25
+    # nao for significativo (tabela gerada por analyze.py, Anexo A7).
+    sig = (RAIZ / "docs" / "article" / "tables" / "retrieval-significance-section.tex").read_text(encoding="utf-8")
+    m = re.search(r"A, contagem vs B, BM25 & P@1 & [^&]+& \d+ & 0\{,\}(\d+) &", sig)
+    acaso = m is not None and float("0." + m.group(1)) >= 0.05
     falhas = 0
     if not (lit_a[0] == lit_a[1] == lit_b[0] == lit_b[1] == slit_a[0] == slit_a[1] == slit_b[0]):
         print("FALHA  C1: o texto diz que as buscas por palavras acertam todas as literais", file=sys.stderr)
@@ -470,7 +499,12 @@ def conferir_variantes(rows: list[dict], texto: str, apoio: str) -> int:
         "C1 resumo": f"Sem diferença detectável: {n('document', 'B-bm25')} de 16 contra {n('document', 'C-denso')} de 16",
         "C1 conclusao": f"({n('document', 'B-bm25')} de 16 consultas contra {n('document', 'C-denso')} de 16)",
         "C1 BM25 texto": f"o BM25 acertou o primeiro resultado em {n('document', 'B-bm25')} das 16 consultas",
-        "C1 secoes texto": f"o BM25 acertou {n('section', 'B-bm25')} e a contagem de palavras, {n('section', 'A-relacional')}, e por isso",
+        "C1 secoes texto": (f"o BM25 acertou {n('section', 'B-bm25')} e a contagem de palavras, {n('section', 'A-relacional')}; "
+                            "essa diferença também pode ser acaso" if acaso else "<contagem x BM25 em secoes ficou significativo>"),
+        "C1 por tipo (8.1)": por_tipo,
+        # Discussao: a hibrida nao acertou mais que o BM25 em C1.
+        "C1 hibrida (discussao)": (f"a combinação dos dois acertou tantas quanto o BM25 ({n('document', 'B-bm25')} de 16)"
+                                   if n("document", "E-rrf-denso") == n("document", "B-bm25") else "<hibrida diferente do BM25 em C1>"),
     }
     no_apoio = {
         "C1 literais, dois niveis": f"acertaram as {lit_a[1]} consultas literais nos dois níveis",
@@ -513,6 +547,56 @@ def custo_invertido() -> dict[str, str]:
     return {"custo invertido (8.5)": (f"Em {len(inv)} das {len(t)} perguntas, sobre documentos curtos, a busca enviou "
                                       "mais \\emph{tokens} que o documento inteiro"
                                       if curtos else "<custo invertido fora de documentos curtos>")}
+
+
+def mediana_tokens() -> dict[str, str]:
+    """Secao 8.5, Resumo, Abstract, tabela-resumo e Conclusao: razao F/T de
+    tokens por pergunta (media das repeticoes), na mediana. O numero principal
+    e o das perguntas com resposta; com as 5 negativas, em que F recebe cinco
+    documentos, a mediana sobe."""
+    res = RAIZ / "docs" / "article" / "results"
+
+    def tok(arq):
+        d: dict[str, list[int]] = {}
+        est: dict[str, str] = {}
+        for r in csv.DictReader(open(res / arq, encoding="utf-8")):
+            d.setdefault(r["question_id"], []).append(int(r["prompt_tokens"] or 0))
+            est[r["question_id"]] = r["stratum"]
+        return {q: sum(v) / len(v) for q, v in d.items()}, est
+    (t, est), (f, _) = tok("generation-results-T-ordem.csv"), tok("generation-results-F-document.csv")
+    razao = {q: f[q] / t[q] for q in t}
+    com = statistics.median(v for q, v in razao.items() if est[q] != "negativa")
+    todas = statistics.median(razao.values())
+    n_com = sum(est[q] != "negativa" for q in razao)
+    n_neg = len(razao) - n_com
+    k = round(com)
+    return {
+        "tokens, mediana com resposta (8.5)": (f"nas {n_com} perguntas com resposta, F enviou ao modelo, na mediana, "
+                                               f"{_br(com, 1)} vezes mais"),
+        "tokens, mediana com negativas (8.5)": (f"contando as {n_neg} negativas, em que o documento inteiro inclui cinco "
+                                                f"PDFs, a mediana sobe para {_br(todas, 1)}"),
+        "tokens, mediana (resumo)": (f"cerca de {k} vezes menos \\emph{{tokens}} (unidades de texto) que o documento "
+                                     "inteiro, na mediana das perguntas com resposta"),
+        "tokens, mediana (abstract)": f"about {k} times fewer tokens than the whole document",
+        "tokens, mediana (tabela-resumo)": (f"cerca de {k} vezes menos \\emph{{tokens}} enviados para responder, na "
+                                            "mediana das perguntas com resposta"),
+        "tokens, mediana (conclusao)": f"Na mediana das perguntas com resposta, buscar trechos usou cerca de {k} vezes menos",
+    }
+
+
+def continuacao_e_latencia() -> dict[str, str]:
+    """Secao 8.5: o limite da continuacao de pagina, lido do codigo do chat,
+    e a latencia mediana de T (da requisicao ao fim do stream, medida por
+    cmd/generation-eval: inclui a busca e o modelo no provedor)."""
+    go = (RAIZ / "api" / "internal" / "usecase" / "chat_usecase.go").read_text(encoding="utf-8")
+    lim = re.search(r"^const ChatContinuationCharLimit = (\d+)$", go, re.M)
+    lat = [int(r["latency_ms"]) for r in csv.DictReader(open(
+        RAIZ / "docs" / "article" / "results" / "generation-results-T-ordem.csv", encoding="utf-8")) if r["latency_ms"]]
+    return {
+        "continuacao de pagina (8.5)": (f"leva junto até {_milhar(int(lim.group(1)))} caracteres da página seguinte"
+                                        if lim else "<ChatContinuationCharLimit sumiu>"),
+        "latencia T (8.5)": f"na mediana, cerca de {_br(statistics.median(lat) / 1000, 1)} s, da pergunta ao fim do texto",
+    }
 
 
 def existencia_acerto() -> dict[str, str]:

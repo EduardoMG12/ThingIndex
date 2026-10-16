@@ -18,7 +18,7 @@ Campus Palmas).
 
 ## Dados e código
 
-- [`docs/article/results/`](../docs/article/results/): resultados brutos, uma linha por pergunta e repetição.
+- [`docs/article/results/`](../docs/article/results/): resultados brutos, uma linha por pergunta e repetição. O [`README`](../docs/article/results/README.md) da pasta diz de qual arquivo vem cada número do artigo e quais arquivos são históricos.
 - [`docs/article/tables/`](../docs/article/tables/): tabelas LaTeX geradas dos resultados, incluindo as que não estão no PDF do A7 (perguntas sem resposta, nota mínima, estabilidade, origem e as 90 comparações estatísticas).
 - [`docs/article/results/alteracoes-pos-medicao.md`](../docs/article/results/alteracoes-pos-medicao.md): registro original do Anexo A8 (o script confere que todo número do A8 existe nele).
 - [`docs/prds/pre-registro-expansao-consulta.md`](../docs/prds/pre-registro-expansao-consulta.md): pré-registro do experimento de expansão de consulta.
