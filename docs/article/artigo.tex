@@ -421,7 +421,7 @@ O que se perguntou & Resultado & Seção \\
 \midrule
 Busca por palavras ou por significado: qual acha mais? & Sem diferença detectável: 13 de 16 contra 11 de 16 consultas no primeiro resultado & \ref{sec:res-recuperacao} \\
 \cmidrule(lr){1-3}
-Cada unidade tem a origem gravada no banco? & Sim, em C1 (sem páginas): 155 de 155, 85 delas metadados & \ref{sec:res-auditabilidade} \\
+Cada unidade tem a origem gravada no banco? & Sim, pelo esquema e pelos testes; em C1 (sem páginas), 155 de 155, 85 delas metadados & \ref{sec:res-auditabilidade} \\
 \cmidrule(lr){1-3}
 Buscar trechos custa menos que mandar o PDF inteiro? & Sim, no acervo de desenvolvimento: cerca de 9 vezes menos \emph{tokens} enviados para responder, na mediana das perguntas com resposta, com 71 de 72 perguntas certas contra 71 de 72 & \ref{sec:res-geracao} \\
 \cmidrule(lr){1-3}
@@ -495,7 +495,7 @@ O acervo de legislação tem a Lei 8.666/1993 e a Lei 14.133/2021, que a revogou
 
 A bateria tem três acervos (segurança do trabalho, produto e consumidor, licitações), com perguntas escritas depois do desenvolvimento. O de licitações repete as duas leis do anterior e acrescenta a Lei 10.520, de modo que os dois não são independentes. São 71 perguntas: 31 pares de literal e paráfrase (Seção~\ref{sec:avaliacao}) e 9 negativas sem par, cada uma feita três vezes (213 respostas).
 
-Com a pergunta original, a taxa de acerto foi de 68,1\%, cerca de 7 em cada 10 respostas (sem as 27 respostas negativas, todas certas, foi de 63,4\%, 118 de 186); os intervalos de confiança estão no Anexo~A7. Na busca, a página certa esteve entre as fontes em 108 de 186 respostas com página-alvo (58,1\%, com a métrica corrigida depois da medição; Anexo~A8). Em 15 das 118 respostas certas com página-alvo, a página certa não estava entre as fontes: o modelo pode ter respondido pelo que já sabia desses documentos públicos, ou achado a informação em outra página, o que não foi verificado.
+Com a pergunta original, a taxa de acerto foi de 68,1\%, cerca de 7 em cada 10 respostas (sem as 27 respostas negativas, todas certas, foi de 63,4\%, 118 de 186); os intervalos de confiança estão no Anexo~A7. Na busca, a página certa esteve entre as fontes em 108 de 186 respostas com página-alvo (58,1\%, com a métrica corrigida depois da medição; Anexo~A8). Em 15 das 118 respostas certas com página-alvo, a página certa não estava entre as fontes: o modelo pode ter respondido pelo que já sabia desses documentos públicos, ou achado a informação em outra página, o que não foi verificado. Respostas certas e com a página certa entre as fontes, que o usuário pode conferir, foram 103 de 186 (55,4\%).
 
 Esses números usam o gabarito revisado depois da primeira medição, que deixou de aceitar recusas e respostas que dizem o contrário quando a pergunta tem resposta e passou a exigir o dado correto quando a pergunta parte de uma premissa falsa. Com a revisão, o acerto caiu de 81,7\% para 68,1\% (Anexo~A8); a resposta fixa ``Sim.'' ainda acertaria as 12 perguntas de existência, cuja resposta certa é sempre sim, e o sistema acertou 30 das 36 respostas desse tipo. A premissa falsa foi a forma mais difícil: em só 13 de 36 respostas o sistema corrigiu o dado errado.
 

@@ -1001,17 +1001,21 @@ CORRECOES_A8 = [
      "(plural de pixel) passou a ser aceita.",
      "“Píxeis” sem acento não contém a palavra “pixel”, e a resposta certa era marcada como "
      "errada. As outras recusas barradas não apareciam nas respostas reais.",
-     [("Sem expansão", "68,5%"), ("Com expansão", "88,7%")],
-     [("Sem expansão", "69,5%"), ("Com expansão", "88,7%")]),
+     [("Sem expansão", "68,5%"), ("Com expansão", "88,7%"),
+      ("Teste da Seção 8.7 do artigo (pares)", "13 a 0")],
+     [("Sem expansão", "69,5%"), ("Com expansão", "88,7%"),
+      ("Teste da Seção 8.7 do artigo (pares)", "14 a 0")]),
     ("Padrões de texto que casavam dentro de outra palavra passaram a exigir a palavra "
      "inteira, e um “não” solto passou a valer só quando abre a resposta.",
      "“prev” casava com “preventivos” e fazia de uma recusa (“o resumo disponível não "
      "detalha regras específicas sobre banheiros”) um acerto; numa pergunta do "
      "desenvolvimento, “o texto não afirma explicitamente” também contava como acerto.",
      [("Sem expansão", "69,5%"), ("Com expansão", "88,7%"),
-      ("Desenvolvimento, trechos", "216 de 216 respostas")],
+      ("Desenvolvimento, trechos", "216 de 216 respostas"),
+      ("Teste da Seção 8.7 do artigo (pares)", "14 a 0")],
      [("Sem expansão", "68,1%"), ("Com expansão", "88,7%"),
-      ("Desenvolvimento, trechos", "213 de 216 respostas")]),
+      ("Desenvolvimento, trechos", "213 de 216 respostas"),
+      ("Teste da Seção 8.7 do artigo (pares)", "15 a 0")]),
 ]
 TOTAL_A8 = ("<strong>Efeito somado das quatro últimas correções</strong>",
             "Respostas que não respondem nada deixaram de contar como certas.",
