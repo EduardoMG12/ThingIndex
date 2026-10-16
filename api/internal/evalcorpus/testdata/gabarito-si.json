@@ -1,7 +1,7 @@
 {
-  "version": "si-2026-09-v4",
-  "notes": "Gabarito de perguntas de coordenador sobre a colecao de SI (5 PDFs de examples/faculdade). Escrito a partir dos PDFs com pdftotext -layout, sem consultar o sistema. answer_patterns: TODAS as regex devem casar na resposta com acentos e caixa dobrados (retrieval.FoldDiacritics + lower). targets: documento e paginas fisicas do PDF (1..N) que contem a resposta. Estrato negativa: a resposta certa e a recusa; targets vazio. origin rodada-cc5 marca perguntas que ja foram usadas para ajustar o sistema; o artigo reporta com e sem elas. v2 (2026-09-09, depois da rodada 3): t04 aceita '03'; c08 e c13 aceitam 'e'/'ao dia'; t06 aceita a coluna Categoria ('Obrigatória') alem de 'Extensão'; p01 inclui Matriz p. 3 (linha TOTAL 3000). Os CSVs de resultados foram rescorados com `cmd/generation-eval -rescore`, sem rerodar modelo. v3 (2026-09-10): p20 e p22 aceitam tambem a ementa dentro do PPC 2019 (p. 76 e 77), que responde igual. v4 (2026-09-10): t21 aceita tambem a p. 48 do PPC do Tecnico (3.012 horas-relogio em prosa).",
-  "frozen_sha256": "5569798e065f5db99f8995d54874dcc6ab5efc57e39d3d24525af8f161c4da8f",
+  "version": "si-2026-09-v5",
+  "notes": "Gabarito de perguntas de coordenador sobre a colecao de SI (5 PDFs de examples/faculdade). Escrito a partir dos PDFs com pdftotext -layout, sem consultar o sistema. answer_patterns: TODAS as regex devem casar na resposta com acentos e caixa dobrados (retrieval.FoldDiacritics + lower). targets: documento e paginas fisicas do PDF (1..N) que contem a resposta. Estrato negativa: a resposta certa e a recusa; targets vazio. origin rodada-cc5 marca perguntas que ja foram usadas para ajustar o sistema; o artigo reporta com e sem elas. v2 (2026-09-09, depois da rodada 3): t04 aceita '03'; c08 e c13 aceitam 'e'/'ao dia'; t06 aceita a coluna Categoria ('Obrigatória') alem de 'Extensão'; p01 inclui Matriz p. 3 (linha TOTAL 3000). Os CSVs de resultados foram rescorados com `cmd/generation-eval -rescore`, sem rerodar modelo. v3 (2026-09-10): p20 e p22 aceitam tambem a ementa dentro do PPC 2019 (p. 76 e 77), que responde igual. v4 (2026-09-10): t21 aceita tambem a p. 48 do PPC do Tecnico (3.012 horas-relogio em prosa). v5 (2026-10-16, auditoria de falsos positivos, scripts/auditoria-padroes.py): em p12 o 'nao' solto passa a valer so quando abre a resposta ('^\\W*nao\\b'); casava com 'o texto nao afirma explicitamente que a matricula simultanea seja permitida', que nao responde a pergunta.",
+  "frozen_sha256": "b119bd103f7603d50552dd97c50edca43a183c97e71d7174e3975d3cc0337b8d",
   "reviewed_by": [],
   "documents": [
     {
@@ -984,7 +984,7 @@
         }
       ],
       "answer_patterns": [
-        "vedad|nao (e |esta )?(permitid|possivel|pode)|nao\\b"
+        "vedad|nao (e |esta )?(permitid|possivel|pode)|^\\W*nao\\b"
       ],
       "expected": "não; é vedada a matrícula simultânea e TCC II exige aprovação em TCC I",
       "origin": "pdf"

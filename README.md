@@ -80,9 +80,9 @@ A fonte LaTeX está em [`docs/article/artigo.tex`](docs/article/artigo.tex).
 
 <table>
   <tr>
-    <td align="center" width="25%"><h2>69,5%</h2>de acerto em perguntas novas<br/><sub>cerca de 7 em 10 respostas</sub></td>
-    <td align="center" width="25%"><h2>88,7%</h2>com a expansão da pergunta<br/><sub>14 perguntas ganhas, nenhuma perdida</sub></td>
-    <td align="center" width="25%"><h2>≈ 1/26</h2>dos <i>tokens</i> de mandar o PDF inteiro<br/><sub>72 de 72 perguntas certas</sub></td>
+    <td align="center" width="25%"><h2>68,1%</h2>de acerto em perguntas novas<br/><sub>cerca de 7 em 10 respostas</sub></td>
+    <td align="center" width="25%"><h2>88,7%</h2>com a expansão da pergunta<br/><sub>15 perguntas ganhas, nenhuma perdida</sub></td>
+    <td align="center" width="25%"><h2>≈ 1/26</h2>dos <i>tokens</i> de mandar o PDF inteiro<br/><sub>71 de 72 perguntas certas</sub></td>
     <td align="center" width="25%"><h2>13 × 11</h2>busca por palavras × por significado<br/><sub>de 16 consultas, sem diferença detectável</sub></td>
   </tr>
 </table>
@@ -90,10 +90,10 @@ A fonte LaTeX está em [`docs/article/artigo.tex`](docs/article/artigo.tex).
 | Pergunta | Resultado |
 |---|---|
 | Busca por palavras ou por significado: qual acha mais? | Ficaram próximas: 13 de 16 contra 11 de 16 consultas, sem diferença detectável |
-| Buscar trechos custa menos que mandar o PDF inteiro ao modelo? | Sim: na mediana, cerca de 1/26 dos *tokens*, com 72 de 72 perguntas certas contra 71 de 72 |
-| Quanto o sistema acerta em perguntas novas? | 69,5% das respostas, cerca de 7 em 10 |
-| A redação da pergunta muda o acerto? | Sim: 88,2% com as palavras do documento e 41,9% com outras palavras |
-| Expandir a pergunta com um LLM ajuda? | De 69,5% para 88,7% (experimental, desligada por padrão) |
+| Buscar trechos custa menos que mandar o PDF inteiro ao modelo? | Sim: na mediana, cerca de 1/26 dos *tokens*, com 71 de 72 perguntas certas contra 71 de 72 |
+| Quanto o sistema acerta em perguntas novas? | 68,1% das respostas, cerca de 7 em 10 |
+| A redação da pergunta muda o acerto? | Sim: 88,2% com as palavras do documento e 38,7% com outras palavras |
+| Expandir a pergunta com um LLM ajuda? | De 68,1% para 88,7% (experimental, desligada por padrão) |
 | Fonte certa garante resposta certa? | Não: o sistema citou, com a página certa, o artigo de uma lei revogada |
 
 As ressalvas de cada número e a resposta à pergunta de pesquisa, condição por condição,

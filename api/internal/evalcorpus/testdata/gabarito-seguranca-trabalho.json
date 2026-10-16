@@ -40,7 +40,7 @@
       ]
     }
   ],
-  "frozen_sha256": "96e36a1f0f80604a625ea713facec87f7c5d7714528b3e86052ab38e2d8c53bc",
+  "frozen_sha256": "f513ddcb6c33fc04e5e2b848102c0a8231d78caf32a534ca4c88528c3df322f5",
   "min_questions": 23,
   "notes": "Perguntas em PAR: a mesma necessidade de informacao aparece duas vezes, com a mesma resposta esperada e o mesmo alvo, mudando so a formulacao. LITERAL usa os termos do documento; PARAFRASE usa o vocabulario de quem pergunta no dia a dia, sem repetir as palavras do texto. O par existe porque um gabarito escrito por quem ja leu a pagina herda o vocabulario dela, e ai a medicao vira casamento lexical se passando por compreensao. Formas: aberta, confirmacao, existencia, premissa-falsa (a pergunta embute um dado errado e a resposta certa e corrigir) e negativa (nao consta). Escrito a partir dos PDF com pdftotext -layout; cada pagina-alvo foi conferida.",
   "questions": [
@@ -218,7 +218,7 @@
     },
     {
       "answer_patterns": [
-        "\\bsim\\b|existe|trata|prev"
+        "\\bsim\\b|existe|\\btrat(a|am|ar)\\b|\\bprev(e|eem|er|isto|ista|istos|istas|isao|isoes)\\b"
       ],
       "expected": "Sim, a NR-18 trata das areas de vivencia do canteiro de obras.",
       "id": "sg5L",
@@ -244,7 +244,7 @@
     },
     {
       "answer_patterns": [
-        "\\bsim\\b|existe|trata|prev"
+        "\\bsim\\b|existe|\\btrat(a|am|ar)\\b|\\bprev(e|eem|er|isto|ista|istos|istas|isao|isoes)\\b"
       ],
       "expected": "Sim, a NR-18 trata das areas de vivencia do canteiro de obras.",
       "id": "sg5P",
@@ -354,7 +354,7 @@
     },
     {
       "answer_patterns": [
-        "\\bsim\\b|existe|trata|prev"
+        "\\bsim\\b|existe|\\btrat(a|am|ar)\\b|\\bprev(e|eem|er|isto|ista|istos|istas|isao|isoes)\\b"
       ],
       "expected": "Sim, a NR-18 trata de cinto de seguranca e protecao contra quedas.",
       "id": "sg10L",
@@ -380,7 +380,7 @@
     },
     {
       "answer_patterns": [
-        "\\bsim\\b|existe|trata|prev"
+        "\\bsim\\b|existe|\\btrat(a|am|ar)\\b|\\bprev(e|eem|er|isto|ista|istos|istas|isao|isoes)\\b"
       ],
       "expected": "Sim, a NR-18 trata de cinto de seguranca e protecao contra quedas.",
       "id": "sg10P",
@@ -406,7 +406,7 @@
     },
     {
       "answer_patterns": [
-        "sim|pode|dispensad|nao precisa"
+        "\\bsim\\b|pode|dispensad|nao precisa"
       ],
       "expected": "Sim, microempresas e empresas de pequeno porte de grau de risco 1 e 2 que nao identificarem exposicoes podem ficar dispensadas do PGR (NR-1, item 1.8.4).",
       "id": "sg11L",
@@ -430,7 +430,7 @@
     },
     {
       "answer_patterns": [
-        "sim|pode|dispensad|nao precisa"
+        "\\bsim\\b|pode|dispensad|nao precisa"
       ],
       "expected": "Sim, microempresas e empresas de pequeno porte de grau de risco 1 e 2 que nao identificarem exposicoes podem ficar dispensadas do PGR (NR-1, item 1.8.4).",
       "id": "sg11P",
@@ -534,5 +534,5 @@
     "negativa": 3,
     "premissa-falsa": 4
   },
-  "version": "seguranca-trabalho-2026-09-v6"
+  "version": "seguranca-trabalho-2026-09-v7"
 }

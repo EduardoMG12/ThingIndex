@@ -955,7 +955,7 @@ def a7() -> tuple[str, list[Path]]:
 REGISTRO_A8 = ART / "results" / "alteracoes-pos-medicao.md"
 
 # Uma linha por correcao do registro que mudou numero publicado, na ordem do
-# registro (linhas 1, 2, 3, 4, 6 e 7; a linha 5 vai no texto abaixo da tabela).
+# registro (linhas 1, 2, 3, 4, 6, 7 e 8; a linha 5 vai no texto abaixo da tabela).
 # Antes e Depois: lista de (rotulo, valor); todo numero aqui e conferido contra
 # o registro por confere_registro.
 CORRECOES_A8 = [
@@ -1003,11 +1003,20 @@ CORRECOES_A8 = [
      "errada. As outras recusas barradas não apareciam nas respostas reais.",
      [("Sem expansão", "68,5%"), ("Com expansão", "88,7%")],
      [("Sem expansão", "69,5%"), ("Com expansão", "88,7%")]),
+    ("Padrões de texto que casavam dentro de outra palavra passaram a exigir a palavra "
+     "inteira, e um “não” solto passou a valer só quando abre a resposta.",
+     "“prev” casava com “preventivos” e fazia de uma recusa (“o resumo disponível não "
+     "detalha regras específicas sobre banheiros”) um acerto; numa pergunta do "
+     "desenvolvimento, “o texto não afirma explicitamente” também contava como acerto.",
+     [("Sem expansão", "69,5%"), ("Com expansão", "88,7%"),
+      ("Desenvolvimento, trechos", "216 de 216 respostas")],
+     [("Sem expansão", "68,1%"), ("Com expansão", "88,7%"),
+      ("Desenvolvimento, trechos", "213 de 216 respostas")]),
 ]
-TOTAL_A8 = ("<strong>Efeito somado das três últimas correções</strong>",
+TOTAL_A8 = ("<strong>Efeito somado das quatro últimas correções</strong>",
             "Respostas que não respondem nada deixaram de contar como certas.",
             [("Sem expansão", "81,7%"), ("Com expansão", "93,0%")],
-            [("Sem expansão", "69,5%"), ("Com expansão", "88,7%")])
+            [("Sem expansão", "68,1%"), ("Com expansão", "88,7%")])
 
 
 def celula_valores(vals: list[tuple[str, str]]) -> str:
@@ -1047,8 +1056,8 @@ def a8() -> str:
     corpo = (
         "<p>Depois de ver os resultados, algumas regras de correção das respostas foram "
         "ajustadas. Como isso poderia deixar os números artificialmente melhores, cada ajuste "
-        "foi anotado com o motivo e o efeito. O efeito somado das três últimas correções baixou "
-        "o acerto do próprio sistema de 81,7% para 69,5%.</p>"
+        "foi anotado com o motivo e o efeito. O efeito somado das quatro últimas correções baixou "
+        "o acerto do próprio sistema de 81,7% para 68,1%.</p>"
         "<p>A correção é automática: cada pergunta tem um padrão de texto que a resposta certa "
         "precisa conter e, às vezes, padrões que a tornam errada, como uma recusa. A maioria "
         "das linhas abaixo trata da bateria (Seção 8.7 do artigo), com 213 respostas sobre leis, normas e "
@@ -1073,9 +1082,9 @@ def a8() -> str:
         "usadas durante o desenvolvimento. Por isso, os números dessas perguntas não valem "
         "como teste independente; o teste de verdade é a bateria, com perguntas escritas "
         "depois.</p>"
-        + resumo("o efeito somado das três últimas correções baixou o acerto do sistema de 81,7% "
-                 "para 69,5%, porque respostas que não respondiam nada deixaram de contar como "
-                 "certas; a última dessas três, sozinha, subiu o acerto de 68,5% para 69,5%. As outras corrigiram erros da própria correção, que marcava respostas "
+        + resumo("o efeito somado das quatro últimas correções baixou o acerto do sistema de 81,7% "
+                 "para 68,1%, porque respostas que não respondiam nada deixaram de contar como "
+                 "certas; a penúltima dessas quatro, sozinha, subiu o acerto de 68,5% para 69,5%, e a última o baixou para 68,1%. As outras corrigiram erros da própria correção, que marcava respostas "
                  "certas como erradas; o artigo publica sempre os números de depois da última "
                  "correção."))
     confere_registro(corpo)

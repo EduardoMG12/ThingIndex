@@ -20,6 +20,7 @@ import collections
 import csv
 import json
 import importlib.util
+import math
 import sys
 import re
 from pathlib import Path
@@ -123,7 +124,8 @@ def conferir_geracao(texto: str, apoio: str) -> int:
         # Cada numero ancorado na frase em que aparece: um valor solto casaria
         # com qualquer outra ocorrencia (a banca mostrou que 0,685 -> 0,686
         # passava).
-        "acerto da bateria (resumo)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\% com a pergunta original e de {_pct(taxa(e['total']))}\\% com expans",
+        "acerto da bateria (resumo)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\% com a pergunta original. Com a expans",
+        "acerto E (resumo)": f"antes da busca, chegou a {_pct(taxa(e['total']))}\\%; o recurso",
         "acerto da bateria (secao)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\%, cerca de 7 em cada 10 respostas",
         "acerto da bateria (conclusao)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\% com a pergunta original. As par",
         "acerto E (conclusao)": f"elevou o acerto a {_pct(taxa(e['total']))}\\%, em configura",
@@ -226,6 +228,7 @@ def conferir_geracao(texto: str, apoio: str) -> int:
     esperados.update(busca_da_bateria())
     esperados.update(enriquecimento_repeticoes())
     esperados.update(sim_constante())
+    esperados.update(ancoras_auditoria(c, e, ef, g))
 
     falhas = 0
     for descricao, trecho in esperados.items():
@@ -253,6 +256,7 @@ NO_APOIO = {
     "redacao, gabarito original", "gpt-oss sem falhas de API",
     "origem C1, evolucao (apoio)", "origem C1, trechos", "origem C1, metadados",
     "sempre certa", "sempre errada",
+    "ganho por pergunta (apoio)", "pares concordantes (apoio)", "existencia, Sim. (apoio)",
 }
 
 def acerto_por_pergunta_ensino() -> dict[str, str]:
@@ -270,6 +274,32 @@ def acerto_por_pergunta_ensino() -> dict[str, str]:
     return {
         "ensino por pergunta (resumo)": f"com {kt} de {nt} perguntas certas contra {kf} de {nf}",
         "ensino por pergunta (conclusao)": f"({kt} de {nt} perguntas contra {kf} de {nf})",
+    }
+
+
+def ancoras_auditoria(c: dict, e: dict, ef: dict, g: dict) -> dict[str, str]:
+    """Numeros que mudaram na auditoria de falsos positivos (registro 8 de
+    alteracoes-pos-medicao.md) e que ate entao nao tinham ancora: o ganho da
+    expansao por pergunta com o intervalo de Wald da diferenca pareada, os
+    pares concordantes, a forma existencia, o acerto por resposta de T no
+    acervo de ensino e o resumo em ingles."""
+    n = len(c["por_q"])
+    b = sum(e["por_q"][q] and not c["por_q"][q] for q in c["por_q"])
+    k = sum(c["por_q"][q] and not e["por_q"][q] for q in c["por_q"])
+    d = (b - k) / n
+    se = math.sqrt((b + k) / n - d * d) / math.sqrt(n)
+    ex_k, ex_n = c["forma"]["existencia"]
+    t = g["T"]["todas"]
+    return {
+        "ganho por pergunta (apoio)": (
+            f"o ganho foi de {_pct(d)} pontos percentuais (de {c['sempre_certa']} para {e['sempre_certa']} das "
+            f"{n} perguntas certas nas três repetições), com intervalo de 95\\% de {_pct(d - 1.96 * se)} a "
+            f"{_pct(d + 1.96 * se)} pontos"),
+        "pares concordantes (apoio)": f"{ef['concordantes']} dos 31 pares tiveram o mesmo resultado",
+        "existencia, Sim. (apoio)": f"de modo que o {_pct(ex_k / ex_n)}\\% dessa forma",
+        "ensino por resposta (limitacoes)": f"O acervo de desenvolvimento (ensino) chegou a {_pct(t['ok'] / t['n'])}\\%",
+        "ensino por resposta T (limitacoes)": f"e de 216 para {t['ok']}, no braço T)",
+        "abstract": f"accuracy was {_pct(c['total'][0] / c['total'][1]).replace(',', '.')}\\% with the original question",
     }
 
 
@@ -292,8 +322,8 @@ def origem_c1() -> dict[str, str]:
         # Secao 8.4, conferidas nas ancoras abaixo.
         # A correcao do sistema (pagina nos trechos) levou de 51 a 70; a
         # redefinicao da metrica (metadados do documento inteiro), de 70 a 155.
-        "origem C1 (resumo)": (f"Sim: {completos} de {total} unidades de C1; a correção do sistema levou de "
-                               f"{primeira} a {primeira + tipo['Trecho']}, e o ajuste da métrica, a {total}"),
+        "origem C1 (resumo)": (f"Sim, em C1, que não tem páginas: {completos} de {total}, das quais "
+                               f"{tipo['Metadado']} só passaram a contar com o ajuste da métrica"),
         "origem C1, correcao do sistema": (f"que deu coluna de página aos trechos, levou a {primeira + tipo['Trecho']}; "
                                            "a maior parte da diferença veio de ajustar a métrica"
                                            if tipo["Metadado"] > tipo["Trecho"] else "<a correcao do sistema passou a ser a maior parte>"),

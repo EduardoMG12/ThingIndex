@@ -22,7 +22,7 @@
       ]
     }
   ],
-  "frozen_sha256": "112db58ff18b8ac3b43bc24247ca548331fd16ebff2388f83399e8135a9f223d",
+  "frozen_sha256": "cf18727dedcc549e58d2398badbf847ed4b1eedb9c63c571e65142e95d5e2535",
   "min_questions": 23,
   "notes": "Perguntas em PAR: a mesma necessidade de informacao aparece duas vezes, com a mesma resposta esperada e o mesmo alvo, mudando so a formulacao. LITERAL usa os termos do documento; PARAFRASE usa o vocabulario de quem pergunta no dia a dia, sem repetir as palavras do texto. O par existe porque um gabarito escrito por quem ja leu a pagina herda o vocabulario dela, e ai a medicao vira casamento lexical se passando por compreensao. Formas: aberta, confirmacao, existencia, premissa-falsa (a pergunta embute um dado errado e a resposta certa e corrigir) e negativa (nao consta). Escrito a partir dos PDF com pdftotext -layout; cada pagina-alvo foi conferida.",
   "questions": [
@@ -202,7 +202,7 @@
     },
     {
       "answer_patterns": [
-        "\\bsim\\b|existe|consta|exclu"
+        "\\bsim\\b|existe|\\bconstam?\\b|exclu"
       ],
       "expected": "Sim, o termo traz uma secao de itens excluidos da garantia.",
       "id": "pr5L",
@@ -229,7 +229,7 @@
     },
     {
       "answer_patterns": [
-        "\\bsim\\b|existe|consta|exclu"
+        "\\bsim\\b|existe|\\bconstam?\\b|exclu"
       ],
       "expected": "Sim, o termo traz uma secao de itens excluidos da garantia.",
       "id": "pr5P",
@@ -346,7 +346,7 @@
     },
     {
       "answer_patterns": [
-        "\\bsim\\b|existe|consta|orient"
+        "\\bsim\\b|existe|\\bconstam?\\b|orient"
       ],
       "expected": "Sim, o manual traz orientacoes de limpeza e cuidados com o monitor.",
       "id": "pr10L",
@@ -372,7 +372,7 @@
     },
     {
       "answer_patterns": [
-        "\\bsim\\b|existe|consta|orient"
+        "\\bsim\\b|existe|\\bconstam?\\b|orient"
       ],
       "expected": "Sim, o manual traz orientacoes de limpeza e cuidados com o monitor.",
       "id": "pr10P",
@@ -518,5 +518,5 @@
     "negativa": 3,
     "premissa-falsa": 4
   },
-  "version": "produto-2026-09-v6"
+  "version": "produto-2026-09-v7"
 }
