@@ -36,6 +36,8 @@ Origem completa (\%) & 32,9 & 45,2 & 100,0 \\
 \end{tabular}
 \end{table}
 
+Dezenove unidades sem página eram um defeito de modelagem, já corrigido: a tabela de trechos não tinha coluna de página. As outras 85 não eram defeito: eram estatísticas do documento inteiro, como o número de parágrafos, que não estão em página nenhuma e passaram a declarar que sua origem é o documento inteiro. A região do parágrafo não foi avaliada em separado, e a conferência letra por letra dos 20 parágrafos avalia a extração, não as páginas que o modelo escreve nas respostas.
+
 \subsection*{Trechos recuperados contra documento inteiro (Seção 8.5)}
 
 \begin{table}[!htbp]
@@ -59,6 +61,8 @@ Todas (72)      & 100,0 & 98,6 & 94,0 & 94,0 \\
 \end{table}
 
 \textit{Custo.} A razão entre os \emph{tokens} de F e de T, cuja mediana foi 26,5, variou de 0{,}7 a 96 vezes. Em 22 das 72 perguntas, todas sobre documentos curtos, T gastou mais que F, porque várias páginas recuperadas somam mais que o documento inteiro. Em média, T enviou 4.215 \emph{tokens} por pergunta e F, 72.067; sem as negativas, em que F recebe cinco documentos, foram 4.288 e 58.751. Na execução exploratória com outro modelo, de janela de 131.072 \emph{tokens}, o provedor recusou o \emph{prompt} de F nas cinco negativas, com cinco documentos (de 227.647 a 227.653 \emph{tokens}).
+
+Usou-se a mediana porque, em documentos curtos, a relação pode se inverter, e poucas perguntas sobre documentos longos puxariam a média para cima. O custo de T depende do número de fontes, e o de F cresce com o documento.
 
 \subsection*{Legislação com norma revogada (Seção 8.6)}
 
@@ -122,9 +126,19 @@ Premissa falsa & 13/36 & 36,1 \\
 
 Na forma existência, cuja resposta certa é sempre ``sim'', responder ``Sim.'' a tudo acertaria as 12 perguntas, de modo que o 91,7\% dessa forma só mostra que o sistema não negou um assunto presente.
 
+\textit{Formas de pergunta.} \emph{Aberta} (pede um dado), \emph{confirmação} (sim ou não), \emph{existência} (o acervo trata do assunto?), \emph{premissa falsa} (a pergunta traz um dado errado, e a resposta certa é corrigi-lo) e \emph{negativa}. Na premissa falsa, as respostas erradas disseram que o acervo não trazia a informação ou responderam dentro da premissa, a bajulação descrita por Sharma et al. (2024).
+
+\textit{Repetições.} Por pergunta, 49 das 71 acertaram nas três repetições, 21 erraram nas três e só 1 oscilou: os erros se repetem entre execuções.
+
+\textit{Gabarito original.} Na versão original, em duas formas de pergunta bastava a resposta conter ``há'' ou ``não'' para contar como certa, e uma recusa sempre igual (``Não há informações sobre isso nos documentos fornecidos'') acertaria 24 das 71 perguntas sem responder nada. As respostas que mudaram de resultado com a revisão foram conferidas à mão. Na comparação par a par com o gabarito revisado, 17 dos 31 pares tiveram o mesmo resultado nas duas versões.
+
 \subsection*{Redação da pergunta, com o gabarito original (Seção 8.7)}
 
 O corpo do artigo compara literal e paráfrase par a par com o gabarito revisado (14 pares a 0 a favor da literal). Com o gabarito original (antes da revisão descrita no corpo), eram 8 pares a favor da literal e 2 a favor da paráfrase, diferença que pode ser acaso. No resumo dos resultados, isso apareceria como 8 a 2, que pode ser acaso, com o gabarito original.
+
+\subsection*{Enriquecimento do índice (Seção 8.8)}
+
+O pré-registro previa três braços (só o conteúdo, conteúdo mais resumo, conteúdo mais perguntas geradas), 16 pares de literal e paráfrase e os três acervos da bateria. A execução inicial foi descartada porque devolvia fontes idênticas nos quatro braços. Com só 12 perguntas, o experimento não teria como detectar um efeito moderado; a explicação mais provável para o acerto quase igual é que o modelo, mesmo instruído a escrever como leigo, repete o vocabulário do documento.
 
 \subsection*{Expansão da pergunta (Seção 8.9)}
 
@@ -140,6 +154,10 @@ Página certa entre as fontes (\%)                  & 58,1 & 82,3 \\
 \end{tabular}
 
 Contando por pergunta, o ganho foi de 19,7 pontos percentuais (de 49 para 63 das 71 perguntas certas nas três repetições), com intervalo de 95\% de 10,5 a 29,0 pontos, inteiro acima de zero. Por resposta, os dois intervalos nem se encostam: com expansão, o acerto fica no intervalo de 80,3\% a 95,8\%, contra 59,2\% a 79,3\% sem ela. Das perguntas que erravam sem expansão, a expansão corrigiu 13 de 18 paráfrases e 1 de 4 literais, na direção prevista.
+
+\subsection*{Edital municipal (Seção 8.10)}
+
+O edital tem tabelas de cargos que atravessam páginas e dois capítulos com o mesmo número por erro do próprio edital; cada par de perguntas foi escrito para provocar um tipo de falha. Além do número fixo de fontes, a soma de linhas espalhadas por muitas páginas é limitada pelo teto de texto enviado ao modelo.
 
 \subsection*{Modelo alternativo (Ameaças à validade, Generalização)}
 
