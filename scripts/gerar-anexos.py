@@ -749,10 +749,11 @@ def a7_corpo() -> str:
              "resultado de todas as perguntas e deixou de fora, em média, "
              f"{det['C′ (IVF), 30 sementes'][2]} do que a busca exata encontrava.</p>"
              "<p>O teste foi repetido no pgvector, a extensão do PostgreSQL para vetores, com até "
-             "20.000 textos artificiais. Com a configuração recomendada pela documentação, o "
-             "índice aproximado foi tão estável quanto a busca exata (Tabela 5, no fim do anexo). A "
-             "instabilidade vinha da configuração usada no primeiro teste. Dar sempre o mesmo "
-             "resultado, portanto, não é uma vantagem só da busca por palavras.</p>")
+             "20.000 textos artificiais (Tabela 5, no fim do anexo). O índice IVFFlat, com a "
+             "configuração recomendada pela documentação, deu sempre o mesmo resultado da busca "
+             "exata nos três tamanhos. O HNSW, com os parâmetros padrão, foi estável com 1.000 "
+             "textos e passou a mudar algumas consultas a partir de 5.000. A estabilidade depende, "
+             "portanto, do índice e da configuração escolhidos.</p>")
 
     c.append("<h2>5. E quando a pergunta não tem resposta?</h2>"
              "<p>Nas duas perguntas sem resposta, todos os métodos devolveram algum texto. Na "
