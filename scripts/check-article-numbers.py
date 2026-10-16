@@ -137,6 +137,8 @@ def conferir_geracao(texto: str, apoio: str) -> int:
         "proveniencia E": _pct(taxa(e["prov"])),
         "tokens C": _milhar(c["tokens"]),
         "tokens E": _milhar(e["tokens"]),
+        # Sairam do corpo para apoio-resultados.tex (NO_APOIO); o 49 tambem
+        # segue no corpo, na linha da Tabela da expansao.
         "sempre certa": f"{c['sempre_certa']} das 71 acertaram nas tr",
         "sempre errada": f"{c['sempre_errada']} erraram nas tr",
         "pares a favor da literal": f"{ef['a_favor_literal']} foram discordantes, todos a favor da literal",
@@ -160,6 +162,12 @@ def conferir_geracao(texto: str, apoio: str) -> int:
         "resumo expansao": (f"de {_pct(taxa(c['total']))}\\% para {_pct(taxa(e['total']))}\\% no total, e as "
                             f"paráfrases chegam a {_pct(taxa(e['variante']['parafrase']))}\\%; "
                             f"{len(ex['ganhou'])} perguntas ganhas"),
+        # Comparacao com o gabarito original, como o corpo da Secao 8.7 a escreve.
+        "redacao, gabarito original (corpo)": (
+            f"eram {antigo[0]} pares a favor da literal e {antigo[1]} da paráfrase, diferença que pode ser acaso"
+            if antigo[2] >= 0.05 else "<redacao com o gabarito original passou a ser significativa>"),
+        "premissa falsa (corpo)": (f"em só {c['forma']['premissa-falsa'][0]} de {c['forma']['premissa-falsa'][1]} "
+                                   "respostas o sistema corrigiu o dado errado"),
         "negativas da bateria": (f"em todas as {c['forma']['negativa'][1]} respostas negativas"
                                  if c["forma"]["negativa"][0] == c["forma"]["negativa"][1]
                                  else "<negativas da bateria deixaram de acertar todas>"),
@@ -242,6 +250,8 @@ NO_APOIO = {
     # continuam conferidos contra o CSV, mas em apoio-resultados.tex (Anexo A7/A8).
     "proveniencia C", "proveniencia E", "ic C (8.7)", "resumo redacao, gabarito original",
     "redacao, gabarito original", "gpt-oss sem falhas de API",
+    "origem C1, evolucao (apoio)", "origem C1, trechos", "origem C1, metadados",
+    "sempre certa", "sempre errada",
 }
 
 def acerto_por_pergunta_ensino() -> dict[str, str]:
@@ -262,13 +272,13 @@ def acerto_por_pergunta_ensino() -> dict[str, str]:
     }
 
 
-# Contagens que o artigo escreve por extenso no inicio de frase.
+# Contagens que o texto escreve por extenso no inicio de frase.
 EXTENSO = {19: "Dezenove"}
 
 
 def origem_c1() -> dict[str, str]:
     """Origem completa em C1, lida da tabela que o CI regera a partir do Go
-    (provenance.tex). As contagens intermediarias da Secao 8.4 saem das linhas
+    (provenance.tex). As contagens intermediarias (Secao 8.4 e apoio) saem das linhas
     por tipo: a primeira medicao nao tinha pagina nos trechos nem nos
     metadados; a correcao do esquema resolveu os trechos."""
     tab = PROVENIENCIA.read_text(encoding="utf-8")
@@ -283,8 +293,11 @@ def origem_c1() -> dict[str, str]:
         "origem C1, versao atual": (f"Na versão atual, as {total} unidades indexadas de C1 têm a origem completa"
                                     if completos == total else "<nem todas as unidades de C1 tem origem completa>"),
         "origem C1, primeira medicao": f"A primeira medição deu {primeira} de {total}",
+        # As contagens intermediarias sairam do corpo e estao, com a evolucao
+        # 51 -> 70 -> 155, em apoio-resultados.tex (NO_APOIO).
         "origem C1, trechos": f"{EXTENSO.get(tipo['Trecho'], tipo['Trecho'])} unidades sem página eram um defeito de modelagem",
         "origem C1, metadados": f"As outras {tipo['Metadado']} não eram defeito",
+        "origem C1, evolucao (apoio)": (f"Unidades completas & {primeira} & {primeira + tipo['Trecho']} & {total} \\\\"),
     }
 
 
@@ -330,7 +343,7 @@ def enriquecimento_repeticoes() -> dict[str, str]:
     d = RAIZ / "docs" / "article" / "results" / "enriquecimento-reexecucao"
     reps = {r["repeat"] for b in ("content", "content-summary", "content-questions", "max")
             for r in csv.DictReader(open(d / f"braco-seguranca-trabalho-{b}.csv", encoding="utf-8"))}
-    return {"enriquecimento, uma repeticao": "e 2 negativas) e uma repetição." if reps == {"1"} else f"<enriquecimento com repeticoes {sorted(reps)}>"}
+    return {"enriquecimento, uma repeticao": "e 2 negativas) e uma repetição," if reps == {"1"} else f"<enriquecimento com repeticoes {sorted(reps)}>"}
 
 
 def gpt_oss_no_corpo() -> dict[str, str]:
@@ -399,7 +412,7 @@ def conferir_variantes(rows: list[dict], texto: str, apoio: str) -> int:
         "C1 resumo": f"Sem diferença detectável: {n('document', 'B-bm25')} de 16 contra {n('document', 'C-denso')} de 16",
         "C1 conclusao": f"({n('document', 'B-bm25')} de 16 consultas contra {n('document', 'C-denso')} de 16)",
         "C1 BM25 texto": f"o BM25 acertou o primeiro resultado em {n('document', 'B-bm25')} das 16 consultas",
-        "C1 secoes texto": f"o BM25 acertou {n('section', 'B-bm25')} (75,0\\%) e a contagem, {n('section', 'A-relacional')} (56,2\\%)",
+        "C1 secoes texto": f"o BM25 acertou {n('section', 'B-bm25')} e a contagem de palavras, {n('section', 'A-relacional')}, e por isso",
     }
     no_apoio = {
         "C1 literais, dois niveis": f"acertaram as {lit_a[1]} consultas literais nos dois níveis",
@@ -545,16 +558,11 @@ def main() -> int:
         )
         falhas += 1
 
-    # O texto do artigo precisa mesmo conter os numeros conferidos, senao este
-    # script estaria validando afirmacoes que ninguem faz.
+    # As porcentagens de P@1 (81,2; 68,8; 75,0; 56,2) sairam do corpo na
+    # simplificacao da Secao 8: o texto e a Tabela da Secao 8.1 dao as mesmas
+    # medidas em contagem (k de 16), conferidas em conferir_variantes. Os
+    # valores acima continuam conferidos contra o CSV porque estao no Anexo A7.
     texto = ARTIGO.read_text(encoding="utf-8")
-    for trecho in ("81,2", "68,8", "56,2", "75,0"):
-        if trecho not in texto:
-            print(
-                f"FALHA  o artigo nao contem mais '{trecho}': a lista deste script esta desatualizada",
-                file=sys.stderr,
-            )
-            falhas += 1
 
     # As quedas literal->parafrase sao ditas no texto como acertos por tipo de
     # consulta (k de n), recalculados aqui do CSV.
