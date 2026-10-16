@@ -123,7 +123,7 @@ def conferir_geracao(texto: str, apoio: str) -> int:
         # com qualquer outra ocorrencia (a banca mostrou que 0,685 -> 0,686
         # passava).
         "acerto da bateria (resumo)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\% com a pergunta original e de {_pct(taxa(e['total']))}\\% com expans",
-        "acerto da bateria (secao)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\%, cerca de 7 em cada 10 respostas (intervalo",
+        "acerto da bateria (secao)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\%, cerca de 7 em cada 10 respostas",
         "acerto da bateria (conclusao)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\% com a pergunta original, cerca de 7 em cada 10 respostas. As par",
         "acerto E (conclusao)": f"elevou o acerto a {_pct(taxa(e['total']))}\\%, em configura",
         "literal x parafrase C": f"o acerto foi {_pct(taxa(c['variante']['literal']))}\\% nas literais e {_pct(taxa(c['variante']['parafrase']))}\\% nas par",
@@ -151,8 +151,11 @@ def conferir_geracao(texto: str, apoio: str) -> int:
         # O "pode ser acaso" do gabarito original so vale enquanto p >= 0,05.
         "resumo redacao": (f"{_pct(taxa(c['variante']['literal']))}\\% com as palavras do documento e "
                            f"{_pct(taxa(c['variante']['parafrase']))}\\% com outras; "
-                           f"{ef['a_favor_literal']} pares a 0 com o gabarito revisado, mas "
-                           f"{antigo[0]} a {antigo[1]}, que pode ser acaso, com o gabarito original"
+                           f"{ef['a_favor_literal']} pares a 0 com o gabarito revisado"),
+        # O "pode ser acaso" do gabarito original saiu da tabela-resumo na
+        # simplificacao das metricas; a comparacao continua conferida, mas
+        # contra o Anexo A7/A8 (apoio-resultados.tex), nao contra o corpo.
+        "resumo redacao, gabarito original": (f"{antigo[0]} a {antigo[1]}, que pode ser acaso, com o gabarito original"
                            if antigo[2] >= 0.05 and ef["p"] < 0.05 else "<teste da redacao mudou de conclusao>"),
         "resumo expansao": (f"de {_pct(taxa(c['total']))}\\% para {_pct(taxa(e['total']))}\\% no total, e as "
                             f"paráfrases chegam a {_pct(taxa(e['variante']['parafrase']))}\\%; "
@@ -232,6 +235,10 @@ NO_APOIO = {
     "tabela bateria seguranca-trabalho", "tabela bateria produto", "tabela bateria licitacoes", "tabela bateria total",
     "tabela forma negativa", "tabela forma existencia", "tabela forma confirmacao", "tabela forma aberta",
     "tabela forma premissa-falsa",
+    # Saíram do corpo na simplificação das métricas (Seção 8.4/8.7/8.9);
+    # continuam conferidos contra o CSV, mas em apoio-resultados.tex (Anexo A7/A8).
+    "proveniencia C", "proveniencia E", "ic C (8.7)", "resumo redacao, gabarito original",
+    "redacao, gabarito original", "gpt-oss sem falhas de API",
 }
 
 def acerto_por_pergunta_ensino() -> dict[str, str]:
@@ -336,8 +343,6 @@ def conferir_variantes(rows: list[dict], texto: str, apoio: str) -> int:
         return round(media(rows, gran, arm, "p_at_1") * 16)
 
     no_texto = {
-        "C1 literais, dois niveis": f"acertaram as {lit_a[1]} consultas literais nos dois níveis",
-        "C1 denso, literais erradas": f"a densa errou {lit_c[1] - lit_c[0]} das {lit_c[1]} literais",
         "C1 tabela contagem": f"Contagem de palavras (versão anterior) & {n('document', 'A-relacional')} de 16 & {n('section', 'A-relacional')} de 16 \\\\",
         "C1 tabela BM25": f"BM25 (usado no sistema) & {n('document', 'B-bm25')} de 16 & {n('section', 'B-bm25')} de 16 \\\\",
         "C1 tabela densa": f"Busca densa & {n('document', 'C-denso')} de 16 & -- \\\\",
@@ -349,6 +354,8 @@ def conferir_variantes(rows: list[dict], texto: str, apoio: str) -> int:
         "C1 secoes texto": f"o BM25 acertou {n('section', 'B-bm25')} (75,0\\%) e a contagem, {n('section', 'A-relacional')} (56,2\\%)",
     }
     no_apoio = {
+        "C1 literais, dois niveis": f"acertaram as {lit_a[1]} consultas literais nos dois níveis",
+        "C1 denso, literais erradas": f"a densa errou {lit_c[1] - lit_c[0]} das {lit_c[1]} literais",
         "C1 literais, palavras": f"As duas buscas por palavras acertam as {lit_a[1]} consultas literais",
         "C1 parafrases, documento": (f"nas {par_a[1]} paráfrases, a contagem acerta {par_a[0]} "
                                      f"({_pct(par_a[0] / par_a[1])}\\%) e o BM25, {par_b[0]} "
