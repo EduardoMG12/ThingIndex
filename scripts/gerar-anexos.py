@@ -749,10 +749,11 @@ def a7_corpo() -> str:
              "resultado de todas as perguntas e deixou de fora, em média, "
              f"{det['C′ (IVF), 30 sementes'][2]} do que a busca exata encontrava.</p>"
              "<p>O teste foi repetido no pgvector, a extensão do PostgreSQL para vetores, com até "
-             "20.000 textos artificiais. Com a configuração recomendada pela documentação, o "
-             "índice aproximado foi tão estável quanto a busca exata (Tabela 5, no fim do anexo). A "
-             "instabilidade vinha da configuração usada no primeiro teste. Dar sempre o mesmo "
-             "resultado, portanto, não é uma vantagem só da busca por palavras.</p>")
+             "20.000 textos artificiais (Tabela 5, no fim do anexo). O índice IVFFlat, com a "
+             "configuração recomendada pela documentação, deu sempre o mesmo resultado da busca "
+             "exata nos três tamanhos. O HNSW, com os parâmetros padrão, foi estável com 1.000 "
+             "textos e passou a mudar algumas consultas a partir de 5.000. A estabilidade depende, "
+             "portanto, do índice e da configuração escolhidos.</p>")
 
     c.append("<h2>5. E quando a pergunta não tem resposta?</h2>"
              "<p>Nas duas perguntas sem resposta, todos os métodos devolveram algum texto. Na "
@@ -776,7 +777,75 @@ def a7_corpo() -> str:
              "busca por palavras, a pergunta escrita com outras palavras, que motivou a expansão da "
              "pergunta. E encontrou a falta da página na tabela de trechos, corrigida antes dos "
              "experimentos com PDFs reais.</p>")
+    c.append(a7_testes(p_doc, p_sec, holm, len(sig_doc), len(sig_sec)))
     return "".join(c)
+
+
+def _numeros_geracao():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("numeros_geracao",
+                                                  RAIZ / "scripts" / "numeros-geracao.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def pct_ic(x: float) -> str:
+    """Proporcao em %, como o artigo a publica: 3 casas, depois uma (0,8116 -> 81,2)."""
+    milesimos = Decimal(str(x)).quantize(Decimal("0.001"), rounding=ROUND_HALF_EVEN)
+    return str((milesimos * 100).quantize(Decimal("0.1"))).replace(".", ",")
+
+
+def p_simples(p: float) -> str:
+    return "menor que 0,001" if p < 0.001 else str(Decimal(str(p)).quantize(Decimal("0.001"))).replace(".", ",")
+
+
+def a7_testes(p_doc: str, p_sec: str, holm: str, n_doc: int, n_sec: int) -> str:
+    """Como os numeros do artigo foram testados: o detalhe estatistico que saiu
+    do corpo do artigo. Intervalos e valores-p recalculados dos CSV pelas
+    mesmas funcoes que o check-article-numbers.py usa."""
+    ng = _numeros_geracao()
+    temas = (("seguranca-trabalho", "segurança do trabalho"), ("produto", "produto e consumidor"),
+             ("licitacoes", "licitações"))
+    todos = tuple(t for t, _ in temas)
+    c, e = ng.bateria("off"), ng.bateria("on")
+    ef, ex = ng.efeito_formulacao(c), ng.efeito_expansao(c, e)
+    ic_c, ic_e = ng.ic_conglomerado("off", todos), ng.ic_conglomerado("on", todos)
+    perdas = "não perdeu nenhuma" if not ex["perdeu"] else f"perdeu {len(ex['perdeu'])}"
+    por_acervo = "; ".join(
+        f"{nome}, de {pct_ic(lo)}% a {pct_ic(hi)}%"
+        for (t, nome), (lo, hi) in ((x, ng.ic_conglomerado("off", (x[0],))) for x in temas))
+    return (
+        "<h2>Como os números do artigo foram testados</h2>"
+        "<p>Esta parte junta o detalhe estatístico que o artigo resume em uma frase, para o teste "
+        "de busca e para os demais experimentos.</p>"
+        "<p><strong>Duas condições nas mesmas perguntas.</strong> Para saber se uma diferença "
+        "pode ser acaso, usou-se o teste de McNemar exato. Ele olha só as perguntas em que as "
+        "duas condições discordam (uma acerta e a outra erra) e calcula a chance de as "
+        "discordâncias penderem tanto para um lado se as duas condições fossem iguais. Cada "
+        "pergunta entra uma vez: conta como certa só quando acertou nas três repetições. Na "
+        f"bateria, a redação da pergunta deu {ef['a_favor_literal']} pares a 0 a favor da versão "
+        f"com as palavras do documento (valor-p {p_simples(ef['p'])}), e a expansão da pergunta "
+        f"ganhou {len(ex['ganhou'])} perguntas e {perdas} (valor-p "
+        f"{p_simples(ex['p'])}). Os valores com o gabarito original estão no Anexo A8.</p>"
+        "<p><strong>Intervalos de confiança.</strong> O intervalo de 95% é a faixa em que o "
+        "acerto provavelmente ficaria com outras perguntas do mesmo tipo. Foi calculado sorteando "
+        "10.000 vezes, com reposição, novos conjuntos das mesmas perguntas (<em>bootstrap</em>), "
+        "com as três respostas de cada pergunta sorteadas juntas, porque elas não são "
+        "independentes. Na bateria, com a pergunta original, o acerto total ficou entre "
+        f"{pct_ic(ic_c[0])}% e {pct_ic(ic_c[1])}%; por acervo, {por_acervo}. As faixas dos três "
+        "acervos se sobrepõem, e por isso o artigo não diz que um foi mais fácil que outro. Com "
+        f"expansão, o total ficou entre {pct_ic(ic_e[0])}% e {pct_ic(ic_e[1])}%.</p>"
+        "<p><strong>Teste de busca (C1).</strong> Aqui nem todas as medidas são certo ou errado, "
+        "então usou-se o teste de aleatorização pareado: ele troca ao acaso, consulta a consulta, "
+        "os resultados dos dois métodos e verifica com que frequência surge uma diferença tão "
+        "grande quanto a real. Numa medida de certo ou errado, como o primeiro resultado, ele dá "
+        f"o mesmo valor-p que o McNemar exato. Foram {n_doc + n_sec} comparações ({n_doc} entre "
+        f"os textos inteiros e {n_sec} entre as seções). Quanto mais comparações, maior a chance "
+        "de alguma parecer real só por sorte; por isso aplicou-se, em cada grupo, a correção de "
+        "Holm, que exige valores-p menores quando há mais comparações. Já antes da correção "
+        f"nenhuma diferença ficou abaixo de 5% (menor valor-p de {p_doc} entre os textos e "
+        f"{p_sec} entre as seções; seção 3); depois dela, o menor foi {holm}.</p>")
 
 
 LEGENDA_DETALHES = [
@@ -886,7 +955,7 @@ def a7() -> tuple[str, list[Path]]:
 REGISTRO_A8 = ART / "results" / "alteracoes-pos-medicao.md"
 
 # Uma linha por correcao do registro que mudou numero publicado, na ordem do
-# registro (linhas 1, 2, 3, 4, 6 e 7; a linha 5 vai no texto abaixo da tabela).
+# registro (linhas 1, 2, 3, 4, 6, 7 e 8; a linha 5 vai no texto abaixo da tabela).
 # Antes e Depois: lista de (rotulo, valor); todo numero aqui e conferido contra
 # o registro por confere_registro.
 CORRECOES_A8 = [
@@ -932,13 +1001,26 @@ CORRECOES_A8 = [
      "(plural de pixel) passou a ser aceita.",
      "“Píxeis” sem acento não contém a palavra “pixel”, e a resposta certa era marcada como "
      "errada. As outras recusas barradas não apareciam nas respostas reais.",
-     [("Sem expansão", "68,5%"), ("Com expansão", "88,7%")],
-     [("Sem expansão", "69,5%"), ("Com expansão", "88,7%")]),
+     [("Sem expansão", "68,5%"), ("Com expansão", "88,7%"),
+      ("Teste da Seção 8.7 do artigo (pares)", "13 a 0")],
+     [("Sem expansão", "69,5%"), ("Com expansão", "88,7%"),
+      ("Teste da Seção 8.7 do artigo (pares)", "14 a 0")]),
+    ("Padrões de texto que casavam dentro de outra palavra passaram a exigir a palavra "
+     "inteira, e um “não” solto passou a valer só quando abre a resposta.",
+     "“prev” casava com “preventivos” e fazia de uma recusa (“o resumo disponível não "
+     "detalha regras específicas sobre banheiros”) um acerto; numa pergunta do "
+     "desenvolvimento, “o texto não afirma explicitamente” também contava como acerto.",
+     [("Sem expansão", "69,5%"), ("Com expansão", "88,7%"),
+      ("Desenvolvimento, trechos", "216 de 216 respostas"),
+      ("Teste da Seção 8.7 do artigo (pares)", "14 a 0")],
+     [("Sem expansão", "68,1%"), ("Com expansão", "88,7%"),
+      ("Desenvolvimento, trechos", "213 de 216 respostas"),
+      ("Teste da Seção 8.7 do artigo (pares)", "15 a 0")]),
 ]
-TOTAL_A8 = ("<strong>Efeito somado das três últimas correções</strong>",
+TOTAL_A8 = ("<strong>Efeito somado das quatro últimas correções</strong>",
             "Respostas que não respondem nada deixaram de contar como certas.",
             [("Sem expansão", "81,7%"), ("Com expansão", "93,0%")],
-            [("Sem expansão", "69,5%"), ("Com expansão", "88,7%")])
+            [("Sem expansão", "68,1%"), ("Com expansão", "88,7%")])
 
 
 def celula_valores(vals: list[tuple[str, str]]) -> str:
@@ -969,8 +1051,41 @@ def confere_registro(texto_html: str) -> None:
     print(f"  A8: {len(re.findall(r"\d+(?:,\d+)?", texto))} numeros conferidos no registro")
 
 
+def _gabarito_original() -> dict:
+    """Recorrecao das respostas gravadas com o gabarito original das baterias
+    (scripts/redacao-gabarito-original.py). Confere os valores "antes" fixos
+    da quarta correcao do A8 e devolve o teste de redacao para a nota."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("redacao_gabarito_original",
+                                                  RAIZ / "scripts" / "redacao-gabarito-original.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    r = mod.calcula()
+
+    def pct(k, n):
+        return f"{Decimal(k * 100) / Decimal(n):.1f}".replace(".", ",") + "%"
+
+    def p3(v):
+        return f"{Decimal(str(v)).quantize(Decimal('0.001'), ROUND_HALF_EVEN)}".replace(".", ",")
+
+    calculado = [("Sem expansão", pct(*r["off"])), ("Com expansão", pct(*r["on"])),
+                 ("Valor-p da vantagem da expansão (McNemar)", p3(r["expansao"]["p"]))]
+    fixo = dict(CORRECOES_A8[3][2])
+    for rot, v in calculado:
+        if fixo.get(rot) != v:
+            raise SystemExit(f"A8: '{rot}' fixo {fixo.get(rot)!r}, recalculado {v!r}")
+    if dict(TOTAL_A8[2]) != dict(calculado[:2]):
+        raise SystemExit(f"A8: efeito somado 'antes' {TOTAL_A8[2]} difere do recalculado {calculado[:2]}")
+    red = r["redacao"]
+    red["p_texto"] = p3(red["p"])
+    return red
+
+
 def a8() -> str:
     linhas = CORRECOES_A8 + [TOTAL_A8]
+    red = _gabarito_original()
+    n_lit, n_par = len(red["so_literal"]), len(red["so_parafrase"])
+    juizo = "sem diferença detectável" if red["p"] >= 0.05 else "diferença já detectável"
     tr = "".join(
         f"<tr{' class=regra' if i == len(linhas) - 1 else ''}><td>{o}</td><td>{p}</td>"
         f"<td>{celula_valores(a)}</td><td>{celula_valores(d)}</td></tr>"
@@ -978,8 +1093,8 @@ def a8() -> str:
     corpo = (
         "<p>Depois de ver os resultados, algumas regras de correção das respostas foram "
         "ajustadas. Como isso poderia deixar os números artificialmente melhores, cada ajuste "
-        "foi anotado com o motivo e o efeito. O efeito somado das três últimas correções baixou "
-        "o acerto do próprio sistema de 81,7% para 69,5%.</p>"
+        "foi anotado com o motivo e o efeito. O efeito somado das quatro últimas correções baixou "
+        "o acerto do próprio sistema de 81,7% para 68,1%.</p>"
         "<p>A correção é automática: cada pergunta tem um padrão de texto que a resposta certa "
         "precisa conter e, às vezes, padrões que a tornam errada, como uma recusa. A maioria "
         "das linhas abaixo trata da bateria (Seção 8.7 do artigo), com 213 respostas sobre leis, normas e "
@@ -995,18 +1110,19 @@ def a8() -> str:
         f"<tbody>{tr}</tbody></table>"
         "<p class='nota-a8'>No teste da Seção 8.7 do artigo, que compara cada pergunta escrita "
         "com as palavras do documento com a mesma pergunta escrita com outras palavras, o "
-        "gabarito original dava 8 pares a favor da primeira e 2 a favor da segunda (valor-p "
-        "de 0,109, sem diferença detectável). A diferença só passou a ser detectável depois "
-        "das correções deste quadro, e o artigo declara isso.</p>"
-        "<p class='nota-a8'>Os valores de cada linha são os do momento daquela correção; as correções "
+        f"gabarito original dava {n_lit} pares a favor da primeira e {n_par} a favor da segunda (valor-p "
+        f"de {red['p_texto']}, {juizo})."
+        + (" A diferença só passou a ser detectável depois das correções deste quadro, e o "
+           "artigo declara isso.</p>" if red["p"] >= 0.05 else "</p>")
+        + "<p class='nota-a8'>Os valores de cada linha são os do momento daquela correção; as correções "
         "seguintes e os ajustes do sistema mudaram alguns deles de novo, e o artigo publica os "
         "números finais. As regras da busca também foram ajustadas olhando as 72 perguntas "
         "usadas durante o desenvolvimento. Por isso, os números dessas perguntas não valem "
         "como teste independente; o teste de verdade é a bateria, com perguntas escritas "
         "depois.</p>"
-        + resumo("o efeito somado das três últimas correções baixou o acerto do sistema de 81,7% "
-                 "para 69,5%, porque respostas que não respondiam nada deixaram de contar como "
-                 "certas; a última dessas três, sozinha, subiu o acerto de 68,5% para 69,5%. As outras corrigiram erros da própria correção, que marcava respostas "
+        + resumo("o efeito somado das quatro últimas correções baixou o acerto do sistema de 81,7% "
+                 "para 68,1%, porque respostas que não respondiam nada deixaram de contar como "
+                 "certas; a penúltima dessas quatro, sozinha, subiu o acerto de 68,5% para 69,5%, e a última o baixou para 68,1%. As outras corrigiram erros da própria correção, que marcava respostas "
                  "certas como erradas; o artigo publica sempre os números de depois da última "
                  "correção."))
     confere_registro(corpo)
