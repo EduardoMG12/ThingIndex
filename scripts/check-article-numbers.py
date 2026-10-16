@@ -290,7 +290,8 @@ def acerto_por_pergunta_ensino() -> dict[str, str]:
     kf, nf = contar("generation-results-F-document.csv")
     return {
         "ensino por pergunta (resumo)": f"com {kt} de {nt} perguntas certas contra {kf} de {nf}",
-        "ensino por pergunta (conclusao)": f"({kt} de {nt} perguntas contra {kf} de {nf})",
+        "ensino por pergunta (conclusao)": (f"({kt} de {nt} perguntas contra {kf} de {nf}, com configurações "
+                                            "diferentes entre os dois braços; Seção~\\ref{sec:res-geracao})"),
     }
 
 
@@ -384,8 +385,15 @@ def legislacao() -> dict[str, str]:
     alvo01 = {f"{t['document_id']}:{pg}" for t in g01["targets"] for pg in t["pages"]}
     fontes01 = set(p01["cited_pages"].split(";"))
     p01_ok = p01["correct"] == "false" and not (alvo01 & fontes01) and "lei-8666:18" in fontes01 and "Lei 8.666" in p01["answer"]
+    # d03: recusa ("nao ha informacoes"), sem a pagina-alvo entre as fontes.
+    d03 = por_id["d03"]
+    d03_ok = (d03["correct"] == "false" and d03["retrieval_hit"] == "false"
+              and d03["answer"].lower().startswith("com base nos documentos fornecidos, não há informações"))
     erradas = len(rows) - k
     return {
+        "legislacao d03 (8.6)": ("A quarta, sobre quem conduz a licitação, foi uma recusa: a página-alvo não chegou às "
+                                 "fontes, e o sistema respondeu que a informação não constava nos documentos."
+                                 if d03_ok and erradas == 4 else "<d03 da legislacao mudou>"),
         "legislacao": f"acertou {k} das {len(rows)} perguntas; nas {len(div)} divergentes, acertou {kd}",
         "legislacao p05 (8.6)": (f"Uma das {EXTENSO_MIN.get(erradas, erradas)} respostas contadas como erradas estava correta (``até 10 anos'', art.~108 da Lei 14.133), "
                                  f"mas o gabarito exigia ``10 (dez) anos'' ou ``dez anos''; o número não foi corrigido, e o "
@@ -599,7 +607,12 @@ def mediana_tokens() -> dict[str, str]:
     n_com = sum(est[q] != "negativa" for q in razao)
     n_neg = len(razao) - n_com
     k = round(com)
+    # Faixa da razao nas perguntas com resposta: o minimo (abaixo de 1) e o
+    # maximo, que dependem do tamanho do documento inteiro.
+    com_vals = [v for q, v in razao.items() if est[q] != "negativa"]
     return {
+        "tokens, faixa da razao (8.5)": (f"numa razão que variou de {_br(min(com_vals), 1)} a {_br(max(com_vals), 1)} "
+                                         "vezes conforme o tamanho do documento"),
         "tokens, mediana com resposta (8.5)": (f"nas {n_com} perguntas com resposta, F enviou ao modelo, na mediana, "
                                                f"{_br(com, 1)} vezes mais"),
         "tokens, mediana com negativas (8.5)": (f"contando as {n_neg} negativas, em que o documento inteiro inclui cinco "
