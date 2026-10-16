@@ -229,6 +229,9 @@ def conferir_geracao(texto: str, apoio: str) -> int:
     esperados.update(enriquecimento_repeticoes())
     esperados.update(sim_constante())
     esperados.update(ancoras_auditoria(c, e, ef, g))
+    esperados.update(acerto_com_gabarito_original())
+    esperados.update(custo_invertido())
+    esperados.update(existencia_acerto())
 
     falhas = 0
     for descricao, trecho in esperados.items():
@@ -330,6 +333,12 @@ def origem_c1() -> dict[str, str]:
         "origem C1, versao atual": (f"Na versão atual, as {total} unidades indexadas de C1 têm a origem completa"
                                     if completos == total else "<nem todas as unidades de C1 tem origem completa>"),
         "origem C1, primeira medicao": f"A primeira medição deu {primeira} de {total}",
+        # Tabela de resposta (a) e Conclusao: quantas das unidades completas
+        # sao metadados do documento inteiro, sem pagina.
+        "origem C1, metadados (tabela a)": (f"Em C1, as {total} unidades têm origem completa no banco; "
+                                            f"{tipo['Metadado']} delas são metadados do documento inteiro, sem página"),
+        "origem C1, metadados (conclusao)": (f"as {total} unidades de C1 têm a origem gravada no banco "
+                                             f"({tipo['Metadado']} delas são metadados do documento inteiro, sem página)"),
         # As contagens intermediarias sairam do corpo e estao, com a evolucao
         # 51 -> 70 -> 155, em apoio-resultados.tex (NO_APOIO).
         "origem C1, trechos": f"{EXTENSO.get(tipo['Trecho'], tipo['Trecho'])} unidades sem página eram um defeito de modelagem",
@@ -484,26 +493,61 @@ def conferir_variantes(rows: list[dict], texto: str, apoio: str) -> int:
     return falhas
 
 
+def custo_invertido() -> dict[str, str]:
+    """Secao 8.5: perguntas do acervo de ensino em que T (trechos) enviou mais
+    tokens que F (documento inteiro), na media das repeticoes, e o tamanho dos
+    documentos-alvo dessas perguntas ("documentos curtos": ate 5 paginas)."""
+    res = RAIZ / "docs" / "article" / "results"
+
+    def tok(arq):
+        d: dict[str, list[int]] = {}
+        for r in csv.DictReader(open(res / arq, encoding="utf-8")):
+            d.setdefault(r["question_id"], []).append(int(r["prompt_tokens"] or 0))
+        return {q: sum(v) / len(v) for q, v in d.items()}
+    t, f = tok("generation-results-T-ordem.csv"), tok("generation-results-F-document.csv")
+    g = json.load(open(RAIZ / "api" / "internal" / "evalcorpus" / "testdata" / "gabarito-si.json", encoding="utf-8"))
+    paginas = {d["id"]: d["pages"] for d in g["documents"]}
+    alvo = {q["id"]: {x["document_id"] for x in q.get("targets") or []} for q in g["questions"]}
+    inv = [q for q in t if t[q] > f[q]]
+    curtos = all(alvo[q] and max(paginas[d] for d in alvo[q]) <= 5 for q in inv)
+    return {"custo invertido (8.5)": (f"Em {len(inv)} das {len(t)} perguntas, sobre documentos curtos, a busca enviou "
+                                      "mais \\emph{tokens} que o documento inteiro"
+                                      if curtos else "<custo invertido fora de documentos curtos>")}
+
+
+def existencia_acerto() -> dict[str, str]:
+    """Secao 8.7: acerto do sistema (sem expansao) nas respostas de existencia."""
+    res = RAIZ / "docs" / "article" / "results" / "expansao"
+    rs = [r for t in ("seguranca-trabalho", "produto", "licitacoes")
+          for r in csv.DictReader(open(res / f"off-{t}.csv", encoding="utf-8")) if r["stratum"] == "existencia"]
+    k = sum(r["correct"] == "true" for r in rs)
+    return {"existencia, acerto do sistema (8.7)": f"e o sistema acertou {k} das {len(rs)} respostas desse tipo"}
+
+
+def _gabarito_original() -> dict:
+    spec = importlib.util.spec_from_file_location("redacao_gabarito_original",
+                                                  RAIZ / "scripts" / "redacao-gabarito-original.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.calcula()
+
+
 def redacao_com_gabarito_original() -> tuple[int, int, float]:
-    """Pares a favor da literal, da parafrase e p exato, com os CSVs anteriores
-    a revisao do gabarito (commit 10f4846^)."""
-    import io
-    import math
-    import subprocess
-    pares: dict[str, dict[str, list[bool]]] = {}
-    for tema in ("seguranca-trabalho", "produto", "licitacoes"):
-        saida = subprocess.run(["git", "show", f"10f4846^:docs/article/results/expansao/off-{tema}.csv"],
-                               cwd=RAIZ, capture_output=True, text=True, check=True).stdout
-        for r in csv.DictReader(io.StringIO(saida)):
-            q = r["question_id"]
-            if r.get("stratum") == "negativa" or q[-1] not in "LP":
-                continue
-            pares.setdefault(q[:-1], {}).setdefault(q[-1], []).append(r["correct"] == "true")
-    a = sum(1 for v in pares.values() if "L" in v and "P" in v and all(v["L"]) and not all(v["P"]))
-    b = sum(1 for v in pares.values() if "L" in v and "P" in v and all(v["P"]) and not all(v["L"]))
-    n = a + b
-    p = min(1.0, 2 * sum(math.comb(n, i) for i in range(min(a, b) + 1)) / 2 ** n) if n else 1.0
-    return a, b, p
+    """Pares a favor da literal, da parafrase e p exato com o gabarito
+    original (10f4846^), recorrigindo as respostas gravadas hoje nos CSV da
+    expansao (scripts/redacao-gabarito-original.py). Nao usa a coluna
+    `correct` de CSV antigo nem docs/article/results/resumo-bateria.md, que
+    saiu do criterio com bug (so a ultima repeticao)."""
+    red = _gabarito_original()["redacao"]
+    return len(red["so_literal"]), len(red["so_parafrase"]), red["p"]
+
+
+def acerto_com_gabarito_original() -> dict[str, str]:
+    """O 81,7% da primeira medicao (Secao 8.7), recalculado com o gabarito
+    original sobre as mesmas respostas."""
+    k, n = _gabarito_original()["off"]
+    return {"acerto com o gabarito original (8.7)":
+            f"o acerto caiu de {_pct(k / n)}\\% para"}
 
 
 def gpt_oss_sem_falhas() -> str:

@@ -1047,8 +1047,41 @@ def confere_registro(texto_html: str) -> None:
     print(f"  A8: {len(re.findall(r"\d+(?:,\d+)?", texto))} numeros conferidos no registro")
 
 
+def _gabarito_original() -> dict:
+    """Recorrecao das respostas gravadas com o gabarito original das baterias
+    (scripts/redacao-gabarito-original.py). Confere os valores "antes" fixos
+    da quarta correcao do A8 e devolve o teste de redacao para a nota."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("redacao_gabarito_original",
+                                                  RAIZ / "scripts" / "redacao-gabarito-original.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    r = mod.calcula()
+
+    def pct(k, n):
+        return f"{Decimal(k * 100) / Decimal(n):.1f}".replace(".", ",") + "%"
+
+    def p3(v):
+        return f"{Decimal(str(v)).quantize(Decimal('0.001'), ROUND_HALF_EVEN)}".replace(".", ",")
+
+    calculado = [("Sem expansão", pct(*r["off"])), ("Com expansão", pct(*r["on"])),
+                 ("Valor-p da vantagem da expansão (McNemar)", p3(r["expansao"]["p"]))]
+    fixo = dict(CORRECOES_A8[3][2])
+    for rot, v in calculado:
+        if fixo.get(rot) != v:
+            raise SystemExit(f"A8: '{rot}' fixo {fixo.get(rot)!r}, recalculado {v!r}")
+    if dict(TOTAL_A8[2]) != dict(calculado[:2]):
+        raise SystemExit(f"A8: efeito somado 'antes' {TOTAL_A8[2]} difere do recalculado {calculado[:2]}")
+    red = r["redacao"]
+    red["p_texto"] = p3(red["p"])
+    return red
+
+
 def a8() -> str:
     linhas = CORRECOES_A8 + [TOTAL_A8]
+    red = _gabarito_original()
+    n_lit, n_par = len(red["so_literal"]), len(red["so_parafrase"])
+    juizo = "sem diferença detectável" if red["p"] >= 0.05 else "diferença já detectável"
     tr = "".join(
         f"<tr{' class=regra' if i == len(linhas) - 1 else ''}><td>{o}</td><td>{p}</td>"
         f"<td>{celula_valores(a)}</td><td>{celula_valores(d)}</td></tr>"
@@ -1073,10 +1106,11 @@ def a8() -> str:
         f"<tbody>{tr}</tbody></table>"
         "<p class='nota-a8'>No teste da Seção 8.7 do artigo, que compara cada pergunta escrita "
         "com as palavras do documento com a mesma pergunta escrita com outras palavras, o "
-        "gabarito original dava 8 pares a favor da primeira e 2 a favor da segunda (valor-p "
-        "de 0,109, sem diferença detectável). A diferença só passou a ser detectável depois "
-        "das correções deste quadro, e o artigo declara isso.</p>"
-        "<p class='nota-a8'>Os valores de cada linha são os do momento daquela correção; as correções "
+        f"gabarito original dava {n_lit} pares a favor da primeira e {n_par} a favor da segunda (valor-p "
+        f"de {red['p_texto']}, {juizo})."
+        + (" A diferença só passou a ser detectável depois das correções deste quadro, e o "
+           "artigo declara isso.</p>" if red["p"] >= 0.05 else "</p>")
+        + "<p class='nota-a8'>Os valores de cada linha são os do momento daquela correção; as correções "
         "seguintes e os ajustes do sistema mudaram alguns deles de novo, e o artigo publica os "
         "números finais. As regras da busca também foram ajustadas olhando as 72 perguntas "
         "usadas durante o desenvolvimento. Por isso, os números dessas perguntas não valem "

@@ -1,3 +1,5 @@
+> **Histórico.** Saída de `scripts/resumo-bateria.py` gravada em ae39a1e (2026-09-19), com o gabarito original e a versão do script que tinha um bug: os pares literal/paráfrase guardavam só a última repetição de cada pergunta (corrigido em cb5a373). Por isso a lista abaixo dá 9 pares só-literal e 1 só-paráfrase; com o critério de acerto nas três repetições são 8 e 2 (p = 0,109). Os números atuais estão no artigo; a conta do gabarito original é `python3 scripts/redacao-gabarito-original.py` (`--ultima-repeticao` reproduz esta lista).
+
 
 ## Por tema
 
