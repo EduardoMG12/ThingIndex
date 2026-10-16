@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Revisao v4/v5/v6 dos gabaritos das baterias (existencia, premissa falsa, lc3, lc4).
+"""Revisao v4/v5/v6/v7 dos gabaritos das baterias (existencia, premissa falsa, lc3, lc4).
 
 v5 (segunda leitura da banca): os padroes da existencia aceitavam
 "nao existe", "nao consta", "nao trata" e "nao preve", porque casavam o verbo
@@ -12,6 +12,14 @@ documentos trata", "nada consta", "nao pode ser encontrad"); nas perguntas de
 sim ou nao (existencia e confirmacao) a resposta que ABRE negando o que o
 gabarito afirma (ou afirmando o que ele nega) e vetada; lc12 e lc13 vetam a
 resposta oposta; pr8 aceita o plural "pixeis".
+
+v7 (2026-10-16, auditoria de falsos positivos, scripts/auditoria-padroes.py):
+alternativas sem limite de palavra casavam dentro de outra palavra. "prev"
+casava com "preventivos" e fazia de uma recusa ("o resumo disponivel nao
+detalha regras especificas sobre banheiros") um acerto em sg5P; "trata"
+casava com "contratar" e "tratamento"; "consta" com "constatados"; "sim" com
+"simplificacao". Cada uma passa a exigir a palavra inteira (PREV, TRATA,
+CONSTA, SIM). Nenhuma alternativa foi acrescentada: so restringidas.
 
 Regras escritas a partir do que cada forma de pergunta exige, antes de
 reavaliar as respostas:
@@ -26,6 +34,7 @@ reavaliar as respostas:
 
 As perguntas negativas nao mudam.
 """
+import hashlib
 import json
 from pathlib import Path
 
@@ -60,14 +69,23 @@ ABRE_AFIRMANDO = r"^\W*sim\b"
 # qualquer ponto nao afirmou que o tema existe.
 VERBO_NEGADO = r"\bnao (existem?|constam?|tratam?|preveem|preve|ha previsao)\b"
 
+# v7: as formas do verbo, com limite de palavra. "prev" solto casava com
+# "preventivos"/"prevencao"; "trata" com "contratar"/"tratamento"; "consta"
+# com "constatados".
+PREV = r"\bprev(e|eem|er|isto|ista|istos|istas|isao|isoes)\b"
+TRATA = r"\btrat(a|am|ar)\b"
+CONSTA = r"\bconstam?\b"
+
 NOVOS = {
     # existencia: afirmacao positiva, sem "ha " solto
-    "sg5": [r"\bsim\b|existe|trata|prev"],
-    "sg10": [r"\bsim\b|existe|trata|prev"],
-    "pr5": [r"\bsim\b|existe|consta|exclu"],
-    "pr10": [r"\bsim\b|existe|consta|orient"],
-    "lc8": [r"\bsim\b|existe|prev|trata"],
-    "lc10": [r"\bsim\b|existe|prev|seguro-garantia"],
+    "sg5": [rf"\bsim\b|existe|{TRATA}|{PREV}"],
+    "sg10": [rf"\bsim\b|existe|{TRATA}|{PREV}"],
+    "pr5": [rf"\bsim\b|existe|{CONSTA}|exclu"],
+    "pr10": [rf"\bsim\b|existe|{CONSTA}|orient"],
+    "lc8": [rf"\bsim\b|existe|{PREV}|{TRATA}"],
+    "lc10": [rf"\bsim\b|existe|{PREV}|seguro-garantia"],
+    # v7: "sim" solto casava com "simplificacao"
+    "sg11": [r"\bsim\b|pode|dispensad|nao precisa"],
     # premissa falsa: o dado que corrige a premissa
     "sg1": [r"gratuit|sem (custo|onus)|nao (pode|e permitido|ha previsao de) (descont|cobr)"],
     "sg12": [r"gratuit|sem (custo|onus)|(organizacao|empregador|empresa)[^.]{0,60}fornec|fornec[^.]{0,60}(organizacao|empregador|empresa)"],
@@ -99,7 +117,32 @@ OPOSTA = {
 REJEITA_POR_ESTRATO = {"existencia", "confirmacao", "premissa-falsa", "aberta"}
 REJEITA_POR_PAR = {"lc3", "lc4", "lc12", "lc13"}
 
-for nome, versao in (("seguranca-trabalho", "v6"), ("produto", "v6"), ("licitacoes", "v6"), ("prefeitura", "v4")):
+
+def questions_sha256(questions: list[dict]) -> str:
+    """O mesmo hash de evalcorpus.Gabarito.QuestionsSHA256: json.Marshal das
+    perguntas na ordem dos campos da struct, omitempty onde a struct tem, e o
+    escape de <, > e & que o Go faz."""
+    qs = []
+    for q in questions:
+        o = {"id": q["id"], "text": q["text"], "stratum": q["stratum"],
+             "targets": [{"document_id": t["document_id"], "pages": t["pages"]} for t in q["targets"]]
+             if q.get("targets") is not None else None,
+             "answer_patterns": q.get("answer_patterns")}
+        if q.get("reject_patterns"):
+            o["reject_patterns"] = q["reject_patterns"]
+        o["expected"] = q.get("expected", "")
+        for k in ("variant", "pair_id"):
+            if q.get(k):
+                o[k] = q[k]
+        o["origin"] = q.get("origin", "")
+        qs.append(o)
+    s = json.dumps(qs, ensure_ascii=False, separators=(",", ":"))
+    for c, e in (("<", "\\u003c"), (">", "\\u003e"), ("&", "\\u0026"), ("\u2028", "\\u2028"), ("\u2029", "\\u2029")):
+        s = s.replace(c, e)
+    return hashlib.sha256(s.encode("utf-8")).hexdigest()
+
+
+for nome, versao in (("seguranca-trabalho", "v7"), ("produto", "v7"), ("licitacoes", "v7"), ("prefeitura", "v4")):
     path = DIR / f"gabarito-{nome}.json"
     g = json.loads(path.read_text(encoding="utf-8"))
     for q in g["questions"]:
@@ -133,5 +176,8 @@ for nome, versao in (("seguranca-trabalho", "v6"), ("produto", "v6"), ("licitaco
             if vetos:
                 q["reject_patterns"] = vetos
     g["version"] = g["version"].rsplit("-v", 1)[0] + "-" + versao
+    # O programa de avaliacao recusa gabarito cujo hash nao confere
+    # (Gabarito.Validate); o teste Go confere o mesmo calculo.
+    g["frozen_sha256"] = questions_sha256(g["questions"])
     path.write_text(json.dumps(g, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(path.name, g["version"])
