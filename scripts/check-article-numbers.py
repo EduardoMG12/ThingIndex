@@ -132,7 +132,7 @@ def conferir_geracao(texto: str, apoio: str) -> int:
         "acerto E (resumo)": f"antes da busca, chegou a {_pct(taxa(e['total']))}\\%; o recurso",
         "acerto da bateria (secao)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\%, cerca de 7 em cada 10 respostas",
         "acerto da bateria (conclusao)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\% com a pergunta original. As par",
-        "acerto E (conclusao)": f"elevou o acerto a {_pct(taxa(e['total']))}\\%, em configura",
+        "acerto E (conclusao)": f"elevou o acerto a {_pct(taxa(e['total']))}\\% (experimental)",
         "literal x parafrase C": f"o acerto foi {_pct(taxa(c['variante']['literal']))}\\% nas literais e {_pct(taxa(c['variante']['parafrase']))}\\% nas par",
         # A lacuna literal-parafrase e dita pelas duas taxas, sem e com expansao.
         "parafrase sem e com expansao": f"paráfrases subiu de {_pct(taxa(c['variante']['parafrase']))}\\% para {_pct(taxa(e['variante']['parafrase']))}\\%",
@@ -157,10 +157,12 @@ def conferir_geracao(texto: str, apoio: str) -> int:
         # Intervalo do total da bateria, na Secao 8.7 e na tabela-resumo.
         "ic C (8.7)": f"intervalo de 95\\% de {_pct(ic_c[0])}\\% a {_pct(ic_c[1])}\\%",
         "resumo acerto": f"{_pct(taxa(c['total']))}\\% das respostas, cerca de 7 em 10",
-        # O "pode ser acaso" do gabarito original so vale enquanto p >= 0,05.
+        # "todos a favor da literal" so vale enquanto nenhum par discordante
+        # favorecer a parafrase.
         "resumo redacao": (f"{_pct(taxa(c['variante']['literal']))}\\% com as palavras do documento e "
                            f"{_pct(taxa(c['variante']['parafrase']))}\\% com outras; "
-                           f"{ef['a_favor_literal']} pares a 0 com o gabarito revisado"),
+                           f"{ef['a_favor_literal']} pares discordantes, todos a favor da literal, com o gabarito revisado"
+                           if ef["a_favor_parafrase"] == 0 else "<algum par discordante passou a favorecer a parafrase>"),
         # O "pode ser acaso" do gabarito original saiu da tabela-resumo na
         # simplificacao das metricas; a comparacao continua conferida, mas
         # contra o Anexo A7/A8 (apoio-resultados.tex), nao contra o corpo.
@@ -171,7 +173,7 @@ def conferir_geracao(texto: str, apoio: str) -> int:
                             f"{len(ex['ganhou'])} perguntas ganhas"),
         # Comparacao com o gabarito original, como o corpo da Secao 8.7 a escreve.
         "redacao, gabarito original (corpo)": (
-            f"eram {antigo[0]} pares a favor da literal e {antigo[1]} da paráfrase, diferença que pode ser acaso"
+            f"eram {antigo[0]} pares a favor da literal e {antigo[1]} da paráfrase, sem diferença estatisticamente significativa"
             if antigo[2] >= 0.05 else "<redacao com o gabarito original passou a ser significativa>"),
         "premissa falsa (corpo)": (f"em só {c['forma']['premissa-falsa'][0]} de {c['forma']['premissa-falsa'][1]} "
                                    "respostas o sistema corrigiu o dado errado"),
@@ -385,7 +387,7 @@ def legislacao() -> dict[str, str]:
     erradas = len(rows) - k
     return {
         "legislacao": f"acertou {k} das {len(rows)} perguntas; nas {len(div)} divergentes, acertou {kd}",
-        "legislacao p05 (8.6)": (f"Uma das {EXTENSO_MIN.get(erradas, erradas)} respostas erradas estava certa (``até 10 anos'', art.~108 da Lei 14.133), "
+        "legislacao p05 (8.6)": (f"Uma das {EXTENSO_MIN.get(erradas, erradas)} respostas contadas como erradas estava correta (``até 10 anos'', art.~108 da Lei 14.133), "
                                  f"mas o gabarito exigia ``10 (dez) anos'' ou ``dez anos''; o número não foi corrigido, e o "
                                  f"acerto oficial continua {k} de {len(rows)}"
                                  if p05_ok else "<p05 da legislacao mudou>"),
@@ -505,7 +507,7 @@ def conferir_variantes(rows: list[dict], texto: str, apoio: str) -> int:
                 f"{noi_b[1]} ruidosas; a densa, {lit_c[0]} das {lit_c[1]} literais, {par_c[0]} das {par_c[1]} "
                 f"paráfrases e as {noi_c[1]} ruidosas, e só {comum} consulta foi errada pelos dois"
                 if lit_b[0] == lit_b[1] and noi_c[0] == noi_c[1] and comum == 1 else "<C1 por tipo de consulta mudou>")
-    # "pode ser acaso" entre as secoes so vale enquanto o P@1 contagem x BM25
+    # "nao e estatisticamente significativa" entre as secoes so vale enquanto o P@1 contagem x BM25
     # nao for significativo (tabela gerada por analyze.py, Anexo A7).
     sig = (RAIZ / "docs" / "article" / "tables" / "retrieval-significance-section.tex").read_text(encoding="utf-8")
     m = re.search(r"A, contagem vs B, BM25 & P@1 & [^&]+& \d+ & 0\{,\}(\d+) &", sig)
@@ -527,7 +529,7 @@ def conferir_variantes(rows: list[dict], texto: str, apoio: str) -> int:
         "C1 conclusao": f"({n('document', 'B-bm25')} de 16 consultas contra {n('document', 'C-denso')} de 16)",
         "C1 BM25 texto": f"o BM25 acertou o primeiro resultado em {n('document', 'B-bm25')} das 16 consultas",
         "C1 secoes texto": (f"o BM25 acertou {n('section', 'B-bm25')} e a contagem de palavras, {n('section', 'A-relacional')}; "
-                            "essa diferença também pode ser acaso" if acaso else "<contagem x BM25 em secoes ficou significativo>"),
+                            "essa diferença também não é estatisticamente significativa" if acaso else "<contagem x BM25 em secoes ficou significativo>"),
         "C1 por tipo (8.1)": por_tipo,
         # Discussao: a hibrida nao acertou mais que o BM25 em C1.
         "C1 hibrida (discussao)": (f"a combinação dos dois acertou tantas quanto o BM25 ({n('document', 'B-bm25')} de 16)"
