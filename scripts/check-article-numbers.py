@@ -123,8 +123,8 @@ def conferir_geracao(texto: str, apoio: str) -> int:
         "pagina citada T": f"correta em {prov_t['prosa_com_folio']} de {prov_t['respostas']} respostas em T",
         "pagina citada F": f"{prov_f['prosa_com_folio']} de {prov_f['respostas']} em F",
         # Sem aceitar o numero impresso (folio), so pela posicao da pagina no PDF.
-        "pagina citada sem folio (8.5)": (f"só pela posição da página no arquivo, F teria {prov_f['prosa']}, "
-                                          f"e T, {prov_t['prosa']})"),
+        "pagina citada sem folio (8.5)": (f"Sem aceitar o número impresso, F teria {prov_f['prosa']}, "
+                                          f"e T, {prov_t['prosa']}."),
         # Cada numero ancorado na frase em que aparece: um valor solto casaria
         # com qualquer outra ocorrencia (a banca mostrou que 0,685 -> 0,686
         # passava).
@@ -319,6 +319,8 @@ def ancoras_auditoria(c: dict, e: dict, ef: dict, g: dict) -> dict[str, str]:
 
 # Contagens que o texto escreve por extenso no inicio de frase.
 EXTENSO = {19: "Dezenove"}
+# Contagens que o texto escreve por extenso no meio da frase.
+EXTENSO_MIN = {4: "quatro"}
 
 
 def origem_c1() -> dict[str, str]:
@@ -336,8 +338,8 @@ def origem_c1() -> dict[str, str]:
         # Secao 8.4, conferidas nas ancoras abaixo.
         # A correcao do sistema (pagina nos trechos) levou de 51 a 70; a
         # redefinicao da metrica (metadados do documento inteiro), de 70 a 155.
-        "origem C1 (resumo)": (f"Sim, em C1, que não tem páginas: {completos} de {total}, das quais "
-                               f"{tipo['Metadado']} só passaram a contar com o ajuste da métrica"),
+        "origem C1 (resumo)": (f"Sim, em C1 (sem páginas): {completos} de {total}, "
+                               f"{tipo['Metadado']} delas metadados"),
         "origem C1, correcao do sistema": (f"que deu coluna de página aos trechos, levou a {primeira + tipo['Trecho']}; "
                                            "a maior parte da diferença veio de ajustar a métrica"
                                            if tipo["Metadado"] > tipo["Trecho"] else "<a correcao do sistema passou a ser a maior parte>"),
@@ -348,8 +350,8 @@ def origem_c1() -> dict[str, str]:
         # sao metadados do documento inteiro, sem pagina.
         "origem C1, metadados (tabela a)": (f"Em C1, as {total} unidades têm origem completa no banco; "
                                             f"{tipo['Metadado']} delas são metadados do documento inteiro, sem página"),
-        "origem C1, metadados (conclusao)": (f"as {total} unidades de C1 têm a origem gravada no banco "
-                                             f"({tipo['Metadado']} delas são metadados do documento inteiro, sem página)"),
+        # Conclusao: so o total; o detalhe dos metadados fica na tabela (a).
+        "origem C1 (conclusao)": f"as {total} unidades de C1 têm a origem gravada no banco.",
         # As contagens intermediarias sairam do corpo e estao, com a evolucao
         # 51 -> 70 -> 155, em apoio-resultados.tex (NO_APOIO).
         "origem C1, trechos": f"{EXTENSO.get(tipo['Trecho'], tipo['Trecho'])} unidades sem página eram um defeito de modelagem",
@@ -365,7 +367,31 @@ def legislacao() -> dict[str, str]:
     div = [r for r in rows if r["stratum"] == "divergente"]
     k = sum(r["correct"] == "true" for r in rows)
     kd = sum(r["correct"] == "true" for r in div)
-    return {"legislacao": f"acertou {k} das {len(rows)} perguntas; nas {len(div)} divergentes, acertou {kd}"}
+    por_id = {r["question_id"]: r for r in rows}
+    g = json.load(open(RAIZ / "api" / "internal" / "evalcorpus" / "testdata" / "gabarito-legislacao.json", encoding="utf-8"))
+    gab = {q["id"]: q for q in g.get("questions", g)}
+    # p05: resposta certa ("ate 10 anos", art. 108) marcada errada porque o
+    # padrao exige "10 (dez) anos" ou "dez anos"; nao foi corrigida.
+    p05, g05 = por_id["p05"], gab["p05"]
+    p05_ok = (p05["correct"] == "false" and g05["answer_patterns"] == [r"10 \(dez\) anos|dez anos"]
+              and "até 10 anos" in p05["answer"] and "Art. 108" in p05["answer"]
+              and not re.search(g05["answer_patterns"][0], p05["answer"].lower()))
+    # p01: errada, citou a pagina da Lei 8.666 com o art. 24 (pagina 18 do
+    # PDF) e a pagina-alvo da Lei 14.133 nao esta entre as fontes.
+    p01, g01 = por_id["p01"], gab["p01"]
+    alvo01 = {f"{t['document_id']}:{pg}" for t in g01["targets"] for pg in t["pages"]}
+    fontes01 = set(p01["cited_pages"].split(";"))
+    p01_ok = p01["correct"] == "false" and not (alvo01 & fontes01) and "lei-8666:18" in fontes01 and "Lei 8.666" in p01["answer"]
+    erradas = len(rows) - k
+    return {
+        "legislacao": f"acertou {k} das {len(rows)} perguntas; nas {len(div)} divergentes, acertou {kd}",
+        "legislacao p05 (8.6)": (f"Uma das {EXTENSO_MIN.get(erradas, erradas)} respostas erradas estava certa (``até 10 anos'', art.~108 da Lei 14.133), "
+                                 f"mas o gabarito exigia ``10 (dez) anos'' ou ``dez anos''; o número não foi corrigido, e o "
+                                 f"acerto oficial continua {k} de {len(rows)}"
+                                 if p05_ok else "<p05 da legislacao mudou>"),
+        "legislacao p01 (8.6)": ("(a resposta citou a lei revogada, na página certa dela; a página da lei vigente não chegou às fontes)"
+                                 if p01_ok else "<p01 da legislacao mudou>"),
+    }
 
 
 def busca_da_bateria() -> dict[str, str]:
@@ -605,7 +631,16 @@ def existencia_acerto() -> dict[str, str]:
     rs = [r for t in ("seguranca-trabalho", "produto", "licitacoes")
           for r in csv.DictReader(open(res / f"off-{t}.csv", encoding="utf-8")) if r["stratum"] == "existencia"]
     k = sum(r["correct"] == "true" for r in rs)
-    return {"existencia, acerto do sistema (8.7)": f"e o sistema acertou {k} das {len(rs)} respostas desse tipo"}
+    # Acerto sem as negativas (todas certas), ao lado dos 68,1%.
+    todas = [r for t in ("seguranca-trabalho", "produto", "licitacoes")
+             for r in csv.DictReader(open(res / f"off-{t}.csv", encoding="utf-8"))]
+    neg = [r for r in todas if r["stratum"] == "negativa"]
+    com = [r for r in todas if r["stratum"] != "negativa"]
+    kc = sum(r["correct"] == "true" for r in com)
+    sem_neg = (f"(sem as {len(neg)} respostas negativas, todas certas, foi de {_pct(kc / len(com))}\\%, {kc} de {len(com)})"
+               if all(r["correct"] == "true" for r in neg) else "<negativas da bateria deixaram de acertar todas>")
+    return {"existencia, acerto do sistema (8.7)": f"e o sistema acertou {k} das {len(rs)} respostas desse tipo",
+            "acerto sem negativas (8.7)": sem_neg}
 
 
 def _gabarito_original() -> dict:
