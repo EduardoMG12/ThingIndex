@@ -338,7 +338,7 @@ def origem_c1() -> dict[str, str]:
         # Secao 8.4, conferidas nas ancoras abaixo.
         # A correcao do sistema (pagina nos trechos) levou de 51 a 70; a
         # redefinicao da metrica (metadados do documento inteiro), de 70 a 155.
-        "origem C1 (resumo)": (f"Sim, em C1 (sem páginas): {completos} de {total}, "
+        "origem C1 (resumo)": (f"Sim, pelo esquema e pelos testes; em C1 (sem páginas), {completos} de {total}, "
                                f"{tipo['Metadado']} delas metadados"),
         "origem C1, correcao do sistema": (f"que deu coluna de página aos trechos, levou a {primeira + tipo['Trecho']}; "
                                            "a maior parte da diferença veio de ajustar a métrica"
@@ -419,6 +419,7 @@ def busca_da_bateria() -> dict[str, str]:
         "busca da bateria (tabela b)": (f"A página certa esteve entre as fontes em {_pct(ko / no)}\\% das respostas com página-alvo"),
         "busca com expansao (tabela b)": f"A expansão por LLM leva a página certa a {_pct(ke / ne)}\\%",
         "certas sem a pagina (8.7)": f"Em {sem_fonte} das {len(certas)} respostas certas com página-alvo, a página certa não estava entre as fontes",
+        "certas e conferiveis (8.7)": f"foram {len(certas) - sem_fonte} de {no} ({_pct((len(certas) - sem_fonte) / no)}\\%)",
         "certas sem a pagina (tabela c)": f"em {sem_fonte} das {len(certas)} respostas certas da bateria com página-alvo a página certa não estava entre as fontes",
     }
 
