@@ -418,7 +418,7 @@ def busca_da_bateria() -> dict[str, str]:
                                    "com a métrica corrigida depois da medição; Anexo~A8)"),
         "busca com expansao (8.9)": (f"a página certa passou a estar entre as fontes em {ke} de {ne} respostas com "
                                      f"página-alvo ({_pct(ke / ne)}\\%), contra {ko} ({_pct(ko / no)}\\%) sem ela"),
-        "busca da bateria (tabela b)": (f"A página certa esteve entre as fontes em {_pct(ko / no)}\\% das respostas com página-alvo"),
+        "busca da bateria (tabela b)": (f"Na bateria, a página certa esteve entre as fontes em {_pct(ko / no)}\\% das respostas com página-alvo"),
         "busca com expansao (tabela b)": f"A expansão por LLM leva a página certa a {_pct(ke / ne)}\\%",
         "certas sem a pagina (8.7)": f"Em {sem_fonte} das {len(certas)} respostas certas com página-alvo, a página certa não estava entre as fontes",
         "certas e conferiveis (8.7)": f"foram {len(certas) - sem_fonte} de {no} ({_pct((len(certas) - sem_fonte) / no)}\\%)",
