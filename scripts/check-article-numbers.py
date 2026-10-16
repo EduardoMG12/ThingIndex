@@ -112,7 +112,6 @@ def conferir_geracao(texto: str, apoio: str) -> int:
     # O teste de redacao com o gabarito original, citado na Secao 8.7 e na
     # tabela-resumo.
     antigo = redacao_com_gabarito_original()
-    p_antigo = _br(antigo[2]).replace(",", "{,}")
 
     esperados = {
         "tokens T": _milhar(g["T"]["todas"]["tokens"]),
@@ -120,21 +119,17 @@ def conferir_geracao(texto: str, apoio: str) -> int:
         "pagina exibida T em respostas": f"{prov_t['exibida']} de {prov_t['respostas']}",
         "pagina citada T": f"correta em {prov_t['prosa_com_folio']} de {prov_t['respostas']} respostas em T",
         "pagina citada F": f"{prov_f['prosa_com_folio']} de {prov_f['respostas']} em F",
-        "pagina citada F sem folio": f"F cairia para {prov_f['prosa']}",
         # Cada numero ancorado na frase em que aparece: um valor solto casaria
         # com qualquer outra ocorrencia (a banca mostrou que 0,685 -> 0,686
         # passava).
         "acerto da bateria (resumo)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\% com a pergunta original e de {_pct(taxa(e['total']))}\\% com expans",
-        "acerto da bateria (secao)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\%, com os tr",
+        "acerto da bateria (secao)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\%, cerca de 7 em cada 10 respostas (intervalo",
         "acerto da bateria (conclusao)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\% com a pergunta original, cerca de 7 em cada 10 respostas. As par",
         "acerto E (conclusao)": f"elevou o acerto a {_pct(taxa(e['total']))}\\%, em configura",
-        "faixa dos acervos": f"entre {_pct(min(taxa(c['tema'][t]) for t in c['tema']))}\\% e {_pct(max(taxa(c['tema'][t]) for t in c['tema']))}\\% e intervalos",
         "literal x parafrase C": f"o acerto foi {_pct(taxa(c['variante']['literal']))}\\% nas literais e {_pct(taxa(c['variante']['parafrase']))}\\% nas par",
-        "literal x parafrase C (discussao)": f"as paráfrases acertaram {_pct(taxa(c['variante']['parafrase']))}\\% contra {_pct(taxa(c['variante']['literal']))}\\% das literais",
         # A lacuna literal-parafrase e dita pelas duas taxas, sem e com expansao.
         "parafrase sem e com expansao": f"paráfrases subiu de {_pct(taxa(c['variante']['parafrase']))}\\% para {_pct(taxa(e['variante']['parafrase']))}\\%",
         "literal sem e com expansao": f"literais, que passou de {_pct(taxa(c['variante']['literal']))}\\% para {_pct(taxa(e['variante']['literal']))}\\%",
-        "parafrase E (discussao)": f"as paráfrases chegaram a {_pct(taxa(e['variante']['parafrase']))}\\%",
         "proveniencia C": _pct(taxa(c["prov"])),
         "literal E": _pct(taxa(e["variante"]["literal"])),
         "parafrase E": _pct(taxa(e["variante"]["parafrase"])),
@@ -152,12 +147,13 @@ def conferir_geracao(texto: str, apoio: str) -> int:
         "enriquecimento, fontes mudam": f"em {en['fontes_mudam']} das 12 perguntas",
         # Intervalo do total da bateria, na Secao 8.7 e na tabela-resumo.
         "ic C (8.7)": f"intervalo de 95\\% de {_pct(ic_c[0])}\\% a {_pct(ic_c[1])}\\%",
-        "ic C (resumo)": f"intervalo de 95\\%: {_pct(ic_c[0])}\\% a {_pct(ic_c[1])}\\%",
         "resumo acerto": f"{_pct(taxa(c['total']))}\\% das respostas, cerca de 7 em 10",
+        # O "pode ser acaso" do gabarito original so vale enquanto p >= 0,05.
         "resumo redacao": (f"{_pct(taxa(c['variante']['literal']))}\\% com as palavras do documento e "
-                           f"{_pct(taxa(c['variante']['parafrase']))}\\% com outras; com o gabarito revisado, "
-                           f"{ef['a_favor_literal']} pares a 0 (${p_texto(ef['p'])}$); com o original, "
-                           f"{antigo[0]} a {antigo[1]} ($p = {p_antigo}$)"),
+                           f"{_pct(taxa(c['variante']['parafrase']))}\\% com outras; "
+                           f"{ef['a_favor_literal']} pares a 0 com o gabarito revisado, mas "
+                           f"{antigo[0]} a {antigo[1]}, que pode ser acaso, com o gabarito original"
+                           if antigo[2] >= 0.05 and ef["p"] < 0.05 else "<teste da redacao mudou de conclusao>"),
         "resumo expansao": (f"de {_pct(taxa(c['total']))}\\% para {_pct(taxa(e['total']))}\\% no total, e as "
                             f"paráfrases chegam a {_pct(taxa(e['variante']['parafrase']))}\\%; "
                             f"{len(ex['ganhou'])} perguntas ganhas"),
@@ -200,7 +196,6 @@ def conferir_geracao(texto: str, apoio: str) -> int:
         certas = sum(all(v) for q, v in ng.por_pergunta("off", (tema,)).items())
         total_q = len(ng.por_pergunta("off", (tema,)))
         esperados[f"tabela bateria {tema}"] = linha(rot, _pct(k / n), f"{_pct(lo)}--{_pct(hi)}", f"{certas} de {total_q}")
-        esperados[f"ic {tema} (8.7)"] = f"de {_pct(lo)}\\% a {_pct(hi)}\\% em {NOMES_ACERVO[tema]}"
     esperados["tabela bateria total"] = linha(
         f"{'Total':<21}", _pct(taxa(c["total"])), f"{_pct(ic_c[0])}--{_pct(ic_c[1])}", f"{c['sempre_certa']} de 71")
     esperados["ic E (texto)"] = f"intervalo de {_pct(ic_e[0])}\\% a {_pct(ic_e[1])}\\%, contra {_pct(ic_c[0])}\\% a {_pct(ic_c[1])}\\% sem ela"
@@ -208,7 +203,9 @@ def conferir_geracao(texto: str, apoio: str) -> int:
                        ("aberta", "Aberta        "), ("premissa-falsa", "Premissa falsa")):
         k, n = c["forma"][forma]
         esperados[f"tabela forma {forma}"] = linha(f"{rot:<14}", f"{k}/{n}", _pct(k / n))
-    esperados["redacao, gabarito original"] = f"eram {antigo[0]} pares a favor da literal e {antigo[1]} a favor da paráfrase ($p = {p_antigo}$)"
+    esperados["redacao, gabarito original"] = (
+        f"eram {antigo[0]} pares a favor da literal e {antigo[1]} a favor da paráfrase, diferença que pode ser acaso"
+        if antigo[2] >= 0.05 else "<redacao com o gabarito original passou a ser significativa>")
     esperados["gpt-oss sem falhas de API"] = gpt_oss_sem_falhas()
     esperados.update(expansao_por_variante())
     esperados.update(acerto_por_pergunta_ensino())
@@ -237,13 +234,6 @@ NO_APOIO = {
     "tabela forma premissa-falsa",
 }
 
-NOMES_ACERVO = {
-    "seguranca-trabalho": "segurança do trabalho",
-    "produto": "produto e consumidor",
-    "licitacoes": "licitações",
-}
-
-
 def acerto_por_pergunta_ensino() -> dict[str, str]:
     """Acervo de ensino: perguntas certas nas tres repeticoes, T contra F
     (tabela-resumo e Conclusao). Pergunta certa e a que acertou em todas as
@@ -260,6 +250,10 @@ def acerto_por_pergunta_ensino() -> dict[str, str]:
         "ensino por pergunta (resumo)": f"com {kt} de {nt} perguntas certas contra {kf} de {nf}",
         "ensino por pergunta (conclusao)": f"({kt} de {nt} perguntas contra {kf} de {nf})",
     }
+
+
+# Contagens que o artigo escreve por extenso no inicio de frase.
+EXTENSO = {19: "Dezenove"}
 
 
 def origem_c1() -> dict[str, str]:
@@ -279,7 +273,7 @@ def origem_c1() -> dict[str, str]:
         "origem C1, versao atual": (f"Na versão atual, as {total} unidades indexadas de C1 têm a origem completa"
                                     if completos == total else "<nem todas as unidades de C1 tem origem completa>"),
         "origem C1, primeira medicao": f"A primeira medição deu {primeira} de {total}",
-        "origem C1, trechos": f"corrigir o esquema levou a {total - tipo['Metadado']} de {total}",
+        "origem C1, trechos": f"{EXTENSO.get(tipo['Trecho'], tipo['Trecho'])} unidades sem página eram um defeito de modelagem",
         "origem C1, metadados": f"As outras {tipo['Metadado']} não eram defeito",
     }
 

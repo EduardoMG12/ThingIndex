@@ -776,7 +776,75 @@ def a7_corpo() -> str:
              "busca por palavras, a pergunta escrita com outras palavras, que motivou a expansão da "
              "pergunta. E encontrou a falta da página na tabela de trechos, corrigida antes dos "
              "experimentos com PDFs reais.</p>")
+    c.append(a7_testes(p_doc, p_sec, holm, len(sig_doc), len(sig_sec)))
     return "".join(c)
+
+
+def _numeros_geracao():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("numeros_geracao",
+                                                  RAIZ / "scripts" / "numeros-geracao.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def pct_ic(x: float) -> str:
+    """Proporcao em %, como o artigo a publica: 3 casas, depois uma (0,8116 -> 81,2)."""
+    milesimos = Decimal(str(x)).quantize(Decimal("0.001"), rounding=ROUND_HALF_EVEN)
+    return str((milesimos * 100).quantize(Decimal("0.1"))).replace(".", ",")
+
+
+def p_simples(p: float) -> str:
+    return "menor que 0,001" if p < 0.001 else str(Decimal(str(p)).quantize(Decimal("0.001"))).replace(".", ",")
+
+
+def a7_testes(p_doc: str, p_sec: str, holm: str, n_doc: int, n_sec: int) -> str:
+    """Como os numeros do artigo foram testados: o detalhe estatistico que saiu
+    do corpo do artigo. Intervalos e valores-p recalculados dos CSV pelas
+    mesmas funcoes que o check-article-numbers.py usa."""
+    ng = _numeros_geracao()
+    temas = (("seguranca-trabalho", "segurança do trabalho"), ("produto", "produto e consumidor"),
+             ("licitacoes", "licitações"))
+    todos = tuple(t for t, _ in temas)
+    c, e = ng.bateria("off"), ng.bateria("on")
+    ef, ex = ng.efeito_formulacao(c), ng.efeito_expansao(c, e)
+    ic_c, ic_e = ng.ic_conglomerado("off", todos), ng.ic_conglomerado("on", todos)
+    perdas = "não perdeu nenhuma" if not ex["perdeu"] else f"perdeu {len(ex['perdeu'])}"
+    por_acervo = "; ".join(
+        f"{nome}, de {pct_ic(lo)}% a {pct_ic(hi)}%"
+        for (t, nome), (lo, hi) in ((x, ng.ic_conglomerado("off", (x[0],))) for x in temas))
+    return (
+        "<h2>Como os números do artigo foram testados</h2>"
+        "<p>Esta parte junta o detalhe estatístico que o artigo resume em uma frase, para o teste "
+        "de busca e para os demais experimentos.</p>"
+        "<p><strong>Duas condições nas mesmas perguntas.</strong> Para saber se uma diferença "
+        "pode ser acaso, usou-se o teste de McNemar exato. Ele olha só as perguntas em que as "
+        "duas condições discordam (uma acerta e a outra erra) e calcula a chance de as "
+        "discordâncias penderem tanto para um lado se as duas condições fossem iguais. Cada "
+        "pergunta entra uma vez: conta como certa só quando acertou nas três repetições. Na "
+        f"bateria, a redação da pergunta deu {ef['a_favor_literal']} pares a 0 a favor da versão "
+        f"com as palavras do documento (valor-p {p_simples(ef['p'])}), e a expansão da pergunta "
+        f"ganhou {len(ex['ganhou'])} perguntas e {perdas} (valor-p "
+        f"{p_simples(ex['p'])}). Os valores com o gabarito original estão no Anexo A8.</p>"
+        "<p><strong>Intervalos de confiança.</strong> O intervalo de 95% é a faixa em que o "
+        "acerto provavelmente ficaria com outras perguntas do mesmo tipo. Foi calculado sorteando "
+        "10.000 vezes, com reposição, novos conjuntos das mesmas perguntas (<em>bootstrap</em>), "
+        "com as três respostas de cada pergunta sorteadas juntas, porque elas não são "
+        "independentes. Na bateria, com a pergunta original, o acerto total ficou entre "
+        f"{pct_ic(ic_c[0])}% e {pct_ic(ic_c[1])}%; por acervo, {por_acervo}. As faixas dos três "
+        "acervos se sobrepõem, e por isso o artigo não diz que um foi mais fácil que outro. Com "
+        f"expansão, o total ficou entre {pct_ic(ic_e[0])}% e {pct_ic(ic_e[1])}%.</p>"
+        "<p><strong>Teste de busca (C1).</strong> Aqui nem todas as medidas são certo ou errado, "
+        "então usou-se o teste de aleatorização pareado: ele troca ao acaso, consulta a consulta, "
+        "os resultados dos dois métodos e verifica com que frequência surge uma diferença tão "
+        "grande quanto a real. Numa medida de certo ou errado, como o primeiro resultado, ele dá "
+        f"o mesmo valor-p que o McNemar exato. Foram {n_doc + n_sec} comparações ({n_doc} entre "
+        f"os textos inteiros e {n_sec} entre as seções). Quanto mais comparações, maior a chance "
+        "de alguma parecer real só por sorte; por isso aplicou-se, em cada grupo, a correção de "
+        "Holm, que exige valores-p menores quando há mais comparações. Já antes da correção "
+        f"nenhuma diferença ficou abaixo de 5% (menor valor-p de {p_doc} entre os textos e "
+        f"{p_sec} entre as seções; seção 3); depois dela, o menor foi {holm}.</p>")
 
 
 LEGENDA_DETALHES = [
