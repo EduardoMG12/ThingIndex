@@ -25,7 +25,7 @@ próprio PDF.
 
 Cada parte do documento (página, parágrafo, linha de tabela, seção do sumário) é uma linha
 de tabela no PostgreSQL, ligada ao documento por chave estrangeira e com a página de origem.
-A busca é por palavras (BM25), sem banco vetorial. O LLM só entra no fim, para redigir a
+A busca é por palavras (BM25), sem banco vetorial. Na pergunta, o LLM só entra no fim, para redigir a
 resposta a partir das fontes que a busca escolheu. Por isso a página mostrada ao usuário vem
 do banco, e não do texto escrito pelo modelo.
 
@@ -145,7 +145,7 @@ flowchart LR
     L --> T(["Tela abre cada fonte no PDF<br/>com o parágrafo destacado"])
 ```
 
-O modelo não escolhe as fontes: elas vêm da busca e do banco antes de ele escrever.
+O modelo não escolhe as fontes: elas vêm da busca e do banco antes de ele escrever. Na configuração padrão, ele só influencia a busca pelos resumos que gerou na indexação.
 
 ```mermaid
 flowchart LR

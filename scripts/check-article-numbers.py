@@ -343,9 +343,8 @@ def origem_c1() -> dict[str, str]:
         # redefinicao da metrica (metadados do documento inteiro), de 70 a 155.
         "origem C1 (resumo)": (f"Sim: o documento é exigido pelo esquema, e a página, gravada na indexação; em C1 (sem páginas), {completos} de {total}, "
                                f"{tipo['Metadado']} delas metadados"),
-        "origem C1, correcao do sistema": (f"que deu coluna de página aos trechos, levou a {primeira + tipo['Trecho']}; "
-                                           "a maior parte da diferença veio de ajustar a métrica"
-                                           if tipo["Metadado"] > tipo["Trecho"] else "<a correcao do sistema passou a ser a maior parte>"),
+        "origem C1, correcao do sistema": (f"Dar coluna de página aos trechos levou a {primeira + tipo['Trecho']}. "
+                                           f"As outras {tipo['Metadado']} vieram de ajustar a métrica"),
         "origem C1, versao atual": (f"Na versão atual, as {total} unidades indexadas de C1 têm a origem completa"
                                     if completos == total else "<nem todas as unidades de C1 tem origem completa>"),
         "origem C1, primeira medicao": f"A primeira medição deu {primeira} de {total}",
