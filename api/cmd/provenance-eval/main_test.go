@@ -29,8 +29,6 @@ const (
 	tcvC1       = 1.000
 	// paragraph, page, outline, chunk e metadata.
 	tiposCompletos = 5
-	// Nenhum tipo incompleto.
-	tiposIncompletos = 0
 )
 
 // Todo tipo estrutural tem de estar completo; antes de 2026-09-19 este teste

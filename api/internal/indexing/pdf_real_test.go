@@ -21,7 +21,6 @@ const diretorioDePDFs = "../usecase/testdata/indexing-benchmark"
 
 type expectativaDePDF struct {
 	arquivo    string
-	paginas    int
 	nosMinimos int
 	// Trechos do CORPO das paginas.
 	trechosNoTexto []string
