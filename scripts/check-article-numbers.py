@@ -128,7 +128,7 @@ def conferir_geracao(texto: str, apoio: str) -> int:
         # Cada numero ancorado na frase em que aparece: um valor solto casaria
         # com qualquer outra ocorrencia (a banca mostrou que 0,685 -> 0,686
         # passava).
-        "acerto da bateria (resumo)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\% com a pergunta original. Com a expans",
+        "acerto da bateria (resumo)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\% com a pergunta original; em",
         "acerto E (resumo)": f"antes da busca, chegou a {_pct(taxa(e['total']))}\\%; o recurso",
         "acerto da bateria (secao)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\%, cerca de 7 em cada 10 respostas",
         "acerto da bateria (conclusao)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\% com a pergunta original. As par",
