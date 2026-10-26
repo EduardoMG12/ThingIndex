@@ -442,7 +442,7 @@ func (u *documentCatalogUseCase) UploadDocument(ctx context.Context, userID uint
 		AvailableAt: now,
 	}
 
-	auditEvent := buildDocumentAuditEvent(ctx, doc, "DOCUMENT_UPLOAD", "SUCCESS", "Documento enviado com sucesso e reenfileirado para indexacao.", map[string]any{
+	auditEvent := buildDocumentAuditEvent(ctx, doc, "DOCUMENT_UPLOAD", "SUCCESS", "Documento enviado com sucesso e reenfileirado para indexação.", map[string]any{
 		"file_url":         fileURL,
 		"mime_type":        resolvedContentType,
 		"size_bytes":       size,

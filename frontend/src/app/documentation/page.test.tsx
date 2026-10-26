@@ -387,6 +387,6 @@ describe("DocumentationPage", () => {
         expect(screen.getAllByText("Contrato Mestre de Serviços").length).toBeGreaterThan(0);
         expect(screen.getByText("prazo de pagamento recebimento da fatura")).toBeInTheDocument();
         expect(screen.getByText("Árvore documental")).toBeInTheDocument();
-        expect(screen.getByText("Pronto para o runtime principal com configuração padrão direta da OpenAI, teste de conexão, descoberta de modelos e chat/indexação grounded.")).toBeInTheDocument();
+        expect(screen.getByText("Pronto para o sistema principal com configuração padrão direta da OpenAI, teste de conexão, descoberta de modelos e chat/indexação grounded.")).toBeInTheDocument();
     });
 });
