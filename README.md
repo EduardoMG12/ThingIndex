@@ -65,7 +65,7 @@ do banco, e não do texto escrito pelo modelo.
     <img src="assets/readme/artigo.png" alt="Primeiras páginas do artigo" width="900" />
   </a>
   <br/>
-  <a href="docs/article/ThingIndex-artigo.pdf"><b>📄 Abrir o artigo completo (PDF, 28 páginas)</b></a>
+  <a href="docs/article/ThingIndex-artigo.pdf"><b>📄 Abrir o artigo completo (PDF, 29 páginas)</b></a>
 </p>
 
 O trabalho segue a *Design Science Research*: o ThingIndex foi construído e avaliado em sete
