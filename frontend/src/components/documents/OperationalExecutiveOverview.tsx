@@ -9,6 +9,7 @@ import type {
     DocumentOperationalFilter,
     DocumentOperationalOverview,
 } from "@/lib/document-observability";
+import { formatDateTime } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/provider";
 
 type OperationalExecutiveOverviewProps = {
@@ -244,15 +245,4 @@ function renderHealthIcon(health: "nominal" | "attention" | "critical") {
         default:
             return <ShieldCheck className="h-4 w-4" />;
     }
-}
-
-function formatDateTime(value: string | undefined, locale: string) {
-    if (!value) {
-        return "-";
-    }
-
-    return new Intl.DateTimeFormat(locale, {
-        dateStyle: "short",
-        timeStyle: "short",
-    }).format(new Date(value));
 }

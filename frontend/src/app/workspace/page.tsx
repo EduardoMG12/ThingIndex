@@ -16,7 +16,6 @@ import { WorkspaceCanvas, type WorkspaceCanvasHandle } from "@/components/worksp
 import { fetchCollections } from "@/lib/api/collections";
 import { useContextoDaColecao } from "@/hooks/use-contexto-da-colecao";
 import type {
-    CollectionContext,
     CollectionSummary,
 } from "@/lib/api/contracts/document-context";
 

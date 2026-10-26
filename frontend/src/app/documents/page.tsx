@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDocumentStatus } from "@/lib/documents/status";
+import { formatNonNegativeUSD } from "@/lib/format";
 
 import AppShell from "@/components/layout/AppShell";
 import ProviderRuntimeCallout from "@/components/runtime/ProviderRuntimeCallout";
@@ -98,23 +99,6 @@ function formatDuration(durationMs: number) {
         return `${(durationMs / 1000).toFixed(1)} s`;
     }
     return `${(durationMs / 60_000).toFixed(1)} min`;
-}
-
-function formatUSD(value: number, locale: string) {
-    if (!value || value <= 0) {
-        return new Intl.NumberFormat(locale, {
-            style: "currency",
-            currency: "USD",
-            minimumFractionDigits: 6,
-            maximumFractionDigits: 6,
-        }).format(0);
-    }
-    return new Intl.NumberFormat(locale, {
-        style: "currency",
-        currency: "USD",
-        minimumFractionDigits: 6,
-        maximumFractionDigits: 6,
-    }).format(value);
 }
 
 function formatMonitoringTreeStateLabel(treeState: string | undefined, t: TranslateFn) {
@@ -337,7 +321,7 @@ function MonitoringView({
                         {t("documentsPage.monitoring.estimatedCost")}
                     </div>
                     <p className="mt-3 text-lg font-semibold">
-                        {llm?.pricing_available ? formatUSD(llm.total_cost_usd, locale) : t("documentsPage.monitoring.unavailable")}
+                        {llm?.pricing_available ? formatNonNegativeUSD(llm.total_cost_usd, locale) : t("documentsPage.monitoring.unavailable")}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                         {llm?.pricing_available
@@ -377,8 +361,8 @@ function MonitoringView({
                         <p><span className="text-muted-foreground">{t("documentsPage.monitoring.inputTokens")}:</span> <span className="font-mono">{llm?.estimated_input_tokens ?? 0}</span></p>
                         <p><span className="text-muted-foreground">{t("documentsPage.monitoring.outputTokens")}:</span> <span className="font-mono">{llm?.estimated_output_tokens ?? 0}</span></p>
                         <p><span className="text-muted-foreground">{t("documentsPage.monitoring.totalTokens")}:</span> <span className="font-mono">{llm?.estimated_total_tokens ?? 0}</span></p>
-                        <p><span className="text-muted-foreground">{t("documentsPage.monitoring.inputCost")}:</span> <span className="font-mono">{llm?.pricing_available ? formatUSD(llm.input_cost_usd, locale) : t("documentsPage.summary.costNotReported")}</span></p>
-                        <p><span className="text-muted-foreground">{t("documentsPage.monitoring.outputCost")}:</span> <span className="font-mono">{llm?.pricing_available ? formatUSD(llm.output_cost_usd, locale) : t("documentsPage.summary.costNotReported")}</span></p>
+                        <p><span className="text-muted-foreground">{t("documentsPage.monitoring.inputCost")}:</span> <span className="font-mono">{llm?.pricing_available ? formatNonNegativeUSD(llm.input_cost_usd, locale) : t("documentsPage.summary.costNotReported")}</span></p>
+                        <p><span className="text-muted-foreground">{t("documentsPage.monitoring.outputCost")}:</span> <span className="font-mono">{llm?.pricing_available ? formatNonNegativeUSD(llm.output_cost_usd, locale) : t("documentsPage.summary.costNotReported")}</span></p>
                     </div>
                 </div>
             </div>
@@ -502,7 +486,7 @@ function MonitoringSummaryPanel({
                                     <p className="mt-1 font-mono text-[11px] text-foreground/85">
                                         {t("documentsPage.summary.modelBreakdownCost", {
                                             tokens: item.total_tokens.toLocaleString(locale),
-                                            cost: formatUSD(item.total_cost_usd, locale),
+                                            cost: formatNonNegativeUSD(item.total_cost_usd, locale),
                                         })}
                                     </p>
                                 </div>
@@ -1337,7 +1321,6 @@ export default function DocumentsPage() {
                             </div>
 
                         </div>
-
 
                         {/* O callout de runtime ja fica no topo da pagina. */}
                         <TabsContent value="operations" className="mt-0 space-y-6">

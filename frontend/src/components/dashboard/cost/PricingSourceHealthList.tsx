@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, Clock3, PowerOff, Settings2 } from "lucide
 
 import type { CostVisibilitySourceStatus, PricingSourceHealth } from "@/lib/cost-visibility";
 import { useI18n } from "@/lib/i18n/provider";
+import { formatDateTime } from "@/lib/format";
 
 export function PricingSourceHealthList({
     sources,
@@ -95,11 +96,4 @@ function renderSourceIcon(health: PricingSourceHealth) {
         default:
             return <PowerOff className="h-4 w-4 text-muted-foreground" />;
     }
-}
-
-function formatDateTime(value: string, locale: string) {
-    return new Intl.DateTimeFormat(locale, {
-        dateStyle: "short",
-        timeStyle: "short",
-    }).format(new Date(value));
 }

@@ -180,7 +180,7 @@ export function ChatMessageCard({
 }
 
 /** Fonte de indice antigo: o documento foi reindexado depois da data gravada na fonte. */
-export function fonteDeIndiceAntigo(source: Source, indexadoEm?: ReadonlyMap<number, string>): boolean {
+function fonteDeIndiceAntigo(source: Source, indexadoEm?: ReadonlyMap<number, string>): boolean {
     if (!source.documentId || !source.indexedAt || !indexadoEm) {
         return false;
     }

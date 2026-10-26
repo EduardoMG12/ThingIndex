@@ -5,6 +5,7 @@ import { ArrowRight, ShieldCheck, TriangleAlert, Wrench } from "lucide-react";
 
 import type { CostVisibilityHealth, CostVisibilityOverview } from "@/lib/cost-visibility";
 import { useI18n } from "@/lib/i18n/provider";
+import { formatUSD } from "@/lib/format";
 
 type CostExecutiveSummaryProps = {
     overview: CostVisibilityOverview;
@@ -169,13 +170,4 @@ function renderHealthIcon(health: CostVisibilityHealth) {
         default:
             return <Wrench className="h-4 w-4" />;
     }
-}
-
-function formatUSD(value: number, locale: string) {
-    return new Intl.NumberFormat(locale, {
-        style: "currency",
-        currency: "USD",
-        minimumFractionDigits: 6,
-        maximumFractionDigits: 6,
-    }).format(value);
 }

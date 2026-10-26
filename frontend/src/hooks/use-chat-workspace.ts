@@ -293,7 +293,7 @@ export function useChatWorkspace(opcoes: { collectionId?: number | null } = {}) 
         setStreamError(null);
         previousMessageCountRef.current = 0;
         hideStreamingCard();
-    }, [hideStreamingCard, stopDeltaFlush]);
+    }, [hideStreamingCard, setStreamMessageId, stopDeltaFlush]);
 
     useEffect(() => {
         const viewport = scrollAreaRef.current?.querySelector("[data-radix-scroll-area-viewport]");
