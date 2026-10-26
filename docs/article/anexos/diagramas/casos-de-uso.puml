@@ -24,10 +24,12 @@ rectangle "ThingIndex" {
     usecase "Perguntar à coleção\n(chat com fontes)" as UC8
     usecase "Abrir a fonte na página\ne na região do PDF" as UC9
     usecase "Grifar e anotar\nno workspace" as UC10
+    usecase "Obter o conteúdo\nindexado por API" as UC11
   }
   package "Operação" {
     usecase "Configurar provedores\n(credencial cifrada)" as UC12
     usecase "Acompanhar indexação\ne consumo de tokens" as UC13
+    usecase "Consultar o histórico\nde ações (auditoria)" as UC16
   }
   package "Indexação assíncrona" {
     usecase "Indexar documento\n(páginas, parágrafos,\ntabelas, seções)" as UC14
@@ -42,8 +44,10 @@ U --> UC6
 U --> UC7
 U --> UC8
 U --> UC10
+U --> UC11
 U --> UC12
 U --> UC13
+U --> UC16
 
 UC8 ..> UC9 : <<extend>>
 UC5 ..> UC14 : <<include>>
