@@ -20,7 +20,6 @@ type processingRepoStub struct {
 	attempts      []models.DocumentProcessingAttempt
 	replaceCalls  int
 	replaceErr    error
-	results       []domain.IndexingResult
 
 	reapCutoffs []time.Time
 	reapCount   int64

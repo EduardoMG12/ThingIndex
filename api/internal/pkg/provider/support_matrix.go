@@ -268,17 +268,6 @@ func ListProviderSupportMatrix(family string) []domain.ProviderSupportEntry {
 	return items
 }
 
-func LookupProviderSupport(providerType string) (domain.ProviderSupportEntry, bool) {
-	normalized := strings.ToUpper(strings.TrimSpace(providerType))
-	for _, item := range ListProviderSupportMatrix("") {
-		if item.ProviderType == normalized {
-			return item, true
-		}
-	}
-
-	return domain.ProviderSupportEntry{}, false
-}
-
 func buildStorageSupportEntries() []domain.ProviderSupportEntry {
 	items := make([]domain.ProviderSupportEntry, 0, len(storageProviderSupportSeeds))
 	for providerType, seed := range storageProviderSupportSeeds {

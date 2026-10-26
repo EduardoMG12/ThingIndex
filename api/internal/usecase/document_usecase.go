@@ -400,7 +400,7 @@ func (u *documentCatalogUseCase) UploadDocument(ctx context.Context, userID uint
 	case providerErr == nil:
 		storageClient = userStorage
 	case errors.Is(providerErr, domain.ErrStorageProviderNotConfigured):
-		// Use the application storage only when the user has not configured a custom storage backend.
+		// Sem armazenamento proprio configurado, usa o armazenamento da aplicacao.
 	default:
 		return nil, providerErr
 	}
