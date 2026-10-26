@@ -58,3 +58,7 @@ api/tmp/
 .mcp.json
 .claude/settings.local.json
 .specify/feature.json
+
+# Ferramentas de agente de codigo (locais, fora do repositorio).
+.claude/
+.specify/
