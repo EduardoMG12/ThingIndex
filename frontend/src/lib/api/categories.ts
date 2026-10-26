@@ -56,31 +56,3 @@ export async function createCategory(name: string): Promise<Category> {
 
     return payload.data;
 }
-
-export async function updateCategory(
-    id: number,
-    input: {
-        name?: string;
-        description?: string;
-    }
-): Promise<Category> {
-    const response = await fetchWithAuthRedirect(`/api/categories/${id}`, {
-        method: "PATCH",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify(input),
-    });
-
-    const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<Category> | ApiErrorResponse | null;
-
-    if (!response.ok) {
-        throw new Error(payload?.message || apiErrorMessage("categories.update"));
-    }
-
-    if (!hasResponseData(payload) || !payload.data) {
-        throw new Error(apiErrorMessage("categories.updateInvalid"));
-    }
-
-    return payload.data;
-}

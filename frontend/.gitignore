@@ -45,3 +45,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Gerado pelo next dev a cada execucao (instrucoes para agentes de codigo).
+AGENTS.md
