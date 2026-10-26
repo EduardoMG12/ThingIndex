@@ -668,7 +668,7 @@ def _gabarito_original() -> dict:
 
 def redacao_com_gabarito_original() -> tuple[int, int, float]:
     """Pares a favor da literal, da parafrase e p exato com o gabarito
-    original (10f4846^), recorrigindo as respostas gravadas hoje nos CSV da
+    original (54a4d70^), recorrigindo as respostas gravadas hoje nos CSV da
     expansao (scripts/redacao-gabarito-original.py). Nao usa a coluna
     `correct` de CSV antigo nem docs/article/results/resumo-bateria.md, que
     saiu do criterio com bug (so a ultima repeticao)."""

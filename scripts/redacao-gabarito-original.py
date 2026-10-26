@@ -8,7 +8,7 @@ na primeira medicao (81,7% sem expansao), antes das revisoes v4 a v7
 
 Este script nao confia na coluna `correct` de CSV antigo: ele recorrige as
 respostas gravadas HOJE em docs/article/results/expansao/{off,on}-*.csv com
-o gabarito lido do git no commit anterior a revisao v4 (10f4846^), pela
+o gabarito lido do git no commit anterior a revisao v4 (54a4d70^), pela
 mesma regra de api/cmd/generation-eval/metrics.go (texto dobrado em caixa e
 acento; todas as answer_patterns casam, nenhuma reject_pattern casa; linha
 com erro de API conta como errada) -- a funcao `correta` de
@@ -21,7 +21,7 @@ como certa quando acerta nas tres repeticoes. Teste: McNemar exato
 Uma nota sobre docs/article/results/resumo-bateria.md: ele lista 9 pares
 so-literal e 1 so-parafrase porque foi gerado pela versao antiga de
 scripts/resumo-bateria.py, que guardava so a ULTIMA repeticao de cada
-pergunta (bug corrigido em cb5a373). `--ultima-repeticao` reproduz aquela
+pergunta (bug corrigido em d718081). `--ultima-repeticao` reproduz aquela
 saida.
 
 Uso: python3 scripts/redacao-gabarito-original.py [--ultima-repeticao]
@@ -39,8 +39,8 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 RES = RAIZ / "docs" / "article" / "results" / "expansao"
 TEMAS = ("seguranca-trabalho", "produto", "licitacoes")
-# Ultimo commit antes da revisao v4 dos gabaritos das baterias (10f4846).
-REV_ORIGINAL = "10f4846^"
+# Ultimo commit antes da revisao v4 dos gabaritos das baterias (54a4d70).
+REV_ORIGINAL = "54a4d70^"
 
 
 def _correta():

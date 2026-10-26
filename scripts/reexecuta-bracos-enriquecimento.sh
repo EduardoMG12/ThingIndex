@@ -36,7 +36,7 @@ go build -o "$BIN" ./cmd/api
 # O gabarito do pre-registro e o de 12 perguntas, congelado no commit do
 # resultado; a versao atual do arquivo tem 23 e responde outra pergunta.
 GABARITO="$(mktemp)"
-git -C "$RAIZ" show 7f50f71:api/internal/evalcorpus/testdata/gabarito-seguranca-trabalho.json > "$GABARITO"
+git -C "$RAIZ" show f8813af:api/internal/evalcorpus/testdata/gabarito-seguranca-trabalho.json > "$GABARITO"
 trap 'rm -f "$BIN" "$GABARITO"' EXIT
 
 for braco in content content+summary content+questions "max(content,questions)"; do
