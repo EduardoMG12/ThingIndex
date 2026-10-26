@@ -341,7 +341,7 @@ def origem_c1() -> dict[str, str]:
         # Secao 8.4, conferidas nas ancoras abaixo.
         # A correcao do sistema (pagina nos trechos) levou de 51 a 70; a
         # redefinicao da metrica (metadados do documento inteiro), de 70 a 155.
-        "origem C1 (resumo)": (f"Sim, pelo esquema e pelos testes; em C1 (sem páginas), {completos} de {total}, "
+        "origem C1 (resumo)": (f"Sim: o documento é exigido pelo esquema, e a página, gravada na indexação; em C1 (sem páginas), {completos} de {total}, "
                                f"{tipo['Metadado']} delas metadados"),
         "origem C1, correcao do sistema": (f"que deu coluna de página aos trechos, levou a {primeira + tipo['Trecho']}; "
                                            "a maior parte da diferença veio de ajustar a métrica"
@@ -452,7 +452,7 @@ def sim_constante() -> dict[str, str]:
             acerta += ok
     if acerta != total:
         return {"Sim. constante": f"<Sim. acerta {acerta} de {total} perguntas de existencia>"}
-    return {"Sim. constante": f"a resposta fixa ``Sim.'' ainda acertaria as {total} perguntas de existência, cuja resposta certa é sempre sim"}
+    return {"Sim. constante": f"Nas {total} perguntas de existência, a resposta certa é sempre ``sim''"}
 
 
 def enriquecimento_repeticoes() -> dict[str, str]:
@@ -654,7 +654,7 @@ def existencia_acerto() -> dict[str, str]:
     kc = sum(r["correct"] == "true" for r in com)
     sem_neg = (f"Sem as {len(neg)} respostas negativas, todas certas, o acerto com a pergunta original foi de {_pct(kc / len(com))}\\% ({kc} de {len(com)})"
                if all(r["correct"] == "true" for r in neg) else "<negativas da bateria deixaram de acertar todas>")
-    return {"existencia, acerto do sistema (8.7)": f"e o sistema acertou {k} das {len(rs)} respostas desse tipo",
+    return {"existencia, acerto do sistema (8.7)": f"Responder ``Sim.'' a todas acertaria as {len(rs)} respostas desse tipo; o sistema acertou {k}",
             "acerto sem negativas (8.7)": sem_neg}
 
 
