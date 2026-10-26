@@ -1,6 +1,6 @@
 module thing-index
 
-go 1.26.6
+go 1.26.10
 
 require (
 	cloud.google.com/go/storage v1.61.3
