@@ -112,7 +112,7 @@ jobs:
     runs-on: ubuntu-latest
     # O download do modelo da SBC e o apt ja travaram sem timeout; o job
     # normal leva uns 3 minutos.
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
         with:
@@ -150,8 +150,17 @@ jobs:
       # indefinida antes da entrega.
       - name: artigo compila com pdflatex e o modelo da SBC
         run: |
-          timeout 300 sudo apt-get update -qq -o Acquire::Retries=3
-          timeout 600 sudo apt-get install -y -qq -o Acquire::Retries=3 texlive-latex-recommended texlive-latex-extra texlive-lang-portuguese texlive-fonts-recommended > /dev/null
+          # Ate tres tentativas: o espelho do apt as vezes trava no meio do download.
+          for tentativa in 1 2 3; do
+            if timeout 300 sudo apt-get update -qq -o Acquire::Retries=3 \
+              && timeout 420 sudo apt-get install -y -qq --no-install-recommends -o Acquire::Retries=3 \
+                   texlive-latex-recommended texlive-latex-extra texlive-lang-portuguese texlive-fonts-recommended > /dev/null; then
+              break
+            fi
+            echo "instalacao do LaTeX falhou (tentativa $tentativa)"
+            [ "$tentativa" -eq 3 ] && exit 1
+            sleep 15
+          done
           cd docs/article
           curl -fsSL --retry 4 --retry-delay 10 --retry-all-errors --connect-timeout 20 --max-time 120 \
             -o /tmp/sbc.zip https://www.sbc.org.br/wp-content/uploads/2024/07/modelosparapublicaodeartigos.zip

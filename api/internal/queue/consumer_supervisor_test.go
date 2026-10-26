@@ -3,6 +3,8 @@ package queue
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -166,6 +168,15 @@ func TestSupervisorReconectaEmFalhaDeConexao(t *testing.T) {
 		{"conexao nao esta aberta", errors.New(`consume queue: Exception (504) Reason: "channel/connection is not open"`)},
 		{"broker inalcancavel", errors.New("dial rabbitmq: dial tcp 172.29.0.5:5672: connect: connection refused")},
 		{"dns do broker sumiu", errors.New("dial rabbitmq: lookup rabbitmq: no such host")},
+		// Com o contêiner parado, o DNS interno do Docker responde SERVFAIL, e o
+		// erro chega assim; foi o que reiniciou o indexer no teste de caos.
+		{"dns do docker sem resposta", fmt.Errorf("dial rabbitmq: %w", &net.OpError{
+			Op: "dial", Net: "tcp",
+			Err: &net.DNSError{Err: "server misbehaving", Name: "rabbitmq", Server: "127.0.0.11:53"},
+		})},
+		{"qualquer erro de rede no dial", fmt.Errorf("dial rabbitmq: %w", &net.OpError{
+			Op: "dial", Net: "tcp", Err: errors.New("network is unreachable"),
+		})},
 	}
 
 	for _, caso := range casos {

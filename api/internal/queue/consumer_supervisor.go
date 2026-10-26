@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net"
 	"strings"
 	"time"
 )
@@ -25,9 +26,16 @@ func NewConsumerSupervisor(consumir func(context.Context) error, espera time.Dur
 
 // Depois da queda, a tentativa seguinte falha com erro de dial ou
 // "channel/connection is not open", nao com ErrDeliveriesChannelClosed.
-// Comparacao por texto porque os erros vem do amqp e do pacote net.
+// Erro de rede do pacote net (dial, DNS) e reconhecido pelo tipo; os do amqp
+// so trazem texto, entao o resto e comparado pela mensagem.
 func erroDeConexaoTransitoria(err error) bool {
 	if errors.Is(err, ErrDeliveriesChannelClosed) {
+		return true
+	}
+
+	var erroDeRede *net.OpError
+	var erroDeDNS *net.DNSError
+	if errors.As(err, &erroDeRede) || errors.As(err, &erroDeDNS) {
 		return true
 	}
 
