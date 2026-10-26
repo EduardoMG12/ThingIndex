@@ -69,7 +69,7 @@ export function deslocar(viewport: Viewport, deltaTela: Ponto): Viewport {
     return { ...viewport, x: viewport.x + deltaTela.x, y: viewport.y + deltaTela.y };
 }
 
-export function uniaoDeRects(rects: Rect[]): Rect | null {
+function uniaoDeRects(rects: Rect[]): Rect | null {
     if (rects.length === 0) {
         return null;
     }

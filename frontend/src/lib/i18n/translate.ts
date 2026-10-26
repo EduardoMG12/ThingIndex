@@ -9,7 +9,7 @@ import { getMessages, type TranslationTree, type TranslationValue } from "@/lib/
 
 export type TranslationVariables = Record<string, string | number | boolean>;
 
-export function getTranslationValue(messages: TranslationTree, key: string): TranslationValue | undefined {
+function getTranslationValue(messages: TranslationTree, key: string): TranslationValue | undefined {
     return key.split(".").reduce<TranslationValue | undefined>((acc, part) => {
         if (!acc || typeof acc === "string") {
             return undefined;
@@ -55,7 +55,7 @@ function readLocaleCookie() {
     return localeCookie ? localeCookie.slice(`${LOCALE_COOKIE_NAME}=`.length) : undefined;
 }
 
-export function resolveRuntimeLocale(): AppLocale {
+function resolveRuntimeLocale(): AppLocale {
     if (typeof window !== "undefined") {
         const pathnameLocale = getLocaleFromPathname(window.location.pathname);
         if (pathnameLocale) {

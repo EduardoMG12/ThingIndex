@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
 import {
-    DEFAULT_LOCALE,
     localizePath,
     SUPPORTED_LOCALES,
     type AppLocale,
@@ -51,14 +50,4 @@ export function buildLocalizedMetadata(locale: AppLocale, page: PageKey, pathnam
         },
         metadataBase: new URL(siteUrl),
     };
-}
-
-export function buildAlternateLinks(pathname: string) {
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://thingindex.app";
-
-    return Object.fromEntries(
-        SUPPORTED_LOCALES.map((locale) => [locale, `${siteUrl}${localizePath(pathname, locale)}`]).concat([
-            ["x-default", `${siteUrl}${localizePath(pathname, DEFAULT_LOCALE)}`],
-        ])
-    );
 }

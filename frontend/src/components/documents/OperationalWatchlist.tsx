@@ -5,6 +5,7 @@ import { Loader2, RotateCw, Siren } from "lucide-react";
 import type { Document } from "@/lib/api/documents";
 import type { DocumentOperationalHighlight } from "@/lib/document-observability";
 import { getDocumentOperationalIssue } from "@/lib/document-state";
+import { formatDateTime } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/provider";
 
 type OperationalWatchlistProps = {
@@ -125,15 +126,4 @@ function buildIssueTone(kind: DocumentOperationalHighlight["kind"]) {
         default:
             return "border-border bg-card/70";
     }
-}
-
-function formatDateTime(value: string | undefined, locale: string) {
-    if (!value) {
-        return "-";
-    }
-
-    return new Intl.DateTimeFormat(locale, {
-        dateStyle: "short",
-        timeStyle: "short",
-    }).format(new Date(value));
 }

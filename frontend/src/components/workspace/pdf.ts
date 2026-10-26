@@ -18,11 +18,11 @@ type Entrada = {
 let biblioteca: Promise<typeof import("pdfjs-dist/legacy/build/pdf.mjs")> | null = null;
 const abertos = new Map<number, Entrada>();
 
-export function urlDePreview(documentId: number): string {
+function urlDePreview(documentId: number): string {
     return `/api/documents/${documentId}/preview`;
 }
 
-export function carregarPdfjs(): Promise<typeof import("pdfjs-dist/legacy/build/pdf.mjs")> {
+function carregarPdfjs(): Promise<typeof import("pdfjs-dist/legacy/build/pdf.mjs")> {
     if (!biblioteca) {
         biblioteca = import("pdfjs-dist/legacy/build/pdf.mjs").then((modulo) => {
             if (!modulo.GlobalWorkerOptions.workerSrc) {

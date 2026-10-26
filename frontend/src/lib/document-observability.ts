@@ -238,7 +238,7 @@ export function createDocumentOperationalOverview(documents: Document[], now = n
     };
 }
 
-export function getDocumentOperationalFilterForKind(kind: DocumentOperationalKind): DocumentOperationalFilter {
+function getDocumentOperationalFilterForKind(kind: DocumentOperationalKind): DocumentOperationalFilter {
     switch (kind) {
         case "orphaned":
         case "dlq":
