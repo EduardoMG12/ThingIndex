@@ -1,5 +1,14 @@
 # ThingIndex Security Checklist
 
+## Reporting a vulnerability
+
+Please do not open a public issue for security problems. Use GitHub's
+private vulnerability reporting instead (Security tab → "Report a
+vulnerability"), with the affected version, steps to reproduce and the
+impact you observed. Reports are acknowledged within 7 days. Only the
+latest commit on `main` receives fixes.
+
+
 Status: current runtime review for the mainline repository.  
 Scope: application-level controls, abuse cases and operator-facing hardening.  
 This file documents what is already enforced, what is covered by tests, and what is still explicitly out of scope.

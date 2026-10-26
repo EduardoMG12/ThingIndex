@@ -10,6 +10,10 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# O repositorio e publico: o token do workflow so precisa ler o codigo.
+permissions:
+  contents: read
+
 jobs:
   backend:
     name: backend (go)
@@ -52,6 +56,12 @@ jobs:
       - name: go test
         working-directory: api
         run: go test ./...
+
+      # Falha se alguma dependencia tiver vulnerabilidade conhecida que o
+      # codigo realmente alcanca (nao basta estar no go.sum).
+      - name: govulncheck
+        working-directory: api
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
       # O artigo afirma ter "cobertura de testes automatizados" e nao havia
       # -coverprofile em lugar nenhum: nao existia percentual publicavel.
@@ -429,6 +439,14 @@ jobs:
       - name: testes unitarios
         working-directory: frontend
         run: pnpm run test:unit
+
+      - name: dependencias sem vulnerabilidade alta
+        working-directory: frontend
+        run: pnpm audit --prod --audit-level=high
+
+      - name: build de producao
+        working-directory: frontend
+        run: pnpm run build
 
       - name: instalar chromium do playwright
         working-directory: frontend

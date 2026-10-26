@@ -19,7 +19,8 @@ useDefault = true
 [allowlist]
 description = "fixtures de teste e defaults de desenvolvimento, conferidos"
 paths = [
-  '''_test\.go$''',
+  '''^api/internal/usecase/provider_usecase_test\.go$''',
+  '''^api/internal/usecase/provider_erro_credencial_test\.go$''',
   '''^\.env\.example$''',
 ]
 regexes = [
