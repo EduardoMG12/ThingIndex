@@ -261,7 +261,7 @@ def conferir_geracao(texto: str, apoio: str) -> int:
 # contra o CSV, mas no arquivo de apoio. (O detalhe de C1 e as correcoes de
 # gabarito tambem estao nos anexos A7 e A8.)
 NO_APOIO = {
-    "tokens T", "tokens F", "tokens C", "tokens E", "ic E (texto)", "expansao por variante",
+    "tokens T", "tokens F", "pagina citada sem folio (8.5)", "tokens, mediana com negativas (8.5)", "acerto sem negativas (8.7)", "tokens C", "tokens E", "ic E (texto)", "expansao por variante",
     "tabela expansao pagina", "tabela expansao tokens",
     "tabela geracao prosa", "tabela geracao tabela", "tabela geracao calendario", "tabela geracao todas",
     "tabela bateria seguranca-trabalho", "tabela bateria produto", "tabela bateria licitacoes", "tabela bateria total",
@@ -290,7 +290,8 @@ def acerto_por_pergunta_ensino() -> dict[str, str]:
     kf, nf = contar("generation-results-F-document.csv")
     return {
         "ensino por pergunta (resumo)": f"com {kt} de {nt} perguntas certas contra {kf} de {nf}",
-        "ensino por pergunta (conclusao)": f"({kt} de {nt} perguntas contra {kf} de {nf})",
+        "ensino por pergunta (conclusao)": (f"({kt} de {nt} perguntas contra {kf} de {nf}, com configurações "
+                                            "diferentes entre os dois braços; Seção~\\ref{sec:res-geracao})"),
     }
 
 
@@ -340,7 +341,7 @@ def origem_c1() -> dict[str, str]:
         # Secao 8.4, conferidas nas ancoras abaixo.
         # A correcao do sistema (pagina nos trechos) levou de 51 a 70; a
         # redefinicao da metrica (metadados do documento inteiro), de 70 a 155.
-        "origem C1 (resumo)": (f"Sim, pelo esquema e pelos testes; em C1 (sem páginas), {completos} de {total}, "
+        "origem C1 (resumo)": (f"Sim: o documento é exigido pelo esquema, e a página, gravada na indexação; em C1 (sem páginas), {completos} de {total}, "
                                f"{tipo['Metadado']} delas metadados"),
         "origem C1, correcao do sistema": (f"que deu coluna de página aos trechos, levou a {primeira + tipo['Trecho']}; "
                                            "a maior parte da diferença veio de ajustar a métrica"
@@ -384,10 +385,17 @@ def legislacao() -> dict[str, str]:
     alvo01 = {f"{t['document_id']}:{pg}" for t in g01["targets"] for pg in t["pages"]}
     fontes01 = set(p01["cited_pages"].split(";"))
     p01_ok = p01["correct"] == "false" and not (alvo01 & fontes01) and "lei-8666:18" in fontes01 and "Lei 8.666" in p01["answer"]
+    # d03: recusa ("nao ha informacoes"), sem a pagina-alvo entre as fontes.
+    d03 = por_id["d03"]
+    d03_ok = (d03["correct"] == "false" and d03["retrieval_hit"] == "false"
+              and d03["answer"].lower().startswith("com base nos documentos fornecidos, não há informações"))
     erradas = len(rows) - k
     return {
+        "legislacao d03 (8.6)": ("A quarta, sobre quem conduz a licitação, foi uma recusa: a página-alvo não chegou às "
+                                 "fontes, e o sistema respondeu que a informação não constava nos documentos."
+                                 if d03_ok and erradas == 4 else "<d03 da legislacao mudou>"),
         "legislacao": f"acertou {k} das {len(rows)} perguntas; nas {len(div)} divergentes, acertou {kd}",
-        "legislacao p05 (8.6)": (f"Uma das {EXTENSO_MIN.get(erradas, erradas)} respostas contadas como erradas estava correta (``até 10 anos'', art.~108 da Lei 14.133), "
+        "legislacao p05 (8.6)": (f"Das {EXTENSO_MIN.get(erradas, erradas)} respostas contadas como erradas, uma estava correta (``até 10 anos'', art.~108 da Lei 14.133), "
                                  f"mas o gabarito exigia ``10 (dez) anos'' ou ``dez anos''; o número não foi corrigido, e o "
                                  f"acerto oficial continua {k} de {len(rows)}"
                                  if p05_ok else "<p05 da legislacao mudou>"),
@@ -444,7 +452,7 @@ def sim_constante() -> dict[str, str]:
             acerta += ok
     if acerta != total:
         return {"Sim. constante": f"<Sim. acerta {acerta} de {total} perguntas de existencia>"}
-    return {"Sim. constante": f"a resposta fixa ``Sim.'' ainda acertaria as {total} perguntas de existência, cuja resposta certa é sempre sim"}
+    return {"Sim. constante": f"Nas {total} perguntas de existência, a resposta certa é sempre ``sim''"}
 
 
 def enriquecimento_repeticoes() -> dict[str, str]:
@@ -505,7 +513,7 @@ def conferir_variantes(rows: list[dict], texto: str, apoio: str) -> int:
     # se acertaram todas.
     por_tipo = (f"o BM25 acertou as {lit_b[1]} literais, {par_b[0]} das {par_b[1]} paráfrases e {noi_b[0]} das "
                 f"{noi_b[1]} ruidosas; a densa, {lit_c[0]} das {lit_c[1]} literais, {par_c[0]} das {par_c[1]} "
-                f"paráfrases e as {noi_c[1]} ruidosas, e só {comum} consulta foi errada pelos dois"
+                f"paráfrases e as {noi_c[1]} ruidosas, e os dois erraram juntos só {comum} consulta"
                 if lit_b[0] == lit_b[1] and noi_c[0] == noi_c[1] and comum == 1 else "<C1 por tipo de consulta mudou>")
     # "nao e estatisticamente significativa" entre as secoes so vale enquanto o P@1 contagem x BM25
     # nao for significativo (tabela gerada por analyze.py, Anexo A7).
@@ -599,13 +607,17 @@ def mediana_tokens() -> dict[str, str]:
     n_com = sum(est[q] != "negativa" for q in razao)
     n_neg = len(razao) - n_com
     k = round(com)
+    # Faixa da razao nas perguntas com resposta: o minimo (abaixo de 1) e o
+    # maximo, que dependem do tamanho do documento inteiro.
+    com_vals = [v for q, v in razao.items() if est[q] != "negativa"]
     return {
+        "tokens, faixa da razao (8.5)": (f"numa razão que variou de {_br(min(com_vals), 1)} a {_br(max(com_vals), 1)} "
+                                         "vezes conforme o tamanho do documento"),
         "tokens, mediana com resposta (8.5)": (f"nas {n_com} perguntas com resposta, F enviou ao modelo, na mediana, "
                                                f"{_br(com, 1)} vezes mais"),
         "tokens, mediana com negativas (8.5)": (f"contando as {n_neg} negativas, em que o documento inteiro inclui cinco "
                                                 f"PDFs, a mediana sobe para {_br(todas, 1)}"),
-        "tokens, mediana (resumo)": (f"cerca de {k} vezes menos \\emph{{tokens}} (unidades de texto) que o documento "
-                                     "inteiro, na mediana das perguntas com resposta"),
+        "tokens, mediana (resumo)": f"cerca de {k} vezes menos \\emph{{tokens}} que o documento inteiro, na mediana",
         "tokens, mediana (abstract)": f"about {k} times fewer tokens than the whole document",
         "tokens, mediana (tabela-resumo)": (f"cerca de {k} vezes menos \\emph{{tokens}} enviados para responder, na "
                                             "mediana das perguntas com resposta"),
@@ -640,9 +652,9 @@ def existencia_acerto() -> dict[str, str]:
     neg = [r for r in todas if r["stratum"] == "negativa"]
     com = [r for r in todas if r["stratum"] != "negativa"]
     kc = sum(r["correct"] == "true" for r in com)
-    sem_neg = (f"(sem as {len(neg)} respostas negativas, todas certas, foi de {_pct(kc / len(com))}\\%, {kc} de {len(com)})"
+    sem_neg = (f"Sem as {len(neg)} respostas negativas, todas certas, o acerto com a pergunta original foi de {_pct(kc / len(com))}\\% ({kc} de {len(com)})"
                if all(r["correct"] == "true" for r in neg) else "<negativas da bateria deixaram de acertar todas>")
-    return {"existencia, acerto do sistema (8.7)": f"e o sistema acertou {k} das {len(rs)} respostas desse tipo",
+    return {"existencia, acerto do sistema (8.7)": f"Responder ``Sim.'' a todas acertaria as {len(rs)} respostas desse tipo; o sistema acertou {k}",
             "acerto sem negativas (8.7)": sem_neg}
 
 
