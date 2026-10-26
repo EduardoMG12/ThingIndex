@@ -5,6 +5,7 @@ import { Coins } from "lucide-react";
 import type { DocumentMonitoringModelAggregate } from "@/lib/api/documents";
 import { formatProviderTypeLabel } from "@/lib/provider-runtime";
 import { useI18n } from "@/lib/i18n/provider";
+import { formatUSD } from "@/lib/format";
 
 export function ObservedCostDrivers({
     models,
@@ -59,13 +60,4 @@ export function ObservedCostDrivers({
             )}
         </div>
     );
-}
-
-function formatUSD(value: number, locale: string) {
-    return new Intl.NumberFormat(locale, {
-        style: "currency",
-        currency: "USD",
-        minimumFractionDigits: 6,
-        maximumFractionDigits: 6,
-    }).format(value);
 }

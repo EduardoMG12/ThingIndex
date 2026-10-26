@@ -58,7 +58,7 @@ export type PageOverlayProps = {
 };
 
 /** So ate o nivel 2: um edital tem 300+ nos de sumario. */
-export const NIVEL_MAXIMO_DO_MARCADOR = 2;
+const NIVEL_MAXIMO_DO_MARCADOR = 2;
 const ALTURA_DO_MARCADOR = 14;
 
 /**
@@ -80,7 +80,7 @@ export function sectionKeyDe(no: Pick<ParagraphNode, "metadata">): string | null
     return typeof chave === "string" && chave.trim() !== "" ? chave : null;
 }
 
-export function origemDe(no: Pick<ParagraphNode, "metadata">): string | null {
+function origemDe(no: Pick<ParagraphNode, "metadata">): string | null {
     const origem = no.metadata?.source;
     return typeof origem === "string" && origem.trim() !== "" ? origem : null;
 }

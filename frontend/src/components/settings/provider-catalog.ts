@@ -633,10 +633,6 @@ export function getLocalizedProviders(locale: AppLocale, configuredTypes: readon
     });
 }
 
-export function getProvidersByFamily(family: ProviderFamily) {
-    return PROVIDERS.filter((provider) => provider.family === family);
-}
-
 export function getInitialFormState() {
     const defaultFieldValues: Partial<Record<ProviderType, Record<string, string>>> = {
         OLLAMA: {

@@ -97,7 +97,9 @@ func newGCSClient(ctx context.Context, cfg GCSStorageConfig) (*gcs.Client, error
 
 	opts := make([]option.ClientOption, 0, 1)
 	if credentialsJSON := strings.TrimSpace(cfg.CredentialsJSON); credentialsJSON != "" {
-		opts = append(opts, option.WithCredentialsJSON([]byte(credentialsJSON)))
+		// So aceita conta de servico: outros tipos de credencial (como external_account)
+		// fazem o cliente buscar arquivos ou URLs indicados no proprio JSON.
+		opts = append(opts, option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(credentialsJSON)))
 	}
 
 	return gcs.NewClient(ctx, opts...)

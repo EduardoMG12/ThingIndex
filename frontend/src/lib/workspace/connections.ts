@@ -27,11 +27,11 @@ export function espessuraPorScore(score: number): number {
     return 1.5 + Math.min(Math.max(score, 0), 6) * 0.5;
 }
 
-export function slugDoNodeId(nodeId: string, sumario: OutlineNode[]): string | null {
+function slugDoNodeId(nodeId: string, sumario: OutlineNode[]): string | null {
     return sumario.find((no) => no.nodeId === nodeId)?.slug ?? null;
 }
 
-export function sectionKeyDoParagrafo(no: Pick<ParagraphNode, "metadata">): string | null {
+function sectionKeyDoParagrafo(no: Pick<ParagraphNode, "metadata">): string | null {
     const chave = no.metadata?.section_key;
     return typeof chave === "string" && chave !== "" ? chave : null;
 }

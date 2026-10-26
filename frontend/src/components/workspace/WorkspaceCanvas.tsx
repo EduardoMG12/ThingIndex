@@ -67,7 +67,7 @@ const ALTURA_CARTAO = 96;
 /** Quadros de PDF tem ~612 px de largura; uma coluna por documento. */
 const PASSO_ENTRE_QUADROS = 760;
 /** Uma secao de edital chegou a 109 conexoes; desenha so as mais fortes (a sidebar lista todas). */
-export const LINHAS_MAXIMAS = 12;
+const LINHAS_MAXIMAS = 12;
 /** Folga para comecar a abrir o PDF um pouco antes de ele entrar na tela. */
 const FOLGA_DE_VISIBILIDADE = 240;
 
@@ -1633,7 +1633,7 @@ export type NoDaArvore = { no: OutlineNode; filhos: NoDaArvore[] };
  * ultimo no de nivel menor que veio antes dele. Nivel que "pula" (1 -> 3)
  * cai no ultimo no de nivel menor mesmo assim.
  */
-export function montarArvore(nos: OutlineNode[]): NoDaArvore[] {
+function montarArvore(nos: OutlineNode[]): NoDaArvore[] {
     const raiz: NoDaArvore[] = [];
     const pilha: NoDaArvore[] = [];
     for (const no of nos) {

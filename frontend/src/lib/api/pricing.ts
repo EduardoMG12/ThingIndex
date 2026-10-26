@@ -79,31 +79,6 @@ export async function fetchPricingSources(signal?: AbortSignal): Promise<Pricing
     return payload.data;
 }
 
-export async function savePricingSource(input: {
-    providerType: PricingProviderType;
-    name: string;
-    sourceURL: string;
-    isEnabled?: boolean;
-}): Promise<void> {
-    const response = await fetchWithAuthRedirect("/api/user/pricing-sources", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            provider_type: input.providerType,
-            name: input.name,
-            source_url: input.sourceURL,
-            is_enabled: input.isEnabled,
-        }),
-    });
-
-    const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<null> | ApiErrorResponse | null;
-    if (!response.ok) {
-        throw new Error(payload?.message || apiErrorMessage("pricing.saveSource"));
-    }
-}
-
 export async function fetchPrices(signal?: AbortSignal): Promise<ModelPrice[]> {
     const response = await fetchWithAuthRedirect("/api/user/prices", {
         method: "GET",
@@ -114,23 +89,6 @@ export async function fetchPrices(signal?: AbortSignal): Promise<ModelPrice[]> {
     const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<ModelPriceApiRecord[]> | ApiErrorResponse | null;
     if (!response.ok) {
         throw new Error(payload?.message || apiErrorMessage("pricing.list"));
-    }
-    if (!hasResponseData(payload) || !Array.isArray(payload.data)) {
-        return [];
-    }
-    return payload.data;
-}
-
-export async function fetchPriceHistory(limit = 100, signal?: AbortSignal): Promise<ModelPriceHistory[]> {
-    const response = await fetchWithAuthRedirect(`/api/user/prices/history?limit=${limit}`, {
-        method: "GET",
-        cache: "no-store",
-        signal,
-    });
-
-    const payload = (await response.json().catch(() => null)) as ApiSuccessResponse<ModelPriceHistoryApiRecord[]> | ApiErrorResponse | null;
-    if (!response.ok) {
-        throw new Error(payload?.message || apiErrorMessage("pricing.history"));
     }
     if (!hasResponseData(payload) || !Array.isArray(payload.data)) {
         return [];
