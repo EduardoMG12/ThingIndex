@@ -60,9 +60,13 @@ Todas (72)      & 98,6 & 98,6 & 94,0 & 94,0 \\
 \end{tabular}
 \end{table}
 
-\textit{Custo.} A razão entre os \emph{tokens} de F e de T, cuja mediana foi 26,5, variou de 0{,}7 a 96 vezes. Em 22 das 72 perguntas, todas sobre documentos curtos, T gastou mais que F, porque várias páginas recuperadas somam mais que o documento inteiro. Em média, T enviou 4.215 \emph{tokens} por pergunta e F, 72.067; sem as negativas, em que F recebe cinco documentos, foram 4.288 e 58.751. Na execução exploratória com outro modelo, de janela de 131.072 \emph{tokens}, o provedor recusou o \emph{prompt} de F nas cinco negativas, com cinco documentos (de 227.647 a 227.653 \emph{tokens}).
+\textit{Custo.} A razão entre os \emph{tokens} de F e de T, contando as negativas, variou de 0{,}7 a 96 vezes; nas perguntas com resposta, de 0{,}7 a 41{,}9. Em 22 das 72 perguntas, todas sobre documentos curtos, T gastou mais que F, porque várias páginas recuperadas somam mais que o documento inteiro. Em média, T enviou 4.215 \emph{tokens} por pergunta e F, 72.067; sem as negativas, em que F recebe cinco documentos, foram 4.288 e 58.751. Na execução exploratória com outro modelo, de janela de 131.072 \emph{tokens}, o provedor recusou o \emph{prompt} de F nas cinco negativas, com cinco documentos (de 227.647 a 227.653 \emph{tokens}).
+
+Nas perguntas com resposta, a mediana foi 9,1; contando as 5 negativas, em que o documento inteiro inclui cinco PDFs, a mediana sobe para 26,5.
 
 Usou-se a mediana porque, em documentos curtos, a relação pode se inverter, e poucas perguntas sobre documentos longos puxariam a média para cima. O custo de T depende do número de fontes, e o de F cresce com o documento.
+
+\textit{Página no texto sem o número impresso.} O artigo aceita como certa a página escrita pelo modelo quando ela coincide com o número impresso no documento, que pode diferir da posição da página no PDF. Sem aceitar o número impresso, F teria 173, e T, 189.
 
 \subsection*{Legislação com norma revogada (Seção 8.6)}
 
@@ -87,6 +91,8 @@ Total      & 19 & 78,9 & 81,2 \\
 Uma das quatro respostas erradas foi recusada por um erro do gabarito, que exigia ``10 (dez) anos'' quando a resposta dizia ``10 anos''; o gabarito não foi alterado depois de medir (registro em \texttt{alteracoes-pos-medicao.md}), e o número oficial continua 15 de 19.
 
 \subsection*{Bateria em três domínios (Seção 8.7)}
+
+\textit{Sem as negativas.} O acerto de 68,1\% da bateria (145 de 213) inclui as respostas negativas. Sem as 27 respostas negativas, todas certas, o acerto com a pergunta original foi de 63,4\% (118 de 186).
 
 No total, a taxa de acerto da bateria com a pergunta original tem intervalo de 95\% de 57,3\% a 77,9\%, calculado por \emph{bootstrap}. Os três acervos ficaram próximos: com 23 a 25 perguntas em cada um, a diferença entre eles pode ser acaso, e não dá para dizer que um foi mais fácil que outro.
 

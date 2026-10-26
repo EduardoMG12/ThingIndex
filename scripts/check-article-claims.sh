@@ -105,6 +105,36 @@ if grep -q "foi a padrão do sistema, 0,2 nas respostas dadas pelo" "$ARTIGO"; t
   fi
 fi
 
+# --- Temperatura do braco F ------------------------------------------------
+# O artigo diz que o codigo pede 0,0 para F: o braco F chama GenerateText
+# (api/cmd/generation-eval/arms.go), que pede defaultLLMGenerationTemperature.
+# O texto diz "pede" porque o cliente OpenAI-compativel omite o 0 (omitempty).
+if grep -q "o código pede temperatura 0,0 para F e 0,2 para T" "$ARTIGO"; then
+  if ! grep -qE "^const defaultLLMGenerationTemperature = 0\.0$" api/internal/pkg/provider/factory.go; then
+    echo "FALHA: o artigo diz temperatura 0,0 em F, mas defaultLLMGenerationTemperature mudou." >&2
+    falhas=$((falhas + 1))
+  fi
+  if ! grep -q "a.llm.GenerateText" api/cmd/generation-eval/arms.go; then
+    echo "FALHA: o artigo diz temperatura de GenerateText em F, mas o braco F nao usa mais GenerateText." >&2
+    falhas=$((falhas + 1))
+  fi
+fi
+
+# --- Pagina seguinte na pagina na fonte -------------------------------------
+# O artigo diz que a pagina na fonte conta tambem a pagina seguinte quando a
+# fonte continua nela, como a tela exibe: o avaliador acrescenta
+# ContinuesOnPage as citacoes, e o card mostra "p. X-Y".
+if grep -q "conta-se também a página seguinte quando a frase da fonte continua nela, como a tela exibe" "$ARTIGO"; then
+  if ! grep -q "pages = append(pages, s.ContinuesOnPage)" api/cmd/generation-eval/arms.go; then
+    echo "FALHA: o artigo diz que a pagina seguinte conta, mas o avaliador nao soma mais ContinuesOnPage." >&2
+    falhas=$((falhas + 1))
+  fi
+  if ! grep -q 'source.continuesOnPage ? `–${source.continuesOnPage}`' frontend/src/components/chat/SourceReference.tsx; then
+    echo "FALHA: o artigo diz que a tela exibe a pagina seguinte, mas SourceReference.tsx nao mostra mais o intervalo." >&2
+    falhas=$((falhas + 1))
+  fi
+fi
+
 # --- Tempo de calculo da busca ----------------------------------------------
 # Nao ha medicao isolada do tempo do BM25 no sistema; o texto nao pode dizer
 # que ele e "aceitavel" como se fosse medido.
