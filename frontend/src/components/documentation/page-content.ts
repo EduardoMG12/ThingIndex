@@ -184,7 +184,7 @@ function getPtBrContent(): DocumentationPageContent {
     return {
         heroBadges: [
             "documentação oficial",
-            "runtime atual",
+            "sistema atual",
             "pesquisa separada do produto",
         ],
         heroTitle: {
@@ -261,7 +261,7 @@ function getPtBrContent(): DocumentationPageContent {
                     body: "Handlers cuidam de validação, autenticação e serialização; regras ficam em casos de uso e repositórios.",
                 },
                 {
-                    title: "Runtime observável",
+                    title: "Sistema observável",
                     body: "Auditoria, benchmark público, readiness e telemetria aparecem como partes do produto, não como pós-venda.",
                 },
                 {
@@ -297,7 +297,7 @@ function getPtBrContent(): DocumentationPageContent {
                 { step: "02", title: "Despacho assíncrono", description: "Eventos de outbox e filas desacoplam a interface do custo de indexação." },
                 { step: "03", title: "Extração estrutural", description: "Parágrafos, tabelas, estrutura e metadados são persistidos em estruturas tipadas." },
                 { step: "04", title: "Contexto consolidado", description: "A API recompõe coleção, documentos e estruturas para navegação e chat grounded." },
-                { step: "05", title: "Observabilidade", description: "Resumo agregado, benchmark, readiness e auditoria deixam o runtime mais legível para operação." },
+                { step: "05", title: "Observabilidade", description: "Resumo agregado, benchmark, readiness e auditoria deixam o sistema mais legível para operação." },
             ],
         },
         dataModel: {
@@ -311,7 +311,7 @@ function getPtBrContent(): DocumentationPageContent {
             title: "Recuperação de contexto",
             paragraphs: [
                 "O diferencial implementado hoje é a recuperação relacional por coleção e documento. A API agrega estruturas persistidas e devolve uma visão consolidada, adequada para revisão, auditoria e resposta grounded.",
-                "Comparações com GraphRAG, embeddings ou trilhas vetoriais permanecem válidas como pesquisa, mas não são vendidas aqui como mecanismo central do runtime atual.",
+                "Comparações com GraphRAG, embeddings ou trilhas vetoriais permanecem válidas como pesquisa, mas não são vendidas aqui como mecanismo central do sistema atual.",
             ],
         },
         indexingBenchmarkTitle: "Benchmark de indexação",
@@ -319,13 +319,13 @@ function getPtBrContent(): DocumentationPageContent {
         security: {
             title: "Segurança e governança",
             paragraphs: [
-                "O runtime atual já inclui autenticação JWT, escopo por usuário, rotas protegidas, criptografia de credenciais de provedores, validação de uploads e proxies autenticados para conteúdo documental.",
+                "O sistema atual já inclui autenticação JWT, escopo por usuário, rotas protegidas, criptografia de credenciais de provedores, validação de uploads e proxies autenticados para conteúdo documental.",
                 "Na frente de provedores, a API também impõe validações de configuração sensível, readiness estruturado e matrizes públicas de suporte para evitar promessas implícitas sobre caminhos ainda parciais.",
             ],
         },
         quality: {
             title: "Qualidade de engenharia",
-            intro: "Como projeto de TCC com ambição de código aberto, a robustez precisa ser visível não só no código, mas também na forma de verificar o runtime.",
+            intro: "Como projeto de TCC com ambição de código aberto, a robustez precisa ser visível não só no código, mas também na forma de verificar o sistema.",
             items: [
                 "testes unitários na interface web e no backend para fluxos críticos e helpers de domínio;",
                 "testes smoke HTTP, integrações reais e cenários autenticados cobrindo upload, provedores, auditoria e chat grounded;",
@@ -337,7 +337,7 @@ function getPtBrContent(): DocumentationPageContent {
         deployment: {
             title: "Deploy e operação",
             paragraphs: [
-                "O ambiente local usa Docker Compose com interface web, API, PostgreSQL, MinIO e RabbitMQ. O runtime também conta com worker de indexação e worker de pricing como processos separados do servidor HTTP.",
+                "O ambiente local usa Docker Compose com interface web, API, PostgreSQL, MinIO e RabbitMQ. O sistema também conta com worker de indexação e worker de pricing como processos separados do servidor HTTP.",
                 "Para quem consome o projeto de fora, a experiência agora cobre tanto o caminho auto-hospedado no monorepo quanto o consumo direto de uma API publicada com o mesmo contrato OpenAPI.",
             ],
         },
@@ -347,7 +347,7 @@ function getPtBrContent(): DocumentationPageContent {
             items: [
                 "expandir validação concreta de provedores em implantações além do caminho principal atual;",
                 "ampliar o corpus e os cenários avaliados no benchmark público de indexação;",
-                "manter auditoria, onboarding e documentação sempre sincronizados com o runtime entregue.",
+                "manter auditoria, onboarding e documentação sempre sincronizados com o sistema entregue.",
             ],
         },
         academic: {
@@ -361,7 +361,7 @@ function getPtBrContent(): DocumentationPageContent {
             title: "Contribuição",
             paragraphs: [
                 "As contribuições mais valiosas são as que aumentam clareza e confiabilidade: testes, fixtures, documentação alinhada, melhorias incrementais de UX e validação mais concreta de provedores e fluxos documentais.",
-                "Mudanças grandes continuam bem-vindas, mas precisam preservar a honestidade do escopo e a legibilidade do runtime principal.",
+                "Mudanças grandes continuam bem-vindas, mas precisam preservar a honestidade do escopo e a legibilidade do sistema principal.",
             ],
         },
         references: {
