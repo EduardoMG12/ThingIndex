@@ -395,7 +395,7 @@ def legislacao() -> dict[str, str]:
                                  "fontes, e o sistema respondeu que a informação não constava nos documentos."
                                  if d03_ok and erradas == 4 else "<d03 da legislacao mudou>"),
         "legislacao": f"acertou {k} das {len(rows)} perguntas; nas {len(div)} divergentes, acertou {kd}",
-        "legislacao p05 (8.6)": (f"Uma das {EXTENSO_MIN.get(erradas, erradas)} respostas contadas como erradas estava correta (``até 10 anos'', art.~108 da Lei 14.133), "
+        "legislacao p05 (8.6)": (f"Das {EXTENSO_MIN.get(erradas, erradas)} respostas contadas como erradas, uma estava correta (``até 10 anos'', art.~108 da Lei 14.133), "
                                  f"mas o gabarito exigia ``10 (dez) anos'' ou ``dez anos''; o número não foi corrigido, e o "
                                  f"acerto oficial continua {k} de {len(rows)}"
                                  if p05_ok else "<p05 da legislacao mudou>"),
@@ -513,7 +513,7 @@ def conferir_variantes(rows: list[dict], texto: str, apoio: str) -> int:
     # se acertaram todas.
     por_tipo = (f"o BM25 acertou as {lit_b[1]} literais, {par_b[0]} das {par_b[1]} paráfrases e {noi_b[0]} das "
                 f"{noi_b[1]} ruidosas; a densa, {lit_c[0]} das {lit_c[1]} literais, {par_c[0]} das {par_c[1]} "
-                f"paráfrases e as {noi_c[1]} ruidosas, e só {comum} consulta foi errada pelos dois"
+                f"paráfrases e as {noi_c[1]} ruidosas, e os dois erraram juntos só {comum} consulta"
                 if lit_b[0] == lit_b[1] and noi_c[0] == noi_c[1] and comum == 1 else "<C1 por tipo de consulta mudou>")
     # "nao e estatisticamente significativa" entre as secoes so vale enquanto o P@1 contagem x BM25
     # nao for significativo (tabela gerada por analyze.py, Anexo A7).
