@@ -261,7 +261,7 @@ def conferir_geracao(texto: str, apoio: str) -> int:
 # contra o CSV, mas no arquivo de apoio. (O detalhe de C1 e as correcoes de
 # gabarito tambem estao nos anexos A7 e A8.)
 NO_APOIO = {
-    "tokens T", "tokens F", "tokens C", "tokens E", "ic E (texto)", "expansao por variante",
+    "tokens T", "tokens F", "pagina citada sem folio (8.5)", "tokens, mediana com negativas (8.5)", "acerto sem negativas (8.7)", "tokens C", "tokens E", "ic E (texto)", "expansao por variante",
     "tabela expansao pagina", "tabela expansao tokens",
     "tabela geracao prosa", "tabela geracao tabela", "tabela geracao calendario", "tabela geracao todas",
     "tabela bateria seguranca-trabalho", "tabela bateria produto", "tabela bateria licitacoes", "tabela bateria total",
@@ -617,8 +617,7 @@ def mediana_tokens() -> dict[str, str]:
                                                f"{_br(com, 1)} vezes mais"),
         "tokens, mediana com negativas (8.5)": (f"contando as {n_neg} negativas, em que o documento inteiro inclui cinco "
                                                 f"PDFs, a mediana sobe para {_br(todas, 1)}"),
-        "tokens, mediana (resumo)": (f"cerca de {k} vezes menos \\emph{{tokens}} (unidades de texto) que o documento "
-                                     "inteiro, na mediana das perguntas com resposta"),
+        "tokens, mediana (resumo)": f"cerca de {k} vezes menos \\emph{{tokens}} que o documento inteiro, na mediana",
         "tokens, mediana (abstract)": f"about {k} times fewer tokens than the whole document",
         "tokens, mediana (tabela-resumo)": (f"cerca de {k} vezes menos \\emph{{tokens}} enviados para responder, na "
                                             "mediana das perguntas com resposta"),
@@ -653,7 +652,7 @@ def existencia_acerto() -> dict[str, str]:
     neg = [r for r in todas if r["stratum"] == "negativa"]
     com = [r for r in todas if r["stratum"] != "negativa"]
     kc = sum(r["correct"] == "true" for r in com)
-    sem_neg = (f"(sem as {len(neg)} respostas negativas, todas certas, foi de {_pct(kc / len(com))}\\%, {kc} de {len(com)})"
+    sem_neg = (f"Sem as {len(neg)} respostas negativas, todas certas, o acerto com a pergunta original foi de {_pct(kc / len(com))}\\% ({kc} de {len(com)})"
                if all(r["correct"] == "true" for r in neg) else "<negativas da bateria deixaram de acertar todas>")
     return {"existencia, acerto do sistema (8.7)": f"e o sistema acertou {k} das {len(rs)} respostas desse tipo",
             "acerto sem negativas (8.7)": sem_neg}
