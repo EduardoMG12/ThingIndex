@@ -1,9 +1,4 @@
 # Binaries (only at module root, not cmd/ directories)
-/legal-parser/parser
-/crawler/main
-/crawler/crawler
-/crawler/crawler_bin
-/crawler/purge_queue
 /api/api
 *.exe
 *.exe~
@@ -34,13 +29,10 @@ parsed_data/
 *.log
 .cache/
 
-comandos_neo4j.md
-what-missing?.md
 
 # `docs/` inteiro esteve ignorado por um tempo, o que deixou o artigo do TCC,
 # a bibliografia e os slides sem backup nenhum — existiam so no disco local.
-# Agora tudo e versionado. O repositorio e privado, entao versionar os
-# artefatos academicos nao os expoe.
+# Agora tudo e versionado, e o repositorio e publico.
 
 # Bytecode do Python. Os scripts de analise (scripts/analyze.py,
 # scripts/test_analyze.py) geram __pycache__ ao serem importados, e um

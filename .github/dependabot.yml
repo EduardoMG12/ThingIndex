@@ -1,0 +1,28 @@
+# Atualizacoes de dependencias. As de seguranca chegam assim que publicadas;
+# as demais, uma vez por mes e agrupadas, para nao encher a fila de PRs.
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /api
+    schedule:
+      interval: monthly
+    groups:
+      go:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: monthly
+    groups:
+      frontend:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
