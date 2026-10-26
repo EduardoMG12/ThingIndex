@@ -150,26 +150,18 @@ jobs:
       # indefinida antes da entrega.
       - name: artigo compila com pdflatex e o modelo da SBC
         run: |
-          # Ate tres tentativas: o espelho do apt as vezes trava no meio do download.
-          for tentativa in 1 2 3; do
-            if timeout 300 sudo apt-get update -qq -o Acquire::Retries=3 \
-              && timeout 420 sudo apt-get install -y -qq --no-install-recommends -o Acquire::Retries=3 \
-                   texlive-latex-recommended texlive-latex-extra texlive-lang-portuguese texlive-fonts-recommended > /dev/null; then
-              break
-            fi
-            echo "instalacao do LaTeX falhou (tentativa $tentativa)"
-            [ "$tentativa" -eq 3 ] && exit 1
-            sleep 15
-          done
+          # Compila dentro da imagem oficial do TeX Live em vez de instalar pelo
+          # apt: o espelho do Ubuntu travou varias vezes e derrubava o job.
           cd docs/article
           curl -fsSL --retry 4 --retry-delay 10 --retry-all-errors --connect-timeout 20 --max-time 120 \
             -o /tmp/sbc.zip https://www.sbc.org.br/wp-content/uploads/2024/07/modelosparapublicaodeartigos.zip
           echo "2c4524a43fa1a6cc20b2f444448bb74ba42a3d33d56e9c8a4aba4654fdc6731a  /tmp/sbc.zip" | sha256sum -c -
           unzip -qj /tmp/sbc.zip '*/template-latex/sbc-template.sty' '*/template-latex/sbc.bst' -d .
-          pdflatex -interaction=nonstopmode artigo.tex > /dev/null || true
-          bibtex artigo
-          pdflatex -interaction=nonstopmode artigo.tex > /dev/null || true
-          pdflatex -interaction=nonstopmode -halt-on-error artigo.tex > /dev/null
+          docker run --rm -v "$PWD":/w -w /w texlive/texlive:latest sh -c '
+            pdflatex -interaction=nonstopmode artigo.tex > /dev/null || true
+            bibtex artigo
+            pdflatex -interaction=nonstopmode artigo.tex > /dev/null || true
+            pdflatex -interaction=nonstopmode -halt-on-error artigo.tex > /dev/null'
           ! grep -E "Citation .* undefined|Reference .* undefined|^! " artigo.log
 
       # Prosa se descola do artefato que descreve. O caso perigoso nao e o
