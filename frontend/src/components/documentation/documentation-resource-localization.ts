@@ -14,7 +14,7 @@ const ptRuntimeProfileAudienceMap: Record<string, { name: string; description: s
     },
     "Academic and research environments": {
         name: "Ambientes acadêmicos e de pesquisa",
-        description: "Precisam de um runtime inspecionável, reproduzível e fácil de defender tecnicamente em um TCC ou artigo.",
+        description: "Precisam de um sistema inspecionável, reproduzível e fácil de defender tecnicamente em um TCC ou artigo.",
     },
 };
 
@@ -26,7 +26,7 @@ const ptRuntimeProfileCurrentScopeMap: Record<string, string> = {
     "Relational collection-context recovery in PostgreSQL":
         "Recuperação relacional de contexto por coleção em PostgreSQL",
     "Grounded chat by collection with provider runtime separation for chat and indexing":
-        "Chat grounded por coleção com separação de runtime entre provedores de chat e indexação",
+        "Chat grounded por coleção com separação entre os provedores de chat e indexação",
     "Self-hosted stack with Go API, Next.js frontend, PostgreSQL, MinIO, RabbitMQ, and versioned API docs":
         "Stack auto-hospedada com API Go, frontend Next.js, PostgreSQL, MinIO, RabbitMQ e docs versionadas da API",
 };
@@ -35,14 +35,14 @@ const ptRuntimeProfileDifferentiatorsMap: Record<string, string> = {
     "Relational-first context reconstruction instead of vector-first navigation":
         "Reconstrução de contexto relacional em vez de navegação centrada em vetores",
     "Explicit separation between current runtime, experimental provider paths, and research-only extensions":
-        "Separação explícita entre o runtime atual, caminhos experimentais de provedores e extensões apenas de pesquisa",
+        "Separação explícita entre o sistema atual, caminhos experimentais de provedores e extensões apenas de pesquisa",
     "Operational visibility with audit trails, readiness checks, monitoring, and documented support levels":
         "Visibilidade operacional com trilhas de auditoria, checks de readiness, monitoramento e níveis de suporte documentados",
 };
 
 const ptRuntimeProfileNonGoalsMap: Record<string, string> = {
     "Do not present the main runtime as a generic AI copilot detached from document provenance":
-        "Não apresentar o runtime principal como um copiloto genérico de IA desconectado da proveniência documental",
+        "Não apresentar o sistema principal como um copiloto genérico de IA desconectado da proveniência documental",
     "Do not claim GraphRAG, graph databases, or native vector search as required parts of the current production path":
         "Não tratar GraphRAG, bancos de grafos ou busca vetorial nativa como partes obrigatórias do caminho atual de produção",
     "Do not collapse research experiments into the mainline architecture without isolated evaluation":
@@ -69,7 +69,7 @@ const ptRuntimeProfileArtifactsByPath: Record<string, { label: string; summary: 
     },
     "docs/article/README.md": {
         label: "Workspace acadêmico",
-        summary: "Notas do workspace e fontes de figuras usadas para preparar o artefato final da submissão SBC fora do histórico principal do runtime.",
+        summary: "Notas do workspace e fontes de figuras usadas para preparar o artefato final da submissão SBC fora do histórico principal do sistema.",
     },
     "api/internal/usecase/testdata/indexing-benchmark/corpus.json": {
         label: "Corpus do benchmark de indexação",
@@ -83,7 +83,7 @@ const ptRuntimeProfileArtifactsByPath: Record<string, { label: string; summary: 
 
 const ptIndexingBenchmarkNarrativeMap: Record<string, string> = {
     "Controlled exact-match benchmark for the current relational indexing baseline. The corpus is embedded, reproducible, and evaluated with the real deterministic indexer used by the main runtime.":
-        "Benchmark controlado de correspondência exata para a baseline relacional atual de indexação. O corpus é embutido, reproduzível e avaliado com o indexador determinístico real usado pelo runtime principal.",
+        "Benchmark controlado de correspondência exata para a baseline relacional atual de indexação. O corpus é embutido, reproduzível e avaliado com o indexador determinístico real usado pelo sistema principal.",
     "Run the real deterministic indexer over the embedded benchmark corpus.":
         "Executar o indexador determinístico real sobre o corpus de benchmark embutido.",
     "Check expected outline titles and table counts for each benchmark document.":
@@ -105,7 +105,7 @@ const ptIndexingBenchmarkNarrativeMap: Record<string, string> = {
     "This corpus is intentionally small and controlled; it validates the baseline, not arbitrary production corpora.":
         "Este corpus é intencionalmente pequeno e controlado; ele valida a baseline, não corpora arbitrários de produção.",
     "The benchmark measures structural indexing and lexical retrieval on the current runtime, not grounded chat answer faithfulness.":
-        "O benchmark mede indexação estrutural e recuperação lexical no runtime atual, não a fidelidade das respostas do chat grounded.",
+        "O benchmark mede indexação estrutural e recuperação lexical no sistema atual, não a fidelidade das respostas do chat grounded.",
     "The public comparison currently covers flat and hybrid experimental controls; native vector retrieval and GraphRAG remain separate research tracks.":
         "A comparação pública atualmente cobre controles experimentais planos e híbridos; recuperação vetorial nativa e GraphRAG continuam como trilhas de pesquisa separadas.",
     "The quality score exposed in document monitoring remains a structural heuristic for operators. It is not ground truth and should be interpreted together with this benchmark instead of replacing it.":
@@ -119,7 +119,7 @@ const ptIndexingBenchmarkNarrativeMap: Record<string, string> = {
     "Experimental control that flattens retrieval to page text and maps page hits back to overlapping nodes only.":
         "Controle experimental que achata o retrieval para texto de página e mapeia hits de página apenas para nós sobrepostos.",
     "This repository does not ship a native vector index in the current runtime.":
-        "Este repositório não entrega um índice vetorial nativo no runtime atual.",
+        "Este repositório não entrega um índice vetorial nativo no sistema atual.",
     "The variants below are explicit experimental controls over the same benchmark corpus, not hidden production paths.":
         "As variantes abaixo são controles experimentais explícitos sobre o mesmo corpus do benchmark, e não caminhos ocultos de produção.",
     "A future vector or GraphRAG baseline should be added here as a separate experimental variant instead of replacing the relational path.":
@@ -184,16 +184,16 @@ const ptProviderSupportByType: Partial<
 > = {
     MINIO: {
         display_name: "MinIO / compatível com S3",
-        summary: "Pronto para o runtime principal com upload, visualização, download, indexação e cobertura de integração ao vivo contra a stack local.",
+        summary: "Pronto para o sistema principal com upload, visualização, download, indexação e cobertura de integração ao vivo contra a stack local.",
         notes: [
             "Usa o caminho compartilhado compatível com S3 apoiado pelo cliente Go do MinIO.",
-            "Adequado para o runtime local padrão e para implantações auto-hospedadas que querem um caminho direto de armazenamento de objetos.",
+            "Adequado para o ambiente local padrão e para implantações auto-hospedadas que querem um caminho direto de armazenamento de objetos.",
         ],
     },
     AWS_S3: {
         summary: "Pronto via o adaptador compatível com S3 compartilhado, com padrões sensíveis à região, verificações de prontidão e o mesmo ciclo documental usado pelo MinIO.",
         notes: [
-            "O bootstrap do runtime pode continuar em MinIO enquanto provedores por usuário apontam para buckets AWS S3.",
+            "O bootstrap do sistema pode continuar em MinIO enquanto provedores por usuário apontam para buckets AWS S3.",
             "Endpoints customizados continuam opcionais para gateways compatíveis com S3 colocados à frente do S3.",
         ],
     },
@@ -208,7 +208,7 @@ const ptProviderSupportByType: Partial<
         summary: "Suportado pelo adaptador compatível com S3 compartilhado quando você informa endpoint regional, bucket e credenciais.",
         notes: [
             "O comportamento operacional segue o mesmo caminho compatível com S3 já usado pelo pipeline documental.",
-            "Trate CDN, ACL ou políticas de ciclo de vida específicas do provider como preocupações de implantação fora do contrato principal do runtime.",
+            "Trate CDN, ACL ou políticas de ciclo de vida específicas do provider como preocupações de implantação fora do contrato principal do sistema.",
         ],
     },
     WASABI: {
@@ -226,31 +226,31 @@ const ptProviderSupportByType: Partial<
         ],
     },
     GCP_STORAGE: {
-        summary: "Pronto para o runtime principal com caminho nativo de Google Cloud Storage, armazenamento criptografado de credenciais, teste de conexão e cobertura de integração via emulator.",
+        summary: "Pronto para o sistema principal com caminho nativo de Google Cloud Storage, armazenamento criptografado de credenciais, teste de conexão e cobertura de integração via emulator.",
         notes: [
             "Suporta JSON de service account para buckets reais e emulator_host para desenvolvimento e integrações locais.",
             "Reduz a dependência prática da stack compatível com S3 mantendo o mesmo contrato de ciclo documental.",
         ],
     },
     OPENAI: {
-        summary: "Pronto para o runtime principal com configuração padrão direta da OpenAI, teste de conexão, descoberta de modelos e chat/indexação grounded.",
+        summary: "Pronto para o sistema principal com configuração padrão direta da OpenAI, teste de conexão, descoberta de modelos e chat/indexação grounded.",
         notes: [
             "Usa o caminho direto da API OpenAI com substituições opcionais de URL base personalizada.",
-            "O modelo pode permanecer implícito porque o runtime faz fallback para gpt-4o-mini quando o campo está vazio.",
+            "O modelo pode permanecer implícito porque o sistema faz fallback para gpt-4o-mini quando o campo está vazio.",
         ],
     },
     OLLAMA: {
-        summary: "Pronto para o runtime principal em implantações auto-hospedadas, com chat nativo via Ollama, padrões locais e descoberta de modelos ao vivo.",
+        summary: "Pronto para o sistema principal em implantações auto-hospedadas, com chat nativo via Ollama, padrões locais e descoberta de modelos ao vivo.",
         notes: [
             "Ollama local funciona sem api_key; Ollama Cloud exige api_key.",
-            "O modelo precisa ser preenchido explicitamente nas configurações salvas, mesmo que o runtime sugira llama3.1:8b.",
+            "O modelo precisa ser preenchido explicitamente nas configurações salvas, mesmo que o sistema sugira llama3.1:8b.",
         ],
     },
     DEEP_SEEK: {
         summary: "Suportado pelo adaptador compartilhado compatível com OpenAI, com padrões da DeepSeek, verificações de prontidão e validação ao vivo opcional.",
         notes: [
             "O comportamento específico do provider ainda trafega pelo cliente compatível com OpenAI compartilhado, e não por um transporte dedicado da DeepSeek.",
-            "Adequado para uso controlado em indexação e chat, mas não é apresentado como caminho de runtime de primeira classe acima de OpenAI/Ollama.",
+            "Adequado para uso controlado em indexação e chat, mas não é apresentado como caminho de sistema de primeira classe acima de OpenAI/Ollama.",
         ],
     },
     GROK: {
@@ -263,21 +263,21 @@ const ptProviderSupportByType: Partial<
     OPENROUTER: {
         summary: "Suportado pelo caminho de gateway compatível com OpenAI, com verificações de prontidão, descoberta de modelos e validação ao vivo opcional.",
         notes: [
-            "Exige um id de modelo explícito nas configurações salvas, mesmo que o runtime sugira openai/gpt-4o-mini.",
+            "Exige um id de modelo explícito nas configurações salvas, mesmo que o sistema sugira openai/gpt-4o-mini.",
             "É melhor tratado como uma camada de gateway cujo comportamento upstream depende do modelo roteado selecionado.",
         ],
     },
     GOOGLE_GEMINI: {
-        summary: "Suporte experimental apenas via bridge. O runtime pode funcionar quando Gemini é exposto atrás de um endpoint compatível com OpenAI, com modelo e base_url explícitos.",
+        summary: "Suporte experimental apenas via bridge. O sistema pode funcionar quando Gemini é exposto atrás de um endpoint compatível com OpenAI, com modelo e base_url explícitos.",
         notes: [
-            "A integração nativa com a API Gemini não está implementada no runtime principal.",
+            "A integração nativa com a API Gemini não está implementada no sistema principal.",
             "Trate isso como validação apoiada em bridge, e não como transporte Gemini de primeira classe.",
         ],
     },
     CLAUDE: {
-        summary: "Suporte experimental apenas via bridge. O runtime pode funcionar quando Claude é exposto por um endpoint compatível com OpenAI, com modelo e base_url explícitos.",
+        summary: "Suporte experimental apenas via bridge. O sistema pode funcionar quando Claude é exposto por um endpoint compatível com OpenAI, com modelo e base_url explícitos.",
         notes: [
-            "A integração nativa com a API da Anthropic não está implementada no runtime principal.",
+            "A integração nativa com a API da Anthropic não está implementada no sistema principal.",
             "Use apenas quando você controlar o comportamento da bridge e puder validar diretamente o endpoint implantado.",
         ],
     },
@@ -304,7 +304,7 @@ export function localizeRuntimeProfile(profile: RuntimeProfile, locale: AppLocal
         core_problem:
             "Times com grande volume documental costumam ter storage, metadados e respostas de IA espalhados em ferramentas desconectadas, o que dificulta recuperação de contexto, proveniência e auditoria operacional.",
         value_proposition:
-            "ThingIndex mantém organização documental, extração estruturada, recuperação de contexto e portabilidade entre provedores em um único runtime relacional, que pode ser auto-hospedado ou consumido como API sem esconder proveniência atrás de uma stack centrada em vetores.",
+            "ThingIndex mantém organização documental, extração estruturada, recuperação de contexto e portabilidade entre provedores em um único sistema relacional, que pode ser auto-hospedado ou consumido como API sem esconder proveniência atrás de uma stack centrada em vetores.",
         target_users: profile.target_users.map((item) => ptRuntimeProfileAudienceMap[item.name] ?? item),
         current_scope: translateList(profile.current_scope, ptRuntimeProfileCurrentScopeMap),
         differentiators: translateList(profile.differentiators, ptRuntimeProfileDifferentiatorsMap),

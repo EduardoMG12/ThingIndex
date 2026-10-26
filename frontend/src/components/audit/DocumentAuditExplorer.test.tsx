@@ -140,8 +140,8 @@ describe("DocumentAuditExplorer", () => {
 
         await user.click(screen.getByRole("button", { name: /Documento selecionado/i }));
         await user.type(screen.getByLabelText("Encontre um evento"), "manual");
-        await user.click(screen.getByRole("button", { name: /Mostrar filtros avancados/i }));
-        await user.selectOptions(screen.getByLabelText("Actor"), "USER");
+        await user.click(screen.getByRole("button", { name: /Mostrar filtros avançados/i }));
+        await user.selectOptions(screen.getByLabelText("Responsável"), "USER");
         await user.type(screen.getByLabelText("Actor ID"), "9");
         await user.click(screen.getByRole("button", { name: /Buscar no histórico/i }));
 

@@ -22,11 +22,11 @@ export function ProductFocusSection() {
     const { locale } = useI18n();
     const copy = locale === "pt-BR"
         ? {
-            fallbackError: "Nao foi possivel carregar o perfil publico do runtime.",
+            fallbackError: "Não foi possível carregar o perfil público do sistema.",
             intro: "Esta seção consome o endpoint público ",
             introSuffix:
                 " para deixar explícito qual é o caso de uso principal do ThingIndex hoje, para quem ele foi desenhado e quais limites seguem marcados como pesquisa ou extensão futura.",
-            loading: "Carregando perfil público do runtime...",
+            loading: "Carregando perfil público do sistema...",
             metrics: {
                 product: "Produto",
                 useCase: "Caso de uso principal",
@@ -34,10 +34,10 @@ export function ProductFocusSection() {
                 reviewedAt: "Última revisão",
                 collections: "Coleções auditáveis",
                 provenance: "Contexto e proveniência",
-                reviewedDetail: "Panorama público do runtime atual",
+                reviewedDetail: "Panorama público do sistema atual",
             },
             priorityProfiles: "Perfis prioritários",
-            currentScope: "Escopo assumido pelo runtime principal",
+            currentScope: "Escopo assumido pelo sistema principal",
             differentiators: "Diferenciais assumidos",
             nonGoals: "Não objetivos explícitos",
             researchTracks: "Trilhas acadêmicas relacionadas",

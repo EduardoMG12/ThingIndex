@@ -99,7 +99,7 @@ describe("ProviderAuditExplorer", () => {
 
         await user.click(screen.getByRole("button", { name: "Ativo: OpenAI" }));
         await user.type(screen.getByLabelText("Busca operacional"), "chat");
-        await user.type(screen.getByLabelText("Actor"), "USER");
+        await user.type(screen.getByLabelText("Responsável"), "USER");
         await user.type(screen.getByLabelText("Actor ID"), "52");
         await user.click(screen.getByRole("button", { name: /Aplicar filtros/i }));
 
