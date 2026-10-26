@@ -271,7 +271,7 @@ func (h *DocumentHandler) RetryIndexing(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, http.StatusOK, "success", "Documento reenfileirado para indexacao.", dto.ToDocumentResponse(document))
+	response.Success(c, http.StatusOK, "success", "Documento reenfileirado para indexação.", dto.ToDocumentResponse(document))
 }
 
 func (h *DocumentHandler) ListCategories(c *gin.Context) {

@@ -3,8 +3,8 @@ import type { AppLocale } from "@/lib/i18n/config";
 
 const PROVIDER_SUPPORT_LABELS: Record<AppLocale, Record<string, string>> = {
     "pt-BR": {
-        READY: "Pronto para o runtime principal",
-        PARTIAL: "Suporte parcial de runtime",
+        READY: "Pronto para o sistema principal",
+        PARTIAL: "Suporte parcial",
         EXPERIMENTAL: "Suporte experimental via bridge",
         unknown: "Status de suporte indisponível",
         NATIVE_OPENAI: "Caminho nativo OpenAI",

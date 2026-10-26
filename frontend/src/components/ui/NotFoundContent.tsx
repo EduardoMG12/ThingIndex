@@ -82,7 +82,7 @@ export const NotFoundContent = () => {
                     transition={{ delay: 0.6 }}
                     className="mt-12 font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
                 >
-                    thingindex v0.1.0 · sao paulo · brazil
+                    thingindex v0.1.0 · são paulo · brazil
                 </motion.p>
             </motion.div>
         </div>
