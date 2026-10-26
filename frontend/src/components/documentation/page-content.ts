@@ -192,7 +192,7 @@ function getPtBrContent(): DocumentationPageContent {
             highlight: "robusto, auditável e de código aberto",
         },
         heroDescription:
-            "O ThingIndex evoluiu para um runtime documental completo: autenticação, configuração de provedores, upload, indexação estrutural assíncrona, observabilidade, auditoria, chat grounded e documentação pública alinhada ao contrato real da API.",
+            "O ThingIndex evoluiu para um sistema documental completo: autenticação, configuração de provedores, upload, indexação estrutural assíncrona, observabilidade, auditoria, chat grounded e documentação pública alinhada ao contrato real da API.",
         heroSnapshot: [
             { label: "Escopo atual", value: "Plataforma documental relacional com contexto consolidado" },
             { label: "Stack principal", value: "Next.js, Go, PostgreSQL, MinIO e RabbitMQ" },
@@ -223,7 +223,7 @@ function getPtBrContent(): DocumentationPageContent {
             title: "Visão geral",
             paragraphs: [
                 "O ThingIndex não é mais apenas uma prova de conceito de ingestão documental. O repositório atual entrega uma plataforma relacional completa para organizar coleções, processar documentos, preservar estrutura e recuperar contexto com rastreabilidade.",
-                "Para fins de TCC e visibilidade pública, a premissa desta página é simples: documentar somente o que o runtime já entrega, marcar pesquisa e backlog como trilhas separadas e manter a narrativa técnica coerente com o monorepo.",
+                "Para fins de TCC e visibilidade pública, a premissa desta página é simples: documentar somente o que o sistema já entrega, marcar pesquisa e backlog como trilhas separadas e manter a narrativa técnica coerente com o monorepo.",
             ],
         },
         platformSurfaces: {
@@ -368,7 +368,7 @@ function getPtBrContent(): DocumentationPageContent {
             title: "Referências",
             intro: "A leitura recomendada do repositório agora fica organizada por trilhas, para separar contrato atual, operação de código aberto e materiais de pesquisa.",
             tracks: [
-                { label: "Runtime atual", references: ["README.md", "api/README.md", "frontend/README.md", "esta página"] },
+                { label: "Sistema atual", references: ["README.md", "api/README.md", "frontend/README.md", "esta página"] },
                 { label: "Contrato e operação", references: ["examples/http/thingindex-api.http", "api/docs/swagger.yaml", "docs/open-source-onboarding.md"] },
                 { label: "Prontidão atual", references: ["docs/functional-readiness-spec.md"] },
                 { label: "Pesquisa e continuidade", references: ["docs/proposta-continuacao-tcc.md", "docs/roadmap/", "docs/README.md"] },

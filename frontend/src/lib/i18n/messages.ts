@@ -308,7 +308,7 @@ export const messages: LocaleMessages = {
             },
             documents: {
                 title: "Histórico de auditoria documental",
-                description: "Consulta operacional dos uploads, retries e exclusões com request id, origem, actor e leitura agregada.",
+                description: "Consulta operacional dos uploads, retries e exclusões com identificador da requisição, origem, responsável e leitura agregada.",
                 scopeAccount: "Conta inteira",
                 scopeSelectedDocument: "Documento selecionado",
                 scopeCurrentCollection: "Coleção atual",
@@ -831,8 +831,8 @@ export const messages: LocaleMessages = {
                     description: "Use este painel para leitura operacional. Ele não substitui faturamento oficial do provedor.",
                     originTitle: "Origem do número",
                     originDetail: "A estimativa combina as fontes oficiais de preço sincronizadas, a configuração ativa de indexação e o consumo observado dos documentos.",
-                    coverageTitle: "O que entra no calculo",
-                    coverageDetail: "Somente o pipeline de indexação documental. Tokens, requests, documentos e modelos dominantes vem do monitoramento real.",
+                    coverageTitle: "O que entra no cálculo",
+                    coverageDetail: "Somente o pipeline de indexação documental. Tokens, requests, documentos e modelos dominantes vêm do monitoramento real.",
                     limitTitle: "O que fica de fora",
                     limitDetail: "Uso de chat grounded, provedores sem pricing sincronizado e mudanças futuras de tabela de preço não entram nesta visão.",
                 },
@@ -1060,7 +1060,7 @@ export const messages: LocaleMessages = {
                     activeHeadline: "{count} documento(s) exigem ação nesta janela operacional.",
                     nominalHeadline: "O fluxo documental atual está dentro das faixas esperadas.",
                     focusLabel: "Foco principal",
-                    openPriority: "Abrir documento prioritario",
+                    openPriority: "Abrir documento prioritário",
                 },
                 actionPlan: {
                     title: "Próximas ações operacionais",
@@ -2037,7 +2037,7 @@ export const messages: LocaleMessages = {
             shared: {
                 email: "Email",
                 or: "or",
-                city: "sao paulo",
+                city: "são paulo",
             },
             errors: {
                 loginRequired: "Email and password are required",
@@ -3448,7 +3448,7 @@ export const messages: LocaleMessages = {
             shared: {
                 email: "Email",
                 or: "o",
-                city: "sao paulo",
+                city: "são paulo",
             },
             errors: {
                 loginRequired: "El correo y la contraseña son obligatorios",
