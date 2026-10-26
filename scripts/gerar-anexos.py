@@ -516,11 +516,13 @@ REQUISITOS = [
     ("RF05", "Gerar resumos das páginas e das seções com um LLM (opcional, ligado por padrão quando há provedor configurado)."),
     ("RF06", "Disponibilizar o conteúdo indexado de uma coleção por API."),
     ("RF07", "Responder perguntas sobre uma coleção, citando as fontes."),
-    ("RF08", "Abrir cada fonte no PDF, na página e no parágrafo de origem."),
+    ("RF08", "Abrir cada fonte no PDF, na página de origem, destacando o parágrafo da página com mais palavras da pergunta."),
     ("RF09", "Cadastrar provedores de LLM e de armazenamento, com a credencial guardada cifrada."),
     ("RF10", "Acompanhar o andamento da indexação, o consumo de tokens e o custo estimado."),
     ("RF11", "Registrar o histórico de ações sobre documentos e provedores."),
     ("RF12", "Reprocessar documentos cuja indexação falhou."),
+    ("RF13", "Grifar parágrafos dos documentos, com cores, na área de trabalho."),
+    ("RF14", "Excluir documentos de uma coleção."),
 ]
 
 # Cada item conferido no codigo de api/ (bcrypt em usecase/auth_usecase.go, JWT em

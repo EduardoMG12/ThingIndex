@@ -9,14 +9,21 @@ entity "users" as users {
   {field} <b>PK</b> id : serial
   {field} email : varchar(255)
 }
+entity "document_categories" as document_categories {
+  {field} <b>PK</b> id : serial
+  {field} <i>FK</i> user_id : integer
+  {field} name : varchar(255)
+}
 entity "collections" as collections {
   {field} <b>PK</b> id : serial
   {field} <i>FK</i> user_id : integer
+  {field} <i>FK</i> category_id : integer
   {field} name : varchar(255)
 }
 entity "documents" as documents {
   {field} <b>PK</b> id : serial
   {field} <i>FK</i> user_id : integer
+  {field} <i>FK</i> category_id : integer
   {field} <i>FK</i> collection_id : integer
   {field} title : varchar(255)
   {field} status : varchar(50)
@@ -68,11 +75,14 @@ entity "metadata_pairs" as metadata_pairs {
   {field} value : text
 }
 }
+document_categories ||-right-o{ collections
 users ||-right-o{ collections
+users ||-right-o{ document_categories
 documents ||--o{ document_chunks
 documents ||--o{ document_outline_nodes
 document_outline_nodes ||--o{ document_outline_nodes
 documents ||--o{ document_pages
+document_categories ||-right-o{ documents
 collections ||-right-o{ documents
 users ||-right-o{ documents
 documents ||--o{ metadata_pairs

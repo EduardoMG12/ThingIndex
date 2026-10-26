@@ -23,7 +23,7 @@ rectangle "ThingIndex" {
   package "Consulta" {
     usecase "Perguntar à coleção\n(chat com fontes)" as UC8
     usecase "Abrir a fonte na página\ne na região do PDF" as UC9
-    usecase "Grifar e anotar\nno workspace" as UC10
+    usecase "Grifar parágrafos\nna área de trabalho" as UC10
     usecase "Obter o conteúdo\nindexado por API" as UC11
   }
   package "Operação" {
