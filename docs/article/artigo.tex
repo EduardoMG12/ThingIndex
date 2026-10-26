@@ -33,6 +33,9 @@
 % Repositorio com os anexos (diagramas, telas, tabelas completas).
 \newcommand{\repositorio}{\url{https://github.com/EduardoMG12/ThingIndex}}
 
+% Linha de fonte abaixo de figuras e tabelas.
+\newcommand{\fonte}{\par\vspace{3pt}{\footnotesize Fonte: o autor.}\par}
+
 % Deixa tabelas perto de onde sao citadas, em vez de irem para o fim.
 \renewcommand{\topfraction}{0.9}
 \renewcommand{\bottomfraction}{0.8}
@@ -138,6 +141,7 @@ $\;\rightarrow\;$ o \textbf{LLM} redige a resposta só a partir delas
 $\;\rightarrow\;$ a tela mostra a resposta e \textbf{abre cada fonte no PDF}, com o parágrafo destacado}}
 \caption{Caminho de uma pergunta no ThingIndex. As fontes são escolhidas pela busca e lidas do banco antes de o modelo escrever. Na configuração padrão, o modelo só influencia essa escolha pelos resumos que gerou na indexação (Seção~\ref{sec:indexacao}).}
 \label{fig:fluxo}
+\fonte
 \end{figure}
 
 Em áreas reguladas e na administração pública, quem decide precisa mostrar em que norma a decisão se apoia, e uma resposta sem fonte não serve para isso. Os trabalhos mais próximos deixam a origem das fontes a cargo de quem monta o sistema ou não avaliam como ela é guardada (Seção~\ref{sec:relacionados}). Um sistema que depende só de um banco relacional e de um modelo aberto também pode rodar dentro da própria organização, sem enviar os documentos a terceiros, o que facilita atender à LGPD; esse uso, porém, não foi testado aqui.
@@ -216,6 +220,7 @@ Por resposta e por pergunta & Na bateria e no acervo de ensino, cada pergunta fo
 Página nas fontes e página no texto & Página nas fontes: a página certa está entre as fontes que a tela mostra; vem do banco e não pode ser inventada. Página no texto: a página certa está escrita no texto da resposta; vem do modelo e pode estar errada. \\
 \bottomrule
 \end{tabular}
+\fonte
 \end{table}
 
 \subsection{Busca por palavras e busca por significado}
@@ -281,6 +286,7 @@ Assistentes comerciais & Fechado & Referência ao documento, sem garantia de que
 ThingIndex & BM25 sobre unidades guardadas em tabelas. A escolha das fontes é do BM25; o LLM pode gerar resumos que entram no índice e, com a expansão ligada, sugerir palavras de busca & Documento ligado por chave estrangeira; página gravada na indexação e lida do banco \\
 \bottomrule
 \end{tabular}
+\fonte
 \end{table}
 
 Bibliotecas como o LangChain servem para montar aplicações com LLMs e deixam a origem das fontes a cargo de quem as usa; o ThingIndex é uma aplicação completa que fixa uma escolha (unidades da estrutura do PDF, com página) e a avalia. O GraphRAG trata de perguntas que exigem visão de conjunto do acervo, mas depende do LLM já na indexação, e o que recupera pode ser um resumo gerado. O PageIndex é o mais próximo: também usa a estrutura do PDF e dispensa vetores, mas é o modelo que escolhe a seção. Assistentes comerciais que aceitam PDFs atendem muitos usuários ao mesmo tempo, o que o ThingIndex não faz; ele difere deles por poder rodar inteiramente na instalação da organização, com um modelo aberto, e por ter a garantia de origem visível no esquema e no código. O uso na própria instalação não foi avaliado: os experimentos usaram um provedor externo. Não houve comparação experimental com esses produtos nem com o PageIndex.
@@ -346,6 +352,7 @@ RF11 & Histórico de ações (auditoria) & & \\
 RF12 & Reprocessamento de falhas & & \\
 \bottomrule
 \end{tabular}
+\fonte
 \end{table}
 Quanto à privacidade, com um modelo rodando na própria instalação nenhum conteúdo sai dela; com um provedor externo, como o usado nos experimentos, a pergunta e os trechos recuperados são enviados a ele, e cabe à organização a base legal para isso, nos termos da Lei Geral de Proteção de Dados (LGPD). Nesta versão o sistema é de uso individual, sem compartilhamento de coleções.
 
@@ -368,6 +375,7 @@ Páginas, parágrafos, tabelas e trechos carregam sua origem: o documento, o nú
   \includegraphics[width=0.82\textwidth]{anexos/diagramas/esquema-proveniencia}
   \caption{Recorte do esquema com o caminho da proveniência. Cada tabela da estrutura extraída aponta para o documento por chave estrangeira (\texttt{document\_id}); páginas, parágrafos, tabelas e trechos guardam também a página (\texttt{page\_number}), as seções guardam a página inicial e a final, e a região do parágrafo fica no campo \texttt{metadata}. O esquema completo, com as 25 tabelas, está no Anexo~A9.}
   \label{fig:esquema}
+\fonte
 \end{figure}
 
 Ao revisar o código para este artigo, descobriu-se que essa chave estrangeira não existia: a biblioteca de mapeamento objeto-relacional usada, o GORM, só cria a restrição quando o modelo declara a associação, e os seis modelos de estrutura não a declaravam. A coluna existia e era obrigatória, mas o banco não verificava o vínculo. A correção declarou a associação, removeu linhas órfãs na migração e acrescentou dois testes de integração: um confere no catálogo do PostgreSQL que as seis restrições existem, e o outro, que o banco recusa um parágrafo sem documento; só a partir daí o banco passou a conferir o vínculo. A correção não muda o que o \emph{indexer} grava nem como a busca escolhe as fontes. Por isso não altera os resultados da Seção~\ref{sec:resultados}, embora parte deles tenha sido medida antes da correção.
@@ -402,6 +410,7 @@ A tela principal é o \emph{workspace} de uma coleção (Figura~\ref{fig:workspa
   \includegraphics[width=\textwidth]{anexos/telas/workspace}
   \caption{\emph{Workspace} de uma coleção de normas de segurança do trabalho: \emph{chat} com a primeira fonte expandida (à esquerda), PDF na página citada com o parágrafo destacado (ao centro) e o resumo do documento gerado na indexação (à direita).}
   \label{fig:workspace}
+\fonte
 \end{figure}
 
 \subsection{Verificação do software}
@@ -439,6 +448,7 @@ Licitações & Leis 8.666, 14.133 e 10.520 & 25 & 3 & \ref{sec:res-bateria} \\
 Edital municipal & 1 edital de concurso, 52 páginas & 18 & 1 & \ref{sec:res-prefeitura} \\
 \bottomrule
 \end{tabular}
+\fonte
 \end{table}
 
 \textbf{Gabaritos.} Todas as perguntas foram escritas a partir dos PDFs, sem consultar o sistema. Cada uma declara o documento e a página onde está a resposta e um padrão de texto (expressão regular) que a resposta certa precisa conter; quando necessário, declara também padrões que invalidam a resposta, como os de uma recusa (``não há informação sobre isso''). Um teste automatizado confere que uma recusa genérica não conta como acerto em nenhuma pergunta que tenha resposta. Na bateria e no edital, a maior parte das perguntas foi escrita duas vezes: uma versão \emph{literal}, com as palavras do documento, e uma \emph{paráfrase}, com as palavras de quem não leu o documento, como ``Quem deve fornecer o EPI ao trabalhador e em que condições?'' e ``Quem paga o capacete e a luva que eu uso no serviço?''. As duas versões da mesma pergunta formam um \emph{par}. Na bateria, as 9 perguntas negativas não têm par. Os pares existem porque quem escreve a pergunta logo depois de ler a página tende a copiar as palavras dela, e isso favorece a busca por palavras; comparar as duas versões mostra o tamanho desse favorecimento.
@@ -485,6 +495,7 @@ Expandir a pergunta corrige isso? & Em parte: de 68,1\% para 88,7\% no total, e 
 Fonte certa garante resposta certa? & Não: no acervo de legislação, respostas erradas citaram a página certa da lei revogada & \ref{sec:res-legislacao} \\
 \bottomrule
 \end{tabular}
+\fonte
 \end{table}
 
 \subsection{Busca por palavras contra busca densa}
@@ -508,6 +519,7 @@ Busca densa & 11 de 16 & -- \\
 BM25 + busca densa (híbrida) & 13 de 16 & -- \\
 \bottomrule
 \end{tabular}
+\fonte
 \end{table}
 
 Entre os 5 textos, o BM25 acertou o primeiro resultado em 13 das 16 consultas e a busca densa em 11; a versão aproximada da busca densa acertou tantas vezes quanto a exata (11 de 16). Com tão poucas consultas, a diferença não é estatisticamente significativa (Anexo~A7). Por tipo de consulta, o BM25 acertou as 5 literais, 5 das 7 paráfrases e 3 das 4 ruidosas; a densa, 3 das 5 literais, 4 das 7 paráfrases e as 4 ruidosas, e os dois erraram juntos só 1 consulta. As porcentagens por tipo estão no Anexo~A7, Tabela~2, e o resultado de cada consulta ruidosa, em \path{docs/article/results/results.csv}. Entre as 19 seções, cenário mais parecido com o uso do sistema, o BM25 acertou 12 e a contagem de palavras, 9; essa diferença também não é estatisticamente significativa, e trocar a contagem pelo BM25 nos experimentos seguintes foi uma decisão de projeto.
@@ -584,6 +596,7 @@ Todas, 71 perguntas (\% de acerto) & 68,1 & 88,7 \\
 Perguntas certas nas três repetições & 48 de 71 & 63 de 71 \\
 \bottomrule
 \end{tabular}
+\fonte
 \end{table}
 
 O controle é a execução anterior da bateria, no mesmo dia, sem sorteio entre as condições, e a versão do modelo no provedor não foi fixada, de modo que pode ter mudado entre as duas. Os três acervos são documentos públicos, que o modelo provavelmente viu no treinamento: ``empregador'', gerado para a pergunta sobre quem paga o equipamento, é ao mesmo tempo uma ponte de vocabulário e a própria resposta, e o ganho não pode ser estendido a documentos internos de uma organização. Também não houve comparação com expansão sem LLM nem com busca híbrida. Como a primeira ocorrência de cada pergunta depende do modelo, a expansão ficou desligada por padrão; a partir da segunda, o resultado sai de um \emph{cache} e a busca volta a ser determinística. Por isso, as três repetições usaram a mesma expansão e medem a variação da resposta, não a da expansão.
@@ -617,6 +630,7 @@ Condição & Resposta & Por quê \\
 (c) Conferir a fonte confirma que a resposta está certa & Não & A lei revogada é citada com a página certa: quem confere a fonte encontra o texto citado, sem aviso de que ele foi revogado. O sistema também não liga cada frase à fonte que a sustenta, e em 15 das 118 respostas certas da bateria com página-alvo a página certa não estava entre as fontes. \\
 \bottomrule
 \end{tabular}
+\fonte
 \end{table}
 
 Esses resultados valem na escala medida: os três acervos da bateria têm de três a cinco documentos cada, e as perguntas são em português. Foi possível guardar as unidades e a origem de cada fonte só com o modelo relacional, sem banco de vetores; a nota da busca é calculada na aplicação, sobre essas tabelas. Conferir a fonte, porém, não garante que a resposta esteja certa (Seção~\ref{sec:res-legislacao}).
