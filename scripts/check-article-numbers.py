@@ -128,8 +128,8 @@ def conferir_geracao(texto: str, apoio: str) -> int:
         # Cada numero ancorado na frase em que aparece: um valor solto casaria
         # com qualquer outra ocorrencia (a banca mostrou que 0,685 -> 0,686
         # passava).
-        "acerto da bateria (resumo)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\% com a pergunta original; em",
-        "acerto E (resumo)": f"antes da busca, chegou a {_pct(taxa(e['total']))}\\%; o recurso",
+        "acerto da bateria (resumo)": f"com perguntas novas, o acerto foi de {_pct(taxa(c['total']))}\\%, e",
+        "acerto E (resumo)": f"experimental, o acerto chegou a {_pct(taxa(e['total']))}\\%.",
         "acerto da bateria (secao)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\%, cerca de 7 em cada 10 respostas",
         "acerto da bateria (conclusao)": f"a taxa de acerto foi de {_pct(taxa(c['total']))}\\% com a pergunta original. As par",
         "acerto E (conclusao)": f"elevou o acerto a {_pct(taxa(e['total']))}\\% (experimental)",
@@ -316,7 +316,7 @@ def ancoras_auditoria(c: dict, e: dict, ef: dict, g: dict) -> dict[str, str]:
         "pares concordantes (apoio)": f"{ef['concordantes']} dos 31 pares tiveram o mesmo resultado",
         "existencia, Sim. (apoio)": f"de modo que o {_pct(ex_k / ex_n)}\\% dessa forma",
         "ensino por resposta (limitacoes)": f"O acervo de desenvolvimento (ensino) chegou a {_pct(t['ok'] / t['n'])}\\%",
-        "abstract": f"accuracy was {_pct(c['total'][0] / c['total'][1]).replace(',', '.')}\\% with the original question",
+        "abstract": f"accuracy was {_pct(c['total'][0] / c['total'][1]).replace(',', '.')}\\%, and",
     }
 
 
@@ -343,9 +343,8 @@ def origem_c1() -> dict[str, str]:
         # redefinicao da metrica (metadados do documento inteiro), de 70 a 155.
         "origem C1 (resumo)": (f"Sim: o documento é exigido pelo esquema, e a página, gravada na indexação; em C1 (sem páginas), {completos} de {total}, "
                                f"{tipo['Metadado']} delas metadados"),
-        "origem C1, correcao do sistema": (f"que deu coluna de página aos trechos, levou a {primeira + tipo['Trecho']}; "
-                                           "a maior parte da diferença veio de ajustar a métrica"
-                                           if tipo["Metadado"] > tipo["Trecho"] else "<a correcao do sistema passou a ser a maior parte>"),
+        "origem C1, correcao do sistema": (f"Dar coluna de página aos trechos levou a {primeira + tipo['Trecho']}. "
+                                           f"As outras {tipo['Metadado']} vieram de ajustar a métrica"),
         "origem C1, versao atual": (f"Na versão atual, as {total} unidades indexadas de C1 têm a origem completa"
                                     if completos == total else "<nem todas as unidades de C1 tem origem completa>"),
         "origem C1, primeira medicao": f"A primeira medição deu {primeira} de {total}",
@@ -513,7 +512,7 @@ def conferir_variantes(rows: list[dict], texto: str, apoio: str) -> int:
     # se acertaram todas.
     por_tipo = (f"o BM25 acertou as {lit_b[1]} literais, {par_b[0]} das {par_b[1]} paráfrases e {noi_b[0]} das "
                 f"{noi_b[1]} ruidosas; a densa, {lit_c[0]} das {lit_c[1]} literais, {par_c[0]} das {par_c[1]} "
-                f"paráfrases e as {noi_c[1]} ruidosas, e os dois erraram juntos só {comum} consulta"
+                f"paráfrases e as {noi_c[1]} ruidosas, e os dois erraram juntos em só {comum} consulta"
                 if lit_b[0] == lit_b[1] and noi_c[0] == noi_c[1] and comum == 1 else "<C1 por tipo de consulta mudou>")
     # "nao e estatisticamente significativa" entre as secoes so vale enquanto o P@1 contagem x BM25
     # nao for significativo (tabela gerada por analyze.py, Anexo A7).
@@ -617,8 +616,6 @@ def mediana_tokens() -> dict[str, str]:
                                                f"{_br(com, 1)} vezes mais"),
         "tokens, mediana com negativas (8.5)": (f"contando as {n_neg} negativas, em que o documento inteiro inclui cinco "
                                                 f"PDFs, a mediana sobe para {_br(todas, 1)}"),
-        "tokens, mediana (resumo)": f"cerca de {k} vezes menos \\emph{{tokens}} que o documento inteiro, na mediana",
-        "tokens, mediana (abstract)": f"about {k} times fewer tokens than the whole document",
         "tokens, mediana (tabela-resumo)": (f"cerca de {k} vezes menos \\emph{{tokens}} enviados para responder, na "
                                             "mediana das perguntas com resposta"),
         "tokens, mediana (conclusao)": f"Na mediana das perguntas com resposta, buscar trechos usou cerca de {k} vezes menos",

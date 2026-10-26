@@ -18,15 +18,16 @@ RAIZ = Path(__file__).resolve().parent.parent
 DBML = RAIZ / "docs" / "schema" / "thingindex.dbml"
 SAIDA = RAIZ / "docs" / "article" / "anexos" / "diagramas" / "esquema-proveniencia.puml"
 
-NUCLEO = ["users", "collections", "documents"]
+NUCLEO = ["users", "document_categories", "collections", "documents"]
 ESTRUTURA = ["document_pages", "paragraph_nodes", "table_sections", "document_outline_nodes", "document_chunks", "metadata_pairs"]
 # Tabelas da estrutura desenhadas na segunda linha, abaixo das demais.
 SEGUNDA_LINHA = {"document_outline_nodes", "document_chunks", "metadata_pairs"}
 # Colunas mostradas por tabela: identidade, vinculo e coordenada de origem.
 COLUNAS = {
     "users": ["id", "email"],
-    "collections": ["id", "user_id", "name"],
-    "documents": ["id", "user_id", "collection_id", "title", "status"],
+    "document_categories": ["id", "user_id", "name"],
+    "collections": ["id", "user_id", "category_id", "name"],
+    "documents": ["id", "user_id", "category_id", "collection_id", "title", "status"],
     "document_pages": ["id", "document_id", "page_number", "content"],
     # metadata guarda a caixa e as linhas do paragrafo (JSONB); o artigo
     # declara isso como desvio da regra de tabela tipada.

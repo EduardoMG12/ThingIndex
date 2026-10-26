@@ -11,15 +11,9 @@ Trabalho de Conclusão de Curso · Sistemas de Informação · IFPR Campus Palma
 
 <br/>
 
-<a href="docs/article/ThingIndex-artigo.pdf"><img src="https://img.shields.io/badge/Ler_o_artigo-PDF-387330?style=for-the-badge&logo=adobeacrobatreader&logoColor=white" alt="Ler o artigo" /></a>
-<a href="#anexos"><img src="https://img.shields.io/badge/Anexos-A1_a_A10-009F48?style=for-the-badge" alt="Anexos" /></a>
-<a href="#como-executar"><img src="https://img.shields.io/badge/Executar-Docker_Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Executar" /></a>
+[Artigo (PDF)](docs/article/ThingIndex-artigo.pdf) · [Anexos](#anexos) · [Como executar](#como-executar)
 
-<img src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white" alt="Go" />
-<img src="https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white" alt="Next.js" />
-<img src="https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white" alt="PostgreSQL" />
-<img src="https://img.shields.io/badge/RabbitMQ-fila-FF6600?logo=rabbitmq&logoColor=white" alt="RabbitMQ" />
-<img src="https://img.shields.io/badge/licen%C3%A7a-MIT-green" alt="Licença MIT" />
+Go · Next.js · PostgreSQL · RabbitMQ · Licença MIT
 
 </div>
 
@@ -31,7 +25,7 @@ próprio PDF.
 
 Cada parte do documento (página, parágrafo, linha de tabela, seção do sumário) é uma linha
 de tabela no PostgreSQL, ligada ao documento por chave estrangeira e com a página de origem.
-A busca é por palavras (BM25), sem banco vetorial. O LLM só entra no fim, para redigir a
+A busca é por palavras (BM25), sem banco vetorial. Na pergunta, o LLM só entra no fim, para redigir a
 resposta a partir das fontes que a busca escolheu. Por isso a página mostrada ao usuário vem
 do banco, e não do texto escrito pelo modelo.
 
@@ -65,7 +59,7 @@ do banco, e não do texto escrito pelo modelo.
     <img src="assets/readme/artigo.png" alt="Primeiras páginas do artigo" width="900" />
   </a>
   <br/>
-  <a href="docs/article/ThingIndex-artigo.pdf"><b>📄 Abrir o artigo completo (PDF, 29 páginas)</b></a>
+  <a href="docs/article/ThingIndex-artigo.pdf"><b>Abrir o artigo completo (PDF, 28 páginas)</b></a>
 </p>
 
 O trabalho segue a *Design Science Research*: o ThingIndex foi construído e avaliado em sete
@@ -78,20 +72,11 @@ A fonte LaTeX está em [`docs/article/artigo.tex`](docs/article/artigo.tex).
 
 ## Resultados
 
-<table>
-  <tr>
-    <td align="center" width="25%"><h2>68,1%</h2>de acerto em perguntas novas<br/><sub>cerca de 7 em 10 respostas</sub></td>
-    <td align="center" width="25%"><h2>88,7%</h2>com a expansão da pergunta<br/><sub>15 perguntas ganhas, nenhuma perdida</sub></td>
-    <td align="center" width="25%"><h2>≈ 9×</h2>menos <i>tokens</i> que mandar o PDF inteiro<br/><sub>mediana, com o mesmo acerto (71 de 72)</sub></td>
-    <td align="center" width="25%"><h2>13 × 11</h2>busca por palavras × por significado<br/><sub>de 16 consultas, sem diferença detectável</sub></td>
-  </tr>
-</table>
-
 | Pergunta | Resultado |
 |---|---|
 | Busca por palavras ou por significado: qual acha mais? | Ficaram próximas: 13 de 16 contra 11 de 16 consultas, sem diferença detectável |
-| Buscar trechos custa menos que mandar o PDF inteiro ao modelo? | Sim: na mediana das perguntas com resposta, cerca de 9 vezes menos *tokens*, com o mesmo acerto (71 de 72 nos dois casos) |
-| Quanto o sistema acerta em perguntas novas? | 68,1% das respostas, cerca de 7 em 10 |
+| Buscar trechos custa menos que mandar o PDF inteiro ao modelo? | Sim, no acervo de desenvolvimento: na mediana das perguntas com resposta, cerca de 9 vezes menos *tokens*, com 71 de 72 perguntas certas nos dois casos (configurações diferentes entre os dois) |
+| Quanto o sistema acerta em perguntas novas? | 68,1% das respostas, cerca de 7 em 10; 55,4% das respostas com página-alvo estavam certas e com a página certa entre as fontes |
 | A redação da pergunta muda o acerto? | Sim: 88,2% com as palavras do documento e 38,7% com outras palavras |
 | Expandir a pergunta com um LLM ajuda? | De 68,1% para 88,7% (experimental, desligada por padrão) |
 | Fonte certa garante resposta certa? | Não: o sistema citou, com a página certa, o artigo de uma lei revogada |
@@ -160,7 +145,7 @@ flowchart LR
     L --> T(["Tela abre cada fonte no PDF<br/>com o parágrafo destacado"])
 ```
 
-O modelo não escolhe as fontes: elas vêm da busca e do banco antes de ele escrever.
+O modelo não escolhe as fontes: elas vêm da busca e do banco antes de ele escrever. Na configuração padrão, ele só influencia a busca pelos resumos que gerou na indexação.
 
 ```mermaid
 flowchart LR
