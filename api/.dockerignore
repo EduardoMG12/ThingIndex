@@ -1,0 +1,10 @@
+# Contexto do build das imagens da API e do indexer (docker-compose usa ./api).
+.env
+.env.*
+tmp/
+api
+indexer
+*.exe
+*.test
+*.out
+coverage*
